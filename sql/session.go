@@ -58,6 +58,8 @@ type Session interface {
 	Address() string
 	// Client returns the user of the session.
 	Client() Client
+	// SetClient returns a new session with the given client.
+	SetClient(Client)
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
@@ -120,6 +122,8 @@ type Session interface {
 	// SetViewRegistry sets the view registry for this session. Integrators should set a view registry if their database
 	// doesn't implement ViewDatabase and they want views created to persist across sessions.
 	SetViewRegistry(*ViewRegistry)
+	// WithConnectionId sets this sessions unique ID
+	SetConnectionId(connId uint32)
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -204,6 +208,12 @@ func (s *BaseSession) Address() string { return s.addr }
 
 // Client returns session's client information.
 func (s *BaseSession) Client() Client { return s.client }
+
+// WithClient implements Session.
+func (s *BaseSession) SetClient(c Client) {
+	s.client = c
+	return
+}
 
 // GetAllSessionVariables implements the Session interface.
 func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
@@ -290,6 +300,12 @@ func (s *BaseSession) SetCurrentDatabase(dbName string) {
 
 // ID implements the Session interface.
 func (s *BaseSession) ID() uint32 { return s.id }
+
+// SetConnectionId sets the [id] for this session
+func (s *BaseSession) SetConnectionId(id uint32) {
+	s.id = id
+	return
+}
 
 // Warn stores the warning in the session.
 func (s *BaseSession) Warn(warn *Warning) {
@@ -755,6 +771,13 @@ func (c *Context) LoadInfile(filename string) (io.ReadCloser, error) {
 func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 	eg, egCtx := errgroup.WithContext(c.Context)
 	return eg, c.WithContext(egCtx)
+}
+
+// NewCtxWithClient returns a new Context with the given [client]
+func (c *Context) NewCtxWithClient(client Client) *Context {
+	nc := *c
+	nc.Session.SetClient(client)
+	return &nc
 }
 
 // Services are handles to optional or plugin functionality that can be

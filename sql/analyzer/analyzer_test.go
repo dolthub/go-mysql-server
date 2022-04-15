@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -41,9 +42,8 @@ func TestMaxIterations(t *testing.T) {
 	provider := sql.NewDatabaseProvider(db)
 
 	count := 0
-	a := withoutProcessTracking(NewBuilder(provider).AddPostAnalyzeRule("loop",
-		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-
+	a := withoutProcessTracking(NewBuilder(provider).AddPostAnalyzeRule(-1,
+		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 			switch n.(type) {
 			case *plan.ResolvedTable:
 				count++
@@ -78,7 +78,7 @@ func TestAddRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPostAnalyzeRule("foo", pushdownFilters).Build()
+	a := NewBuilder(nil).AddPostAnalyzeRule(-1, pushdownFilters).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -88,7 +88,7 @@ func TestAddPreValidationRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPreValidationRule("foo", pushdownFilters).Build()
+	a := NewBuilder(nil).AddPreValidationRule(-1, pushdownFilters).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -98,7 +98,7 @@ func TestAddPostValidationRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPostValidationRule("foo", pushdownFilters).Build()
+	a := NewBuilder(nil).AddPostValidationRule(-1, pushdownFilters).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -106,7 +106,7 @@ func TestAddPostValidationRule(t *testing.T) {
 func TestRemoveOnceBeforeRule(t *testing.T) {
 	require := require.New(t)
 
-	a := NewBuilder(nil).RemoveOnceBeforeRule("resolve_views").Build()
+	a := NewBuilder(nil).RemoveOnceBeforeRule(resolveViewsId).Build()
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
@@ -116,7 +116,7 @@ func TestRemoveOnceBeforeRule(t *testing.T) {
 func TestRemoveDefaultRule(t *testing.T) {
 	require := require.New(t)
 
-	a := NewBuilder(nil).RemoveDefaultRule("resolve_natural_joins").Build()
+	a := NewBuilder(nil).RemoveDefaultRule(resolveNaturalJoinsId).Build()
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
@@ -126,7 +126,7 @@ func TestRemoveDefaultRule(t *testing.T) {
 func TestRemoveOnceAfterRule(t *testing.T) {
 	require := require.New(t)
 
-	a := NewBuilder(nil).RemoveOnceAfterRule("load_triggers").Build()
+	a := NewBuilder(nil).RemoveOnceAfterRule(loadTriggersId).Build()
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
@@ -136,7 +136,7 @@ func TestRemoveOnceAfterRule(t *testing.T) {
 func TestRemoveValidationRule(t *testing.T) {
 	require := require.New(t)
 
-	a := NewBuilder(nil).RemoveValidationRule(validateResolvedRule).Build()
+	a := NewBuilder(nil).RemoveValidationRule(validateResolvedId).Build()
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
@@ -146,7 +146,7 @@ func TestRemoveValidationRule(t *testing.T) {
 func TestRemoveAfterAllRule(t *testing.T) {
 	require := require.New(t)
 
-	a := NewBuilder(nil).RemoveAfterAllRule("track_process").Build()
+	a := NewBuilder(nil).RemoveAfterAllRule(TrackProcessId).Build()
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
@@ -220,14 +220,14 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		},
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
-				plan.NewDecoratedNode("Projected table access on [i f t]", plan.NewResolvedTable(table.WithProjection([]string{"i", "f", "t"}), db, nil)),
-				plan.NewDecoratedNode("Projected table access on [f2 i2 t2]", plan.NewResolvedTable(table2.WithProjection([]string{"f2", "i2", "t2"}), db, nil)),
+				plan.NewDecoratedNode("Projected table access on [i f t]", plan.NewResolvedTable(table.WithProjections([]string{"i", "f", "t"}), db, nil)),
+				plan.NewDecoratedNode("Projected table access on [f2 i2 t2]", plan.NewResolvedTable(table2.WithProjections([]string{"f2", "i2", "t2"}), db, nil)),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
 				),
 			),
-			plan.NewDecoratedNode("Projected table access on [t3 i f2]", plan.NewResolvedTable(table3.WithProjection([]string{"t3", "i", "f2"}), db, nil)),
+			plan.NewDecoratedNode("Projected table access on [t3 i f2]", plan.NewResolvedTable(table3.WithProjections([]string{"t3", "i", "f2"}), db, nil)),
 			expression.NewAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
@@ -326,4 +326,111 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.True(result.Resolved())
+}
+
+func TestDeepCopyNode(t *testing.T) {
+	tests := []struct {
+		node sql.Node
+		exp  sql.Node
+	}{
+		{
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewLiteral(1, sql.Int64),
+				},
+				plan.NewNaturalJoin(
+					plan.NewInnerJoin(
+						plan.NewUnresolvedTable("mytable", ""),
+						plan.NewUnresolvedTable("mytable2", ""),
+						expression.NewEquals(
+							expression.NewUnresolvedQualifiedColumn("mytable", "i"),
+							expression.NewUnresolvedQualifiedColumn("mytable2", "i2"),
+						),
+					),
+					plan.NewFilter(
+						expression.NewEquals(
+							expression.NewBindVar("v1"),
+							expression.NewBindVar("v2"),
+						),
+						plan.NewUnresolvedTable("mytable3", ""),
+					),
+				),
+			),
+		},
+		{
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewLiteral(1, sql.Int64),
+				},
+				plan.NewUnion(
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewLiteral(1, sql.Int64),
+						},
+						plan.NewUnresolvedTable("mytable", ""),
+					),
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewBindVar("v1"),
+							expression.NewBindVar("v2"),
+						},
+						plan.NewUnresolvedTable("mytable", ""),
+					),
+				),
+			),
+		},
+		{
+			node: plan.NewFilter(
+				expression.NewEquals(
+					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, sql.Int64),
+				),
+				plan.NewWindow(
+					[]sql.Expression{
+						aggregation.NewSum(
+							expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+						),
+						expression.NewGetFieldWithTable(1, sql.Int64, "a", "x", false),
+						expression.NewBindVar("v1"),
+					},
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewBindVar("v2"),
+						},
+						plan.NewUnresolvedTable("x", ""),
+					),
+				),
+			),
+		},
+		{
+			node: plan.NewFilter(
+				expression.NewEquals(
+					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, sql.Int64),
+				),
+				plan.NewSubqueryAlias("cte1", "select x from a",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewBindVar("v1"),
+							expression.NewUnresolvedColumn("v2"),
+						},
+						plan.NewUnresolvedTable("a", ""),
+					),
+				),
+			),
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("DeepCopyTest_%d", i), func(t *testing.T) {
+			cop, err := DeepCopyNode(tt.node)
+			require.NoError(t, err)
+			cop, err = plan.ApplyBindings(cop, map[string]sql.Expression{
+				"v1": expression.NewLiteral(1, sql.Int64),
+				"v2": expression.NewLiteral("x", sql.Text),
+			})
+			require.NoError(t, err)
+			require.NotEqual(t, cop, tt.node)
+		})
+	}
 }

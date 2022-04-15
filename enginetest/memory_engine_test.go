@@ -104,6 +104,39 @@ func TestSpatialQueries(t *testing.T) {
 	}
 }
 
+// TestQueriesPrepared runs the canonical test queries against the gamut of thread, index and partition options
+// with prepared statement caching enabled.
+func TestQueriesPrepared(t *testing.T) {
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexBehavior := range indexBehaviors {
+			for _, parallelism := range parallelVals {
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
+				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
+
+				t.Run(testName, func(t *testing.T) {
+					enginetest.TestQueriesPrepared(t, harness)
+				})
+			}
+		}
+	}
+}
+
+// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+func TestSpatialQueriesPrepared(t *testing.T) {
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexBehavior := range indexBehaviors {
+			for _, parallelism := range parallelVals {
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
+				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
+
+				t.Run(testName, func(t *testing.T) {
+					enginetest.TestSpatialQueriesPrepared(t, harness)
+				})
+			}
+		}
+	}
+}
+
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestSpatialQueriesSimple(t *testing.T) {
 	enginetest.TestSpatialQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
@@ -125,9 +158,14 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
+		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{2, "second row", "second", 2, 2, "second row"},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	}
 
@@ -138,7 +176,35 @@ func TestSingleQuery(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil, test.Bindings)
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil)
+}
+
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleQueryPrepared(t *testing.T) {
+	t.Skip()
+
+	var test enginetest.QueryTest
+	test = enginetest.QueryTest{
+		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
+		Expected: []sql.Row{
+			{sql.Point{X: 1, Y: 2}},
+			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+		},
+	}
+
+	fmt.Sprintf("%v", test)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//engine := enginetest.NewEngine(t, harness)
+	engine := enginetest.NewSpatialEngine(t, harness)
+	//enginetest.CreateIndexes(t, harness, engine)
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
+
+	enginetest.TestPreparedQuery(t, harness, engine, test.Query, test.Expected, nil)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -147,44 +213,17 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "trigger before insert, alter inserted value",
+			Name: "information_schema.key_column_usage works with composite foreign keys",
 			SetUpScript: []string{
-				"create table a (x int primary key, y varchar(4))",
-				"create table b (x int primary key, a_x int)",
-				"create table c (x int primary key, name varchar(4))",
-				"create table d (x int primary key, a_x int, c_x int, index idx1(a_x))",
-				"insert into a values (0, 'a'), (1, 'b'), (2,'c')",
-				"insert into b values (0, 0), (1, 1), (2,2)",
-				"insert into c values (0, 'c1'), (1, 'c2'), (2,'c3')",
-				"insert into d values (0, 1, 0), (1, 2, 1), (2, 0, 2)",
+				"CREATE TABLE ptable (pk int primary key, test_score int, height int)",
+				"CREATE INDEX myindex on ptable(test_score, height)",
+				"CREATE TABLE ptable2 (pk int primary key, test_score2 int, height2 int, CONSTRAINT fkr FOREIGN KEY (test_score2, height2) REFERENCES ptable(test_score,height));",
 			},
-			Query: `WITH
-					cte AS
-					(
-						SELECT
-							a.x AS a_x,
-							b.x AS b_x
-						FROM
-							a
-						INNER JOIN
-							b
-						ON
-							a.x = b.a_x
-						WHERE a.y IN ('a', 'b')
-					)
-				SELECT cte.*
-				FROM
-					cte
-				CROSS JOIN
-					c
-				LEFT JOIN
-					d ON d.c_x = c.x AND d.a_x = cte.a_x
-				ORDER BY
-					cte.b_x,
-					c.name
-				;`,
+			Query: "SELECT * FROM information_schema.key_column_usage where table_name='ptable2' ORDER BY constraint_name",
 			Expected: []sql.Row{
-				{2},
+				{"def", "mydb", "PRIMARY", "def", "mydb", "ptable2", "pk", 1, nil, nil, nil, nil},
+				{"def", "mydb", "fkr", "def", "mydb", "ptable2", "test_score2", 1, 1, "mydb", "ptable", "test_score"},
+				{"def", "mydb", "fkr", "def", "mydb", "ptable2", "height2", 2, 2, "mydb", "ptable", "height"},
 			},
 		},
 	}
@@ -259,6 +298,22 @@ func TestVersionedQueries(t *testing.T) {
 	}
 }
 
+func TestVersionedQueriesPrepared(t *testing.T) {
+	t.Skip("prepared statement asof not supported")
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexInit := range indexBehaviors {
+			for _, parallelism := range parallelVals {
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
+				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+
+				t.Run(testName, func(t *testing.T) {
+					enginetest.TestVersionedQueriesPrepared(t, harness)
+				})
+			}
+		}
+	}
+}
+
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
@@ -295,7 +350,7 @@ func TestIndexQueryPlans(t *testing.T) {
 // query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
 // how query plans have changed without a lot of manual copying and pasting.
 func TestWriteQueryPlans(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	harness := enginetest.NewDefaultMemoryHarness()
 	engine := enginetest.NewEngine(t, harness)
@@ -416,7 +471,7 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 func extractQueryNode(node sql.Node) sql.Node {
 	switch node := node.(type) {
 	case *plan.QueryProcess:
-		return extractQueryNode(node.Child)
+		return extractQueryNode(node.Child())
 	case *analyzer.Releaser:
 		return extractQueryNode(node.Child)
 	default:
@@ -430,6 +485,10 @@ func TestQueryErrors(t *testing.T) {
 
 func TestInfoSchema(t *testing.T) {
 	enginetest.TestInfoSchema(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestInfoSchemaPrepared(t *testing.T) {
+	enginetest.TestInfoSchemaPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestReadOnlyDatabases(t *testing.T) {
@@ -500,8 +559,20 @@ func TestSpatialUpdate(t *testing.T) {
 	enginetest.TestSpatialUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
-func TestDeleteFrom(t *testing.T) {
-	enginetest.TestDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+func TestDeleteQueriesPrepared(t *testing.T) {
+	enginetest.TestDeleteQueriesPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestInsertQueriesPrepared(t *testing.T) {
+	enginetest.TestInsertQueriesPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestUpdateQueriesPrepared(t *testing.T) {
+	enginetest.TestUpdateQueriesPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestReplaceQueriesPrepared(t *testing.T) {
+	enginetest.TestReplaceQueriesPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestDeleteFromErrors(t *testing.T) {
@@ -516,8 +587,50 @@ func TestTruncate(t *testing.T) {
 	enginetest.TestTruncate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestDeleteFrom(t *testing.T) {
+	enginetest.TestDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestLoadDataPrepared(t *testing.T) {
+	enginetest.TestLoadDataPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestScriptsPrepared(t *testing.T) {
+	//TODO: when foreign keys are implemented in the memory table, we can do the following test
+	for i := len(enginetest.ScriptTests) - 1; i >= 0; i-- {
+		if enginetest.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
+			enginetest.ScriptTests = append(enginetest.ScriptTests[:i], enginetest.ScriptTests[i+1:]...)
+		}
+	}
+	enginetest.TestScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestInsertScriptsPrepared(t *testing.T) {
+	enginetest.TestInsertScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestComplexIndexQueriesPrepared(t *testing.T) {
+	enginetest.TestComplexIndexQueriesPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestJsonScriptsPrepared(t *testing.T) {
+	enginetest.TestJsonScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestCreateCheckConstraintsScriptsPrepared(t *testing.T) {
+	enginetest.TestCreateCheckConstraintsScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestInsertIgnoreScriptsPrepared(t *testing.T) {
+	enginetest.TestInsertIgnoreScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestInsertErrorScriptsPrepared(t *testing.T) {
+	enginetest.TestInsertErrorScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestScriptQueryPlan(t *testing.T) {
@@ -655,6 +768,10 @@ func TestExplode(t *testing.T) {
 	enginetest.TestExplode(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestExplodePrepared(t *testing.T) {
+	enginetest.TestExplodePrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -663,8 +780,17 @@ func TestViews(t *testing.T) {
 	enginetest.TestViews(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestViewsPrepared(t *testing.T) {
+	enginetest.TestViewsPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestVersionedViews(t *testing.T) {
 	enginetest.TestVersionedViews(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestVersionedViewsPrepared(t *testing.T) {
+	t.Skip()
+	enginetest.TestVersionedViewsPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestNaturalJoin(t *testing.T) {
@@ -719,6 +845,10 @@ func TestShowTableStatus(t *testing.T) {
 	enginetest.TestShowTableStatus(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestShowTableStatusPrepared(t *testing.T) {
+	enginetest.TestShowTableStatusPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestAddDropPks(t *testing.T) {
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -734,6 +864,10 @@ func TestPersist(t *testing.T) {
 		return persistedSess
 	}
 	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
+}
+
+func TestPrepared(t *testing.T) {
+	enginetest.TestPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestPreparedInsert(t *testing.T) {

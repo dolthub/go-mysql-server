@@ -105,6 +105,8 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 		return err
 	}
 
+	session.SetConnectionId(conn.ConnectionID)
+
 	s.sessions[conn.ConnectionID] = &managedSession{session, conn}
 
 	logger := s.sessions[conn.ConnectionID].session.GetLogger()
@@ -159,6 +161,7 @@ func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Con
 		if err != nil {
 			return nil, err
 		}
+
 		s.mu.Lock()
 		sess = s.sessions[conn.ConnectionID]
 		s.mu.Unlock()

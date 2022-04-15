@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2022 DoltHub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,11 @@ import (
 
 type BindVar struct {
 	Name string
+	Typ  sql.Type
 }
 
 func NewBindVar(name string) sql.Expression {
-	return &BindVar{name}
+	return &BindVar{Name: name, Typ: sql.NewDeferredType(name)}
 }
 
 func (bv *BindVar) Resolved() bool {
@@ -35,7 +36,7 @@ func (bv *BindVar) String() string {
 }
 
 func (bv *BindVar) Type() sql.Type {
-	return sql.LongText
+	return bv.Typ
 }
 
 func (bv *BindVar) IsNullable() bool {
@@ -56,4 +57,9 @@ func (bv *BindVar) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 	}
 	return bv, nil
+}
+
+func IsBindVar(e sql.Expression) bool {
+	_, ok := e.(*BindVar)
+	return ok
 }

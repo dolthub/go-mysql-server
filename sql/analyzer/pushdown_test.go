@@ -84,15 +84,15 @@ func TestPushdownProjectionToTables(t *testing.T) {
 						),
 					),
 					plan.NewCrossJoin(
-						plan.NewDecoratedNode("Projected table access on [f]", plan.NewResolvedTable(table.WithProjection([]string{"f"}), nil, nil)),
-						plan.NewDecoratedNode("Projected table access on [t2 i2]", plan.NewResolvedTable(table2.WithProjection([]string{"t2", "i2"}), nil, nil)),
+						plan.NewDecoratedNode("Projected table access on [f]", plan.NewResolvedTable(table.WithProjections([]string{"f"}), nil, nil)),
+						plan.NewDecoratedNode("Projected table access on [t2 i2]", plan.NewResolvedTable(table2.WithProjections([]string{"t2", "i2"}), nil, nil)),
 					),
 				),
 			),
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_projections"))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownProjectionsId))
 }
 
 func TestPushdownFilterToTables(t *testing.T) {
@@ -174,10 +174,10 @@ func TestPushdownFilterToTables(t *testing.T) {
 					),
 					plan.NewCrossJoin(
 						plan.NewDecoratedNode("Projected table access on [f]",
-							plan.NewResolvedTable(table.WithProjection([]string{"f"}), nil, nil),
+							plan.NewResolvedTable(table.WithProjections([]string{"f"}), nil, nil),
 						),
 						plan.NewDecoratedNode("Projected table access on [t2 i2]",
-							plan.NewResolvedTable(table2.WithProjection([]string{"t2", "i2"}), nil, nil),
+							plan.NewResolvedTable(table2.WithProjections([]string{"t2", "i2"}), nil, nil),
 						),
 					),
 				),
@@ -189,14 +189,14 @@ func TestPushdownFilterToTables(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewDecoratedNode("Projected table access on [f]",
 						plan.NewDecoratedNode("Filtered table access on [(mytable.f = 3.14)]",
-							plan.NewResolvedTable(table.WithProjection([]string{"f"}).(*memory.FilteredTable).WithFilters(sql.NewEmptyContext(), []sql.Expression{
+							plan.NewResolvedTable(table.WithProjections([]string{"f"}).(*memory.FilteredTable).WithFilters(sql.NewEmptyContext(), []sql.Expression{
 								eq(expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
 							}), nil, nil),
 						),
 					),
 					plan.NewDecoratedNode("Projected table access on [t2 i2]",
 						plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
-							plan.NewResolvedTable(table2.WithProjection([]string{"t2", "i2"}).(*memory.FilteredTable).WithFilters(sql.NewEmptyContext(), []sql.Expression{
+							plan.NewResolvedTable(table2.WithProjections([]string{"t2", "i2"}).(*memory.FilteredTable).WithFilters(sql.NewEmptyContext(), []sql.Expression{
 								expression.NewIsNull(expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false)),
 							}), nil, nil),
 						),
@@ -206,7 +206,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownFiltersId))
 }
 
 func TestPushdownFiltersAboveTables(t *testing.T) {
@@ -526,7 +526,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownFiltersId))
 }
 
 // TODO: this needs tests for pushing a merged index lookup down to a table
@@ -1402,7 +1402,7 @@ func TestPushdownIndex(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownFiltersId))
 }
 
 func mustIndexLookup(lookup sql.IndexLookup, err error) sql.IndexLookup {

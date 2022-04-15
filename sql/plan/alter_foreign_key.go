@@ -47,12 +47,17 @@ type CreateForeignKey struct {
 
 var _ sql.Node = (*CreateForeignKey)(nil)
 var _ sql.MultiDatabaser = (*CreateForeignKey)(nil)
+var _ sql.Databaseable = (*CreateForeignKey)(nil)
 
 func NewAlterAddForeignKey(fkDef *sql.ForeignKeyConstraint) *CreateForeignKey {
 	return &CreateForeignKey{
 		dbProvider: nil,
 		FkDef:      fkDef,
 	}
+}
+
+func (p *CreateForeignKey) Database() string {
+	return p.FkDef.Database
 }
 
 // Resolved implements the interface sql.Node.
@@ -346,26 +351,31 @@ type DropForeignKey struct {
 	// during analysis. Otherwise, you could add a foreign key in the preceding alter and we may have analyzed to a
 	// table that did not yet have that foreign key.
 	dbProvider sql.DatabaseProvider
-	Database   string
+	database   string
 	Table      string
 	Name       string
 }
 
 var _ sql.Node = (*DropForeignKey)(nil)
 var _ sql.MultiDatabaser = (*DropForeignKey)(nil)
+var _ sql.Databaseable = (*DropForeignKey)(nil)
 
 func NewAlterDropForeignKey(db, table, name string) *DropForeignKey {
 	return &DropForeignKey{
 		dbProvider: nil,
-		Database:   db,
+		database:   db,
 		Table:      table,
 		Name:       name,
 	}
 }
 
+func (p *DropForeignKey) Database() string {
+	return p.database
+}
+
 // RowIter implements the interface sql.Node.
 func (p *DropForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	db, err := p.dbProvider.Database(ctx, p.Database)
+	db, err := p.dbProvider.Database(ctx, p.database)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +406,7 @@ func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *DropForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.Database, p.Table, "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(p.database, p.Table, "", sql.PrivilegeType_Alter))
 }
 
 // Schema implements the interface sql.Node.
@@ -430,7 +440,7 @@ func (p *DropForeignKey) Children() []sql.Node {
 func (p *DropForeignKey) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DropForeignKey(%s)", p.Name)
-	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database, p.Table))
+	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database(), p.Table))
 	return pr.String()
 }
 

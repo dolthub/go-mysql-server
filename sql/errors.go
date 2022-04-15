@@ -49,7 +49,7 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
-	// ErrColumnNotFound is thrown when a column named cannot be found in scope
+	// ErrTableColumnNotFound is thrown when a column named cannot be found in scope
 	ErrTableColumnNotFound = errors.NewKind("table %q does not have column %q")
 
 	// ErrColumnNotFound is returned when the column does not exist in any

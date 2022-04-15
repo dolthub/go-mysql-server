@@ -27,7 +27,7 @@ import (
 
 func TestAssignCatalog(t *testing.T) {
 	require := require.New(t)
-	f := getRule("assign_catalog")
+	f := getRule(assignCatalogId)
 
 	db := memory.NewDatabase("foo")
 	provider := sql.NewDatabaseProvider(db)
@@ -38,7 +38,7 @@ func TestAssignCatalog(t *testing.T) {
 	tbl := memory.NewTable("foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
 
 	node, _, err := f.Apply(ctx, a,
-		plan.NewCreateIndex("", plan.NewResolvedTable(tbl, nil, nil), nil, "", make(map[string]string)), nil)
+		plan.NewCreateIndex("", plan.NewResolvedTable(tbl, nil, nil), nil, "", make(map[string]string)), nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	ci, ok := node.(*plan.CreateIndex)
@@ -47,7 +47,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal("foo", ci.CurrentDatabase)
 
 	node, _, err = f.Apply(ctx, a,
-		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl, nil, nil)), nil)
+		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl, nil, nil)), nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	di, ok := node.(*plan.DropIndex)
@@ -55,7 +55,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(a.Catalog, di.Catalog)
 	require.Equal("foo", di.CurrentDatabase)
 
-	node, _, err = f.Apply(ctx, a, plan.NewShowProcessList(), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewShowProcessList(), nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	pl, ok := node.(*plan.ShowProcessList)
@@ -64,19 +64,19 @@ func TestAssignCatalog(t *testing.T) {
 	// TODO: get processlist from runtime
 	//	require.Equal(c.ProcessList, pl.ProcessList)
 
-	node, _, err = f.Apply(ctx, a, plan.NewShowDatabases(), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewShowDatabases(), nil, DefaultRuleSelector)
 	require.NoError(err)
 	sd, ok := node.(*plan.ShowDatabases)
 	require.True(ok)
 	require.Equal(a.Catalog, sd.Catalog)
 
-	node, _, err = f.Apply(ctx, a, plan.NewLockTables(nil), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewLockTables(nil), nil, DefaultRuleSelector)
 	require.NoError(err)
 	lt, ok := node.(*plan.LockTables)
 	require.True(ok)
 	require.Equal(a.Catalog, lt.Catalog)
 
-	node, _, err = f.Apply(ctx, a, plan.NewUnlockTables(), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewUnlockTables(), nil, DefaultRuleSelector)
 	require.NoError(err)
 	ut, ok := node.(*plan.UnlockTables)
 	require.True(ok)

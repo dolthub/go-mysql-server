@@ -34,6 +34,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 )
@@ -94,23 +95,31 @@ func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 	return h.sm.SetDB(c, schemaName)
 }
 
+// ComPrepare parses, partially analyzes, and caches a prepared statement's plan
+// with the given [c.ConnectionID].
 func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
 	ctx, err := h.sm.NewContextWithQuery(c, query)
 	if err != nil {
 		return nil, err
 	}
-	schema, err := h.e.AnalyzeQuery(ctx, query)
+
+	var analyzed sql.Node
+	if analyzer.PreparedStmtDisabled {
+		analyzed, err = h.e.AnalyzeQuery(ctx, query)
+	} else {
+		analyzed, err = h.e.PrepareQuery(ctx, query)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if sql.IsOkResultSchema(schema) {
+
+	if sql.IsOkResultSchema(analyzed.Schema()) {
 		return nil, nil
 	}
-	return schemaToFields(schema), nil
+	return schemaToFields(analyzed.Schema()), nil
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-
 	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
 	})
@@ -137,6 +146,8 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	if err := h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
+
+	defer h.e.CloseSession(ctx)
 
 	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
@@ -348,7 +359,6 @@ func (h *Handler) doQuery(
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-
 	// Read rows off the row iterator and send them to the row channel.
 	eg.Go(func() error {
 		defer wg.Done()

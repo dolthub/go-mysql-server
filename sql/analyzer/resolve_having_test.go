@@ -327,6 +327,6 @@ func TestResolveHaving(t *testing.T) {
 		},
 	}
 
-	rule := getRule("resolve_having")
+	rule := getRule(resolveHavingId)
 	runTestCases(t, nil, testCases, nil, rule)
 }

@@ -26,7 +26,7 @@ import (
 )
 
 // resolveUnions resolves the left and right side of a union node in isolation.
-func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -41,12 +41,12 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			subqueryCtx, cancelFunc := ctx.NewSubContext()
 			defer cancelFunc()
 
-			left, _, err := a.analyzeThroughBatch(subqueryCtx, n.Left(), scope, "default-rules")
+			left, _, err := a.analyzeThroughBatch(subqueryCtx, n.Left(), scope, "default-rules", sel)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 
-			right, _, err := a.analyzeThroughBatch(subqueryCtx, n.Right(), scope, "default-rules")
+			right, _, err := a.analyzeThroughBatch(subqueryCtx, n.Right(), scope, "default-rules", sel)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -63,7 +63,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	})
 }
 
-func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Procedures explicitly handle unions
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
@@ -76,12 +76,12 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			defer cancelFunc()
 
 			// TODO we could detect tree modifications here, skip rebuilding
-			left, _, err := a.analyzeStartingAtBatch(subqueryCtx, n.Left(), scope, "default-rules")
+			left, _, err := a.analyzeStartingAtBatch(subqueryCtx, n.Left(), scope, "default-rules", sel)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 
-			right, _, err := a.analyzeStartingAtBatch(subqueryCtx, n.Right(), scope, "default-rules")
+			right, _, err := a.analyzeStartingAtBatch(subqueryCtx, n.Right(), scope, "default-rules", sel)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -107,7 +107,7 @@ var (
 
 // mergeUnionSchemas determines the narrowest possible shared schema types between the two sides of a union, and
 // applies projections the two sides to convert column types as necessary.
-func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -123,6 +123,9 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				les[i] = expression.NewGetFieldWithTable(i, ls[i].Type, ls[i].Source, ls[i].Name, ls[i].Nullable)
 				res[i] = expression.NewGetFieldWithTable(i, rs[i].Type, rs[i].Source, rs[i].Name, rs[i].Nullable)
 				if reflect.DeepEqual(ls[i].Type, rs[i].Type) {
+					continue
+				}
+				if sql.IsDeferredType(ls[i].Type) || sql.IsDeferredType(rs[i].Type) {
 					continue
 				}
 				hasdiff = true

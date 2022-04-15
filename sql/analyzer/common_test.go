@@ -118,9 +118,9 @@ var analyzeRules = [][]Rule{
 	OnceAfterDefault,
 }
 
-func getRule(name string) Rule {
+func getRule(id RuleId) Rule {
 	for _, rules := range analyzeRules {
-		rule := getRuleFrom(rules, name)
+		rule := getRuleFrom(rules, id)
 		if rule != nil {
 			return *rule
 		}
@@ -129,9 +129,9 @@ func getRule(name string) Rule {
 	panic("missing rule")
 }
 
-func getRuleFrom(rules []Rule, name string) *Rule {
+func getRuleFrom(rules []Rule, id RuleId) *Rule {
 	for _, rule := range rules {
-		if rule.Name == name {
+		if rule.Id == id {
 			return &rule
 		}
 	}
@@ -157,7 +157,7 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 			if context == nil {
 				context = sql.NewEmptyContext()
 			}
-			result, _, err := f.Apply(context, a, tt.node, tt.scope)
+			result, _, err := f.Apply(context, a, tt.node, tt.scope, DefaultRuleSelector)
 			if tt.err != nil {
 				require.Error(t, err)
 				require.True(t, tt.err.Is(err), fmt.Sprintf("Expected error of type %T but got %T", tt.err, err))

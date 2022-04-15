@@ -133,6 +133,9 @@ func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error
 	var err error
 	// collect functions in hash map keyed by partitioning scheme
 	for i, expr := range w.SelectExprs {
+		if alias, ok := expr.(*expression.Alias); ok {
+			expr = alias.Child
+		}
 		switch e := expr.(type) {
 		case sql.Aggregation:
 			window = e.Window()

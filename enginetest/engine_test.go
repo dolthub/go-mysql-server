@@ -257,8 +257,8 @@ func TestTrackProcess(t *testing.T) {
 	ctx, err := ctx.ProcessList.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
 
-	rule := getRuleFrom(analyzer.OnceAfterAll, "track_process")
-	result, _, err := rule.Apply(ctx, a, node, nil)
+	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
+	result, _, err := rule.Apply(ctx, a, node, nil, analyzer.DefaultRuleSelector)
 	require.NoError(err)
 
 	processes := ctx.ProcessList.Processes()
@@ -278,7 +278,7 @@ func TestTrackProcess(t *testing.T) {
 	proc, ok := result.(*plan.QueryProcess)
 	require.True(ok)
 
-	join, ok := proc.Child.(*plan.InnerJoin)
+	join, ok := proc.Child().(*plan.InnerJoin)
 	require.True(ok)
 
 	lhs, ok := join.Left().(*plan.ResolvedTable)
@@ -305,9 +305,9 @@ func TestTrackProcess(t *testing.T) {
 	}
 }
 
-func getRuleFrom(rules []analyzer.Rule, name string) *analyzer.Rule {
+func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
 	for _, rule := range rules {
-		if rule.Name == name {
+		if rule.Id == id {
 			return &rule
 		}
 	}
@@ -446,7 +446,7 @@ func TestAnalyzer(t *testing.T) {
 
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 	if x, ok := actual.(*plan.QueryProcess); ok {
-		actual = x.Child
+		actual = x.Child()
 	}
 
 	if !assert.Equal(t, expected, actual) {
