@@ -52,6 +52,8 @@ type CreateIndex struct {
 	CurrentDatabase string
 }
 
+var _ sql.Databaseable = (*CreateIndex)(nil)
+
 // NewCreateIndex creates a new CreateIndex node.
 func NewCreateIndex(
 	name string,
@@ -68,6 +70,8 @@ func NewCreateIndex(
 		Config: config,
 	}
 }
+
+func (c *CreateIndex) Database() string { return c.CurrentDatabase }
 
 // Children implements the Node interface.
 func (c *CreateIndex) Children() []sql.Node { return []sql.Node{c.Table} }

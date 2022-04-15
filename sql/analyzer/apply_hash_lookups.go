@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithPrefixSchema(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if c.SchemaPrefix == nil {
 			// If c.SchemaPrefix is nil, it's possible our prefix

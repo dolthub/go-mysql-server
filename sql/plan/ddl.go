@@ -370,6 +370,7 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 			return sql.ErrForeignKeySetDefault.New()
 		}
 		if fkChecks.(int8) == 1 {
+			// TODO this is panic-prone
 			fkParentTbl := c.fkParentTbls[i]
 			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist
 			if fkParentTbl == nil {

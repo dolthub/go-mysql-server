@@ -1270,7 +1270,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.AddStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				c.Database = table.Database
+				c.Database = table.Database()
 				c.Table = table.Name()
 				if c.Database == "" {
 					c.Database = ctx.GetCurrentDatabase()
@@ -1285,7 +1285,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				database := table.Database
+				database := table.Database()
 				if database == "" {
 					database = ctx.GetCurrentDatabase()
 				}

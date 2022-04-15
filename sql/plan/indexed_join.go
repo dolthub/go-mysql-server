@@ -24,6 +24,8 @@ import (
 )
 
 // An IndexedJoin is a join that uses index lookups for the secondary table.
+// IndexedJoin does not implement sql.Expressioner because FixFieldIndexesForExpressions
+// is not aware of the prefixed row.
 type IndexedJoin struct {
 	// The primary and secondary table nodes. The normal meanings of Left and
 	// Right in BinaryNode aren't necessarily meaningful here -- the Left node is always the primary table, and the Right

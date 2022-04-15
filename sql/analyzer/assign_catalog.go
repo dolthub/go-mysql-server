@@ -30,7 +30,7 @@ type CatalogTable interface {
 }
 
 // assignCatalog sets the catalog in the required nodes.
-func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("assign_catalog")
 	defer span.Finish()
 

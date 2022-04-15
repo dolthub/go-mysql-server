@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -32,15 +31,6 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
-	},
-	{
-		WriteQuery:          "UPDATE mytable SET s = ?;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
-		SelectQuery:         "SELECT * FROM mytable;",
-		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral("updated", sql.Text),
-		},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' WHERE i > 9999;",
@@ -288,7 +278,7 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `UPDATE othertable, tabletest set tabletest.i = tabletest.i * 10`, // cross join
+		WriteQuery:          `UPDATE othertable cross join tabletest set tabletest.i = tabletest.i * 10`, // cross join
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{

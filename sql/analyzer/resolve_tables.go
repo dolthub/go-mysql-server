@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -52,7 +53,7 @@ func isDualTable(t sql.Table) bool {
 	return t.Name() == dualTableName && t.Schema().Equals(dualTableSchema.Schema)
 }
 
-func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
@@ -91,38 +92,45 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	})
 }
 
-func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.Node, error) {
+func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Node, error) {
 	name := t.Name()
-	db := t.Database
+	db := t.Database()
 	if db == "" {
 		db = ctx.GetCurrentDatabase()
 	}
 
-	if t.AsOf != nil {
-		// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
-		// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
-		// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
-		asOfExpr, _, err := transform.Expr(t.AsOf, resolveFunctionsInExpr(ctx, a))
-		if err != nil {
-			return nil, err
-		}
+	var asofBindVar bool
+	if t.AsOf() != nil {
+		asofBindVar = transform.InspectExpr(t.AsOf(), func(expr sql.Expression) bool {
+			_, ok := expr.(*expression.BindVar)
+			return ok
+		})
+		if !asofBindVar {
+			// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
+			// resolution, we resolve any functions in the asOf here in order to evaluate them immediately. A better solution
+			// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
+			asOfExpr, _, err := transform.Expr(t.AsOf(), resolveFunctionsInExpr(ctx, a))
+			if err != nil {
+				return nil, err
+			}
 
-		if !asOfExpr.Resolved() {
-			return nil, sql.ErrInvalidAsOfExpression.New(asOfExpr.String())
-		}
+			if !asOfExpr.Resolved() {
+				return nil, sql.ErrInvalidAsOfExpression.New(asOfExpr.String())
+			}
 
-		asOf, err := asOfExpr.Eval(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
+			asOf, err := asOfExpr.Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
 
-		rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
-		if err != nil {
-			return handleTableLookupFailure(err, name, db, a, t)
-		}
+			rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
+			if err != nil {
+				return handleTableLookupFailure(err, name, db, a, t)
+			}
 
-		a.Log("table resolved: %q as of %s", rt.Name(), asOf)
-		return plan.NewResolvedTable(rt, database, asOf), nil
+			a.Log("table resolved: %q as of %s", rt.Name(), asOf)
+			return plan.NewResolvedTable(rt, database, asOf), nil
+		}
 	}
 
 	rt, database, err := a.Catalog.Table(ctx, db, name)
@@ -138,7 +146,11 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	}
 
 	a.Log("table resolved: %s", t.Name())
-	return resolvedTableNode, nil
+	res := plan.NewResolvedTable(rt, database, nil)
+	if asofBindVar {
+		return plan.NewDeferredAsOfTable(res, t.AsOf()), nil
+	}
+	return res, nil
 }
 
 // handleInfoSchemaColumnsTable modifies the detected information_schema.columns table and adds a large set of colums
@@ -195,7 +207,7 @@ func getAllColumnsWithDefaultValue(ctx *sql.Context, a *Analyzer) ([]*sql.Column
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
 // store supplementary schema information. This is useful for lazy resolution of column default values.
-func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("set_target_schema")
 	defer span.Finish()
 
@@ -231,7 +243,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	})
 }
 
-func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t *plan.UnresolvedTable) (sql.Node, error) {
+func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t sql.UnresolvedTable) (sql.Node, error) {
 	if sql.ErrDatabaseNotFound.Is(err) {
 		if tableName == dualTableName {
 			a.Log("table resolved: %q", t.Name())
@@ -250,8 +262,87 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 	return nil, err
 }
 
+// unresolveTables is a quick and dirty way to make prepared statement reanalysis
+// resolve the most up-to-date table roots while preserving projections folded into
+// table scans.
+//TODO this is racy, alter statements can change a table's schema in-between
+// prepare and execute
+func unresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		var (
+			from *plan.ResolvedTable
+			to   sql.Node
+			db   string
+			err  error
+		)
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			from = n
+			if n.Database != nil {
+				db = n.Database.Name()
+			}
+			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.Name(), db), a)
+		case *plan.IndexedTableAccess:
+			from = n.ResolvedTable
+			if n.Database() != nil {
+				db = n.Database().Name()
+			}
+			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.ResolvedTable.Name(), db), a)
+		case *plan.DeferredAsOfTable:
+			from = n.ResolvedTable
+			to, err = resolveTable(ctx, plan.NewDeferredAsOfTable(n.ResolvedTable, n.AsOf()), a)
+		default:
+			return n, transform.SameTree, nil
+		}
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		new := transferProjections(from, to.(*plan.ResolvedTable))
+		return new, transform.NewTree, nil
+	})
+}
+
+// transferProjections moves projections from one table scan to another
+func transferProjections(from, to *plan.ResolvedTable) sql.Node {
+	var fromTable sql.Table
+	switch t := from.Table.(type) {
+	case sql.TableWrapper:
+		fromTable = t.Underlying()
+	case sql.Table:
+		fromTable = t
+	default:
+		return to
+	}
+
+	pt, ok := fromTable.(sql.ProjectedTable)
+	if !ok {
+		return to
+	}
+
+	projections := pt.Projections()
+
+	var toTable sql.Table
+	switch t := to.Table.(type) {
+	case sql.TableWrapper:
+		toTable = t.Underlying()
+	case sql.Table:
+		toTable = t
+	default:
+		return to
+	}
+
+	pt, ok = toTable.(sql.ProjectedTable)
+	if !ok {
+		return to
+	}
+
+	newTable := pt.WithProjections(projections)
+	return plan.NewResolvedTable(newTable, to.Database, to.AsOf)
+}
+
 // validateDropTables returns an error if the database is not droppable.
-func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
 		return n, transform.SameTree, nil

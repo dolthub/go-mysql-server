@@ -401,6 +401,7 @@ type DropColumn struct {
 }
 
 var _ sql.Node = (*DropColumn)(nil)
+var _ sql.Databaser = (*DropColumn)(nil)
 
 func NewDropColumn(database sql.Database, table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
@@ -560,6 +561,7 @@ type RenameColumn struct {
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
+var _ sql.Databaser = (*RenameColumn)(nil)
 
 func NewRenameColumn(database sql.Database, table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
@@ -707,6 +709,7 @@ type ModifyColumn struct {
 
 var _ sql.Node = (*ModifyColumn)(nil)
 var _ sql.Expressioner = (*ModifyColumn)(nil)
+var _ sql.Databaser = (*ModifyColumn)(nil)
 
 func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	return &ModifyColumn{

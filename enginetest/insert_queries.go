@@ -20,7 +20,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var InsertQueries = []WriteQueryTest{
@@ -71,26 +70,6 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-	},
-	{
-		WriteQuery:          "INSERT INTO mytable VALUES (?, ?);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(int64(999), sql.Int64),
-			"v2": expression.NewLiteral("x", sql.Text),
-		},
-	},
-	{
-		WriteQuery:          "INSERT INTO mytable VALUES (:col1, :col2);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings: map[string]sql.Expression{
-			"col1": expression.NewLiteral(int64(999), sql.Int64),
-			"col2": expression.NewLiteral("x", sql.Text),
-		},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET i = 999, s = 'x';",
@@ -1138,6 +1117,44 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "insert into test(pk) values (1)",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "Insert on duplicate key",
+		SetUpScript: []string{
+			`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+			`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+			"INSERT INTO users values ('milo'), ('dabe')",
+			"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into nodes(id,owner,status,timestamp) values('id1','dabe','off',2) on duplicate key update owner='milo',status='on'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "insert into nodes(id,owner,status,timestamp) values('id2','dabe','off',3) on duplicate key update owner='milo',status='on'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from nodes",
+				Expected: []sql.Row{
+					{"id1", "milo", "on", 1},
+					{"id2", "dabe", "off", 3},
+				},
 			},
 		},
 	},

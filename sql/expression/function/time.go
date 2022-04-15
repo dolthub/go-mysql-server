@@ -461,6 +461,8 @@ func NewYearWeek(args ...sql.Expression) (sql.Expression, error) {
 	yw := &YearWeek{date: args[0]}
 	if len(args) > 1 && args[1].Resolved() && sql.IsInteger(args[1].Type()) {
 		yw.mode = args[1]
+	} else if len(args) > 1 && expression.IsBindVar(args[1]) {
+		yw.mode = args[1]
 	} else {
 		yw.mode = expression.NewLiteral(0, sql.Int64)
 	}

@@ -27,6 +27,8 @@ type DeleteFrom struct {
 	UnaryNode
 }
 
+var _ sql.Databaseable = (*DeleteFrom)(nil)
+
 // NewDeleteFrom creates a DeleteFrom node.
 func NewDeleteFrom(n sql.Node) *DeleteFrom {
 	return &DeleteFrom{UnaryNode{n}}
@@ -79,7 +81,7 @@ func deleteDatabaseHelper(node sql.Node) string {
 	case *ResolvedTable:
 		return node.Database.Name()
 	case *UnresolvedTable:
-		return node.Database
+		return node.Database()
 	}
 
 	for _, child := range node.Children() {

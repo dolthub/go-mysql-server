@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_views")
 	defer span.Finish()
 
@@ -35,7 +35,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		}
 
 		viewName := urt.Name()
-		dbName := urt.Database
+		dbName := urt.Database()
 		if dbName == "" {
 			dbName = ctx.GetCurrentDatabase()
 		}
@@ -88,16 +88,16 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		query := view.Definition().Children()[0]
 
 		// If this view is being asked for with an AS OF clause, then attempt to apply it to every table in the view.
-		if urt.AsOf != nil {
-			query, _, err = applyAsOfToView(query, a, urt.AsOf)
+		if urt.AsOf() != nil {
+			query, _, err = applyAsOfToView(query, a, urt.AsOf())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 		}
 
 		// If the view name was qualified with a database name, apply that same qualifier to any tables in it
-		if urt.Database != "" {
-			query, _, err = applyDatabaseQualifierToView(query, a, urt.Database)
+		if urt.Database() != "" {
+			query, _, err = applyDatabaseQualifierToView(query, a, urt.Database())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -121,10 +121,10 @@ func applyAsOfToView(n sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, tr
 		}
 
 		a.Log("applying AS OF clause to view " + urt.Name())
-		if urt.AsOf != nil {
+		if urt.AsOf() != nil {
 			return nil, transform.SameTree, sql.ErrIncompatibleAsOf.New(
 				fmt.Sprintf("cannot combine AS OF clauses %s and %s",
-					asOf.String(), urt.AsOf.String()))
+					asOf.String(), urt.AsOf().String()))
 		}
 
 		n, err := urt.WithAsOf(asOf)
@@ -145,7 +145,7 @@ func applyDatabaseQualifierToView(n sql.Node, a *Analyzer, dbName string) (sql.N
 		}
 
 		a.Log("applying database name to view table " + urt.Name())
-		if urt.Database == "" {
+		if urt.Database() == "" {
 			n, err := urt.WithDatabase(dbName)
 			if err != nil {
 				return nil, transform.SameTree, err

@@ -26,7 +26,7 @@ import (
 
 func TestTrackProcessSubquery(t *testing.T) {
 	require := require.New(t)
-	rule := getRuleFrom(OnceAfterAll, "track_process")
+	rule := getRuleFrom(OnceAfterAll, TrackProcessId)
 	a := NewDefault(sql.NewDatabaseProvider())
 
 	node := plan.NewProject(
@@ -39,7 +39,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 		),
 	)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), a, node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), a, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expectedChild := plan.NewProject(
@@ -51,7 +51,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 
 	proc, ok := result.(*plan.QueryProcess)
 	require.True(ok)
-	require.Equal(expectedChild, proc.Child)
+	require.Equal(expectedChild, proc.Child())
 }
 
 func withoutProcessTracking(a *Analyzer) *Analyzer {

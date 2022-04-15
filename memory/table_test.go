@@ -277,7 +277,7 @@ func TestProjected(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			projected := table.WithProjection(test.columns)
+			projected := table.WithProjections(test.columns)
 
 			projectedRows := getAllRows(t, projected)
 			require.Len(projectedRows, len(test.expectedProjected))
@@ -299,7 +299,7 @@ func TestFilterAndProject(t *testing.T) {
 			}
 
 			filtered := table.WithFilters(sql.NewEmptyContext(), test.filters)
-			projected := filtered.(*memory.FilteredTable).WithProjection(test.columns)
+			projected := filtered.(*memory.FilteredTable).WithProjections(test.columns)
 
 			rows := getAllRows(t, projected)
 			require.Len(rows, len(test.expectedFiltersAndProjections))
@@ -320,7 +320,7 @@ func TestIndexed(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			projected := table.WithProjection(test.columns)
+			projected := table.WithProjections(test.columns)
 			indexed := projected.(*memory.Table).WithIndexLookup(test.lookup)
 
 			ctx := sql.NewEmptyContext()

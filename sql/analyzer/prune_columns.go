@@ -44,7 +44,7 @@ func (uc usedColumns) has(table, col string) bool {
 // pruneColumns removes unneeded columns from Project and GroupBy nodes. It also rewrites field indexes as necessary,
 // even if no columns were pruned. This is especially important for subqueries -- this function handles fixing field
 // indexes when the outer scope schema changes as a result of other analyzer functions.
-func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
 	}
