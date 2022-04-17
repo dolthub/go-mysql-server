@@ -86,6 +86,9 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PolygonType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	// Must be a Polygon, fail otherwise
 	if v, ok := v.(Polygon); ok {
 		return v, nil

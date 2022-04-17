@@ -21,13 +21,13 @@ import (
 )
 
 // resolveDescribeQuery resolves any DescribeQuery nodes by analyzing their child and assigning it back.
-func resolveDescribeQuery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func resolveDescribeQuery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	d, ok := n.(*plan.DescribeQuery)
 	if !ok {
 		return n, transform.SameTree, nil
 	}
 
-	q, err := a.Analyze(ctx, d.Query(), scope)
+	q, _, err := a.analyzeWithSelector(ctx, d.Query(), scope, SelectAllBatches, sel)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}

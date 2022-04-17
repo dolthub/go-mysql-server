@@ -46,6 +46,11 @@ type BinaryNode interface {
 	Right() Node
 }
 
+// UnaryNode has one child
+type UnaryNode interface {
+	Child() Node
+}
+
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable
@@ -303,6 +308,11 @@ type Databaser interface {
 	WithDatabase(Database) (Node, error)
 }
 
+// Databaseable is a node with a string reference to a database
+type Databaseable interface {
+	Database() string
+}
+
 // MultiDatabaser is a node that contains a reference to a database provider. This interface is intended for very
 // specific nodes that must resolve databases during execution time rather than during analysis, such as block
 // statements where the execution of a nested statement in the block may affect future statements within that same block.
@@ -380,7 +390,8 @@ type FilteredTable interface {
 // that's more optimized given the columns that are projected.
 type ProjectedTable interface {
 	Table
-	WithProjection(colNames []string) Table
+	WithProjections(colNames []string) Table
+	Projections() []string
 }
 
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
@@ -625,11 +636,11 @@ type RowReplacer interface {
 	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
 	// Close is called.
 	Delete(*Context, Row) error
-	// Close finalizes the replace operation, persisting the result.
+	// Closer finalizes the replace operation, persisting the result.
 	Closer
 }
 
-// Replacer allows rows to be replaced through a Delete (if applicable) then Insert.
+// ReplaceableTable allows rows to be replaced through a Delete (if applicable) then Insert.
 type ReplaceableTable interface {
 	Table
 	// Replacer returns a RowReplacer for this table. The RowReplacer will have Insert and optionally Delete called once
@@ -637,7 +648,7 @@ type ReplaceableTable interface {
 	Replacer(ctx *Context) RowReplacer
 }
 
-// UpdateableTable is a table that can process updates of existing rows via update statements.
+// UpdatableTable is a table that can process updates of existing rows via update statements.
 type UpdatableTable interface {
 	Table
 	// Updater returns a RowUpdater for this table. The RowUpdater will have Update called once for each row to be
@@ -650,7 +661,7 @@ type RowUpdater interface {
 	TableEditor
 	// Update the given row. Provides both the old and new rows.
 	Update(ctx *Context, old Row, new Row) error
-	// Close finalizes the update operation, persisting the result.
+	// Closer finalizes the update operation, persisting the result.
 	Closer
 }
 
@@ -723,6 +734,18 @@ type VersionedDatabase interface {
 	// GetTableNamesAsOf returns the table names of every table in the database as of the revision given. Implementors
 	// must choose which types of expressions to accept as revision names.
 	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
+}
+
+// UnresolvedTable is a Table that is either unresolved or deferred for until an asOf resolution
+type UnresolvedTable interface {
+	Nameable
+	// Database returns the database name
+	Database() string
+	// WithAsOf returns a copy of this versioned table with its AsOf
+	// field set to the given value. Analogous to WithChildren.
+	WithAsOf(asOf Expression) (Node, error)
+	//AsOf returns this table's asof expression.
+	AsOf() Expression
 }
 
 type TransactionCharacteristic int
@@ -878,7 +901,7 @@ func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error
 
 // TableCreator should be implemented by databases that can create new tables.
 type TableCreator interface {
-	// Creates the table with the given name and schema. If a table with that name already exists, must return
+	// CreateTable creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
@@ -887,7 +910,7 @@ type TableCreator interface {
 // Note that temporary tables with the same name as persisted tables take precedence in most SQL operations.
 type TemporaryTableCreator interface {
 	Database
-	// Creates the table with the given name and schema. If a temporary table with that name already exists, must
+	// CreateTemporaryTable creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
 	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
@@ -922,7 +945,7 @@ type TableDropper interface {
 
 // TableRenamer should be implemented by databases that can rename tables.
 type TableRenamer interface {
-	// Renames a table from oldName to newName as given. If a table with newName already exists, must return
+	// RenameTable renames a table from oldName to newName as given. If a table with newName already exists, must return
 	// sql.ErrTableAlreadyExists.
 	RenameTable(ctx *Context, oldName, newName string) error
 }
@@ -972,6 +995,41 @@ type StoredProcedureDetails struct {
 	ModifiedAt      time.Time // The time of the last modification to the stored procedure.
 }
 
+// ExternalStoredProcedureDetails are the details of an external stored procedure. Compared to standard stored
+// procedures, external ones are considered "built-in", in that they're not created by the user, and may not be modified
+// or deleted by a user. In addition, they're implemented as a function taking standard parameters, compared to stored
+// procedures being implemented as expressions.
+type ExternalStoredProcedureDetails struct {
+	// Name is the name of the external stored procedure. If two external stored procedures share a name, then they're
+	// considered overloaded. Standard stored procedures do not support overloading.
+	Name string
+	// Schema describes the row layout of the RowIter returned from Function.
+	Schema Schema
+	// Function is the implementation of the external stored procedure. All functions should have the following definition:
+	// `func(*Context, <PARAMETERS>) (RowIter, error)`. The <PARAMETERS> may be any of the following types: `bool`,
+	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `decimal`
+	// (shopspring/decimal). The architecture-dependent types `int` and `uint` (without a number) are also supported.
+	// It is valid to return a nil RowIter if there are no rows to be returned.
+	//
+	// Each parameter, by default, is an IN parameter. If the parameter type is a pointer, e.g. `*int32`, then it
+	// becomes an INOUT parameter. There is no way to set a parameter as an OUT parameter.
+	//
+	// Values are converted to their nearest type before being passed in, following the conversion rules of their
+	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with
+	// the default collation) and decimal (treated with a larger precision and scale). Take extra care when using decimal
+	// for an INOUT parameter, to ensure that the returned value fits the original's precision and scale, else an error
+	// will occur.
+	//
+	// As functions support overloading, each variant must have a completely unique function signature to prevent
+	// ambiguity. Uniqueness is determined by the number of parameters. If two functions are returned that have the same
+	// name and same number of parameters, then an error is thrown. If the last parameter is variadic, then the stored
+	// procedure functions as though it has the integer-max number of parameters. When an exact match is not found for
+	// overloaded functions, the largest function is used (which in this case will be the variadic function). Also, due
+	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
+	// The type of the variadic parameter may not have a pointer type.
+	Function interface{}
+}
+
 // StoredProcedureDatabase is a database that supports the creation and execution of stored procedures. The engine will
 // handle all parsing and execution logic for stored procedures. Integrators only need to store and retrieve
 // StoredProcedureDetails, while verifying that all stored procedures have a unique name without regard to
@@ -988,6 +1046,16 @@ type StoredProcedureDatabase interface {
 
 	// DropStoredProcedure removes the StoredProcedureDetails with the matching name from the database.
 	DropStoredProcedure(ctx *Context, name string) error
+}
+
+// ExternalStoredProcedureDatabase is a database that implements its own stored procedures as a function, rather than as
+// a SQL statement. The returned stored procedures are treated as "built-in", in that they cannot be modified nor
+// deleted.
+type ExternalStoredProcedureDatabase interface {
+	StoredProcedureDatabase
+
+	// GetExternalStoredProcedures returns all ExternalStoredProcedureDetails for the database.
+	GetExternalStoredProcedures(ctx *Context) ([]ExternalStoredProcedureDetails, error)
 }
 
 // EvaluateCondition evaluates a condition, which is an expression whose value

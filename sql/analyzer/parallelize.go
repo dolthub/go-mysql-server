@@ -58,13 +58,13 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	return !plan.IsNoRowNode(node)
 }
 
-func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if a.Parallelism <= 1 || !node.Resolved() {
 		return node, transform.SameTree, nil
 	}
 
 	proc, ok := node.(*plan.QueryProcess)
-	if (ok && !shouldParallelize(proc.Child, nil)) || !shouldParallelize(node, scope) {
+	if (ok && !shouldParallelize(proc.Child(), nil)) || !shouldParallelize(node, scope) {
 		return node, transform.SameTree, nil
 	}
 

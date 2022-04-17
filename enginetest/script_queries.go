@@ -36,6 +36,8 @@ type ScriptTest struct {
 	Expected []sql.Row
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
+	// SkipPrepared is true when we skip a test for prepared statements only
+	SkipPrepared bool
 }
 
 type ScriptTestAssertion struct {
@@ -894,7 +896,7 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2",
+				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2 order by attribute",
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
@@ -902,7 +904,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color'",
+				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
 			},
 		},
@@ -1280,6 +1282,8 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 		},
+		//todo(max): fix arithmatic on bindvar typing
+		SkipPrepared: true,
 	},
 	{
 		Name: "WHERE clause considers ENUM/SET types for comparisons",

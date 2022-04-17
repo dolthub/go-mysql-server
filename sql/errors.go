@@ -49,7 +49,7 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
-	// ErrColumnNotFound is thrown when a column named cannot be found in scope
+	// ErrTableColumnNotFound is thrown when a column named cannot be found in scope
 	ErrTableColumnNotFound = errors.NewKind("table %q does not have column %q")
 
 	// ErrColumnNotFound is returned when the column does not exist in any
@@ -176,6 +176,34 @@ var (
 
 	// ErrProcedureInvalidBodyStatement is returned when a stored procedure has a statement that is invalid inside of procedures.
 	ErrProcedureInvalidBodyStatement = errors.NewKind("`%s` statements are invalid inside of stored procedures")
+
+	// ErrExternalProcedureAmbiguousOverload is returned when an external stored procedure is overloaded and has two
+	// functions with the same number of parameters.
+	ErrExternalProcedureAmbiguousOverload = errors.NewKind("overloaded stored procedure `%s` may only have a single variant with `%d` parameters")
+
+	// ErrExternalProcedureNonFunction is returned when an external stored procedure is given something other than the
+	// expected function type.
+	ErrExternalProcedureNonFunction = errors.NewKind("received `%T` in place of a function for an external stored procedure")
+
+	// ErrExternalProcedureMissingContextParam is returned when an external stored procedure's first parameter is not
+	// the context.
+	ErrExternalProcedureMissingContextParam = errors.NewKind("external stored procedures require the first parameter to be the context")
+
+	// ErrExternalProcedurePointerVariadic is returned when an external stored procedure's variadic parameter has a pointer type.
+	ErrExternalProcedurePointerVariadic = errors.NewKind("an external stored procedures's variadiac parameter may not have a pointer type")
+
+	// ErrExternalProcedureReturnTypes is returned when an external stored procedure's return types are incorrect.
+	ErrExternalProcedureReturnTypes = errors.NewKind("external stored procedures must return a RowIter and error")
+
+	// ErrExternalProcedureFirstReturn is returned when an external stored procedure's first return type is incorrect.
+	ErrExternalProcedureFirstReturn = errors.NewKind("external stored procedures require the first return value to be the RowIter")
+
+	// ErrExternalProcedureSecondReturn is returned when an external stored procedure's second return type is incorrect.
+	ErrExternalProcedureSecondReturn = errors.NewKind("external stored procedures require the second return value to be the error")
+
+	// ErrExternalProcedureInvalidParamType is returned when one of an external stored procedure's parameters have an
+	// invalid type.
+	ErrExternalProcedureInvalidParamType = errors.NewKind("external stored procedures do not support parameters with type `%s`")
 
 	// ErrCallIncorrectParameterCount is returned when a CALL statement has the incorrect number of parameters.
 	ErrCallIncorrectParameterCount = errors.NewKind("`%s` expected `%d` parameters but got `%d`")

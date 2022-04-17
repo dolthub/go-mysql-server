@@ -24,6 +24,9 @@ import (
 
 // QueryProcess represents a running query process node. It will use a callback
 // to notify when it has finished running.
+//TODO: QueryProcess -> trackedRowIter is required to dispose certain iter caches.
+// Make a proper scheduler interface to perform lifecycle management, caching, and
+// scan attaching
 type QueryProcess struct {
 	UnaryNode
 	Notify NotifyFunc
@@ -40,6 +43,10 @@ func NewQueryProcess(node sql.Node, notify NotifyFunc) *QueryProcess {
 	return &QueryProcess{UnaryNode{Child: node}, notify}
 }
 
+func (p *QueryProcess) Child() sql.Node {
+	return p.UnaryNode.Child
+}
+
 // WithChildren implements the Node interface.
 func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -51,19 +58,19 @@ func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *QueryProcess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child.CheckPrivileges(ctx, opChecker)
+	return p.Child().CheckPrivileges(ctx, opChecker)
 }
 
 // RowIter implements the sql.Node interface.
 func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	iter, err := p.Child.RowIter(ctx, row)
+	iter, err := p.Child().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	qType := getQueryType(p.Child)
+	qType := getQueryType(p.Child())
 
-	trackedIter := newTrackedRowIter(p.Child, iter, nil, p.Notify)
+	trackedIter := newTrackedRowIter(p.Child(), iter, nil, p.Notify)
 	trackedIter.queryType = qType
 	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
 
@@ -71,14 +78,14 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 }
 
 func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	iter, err := p.Child.(sql.Node2).RowIter2(ctx, f)
+	iter, err := p.Child().(sql.Node2).RowIter2(ctx, f)
 	if err != nil {
 		return nil, err
 	}
 
-	qType := getQueryType(p.Child)
+	qType := getQueryType(p.Child())
 
-	trackedIter := newTrackedRowIter(p.Child, iter, nil, p.Notify)
+	trackedIter := newTrackedRowIter(p.Child(), iter, nil, p.Notify)
 	trackedIter.queryType = qType
 	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
 
@@ -112,12 +119,12 @@ func getQueryType(child sql.Node) queryType {
 	return queryType
 }
 
-func (p *QueryProcess) String() string { return p.Child.String() }
+func (p *QueryProcess) String() string { return p.Child().String() }
 
 func (p *QueryProcess) DebugString() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("QueryProcess")
-	_ = tp.WriteChildren(sql.DebugString(p.Child))
+	_ = tp.WriteChildren(sql.DebugString(p.Child()))
 	return tp.String()
 }
 
@@ -126,7 +133,7 @@ func (p *QueryProcess) DebugString() string {
 func (p *QueryProcess) shouldSetFoundRows() bool {
 	var fromLimit *bool
 	var fromTopN *bool
-	transform.Inspect(p.Child, func(n sql.Node) bool {
+	transform.Inspect(p.Child(), func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *StartTransaction:
 			return true

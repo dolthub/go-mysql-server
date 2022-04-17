@@ -28,9 +28,13 @@ var ErrUnresolvedTable = errors.NewKind("unresolved table")
 // UnresolvedTable is a table that has not been resolved yet but whose name is known.
 type UnresolvedTable struct {
 	name     string
-	Database string
-	AsOf     sql.Expression
+	database string
+	asOf     sql.Expression
 }
+
+var _ sql.Node = (*UnresolvedTable)(nil)
+var _ sql.Expressioner = (*UnresolvedTable)(nil)
+var _ sql.UnresolvedTable = (*UnresolvedTable)(nil)
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name, db string) *UnresolvedTable {
@@ -42,11 +46,14 @@ func NewUnresolvedTableAsOf(name, db string, asOf sql.Expression) *UnresolvedTab
 	return &UnresolvedTable{name, db, asOf}
 }
 
-var _ sql.Expressioner = (*UnresolvedTable)(nil)
-
 // Name implements the Nameable interface.
 func (t *UnresolvedTable) Name() string {
 	return t.name
+}
+
+// Database implements sql.UnresolvedTable
+func (t *UnresolvedTable) Database() string {
+	return t.database
 }
 
 // Resolved implements the Resolvable interface.
@@ -74,17 +81,21 @@ func (t *UnresolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
+// AsOf implements sql.UnresolvedTable
+func (t *UnresolvedTable) AsOf() sql.Expression {
+	return t.asOf
+}
+
 // CheckPrivileges implements the interface sql.Node.
 func (t *UnresolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(t.Database, t.name, "", sql.PrivilegeType_Select))
+		sql.NewPrivilegedOperation(t.Database(), t.name, "", sql.PrivilegeType_Select))
 }
 
-// WithAsOf returns a copy of this unresolved table with its AsOf field set to the given value. Analagous to
-// WithChildren. This type is the only Node that can take an AS OF expression, so this isn't an interface.
-func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (*UnresolvedTable, error) {
+// WithAsOf implements sql.UnresolvedTable
+func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
 	t2 := *t
-	t2.AsOf = asOf
+	t2.asOf = asOf
 	return &t2, nil
 }
 
@@ -92,19 +103,19 @@ func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (*UnresolvedTable, error
 // WithChildren.
 func (t *UnresolvedTable) WithDatabase(database string) (*UnresolvedTable, error) {
 	t2 := *t
-	t2.Database = database
+	t2.database = database
 	return &t2, nil
 }
 
 func (t *UnresolvedTable) Expressions() []sql.Expression {
-	if t.AsOf != nil {
-		return []sql.Expression{t.AsOf}
+	if t.asOf != nil {
+		return []sql.Expression{t.asOf}
 	}
 	return nil
 }
 
 func (t *UnresolvedTable) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	if t.AsOf == nil {
+	if t.asOf == nil {
 		if len(expressions) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(t, len(expressions), 0)
 		}
@@ -121,3 +132,63 @@ func (t *UnresolvedTable) WithExpressions(expressions ...sql.Expression) (sql.No
 func (t UnresolvedTable) String() string {
 	return fmt.Sprintf("UnresolvedTable(%s)", t.name)
 }
+
+func NewDeferredAsOfTable(t *ResolvedTable, asOf sql.Expression) *DeferredAsOfTable {
+	if asOf == nil {
+		panic("Cannot create DeferredAsOfTable with nil asOf expression")
+	}
+	return &DeferredAsOfTable{
+		ResolvedTable: t,
+		asOf:          asOf,
+	}
+}
+
+type DeferredAsOfTable struct {
+	*ResolvedTable
+	asOf sql.Expression
+}
+
+func (t *DeferredAsOfTable) Expressions() []sql.Expression {
+	return []sql.Expression{t.asOf}
+}
+
+func (t *DeferredAsOfTable) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+	if t.asOf == nil {
+		if len(expressions) != 0 {
+			return nil, sql.ErrInvalidChildrenNumber.New(t, len(expressions), 0)
+		}
+		return t, nil
+	}
+
+	if len(expressions) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(expressions), 1)
+	}
+
+	return t.WithAsOf(expressions[0])
+}
+
+// Name implements the Nameable interface.
+func (t *DeferredAsOfTable) Name() string {
+	return t.ResolvedTable.Name()
+}
+
+// Database implements sql.UnresolvedTable
+func (t *DeferredAsOfTable) Database() string {
+	return t.ResolvedTable.Database.Name()
+}
+
+// WithAsOf implements sql.UnresolvedTable
+func (t *DeferredAsOfTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+	t2 := *t
+	t2.asOf = asOf
+	return &t2, nil
+}
+
+// AsOf implements sql.UnresolvedTable
+func (t *DeferredAsOfTable) AsOf() sql.Expression {
+	return t.asOf
+}
+
+var _ sql.Node = (*DeferredAsOfTable)(nil)
+var _ sql.Expressioner = (*DeferredAsOfTable)(nil)
+var _ sql.UnresolvedTable = (*DeferredAsOfTable)(nil)

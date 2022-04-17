@@ -32,6 +32,8 @@ type Update struct {
 	Checks sql.CheckConstraints
 }
 
+var _ sql.Databaseable = (*Update)(nil)
+
 // NewUpdate creates an Update node.
 func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
 	return &Update{
@@ -90,7 +92,7 @@ func updateDatabaseHelper(node sql.Node) string {
 	case *ResolvedTable:
 		return node.Database.Name()
 	case *UnresolvedTable:
-		return node.Database
+		return node.Database()
 	}
 
 	for _, child := range node.Children() {

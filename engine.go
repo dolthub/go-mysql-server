@@ -17,6 +17,7 @@ package sqle
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
@@ -60,11 +61,18 @@ type Engine struct {
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
 	IsReadOnly        bool
+	PreparedData      map[uint32]PreparedData
+	mu                *sync.Mutex
 }
 
 type ColumnWithRawDefault struct {
 	SqlColumn *sql.Column
 	Default   string
+}
+
+type PreparedData struct {
+	Node  sql.Node
+	Query string
 }
 
 // New creates a new Engine with custom configuration. To create an Engine with
@@ -100,6 +108,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsReadOnly:        isReadOnly,
+		PreparedData:      make(map[uint32]PreparedData),
+		mu:                &sync.Mutex{},
 	}
 }
 
@@ -109,22 +119,34 @@ func NewDefault(pro sql.DatabaseProvider) *Engine {
 	return New(a, nil)
 }
 
-// AnalyzeQuery analyzes a query and returns its Schema.
+// AnalyzeQuery analyzes a query and returns its sql.Node
 func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
-) (sql.Schema, error) {
+) (sql.Node, error) {
+	parsed, err := parse.Parse(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return e.Analyzer.Analyze(ctx, parsed, nil)
+}
+
+// PrepareQuery returns a partially analyzed query
+func (e *Engine) PrepareQuery(
+	ctx *sql.Context,
+	query string,
+) (sql.Node, error) {
 	parsed, err := parse.Parse(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
-	analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+	node, err := e.Analyzer.PrepareQuery(ctx, parsed, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	return analyzed.Schema(), nil
+	e.cachePreparedStmt(ctx, node, query)
+	return node, nil
 }
 
 // Query executes a query. If parsed is non-nil, it will be used instead of parsing the query from text.
@@ -133,11 +155,7 @@ func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter,
 }
 
 // QueryWithBindings executes the query given with the bindings provided
-func (e *Engine) QueryWithBindings(
-	ctx *sql.Context,
-	query string,
-	bindings map[string]sql.Expression,
-) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[string]sql.Expression) (sql.Schema, sql.RowIter, error) {
 	return e.QueryNodeWithBindings(ctx, query, nil, bindings)
 }
 
@@ -156,31 +174,16 @@ func (e *Engine) QueryNodeWithBindings(
 		err      error
 	)
 
-	if parsed == nil {
-		parsed, err = parse.Parse(ctx, query)
-		if err != nil {
-			return nil, nil, err
-		}
+	if p, ok := e.preparedDataForSession(ctx.Session); ok && p.Query == query {
+		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
+	} else {
+		analyzed, err = e.analyzeQuery(ctx, query, parsed)
 	}
-
-	err = e.readOnlyCheck(parsed)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	transactionDatabase, err := e.beginTransaction(ctx, parsed)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(bindings) > 0 {
-		parsed, err = plan.ApplyBindings(parsed, bindings)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
+	transactionDatabase, err := e.beginTransaction(ctx, analyzed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -222,6 +225,102 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	return analyzed.Schema(), iter, nil
+}
+
+func (e *Engine) cachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.PreparedData[ctx.Session.ID()] = PreparedData{
+		Query: query,
+		Node:  analyzed,
+	}
+}
+
+// preparedDataForSession returns the prepared data for a given session.
+// Second parameter is false if the session has no prepared data.
+func (e *Engine) preparedDataForSession(sess sql.Session) (PreparedData, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	data, ok := e.PreparedData[sess.ID()]
+	return data, ok
+}
+
+// preparedQuery returns the prepared plan's query string for a given
+// context's session id, or an empty string if the session has no prepared data.
+func (e *Engine) preparedQuery(ctx *sql.Context) string {
+	if data, ok := e.preparedDataForSession(ctx.Session); ok {
+		return data.Query
+	}
+	return ""
+}
+
+// preparedNode returns the pre-analyzed plan for a given
+// context's session id, or nil if the session has no prepared data.
+func (e *Engine) preparedNode(ctx *sql.Context) sql.Node {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if data, ok := e.PreparedData[ctx.Session.ID()]; ok {
+		return data.Node
+	}
+	return nil
+}
+
+// CloseSession deletes session specific prepared statement data
+func (e *Engine) CloseSession(ctx *sql.Context) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	delete(e.PreparedData, ctx.Session.ID())
+}
+
+func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node) (sql.Node, error) {
+	var (
+		analyzed sql.Node
+		err      error
+	)
+
+	if parsed == nil {
+		parsed, err = parse.Parse(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = e.readOnlyCheck(parsed)
+	if err != nil {
+		return nil, err
+	}
+
+	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
+	if err != nil {
+		return nil, err
+	}
+	return analyzed, nil
+}
+
+func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, bindings map[string]sql.Expression) (sql.Node, error) {
+	ctx.GetLogger().Tracef("optimizing prepared plan for query: %s", query)
+
+	analyzed := e.preparedNode(ctx)
+	analyzed, err := analyzer.DeepCopyNode(analyzed)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(bindings) > 0 {
+		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ctx.GetLogger().Tracef("plan before re-opt: %s", analyzed.String())
+
+	analyzed, _, err = e.Analyzer.AnalyzePrepared(ctx, analyzed, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.GetLogger().Tracef("plan after re-opt: %s", analyzed.String())
+	return analyzed, nil
 }
 
 // allNode2 returns whether all the nodes in the tree implement Node2.
@@ -436,115 +535,51 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
+// getDbHelper returns the first database name from a table-like node
+func getDbHelper(tables ...sql.Node) string {
+	if len(tables) == 0 {
+		return ""
+	}
+	switch t := tables[0].(type) {
+	case *plan.UnresolvedTable:
+		return t.Database()
+	case *plan.ResolvedTable:
+		return t.Database.Name()
+	case *plan.IndexedTableAccess:
+		return t.Database().Name()
+	default:
+	}
+	return ""
+}
+
 // getTransactionDatabase returns the name of the database that should be considered current for the transaction about
 // to begin. The database is not guaranteed to exist.
+// For USE DATABASE statements, we consider the transaction database to be the one being USEd
 func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
-	// For USE DATABASE statements, we consider the transaction database to be the one being USEd
-	transactionDatabase := ctx.GetCurrentDatabase()
+	var dbName string
 	switch n := parsed.(type) {
-	case *plan.Use:
-		transactionDatabase = n.Database().Name()
+	case *plan.QueryProcess, *plan.RowUpdateAccumulator:
+		return getTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
+	case *plan.Use, *plan.CreateProcedure, *plan.DropProcedure, *plan.CreateTrigger, *plan.DropTrigger,
+		*plan.CreateTable, *plan.InsertInto, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.AlterPK,
+		*plan.DropColumn, *plan.RenameColumn, *plan.ModifyColumn:
+		database := n.(sql.Databaser).Database()
+		if database != nil {
+			dbName = database.Name()
+		}
+	case *plan.DropForeignKey, *plan.DropIndex, *plan.CreateIndex, *plan.Update, *plan.DeleteFrom,
+		*plan.CreateForeignKey:
+		dbName = n.(sql.Databaseable).Database()
 	case *plan.DropTable:
-		t, ok := n.Tables[0].(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.AlterPK:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.AlterAutoIncrement:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.CreateIndex:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.AlterIndex:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.DropIndex:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.CreateForeignKey:
-		if n.FkDef.Database != "" {
-			transactionDatabase = n.FkDef.Database
-		}
-	case *plan.DropForeignKey:
-		if n.Database != "" {
-			transactionDatabase = n.Database
-		}
-	case *plan.AddColumn:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.DropColumn:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.RenameColumn:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.ModifyColumn:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.CreateProcedure:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.DropProcedure:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
+		dbName = getDbHelper(n.Tables...)
 	case *plan.Truncate:
-		t, ok := n.Child.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	case *plan.CreateTrigger:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.DropTrigger:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
+		dbName = getDbHelper(n.Child)
+	default:
 	}
-
-	switch n := parsed.(type) {
-	case *plan.CreateTable:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.InsertInto:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.DeleteFrom:
-		if n.Database() != "" {
-			transactionDatabase = n.Database()
-		}
-	case *plan.Update:
-		if n.Database() != "" {
-			transactionDatabase = n.Database()
-		}
+	if dbName != "" {
+		return dbName
 	}
-
-	return transactionDatabase
+	return ctx.GetCurrentDatabase()
 }
 
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
@@ -602,7 +637,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 		return nil, fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
 	}
 
-	analyzedCreateTable, ok := analyzedQueryProcess.Child.(*plan.CreateTable)
+	analyzedCreateTable, ok := analyzedQueryProcess.Child().(*plan.CreateTable)
 	if !ok {
 		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
 	}

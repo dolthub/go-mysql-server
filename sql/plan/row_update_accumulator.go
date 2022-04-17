@@ -53,6 +53,10 @@ func NewRowUpdateAccumulator(n sql.Node, updateType RowUpdateType) *RowUpdateAcc
 	}
 }
 
+func (r RowUpdateAccumulator) Child() sql.Node {
+	return r.UnaryNode.Child
+}
+
 func (r RowUpdateAccumulator) Schema() sql.Schema {
 	return sql.OkResultSchema
 }
@@ -66,17 +70,17 @@ func (r RowUpdateAccumulator) WithChildren(children ...sql.Node) (sql.Node, erro
 
 // CheckPrivileges implements the interface sql.Node.
 func (r RowUpdateAccumulator) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return r.Child.CheckPrivileges(ctx, opChecker)
+	return r.Child().CheckPrivileges(ctx, opChecker)
 }
 
 func (r RowUpdateAccumulator) String() string {
-	return r.Child.String()
+	return r.Child().String()
 }
 
 func (r RowUpdateAccumulator) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RowUpdateAccumulator")
-	_ = pr.WriteChildren(sql.DebugString(r.Child))
+	_ = pr.WriteChildren(sql.DebugString(r.Child()))
 	return pr.String()
 }
 
@@ -361,7 +365,7 @@ type matchingAccumulator interface {
 }
 
 func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rowIter, err := r.Child.RowIter(ctx, row)
+	rowIter, err := r.Child().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -375,9 +379,9 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	case UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case UpdateTypeDuplicateKeyUpdate:
-		rowHandler = &onDuplicateUpdateHandler{schema: r.Child.Schema(), clientFoundRowsCapability: clientFoundRowsToggled}
+		rowHandler = &onDuplicateUpdateHandler{schema: r.Child().Schema(), clientFoundRowsCapability: clientFoundRowsToggled}
 	case UpdateTypeUpdate:
-		schema := r.Child.Schema()
+		schema := r.Child().Schema()
 		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /
 		// old row comparison purposes
 		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2], clientFoundRowsCapability: clientFoundRowsToggled}
@@ -386,7 +390,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	case UpdateTypeJoinUpdate:
 		var schema sql.Schema
 		var updaterMap map[string]sql.RowUpdater
-		transform.Inspect(r.Child, func(node sql.Node) bool {
+		transform.Inspect(r.Child(), func(node sql.Node) bool {
 			switch node.(type) {
 			case JoinNode, *CrossJoin, *Project, *IndexedJoin:
 				schema = node.Schema()

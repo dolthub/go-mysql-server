@@ -30,6 +30,7 @@ type QueryTest struct {
 	Expected        []sql.Row
 	ExpectedColumns sql.Schema // only Name and Type matter here, because that's what we send on the wire
 	Bindings        map[string]sql.Expression
+	SkipPrepared    bool
 }
 
 var SpatialQueryTests = []QueryTest{
@@ -334,12 +335,12 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Point{X: 1, Y: 2}},
-			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Point{X: 1, Y: 2}},
-			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
 		},
 	},
 	{
@@ -356,12 +357,12 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Point{X: 2, Y: 1}},
-			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Point{SRID: 4326, X: 2, Y: 1}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Geometry{Inner: sql.Point{X: 2, Y: 1}}},
+			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}}},
+			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{sql.Geometry{Inner: sql.Point{SRID: 4326, X: 2, Y: 1}}},
+			{sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}}},
+			{sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
 		},
 	},
 }
@@ -1509,102 +1510,8 @@ var QueryTests = []QueryTest{
 			{2, 1, 2}},
 	},
 	{
-		Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
-		Expected: []sql.Row{
-			{2, 1, 2}},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(int64(2), sql.Int64),
-		},
-	},
-	{
-		Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a WHERE bar = :var ORDER BY foo, i",
-		Expected: []sql.Row{
-			{2, 1, 2}},
-		Bindings: map[string]sql.Expression{
-			"var": expression.NewLiteral(int64(2), sql.Int64),
-		},
-	},
-	{
-		Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
-		Expected: []sql.Row{
-			{2, 1, 2}},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(int64(2), sql.Int64),
-		},
-	},
-	{
-		Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(1, sql.Int8),
-			"v2": expression.NewLiteral(1, sql.Int8),
-		},
-		Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
-	},
-	{
-		Query: "SELECT exists(select i from mytable where i = ?)",
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(1, sql.Int8),
-		},
-		Expected: []sql.Row{{true}},
-	},
-	{
 		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
 		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = ? ORDER BY foo, i;",
-		Expected: []sql.Row{},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(int64(1), sql.Int64),
-		},
-	},
-	{
-		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = :bar AND foo = :foo ORDER BY foo, i;",
-		Expected: []sql.Row{},
-		Bindings: map[string]sql.Expression{
-			"bar": expression.NewLiteral(int64(1), sql.Int64),
-			"foo": expression.NewLiteral(int64(1), sql.Int64),
-		},
-	},
-	{
-		Query: "SELECT :foo * 2",
-		Expected: []sql.Row{
-			{2},
-		},
-		Bindings: map[string]sql.Expression{
-			"foo": expression.NewLiteral(int64(1), sql.Int64),
-		},
-	},
-	{
-		Query: "SELECT i from mytable where i in (:foo, :bar) order by 1",
-		Expected: []sql.Row{
-			{1},
-			{2},
-		},
-		Bindings: map[string]sql.Expression{
-			"foo": expression.NewLiteral(int64(1), sql.Int64),
-			"bar": expression.NewLiteral(int64(2), sql.Int64),
-		},
-	},
-	{
-		Query: "SELECT i from mytable where i = :foo * 2",
-		Expected: []sql.Row{
-			{2},
-		},
-		Bindings: map[string]sql.Expression{
-			"foo": expression.NewLiteral(int64(1), sql.Int64),
-		},
-	},
-	{
-		Query: "SELECT i from mytable where 4 = :foo * 2 order by 1",
-		Expected: []sql.Row{
-			{1},
-			{2},
-			{3},
-		},
-		Bindings: map[string]sql.Expression{
-			"foo": expression.NewLiteral(int64(2), sql.Int64),
-		},
 	},
 	{
 		Query:    "SELECT timestamp FROM reservedWordsTable;",
@@ -2169,21 +2076,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
-		Query: "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT ?;",
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(1, sql.Int8),
-		},
-		Expected: []sql.Row{{int64(1)}},
-	},
-	{
-		Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(1, sql.Int8),
-			"v2": expression.NewLiteral(1, sql.Int8),
-		},
-		Expected: []sql.Row{{int64(3)}},
-	},
-	{
 		Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM (SELECT * FROM (SELECT i as i, s as s FROM mytable) f) s)",
 		Expected: []sql.Row{},
 	},
@@ -2405,6 +2297,7 @@ var QueryTests = []QueryTest{
 			{1577966400, 1.0},
 			{1578225600, 2.0},
 			{1578398400, 3.0}},
+		SkipPrepared: true,
 	},
 	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
@@ -3160,6 +3053,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		SkipPrepared: true,
 		Query: `select pk,
 					   first_value(pk) over (order by pk desc),
 					   lag(pk, 1) over (order by pk desc),
@@ -8506,34 +8400,6 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT a FROM (select i,s FROM mytable) mt (a,b,c) order by a desc;",
 		ExpectedErr: sql.ErrColumnCountMismatch,
-	},
-	{
-		Query:       "SELECT i FROM mytable limit ?",
-		ExpectedErr: sql.ErrInvalidSyntax,
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(-100, sql.Int8),
-		},
-	},
-	{
-		Query:       "SELECT i FROM mytable limit ?",
-		ExpectedErr: sql.ErrInvalidType,
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral("100", sql.LongText),
-		},
-	},
-	{
-		Query:       "SELECT i FROM mytable limit 10, ?",
-		ExpectedErr: sql.ErrInvalidSyntax,
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(-100, sql.Int8),
-		},
-	},
-	{
-		Query:       "SELECT i FROM mytable limit 10, ?",
-		ExpectedErr: sql.ErrInvalidType,
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral("100", sql.LongText),
-		},
 	},
 	{
 		Query:       `SELECT name FROM specialtable t WHERE t.name LIKE '$%' ESCAPE 'abc'`,
