@@ -86,16 +86,35 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PolygonType) Convert(v interface{}) (interface{}, error) {
-	// Allow nulls
+	// Allow null
 	if v == nil {
 		return nil, nil
 	}
-	// Must be a Polygon, fail otherwise
-	if v, ok := v.(Polygon); ok {
-		return v, nil
+	// Handle conversions
+	switch val := v.(type) {
+	case []byte:
+		// Parse header
+		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		if err != nil {
+			return nil, err
+		}
+		// Throw error if not marked as linestring
+		if geomType != WKBPolyID {
+			return nil, err
+		}
+		// Parse data section
+		poly, err := WKBToPoly(val[EWKBHeaderSize:], isBig, srid)
+		if err != nil {
+			return nil, err
+		}
+		return poly, nil
+	case string:
+		return t.Convert([]byte(val))
+	case Polygon:
+		return val, nil
+	default:
+		return nil, ErrNotPolygon.New(val)
 	}
-
-	return nil, ErrNotPolygon.New(v)
 }
 
 // Equals implements the Type interface.

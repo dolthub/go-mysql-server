@@ -188,7 +188,7 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return t.Compare(a, bb.Inner)
 	}
 
-	// TODO: probably defined operations for types like []byte and string
+	// TODO: probably define operations for types like []byte and string
 	// Expected to receive a geometry type
 	switch inner := a.(type) {
 	case Point:
@@ -210,7 +210,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
-	// Must be a one of the Spatial Types
+	// Handle conversions
 	switch inner := v.(type) {
 	case []byte:
 		// Parse header
@@ -231,7 +231,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
 		}
 		if err != nil {
-			return Geometry{}, err
+			return nil, err
 		}
 		return Geometry{Inner: geom}, nil
 	case string:
@@ -245,7 +245,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 	case Geometry:
 		return inner, nil
 	default:
-		return nil, ErrNotPoint.New(v) // TODO: change to be geometry error
+		return nil, ErrNotGeometry.New(inner)
 	}
 }
 
