@@ -615,7 +615,7 @@ var SpatialInsertQueries = []WriteQueryTest{
 		WriteQuery:          "INSERT INTO point_table VALUES (1, 0x000000000101000000000000000000F03F0000000000000040);",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
-		ExpectedSelect:      []sql.Row{{5, sql.Point{X: 1, Y: 2}}, {1, sql.Point{X: 1, Y: 1}}},
+		ExpectedSelect:      []sql.Row{{5, sql.Point{X: 1, Y: 2}}, {1, sql.Point{X: 1, Y: 2}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,2),POINT(3,4)));",
