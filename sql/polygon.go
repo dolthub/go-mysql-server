@@ -21,8 +21,8 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// Represents the Point type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
+// Represents the Polygon type.
+// https://dev.mysql.com/doc/refman/8.0/en/gis-class-polygon.html
 type Polygon struct {
 	SRID  uint32
 	Lines []Linestring
@@ -86,6 +86,7 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PolygonType) Convert(v interface{}) (interface{}, error) {
+	// Allow nulls
 	if v == nil {
 		return nil, nil
 	}
