@@ -64,7 +64,7 @@ func (p *Point) Type() sql.Type {
 }
 
 func (p *Point) String() string {
-	return fmt.Sprintf("POINT(%f, %f)", p.X, p.Y)
+	return fmt.Sprintf("POINT(%s, %s)", p.X.String(), p.Y.String())
 }
 
 // WithChildren implements the Expression interface.
