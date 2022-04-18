@@ -16,10 +16,11 @@ package sql
 
 import (
 	"encoding/binary"
+	"math"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
-	"math"
 )
 
 // Represents the Geometry type.
