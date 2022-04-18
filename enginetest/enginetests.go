@@ -1250,6 +1250,12 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSpatialScripts(t *testing.T, harness Harness) {
+	for _, script := range SpatialScriptTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestLoadDataPrepared(t *testing.T, harness Harness) {
 	for _, script := range LoadDataScripts {
 		TestScriptPrepared(t, harness, script)
