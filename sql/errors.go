@@ -49,7 +49,7 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
-	// ErrColumnNotFound is thrown when a column named cannot be found in scope
+	// ErrTableColumnNotFound is thrown when a column named cannot be found in scope
 	ErrTableColumnNotFound = errors.NewKind("table %q does not have column %q")
 
 	// ErrColumnNotFound is returned when the column does not exist in any
@@ -84,6 +84,10 @@ var (
 	// ErrInvalidChildrenNumber is returned when the WithChildren method of a
 	// node or expression is called with an invalid number of arguments.
 	ErrInvalidChildrenNumber = errors.NewKind("%T: invalid children number, got %d, expected %d")
+
+	// ErrInvalidExpressionNumber is returned when the WithExpression method of a node
+	// is called with an invalid number of arguments.
+	ErrInvalidExpressionNumber = errors.NewKind("%T: invalid expression number, got %d, expected %d")
 
 	// ErrInvalidChildType is returned when the WithChildren method of a
 	// node or expression is called with an invalid child type. This error is indicative of a bug.
@@ -172,6 +176,34 @@ var (
 
 	// ErrProcedureInvalidBodyStatement is returned when a stored procedure has a statement that is invalid inside of procedures.
 	ErrProcedureInvalidBodyStatement = errors.NewKind("`%s` statements are invalid inside of stored procedures")
+
+	// ErrExternalProcedureAmbiguousOverload is returned when an external stored procedure is overloaded and has two
+	// functions with the same number of parameters.
+	ErrExternalProcedureAmbiguousOverload = errors.NewKind("overloaded stored procedure `%s` may only have a single variant with `%d` parameters")
+
+	// ErrExternalProcedureNonFunction is returned when an external stored procedure is given something other than the
+	// expected function type.
+	ErrExternalProcedureNonFunction = errors.NewKind("received `%T` in place of a function for an external stored procedure")
+
+	// ErrExternalProcedureMissingContextParam is returned when an external stored procedure's first parameter is not
+	// the context.
+	ErrExternalProcedureMissingContextParam = errors.NewKind("external stored procedures require the first parameter to be the context")
+
+	// ErrExternalProcedurePointerVariadic is returned when an external stored procedure's variadic parameter has a pointer type.
+	ErrExternalProcedurePointerVariadic = errors.NewKind("an external stored procedures's variadiac parameter may not have a pointer type")
+
+	// ErrExternalProcedureReturnTypes is returned when an external stored procedure's return types are incorrect.
+	ErrExternalProcedureReturnTypes = errors.NewKind("external stored procedures must return a RowIter and error")
+
+	// ErrExternalProcedureFirstReturn is returned when an external stored procedure's first return type is incorrect.
+	ErrExternalProcedureFirstReturn = errors.NewKind("external stored procedures require the first return value to be the RowIter")
+
+	// ErrExternalProcedureSecondReturn is returned when an external stored procedure's second return type is incorrect.
+	ErrExternalProcedureSecondReturn = errors.NewKind("external stored procedures require the second return value to be the error")
+
+	// ErrExternalProcedureInvalidParamType is returned when one of an external stored procedure's parameters have an
+	// invalid type.
+	ErrExternalProcedureInvalidParamType = errors.NewKind("external stored procedures do not support parameters with type `%s`")
 
 	// ErrCallIncorrectParameterCount is returned when a CALL statement has the incorrect number of parameters.
 	ErrCallIncorrectParameterCount = errors.NewKind("`%s` expected `%d` parameters but got `%d`")
@@ -280,8 +312,59 @@ var (
 	// ErrForeignKeyColumnCountMismatch is called when the declared column and referenced column counts do not match.
 	ErrForeignKeyColumnCountMismatch = errors.NewKind("the foreign key must reference an equivalent number of columns")
 
+	// ErrForeignKeyColumnTypeMismatch is returned when the declared column's type and referenced column's type do not match.
+	ErrForeignKeyColumnTypeMismatch = errors.NewKind("column type mismatch on `%s` and `%s`")
+
 	// ErrForeignKeyNotResolved is called when an add or update is attempted on a foreign key that has not been resolved yet.
-	ErrForeignKeyNotResolved = errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))")
+	ErrForeignKeyNotResolved = errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`.`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))")
+
+	// ErrNoForeignKeySupport is returned when the table does not support FOREIGN KEY operations.
+	ErrNoForeignKeySupport = errors.NewKind("the table does not support foreign key operations: %s")
+
+	// ErrForeignKeyMissingColumns is returned when an ALTER TABLE ADD FOREIGN KEY statement does not provide any columns
+	ErrForeignKeyMissingColumns = errors.NewKind("cannot create a foreign key without columns")
+
+	// ErrForeignKeyDropColumn is returned when attempting to drop a column used in a foreign key
+	ErrForeignKeyDropColumn = errors.NewKind("cannot drop column `%s` as it is used in foreign key `%s`")
+
+	// ErrForeignKeyDropTable is returned when attempting to drop a table used in a foreign key
+	ErrForeignKeyDropTable = errors.NewKind("cannot drop table `%s` as it is referenced in foreign key `%s`")
+
+	// ErrForeignKeyDropIndex is returned when attempting to drop an index used in a foreign key when there are no other
+	// indexes which may be used in its place.
+	ErrForeignKeyDropIndex = errors.NewKind("cannot drop index: `%s` is used by foreign key `%s`")
+
+	// ErrForeignKeyDuplicateName is returned when a foreign key already exists with the given name.
+	ErrForeignKeyDuplicateName = errors.NewKind("duplicate foreign key constraint name `%s`")
+
+	// ErrAddForeignKeyDuplicateColumn is returned when an ALTER TABLE ADD FOREIGN KEY statement has the same column multiple times
+	ErrAddForeignKeyDuplicateColumn = errors.NewKind("cannot have duplicates of columns in a foreign key: `%v`")
+
+	// ErrTemporaryTablesForeignKeySupport is returned when a user tries to create a temporary table with a foreign key
+	ErrTemporaryTablesForeignKeySupport = errors.NewKind("temporary tables do not support foreign keys")
+
+	// ErrForeignKeyNotFound is returned when a foreign key was not found.
+	ErrForeignKeyNotFound = errors.NewKind("foreign key `%s` was not found on the table `%s`")
+
+	// ErrForeignKeySetDefault is returned when attempting to set a referential action as SET DEFAULT.
+	ErrForeignKeySetDefault = errors.NewKind(`"SET DEFAULT" is not supported`)
+
+	// ErrForeignKeySetNullNonNullable is returned when attempting to set a referential action as SET NULL when the
+	// column is non-nullable.
+	ErrForeignKeySetNullNonNullable = errors.NewKind("cannot use SET NULL as column `%s` is non-nullable")
+
+	// ErrForeignKeyTypeChangeSetNull is returned when attempting to change a column's type to disallow NULL values when
+	// a foreign key referential action is SET NULL.
+	ErrForeignKeyTypeChangeSetNull = errors.NewKind("column `%s` must allow NULL values as foreign key `%s` has SET NULL")
+
+	// ErrForeignKeyMissingReferenceIndex is returned when the referenced columns in a foreign key do not have an index.
+	ErrForeignKeyMissingReferenceIndex = errors.NewKind("missing index for foreign key `%s` on the referenced table `%s`")
+
+	// ErrForeignKeyTextBlob is returned when a TEXT or BLOB column is used in a foreign key, which are not valid types.
+	ErrForeignKeyTextBlob = errors.NewKind("TEXT/BLOB are not valid types for foreign keys")
+
+	// ErrForeignKeyTypeChange is returned when attempting to change the type of some column used in a foreign key.
+	ErrForeignKeyTypeChange = errors.NewKind("unable to change type of column `%s` as it is used by foreign keys")
 
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
@@ -336,6 +419,9 @@ var (
 
 	// ErrFunctionNotFound is thrown when a function is not found
 	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
+
+	// ErrTableFunctionNotFound is thrown when a table function is not found
+	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
 
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
@@ -461,7 +547,14 @@ var (
 	// ErrCannotCopyWindowFrame is returned when we inherit a window frame with a frame clause (replacement without parenthesis is OK)
 	ErrCannotCopyWindowFrame = errors.NewKind("cannot copy window '%s' because it has a frame clause")
 
+	// ErrUnknownWindowName is returned when an over by clause references an unknown window definition
 	ErrUnknownWindowName = errors.NewKind("named window not found: '%s'")
+
+	// ErrUnexpectedNilRow is returned when an invalid operation is applied to an empty row
+	ErrUnexpectedNilRow = errors.NewKind("unexpected nil row")
+
+	// ErrUnsupportedJoinFactorCount is returned for a query with more commutable join tables than we support
+	ErrUnsupportedJoinFactorCount = errors.NewKind("unsupported join factor count: expected fewer than %d tables, found %d")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

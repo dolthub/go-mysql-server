@@ -29,17 +29,25 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
-	IsView       bool
-	Indexes      []sql.Index
-	Checks       sql.CheckConstraints
-	targetSchema sql.Schema
+	IsView           bool
+	Indexes          []sql.Index
+	Checks           sql.CheckConstraints
+	targetSchema     sql.Schema
+	primaryKeySchema sql.PrimaryKeySchema
+	AsOf             sql.Expression
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
+	return NewShowCreateTableWithAsOf(table, isView, nil)
+}
+
+// NewShowCreateTableWithAsOf creates a new ShowCreateTable node for a specific version of a table.
+func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression) *ShowCreateTable {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
+		AsOf:      asOf,
 	}
 }
 
@@ -85,6 +93,11 @@ func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) 
 	return &sc, nil
 }
 
+func (sc ShowCreateTable) WithPrimaryKeySchema(schema sql.PrimaryKeySchema) (sql.Node, error) {
+	sc.primaryKeySchema = schema
+	return &sc, nil
+}
+
 func (sc *ShowCreateTable) Expressions() []sql.Expression {
 	return wrappedColumnDefaults(sc.targetSchema)
 }
@@ -116,14 +129,20 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 	}
 }
 
+// GetTargetSchema returns the final resolved target schema of show create table.
+func (sc *ShowCreateTable) GetTargetSchema() sql.Schema {
+	return sc.targetSchema
+}
+
 // RowIter implements the Node interface
 func (sc *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		table:   sc.Child,
-		isView:  sc.IsView,
-		indexes: sc.Indexes,
-		checks:  sc.Checks,
-		schema:  sc.targetSchema,
+		table:    sc.Child,
+		isView:   sc.IsView,
+		indexes:  sc.Indexes,
+		checks:   sc.Checks,
+		schema:   sc.targetSchema,
+		pkSchema: sc.primaryKeySchema,
 	}, nil
 }
 
@@ -139,7 +158,12 @@ func (sc *ShowCreateTable) String() string {
 		name = nameable.Name()
 	}
 
-	return fmt.Sprintf("SHOW CREATE %s %s", t, name)
+	asOfClause := ""
+	if sc.AsOf != nil {
+		asOfClause = fmt.Sprintf("as of %v", sc.AsOf)
+	}
+
+	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)
 }
 
 type showCreateTablesIter struct {
@@ -149,6 +173,7 @@ type showCreateTablesIter struct {
 	isView       bool
 	indexes      []sql.Index
 	checks       sql.CheckConstraints
+	pkSchema     sql.PrimaryKeySchema
 }
 
 func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -170,7 +195,7 @@ func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		tableName = table.Name()
 		var err error
-		composedCreateTableStatement, err = i.produceCreateTableStatement(ctx, table.Table, i.schema)
+		composedCreateTableStatement, err = i.produceCreateTableStatement(ctx, table.Table, i.schema, i.pkSchema)
 		if err != nil {
 			return nil, err
 		}
@@ -192,9 +217,14 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema) (string, error) {
+func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
+
+	var pkOrdinals []int
+	if len(pkSchema.Schema) > 0 {
+		pkOrdinals = pkSchema.PkOrdinals
+	}
 
 	// Statement creation parts for each column
 	// TODO: rather than lower-casing here, we should do it in the String() method of types
@@ -218,15 +248,17 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, col.Comment)
 		}
 
-		if col.PrimaryKey {
-			primaryKeyCols = append(primaryKeyCols, col.Name)
+		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
+			pkOrdinals = append(pkOrdinals, i)
 		}
 
 		colStmts[i] = stmt
 	}
 
-	// TODO: the order of the primary key columns might not match their order in the schema. The current interface can't
-	//  represent this. We will need a new sql.Table extension to support this cleanly.
+	for _, i := range pkOrdinals {
+		primaryKeyCols = append(primaryKeyCols, schema[i].Name)
+	}
+
 	if len(primaryKeyCols) > 0 {
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
@@ -259,24 +291,24 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		colStmts = append(colStmts, key)
 	}
 
-	fkt := getForeignKeyTable(table)
-	if fkt != nil {
-		fks, err := fkt.GetForeignKeys(ctx)
+	fkt, err := getForeignKeyTable(table)
+	if err == nil && fkt != nil {
+		fks, err := fkt.GetDeclaredForeignKeys(ctx)
 		if err != nil {
 			return "", err
 		}
 		for _, fk := range fks {
 			keyCols := strings.Join(quoteIdentifiers(fk.Columns), ",")
-			refCols := strings.Join(quoteIdentifiers(fk.ReferencedColumns), ",")
+			refCols := strings.Join(quoteIdentifiers(fk.ParentColumns), ",")
 			onDelete := ""
-			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferenceOption_DefaultAction {
+			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferentialAction_DefaultAction {
 				onDelete = " ON DELETE " + string(fk.OnDelete)
 			}
 			onUpdate := ""
-			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferenceOption_DefaultAction {
+			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
 				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ParentTable, refCols, onDelete, onUpdate))
 		}
 	}
 
@@ -297,18 +329,6 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	), nil
-}
-
-// getForeignKeyTable returns the underlying ForeignKeyTable for the table given, or nil if it isn't a ForeignKeyTable
-func getForeignKeyTable(t sql.Table) sql.ForeignKeyTable {
-	switch t := t.(type) {
-	case sql.ForeignKeyTable:
-		return t
-	case sql.TableWrapper:
-		return getForeignKeyTable(t.Underlying())
-	default:
-		return nil
-	}
 }
 
 func quoteIdentifiers(ids []string) []string {

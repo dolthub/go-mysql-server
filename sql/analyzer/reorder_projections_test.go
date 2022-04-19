@@ -26,12 +26,12 @@ import (
 )
 
 func TestReorderProjection(t *testing.T) {
-	f := getRule("reorder_projection")
+	f := getRule(reorderProjectionId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int64},
 		{Name: "s", Source: "mytable", Type: sql.Int64},
-	}))
+	}), nil)
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -44,7 +44,10 @@ func TestReorderProjection(t *testing.T) {
 				},
 				plan.NewSort(
 					[]sql.SortField{
-						{Column: uc("foo")},
+						{
+							Column:  uc("foo"),
+							Column2: uc("foo"),
+						},
 					},
 					plan.NewFilter(
 						expression.NewEquals(
@@ -62,7 +65,12 @@ func TestReorderProjection(t *testing.T) {
 					gf(2, "", "bar"),
 				},
 				plan.NewSort(
-					[]sql.SortField{{Column: gf(3, "", "foo")}},
+					[]sql.SortField{
+						{
+							Column:  gf(3, "", "foo"),
+							Column2: gf(3, "", "foo"),
+						},
+					},
 					plan.NewProject(
 						[]sql.Expression{
 							gf(0, "mytable", "i"),
@@ -140,17 +148,17 @@ func TestReorderProjection(t *testing.T) {
 }
 
 func TestReorderProjectionWithSubqueries(t *testing.T) {
-	f := getRule("reorder_projection")
+	f := getRule(reorderProjectionId)
 
 	onepk := memory.NewTable("one_pk", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "pk", Source: "one_pk", Type: sql.Int64, PrimaryKey: true},
 		{Name: "c1", Source: "one_pk", Type: sql.Int64},
-	}))
+	}), nil)
 	twopk := memory.NewTable("two_pk", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "pk1", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
 		{Name: "pk2", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
 		{Name: "c1", Source: "two_pk", Type: sql.Int64},
-	}))
+	}), nil)
 
 	testCases := []analyzerFnTestCase{
 		{

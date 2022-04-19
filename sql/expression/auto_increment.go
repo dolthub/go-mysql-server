@@ -79,31 +79,30 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	// todo: |given| is int8 while |i.Right.Zero()| is int64
 	// When a row passes in 0 as the auto_increment value it is equivalent to NULL.
 	cmp, err := i.Type().Compare(given, i.Type().Zero())
 	if err != nil {
 		return nil, err
 	}
-
 	if cmp == 0 {
 		given = nil
+	} else if cmp < 0 {
+		// if given is negative, don't do any auto_increment logic
+		return i.Type().Convert(given)
 	}
 
-	converted, err := i.Type().Convert(given)
+	// Update integrator AUTO_INCREMENT sequence with our value
+	seq, err := i.autoTbl.GetNextAutoIncrementValue(ctx, given)
 	if err != nil {
 		return nil, err
 	}
 
-	// Integrator answer
-	// TODO: This being in Eval could potentially be a problem. If Eval is called multiple times on one row we could
-	// skip keys unexpectedly.
-	next, err := i.autoTbl.GetNextAutoIncrementValue(ctx, converted)
-	if err != nil {
-		return nil, err
+	// Use sequence value if NULL or 0 were provided
+	if given == nil {
+		given = seq
 	}
 
-	return next, nil
+	return i.Type().Convert(given)
 }
 
 func (i *AutoIncrement) String() string {

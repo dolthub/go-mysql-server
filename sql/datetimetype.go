@@ -38,7 +38,7 @@ const (
 
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
-	ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
+	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%s'")
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
@@ -60,6 +60,11 @@ var (
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 	TimestampDatetimeLayouts = []string{
+		"2006-01-02 15:4",
+		"2006-01-02 15:04",
+		"2006-01-02 15:04:",
+		"2006-01-02 15:04:.",
+		"2006-01-02 15:04:05.",
 		"2006-01-02 15:04:05.999999",
 		"2006-01-02",
 		"2006-1-2",
@@ -194,6 +199,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
 			return zeroTime, nil
 		}
+		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		parsed := false
 		for _, fmt := range TimestampDatetimeLayouts {
 			if t, err := time.Parse(fmt, value); err == nil {
@@ -288,13 +294,18 @@ func (t datetimeType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t datetimeType) Equals(otherType Type) bool {
+	return t.baseType == otherType.Type()
+}
+
 // Promote implements the Type interface.
 func (t datetimeType) Promote() Type {
 	return Datetime
 }
 
 // SQL implements Type interface.
-func (t datetimeType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t datetimeType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -305,43 +316,38 @@ func (t datetimeType) SQL(v interface{}) (sqltypes.Value, error) {
 	}
 	vt := v.(time.Time)
 
+	var typ query.Type
+	var val []byte
+
 	switch t.baseType {
 	case sqltypes.Date:
+		typ = sqltypes.Date
 		if vt.Equal(zeroTime) {
-			return sqltypes.MakeTrusted(
-				sqltypes.Date,
-				[]byte(vt.Format(zeroDateStr)),
-			), nil
+			val = []byte(vt.Format(zeroDateStr))
+		} else {
+			val = []byte(vt.Format(DateLayout))
 		}
-		return sqltypes.MakeTrusted(
-			sqltypes.Date,
-			[]byte(vt.Format(DateLayout)),
-		), nil
 	case sqltypes.Datetime:
+		typ = sqltypes.Datetime
 		if vt.Equal(zeroTime) {
-			return sqltypes.MakeTrusted(
-				sqltypes.Datetime,
-				[]byte(vt.Format(zeroTimestampDatetimeStr)),
-			), nil
+			val = []byte(vt.Format(zeroTimestampDatetimeStr))
+		} else {
+			val = []byte(vt.Format(TimestampDatetimeLayout))
 		}
-		return sqltypes.MakeTrusted(
-			sqltypes.Datetime,
-			[]byte(vt.Format(TimestampDatetimeLayout)),
-		), nil
 	case sqltypes.Timestamp:
+		typ = sqltypes.Timestamp
 		if vt.Equal(zeroTime) {
-			return sqltypes.MakeTrusted(
-				sqltypes.Timestamp,
-				[]byte(vt.Format(zeroTimestampDatetimeStr)),
-			), nil
+			val = []byte(vt.Format(zeroTimestampDatetimeStr))
+		} else {
+			val = []byte(vt.Format(TimestampDatetimeLayout))
 		}
-		return sqltypes.MakeTrusted(
-			sqltypes.Timestamp,
-			[]byte(vt.Format(TimestampDatetimeLayout)),
-		), nil
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
+
+	val = appendAndSlice(dest, val)
+
+	return sqltypes.MakeTrusted(typ, val), nil
 }
 
 func (t datetimeType) String() string {

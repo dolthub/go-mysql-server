@@ -55,10 +55,15 @@ type Type interface {
 	Compare(interface{}, interface{}) (int, error)
 	// Convert a value of a compatible type to a most accurate type.
 	Convert(interface{}) (interface{}, error)
+	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
+	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
+	Equals(otherType Type) bool
 	// Promote will promote the current type to the largest representing type of the same kind, such as Int8 to Int64.
 	Promote() Type
 	// SQL returns the sqltypes.Value for the given value.
-	SQL(interface{}) (sqltypes.Value, error)
+	// Implementations can optionally use |dest| to append
+	// serialized data, but should not mutate existing data.
+	SQL(dest []byte, v interface{}) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
 	// Zero returns the golang zero value for this type
@@ -75,6 +80,8 @@ type Type2 interface {
 	Convert2(Value) (Value, error)
 	// Zero2 returns the zero Value for this type.
 	Zero2() Value
+	// SQL2 returns the sqltypes.Value for the given value
+	SQL2(Value) (sqltypes.Value, error)
 }
 
 type LikeMatcher interface {
@@ -452,6 +459,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "json":
 		return JSON, nil
 	case "geometry":
+		return GeometryType{}, nil
 	case "geometrycollection":
 	case "linestring":
 		return LinestringType{}, nil

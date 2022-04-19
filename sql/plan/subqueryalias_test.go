@@ -37,7 +37,7 @@ func TestSubqueryAliasSchema(t *testing.T) {
 		{Name: "baz", Type: sql.Text, Nullable: false, Source: "alias"},
 	})
 
-	table := memory.NewTable("bar", tableSchema)
+	table := memory.NewTable("bar", tableSchema, nil)
 
 	subquery := NewProject(
 		[]sql.Expression{

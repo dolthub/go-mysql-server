@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+const joinComplexityLimit = 12
+
 func buildJoinTree(
 	jo *joinOrderNode,
 	joinConds []*joinCond,
@@ -82,13 +84,13 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 		return helper(n.left, func() bool {
 			// for each assignment of conditions to the right tree
 			return helper(n.right, func() bool {
-				tables := n.tableOrder()
+				columns := n.tableCols()
 				// look at every remaining condition
 				for i := range conditions {
 					cond := conditions[i]
-					joinCondTables := findTables(cond.cond)
+					joinCondTableCols := findCols(cond.cond)
 					// if the condition only references tables in our subtree
-					if containsAll(joinCondTables, tables) {
+					if containsAllCols(joinCondTableCols, columns) {
 						n.joinCond = cond
 						conditions = append(conditions[:i], conditions[i+1:]...)
 						// continue the search with this assignment tried
@@ -125,7 +127,8 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 // lists in order to achieve the best performance.
 type joinOrderNode struct {
 	commutes []joinOrderNode
-	node     NameableNode
+	node     sql.Node
+	name     string
 	left     *joinOrderNode
 	right    *joinOrderNode
 	order    []int
@@ -134,7 +137,7 @@ type joinOrderNode struct {
 
 func (jo *joinOrderNode) String() string {
 	if jo.node != nil {
-		return "Node(" + jo.node.Name() + ")"
+		return "Node(" + jo.name + ")"
 	} else if jo.left != nil {
 		return "Ordered(Left: " + jo.left.String() + ", " + jo.right.String() + ")"
 	} else {
@@ -185,7 +188,7 @@ func (jo *joinOrderNode) applyJoinHintTables(tables []string) ([]string, error) 
 		return nil, nil
 	}
 	if jo.node != nil {
-		if strings.ToLower(jo.node.Name()) == strings.ToLower(tables[0]) {
+		if jo.name == strings.ToLower(tables[0]) {
 			return tables[1:], nil
 		} else {
 			return nil, nil
@@ -237,13 +240,19 @@ START:
 // the `node` leaves in this `joinOrderNode`. The traversal obeys
 // `jo.order` and requires it to be populated.
 func (jo *joinOrderNode) tableNames() []string {
-	if jo.node != nil {
-		return []string{strings.ToLower(jo.node.Name())}
+	if len(jo.name) > 0 {
+		return []string{jo.name}
 	} else if jo.left != nil {
 		return append(jo.left.tableNames(), jo.right.tableNames()...)
+	} else if len(jo.order) > 0 {
+		var res []string
+		for i := range jo.order {
+			res = append(res, jo.commutes[i].tableNames()...)
+		}
+		return res
 	} else {
 		var res []string
-		for _, i := range jo.order {
+		for i := range jo.commutes {
 			res = append(res, jo.commutes[i].tableNames()...)
 		}
 		return res
@@ -253,8 +262,8 @@ func (jo *joinOrderNode) tableNames() []string {
 // tables returns an ordered slice of NameableNodes of the leaves in
 // this `joinOrderNode`.
 func (jo *joinOrderNode) tables() []NameableNode {
-	if jo.node != nil {
-		return []NameableNode{jo.node}
+	if n, ok := jo.node.(NameableNode); jo.node != nil && ok {
+		return []NameableNode{n}
 	} else if jo.left != nil {
 		return append(jo.left.tables(), jo.right.tables()...)
 	} else {
@@ -315,35 +324,41 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 			indexes[i] = i
 		}
 		lowestCost := uint64(math.MaxUint64)
-		accessOrders := permutations(indexes)
-		lowestCostIdx := 0
-		for i, accessOrder := range accessOrders {
-			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost)
+		perm := newQuickPerm(indexes)
+		lowestOrder := make([]int, len(indexes))
+		availableSchemaForKeys := make(map[tableCol]struct{})
+		for idx := range jo.commutes {
+			for _, col := range jo.commutes[idx].schema() {
+				availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
+			}
+		}
+		for accessOrder, err := perm.Next(); err == nil; accessOrder, err = perm.Next() {
+			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost, availableSchemaForKeys)
 			if err != nil {
 				return err
 			}
 			if cost < lowestCost {
 				lowestCost = cost
-				lowestCostIdx = i
+				copy(lowestOrder, accessOrder)
 			}
 		}
-		jo.order = accessOrders[lowestCostIdx]
+		jo.order = lowestOrder
 		jo.cost = lowestCost
 	}
 
 	return nil
 }
 
-func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64) (uint64, error) {
+//todo(max): if availableSchemaForKeys was a bitmap/fastintmap, 50% of the join
+// search CPU time would be O(1)
+func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64, availableSchemaForKeys map[tableCol]struct{}) (uint64, error) {
 	cost := uint64(1)
-	var availableSchemaForKeys sql.Schema
 	for i, idx := range accessOrder {
 		if cost >= lowestCost {
 			return cost, nil
 		}
-		availableSchemaForKeys = append(availableSchemaForKeys, jo.commutes[idx].schema()...)
 		if jo.commutes[idx].node != nil {
-			indexes := joinIndexes[strings.ToLower(jo.commutes[idx].node.Name())]
+			indexes := joinIndexes[strings.ToLower(jo.commutes[idx].name)]
 			_, isSubquery := jo.commutes[idx].node.(*plan.SubqueryAlias)
 			_, isValuesTable := jo.commutes[idx].node.(*plan.ValueDerivedTable)
 			if i == 0 || isSubquery || isValuesTable || indexes.getUsableIndex(availableSchemaForKeys) == nil {
@@ -374,7 +389,7 @@ func (jo *joinOrderNode) schema() sql.Schema {
 
 func (jo *joinOrderNode) visitJoinSearchNodes(cb func(n *joinSearchNode) bool) {
 	if jo.node != nil {
-		cb(&joinSearchNode{table: jo.node.Name()})
+		cb(&joinSearchNode{table: jo.name, node: jo.node})
 	} else if jo.left != nil {
 		stop := false
 		jo.left.visitJoinSearchNodes(func(l *joinSearchNode) bool {
@@ -422,7 +437,10 @@ func visitCommutableJoinSearchNodes(indexes []int, nodes []joinOrderNode, cb fun
 func newJoinOrderNode(node sql.Node) *joinOrderNode {
 	switch node := node.(type) {
 	case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable:
-		return &joinOrderNode{node: node.(NameableNode)}
+		n := node.(NameableNode)
+		return &joinOrderNode{node: n, name: strings.ToLower(n.Name())}
+	case *plan.CrossJoin:
+		return &joinOrderNode{node: node}
 	case plan.JoinNode:
 		ljo := newJoinOrderNode(node.Left())
 		rjo := newJoinOrderNode(node.Right())
@@ -449,7 +467,8 @@ func newJoinOrderNode(node sql.Node) *joinOrderNode {
 // leaf node (a table). The top level node in a join tree is always an internal node. Every internal node has both a
 // left and a right child.
 type joinSearchNode struct {
-	table    string          // empty if this is an internal node
+	table    string // empty if this is an internal node
+	node     sql.Node
 	joinCond *joinCond       // nil if this is a leaf node
 	left     *joinSearchNode // nil if this is a leaf node
 	right    *joinSearchNode // nil if this is a leaf node
@@ -471,9 +490,51 @@ func (n *joinSearchNode) tableOrder() []string {
 	return tables
 }
 
+func (n *joinSearchNode) schema() []*sql.Column {
+	if n == nil {
+		return nil
+	}
+
+	if n.isLeaf() {
+		return n.node.Schema()
+	}
+
+	var schema []*sql.Column
+	schema = append(schema, n.left.schema()...)
+	schema = append(schema, n.right.schema()...)
+	return schema
+}
+
+func (n *joinSearchNode) tableCols() map[tableCol]struct{} {
+	if n == nil {
+		return nil
+	}
+
+	tableCols := make(map[tableCol]struct{})
+	if n.isLeaf() {
+		for _, col := range n.node.Schema() {
+			tableCols[tableCol{table: col.Source, col: col.Name}] = struct{}{}
+		}
+		return tableCols
+	}
+	for _, col := range n.left.schema() {
+		tableCols[tableCol{table: col.Source, col: col.Name}] = struct{}{}
+	}
+	for _, col := range n.right.schema() {
+		tableCols[tableCol{table: col.Source, col: col.Name}] = struct{}{}
+	}
+	return tableCols
+}
+
 // isLeaf returns whether this node is a table node
 func (n *joinSearchNode) isLeaf() bool {
-	return len(n.table) > 0
+	return len(n.table) > 0 || n.isCrossJoin()
+}
+
+// isLeaf returns whether this node is a table node
+func (n *joinSearchNode) isCrossJoin() bool {
+	_, ok := n.node.(*plan.CrossJoin)
+	return ok
 }
 
 func (n *joinSearchNode) String() string {
@@ -491,13 +552,14 @@ func (n *joinSearchNode) String() string {
 	return tp.String()
 }
 
-func containsAll(needles []string, haystack []string) bool {
-	for _, needle := range needles {
-		if indexOf(needle, haystack) < 0 {
-			return false
+func containsAllCols(needles []tableCol, haystack map[tableCol]struct{}) bool {
+	var found int
+	for _, c := range needles {
+		if _, ok := haystack[c]; ok {
+			found++
 		}
 	}
-	return true
+	return found >= len(needles)
 }
 
 func strArraysEqual(a, b []string) bool {

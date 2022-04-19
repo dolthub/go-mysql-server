@@ -17,92 +17,123 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
 // at execution time, and should be moved here over time.
-func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
-	err := validateAutoIncrement(ct.CreateSchema.Schema)
+	err := validateIndexes(ct.TableSpec())
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	err = validateIndexes(ct.TableSpec())
+	// passed validateIndexes, so they all must be valid indexes
+	// extract map of columns that have indexes defined over them
+	keyedColumns := make(map[string]bool)
+	for _, index := range ct.TableSpec().IdxDefs {
+		for _, col := range index.Columns {
+			keyedColumns[col.Name] = true
+		}
+	}
+
+	err = validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	var sch sql.Schema
-	plan.Inspect(n, func(n sql.Node) bool {
+	var indexes []string
+	var keyedColumns map[string]bool
+	var err error
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
+			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.RenameColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
 			return false
 		case *plan.AddColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
 			return false
 		case *plan.DropColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
 			return false
+		case *plan.AlterIndex:
+			sch = n.Table.Schema()
+			indexes, err = getTableIndexNames(ctx, a, n.Table)
+		case *plan.AlterPK:
+			sch = n.Table.Schema()
+		case *plan.AlterDefaultSet:
+			sch = n.Table.Schema()
+		case *plan.AlterDefaultDrop:
+			sch = n.Table.Schema()
 		}
 		return true
 	})
 
-	// Skip this validation if we didn't find one or more of the above node types
-	if len(sch) == 0 {
-		return n, nil
+	if err != nil {
+		return nil, transform.SameTree, err
 	}
 
+	// Skip this validation if we didn't find one or more of the above node types
+	if len(sch) == 0 {
+		return n, transform.SameTree, nil
+	}
+
+	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
-	var err error
 
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch, err = validateModifyColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
+			sch, err = validateModifyColumn(initialSch, sch, n, keyedColumns)
 		case *plan.RenameColumn:
 			sch, err = validateRenameColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.AddColumn:
+			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
+			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
 			sch, err = validateAddColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.DropColumn:
 			sch, err = validateDropColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
+		case *plan.AlterIndex:
+			indexes, err = validateAlterIndex(initialSch, sch, n, indexes)
+		case *plan.AlterPK:
+			sch, err = validatePrimaryKey(initialSch, sch, n)
+		case *plan.AlterDefaultSet:
+			sch, err = validateAlterDefault(initialSch, sch, n)
+		case *plan.AlterDefaultDrop:
+			sch, err = validateDropDefault(initialSch, sch, n)
 		}
-		return n, nil
+		if err != nil {
+			return false
+		}
+		return true
 	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	return n, transform.SameTree, nil
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
@@ -111,7 +142,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 // Note that schema is passed in twice, because one version is the initial version before the alter column expressions
 // are applied, and the second version is the current schema that is being modified as multiple nodes are processed.
 func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sql.Schema, error) {
-	table := rc.Child
+	table := rc.Table
 	nameable := table.(sql.Nameable)
 
 	// Check for column name collisions
@@ -135,7 +166,7 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 }
 
 func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
-	table := ac.Child
+	table := ac.Table
 	nameable := table.(sql.Nameable)
 
 	// Name collisions
@@ -144,11 +175,22 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 		return nil, sql.ErrColumnExists.New(ac.Column().Name)
 	}
 
+	// Make sure columns named in After clause exist
+	if ac.Order() != nil && ac.Order().AfterColumn != "" {
+		afterColumn := ac.Order().AfterColumn
+		idx := schema.IndexOf(afterColumn, nameable.Name())
+		if idx < 0 {
+			return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), afterColumn)
+		}
+	}
+
 	// None of the checks we do concern ordering, so we don't need to worry about it here
-	newSch := append(table.Schema(), ac.Column())
+	newCol := ac.Column().Copy()
+	newCol.Source = nameable.Name()
+	newSch := append(schema, newCol)
 
 	// TODO: more validation possible to do here
-	err := validateAutoIncrement(newSch)
+	err := validateAutoIncrement(newSch, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +198,18 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	return newSch, nil
 }
 
-func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn) (sql.Schema, error) {
-	table := mc.Child
+func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+	table := mc.Table
 	nameable := table.(sql.Nameable)
-	newSch := replaceInSchema(table.Schema(), mc.NewColumn(), nameable.Name())
 
-	err := validateAutoIncrement(newSch)
+	// Look for the old column and throw an error if it's not there.
+	if schema.IndexOf(mc.Column(), nameable.Name()) == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
+	}
+
+	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
+
+	err := validateAutoIncrement(newSch, keyedColumns)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +222,13 @@ func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.Modi
 }
 
 func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Schema, error) {
-	table := dc.Child
+	table := dc.Table
 	nameable := table.(sql.Nameable)
+
+	// Look for the column to be dropped and throw an error if it's not there.
+	if sch.IndexOf(dc.Column, nameable.Name()) == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
+	}
 
 	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
 	if err != nil {
@@ -190,14 +243,16 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 // validateColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
 // the specified table check constraints.
 func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	var err error
 	for _, check := range checks {
-		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
-					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					return true
 				}
 			}
-			return e, nil
+			return false
 		})
 
 		if err != nil {
@@ -205,6 +260,65 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 		}
 	}
 	return nil
+}
+
+// validateAlterIndex validates the specified column can have an index added, dropped, or renamed. Returns an updated
+// list of index name given the add, drop, or rename operations.
+func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
+	tableName := getTableName(ai.Table)
+
+	switch ai.Action {
+	case plan.IndexAction_Create:
+		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
+		if !ok {
+			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
+		}
+
+		return append(indexes, ai.IndexName), nil
+	case plan.IndexAction_Drop:
+		savedIdx := -1
+		for i, idx := range indexes {
+			if strings.EqualFold(idx, ai.IndexName) {
+				savedIdx = i
+				break
+			}
+		}
+
+		if savedIdx == -1 {
+			return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
+		}
+
+		// Remove the index from the list
+		return append(indexes[:savedIdx], indexes[savedIdx+1:]...), nil
+	case plan.IndexAction_Rename:
+		savedIdx := -1
+		for i, idx := range indexes {
+			if strings.EqualFold(idx, ai.PreviousIndexName) {
+				savedIdx = i
+			}
+		}
+
+		if savedIdx == -1 {
+			return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
+		}
+
+		// Simulate the rename by deleting the old name and adding the new one.
+		return append(append(indexes[:savedIdx], indexes[savedIdx+1:]...), ai.IndexName), nil
+	}
+
+	return indexes, nil
+}
+
+// missingIdxColumn takes in a set of IndexColumns and returns false, along with the offending column name, if
+// an index Column is not in an index.
+func missingIdxColumn(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
+	for _, c := range cols {
+		if ok := sch.Contains(c.Name, tableName); !ok {
+			return c.Name, false
+		}
+	}
+
+	return "", true
 }
 
 func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {
@@ -243,22 +357,30 @@ func renameInSchema(sch sql.Schema, oldColName, newColName, tableName string) sq
 
 func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	idx := sch.IndexOf(colName, tableName)
-	schCopy := make(sql.Schema, len(sch))
+	if idx == -1 {
+		return sch
+	}
+
+	schCopy := make(sql.Schema, len(sch)-1)
 	for i := range sch {
-		if i != idx {
+		if i < idx {
 			cc := *sch[i]
 			schCopy[i] = &cc
+		} else if i > idx {
+			cc := *sch[i]
+			schCopy[i-1] = &cc // We want to shift stuff over.
 		}
 	}
 	return schCopy
 }
 
-func validateAutoIncrement(schema sql.Schema) error {
+func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			if !col.PrimaryKey {
-				// AUTO_INCREMENT col must be a pk
+			// keyedColumns == nil means they are trying to add auto_increment column
+			if !col.PrimaryKey && !keyedColumns[col.Name] {
+				// AUTO_INCREMENT col must be a key
 				return sql.ErrInvalidAutoIncCols.New()
 			}
 			if col.Default != nil {
@@ -290,4 +412,117 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 	}
 
 	return nil
+}
+
+// getTableIndexColumns returns the columns over which indexes are defined
+func getTableIndexColumns(ctx *sql.Context, table sql.Node) (map[string]bool, error) {
+	ia, err := newIndexAnalyzerForNode(ctx, table)
+	if err != nil {
+		return nil, err
+	}
+
+	keyedColumns := make(map[string]bool)
+	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
+	for _, index := range indexes {
+		for _, expr := range index.Expressions() {
+			if col := plan.GetColumnFromIndexExpr(expr, getTable(table)); col != nil {
+				keyedColumns[col.Name] = true
+			}
+		}
+	}
+
+	return keyedColumns, nil
+}
+
+// getTableIndexNames returns the names of indexes associated with a table.
+func getTableIndexNames(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string, error) {
+	ia, err := newIndexAnalyzerForNode(ctx, table)
+	if err != nil {
+		return nil, err
+	}
+
+	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
+	names := make([]string, len(indexes))
+
+	for i, index := range indexes {
+		names[i] = index.ID()
+	}
+
+	return names, nil
+}
+
+// validatePrimaryKey validates a primary key add or drop operation.
+func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
+	tableName := getTableName(ai.Table)
+	switch ai.Action {
+	case plan.PrimaryKeyAction_Create:
+		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
+		if !ok {
+			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
+		}
+
+		if hasPrimaryKeys(sch) {
+			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
+		}
+
+		// Set the primary keys
+		for _, col := range ai.Columns {
+			sch[sch.IndexOf(col.Name, tableName)].PrimaryKey = true
+		}
+
+		return sch, nil
+	case plan.PrimaryKeyAction_Drop:
+		if !hasPrimaryKeys(sch) {
+			return nil, sql.ErrCantDropFieldOrKey.New("PRIMARY")
+		}
+
+		for _, col := range sch {
+			if col.PrimaryKey {
+				col.PrimaryKey = false
+			}
+		}
+
+		return sch, nil
+	default:
+		return sch, nil
+	}
+}
+
+// validateAlterDefault validates the addition of a default value to a column.
+func validateAlterDefault(initialSch, sch sql.Schema, as *plan.AlterDefaultSet) (sql.Schema, error) {
+	idx := sch.IndexOf(as.ColumnName, getTableName(as.Table))
+	if idx == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(as.ColumnName)
+	}
+
+	copiedDefault, err := as.Default.WithChildren(as.Default.Children()...)
+	if err != nil {
+		return nil, err
+	}
+
+	sch[idx].Default = copiedDefault.(*sql.ColumnDefaultValue)
+
+	return sch, err
+}
+
+// validateDropDefault validates the dropping of a default value.
+func validateDropDefault(initialSch, sch sql.Schema, ad *plan.AlterDefaultDrop) (sql.Schema, error) {
+	idx := sch.IndexOf(ad.ColumnName, getTableName(ad.Table))
+	if idx == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(ad.ColumnName)
+	}
+
+	sch[idx].Default = nil
+
+	return sch, nil
+}
+
+func hasPrimaryKeys(sch sql.Schema) bool {
+	for _, c := range sch {
+		if c.PrimaryKey {
+			return true
+		}
+	}
+
+	return false
 }

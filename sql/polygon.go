@@ -86,6 +86,9 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PolygonType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	// Must be a Polygon, fail otherwise
 	if v, ok := v.(Polygon); ok {
 		return v, nil
@@ -94,13 +97,19 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 	return nil, ErrNotPolygon.New(v)
 }
 
+// Equals implements the Type interface.
+func (t PolygonType) Equals(otherType Type) bool {
+	_, ok := otherType.(PolygonType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t PolygonType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PolygonType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}

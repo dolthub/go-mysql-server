@@ -33,17 +33,20 @@ const (
 	Uint8Size   ByteSize = 1
 	Int16Size   ByteSize = 2
 	Uint16Size  ByteSize = 2
-	int24Size   ByteSize = 3
-	uint24Size  ByteSize = 3
+	Int24Size   ByteSize = 3
+	Uint24Size  ByteSize = 3
 	Int32Size   ByteSize = 4
 	Uint32Size  ByteSize = 4
-	int48Size   ByteSize = 6
+	Int48Size   ByteSize = 6
 	Uint48Size  ByteSize = 6
 	Int64Size   ByteSize = 8
 	Uint64Size  ByteSize = 8
 	Float32Size ByteSize = 4
 	Float64Size ByteSize = 8
 )
+
+const maxUint48 = uint64(1<<48 - 1)
+const maxUint24 = uint32(1<<24 - 1)
 
 type Collation uint16
 
@@ -125,6 +128,26 @@ func ReadUint16(val []byte) uint16 {
 	return binary.LittleEndian.Uint16(val)
 }
 
+func ReadInt24(val []byte) (i int32) {
+	expectSize(val, Int24Size)
+	var tmp [4]byte
+	// copy |val| to |tmp|
+	tmp[3], tmp[2] = val[3], val[2]
+	tmp[1], tmp[0] = val[1], val[0]
+	i = int32(binary.LittleEndian.Uint32(tmp[:]))
+	return
+}
+
+func ReadUint24(val []byte) (u uint32) {
+	expectSize(val, Int24Size)
+	var tmp [4]byte
+	// copy |val| to |tmp|
+	tmp[3], tmp[2] = val[3], val[2]
+	tmp[1], tmp[0] = val[1], val[0]
+	u = binary.LittleEndian.Uint32(tmp[:])
+	return
+}
+
 func ReadInt32(val []byte) int32 {
 	expectSize(val, Int32Size)
 	return int32(binary.LittleEndian.Uint32(val))
@@ -133,6 +156,17 @@ func ReadInt32(val []byte) int32 {
 func ReadUint32(val []byte) uint32 {
 	expectSize(val, Uint32Size)
 	return binary.LittleEndian.Uint32(val)
+}
+
+func ReadInt48(val []byte) (i int64) {
+	expectSize(val, Int48Size)
+	var tmp [8]byte
+	// copy |val| to |tmp|
+	tmp[5], tmp[4] = val[5], val[4]
+	tmp[3], tmp[2] = val[3], val[2]
+	tmp[1], tmp[0] = val[1], val[0]
+	i = int64(binary.LittleEndian.Uint64(tmp[:]))
+	return
 }
 
 func ReadUint48(val []byte) (u uint64) {
@@ -209,6 +243,35 @@ func WriteUint16(buf []byte, val uint16) []byte {
 	return buf
 }
 
+func WriteInt24(buf []byte, val int32) []byte {
+	expectSize(buf, Int24Size)
+
+	var tmp [4]byte
+	binary.LittleEndian.PutUint32(tmp[:], uint32(val))
+	// copy |tmp| to |buf|
+	buf[2], buf[1], buf[0] = tmp[2], tmp[1], tmp[0]
+	return buf
+
+	binary.LittleEndian.PutUint16(buf, uint16(val))
+	return buf
+}
+
+func WriteUint24(buf []byte, val uint32) []byte {
+	expectSize(buf, Uint24Size)
+	if val > maxUint24 {
+		panic("uint is greater than max uint24")
+	}
+
+	var tmp [4]byte
+	binary.LittleEndian.PutUint32(tmp[:], uint32(val))
+	// copy |tmp| to |buf|
+	buf[2], buf[1], buf[0] = tmp[2], tmp[1], tmp[0]
+	return buf
+
+	binary.LittleEndian.PutUint16(buf, uint16(val))
+	return buf
+}
+
 func WriteInt32(buf []byte, val int32) []byte {
 	expectSize(buf, Int32Size)
 	binary.LittleEndian.PutUint32(buf, uint32(val))
@@ -222,8 +285,6 @@ func WriteUint32(buf []byte, val uint32) []byte {
 }
 
 func WriteUint48(buf []byte, u uint64) []byte {
-	const maxUint48 = uint64(1<<48 - 1)
-
 	expectSize(buf, Uint48Size)
 	if u > maxUint48 {
 		panic("uint is greater than max uint48")

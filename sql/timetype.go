@@ -222,18 +222,27 @@ func (t timespanType) ConvertToTimeDuration(v interface{}) (time.Duration, error
 	return val.AsTimeDuration(), nil
 }
 
+// Equals implements the Type interface.
+func (t timespanType) Equals(otherType Type) bool {
+	_, ok := otherType.(timespanType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t timespanType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t timespanType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t timespanType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	ti, err := t.ConvertToTimespanImpl(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Time, []byte(ti.String())), nil
+
+	val := appendAndSlice(dest, []byte(ti.String()))
+
+	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
 
 // String implements Type interface.

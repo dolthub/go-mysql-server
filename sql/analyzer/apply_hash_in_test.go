@@ -18,7 +18,7 @@ func TestApplyHashIn(t *testing.T) {
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
 		{Name: "d", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
-	}))
+	}), nil)
 
 	hitLiteral, _ := expression.NewHashInTuple(
 		expression.NewGetField(0, sql.Int64, "foo", false),
@@ -536,7 +536,7 @@ func TestApplyHashIn(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule("apply_hash_in"))
+	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(applyHashInId))
 }
 
 func mustNewHashInTuple(left, right sql.Expression) *expression.HashInTuple {

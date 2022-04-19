@@ -197,13 +197,26 @@ func (t setType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t setType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(setType); ok && t.collation.Equals(ot.collation) && len(t.bitToVal) == len(ot.bitToVal) {
+		for bit, val := range t.bitToVal {
+			if ot.bitToVal[bit] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t setType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t setType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -211,7 +224,10 @@ func (t setType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Set, []byte(value.(string))), nil
+
+	val := appendAndSlice(dest, []byte(value.(string)))
+
+	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
 
 // String implements Type interface.

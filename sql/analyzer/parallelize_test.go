@@ -24,12 +24,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func TestParallelize(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
-	rule := getRuleFrom(OnceAfterAll, "parallelize")
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
+	rule := getRuleFrom(OnceAfterAll, parallelizeId)
 	node := plan.NewProject(
 		nil,
 		plan.NewInnerJoin(
@@ -66,15 +67,15 @@ func TestParallelize(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
 
 func TestParallelizeCreateIndex(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
-	rule := getRuleFrom(OnceAfterAll, "parallelize")
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
+	rule := getRuleFrom(OnceAfterAll, parallelizeId)
 	node := plan.NewCreateIndex(
 		"",
 		plan.NewResolvedTable(table, nil, nil),
@@ -83,13 +84,13 @@ func TestParallelizeCreateIndex(t *testing.T) {
 		nil,
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(node, result)
 }
 
 func TestIsParallelizable(t *testing.T) {
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
 
 	testCases := []struct {
 		name           string
@@ -245,7 +246,7 @@ func TestIsParallelizable(t *testing.T) {
 func TestRemoveRedundantExchanges(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
 
 	node := plan.NewProject(
 		nil,
@@ -295,7 +296,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 		),
 	)
 
-	result, err := plan.TransformUp(node, removeRedundantExchanges)
+	result, _, err := transform.Node(node, removeRedundantExchanges)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

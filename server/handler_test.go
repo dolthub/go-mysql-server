@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/opentracing/opentracing-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -46,7 +48,7 @@ func TestHandlerOutput(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
+		time.Second,
 		false,
 		nil,
 	)
@@ -71,9 +73,9 @@ func TestHandlerOutput(t *testing.T) {
 			conn:    dummyConn,
 			query:   "SELECT * FROM test",
 			expected: expectedValues{
-				callsToCallback:  11,
-				lenLastBatch:     10,
-				lastRowsAffected: uint64(10),
+				callsToCallback:  8,
+				lenLastBatch:     114,
+				lastRowsAffected: uint64(114),
 			},
 		},
 		{
@@ -105,8 +107,8 @@ func TestHandlerOutput(t *testing.T) {
 			query:   "SELECT * FROM test limit 200",
 			expected: expectedValues{
 				callsToCallback:  2,
-				lenLastBatch:     100,
-				lastRowsAffected: uint64(100),
+				lenLastBatch:     72,
+				lastRowsAffected: uint64(72),
 			},
 		},
 		{
@@ -115,9 +117,20 @@ func TestHandlerOutput(t *testing.T) {
 			conn:    dummyConn,
 			query:   "SELECT * FROM test limit 530",
 			expected: expectedValues{
-				callsToCallback:  6,
-				lenLastBatch:     30,
-				lastRowsAffected: uint64(30),
+				callsToCallback:  5,
+				lenLastBatch:     18,
+				lastRowsAffected: uint64(18),
+			},
+		},
+		{
+			name:    "with limit zero",
+			handler: handler,
+			conn:    dummyConn,
+			query:   "SELECT * FROM test limit 0",
+			expected: expectedValues{
+				callsToCallback:  1,
+				lenLastBatch:     0,
+				lastRowsAffected: uint64(0),
 			},
 		},
 	}
@@ -136,9 +149,9 @@ func TestHandlerOutput(t *testing.T) {
 			})
 
 			require.NoError(t, err)
-			require.Equal(t, test.expected.callsToCallback, callsToCallback)
-			require.Equal(t, test.expected.lenLastBatch, lenLastBatch)
-			require.Equal(t, test.expected.lastRowsAffected, lastRowsAffected)
+			assert.Equal(t, test.expected.callsToCallback, callsToCallback)
+			assert.Equal(t, test.expected.lenLastBatch, lenLastBatch)
+			assert.Equal(t, test.expected.lastRowsAffected, lastRowsAffected)
 
 		})
 	}
@@ -186,7 +199,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			expected:  nil,
 		},
 		{
-			name:      "select statement returns nil schema",
+			name:      "select statement returns non-nil schema",
 			statement: "select c1 from test where c1 > ?",
 			expected: []*query.Field{
 				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
@@ -198,6 +211,82 @@ func TestHandlerComPrepare(t *testing.T) {
 			schema, err := handler.ComPrepare(dummyConn, test.statement)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, schema)
+		})
+	}
+}
+
+func TestHandlerComPrepareExecute(t *testing.T) {
+	e := setupMemDB(require.New(t))
+	dummyConn := &mysql.Conn{ConnectionID: 1}
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			testSessionBuilder,
+			opentracing.NoopTracer{},
+			func(ctx *sql.Context, db string) bool { return db == "test" },
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		0,
+		false,
+		nil,
+	)
+	handler.NewConnection(dummyConn)
+
+	type testcase struct {
+		name     string
+		prepare  *mysql.PrepareData
+		execute  map[string]*query.BindVariable
+		schema   []*query.Field
+		expected []sql.Row
+	}
+
+	for _, test := range []testcase{
+		{
+			name: "select statement returns nil schema",
+			prepare: &mysql.PrepareData{
+				StatementID: 0,
+				PrepareStmt: "select c1 from test where c1 < ?",
+				ParamsCount: 0,
+				ParamsType:  nil,
+				ColumnNames: nil,
+				BindVars: map[string]*query.BindVariable{
+					"v1": {Type: query.Type_INT8, Value: []byte("5")},
+				},
+			},
+			schema: []*query.Field{
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+			},
+			expected: []sql.Row{
+				{0}, {1}, {2}, {3}, {4},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler.ComInitDB(dummyConn, "test")
+			schema, err := handler.ComPrepare(dummyConn, test.prepare.PrepareStmt)
+			require.NoError(t, err)
+			require.Equal(t, test.schema, schema)
+
+			var res []sql.Row
+			callback := func(r *sqltypes.Result) error {
+				for _, r := range r.Rows {
+					var vals []interface{}
+					for _, v := range r {
+						val, err := strconv.ParseInt(string(v.Raw()), 0, 64)
+						if err != nil {
+							return err
+						}
+						vals = append(vals, int(val))
+					}
+					res = append(res, sql.NewRow(vals...))
+				}
+				return nil
+			}
+			err = handler.ComStmtExecute(dummyConn, test.prepare, callback)
+			require.NoError(t, err)
+			require.Equal(t, test.expected, res)
 		})
 	}
 }
@@ -300,6 +389,15 @@ func TestServerEventListener(t *testing.T) {
 	handler.ConnectionClosed(conn2)
 	require.Equal(listener.Connections, 2)
 	require.Equal(listener.Disconnects, 2)
+
+	conn3 := newConn(3)
+	_, err = handler.ComPrepare(conn3, "SELECT ?")
+	require.NoError(err)
+	require.Equal(1, len(e.PreparedData))
+	require.NotNil(e.PreparedData[conn3.ConnectionID])
+
+	handler.ConnectionClosed(conn3)
+	require.Equal(0, len(e.PreparedData))
 }
 
 func TestHandlerKill(t *testing.T) {

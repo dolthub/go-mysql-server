@@ -168,6 +168,8 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 		} else if sql.IsTime(argType) {
 			allString = false
 			allInt = false
+		} else if sql.IsDeferredType(argType) {
+			return argType, nil
 		} else if argType == sql.Null {
 			// When a Null is present the return will always be Null
 			return sql.Null, nil
@@ -244,7 +246,7 @@ func (f *Greatest) String() string {
 	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("greatest(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("GREATEST(%s)", strings.Join(args, ", "))
 }
 
 // WithChildren implements the Expression interface.

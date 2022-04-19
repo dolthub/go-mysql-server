@@ -105,6 +105,7 @@ var _ sql.TableDropper = PrivilegedDatabase{}
 var _ sql.TableRenamer = PrivilegedDatabase{}
 var _ sql.TriggerDatabase = PrivilegedDatabase{}
 var _ sql.StoredProcedureDatabase = PrivilegedDatabase{}
+var _ sql.ExternalStoredProcedureDatabase = PrivilegedDatabase{}
 var _ sql.TableCopierDatabase = PrivilegedDatabase{}
 var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
@@ -159,7 +160,7 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 	for _, tblName := range tblNames {
 		// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
 		// table is accessible.
-		if privSetCount > 0 || dbSetCount > 0 && dbSet.Table(tblName).HasPrivileges() {
+		if privSetCount > 0 || dbSetCount > 0 || dbSet.Table(tblName).HasPrivileges() {
 			tablesWithAccess = append(tablesWithAccess, tblName)
 		}
 	}
@@ -296,6 +297,14 @@ func (pdb PrivilegedDatabase) DropStoredProcedure(ctx *sql.Context, name string)
 		return db.DropStoredProcedure(ctx, name)
 	}
 	return sql.ErrStoredProceduresNotSupported.New(pdb.db.Name())
+}
+
+// GetExternalStoredProcedures implements the interface sql.ExternalStoredProcedureDatabase.
+func (pdb PrivilegedDatabase) GetExternalStoredProcedures(ctx *sql.Context) ([]sql.ExternalStoredProcedureDetails, error) {
+	if db, ok := pdb.db.(sql.ExternalStoredProcedureDatabase); ok {
+		return db.GetExternalStoredProcedures(ctx)
+	}
+	return nil, nil
 }
 
 // CopyTableData implements the interface sql.TableCopierDatabase.

@@ -36,6 +36,8 @@ type ScriptTest struct {
 	Expected []sql.Row
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
+	// SkipPrepared is true when we skip a test for prepared statements only
+	SkipPrepared bool
 }
 
 type ScriptTestAssertion struct {
@@ -103,7 +105,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "DELETE FROM test WHERE pk > 0;",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -115,7 +117,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "REPLACE INTO test VALUES (1,7), (4,8), (5,9);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -894,7 +896,7 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2",
+				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2 order by attribute",
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
@@ -902,7 +904,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color'",
+				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
 			},
 		},
@@ -952,6 +954,99 @@ var ScriptTests = []ScriptTest{
 			{ // Just confirms that the last INSERT didn't do anything
 				Query:    "SELECT * FROM test;",
 				Expected: []sql.Row{{1, 88}, {2, 42}},
+			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 DROP DEFAULT",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "INSERT INTO test (pk) VALUES (2);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 5000",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "DESCRIBE test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"v1", "bigint", "NO", "", "200", ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE ... ALTER ADD CHECK / DROP CHECK",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE test ADD CONSTRAINT cx CHECK (v1 < 100)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "ALTER TABLE test DROP CHECK cx, ADD CHECK (v1 < 50)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "INSERT INTO test VALUES (1, 99)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "INSERT INTO test VALUES (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key)",
+			"ALTER TABLE `test` auto_increment = 2;",
+			"INSERT INTO test VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with UNIQUE KEY",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int unique)",
+			"ALTER TABLE `test` MODIFY column uk int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"uk", "int", "YES", "UNI", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with KEY",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk int, index (mk))",
+			"ALTER TABLE `test` MODIFY column mk int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"mk", "int", "YES", "MUL", "", "auto_increment"},
+				},
 			},
 		},
 	},
@@ -1187,6 +1282,8 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 		},
+		//todo(max): fix arithmatic on bindvar typing
+		SkipPrepared: true,
 	},
 	{
 		Name: "WHERE clause considers ENUM/SET types for comparisons",
@@ -1295,7 +1392,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 4;",
 				Expected: []sql.Row{{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[4, 4], (-∞, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 4;",
@@ -1303,9 +1400,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
-				Expected: []sql.Row{{"Filter(test.v3 = 8)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[8, 8], [7, 7], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
@@ -1313,9 +1410,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
-				Expected: []sql.Row{{"Filter(test.v3 >= 6)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[6, ∞), [6, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
@@ -1323,9 +1420,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
-				Expected: []sql.Row{{"Filter(test.v3 = 7)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[7, 7], [6, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
@@ -1342,9 +1439,9 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
-				Expected: []sql.Row{{"Filter(test.v1 = 2)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[2, 2], (1, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
@@ -1352,9 +1449,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
-				Expected: []sql.Row{{"Filter(test.v3 > 1)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{(1, ∞), [4, 4], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
@@ -1362,9 +1459,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
-				Expected: []sql.Row{{"Filter(test.v1 > 1)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2] with ranges: [{(1, ∞), [6, 6], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
@@ -1372,9 +1469,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
-				Expected: []sql.Row{{"Filter((test.v1 = 5) AND (test.v2 >= 1))"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[5, 5], [1, ∞), (-∞, 10]}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
@@ -1428,8 +1525,10 @@ var ScriptTests = []ScriptTest{
 			"alter table t1 add constraint ck1 check (b like '%abc%')",
 			"create index t1b on t1(b)",
 			"create table t2(c int primary key, d varchar(10))",
-			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
 			"alter table t2 add constraint t2du unique (d)",
+			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
+			"create table t3 (a int, b varchar(100), c datetime, primary key (b,a))",
+			"create table t4 (a int default floor(1), b int default coalesce(a, 10))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1451,8 +1550,28 @@ var ScriptTests = []ScriptTest{
 						"  `c` int NOT NULL,\n" +
 						"  `d` varchar(10),\n" +
 						"  PRIMARY KEY (`c`),\n" +
-						"  UNIQUE KEY `t2.d` (`d`),\n" +
+						"  UNIQUE KEY `d` (`d`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				},
+			},
+			{
+				Query: "show create table t3",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` varchar(100) NOT NULL,\n" +
+						"  `c` datetime,\n" +
+						"  PRIMARY KEY (`b`,`a`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				},
+			},
+			{
+				Query: "show create table t4",
+				Expected: []sql.Row{
+					{"t4", "CREATE TABLE `t4` (\n" +
+						"  `a` int DEFAULT (FLOOR(1)),\n" +
+						"  `b` int DEFAULT (coalesce(a, 10))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 				},
 			},
@@ -1468,6 +1587,507 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "insert into t values (1, 10) on duplicate key update b = 10",
 				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+		},
+	},
+	{
+		Name: "delete from table with misordered pks",
+		SetUpScript: []string{
+			"create table a (x int, y int, z int, primary key (z,x))",
+			"insert into a values (0,1,2), (3,4,5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT count(*) FROM a where x = 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "delete from a where x = 0",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM a where x = 0",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "recreate primary key rebuilds secondary indexes",
+		SetUpScript: []string{
+			"create table a (x int, y int, z int, primary key (x,y,z), index idx1 (y))",
+			"insert into a values (1,2,3), (4,5,6), (7,8,9)",
+			"alter table a drop primary key",
+			"alter table a add primary key (y,z,x)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "delete from a where y = 2",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "delete from a where y = 2",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "select * from a where y = 2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from a where y = 5",
+				Expected: []sql.Row{{4, 5, 6}},
+			},
+		},
+	},
+	{
+		Name: "Handle hex number to binary conversion",
+		SetUpScript: []string{
+			"CREATE TABLE hex_nums1 (pk BIGINT PRIMARY KEY, v1 INT, v2 BIGINT UNSIGNED, v3 DOUBLE, v4 BINARY(32));",
+			"INSERT INTO hex_nums1 values (1, 0x7ED0599B, 0x765a8ce4ce74b187, 0xF753AD20B0C4, 0x148aa875c3cdb9af8919493926a3d7c6862fec7f330152f400c0aecb4467508a);",
+			"CREATE TABLE hex_nums2 (pk BIGINT PRIMARY KEY, v1 VARBINARY(255), v2 BLOB);",
+			"INSERT INTO hex_nums2 values (1, 0x765a8ce4ce74b187, 0x148aa875c3cdb9af8919493926a3d7c6862fec7f330152f400c0aecb4467508a);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v1, v2, v3, hex(v4) FROM hex_nums1;",
+				Expected: []sql.Row{{2127583643, uint64(8528283758723641735), float64(271938758947012), "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+			{
+				Query:    "SELECT hex(v1), hex(v2), hex(v3), hex(v4) FROM hex_nums1;",
+				Expected: []sql.Row{{"7ED0599B", "765A8CE4CE74B187", "F753AD20B0C4", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+			{
+				Query:    "SELECT hex(v1), hex(v2) FROM hex_nums2;",
+				Expected: []sql.Row{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+		},
+	},
+	{
+		Name: "Multialter DDL with ADD/DROP Primary Key",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, v1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v3 int), drop primary key, add primary key (notacolumn)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v4`, ADD COLUMN v7 int NOT NULL",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+					{"v5", "int", "NO", "", "", ""},
+					{"v6", "int", "NO", "", "", ""},
+					{"v7", "int", "NO", "", "", ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "Multialter DDL with ADD/DROP INDEX",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, v1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t DROP COLUMN v1, ADD INDEX myidx (v1)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""}, // should not be dropped
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v2 int), ADD INDEX myidx (v2)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v3 int), DROP INDEX notanindex",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx (notacolumn)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4), DROP INDEX notanindex;",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+					{"v4", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v5 int), RENAME INDEX myidx2 TO myidx3",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "ALTER TABLE t DROP INDEX myidx, ADD INDEX v5idx (v5)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "", "", ""},
+					{"v4", "int", "YES", "MUL", "", ""},
+					{"v5", "int", "YES", "MUL", "", ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "INSERT INTO test (v2) values (11)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 100}}},
+			},
+			{
+				Query:    "SELECT * from test where pk = 100",
+				Expected: []sql.Row{{100, 11}},
+			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v2, ADD COLUMN v3 int NOT NULL after v2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v2, RENAME COLUMN v2 to v3",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE test RENAME COLUMN v2 to v3, DROP COLUMN v2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v3, add column (v5 int NOT NULL)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+					{"v4", "int", "YES", "", "", ""},
+					{"v5", "int", "NO", "", "", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+					{"mycol", "int", "NO", "", "", ""},
+					{"v6", "int", "NO", "", "", ""},
+					{"v7", "int", "YES", "", "", ""},
+				},
+			},
+			// TODO: Does not include tests with column renames and defaults.
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/3065
+		Name: "join index lookups do not handle filters",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key, x int, index idx_x(x))",
+			"create table c (z int primary key, x int, y int, index idx_x(x))",
+			"insert into a values (0),(1),(2),(3)",
+			"insert into b values (0,1), (1,1), (2,2), (3,2)",
+			"insert into c values (0,1,0), (1,1,0), (2,2,1), (3,2,1)",
+		},
+		Query: "select a.* from a join b on a.x = b.x join c where c.x = a.x and b.x = 1",
+		Expected: []sql.Row{
+			{1},
+			{1},
+			{1},
+			{1},
+		},
+	},
+	{
+		Name: "failed conversion shows warning",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: 10000-12-31 23:59:59",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CONVERT('this is not a datetime', DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: this is not a datetime",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CAST('this is not a datetime' as DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: this is not a datetime",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CONVERT('this is not a date', DATE)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect date value: this is not a date",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CAST('this is not a date' as DATE)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect date value: this is not a date",
+				SkipResultsCheck:                true,
+			},
+		},
+	},
+}
+
+var SpatialScriptTests = []ScriptTest{
+	{
+		Name: "create table using default point value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, p point default point(123.456, 7.89));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(p) from test",
+				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create table using default linestring value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, l linestring default linestring(point(1,2), point(3,4)));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(l) from test",
+				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create table using default polygon value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, p polygon default polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0))));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(p) from test",
+				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create geometry table using default point value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, g geometry  default point(123.456, 7.89));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(g) from test",
+				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create geometry table using default linestring value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, g geometry default linestring(point(1,2), point(3,4)));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(g) from test",
+				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create geometry table using default polygon value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, g geometry default polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0))));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(g) from test",
+				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
 			},
 		},
 	},
@@ -1693,6 +2313,43 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 				Query: "SELECT * FROM test where i = 2",
 				Expected: []sql.Row{
 					{2},
+				},
+			},
+		},
+	},
+}
+
+var BrokenScriptTests = []ScriptTest{
+	{
+		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
+					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with multiple KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
+					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
 				},
 			},
 		},

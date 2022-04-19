@@ -18,109 +18,250 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
+//go:generate stringer -type=RuleId
+
+type RuleId int
+
+const (
+	// once before
+	validateOffsetAndLimitId RuleId = iota
+	validateCreateTableId
+	validateExprSemId
+	resolveVariablesId
+	resolveNamedWindowsId
+	resolveSetVariablesId
+	resolveViewsId
+	liftCtesId
+	resolveCtesId
+	liftRecursiveCtesId
+	resolveDatabasesId
+	resolveTablesId
+	loadStoredProceduresId
+	validateDropTablesId
+	setTargetSchemasId
+	resolveCreateLikeId
+	parseColumnDefaultsId
+	resolveDropConstraintId
+	validateDropConstraintId
+	loadCheckConstraintsId
+	resolveCreateSelectId
+	resolveSubqueriesId
+	resolveUnionsId
+	resolveDescribeQueryId
+	checkUniqueTableNamesId
+	resolveTableFunctionsId
+	resolveDeclarationsId
+	validateCreateTriggerId
+	validateCreateProcedureId
+	loadInfoSchemaId
+	validateReadOnlyDatabaseId
+	validateReadOnlyTransactionId
+	validateDatabaseSetId
+	validatePriviledgesId
+	stripDecorationsId
+	unresolveTablesId
+	validateJoinComplexityId
+
+	// default
+	resolveNaturalJoinsId
+	resolveOrderbyLiteralsId
+	resolveFunctionsId
+	flattenTableAliasesId
+	pushdownSortId
+	pushdownGroupbyAliasesId
+	pushdownSubqueryAliasFiltersId
+	qualifyColumnsId
+	resolveColumnsId
+	resolveColumnDefaultsId
+	validateCheckConstraintId
+	resolveBarewordSetVariablesId
+	expandStarsId
+	resolveHavingId
+	mergeUnionSchemasId
+	flattenAggregationExprsId
+	reorderProjectionId
+	resolveSubqueryExprsId
+	replaceCrossJoinsId
+	moveJoinCondsToFilterId
+	evalFilterId
+	optimizeDistinctId
+
+	// after default
+	finalizeSubqueriesId
+	finalizeUnionsId
+	loadTriggersId
+	processTruncateId
+	validateAlterColumnId
+	resolveGeneratorsId
+	removeUnnecessaryConvertsId
+	assignCatalogId
+	pruneColumnsId
+	optimizeJoinsId
+	pushdownFiltersId
+	subqueryIndexesId
+	inSubqueryIndexesId
+	pushdownProjectionsId
+	setJoinScopeLenId
+	eraseProjectionId
+	insertTopNId
+	cacheSubqueryResultsId
+	cacheSubqueryAliasesInJoinsId
+	applyHashLookupsId
+	applyHashInId
+	resolveInsertRowsId
+	applyTriggersId
+	applyProceduresId
+	assignRoutinesId
+	modifyUpdateExprsForJoinId
+	applyRowUpdateAccumulatorsId
+	applyFKsId
+
+	// validate
+	validateResolvedId
+	validateOrderById
+	validateGroupById
+	validateSchemaSourceId
+	validateIndexCreationId
+	validateOperandsId
+	validateCaseResultTypesId
+	validateIntervalUsageId
+	validateExplodeUsageId
+	validateSubqueryColumnsId
+	validateUnionSchemasMatchId
+	validateAggregationsId
+
+	// after all
+	TrackProcessId
+	parallelizeId
+	clearWarningsId
+)
+
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
-	{"validate_offset_and_limit", validateLimitAndOffset},
-	{"validate_create_table", validateCreateTable},
-	{"load_stored_procedures", loadStoredProcedures},
-	{"resolve_variables", resolveVariables},
-	{"resolve_named_windows", replaceNamedWindows},
-	{"resolve_set_variables", resolveSetVariables},
-	{"resolve_views", resolveViews},
-	{"lift_common_table_expressions", liftCommonTableExpressions},
-	{"resolve_common_table_expressions", resolveCommonTableExpressions},
-	{"lift_recursive_ctes", liftRecursiveCte},
-	{"resolve_databases", resolveDatabases},
-	{"resolve_tables", resolveTables},
-	{"validate_drop_tables", validateDropTables},
-	{"set_target_schemas", setTargetSchemas},
-	{"resolve_create_like", resolveCreateLike},
-	{"parse_column_defaults", parseColumnDefaults},
-	{"resolve_drop_constraint", resolveDropConstraint},
-	{"validate_drop_constraint", validateDropConstraint},
-	{"load_check_constraints", loadChecks},
-	{"resolve_create_select", resolveCreateSelect},
-	{"resolve_subqueries", resolveSubqueries},
-	{"resolve_unions", resolveUnions},
-	{"resolve_describe_query", resolveDescribeQuery},
-	{"check_unique_table_names", checkUniqueTableNames},
-	{"resolve_declarations", resolveDeclarations},
-	{"validate_create_trigger", validateCreateTrigger},
-	{"validate_create_procedure", validateCreateProcedure},
-	{"assign_info_schema", assignInfoSchema},
-	{"validate_read_only_database", validateReadOnlyDatabase},
-	{"validate_read_only_transaction", validateReadOnlyTransaction},
-	{"validate_database_set", validateDatabaseSet},
-	{"check_privileges", checkPrivileges}, // Ensure that checking privileges happens after db & table resolution
+	{validateOffsetAndLimitId, validateLimitAndOffset},
+	{validateCreateTableId, validateCreateTable},
+	{validateExprSemId, validateExprSem},
+	{resolveVariablesId, resolveVariables},
+	{resolveNamedWindowsId, replaceNamedWindows},
+	{resolveSetVariablesId, resolveSetVariables},
+	{resolveViewsId, resolveViews},
+	{liftCtesId, hoistCommonTableExpressions},
+	{resolveCtesId, resolveCommonTableExpressions},
+	{liftRecursiveCtesId, hoistRecursiveCte},
+	{resolveDatabasesId, resolveDatabases},
+	{resolveTablesId, resolveTables},
+	{loadStoredProceduresId, loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
+	{validateDropTablesId, validateDropTables},
+	{setTargetSchemasId, setTargetSchemas},
+	{resolveCreateLikeId, resolveCreateLike},
+	{parseColumnDefaultsId, parseColumnDefaults},
+	{resolveDropConstraintId, resolveDropConstraint},
+	{validateDropConstraintId, validateDropConstraint},
+	{loadCheckConstraintsId, loadChecks},
+	{resolveCreateSelectId, resolveCreateSelect},
+	{resolveSubqueriesId, resolveSubqueries},
+	{resolveUnionsId, resolveUnions},
+	{resolveDescribeQueryId, resolveDescribeQuery},
+	{checkUniqueTableNamesId, validateUniqueTableNames},
+	{resolveTableFunctionsId, resolveTableFunctions},
+	{resolveDeclarationsId, resolveDeclarations},
+	{validateCreateTriggerId, validateCreateTrigger},
+	{validateCreateProcedureId, validateCreateProcedure},
+	{loadInfoSchemaId, loadInfoSchema},
+	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
+	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
+	{validateDatabaseSetId, validateDatabaseSet},
+	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{stripDecorationsId, stripDecorations},
+	{validateJoinComplexityId, validateJoinComplexity},
+	{unresolveTablesId, unresolveTables},
 }
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
-	{"resolve_natural_joins", resolveNaturalJoins},
-	{"resolve_orderby_literals", resolveOrderByLiterals},
-	{"resolve_functions", resolveFunctions},
-	{"flatten_table_aliases", flattenTableAliases},
-	{"pushdown_sort", pushdownSort},
-	{"pushdown_groupby_aliases", pushdownGroupByAliases},
-	{"pushdown_subquery_alias_filters", pushdownSubqueryAliasFilters},
-	{"qualify_columns", qualifyColumns},
-	{"resolve_columns", resolveColumns},
-	{"resolve_column_defaults", resolveColumnDefaults},
-	{"validate_check_constraint", validateCheckConstraints},
-	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
-	{"expand_stars", expandStars},
-	{"resolve_having", resolveHaving},
-	{"merge_union_schemas", mergeUnionSchemas},
-	{"flatten_aggregation_exprs", flattenAggregationExpressions},
-	{"reorder_projection", reorderProjection},
-	{"resolve_subquery_exprs", resolveSubqueryExpressions},
-	{"replace_cross_joins", replaceCrossJoins},
-	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
-	{"eval_filter", evalFilter},
-	{"optimize_distinct", optimizeDistinct},
+	{resolveNaturalJoinsId, resolveNaturalJoins},
+	{resolveOrderbyLiteralsId, resolveOrderByLiterals},
+	{resolveFunctionsId, resolveFunctions},
+	{flattenTableAliasesId, flattenTableAliases},
+	{pushdownSortId, pushdownSort},
+	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
+	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
+	{qualifyColumnsId, qualifyColumns},
+	{resolveColumnsId, resolveColumns},
+	{resolveColumnDefaultsId, resolveColumnDefaults},
+	{validateCheckConstraintId, validateCheckConstraints},
+	{resolveBarewordSetVariablesId, resolveBarewordSetVariables},
+	{expandStarsId, expandStars},
+	{resolveHavingId, resolveHaving},
+	{mergeUnionSchemasId, mergeUnionSchemas},
+	{flattenAggregationExprsId, flattenAggregationExpressions},
+	{reorderProjectionId, reorderProjection},
+	{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	{replaceCrossJoinsId, replaceCrossJoins},
+	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
+	{evalFilterId, simplifyFilters},
+	{optimizeDistinctId, optimizeDistinct},
 }
 
 // OnceAfterDefault contains the rules to be applied just once after the
 // DefaultRules.
 var OnceAfterDefault = []Rule{
-	{"finalize_subqueries", finalizeSubqueries},
-	{"finalize_unions", finalizeUnions},
-	{"load_triggers", loadTriggers},
-	{"process_truncate", processTruncate},
-	{"validate_alter_column", validateAlterColumn},
-	{"resolve_generators", resolveGenerators},
-	{"remove_unnecessary_converts", removeUnnecessaryConverts},
-	{"assign_catalog", assignCatalog},
-	{"prune_columns", pruneColumns},
-	{"optimize_joins", constructJoinPlan},
-	{"pushdown_filters", pushdownFilters},
-	{"subquery_indexes", applyIndexesFromOuterScope},
-	{"in_subquery_indexes", applyIndexesForSubqueryComparisons},
-	{"pushdown_projections", pushdownProjections},
-	{"set_join_scope_len", setJoinScopeLen},
-	{"erase_projection", eraseProjection},
-	{"insert_topn", insertTopNNodes},
+	{finalizeSubqueriesId, finalizeSubqueries},
+	{finalizeUnionsId, finalizeUnions},
+	{loadTriggersId, loadTriggers},
+	{processTruncateId, processTruncate},
+	{validateAlterColumnId, validateAlterColumn},
+	{resolveGeneratorsId, resolveGenerators},
+	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
+	{assignCatalogId, assignCatalog},
+	{pruneColumnsId, pruneColumns},
+	{optimizeJoinsId, constructJoinPlan},
+	{pushdownFiltersId, pushdownFilters},
+	{subqueryIndexesId, applyIndexesFromOuterScope},
+	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
+	{pushdownProjectionsId, pushdownProjections},
+	{setJoinScopeLenId, setJoinScopeLen},
+	{eraseProjectionId, eraseProjection},
+	{insertTopNId, insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
-	{"resolve_subquery_exprs", resolveSubqueryExpressions},
-	{"cache_subquery_results", cacheSubqueryResults},
-	{"cache_subquery_aliases_in_joins", cacheSubqueryAlisesInJoins},
-	{"apply_hash_lookups", applyHashLookups},
-	{"apply_hash_in", applyHashIn},
-	{"resolve_insert_rows", resolveInsertRows},
-	{"apply_triggers", applyTriggers},
-	{"apply_procedures", applyProcedures},
-	{"modify_update_expressions_for_join", modifyUpdateExpressionsForJoin},
-	{"apply_row_update_accumulators", applyUpdateAccumulators},
+	{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	{cacheSubqueryResultsId, cacheSubqueryResults},
+	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
+	{applyHashLookupsId, applyHashLookups},
+	{applyHashInId, applyHashIn},
+	{resolveInsertRowsId, resolveInsertRows},
+	{applyTriggersId, applyTriggers},
+	{applyProceduresId, applyProcedures},
+	{assignRoutinesId, assignRoutines},
+	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
+	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
+	{applyFKsId, applyForeignKeys},
+}
+
+// DefaultValidationRules to apply while analyzing nodes.
+var DefaultValidationRules = []Rule{
+	{validateResolvedId, validateIsResolved},
+	{validateOrderById, validateOrderBy},
+	{validateGroupById, validateGroupBy},
+	{validateSchemaSourceId, validateSchemaSource},
+	{validateIndexCreationId, validateIndexCreation},
+	{validateOperandsId, validateOperands},
+	{validateCaseResultTypesId, validateCaseResultTypes},
+	{validateIntervalUsageId, validateIntervalUsage},
+	{validateExplodeUsageId, validateExplodeUsage},
+	{validateSubqueryColumnsId, validateSubqueryColumns},
+	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
+	{validateAggregationsId, validateAggregations},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
-	{"track_process", trackProcess},
-	{"parallelize", parallelize},
-	{"clear_warnings", clearWarnings},
+	{TrackProcessId, trackProcess},
+	{parallelizeId, parallelize},
+	{clearWarningsId, clearWarnings},
 }
 
 var (

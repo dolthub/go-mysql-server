@@ -209,13 +209,21 @@ func (t decimalType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t decimalType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(decimalType); ok {
+		return t.precision == ot.precision && t.scale == ot.scale
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t decimalType) Promote() Type {
 	return MustCreateDecimalType(DecimalTypeMaxPrecision, t.scale)
 }
 
 // SQL implements Type interface.
-func (t decimalType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -223,7 +231,10 @@ func (t decimalType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Decimal, []byte(value.(string))), nil
+
+	val := appendAndSlice(dest, []byte(value.(string)))
+
+	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 
 // String implements Type interface.

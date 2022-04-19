@@ -32,6 +32,8 @@ type Update struct {
 	Checks sql.CheckConstraints
 }
 
+var _ sql.Databaseable = (*Update)(nil)
+
 // NewUpdate creates an Update node.
 func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
 	return &Update{
@@ -41,18 +43,18 @@ func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
 		)}}
 }
 
-func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
+func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	switch node := node.(type) {
 	case sql.UpdatableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return getUpdatable(node.ResolvedTable)
+		return GetUpdatable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
 	case *SubqueryAlias:
 		return nil, ErrUpdateNotSupported.New()
 	case *TriggerExecutor:
-		return getUpdatable(node.Left())
+		return GetUpdatable(node.Left())
 	case sql.TableWrapper:
 		return getUpdatableTable(node.Underlying())
 	case *UpdateJoin:
@@ -62,7 +64,7 @@ func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return nil, ErrUpdateNotSupported.New()
 	}
 	for _, child := range node.Children() {
-		updater, _ := getUpdatable(child)
+		updater, _ := GetUpdatable(child)
 		if updater != nil {
 			return updater, nil
 		}
@@ -90,7 +92,7 @@ func updateDatabaseHelper(node sql.Node) string {
 	case *ResolvedTable:
 		return node.Database.Name()
 	case *UnresolvedTable:
-		return node.Database
+		return node.Database()
 	}
 
 	for _, child := range node.Children() {
@@ -214,7 +216,8 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 }
 
 func (u *updateIter) validateNullability(row sql.Row, schema sql.Schema) error {
-	for idx, col := range schema {
+	for idx := 0; idx < len(row); idx++ {
+		col := schema[idx]
 		if !col.Nullable && row[idx] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
@@ -250,7 +253,7 @@ func newUpdateIter(
 
 // RowIter implements the Node interface.
 func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	updatable, err := getUpdatable(u.Child)
+	updatable, err := GetUpdatable(u.Child)
 	if err != nil {
 		return nil, err
 	}

@@ -43,6 +43,43 @@ type UserPrivilegeTestAssertion struct {
 	ExpectedErrStr string
 }
 
+// QuickPrivilegeTest specifically tests privileges on a predefined user (tester@localhost) using predefined tables and
+// databases. Every test here can easily be represented by a UserPrivilegeTest, however this is intended to test
+// specific privileges at a large scale, meaning there may be thousands of these tests, and hence the test data should
+// be as small as possible.
+//
+// All queries will be run as a root user with full privileges (intended for setup), with the last query running as the
+// testing user (tester@localhost). For example, the first query may grant a SELECT privilege, while the second query
+// is the SELECT query. Of note, the current database as set by the context is retained when switching from the root
+// user to the test user. This does not mean that the test user automatically gains access to the database, but this is
+// used for any queries that (incorrectly) only work with the current database.
+//
+// ExpectingErr should be set when an error is expected, and it does not matter what the error is so long that it is one
+// of the errors related to privilege checking (meaning a failed INSERT due to a missing column is NOT caught). If
+// ExpectingErr is set and an error is given to ExpectedErr, then it is enforced that the error matches. However, if
+// ExpectingErr is set and ExpectedErr is nil, then any privilege checking error will match.
+//
+// Expected makes a distinction between the nil value and the empty value. A nil value means that we do not care about
+// the result, only that it did not error (unless one of the error-asserting fields are set). A non-nil value asserts
+// that the returned value matches our Expected value. If the returned value is nil, then we make a special case to
+// match the non-nil empty row with it, due to the aforementioned distinction.
+//
+// Statements that are run before every test (the state that all tests start with):
+// CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);
+// CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);
+// CREATE TABLE otherdb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);
+// CREATE TABLE otherdb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);
+// INSERT INTO mydb.test VALUES (0, 0), (1, 1);
+// INSERT INTO mydb.test2 VALUES (0, 1), (1, 2);
+// INSERT INTO otherdb.test VALUES (1, 1), (2, 2);
+// INSERT INTO otherdb.test2 VALUES (1, 1), (2, 2);
+type QuickPrivilegeTest struct {
+	Queries      []string
+	Expected     []sql.Row
+	ExpectedErr  *errors.Kind
+	ExpectingErr bool
+}
+
 // ServerAuthenticationTest is used to define a test on the server authentication system. These tests always have the
 // root account available, and the root account is used with any queries in the SetUpScript. The SetUpFunc is run before
 // the SetUpScript.
@@ -1013,6 +1050,628 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: false,
 			},
+		},
+	},
+}
+
+// QuickPrivTests are test that specifically attempt to test as many privileges against as many statements as possible,
+// while being as succinct as possible. All tests here could be fully represented as a UserPrivilegeTest, however each
+// equivalent test would comparatively take up many more lines. This is intended to have as many tests as possible that
+// are as quick to write as possible.
+var QuickPrivTests = []QuickPrivilegeTest{
+	{
+		Queries: []string{
+			"GRANT SELECT ON *.* TO tester@localhost",
+			"SELECT * FROM mydb.test",
+		},
+		Expected: []sql.Row{{0, 0}, {1, 1}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.* TO tester@localhost",
+			"SELECT * FROM mydb.test",
+		},
+		Expected: []sql.Row{{0, 0}, {1, 1}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.* TO tester@localhost",
+			"SELECT * FROM mydb.test2",
+		},
+		Expected: []sql.Row{{0, 1}, {1, 2}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"SELECT * FROM mydb.test",
+		},
+		Expected: []sql.Row{{0, 0}, {1, 1}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"SELECT * FROM mydb.test2",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON otherdb.* TO tester@localhost",
+			"SELECT * FROM mydb.test",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON otherdb.test TO tester@localhost",
+			"SELECT * FROM mydb.test",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON otherdb.test TO tester@localhost",
+			"SELECT * FROM mydb.test",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON *.* TO tester@localhost",
+			"USE mydb;",
+			"SHOW TABLES;",
+		},
+		Expected: []sql.Row{{"test"}, {"test2"}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.* TO tester@localhost",
+			"USE mydb;",
+			"SHOW TABLES;",
+		},
+		Expected: []sql.Row{{"test"}, {"test2"}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"USE mydb;",
+			"SHOW TABLES;",
+		},
+		Expected: []sql.Row{{"test"}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.non_exist TO tester@localhost",
+			"USE mydb;",
+			"SHOW TABLES;",
+		},
+		Expected: []sql.Row{},
+	},
+	{
+		Queries: []string{
+			"ALTER TABLE mydb.test ADD COLUMN new_column BIGINT;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER ON *.* TO tester@localhost",
+			"ALTER TABLE mydb.test ADD COLUMN new_column BIGINT",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER ON mydb.* TO tester@localhost",
+			"ALTER TABLE mydb.test ADD COLUMN new_column BIGINT;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER ON mydb.test TO tester@localhost",
+			"ALTER TABLE mydb.test ADD COLUMN new_column BIGINT;",
+		},
+	},
+	{
+		Queries: []string{
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER ON *.* TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER, CREATE, DROP, INSERT ON *.* TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER, CREATE, DROP, INSERT ON mydb.* TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER, CREATE, DROP, INSERT ON mydb.test TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER, DROP ON mydb.test TO tester@localhost",
+			"GRANT CREATE, INSERT ON mydb.new_test TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER ON mydb.test TO tester@localhost",
+			"GRANT CREATE, INSERT ON mydb.new_test TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON mydb.test TO tester@localhost",
+			"GRANT CREATE, INSERT ON mydb.new_test TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER, DROP ON mydb.test TO tester@localhost",
+			"GRANT CREATE ON mydb.new_test TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER, DROP ON mydb.test TO tester@localhost",
+			"GRANT INSERT ON mydb.new_test TO tester@localhost",
+			"ALTER TABLE mydb.test RENAME TO mydb.new_test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"USE mydb;",
+			"CREATE PROCEDURE new_proc (x DOUBLE, y DOUBLE) SELECT x*y;",
+			"DROP PROCEDURE new_proc;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER ROUTINE ON *.* TO tester@localhost",
+			"USE mydb;",
+			"CREATE PROCEDURE new_proc (x DOUBLE, y DOUBLE) SELECT x*y;",
+			"DROP PROCEDURE new_proc;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT ALTER ROUTINE ON mydb.* TO tester@localhost",
+			"USE mydb;",
+			"CREATE PROCEDURE new_proc (x DOUBLE, y DOUBLE) SELECT x*y;",
+			"DROP PROCEDURE new_proc;",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE DATABASE new_db;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"CREATE TABLE mydb.new_table (pk BIGINT PRIMARY KEY);",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE ON *.* TO tester@localhost",
+			"CREATE DATABASE new_db;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE ON *.* TO tester@localhost",
+			"CREATE TABLE mydb.new_table (pk BIGINT PRIMARY KEY);",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE ON mydb.* TO tester@localhost",
+			"CREATE DATABASE new_db;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE ON mydb.* TO tester@localhost",
+			"CREATE TABLE mydb.new_table (pk BIGINT PRIMARY KEY);",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE ROLE new_role;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE ROLE ON *.* TO tester@localhost",
+			"CREATE ROLE new_role;",
+		},
+	},
+	{
+		Queries: []string{
+			"USE mydb;",
+			"CREATE PROCEDURE new_proc (x DOUBLE, y DOUBLE) SELECT x*y;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE ROUTINE ON *.* TO tester@localhost",
+			"USE mydb;",
+			"CREATE PROCEDURE new_proc (x DOUBLE, y DOUBLE) SELECT x*y;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE ROUTINE ON mydb.* TO tester@localhost",
+			"USE mydb;",
+			"CREATE PROCEDURE new_proc (x DOUBLE, y DOUBLE) SELECT x*y;",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE USER new_user;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"CREATE USER new_user;",
+			"DROP USER new_user;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE USER ON *.* TO tester@localhost",
+			"CREATE USER new_user;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE USER ON *.* TO tester@localhost",
+			"CREATE USER new_user;",
+			"DROP USER new_user;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE USER ON *.* TO tester@localhost",
+			"CREATE ROLE new_role;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE USER ON *.* TO tester@localhost",
+			"CREATE ROLE new_role;",
+			"DROP ROLE new_role;",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE VIEW new_view AS SELECT 1;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT CREATE VIEW ON *.* TO tester@localhost",
+			"CREATE VIEW new_view AS SELECT 1;",
+		},
+	},
+	{
+		Queries: []string{
+			"DELETE FROM mydb.test WHERE pk >= 0;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DELETE ON *.* TO tester@localhost",
+			"DELETE FROM mydb.test WHERE pk >= 0;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DELETE ON mydb.* TO tester@localhost",
+			"DELETE FROM mydb.test WHERE pk >= 0;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DELETE ON mydb.test TO tester@localhost",
+			"DELETE FROM mydb.test WHERE pk >= 0;",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE DATABASE new_db;",
+			"DROP DATABASE new_db;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"CREATE TABLE mydb.new_table (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"CREATE VIEW new_view AS SELECT 1;",
+			"DROP VIEW new_view;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON *.* TO tester@localhost",
+			"CREATE DATABASE new_db;",
+			"DROP DATABASE new_db;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON *.* TO tester@localhost",
+			"CREATE TABLE mydb.new_table (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON *.* TO tester@localhost",
+			"CREATE TABLE mydb.new_table1 (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE mydb.new_table2 (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table1, mydb.new_table2;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON *.* TO tester@localhost",
+			"CREATE VIEW new_view AS SELECT 1;",
+			"DROP VIEW new_view;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON mydb.* TO tester@localhost",
+			"CREATE TABLE mydb.new_table (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON mydb.* TO tester@localhost",
+			"CREATE TABLE mydb.new_table1 (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE mydb.new_table2 (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table1, mydb.new_table2;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON mydb.new_table TO tester@localhost",
+			"CREATE TABLE mydb.new_table (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON mydb.new_table1 TO tester@localhost",
+			"CREATE TABLE mydb.new_table1 (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE mydb.new_table2 (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table1, mydb.new_table2;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON mydb.new_table2 TO tester@localhost",
+			"CREATE TABLE mydb.new_table1 (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE mydb.new_table2 (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table1, mydb.new_table2;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ON mydb.new_table1 TO tester@localhost",
+			"GRANT DROP ON mydb.new_table2 TO tester@localhost",
+			"CREATE TABLE mydb.new_table1 (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE mydb.new_table2 (pk BIGINT PRIMARY KEY);",
+			"DROP TABLE mydb.new_table1, mydb.new_table2;",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE ROLE new_role;",
+			"DROP ROLE new_role;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DROP ROLE ON *.* TO tester@localhost",
+			"CREATE ROLE new_role;",
+			"DROP ROLE new_role;",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+			"DROP INDEX new_idx ON mydb.test;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT INDEX ON *.* TO tester@localhost",
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT INDEX ON *.* TO tester@localhost",
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+			"DROP INDEX new_idx ON mydb.test;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT INDEX ON mydb.* TO tester@localhost",
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT INDEX ON mydb.* TO tester@localhost",
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+			"DROP INDEX new_idx ON mydb.test;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT INDEX ON mydb.test TO tester@localhost",
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT INDEX ON mydb.test TO tester@localhost",
+			"CREATE INDEX new_idx ON mydb.test (v1);",
+			"DROP INDEX new_idx ON mydb.test;",
+		},
+	},
+	{
+		Queries: []string{
+			"INSERT INTO mydb.test VALUES (9, 9);",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT INSERT ON *.* TO tester@localhost",
+			"INSERT INTO mydb.test VALUES (9, 9);",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT INSERT ON mydb.* TO tester@localhost",
+			"INSERT INTO mydb.test VALUES (9, 9);",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT INSERT ON mydb.test TO tester@localhost",
+			"INSERT INTO mydb.test VALUES (9, 9);",
+		},
+	},
+	{
+		Queries: []string{
+			"CREATE TRIGGER new_trig BEFORE INSERT ON mydb.test2 FOR EACH ROW SET NEW.v1 = NEW.pk * NEW.v1;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"CREATE TRIGGER new_trig BEFORE INSERT ON mydb.test2 FOR EACH ROW SET NEW.v1 = NEW.pk * NEW.v1;",
+			"DROP TRIGGER new_trig;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT TRIGGER ON *.* TO tester@localhost",
+			"CREATE TRIGGER new_trig BEFORE INSERT ON mydb.test2 FOR EACH ROW SET NEW.v1 = NEW.pk * NEW.v1;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT TRIGGER ON *.* TO tester@localhost",
+			"CREATE TRIGGER new_trig BEFORE INSERT ON mydb.test2 FOR EACH ROW SET NEW.v1 = NEW.pk * NEW.v1;",
+			"DROP TRIGGER new_trig;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT TRIGGER ON mydb.* TO tester@localhost",
+			"CREATE TRIGGER new_trig BEFORE INSERT ON mydb.test2 FOR EACH ROW SET NEW.v1 = NEW.pk * NEW.v1;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT TRIGGER ON mydb.* TO tester@localhost",
+			"CREATE TRIGGER new_trig BEFORE INSERT ON mydb.test2 FOR EACH ROW SET NEW.v1 = NEW.pk * NEW.v1;",
+			"DROP TRIGGER new_trig;",
+		},
+	},
+	{
+		Queries: []string{
+			"UPDATE mydb.test SET v1 = 0;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT UPDATE ON *.* TO tester@localhost",
+			"UPDATE mydb.test SET v1 = 0;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT UPDATE ON mydb.* TO tester@localhost",
+			"UPDATE mydb.test SET v1 = 0;",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT UPDATE ON mydb.test TO tester@localhost",
+			"UPDATE mydb.test SET v1 = 0;",
+		},
+	},
+	{
+		Queries: []string{
+			"FLUSH PRIVILEGES;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT RELOAD ON *.* TO tester@localhost",
+			"FLUSH PRIVILEGES;",
 		},
 	},
 }

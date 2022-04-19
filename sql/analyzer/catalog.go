@@ -36,6 +36,7 @@ type Catalog struct {
 
 var _ sql.Catalog = (*Catalog)(nil)
 var _ sql.FunctionProvider = (*Catalog)(nil)
+var _ sql.TableFunctionProvider = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -233,6 +234,20 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 	}
 
 	return c.builtInFunctions.Function(ctx, name)
+}
+
+// TableFunction implements the TableFunctionProvider interface
+func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+	if fp, ok := c.provider.(sql.TableFunctionProvider); ok {
+		tf, err := fp.TableFunction(ctx, name)
+		if err != nil {
+			return nil, err
+		} else if tf != nil {
+			return tf, nil
+		}
+	}
+
+	return nil, sql.ErrTableFunctionNotFound.New(name)
 }
 
 func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {

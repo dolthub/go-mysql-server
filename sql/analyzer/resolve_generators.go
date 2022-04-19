@@ -17,6 +17,8 @@ package analyzer
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -28,24 +30,24 @@ var (
 	errExplodeNotArray    = errors.NewKind("argument of type %q given to EXPLODE, expecting array")
 )
 
-func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		p, ok := n.(*plan.Project)
 		if !ok {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		projection := p.Projections
 
 		g, err := findGenerator(ctx, projection)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		// There might be no generator in the project, in that case we don't
 		// have to do anything.
 		if g == nil {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		projection[g.idx] = g.expr
@@ -60,7 +62,7 @@ func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return plan.NewGenerate(
 			plan.NewProject(projection, p.Child),
 			expression.NewGetField(g.idx, g.expr.Type(), name, g.expr.IsNullable()),
-		), nil
+		), transform.NewTree, nil
 	})
 }
 

@@ -74,13 +74,21 @@ func (t systemStringType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemStringType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemStringType); ok {
+		return t.varName == ot.varName
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemStringType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemStringType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -90,7 +98,9 @@ func (t systemStringType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), []byte(v.(string))), nil
+	val := appendAndSlice(dest, []byte(v.(string)))
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.

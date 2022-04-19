@@ -69,7 +69,7 @@ type IndexHarness interface {
 }
 
 // ForeignKeyHarness is an extension to Harness that lets an integrator test their implementation with foreign keys.
-// Integrator tables must implement sql.ForeignKeyAlterableTable and sql.ForeignKeyTable.
+// Integrator tables must implement sql.ForeignKeyTable.
 type ForeignKeyHarness interface {
 	Harness
 	// SupportsForeignKeys returns whether this harness should accept CREATE FOREIGN KEY statements as part of test

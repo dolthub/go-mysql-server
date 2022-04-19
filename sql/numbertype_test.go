@@ -189,6 +189,7 @@ func TestNumberConvert(t *testing.T) {
 		{Uint64, true, uint64(1), false},
 		{Uint64, false, uint64(0), false},
 		{Float32, "22.25", float32(22.25), false},
+		{Float32, []byte{90, 140, 228, 206, 116}, float32(388910861940), false},
 		{Float64, float32(893.875), float64(893.875), false},
 
 		{Boolean, math.MaxInt8 + 1, nil, true},
@@ -211,7 +212,6 @@ func TestNumberConvert(t *testing.T) {
 		{Uint32, -1, nil, true},
 		{Uint64, -1, nil, true},
 		{Float32, math.MaxFloat32 * 2, nil, true},
-		{Float32, []byte{0}, nil, true},
 		{Uint8, -1, nil, true},
 		{Uint16, -1, nil, true},
 		{Uint24, -1, nil, true},
@@ -233,11 +233,11 @@ func TestNumberConvert(t *testing.T) {
 }
 
 func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
-	val, err := Boolean.SQL(true)
+	val, err := Boolean.SQL(nil, true)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(1)", val.String())
 
-	val, err = Boolean.SQL(false)
+	val, err = Boolean.SQL(nil, false)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(0)", val.String())
 }

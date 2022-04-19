@@ -33,8 +33,8 @@ func TestFlattenAggregationExprs(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
-	}))
-	rule := getRule("flatten_aggregation_exprs")
+	}), nil)
+	rule := getRule(flattenAggregationExprsId)
 
 	tests := []struct {
 		name     string
@@ -212,7 +212,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), test.node, nil)
+			result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), test.node, nil, DefaultRuleSelector)
 			require.NoError(err)
 			require.Equal(test.expected, result)
 		})

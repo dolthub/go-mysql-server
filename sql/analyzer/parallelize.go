@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func init() {
@@ -57,51 +58,56 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	return !plan.IsNoRowNode(node)
 }
 
-func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if a.Parallelism <= 1 || !node.Resolved() {
-		return node, nil
+		return node, transform.SameTree, nil
 	}
 
 	proc, ok := node.(*plan.QueryProcess)
-	if (ok && !shouldParallelize(proc.Child, nil)) || !shouldParallelize(node, scope) {
-		return node, nil
+	if (ok && !shouldParallelize(proc.Child(), nil)) || !shouldParallelize(node, scope) {
+		return node, transform.SameTree, nil
 	}
 
-	node, err := plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+	node, same, err := transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if !isParallelizable(node) {
-			return node, nil
+			return node, transform.SameTree, nil
 		}
 		ParallelQueryCounter.With("parallelism", strconv.Itoa(a.Parallelism)).Add(1)
 
-		return plan.NewExchange(a.Parallelism, node), nil
+		return plan.NewExchange(a.Parallelism, node), transform.NewTree, nil
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
+	}
+	if same {
+		return node, transform.SameTree, nil
 	}
 
-	return plan.TransformUp(node, removeRedundantExchanges)
+	return transform.Node(node, removeRedundantExchanges)
 }
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
 // of all.
-func removeRedundantExchanges(node sql.Node) (sql.Node, error) {
+func removeRedundantExchanges(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	exchange, ok := node.(*plan.Exchange)
 	if !ok {
-		return node, nil
+		return node, transform.SameTree, nil
 	}
 
-	child, err := plan.TransformUp(exchange.Child, func(node sql.Node) (sql.Node, error) {
+	child, same, err := transform.Node(exchange.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
-			return exchange.Child, nil
+			return exchange.Child, transform.NewTree, nil
 		}
-		return node, nil
+		return node, transform.SameTree, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
-
-	return exchange.WithChildren(child)
+	if same {
+		return node, transform.SameTree, nil
+	}
+	node, err = exchange.WithChildren(child)
+	return node, transform.NewTree, err
 }
 
 func isParallelizable(node sql.Node) bool {
@@ -109,7 +115,7 @@ func isParallelizable(node sql.Node) bool {
 	var tableSeen bool
 	var lastWasTable bool
 
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		if node == nil {
 			return true
 		}
@@ -130,7 +136,7 @@ func isParallelizable(node sql.Node) bool {
 				sql.Inspect(e, func(e sql.Expression) bool {
 					if q, ok := e.(*plan.Subquery); ok {
 						subqueryParallelizable := true
-						plan.Inspect(q.Query, func(node sql.Node) bool {
+						transform.Inspect(q.Query, func(node sql.Node) bool {
 							if node == nil {
 								return true
 							}
@@ -148,6 +154,10 @@ func isParallelizable(node sql.Node) bool {
 		// IndexedTablesAccess already uses an index for lookups, so parallelizing it won't help in most cases (and can
 		// blow up the query execution graph)
 		case *plan.IndexedTableAccess:
+			parallelizable = false
+			return false
+		// Foreign keys expect specific nodes as children and face issues when they're swapped with Exchange nodes
+		case *plan.ForeignKeyHandler:
 			parallelizable = false
 			return false
 		case sql.Table:

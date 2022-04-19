@@ -32,7 +32,7 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int32},
 		{Name: "s", Source: "mytable", Type: sql.Text},
-	}))
+	}), nil)
 
 	db.AddTable("db", table)
 

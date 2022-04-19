@@ -154,29 +154,29 @@ func rowFromRow2(sch Schema, r Row2) Row {
 	for i, col := range sch {
 		switch col.Type.Type() {
 		case query.Type_INT8:
-			row[i] = values.ReadInt8(r[i].Val)
+			row[i] = values.ReadInt8(r.GetField(i).Val)
 		case query.Type_UINT8:
-			row[i] = values.ReadUint8(r[i].Val)
+			row[i] = values.ReadUint8(r.GetField(i).Val)
 		case query.Type_INT16:
-			row[i] = values.ReadInt16(r[i].Val)
+			row[i] = values.ReadInt16(r.GetField(i).Val)
 		case query.Type_UINT16:
-			row[i] = values.ReadUint16(r[i].Val)
+			row[i] = values.ReadUint16(r.GetField(i).Val)
 		case query.Type_INT32:
-			row[i] = values.ReadInt32(r[i].Val)
+			row[i] = values.ReadInt32(r.GetField(i).Val)
 		case query.Type_UINT32:
-			row[i] = values.ReadUint32(r[i].Val)
+			row[i] = values.ReadUint32(r.GetField(i).Val)
 		case query.Type_INT64:
-			row[i] = values.ReadInt64(r[i].Val)
+			row[i] = values.ReadInt64(r.GetField(i).Val)
 		case query.Type_UINT64:
-			row[i] = values.ReadUint64(r[i].Val)
+			row[i] = values.ReadUint64(r.GetField(i).Val)
 		case query.Type_FLOAT32:
-			row[i] = values.ReadFloat32(r[i].Val)
+			row[i] = values.ReadFloat32(r.GetField(i).Val)
 		case query.Type_FLOAT64:
-			row[i] = values.ReadFloat64(r[i].Val)
+			row[i] = values.ReadFloat64(r.GetField(i).Val)
 		case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR:
-			row[i] = values.ReadString(r[i].Val, values.ByteOrderCollation)
+			row[i] = values.ReadString(r.GetField(i).Val, values.ByteOrderCollation)
 		case query.Type_BLOB, query.Type_VARBINARY, query.Type_BINARY:
-			row[i] = values.ReadBytes(r[i].Val, values.ByteOrderCollation)
+			row[i] = values.ReadBytes(r.GetField(i).Val, values.ByteOrderCollation)
 		case query.Type_BIT:
 			fallthrough
 		case query.Type_ENUM:

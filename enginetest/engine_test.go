@@ -17,6 +17,8 @@ package enginetest_test
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,10 +97,10 @@ func TestCurrentTimestamp(t *testing.T) {
 func TestLocks(t *testing.T) {
 	require := require.New(t)
 
-	t1 := newLockableTable(memory.NewTable("t1", sql.PrimaryKeySchema{}))
-	t2 := newLockableTable(memory.NewTable("t2", sql.PrimaryKeySchema{}))
-	t3 := memory.NewTable("t3", sql.PrimaryKeySchema{})
 	db := memory.NewDatabase("db")
+	t1 := newLockableTable(memory.NewTable("t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable("t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := memory.NewTable("t3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
@@ -246,8 +248,8 @@ func TestTrackProcess(t *testing.T) {
 	a := analyzer.NewDefault(provider)
 
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, 2)}, nil, nil),
-		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, 4), nil, nil),
+		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
+		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 
@@ -255,8 +257,8 @@ func TestTrackProcess(t *testing.T) {
 	ctx, err := ctx.ProcessList.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
 
-	rule := getRuleFrom(analyzer.OnceAfterAll, "track_process")
-	result, err := rule.Apply(ctx, a, node, nil)
+	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
+	result, _, err := rule.Apply(ctx, a, node, nil, analyzer.DefaultRuleSelector)
 	require.NoError(err)
 
 	processes := ctx.ProcessList.Processes()
@@ -276,7 +278,7 @@ func TestTrackProcess(t *testing.T) {
 	proc, ok := result.(*plan.QueryProcess)
 	require.True(ok)
 
-	join, ok := proc.Child.(*plan.InnerJoin)
+	join, ok := proc.Child().(*plan.InnerJoin)
 	require.True(ok)
 
 	lhs, ok := join.Left().(*plan.ResolvedTable)
@@ -303,9 +305,9 @@ func TestTrackProcess(t *testing.T) {
 	}
 }
 
-func getRuleFrom(rules []analyzer.Rule, name string) *analyzer.Rule {
+func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
 	for _, rule := range rules {
-		if rule.Name == name {
+		if rule.Id == id {
 			return &rule
 		}
 	}
@@ -321,8 +323,8 @@ type nonIndexableTable struct {
 func TestLockTables(t *testing.T) {
 	require := require.New(t)
 
-	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}))
-	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}))
+	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil))
+	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}, nil))
 	node := plan.NewLockTables([]*plan.TableLock{
 		{plan.NewResolvedTable(t1, nil, nil), true},
 		{plan.NewResolvedTable(t2, nil, nil), false},
@@ -342,9 +344,9 @@ func TestUnlockTables(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("db")
-	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}))
-	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}))
-	t3 := newLockableTable(memory.NewTable("baz", sql.PrimaryKeySchema{}))
+	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := newLockableTable(memory.NewTable("baz", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
 	db.AddTable("foo", t1)
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)
@@ -444,7 +446,7 @@ func TestAnalyzer(t *testing.T) {
 
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 	if x, ok := actual.(*plan.QueryProcess); ok {
-		actual = x.Child
+		actual = x.Child()
 	}
 
 	if !assert.Equal(t, expected, actual) {
@@ -465,4 +467,199 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 			fmt.Println(diff)
 		}
 	}
+}
+
+func TestTableFunctions(t *testing.T) {
+	var tableFunctionScriptTests = []enginetest.ScriptTest{
+		{
+			Name:        "undefined table function",
+			Query:       "SELECT * from does_not_exist('q', 123);",
+			ExpectedErr: sql.ErrTableFunctionNotFound,
+		},
+		{
+			Name:        "projection of non-existent column from table function",
+			Query:       "SELECT none from simple_TABLE_function(123);",
+			ExpectedErr: sql.ErrColumnNotFound,
+		},
+		{
+			Name:     "basic table function",
+			Query:    "SELECT * from simple_table_function(123);",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "basic table function",
+			Query:    "SELECT * from simple_TABLE_function(123);",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "aggregate function applied to a table function",
+			Query:    "SELECT count(*) from simple_TABLE_function(123);",
+			Expected: []sql.Row{{1}},
+		},
+		{
+			Name:     "projection of table function",
+			Query:    "SELECT one from simple_TABLE_function(123);",
+			Expected: []sql.Row{{"foo"}},
+		},
+		{
+			Name:     "nested expressions in table function arguments",
+			Query:    "SELECT * from simple_TABLE_function(concat('f', 'o', 'o'));",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "filtering table function results",
+			Query:    "SELECT * from simple_TABLE_function(123) where one='foo';",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "filtering table function results to no results",
+			Query:    "SELECT * from simple_TABLE_function(123) where one='none';",
+			Expected: []sql.Row{},
+		},
+		{
+			Name:     "grouping table function results",
+			Query:    "SELECT count(one) from simple_TABLE_function(123) group by one;",
+			Expected: []sql.Row{{1}},
+		},
+		{
+			Name:     "table function as subquery",
+			Query:    "SELECT * from (select * from simple_TABLE_function(123)) as tf;",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+	}
+
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	db := harness.NewDatabase("mydb")
+	databaseProvider := harness.NewDatabaseProvider(db)
+	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
+	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
+	for _, test := range tableFunctionScriptTests {
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
+}
+
+var _ sql.TableFunction = (*SimpleTableFunction)(nil)
+
+// SimpleTableFunction an extremely simple implementation of TableFunction for testing.
+// When evaluated, returns a single row: {"foo", 123}
+type SimpleTableFunction struct {
+	returnedResults bool
+}
+
+func (s SimpleTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
+	return SimpleTableFunction{}, nil
+}
+
+func (s SimpleTableFunction) Resolved() bool {
+	return true
+}
+
+func (s SimpleTableFunction) String() string {
+	return "SimpleTableFunction"
+}
+
+func (s SimpleTableFunction) Schema() sql.Schema {
+	schema := []*sql.Column{
+		&sql.Column{
+			Name: "one",
+			Type: sql.TinyText,
+		},
+		&sql.Column{
+			Name: "two",
+			Type: sql.Int64,
+		},
+	}
+
+	return schema
+}
+
+func (s SimpleTableFunction) Children() []sql.Node {
+	return []sql.Node{}
+}
+
+func (s SimpleTableFunction) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	if s.returnedResults == true {
+		return nil, io.EOF
+	}
+
+	s.returnedResults = true
+	rowIter := &SimpleTableFunctionRowIter{}
+	return rowIter, nil
+}
+
+func (s SimpleTableFunction) WithChildren(_ ...sql.Node) (sql.Node, error) {
+	return s, nil
+}
+
+func (s SimpleTableFunction) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
+func (s SimpleTableFunction) Expressions() []sql.Expression {
+	return []sql.Expression{}
+}
+
+func (s SimpleTableFunction) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+	return s, nil
+}
+
+func (s SimpleTableFunction) Database() sql.Database {
+	return nil
+}
+
+func (s SimpleTableFunction) WithDatabase(_ sql.Database) (sql.Node, error) {
+	return s, nil
+}
+
+func (s SimpleTableFunction) FunctionName() string {
+	return "simple_table_function"
+}
+
+func (s SimpleTableFunction) Description() string {
+	return "SimpleTableFunction"
+}
+
+var _ sql.RowIter = (*SimpleTableFunctionRowIter)(nil)
+
+type SimpleTableFunctionRowIter struct {
+	returnedResults bool
+}
+
+func (itr *SimpleTableFunctionRowIter) Next(_ *sql.Context) (sql.Row, error) {
+	if itr.returnedResults {
+		return nil, io.EOF
+	}
+
+	itr.returnedResults = true
+	return sql.Row{"foo", 123}, nil
+}
+
+func (itr *SimpleTableFunctionRowIter) Close(_ *sql.Context) error {
+	return nil
+}
+
+var _ sql.FunctionProvider = (*TestProvider)(nil)
+
+type TestProvider struct {
+	sql.MutableDatabaseProvider
+	tableFunctions map[string]sql.TableFunction
+}
+
+func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf sql.TableFunction) *TestProvider {
+	return &TestProvider{
+		*dbProvider,
+		map[string]sql.TableFunction{strings.ToLower(tf.FunctionName()): tf},
+	}
+}
+
+func (t TestProvider) Function(_ *sql.Context, name string) (sql.Function, error) {
+	return nil, sql.ErrFunctionNotFound.New(name)
+}
+
+func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+	if tf, ok := t.tableFunctions[strings.ToLower(name)]; ok {
+		return tf, nil
+	}
+
+	return nil, sql.ErrTableFunctionNotFound.New(name)
 }

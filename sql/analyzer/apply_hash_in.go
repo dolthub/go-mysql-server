@@ -18,34 +18,42 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
-		filter, ok := c.Node.(*plan.Filter)
+func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		filter, ok := node.(*plan.Filter)
 		if !ok {
-			return c.Node, nil
+			return node, transform.SameTree, nil
 		}
 
-		e, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
+		e, same, err := transform.Expr(filter.Expression, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if e, ok := expr.(*expression.InTuple); ok &&
 				hasSingleOutput(e.Left()) &&
 				isStatic(e.Right()) {
-				return expression.NewHashInTuple(e.Left(), e.Right())
+				newe, err := expression.NewHashInTuple(e.Left(), e.Right())
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return newe, transform.NewTree, nil
 			}
-			return expr, nil
+			return expr, transform.SameTree, nil
 		})
-
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
-		return filter.WithExpressions(e)
+		if same {
+			return node, transform.SameTree, nil
+		}
+		node, err = filter.WithExpressions(e)
+		return node, transform.NewTree, err
 	})
 }
 
 // hasSingleOutput checks if an expression evaluates to a single output
 func hasSingleOutput(e sql.Expression) bool {
-	return !expression.InspectUp(e, func(expr sql.Expression) bool {
+	return !transform.InspectExpr(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal, *expression.GetField,
 			expression.Comparer, *expression.Convert, sql.FunctionExpression,
@@ -60,7 +68,7 @@ func hasSingleOutput(e sql.Expression) bool {
 
 // isStatic checks if an expression is static
 func isStatic(e sql.Expression) bool {
-	return !expression.InspectUp(e, func(expr sql.Expression) bool {
+	return !transform.InspectExpr(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal:
 			return false

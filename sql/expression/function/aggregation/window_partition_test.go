@@ -93,7 +93,7 @@ func mustNewRowIter(t *testing.T, ctx *sql.Context) sql.RowIter {
 		{Name: "y", Type: sql.Text, Nullable: true},
 		{Name: "z", Type: sql.Int32, Nullable: true},
 	})
-	table := memory.NewTable("test", childSchema)
+	table := memory.NewTable("test", childSchema, nil)
 
 	rows := []sql.Row{
 		{int64(1), "forest", "leaf", 4},

@@ -72,13 +72,12 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	return createSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
 }
 
-func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
-	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
-	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
-	// transaction without committing the work done so far.
-	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
-	// when adding data to it
-	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+func CreateSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
+	dbs := harness.NewDatabases("mydb", "foo")
+	return createSpatialSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
+}
+
+func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
 	var table sql.Table
 	var err error
 
@@ -100,6 +99,28 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "point_table", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "geometry_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "geometry_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "geometry_table", PrimaryKey: true},
+				{Name: "g", Type: sql.GeometryType{}, Source: "geometry_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}),
+					sql.NewRow(2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}),
+					sql.NewRow(3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}),
+					sql.NewRow(4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}),
+					sql.NewRow(5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}),
+					sql.NewRow(6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "geometry_table", err)
 			}
 		})
 	}
@@ -155,6 +176,19 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			}
 		})
 	}
+
+	return []sql.Database{myDb, foo}
+}
+
+func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
+	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
+	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
+	// transaction without committing the work done so far.
+	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
+	// when adding data to it
+	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+	var table sql.Table
+	var err error
 
 	if includeTable(includedTables, "specialtable") {
 		wrapInTransaction(t, myDb, harness, func() {
@@ -652,11 +686,15 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			autoTbl, ok := table.(sql.AutoIncrementTable)
 
 			if err == nil && ok {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
+				ctx := NewContext(harness)
+				InsertRows(t, ctx, mustInsertableTable(t, autoTbl),
 					sql.NewRow(1, 11),
 					sql.NewRow(2, 22),
 					sql.NewRow(3, 33),
 				)
+				// InsertRows bypasses integrator auto increment methods
+				// manually set the auto increment value here
+				setAutoIncrementValue(t, ctx, autoTbl, 4)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
 			}
@@ -785,6 +823,30 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		wrapInTransaction(t, myDb, harness, func() {
 			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02"))
 		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+			}), "2019-01-03")
+
+			if err == nil {
+				DeleteRows(t, NewContext(harness), mustDeletableTable(t, table),
+					sql.NewRow(int64(1), "first row, 2"),
+					sql.NewRow(int64(2), "second row, 2"),
+					sql.NewRow(int64(3), "third row, 2"))
+				column := sql.Column{Name: "c", Type: sql.Text}
+				AddColumn(t, NewContext(harness), mustAlterableTable(t, table), &column)
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(1), "first row, 3", "1"),
+					sql.NewRow(int64(2), "second row, 3", "2"),
+					sql.NewRow(int64(3), "third row, 3", "3"))
+			}
+		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-03"))
+		})
 	}
 
 	if keyless, ok := harness.(KeylessTableHarness); ok &&
@@ -836,9 +898,14 @@ func mustParseDate(datestring string) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-// createTestData uses the provided harness to create test tables and data for many of the other tests.
+// CreateTestData uses the provided harness to create test tables and data for many of the other tests.
 func CreateTestData(t *testing.T, harness Harness) []sql.Database {
 	return CreateSubsetTestData(t, harness, nil)
+}
+
+// CreateSpatialTestData uses the provided harness to create test tables and data for tests involving spatial types.
+func CreateSpatialTestData(t *testing.T, harness Harness) []sql.Database {
+	return CreateSpatialSubsetTestData(t, harness, nil)
 }
 
 func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
@@ -853,6 +920,12 @@ func mustDeletableTable(t *testing.T, table sql.Table) sql.DeletableTable {
 	return deletable
 }
 
+func mustAlterableTable(t *testing.T, table sql.Table) sql.AlterableTable {
+	alterable, ok := table.(sql.AlterableTable)
+	require.True(t, ok, "Table must implement sql.AlterableTable")
+	return alterable
+}
+
 func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows ...sql.Row) {
 	t.Helper()
 
@@ -861,6 +934,14 @@ func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows 
 		require.NoError(t, inserter.Insert(ctx, r))
 	}
 	err := inserter.Close(ctx)
+	require.NoError(t, err)
+}
+
+// AddColumn adds a column to the specified table
+func AddColumn(t *testing.T, ctx *sql.Context, table sql.AlterableTable, column *sql.Column) {
+	t.Helper()
+
+	err := table.AddColumn(ctx, column, nil)
 	require.NoError(t, err)
 }
 
@@ -874,6 +955,12 @@ func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows .
 		}
 	}
 	require.NoError(t, deleter.Close(ctx))
+}
+
+func setAutoIncrementValue(t *testing.T, ctx *sql.Context, table sql.AutoIncrementTable, val uint64) {
+	setter := table.AutoIncrementSetter(ctx)
+	require.NoError(t, setter.SetAutoIncrementValue(ctx, val))
+	require.NoError(t, setter.Close(ctx))
 }
 
 func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {

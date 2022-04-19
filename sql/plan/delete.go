@@ -27,23 +27,25 @@ type DeleteFrom struct {
 	UnaryNode
 }
 
+var _ sql.Databaseable = (*DeleteFrom)(nil)
+
 // NewDeleteFrom creates a DeleteFrom node.
 func NewDeleteFrom(n sql.Node) *DeleteFrom {
 	return &DeleteFrom{UnaryNode{n}}
 }
 
-func getDeletable(node sql.Node) (sql.DeletableTable, error) {
+func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 	switch node := node.(type) {
 	case sql.DeletableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return getDeletable(node.ResolvedTable)
+		return GetDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
 	case *SubqueryAlias:
 		return nil, ErrDeleteFromNotSupported.New()
 	case *TriggerExecutor:
-		return getDeletable(node.Left())
+		return GetDeletable(node.Left())
 	case sql.TableWrapper:
 		return getDeletableTable(node.Underlying())
 	}
@@ -51,7 +53,7 @@ func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return nil, ErrDeleteFromNotSupported.New()
 	}
 	for _, child := range node.Children() {
-		deleter, _ := getDeletable(child)
+		deleter, _ := GetDeletable(child)
 		if deleter != nil {
 			return deleter, nil
 		}
@@ -79,7 +81,7 @@ func deleteDatabaseHelper(node sql.Node) string {
 	case *ResolvedTable:
 		return node.Database.Name()
 	case *UnresolvedTable:
-		return node.Database
+		return node.Database()
 	}
 
 	for _, child := range node.Children() {
@@ -101,7 +103,7 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return sql.RowsToRowIter(), nil
 	}
 
-	deletable, err := getDeletable(p.Child)
+	deletable, err := GetDeletable(p.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +129,11 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := d.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
 
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer

@@ -67,21 +67,29 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	return JSONDocument{Val: doc}, nil
 }
 
+// Equals implements the Type interface.
+func (t jsonType) Equals(otherType Type) bool {
+	_, ok := otherType.(jsonType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t jsonType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	js, ok := v.(JSONValue)
-	if !ok {
-		return sqltypes.NULL, nil
+	// Convert to jsonType
+	jsVal, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.NULL, err
 	}
+	js := jsVal.(JSONValue)
 
 	// todo: making a context here is expensive
 	s, err := js.ToString(NewEmptyContext())
@@ -89,7 +97,9 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, err
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.TypeJSON, []byte(s)), nil
+	val := appendAndSlice(dest, []byte(s))
+
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
 
 // String implements Type interface.

@@ -42,7 +42,7 @@ func (c *Conn) Prepare(query string) (driver.Stmt, error) {
 	}
 
 	// validate the query
-	_, err = c.dbConn.engine.AnalyzeQuery(ctx, query)
+	_, err = c.dbConn.engine.PrepareQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}

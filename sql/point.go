@@ -73,6 +73,9 @@ func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PointType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	// Must be a Point, fail otherwise
 	if v, ok := v.(Point); ok {
 		return v, nil
@@ -81,13 +84,19 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	return nil, ErrNotPoint.New(v)
 }
 
+// Equals implements the Type interface.
+func (t PointType) Equals(otherType Type) bool {
+	_, ok := otherType.(PointType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t PointType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PointType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}

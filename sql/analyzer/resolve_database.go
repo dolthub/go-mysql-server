@@ -17,49 +17,61 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // resolveDatabases sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
-// actual sql.Database implementation from the catalog.
-func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+// actual sql.Database implementation from the catalog. Also sets the database provider for nodes that implement
+// sql.MultiDatabaser.
+func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		treeIdentity := transform.SameTree
 		d, ok := n.(sql.Databaser)
-		if !ok {
-			return n, nil
-		}
+		if ok {
+			var dbName = ctx.GetCurrentDatabase()
+			if db := d.Database(); db != nil {
+				if _, ok := db.(sql.UnresolvedDatabase); !ok {
+					return n, transform.SameTree, nil
+				}
 
-		var dbName = ctx.GetCurrentDatabase()
-		if db := d.Database(); db != nil {
-			if _, ok := db.(sql.UnresolvedDatabase); !ok {
-				return n, nil
+				if db.Name() != "" {
+					dbName = db.Name()
+				}
 			}
 
-			if db.Name() != "" {
-				dbName = db.Name()
+			// Only search the catalog if we have a database to resolve.
+			if dbName != "" {
+				db, err := a.Catalog.Database(ctx, dbName)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				n, err = d.WithDatabase(db)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				treeIdentity = transform.NewTree
 			}
 		}
-
-		// Nothing to resolve. This can happen if no database is current
-		if dbName == "" {
-			return n, nil
+		md, ok := n.(sql.MultiDatabaser)
+		if ok && md.DatabaseProvider() == nil {
+			var err error
+			n, err = md.WithDatabaseProvider(a.Catalog.provider)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			treeIdentity = transform.NewTree
 		}
-
-		db, err := a.Catalog.Database(ctx, dbName)
-		if err != nil {
-			return nil, err
-		}
-
-		return d.WithDatabase(db)
+		return n, treeIdentity, nil
 	})
 }
 
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
-func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var err error
-	plan.Inspect(n, func(node sql.Node) bool {
+	transform.Inspect(n, func(node sql.Node) bool {
 		switch n.(type) {
 		// TODO: there are probably other kinds of nodes that need this too
 		case *plan.ShowTables, *plan.ShowTriggers, *plan.CreateTable:
@@ -72,8 +84,8 @@ func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return true
 	})
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }

@@ -9,14 +9,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// memoryDBProvider is a collection of Database.
-type memoryDBProvider struct {
-	dbs map[string]sql.Database
-	mu  *sync.RWMutex
-}
-
 var _ sql.DatabaseProvider = memoryDBProvider{}
 var _ sql.MutableDatabaseProvider = memoryDBProvider{}
+var _ sql.TableFunctionProvider = memoryDBProvider{}
+
+// memoryDBProvider is a collection of Database.
+type memoryDBProvider struct {
+	dbs            map[string]sql.Database
+	mu             *sync.RWMutex
+	tableFunctions map[string]sql.TableFunction
+}
 
 func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
@@ -24,13 +26,14 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 		dbMap[strings.ToLower(db.Name())] = db
 	}
 	return memoryDBProvider{
-		dbs: dbMap,
-		mu:  &sync.RWMutex{},
+		dbs:            dbMap,
+		mu:             &sync.RWMutex{},
+		tableFunctions: make(map[string]sql.TableFunction),
 	}
 }
 
 // Database returns the Database with the given name if it exists.
-func (d memoryDBProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
+func (d memoryDBProvider) Database(_ *sql.Context, name string) (sql.Database, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -49,7 +52,7 @@ func (d memoryDBProvider) Database(ctx *sql.Context, name string) (sql.Database,
 }
 
 // HasDatabase returns the Database with the given name if it exists.
-func (d memoryDBProvider) HasDatabase(ctx *sql.Context, name string) bool {
+func (d memoryDBProvider) HasDatabase(_ *sql.Context, name string) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -75,7 +78,7 @@ func (d memoryDBProvider) AllDatabases(*sql.Context) []sql.Database {
 }
 
 // CreateDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err error) {
+func (d memoryDBProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -85,10 +88,19 @@ func (d memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err err
 }
 
 // DropDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) DropDatabase(ctx *sql.Context, name string) (err error) {
+func (d memoryDBProvider) DropDatabase(_ *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	delete(d.dbs, strings.ToLower(name))
 	return
+}
+
+// TableFunction implements sql.TableFunctionProvider
+func (mdb memoryDBProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+	if tableFunction, ok := mdb.tableFunctions[name]; ok {
+		return tableFunction, nil
+	}
+
+	return nil, sql.ErrTableFunctionNotFound.New(name)
 }

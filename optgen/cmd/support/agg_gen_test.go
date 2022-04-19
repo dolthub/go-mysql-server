@@ -24,6 +24,7 @@ func TestAggGen(t *testing.T) {
             "fmt"
             "github.com/dolthub/go-mysql-server/sql"
             "github.com/dolthub/go-mysql-server/sql/expression"
+            "github.com/dolthub/go-mysql-server/sql/transform"
         )
 
         type Test struct{
@@ -67,7 +68,7 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) NewBuffer() (sql.AggregationBuffer, error) {
-            child, err := expression.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.UnaryExpression.Child)
             if err != nil {
                 return nil, err
             }
@@ -75,7 +76,7 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) NewWindowFunction() (sql.WindowFunction, error) {
-            child, err := expression.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.UnaryExpression.Child)
             if err != nil {
                 return nil, err
             }

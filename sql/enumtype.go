@@ -176,6 +176,19 @@ func (t enumType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t enumType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(enumType); ok && t.collation.Equals(ot.collation) && len(t.indexToVal) == len(ot.indexToVal) {
+		for i, val := range t.indexToVal {
+			if ot.indexToVal[i] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // ConvertToIndex is similar to Convert, except that it converts to the index rather than the value.
 // Returns an error on nil.
 func (t enumType) ConvertToIndex(v interface{}) (int, error) {
@@ -223,7 +236,7 @@ func (t enumType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t enumType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t enumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -231,7 +244,10 @@ func (t enumType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Enum, []byte(value.(string))), nil
+
+	val := appendAndSlice(dest, []byte(value.(string)))
+
+	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }
 
 // String implements Type interface.

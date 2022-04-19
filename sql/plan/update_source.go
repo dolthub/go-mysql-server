@@ -126,7 +126,7 @@ func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
 		return u.Child.Schema(), nil
 	}
 
-	table, err := getUpdatable(u.Child)
+	table, err := GetUpdatable(u.Child)
 	if err != nil {
 		return nil, err
 	}

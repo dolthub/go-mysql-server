@@ -28,7 +28,7 @@ import (
 )
 
 func TestResolveSetVariables(t *testing.T) {
-	rule := getRuleFrom(OnceBeforeDefault, "resolve_set_variables")
+	rule := getRuleFrom(OnceBeforeDefault, resolveSetVariablesId)
 
 	var testCases = []analyzerFnTestCase{
 		{
@@ -121,7 +121,7 @@ func TestResolveSetVariables(t *testing.T) {
 }
 
 func TestResolveBarewordSetVariables(t *testing.T) {
-	rule := getRuleFrom(DefaultRules, "resolve_bareword_set_variables")
+	rule := getRuleFrom(DefaultRules, resolveBarewordSetVariablesId)
 
 	var testCases = []analyzerFnTestCase{
 		{
@@ -145,8 +145,11 @@ func TestResolveBarewordSetVariables(t *testing.T) {
 func TestResolveColumnsSession(t *testing.T) {
 	require := require.New(t)
 
+	fooBarValue := int64(42)
+	fooBarType := sql.ApproximateTypeFromValue(fooBarValue)
+
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
-	err := ctx.SetUserVariable(ctx, "foo_bar", int64(42))
+	err := ctx.SetUserVariable(ctx, "foo_bar", fooBarValue)
 	require.NoError(err)
 	err = ctx.SetSessionVariable(ctx, "autocommit", true)
 	require.NoError(err)
@@ -161,12 +164,12 @@ func TestResolveColumnsSession(t *testing.T) {
 		plan.NewResolvedTable(dualTable, nil, nil),
 	)
 
-	result, err := resolveVariables(ctx, NewDefault(nil), node, nil)
+	result, _, err := resolveVariables(ctx, NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUserVar("foo_bar"),
+			expression.NewUserVarWithType("foo_bar", fooBarType),
 			expression.NewUserVar("bar_baz"),
 			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
 			expression.NewUserVar("myvar"),

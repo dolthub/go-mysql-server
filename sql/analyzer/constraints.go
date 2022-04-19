@@ -17,34 +17,42 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // resolveDropConstraint replaces DropConstraint nodes with a concrete type of alter table node as appropriate, or
 // throws a constraint not found error if the named constraint isn't found on the table given.
-func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dropConstraint, ok := n.(*plan.DropConstraint)
 	if !ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	rt, ok := dropConstraint.Child.(*plan.ResolvedTable)
 	if !ok {
-		return nil, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
+		return nil, transform.SameTree, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
 	}
 
+	//TODO: handle if a foreign key and check constraint have the same name, it should error saying to use the specific drop
 	table := rt.Table
 	fkt, ok := table.(sql.ForeignKeyTable)
 	if ok {
-		fks, err := fkt.GetForeignKeys(ctx)
+		decFks, err := fkt.GetDeclaredForeignKeys(ctx)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
-
-		for _, fk := range fks {
+		refFks, err := fkt.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		for _, fk := range append(decFks, refFks...) {
 			if strings.ToLower(fk.Name) == strings.ToLower(dropConstraint.Name) {
-				return plan.NewAlterDropForeignKey(rt, dropConstraint.Name), nil
+				n, err = plan.NewAlterDropForeignKey(rt.Database.Name(), rt.Table.Name(), dropConstraint.Name).
+					WithDatabaseProvider(a.Catalog.provider)
+				return n, transform.NewTree, err
 			}
 		}
 	}
@@ -53,69 +61,46 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	if ok {
 		checks, err := ct.GetChecks(ctx)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		for _, check := range checks {
 			if strings.ToLower(check.Name) == strings.ToLower(dropConstraint.Name) {
-				return plan.NewAlterDropCheck(rt, check.Name), nil
+				return plan.NewAlterDropCheck(rt, check.Name), transform.NewTree, nil
 			}
 		}
 	}
 
-	return nil, sql.ErrUnknownConstraint.New(dropConstraint.Name)
+	return nil, transform.SameTree, sql.ErrUnknownConstraint.New(dropConstraint.Name)
 }
 
 // validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
-func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
-	case *plan.DropForeignKey:
-		rt, ok := n.Child.(*plan.ResolvedTable)
-		if !ok {
-			return nil, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
-		}
-
-		fkt, ok := rt.Table.(sql.ForeignKeyTable)
-		if ok {
-			fks, err := fkt.GetForeignKeys(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, fk := range fks {
-				if strings.ToLower(fk.Name) == strings.ToLower(n.Name) {
-					return n, nil
-				}
-			}
-
-			return nil, sql.ErrUnknownConstraint.New(n.Name)
-		}
-
-		return nil, plan.ErrNoForeignKeySupport.New(rt.Table.Name())
 	case *plan.DropCheck:
 		rt, ok := n.Child.(*plan.ResolvedTable)
 		if !ok {
-			return nil, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
+			return nil, transform.SameTree, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
 		}
 
 		ct, ok := rt.Table.(sql.CheckTable)
 		if ok {
 			checks, err := ct.GetChecks(ctx)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
 			for _, check := range checks {
 				if strings.ToLower(check.Name) == strings.ToLower(n.Name) {
-					return n, nil
+					return n, transform.SameTree, nil
 				}
 			}
 
-			return nil, sql.ErrUnknownConstraint.New(n.Name)
+			return nil, transform.SameTree, sql.ErrUnknownConstraint.New(n.Name)
 		}
 
-		return nil, plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
+		return nil, transform.SameTree, plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
 	default:
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 }

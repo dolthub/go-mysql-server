@@ -277,7 +277,7 @@ func (s *SubstringIndex) IsNullable() bool {
 }
 
 func (s *SubstringIndex) String() string {
-	return fmt.Sprintf("SUBSTRING_INDEX(%s, %s, %d)", s.str, s.delim, s.count)
+	return fmt.Sprintf("SUBSTRING_INDEX(%s, %s, %s)", s.str, s.delim, s.count)
 }
 
 // Resolved implements the Expression interface.

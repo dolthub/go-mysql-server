@@ -317,6 +317,14 @@ func (t stringType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t stringType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(stringType); ok {
+		return t.baseType == ot.baseType && t.collationName == ot.collationName && t.charLength == ot.charLength
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t stringType) Promote() Type {
 	switch t.baseType {
@@ -330,7 +338,7 @@ func (t stringType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t stringType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -340,7 +348,9 @@ func (t stringType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.baseType, []byte(v.(string))), nil
+	val := appendAndSlice(dest, []byte(v.(string)))
+
+	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
 
 // String implements Type interface.
@@ -429,4 +439,11 @@ func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, erro
 	default:
 		panic(fmt.Errorf("unexpected value for like: %v", c.like))
 	}
+}
+
+func appendAndSlice(buffer, addition []byte) (slice []byte) {
+	stop := len(buffer)
+	buffer = append(buffer, addition...)
+	slice = buffer[stop:]
+	return
 }

@@ -20,7 +20,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var InsertQueries = []WriteQueryTest{
@@ -71,26 +70,6 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-	},
-	{
-		WriteQuery:          "INSERT INTO mytable VALUES (?, ?);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(int64(999), sql.Int64),
-			"v2": expression.NewLiteral("x", sql.Text),
-		},
-	},
-	{
-		WriteQuery:          "INSERT INTO mytable VALUES (:col1, :col2);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings: map[string]sql.Expression{
-			"col1": expression.NewLiteral(int64(999), sql.Int64),
-			"col2": expression.NewLiteral("x", sql.Text),
-		},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET i = 999, s = 'x';",
@@ -645,6 +624,7 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
 	},
 }
+
 var InsertScripts = []ScriptTest{
 	{
 		Name: "insert into sparse auto_increment table",
@@ -660,6 +640,84 @@ var InsertScripts = []ScriptTest{
 				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{10}, {20}, {30}, {31}, {40}, {41},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert negative values into auto_increment values",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (10), (20), (30)",
+			"insert into auto values (-1), (-2), (-3)",
+			"insert into auto () values ()",
+			"insert into auto values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{-3}, {-2}, {-1}, {10}, {20}, {30}, {31}, {32}, {33}, {34},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment unique key column",
+		SetUpScript: []string{
+			"create table auto (pk int primary key, npk int unique auto_increment)",
+			"insert into auto (pk) values (10), (20), (30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{10, 1}, {20, 2}, {30, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment with multiple unique key columns",
+		SetUpScript: []string{
+			"create table auto (pk int primary key, npk1 int auto_increment, npk2 int, unique(npk1, npk2))",
+			"insert into auto (pk) values (10), (20), (30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{10, 1, nil}, {20, 2, nil}, {30, 3, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment key/index column",
+		SetUpScript: []string{
+			"create table auto_no_primary (i int auto_increment, index(i))",
+			"insert into auto_no_primary (i) values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto_no_primary order by 1",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment with multiple key/index columns",
+		SetUpScript: []string{
+			"create table auto_no_primary (i int auto_increment, j int, index(i))",
+			"insert into auto_no_primary (i) values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto_no_primary order by 1",
+				Expected: []sql.Row{
+					{1, nil}, {2, nil}, {3, nil},
 				},
 			},
 		},
@@ -1062,6 +1120,44 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Insert on duplicate key",
+		SetUpScript: []string{
+			`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+			`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+			"INSERT INTO users values ('milo'), ('dabe')",
+			"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into nodes(id,owner,status,timestamp) values('id1','dabe','off',2) on duplicate key update owner='milo',status='on'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "insert into nodes(id,owner,status,timestamp) values('id2','dabe','off',3) on duplicate key update owner='milo',status='on'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from nodes",
+				Expected: []sql.Row{
+					{"id1", "milo", "on", 1},
+					{"id2", "dabe", "off", 3},
+				},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
@@ -1237,6 +1333,7 @@ var InsertIgnoreScripts = []ScriptTest{
 			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
 			"INSERT INTO t1 VALUES (1,1)",
 			"CREATE TABLE t2 (pk int primary key, v2 varchar(1))",
+			"ALTER TABLE t2 ADD CONSTRAINT cx CHECK (pk < 100)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1258,6 +1355,16 @@ var InsertIgnoreScripts = []ScriptTest{
 					{sql.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERUnknownError,
+			},
+			{
+				Query: "SELECT * FROM t2",
+				Expected: []sql.Row{
+					{1, "a"},
+				},
+			},
+			{
+				Query:    "INSERT IGNORE INTO t2 VALUES (1, 's') ON DUPLICATE KEY UPDATE pk = 1000", // violates constraint
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query: "SELECT * FROM t2",

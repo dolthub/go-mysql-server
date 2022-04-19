@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // flattenAggregationExpressions flattens any complex aggregate or window expressions in a GroupBy or Window node and
@@ -27,44 +28,46 @@ import (
 // e.g. GroupBy(sum(a) + sum(b)) becomes project(sum(a) + sum(b), GroupBy(sum(a), sum(b)).
 // e.g. Window(sum(a) + sum(b) over (partition by a)) becomes
 //    project(sum(a) + sum(b) over (partition by a), Window(sum(a), sum(b) over (partition by a))).
-func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("flatten_aggregation_exprs")
 	defer span.Finish()
 
 	if !n.Resolved() {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Window:
 			if !hasHiddenAggregations(n.SelectExprs) && !hasHiddenWindows(n.SelectExprs) {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
 			return flattenedWindow(ctx, n.SelectExprs, n.Child)
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs) {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
 			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child)
 		default:
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, error) {
-	newProjection, newAggregates, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
+func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
-
+	if allSame {
+		return nil, transform.SameTree, nil
+	}
 	return plan.NewProject(
 		newProjection,
 		plan.NewGroupBy(newAggregates, grouping, child),
-	), nil
+	), transform.NewTree, nil
 }
 
 // replaceAggregatesWithGetFieldProjections takes a slice of projection expressions and flattens out any aggregate
@@ -72,36 +75,34 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 // new set of project expressions, and the new set of aggregations. The former always matches the size of the projection
 // expressions passed in. The latter will have the size of the number of aggregate expressions contained in the input
 // slice.
-func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, err error) {
+func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
 	allGetFields := make(map[int]sql.Expression)
 	projDeps := make(map[int]struct{})
 	for i, p := range projection {
-		var transformed bool
-		e, err := expression.TransformUp(p, func(e sql.Expression) (sql.Expression, error) {
+		e, same, err := transform.Expr(p, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
 			// continue on
 			case *expression.GetField:
 				allGetFields[e.Index()] = e
 				projDeps[e.Index()] = struct{}{}
-				return e, nil
+				return e, transform.SameTree, nil
 			default:
-				return e, nil
+				return e, transform.SameTree, nil
 			}
 
-			transformed = true
 			newAggregates = append(newAggregates, e)
 			return expression.NewGetField(
 				len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
-			), nil
+			), transform.NewTree, nil
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, transform.SameTree, err
 		}
 
-		if !transformed {
+		if same {
 			newAggregates = append(newAggregates, e)
 			name, source := getNameAndSource(e)
 			newProjection[i] = expression.NewGetFieldWithTable(
@@ -115,12 +116,12 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 	// find subset of allGetFields not covered by newAggregates
 	newAggDeps := make(map[int]struct{}, 0)
 	for _, agg := range newAggregates {
-		_, _ = expression.TransformUp(agg, func(e sql.Expression) (sql.Expression, error) {
+		_ = transform.InspectExpr(agg, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				newAggDeps[e.Index()] = struct{}{}
 			}
-			return e, nil
+			return false
 		})
 	}
 	for i, _ := range projDeps {
@@ -130,19 +131,21 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 		}
 	}
 
-	return newProjection, newAggregates, nil
+	return newProjection, newAggregates, transform.NewTree, nil
 }
 
-func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, error) {
-	newProjection, newAggregates, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
+func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
-
+	if allSame {
+		return nil, allSame, nil
+	}
 	return plan.NewProject(
 		newProjection,
 		plan.NewWindow(newAggregates, child),
-	), nil
+	), transform.NewTree, nil
 }
 
 func getNameAndSource(e sql.Expression) (name, source string) {

@@ -32,22 +32,22 @@ func TestResolveNaturalJoins(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewNaturalJoin(
 		plan.NewResolvedTable(left, nil, nil),
 		plan.NewResolvedTable(right, nil, nil),
 	)
-	rule := getRule("resolve_natural_joins")
+	rule := getRule(resolveNaturalJoinsId)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -78,21 +78,21 @@ func TestResolveNaturalJoins(t *testing.T) {
 }
 
 func TestResolveNaturalJoinsColumns(t *testing.T) {
-	rule := getRule("resolve_natural_joins")
+	rule := getRule(resolveNaturalJoinsId)
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -104,7 +104,7 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -140,21 +140,21 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 }
 
 func TestResolveNaturalJoinsTableAlias(t *testing.T) {
-	rule := getRule("resolve_natural_joins")
+	rule := getRule(resolveNaturalJoinsId)
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -167,7 +167,7 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -204,7 +204,7 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 }
 
 func TestResolveNaturalJoinsChained(t *testing.T) {
-	rule := getRule("resolve_natural_joins")
+	rule := getRule(resolveNaturalJoinsId)
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
@@ -212,21 +212,21 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 		{Name: "f", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	upperRight := memory.NewTable("t3", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t3"},
 		{Name: "b", Type: sql.Int64, Source: "t3"},
 		{Name: "f", Type: sql.Int64, Source: "t3"},
 		{Name: "g", Type: sql.Int64, Source: "t3"},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -243,7 +243,7 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -316,21 +316,21 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewNaturalJoin(
 		plan.NewResolvedTable(left, nil, nil),
 		plan.NewResolvedTable(right, nil, nil),
 	)
-	rule := getRule("resolve_natural_joins")
+	rule := getRule(resolveNaturalJoinsId)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -369,20 +369,20 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewNaturalJoin(
 		plan.NewResolvedTable(left, nil, nil),
 		plan.NewResolvedTable(right, nil, nil),
 	)
-	rule := getRule("resolve_natural_joins")
+	rule := getRule(resolveNaturalJoinsId)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewCrossJoin(

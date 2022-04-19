@@ -27,11 +27,11 @@ import (
 
 func TestEraseProjection(t *testing.T) {
 	require := require.New(t)
-	f := getRule("erase_projection")
+	f := getRule(eraseProjectionId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{
 		Name: "i", Source: "mytable", Type: sql.Int64,
-	}}))
+	}}), nil)
 
 	expected := plan.NewSort(
 		[]sql.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
@@ -66,14 +66,12 @@ func TestEraseProjection(t *testing.T) {
 		expected,
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
-
 	require.Equal(expected, result)
 
-	result, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected, nil)
+	result, _, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected, nil, DefaultRuleSelector)
 	require.NoError(err)
-
 	require.Equal(expected, result)
 }
 
@@ -81,7 +79,7 @@ func TestOptimizeDistinct(t *testing.T) {
 	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
-	}))
+	}), nil)
 
 	testCases := []struct {
 		name      string
@@ -115,11 +113,11 @@ func TestOptimizeDistinct(t *testing.T) {
 		},
 	}
 
-	rule := getRule("optimize_distinct")
+	rule := getRule(optimizeDistinctId)
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			node, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child), nil)
+			node, _, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child), nil, DefaultRuleSelector)
 			require.NoError(t, err)
 
 			_, ok := node.(*plan.OrderedDistinct)
@@ -132,19 +130,19 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "t1", Type: sql.Int64},
 		{Name: "b", Source: "t1", Type: sql.Int64},
-	}))
+	}), nil)
 
 	t2 := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c", Source: "t2", Type: sql.Int64},
 		{Name: "d", Source: "t2", Type: sql.Int64},
-	}))
+	}), nil)
 
 	t3 := memory.NewTable("t3", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "e", Source: "t3", Type: sql.Int64},
 		{Name: "f", Source: "t3", Type: sql.Int64},
-	}))
+	}), nil)
 
-	rule := getRule("move_join_conds_to_filter")
+	rule := getRule(moveJoinCondsToFilterId)
 	require := require.New(t)
 
 	node := plan.NewInnerJoin(
@@ -161,7 +159,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	var expected sql.Node = plan.NewFilter(
@@ -196,7 +194,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected = plan.NewFilter(
@@ -231,7 +229,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected = plan.NewFilter(
@@ -271,7 +269,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 		),
 	)
 
-	result, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected = plan.NewFilter(
@@ -297,8 +295,8 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 }
 
 func TestEvalFilter(t *testing.T) {
-	inner := memory.NewTable("foo", sql.PrimaryKeySchema{})
-	rule := getRule("eval_filter")
+	inner := memory.NewTable("foo", sql.PrimaryKeySchema{}, nil)
+	rule := getRule(evalFilterId)
 
 	testCases := []struct {
 		filter   sql.Expression
@@ -392,7 +390,7 @@ func TestEvalFilter(t *testing.T) {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
 			node := plan.NewFilter(tt.filter, plan.NewResolvedTable(inner, nil, nil))
-			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+			result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 		})
@@ -430,14 +428,15 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 			node := plan.NewProject([]sql.Expression{
 				expression.NewConvert(tt.childExpr, tt.castType),
 			},
-				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}), nil, nil),
+				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil), nil, nil),
 			)
 
-			result, err := removeUnnecessaryConverts(
+			result, _, err := removeUnnecessaryConverts(
 				sql.NewEmptyContext(),
 				NewDefault(nil),
 				node,
 				nil,
+				DefaultRuleSelector,
 			)
 			require.NoError(err)
 

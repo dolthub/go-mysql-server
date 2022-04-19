@@ -86,6 +86,9 @@ func (t LinestringType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t LinestringType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	// Must be a Linestring, fail otherwise
 	if v, ok := v.(Linestring); ok {
 		return v, nil
@@ -94,13 +97,19 @@ func (t LinestringType) Convert(v interface{}) (interface{}, error) {
 	return nil, ErrNotLinestring.New(v)
 }
 
+// Equals implements the Type interface.
+func (t LinestringType) Equals(otherType Type) bool {
+	_, ok := otherType.(LinestringType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t LinestringType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t LinestringType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t LinestringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -110,7 +119,9 @@ func (t LinestringType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(pv.(string))), nil
+	val := appendAndSlice(dest, []byte(pv.(string)))
+
+	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
 
 // String implements Type interface.

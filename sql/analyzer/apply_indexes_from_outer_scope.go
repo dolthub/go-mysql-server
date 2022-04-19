@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -27,27 +29,27 @@ import (
 // It functions similarly to pushdownFilters, in that it applies an index to a table. But unlike that function, it must
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
-func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if scope == nil {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	// this isn't good enough: we need to consider aliases defined in the outer scope as well for this analysis
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	indexLookups, err := getOuterScopeIndexes(ctx, a, n, scope, tableAliases)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	if len(indexLookups) == 0 {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
-	childSelector := func(c plan.TransformContext) bool {
+	childSelector := func(c transform.Context) bool {
 		switch c.Parent.(type) {
 		// We can't push any indexes down a branch that have already had an index pushed down it
 		case *plan.IndexedTableAccess:
@@ -57,49 +59,52 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	}
 
 	// replace the tables with possible index lookups with indexed access
+	allSame := transform.SameTree
+	sameN := transform.SameTree
 	for _, idxLookup := range indexLookups {
-		n, err = plan.TransformUpCtx(n, childSelector, func(c plan.TransformContext) (sql.Node, error) {
+		n, sameN, err = transform.NodeWithCtx(n, childSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch n := c.Node.(type) {
 			case *plan.IndexedTableAccess:
-				return n, nil
+				return n, transform.SameTree, nil
 			case *plan.TableAlias:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
 				}
-				return n, nil
+				return n, transform.SameTree, nil
 			case *plan.ResolvedTable:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
 				}
-				return n, nil
+				return n, transform.SameTree, nil
 			default:
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 		})
+		allSame = allSame && sameN
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 	}
 
-	return n, nil
+	return n, allSame, nil
 }
 
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
-func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, error) {
-	return plan.TransformUp(tableNode, func(n sql.Node) (sql.Node, error) {
+func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			table := getTable(tableNode)
 			if table == nil {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				return plan.NewIndexedTableAccess(n, index, keyExpr), nil
+				return plan.NewIndexedTableAccess(n, index, keyExpr), transform.NewTree, nil
 			}
 		}
-		return n, nil
+		return n, transform.SameTree, nil
 	})
 }
 
@@ -123,12 +128,12 @@ func getOuterScopeIndexes(
 	var exprsByTable joinExpressionsByTable
 
 	var err error
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
 
 			var indexAnalyzer *indexAnalyzer
-			indexAnalyzer, err = getIndexesForNode(ctx, a, node)
+			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node)
 			if err != nil {
 				return false
 			}

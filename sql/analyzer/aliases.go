@@ -18,9 +18,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type TableAliases map[string]sql.Nameable
@@ -66,8 +69,11 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
-			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable:
+			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
 				analysisErr = passAliases.add(at, t.(NameableNode))
+			case *information_schema.ColumnsTable:
+				analysisErr = passAliases.add(at, t)
+				return false
 			case *plan.DecoratedNode:
 				rt := getResolvedTable(at.Child)
 				analysisErr = passAliases.add(at, rt)
@@ -106,6 +112,9 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable:
 			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
 			return false
+		case *information_schema.ColumnsTable:
+			analysisErr = passAliases.add(node, node)
+			return false
 		case *plan.DecoratedNode:
 			aliasFn(node.Child)
 			return false
@@ -128,7 +137,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	aliases := make(TableAliases)
 	for _, scopeNode := range scope.OuterToInner() {
 		passAliases = make(TableAliases)
-		plan.Inspect(scopeNode, aliasFn)
+		transform.Inspect(scopeNode, aliasFn)
 		if analysisErr != nil {
 			return nil, analysisErr
 		}
@@ -137,7 +146,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	}
 
 	passAliases = make(TableAliases)
-	plan.Inspect(n, aliasFn)
+	transform.Inspect(n, aliasFn)
 	if analysisErr != nil {
 		return nil, analysisErr
 	}
@@ -185,15 +194,15 @@ func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, expr ...s
 // declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, e sql.Expression) sql.Expression {
 	// If the query has table aliases, use them to replace any table aliases in column expressions
-	normalized, _ := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+	normalized, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {
 			table := field.Table()
 			if rt, ok := tableAliases[table]; ok {
-				return field.WithTable(rt.Name()), nil
+				return field.WithTable(rt.Name()), transform.NewTree, nil
 			}
 		}
 
-		return e, nil
+		return e, transform.SameTree, nil
 	})
 
 	return normalized

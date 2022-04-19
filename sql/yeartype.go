@@ -136,13 +136,19 @@ func (t yearType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t yearType) Equals(otherType Type) bool {
+	_, ok := otherType.(yearType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t yearType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t yearType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t yearType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -152,7 +158,11 @@ func (t yearType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Year, strconv.AppendInt(nil, int64(v.(int16)), 10)), nil
+	stop := len(dest)
+	dest = strconv.AppendInt(dest, int64(v.(int16)), 10)
+	val := dest[stop:]
+
+	return sqltypes.MakeTrusted(sqltypes.Year, val), nil
 }
 
 // String implements Type interface.

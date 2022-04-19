@@ -18,7 +18,6 @@ import (
 	"time"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -48,7 +47,6 @@ func main() {
 	config := server.Config{
 		Protocol: "tcp",
 		Address:  "localhost:3306",
-		Auth:     auth.NewNativeSingle("root", "", auth.AllPermissions),
 	}
 
 	s, err := server.NewDefaultServer(config, engine)
@@ -71,13 +69,14 @@ func createTestDatabase() *memory.Database {
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
 		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
-	}))
+	}), db.GetForeignKeyCollection())
 
+	creationTime := time.Unix(1524044473, 0).UTC()
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
-	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
-	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, time.Now()))
+	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, creationTime))
+	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, creationTime))
+	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, creationTime))
+	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, creationTime))
 	return db
 }

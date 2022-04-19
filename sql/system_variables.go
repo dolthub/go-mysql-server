@@ -986,6 +986,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemBoolType("inmemory_joins"),
 		Default:           int8(0),
 	},
+	"innodb_stats_auto_recalc": {
+		Name:              "inmemory_joins",
+		Scope:             SystemVariableScope_Global,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              NewSystemBoolType("innodb_stats_auto_recalc"),
+		Default:           int8(1),
+	},
 	"interactive_timeout": {
 		Name:              "interactive_timeout",
 		Scope:             SystemVariableScope_Both,
@@ -2148,6 +2156,14 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: false,
 		Type:              NewSystemBoolType("show_create_table_verbosity"),
 		Default:           int8(0),
+	},
+	"show_external_procedures": {
+		Name:              "show_external_procedures",
+		Scope:             SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: true,
+		Type:              NewSystemBoolType("show_external_procedures"),
+		Default:           int8(1),
 	},
 	"show_old_temporals": {
 		Name:              "show_old_temporals",

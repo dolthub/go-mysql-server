@@ -91,11 +91,24 @@ func (t TupleType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t TupleType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(TupleType); ok && len(t) == len(ot) {
+		for i, tupType := range t {
+			if !tupType.Equals(ot[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func (t TupleType) Promote() Type {
 	return t
 }
 
-func (t TupleType) SQL(interface{}) (sqltypes.Value, error) {
+func (t TupleType) SQL([]byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 

@@ -116,13 +116,26 @@ func (t systemEnumType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemEnumType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemEnumType); ok && t.varName == ot.varName && len(t.indexToVal) == len(ot.indexToVal) {
+		for i, val := range t.indexToVal {
+			if ot.indexToVal[i] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemEnumType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemEnumType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemEnumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -132,7 +145,9 @@ func (t systemEnumType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), []byte(v.(string))), nil
+	val := appendAndSlice(dest, []byte(v.(string)))
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.
