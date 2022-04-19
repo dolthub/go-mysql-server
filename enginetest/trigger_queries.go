@@ -2545,13 +2545,13 @@ var TriggerTests2 = []ScriptTest{
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
-				Query:    "select * from a",
+				Query: "select * from a",
 				Expected: []sql.Row{
 					{1},
 				},
 			},
 			{
-				Query:    "select * from b",
+				Query: "select * from b",
 				Expected: []sql.Row{
 					{1},
 				},
