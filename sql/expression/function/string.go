@@ -111,6 +111,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: add cases for geometry, point, linestring, and polygon
 	switch val := arg.(type) {
 	case string:
 		return hexForString(val), nil
