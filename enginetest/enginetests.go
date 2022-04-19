@@ -6359,6 +6359,9 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
+	// We don't want to show any external procedures in our engine tests, so we exclude them
+	_ = ctx.SetSessionVariable(ctx, "show_external_procedures", false)
+
 	return ctx
 }
 

@@ -219,6 +219,14 @@ func (p *Procedure) HasVariadicParameter() bool {
 	return false
 }
 
+// IsExternal returns whether the stored procedure is external.
+func (p *Procedure) IsExternal() bool {
+	if _, ok := p.Body.(*ExternalProcedure); ok {
+		return true
+	}
+	return false
+}
+
 // String returns the original SQL representation.
 func (pst ProcedureSecurityContext) String() string {
 	switch pst {
