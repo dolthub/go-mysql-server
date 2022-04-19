@@ -3386,7 +3386,20 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			return expression.NewLiteral(exprLiteral.Value(), sql.LongBlob), nil
 		}
 		return expr, nil
+	case "_utf8mb4 ", "_utf8mb3 ", "_utf8 ":
+		expr, err := ExprToExpression(ctx, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		// must be string type
+		if !sql.IsText(expr.Type()) {
+			return nil, sql.ErrInvalidType.New(expr.Type().String() + " after character set introducer")
+		}
+		return expr, nil
 	default:
+		if strings.HasPrefix(strings.ToLower(e.Operator), "_") {
+			return nil, sql.ErrUnsupportedFeature.New("unsupported character set: " + e.Operator)
+		}
 		return nil, sql.ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}
 }
