@@ -1223,6 +1223,18 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "INSERT string with exact char length but extra byte length",
+		SetUpScript: []string{
+			"CREATE TABLE city (id int PRIMARY KEY, district char(20) NOT NULL DEFAULT '');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO city VALUES (1,'San Pedro de Macorís');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
 		Name: "Insert on duplicate key",
 		SetUpScript: []string{
 			`CREATE TABLE users (

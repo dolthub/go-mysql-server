@@ -295,7 +295,8 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 			}
 		} else {
 			//TODO: this should count the string's length properly according to the character set
-			if int64(len(val)) > t.charLength {
+			//convert 'val' string to rune to count the character length, not byte length
+			if int64(len([]rune(val))) > t.charLength {
 				return nil, ErrLengthBeyondLimit.New()
 			}
 		}
