@@ -2157,6 +2157,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemBoolType("show_create_table_verbosity"),
 		Default:           int8(0),
 	},
+	"show_external_procedures": {
+		Name:              "show_external_procedures",
+		Scope:             SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: true,
+		Type:              NewSystemBoolType("show_external_procedures"),
+		Default:           int8(1),
+	},
 	"show_old_temporals": {
 		Name:              "show_old_temporals",
 		Scope:             SystemVariableScope_Both,

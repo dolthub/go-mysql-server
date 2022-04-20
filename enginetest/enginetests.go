@@ -1250,6 +1250,12 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSpatialScripts(t *testing.T, harness Harness) {
+	for _, script := range SpatialScriptTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestLoadDataPrepared(t *testing.T, harness Harness) {
 	for _, script := range LoadDataScripts {
 		TestScriptPrepared(t, harness, script)
@@ -6407,6 +6413,9 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 		).AsView())
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
+
+	// We don't want to show any external procedures in our engine tests, so we exclude them
+	_ = ctx.SetSessionVariable(ctx, "show_external_procedures", false)
 
 	return ctx
 }

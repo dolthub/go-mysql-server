@@ -99,8 +99,16 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		return nil, err
 	}
 
+	showExternalProcedures, err := ctx.GetSessionVariable(ctx, "show_external_procedures")
+	if err != nil {
+		return nil, err
+	}
 	for db, procedures := range p {
 		for _, procedure := range procedures {
+			// We skip external procedures if the variable to show them is set to false
+			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
+				continue
+			}
 			securityType = "DEFINER"
 			isDeterministic = "" // YES or NO
 			sqlMode = "SQL"      // SQL, NO SQL, READS SQL DATA, or MODIFIES SQL DATA.
