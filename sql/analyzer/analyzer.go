@@ -403,8 +403,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 // PrepareQuery applies a partial set of transformations to a prepared plan.
 func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
-	//a.Debug = true
-	//a.Verbose = true
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, prePrepareRuleSelector)
 	return n, err
 }
@@ -465,7 +463,6 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		inSubqueryIndexesId,
 		resolveInsertRowsId,
-		//resolvePreparedInsertId,
 
 		TrackProcessId,
 		parallelizeId,
@@ -477,8 +474,6 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 
 // AnalyzePrepared runs a partial rule set against a previously analyzed plan.
 func (a *Analyzer) AnalyzePrepared(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	//a.Debug = true
-	//a.Verbose = true
 	return a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, postPrepareRuleSelector)
 }
 
