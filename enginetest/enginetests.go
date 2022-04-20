@@ -6166,6 +6166,36 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 }
 
+func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
+	for _, insertion := range InsertIntoKeylessUnique {
+		e := NewEngine(t, harness)
+		defer e.Close()
+
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
+
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
+
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
+	}
+
+	for _, expectedFailure := range InsertIntoKeylessUniqueError {
+		t.Run(expectedFailure.Name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
+		})
+	}
+}
+
 func TestPrepared(t *testing.T, harness Harness) {
 	qtests := []QueryTest{
 		{

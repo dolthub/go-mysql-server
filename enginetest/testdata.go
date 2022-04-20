@@ -869,6 +869,22 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				t.Logf("Warning: could not create table %s: %s", "keyless", err)
 			}
 		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "unique_keyless", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "c0", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+				{Name: "c1", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(0), int64(0)),
+					sql.NewRow(int64(1), int64(1)),
+					sql.NewRow(int64(2), int64(2)))
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "keyless", err)
+			}
+		})
 	}
 
 	return []sql.Database{myDb, foo}

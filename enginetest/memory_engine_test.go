@@ -878,6 +878,12 @@ func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestKeylessUniqueIndex(t *testing.T) {
+	// TODO: GMS does not support unique indexes for keyless tables.
+	t.Skip()
+	enginetest.TestKeylessUniqueIndex(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
