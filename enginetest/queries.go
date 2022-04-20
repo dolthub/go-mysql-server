@@ -5976,7 +5976,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ALL - - 20 * - CASE + AVG ( ALL + + 89 ) WHEN - 66 THEN NULL WHEN - 15 THEN 38 * COUNT( * ) * MIN( DISTINCT - + 88 ) - MIN( ALL + 0 ) - - COUNT( * ) + - 0 + - 14 * + ( 98 ) * + 70 * 14 * + 57 * 48 - 53 + + 7 END * + 78 + - 11 * + 29 + + + 46 + + 10 + + ( - 83 ) * - - 74 / - 8 + 18`,
-		Expected: []sql.Row{},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 1/0 FROM dual",
