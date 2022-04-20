@@ -186,26 +186,22 @@ func TestPushdownFilterToTables(t *testing.T) {
 				},
 				plan.NewCrossJoin(
 					plan.NewDecoratedNode("Filtered table access on [(t1.f = 3.14)]",
-						plan.NewFilter(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
-								expression.NewLiteral(3.14, sql.Float64),
-							),
-							plan.NewTableAlias("t1",
-								plan.NewResolvedTable(table.WithFilters(sql.NewEmptyContext(),
-									[]sql.Expression{}), nil, nil)),
-						),
-					),
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table.WithFilters(sql.NewEmptyContext(),
+								[]sql.Expression{
+									expression.NewEquals(
+										expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
+										expression.NewLiteral(3.14, sql.Float64),
+									),
+								}), nil, nil))),
 					plan.NewDecoratedNode("Filtered table access on [t2.i2 IS NULL]",
-						plan.NewFilter(
-							expression.NewIsNull(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
-							),
-							plan.NewTableAlias("t2",
-								plan.NewResolvedTable(table2.WithFilters(sql.NewEmptyContext(),
-									[]sql.Expression{}), nil, nil)),
-						),
-					),
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(table2.WithFilters(sql.NewEmptyContext(),
+								[]sql.Expression{
+									expression.NewIsNull(
+										expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
+									),
+								}), nil, nil))),
 				),
 			),
 		},

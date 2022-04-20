@@ -535,30 +535,49 @@ func pushdownFiltersToTable(
 	if len(tableFilters) == 0 {
 		return tableNode, transform.SameTree, nil
 	}
-	handled := ft.HandledFilters(normalizeExpressions(ctx, tableAliases, tableFilters...))
-	filters.markFiltersHandled(handled...)
+	handledFilters := getHandledFilters(ctx, tableNode.Name(), ft, tableAliases, filters)
+	filters.markFiltersHandled(handledFilters...)
 
-	// After normalizing the filter expressions so that this filtered table can correctly identify
-	// filters it can handle, we need to again denormalize them for other parts of the analyzer,
-	// such as FixFieldIndexesOnExpressions, which expect table aliases to be used.
-	handled = denormalizeExpressions(ctx, tableAliases, handled...)
-	handled, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), handled...)
+	handledFilters, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), handledFilters...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	table = ft.WithFilters(ctx, handled)
+	table = ft.WithFilters(ctx, handledFilters)
 	newTableNode := plan.NewDecoratedNode(
-		fmt.Sprintf("Filtered table access on %v", handled),
+		fmt.Sprintf("Filtered table access on %v", handledFilters),
 		tableNode)
 
 	a.Log(
-		"table %q transformed with pushdown of filters, %d filters handled of %d",
+		"table %q transformed with pushdown of filters, %d filters handledNormalizedFilters of %d",
 		tableNode.Name(),
-		len(handled),
+		len(handledFilters),
 		len(tableFilters),
 	)
 	return withTable(newTableNode, table)
+}
+
+// getHandledFilters returns the filter expressions that the specified table can handle. This
+// function takes care of normalizing the available filter expressions, which is required for
+// FilteredTable.HandledFilters to correctly identify what filter expressions it can handle.
+// The returned filter expressions are the denormalized expressions as expected in other parts
+// of the analyzer code (e.g. FixFieldIndexes).
+func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.FilteredTable, tableAliases TableAliases, filters *filterSet) []sql.Expression {
+	tableFilters := filters.availableFiltersForTable(ctx, tableNameOrAlias)
+
+	normalizedFilters := normalizeExpressions(ctx, tableAliases, tableFilters...)
+	normalizedToDenormalizedFilterMap := make(map[sql.Expression]sql.Expression)
+	for i, normalizedFilter := range normalizedFilters {
+		normalizedToDenormalizedFilterMap[normalizedFilter] = tableFilters[i]
+	}
+
+	handledNormalizedFilters := ft.HandledFilters(normalizedFilters)
+	handledDenormalizedFilters := make([]sql.Expression, len(handledNormalizedFilters))
+	for i, handledFilter := range handledNormalizedFilters {
+		handledDenormalizedFilters[i] = normalizedToDenormalizedFilterMap[handledFilter]
+	}
+
+	return handledDenormalizedFilters
 }
 
 // pushdownFiltersToAboveTable introduces a filter node with the given predicate
