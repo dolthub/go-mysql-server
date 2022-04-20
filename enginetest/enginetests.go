@@ -2608,6 +2608,32 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 		require.Equal(t, s, testTable.Schema())
 	})
+
+	t.Run("create table statement with charset introducer in column definition", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("mydb")
+
+		TestQueryWithContext(t, ctx, e, `CREATE TABLE types_with_defaults (
+  pk int NOT NULL,
+  col1 blob DEFAULT (_utf8mb4'abc'),
+  col2 json DEFAULT (json_object(_utf8mb4'a',1)),
+  col3 text DEFAULT (_utf8mb4'abc'),
+  PRIMARY KEY (pk)
+)`, []sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(t, err)
+
+		_, ok, err := db.GetTableInsensitive(ctx, "types_with_defaults")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		RunQuery(t, e, harness, "INSERT INTO types_with_defaults (pk) VALUES (1)")
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM types_with_defaults", []sql.Row{{1, "abc", sql.MustJSON(`{"a":1}`), "abc"}}, nil, nil)
+
+		_, _, err = e.Query(ctx, "CREATE TABLE unsupported_charset (pk int NOT NULL, col1 blob DEFAULT (_latin1'abc'))")
+		require.Error(t, err)
+	})
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
