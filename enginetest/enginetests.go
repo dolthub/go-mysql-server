@@ -2630,6 +2630,9 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 		RunQuery(t, e, harness, "INSERT INTO types_with_defaults (pk) VALUES (1)")
 		TestQueryWithContext(t, ctx, e, "SELECT * FROM types_with_defaults", []sql.Row{{1, "abc", sql.MustJSON(`{"a":1}`), "abc"}}, nil, nil)
+
+		_, _, err = e.Query(ctx, "CREATE TABLE unsupported_charset (pk int NOT NULL, col1 blob DEFAULT (_latin1'abc'))")
+		require.Error(t, err)
 	})
 }
 
