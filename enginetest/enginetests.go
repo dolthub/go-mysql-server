@@ -6187,6 +6187,16 @@ func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "INSERT INTO t4 (pk, val) VALUES (2, 2)", sql.ErrUniqueKeyViolation)
 		TestQuery(t, harness, e, "SELECT * FROM t4", []sql.Row{{1, 1}, {2, 2}}, nil)
 	})
+
+	t.Run("Unique secondary index out of order", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t5(pk int, v1 int, v2 int)")
+		RunQuery(t, e, harness, "ALTER TABLE t5 ADD CONSTRAINT ux UNIQUE (v2, v1)")
+
+		RunQuery(t, e, harness, "INSERT INTO t5 (pk, v1, v2) VALUES (1, 3, 1), (2, 2, 2)")
+		TestQuery(t, harness, e, "SELECT * FROM t5", []sql.Row{{1, 3, 1}, {2, 2, 2}}, nil)
+
+		AssertErr(t, e, harness, "INSERT INTO t5 (pk, v1, v2) VALUES (2, 3, 1)", sql.ErrUniqueKeyViolation)
+	})
 }
 
 func TestPrepared(t *testing.T, harness Harness) {
