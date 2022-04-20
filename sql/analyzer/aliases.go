@@ -207,3 +207,36 @@ func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, e sql.Expr
 
 	return normalized
 }
+
+// denormalizeExpressions returns the expressions given after denormalizing them to replace table
+// names with the aliases specified. This is necessary for the analyzer to match these expressions
+// in parts of the analyzer code that assume aliases are always used, such as FixFieldIndexes.
+func denormalizeExpressions(ctx *sql.Context, tableAliases TableAliases, expr ...sql.Expression) []sql.Expression {
+	expressions := make([]sql.Expression, len(expr))
+
+	for i, e := range expr {
+		expressions[i] = denormalizeExpression(ctx, tableAliases, e)
+	}
+
+	return expressions
+}
+
+// denormalizeExpression returns the expression given after denormalizing it to replace table
+// name with the alias specified. This is necessary for the analyzer to match these expressions
+// in parts of the analyzer code that assume aliases are always used, such as FixFieldIndexes.
+func denormalizeExpression(_ *sql.Context, tableAliases TableAliases, e sql.Expression) sql.Expression {
+	// If there is a table alias specified for a table, switch to using the alias in colum expressions
+	denormalized, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if field, ok := e.(*expression.GetField); ok {
+			for alias, tableName := range tableAliases {
+				if field.Table() == tableName.Name() {
+					return field.WithTable(alias), transform.NewTree, nil
+				}
+			}
+		}
+
+		return e, transform.SameTree, nil
+	})
+
+	return denormalized
+}

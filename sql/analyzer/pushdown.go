@@ -538,6 +538,10 @@ func pushdownFiltersToTable(
 	handled := ft.HandledFilters(normalizeExpressions(ctx, tableAliases, tableFilters...))
 	filters.markFiltersHandled(handled...)
 
+	// After normalizing the filter expressions so that this filtered table can correctly identify
+	// filters it can handle, we need to again denormalize them for other parts of the analyzer,
+	// such as FixFieldIndexesOnExpressions, which expect table aliases to be used.
+	handled = denormalizeExpressions(ctx, tableAliases, handled...)
 	handled, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), handled...)
 	if err != nil {
 		return nil, transform.SameTree, err
