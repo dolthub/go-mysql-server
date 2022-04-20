@@ -549,7 +549,7 @@ func pushdownFiltersToTable(
 		tableNode)
 
 	a.Log(
-		"table %q transformed with pushdown of filters, %d filters handledNormalizedFilters of %d",
+		"table %q transformed with pushdown of filters, %d filters handled of %d",
 		tableNode.Name(),
 		len(handledFilters),
 		len(tableFilters),
