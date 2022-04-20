@@ -357,7 +357,8 @@ func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
 	case stripDecorationsId,
-		unresolveTablesId:
+		unresolveTablesId,
+		resolvePreparedInsertId:
 		return false
 	}
 	return true
@@ -374,7 +375,7 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 // are applied
 func prePrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case resolveInsertRowsId,
+	case resolvePreparedInsertId,
 		insertTopNId,
 		inSubqueryIndexesId,
 		TrackProcessId,
@@ -402,6 +403,8 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 // PrepareQuery applies a partial set of transformations to a prepared plan.
 func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	//a.Debug = true
+	//a.Verbose = true
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, prePrepareRuleSelector)
 	return n, err
 }
@@ -413,6 +416,40 @@ func postPrepareRuleSelector(id RuleId) bool {
 	case stripDecorationsId,
 		unresolveTablesId,
 
+		expandStarsId,
+		resolveFunctionsId,
+		flattenTableAliasesId,
+		pushdownSortId,
+		pushdownGroupbyAliasesId,
+		resolveDatabasesId,
+		resolveTablesId,
+
+		resolveOrderbyLiteralsId,
+		qualifyColumnsId,
+		resolveColumnsId,
+
+		pushdownFiltersId,
+		subqueryIndexesId,
+		inSubqueryIndexesId,
+		//resolveInsertRowsId,
+		resolvePreparedInsertId,
+
+		TrackProcessId,
+		parallelizeId,
+		clearWarningsId:
+		return true
+	}
+	return false
+}
+
+// prePrepareRuleSelector are applied to a cached prepared statement plan
+// after bindvars are applied
+func postPrepareInsertSourceRuleSelector(id RuleId) bool {
+	switch id {
+	case stripDecorationsId,
+		unresolveTablesId,
+
+		expandStarsId,
 		resolveFunctionsId,
 		flattenTableAliasesId,
 		pushdownSortId,
@@ -428,6 +465,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		inSubqueryIndexesId,
 		resolveInsertRowsId,
+		//resolvePreparedInsertId,
 
 		TrackProcessId,
 		parallelizeId,
@@ -439,6 +477,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 
 // AnalyzePrepared runs a partial rule set against a previously analyzed plan.
 func (a *Analyzer) AnalyzePrepared(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	//a.Debug = true
+	//a.Verbose = true
 	return a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, postPrepareRuleSelector)
 }
 

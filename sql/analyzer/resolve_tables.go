@@ -26,13 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-const dualTableName = "dual"
-
-var dualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
-})
 var dualTable = func() sql.Table {
-	t := memory.NewTable(dualTableName, dualTableSchema, nil)
+	t := memory.NewTable(sql.DualTableName, sql.DualTableSchema, nil)
 
 	ctx := sql.NewEmptyContext()
 
@@ -44,14 +39,6 @@ var dualTable = func() sql.Table {
 	_ = inserter.Close(ctx)
 	return t
 }()
-
-// isDualTable returns whether the given table is the "dual" table.
-func isDualTable(t sql.Table) bool {
-	if t == nil {
-		return false
-	}
-	return t.Name() == dualTableName && t.Schema().Equals(dualTableSchema.Schema)
-}
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_tables")
@@ -245,7 +232,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t sql.UnresolvedTable) (sql.Node, error) {
 	if sql.ErrDatabaseNotFound.Is(err) {
-		if tableName == dualTableName {
+		if tableName == sql.DualTableName {
 			a.Log("table resolved: %q", t.Name())
 			return plan.NewResolvedTable(dualTable, nil, nil), nil
 		}
@@ -253,7 +240,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 			return nil, sql.ErrNoDatabaseSelected.New()
 		}
 	} else if sql.ErrTableNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) || sql.ErrTableAccessDeniedForUser.Is(err) {
-		if tableName == dualTableName {
+		if tableName == sql.DualTableName {
 			a.Log("table resolved: %s", t.Name())
 			return plan.NewResolvedTable(dualTable, nil, nil), nil
 		}

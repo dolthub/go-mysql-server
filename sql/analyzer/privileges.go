@@ -42,7 +42,7 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
-	if isDualTable(getTable(n)) {
+	if sql.IsDualTable(getTable(n)) {
 		return n, transform.SameTree, nil
 	}
 	if !n.CheckPrivileges(ctx, a.Catalog.GrantTables) {
