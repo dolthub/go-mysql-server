@@ -6141,62 +6141,33 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 }
 
 func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
-	e := NewEngine(t, harness)
-	defer e.Close()
+	for _, insertion := range InsertIntoKeylessUnique {
+		e := NewEngine(t, harness)
+		defer e.Close()
 
-	t.Run("Unique Secondary index with one integer columns ", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t1(pk int, val int UNIQUE)")
-		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1, 1), (2, 2)")
-		TestQuery(t, harness, e, "SELECT * FROM t1", []sql.Row{{1, 1}, {2, 2}}, nil)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
 
-		AssertErr(t, e, harness, "INSERT INTO t1 VALUES (3, 2)", sql.ErrUniqueKeyViolation)
-		AssertErr(t, e, harness, "INSERT INTO t1 VALUES (3, 3), (4, 4), (3, 2)", sql.ErrUniqueKeyViolation)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
 
-		TestQuery(t, harness, e, "SELECT * FROM t1", []sql.Row{{1, 1}, {2, 2}}, nil)
-	})
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
+	}
 
-	t.Run("Unique secondary index with one string column", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t2(pk int, val text UNIQUE)")
-		RunQuery(t, e, harness, "INSERT INTO t2 VALUES (1, 'one'), (2, 'two')")
-		TestQuery(t, harness, e, "SELECT * FROM t2", []sql.Row{{1, "one"}, {2, "two"}}, nil)
-
-		AssertErr(t, e, harness, "INSERT INTO t2 VALUES (3, 'two')", sql.ErrUniqueKeyViolation)
-		AssertErr(t, e, harness, "INSERT INTO t2 VALUES (3, 'three'), (4, 'four'), (3, 'two')", sql.ErrUniqueKeyViolation)
-
-		TestQuery(t, harness, e, "SELECT * FROM t2", []sql.Row{{1, "one"}, {2, "two"}}, nil)
-	})
-
-	t.Run("Unique secondary index with multiple columns", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t3(pk int, val int)")
-		RunQuery(t, e, harness, "ALTER TABLE t3 ADD CONSTRAINT ux UNIQUE (pk, val)")
-		RunQuery(t, e, harness, "INSERT INTO t3 VALUES (1, 1), (2, 2)")
-		TestQuery(t, harness, e, "SELECT * FROM t3", []sql.Row{{1, 1}, {2, 2}}, nil)
-
-		RunQuery(t, e, harness, "INSERT INTO t3 VALUES (3, 2), (4, 1)")
-		TestQuery(t, harness, e, "SELECT * FROM t3", []sql.Row{{1, 1}, {2, 2}, {3, 2}, {4, 1}}, nil)
-
-		AssertErr(t, e, harness, "INSERT INTO t3 VALUES (2, 2)", sql.ErrUniqueKeyViolation)
-	})
-
-	t.Run("Unique secondary index with an autoincrement", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t4(pk int unique not null auto_increment, val int)")
-		RunQuery(t, e, harness, "INSERT INTO t4 (pk, val) VALUES (NULL, 1), (NULL, 2)")
-
-		TestQuery(t, harness, e, "SELECT * FROM t4", []sql.Row{{1, 1}, {2, 2}}, nil)
-
-		AssertErr(t, e, harness, "INSERT INTO t4 (pk, val) VALUES (2, 2)", sql.ErrUniqueKeyViolation)
-		TestQuery(t, harness, e, "SELECT * FROM t4", []sql.Row{{1, 1}, {2, 2}}, nil)
-	})
-
-	t.Run("Unique secondary index out of order", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t5(pk int, v1 int, v2 int)")
-		RunQuery(t, e, harness, "ALTER TABLE t5 ADD CONSTRAINT ux UNIQUE (v2, v1)")
-
-		RunQuery(t, e, harness, "INSERT INTO t5 (pk, v1, v2) VALUES (1, 3, 1), (2, 2, 2)")
-		TestQuery(t, harness, e, "SELECT * FROM t5", []sql.Row{{1, 3, 1}, {2, 2, 2}}, nil)
-
-		AssertErr(t, e, harness, "INSERT INTO t5 (pk, v1, v2) VALUES (2, 3, 1)", sql.ErrUniqueKeyViolation)
-	})
+	for _, expectedFailure := range InsertIntoKeylessUniqueError {
+		t.Run(expectedFailure.Name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
+		})
+	}
 }
 
 func TestPrepared(t *testing.T, harness Harness) {
