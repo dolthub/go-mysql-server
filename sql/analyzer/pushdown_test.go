@@ -157,6 +157,57 @@ func TestPushdownFilterToTables(t *testing.T) {
 			),
 		},
 		{
+			name: "pushdown filter to aliased tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewFilter(
+					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
+						expression.NewIsNull(
+							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table, nil, nil)),
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(table2, nil, nil)),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode("Filtered table access on [(t1.f = 3.14)]",
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							plan.NewTableAlias("t1",
+								plan.NewResolvedTable(table.WithFilters(sql.NewEmptyContext(), []sql.Expression{}), nil, nil)),
+						),
+					),
+					plan.NewDecoratedNode("Filtered table access on [t2.i2 IS NULL]",
+						plan.NewFilter(
+							expression.NewIsNull(
+								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
+							),
+							plan.NewTableAlias("t2",
+								plan.NewResolvedTable(table2.WithFilters(sql.NewEmptyContext(), []sql.Expression{}), nil, nil)),
+						),
+					),
+				),
+			),
+		},
+		{
 			name: "push filters down onto projected table",
 			node: plan.NewProject(
 				[]sql.Expression{
