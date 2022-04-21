@@ -232,8 +232,8 @@ func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
 func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	if fkh, ok := harness.(ForeignKeyHarness); ok && fkh.SupportsForeignKeys() {
 		ctx := NewContextWithEngine(harness, engine)
-		TestQueryWithContext(t, ctx, engine, "ALTER TABLE mytable ADD INDEX idx_si (s,i)", nil, nil, nil)
-		TestQueryWithContext(t, ctx, engine, "ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE", nil, nil, nil)
+		TestQueryWithContext(t, ctx, engine, "ALTER TABLE mytable ADD INDEX idx_si (s,i)", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+		TestQueryWithContext(t, ctx, engine, "ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 	}
 }
 
@@ -979,12 +979,12 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1), (2,2), (3,3)")
 		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}}, nil)
 		TestQuery(t, harness, e, "TRUNCATE t1", []sql.Row{{sql.NewOkResult(3)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,4), (5,5)")
 		TestQuery(t, harness, e, "SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1", []sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}}, nil)
 		TestQuery(t, harness, e, "TRUNCATE TABLE t1", []sql.Row{{sql.NewOkResult(2)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil)
 	})
 
 	t.Run("Foreign Key References", func(t *testing.T) {
@@ -1011,7 +1011,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (5), (6)")
 		TestQuery(t, harness, e, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(5)}, {int64(2), int64(6)}}, nil)
 		TestQuery(t, harness, e, "TRUNCATE t4", []sql.Row{{sql.NewOkResult(2)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t4 ORDER BY 1", []sql.Row{}, nil)
 		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (7)")
 		TestQuery(t, harness, e, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(7)}}, nil)
 	})
@@ -1041,7 +1041,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		}
 
 		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t5 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t5 ORDER BY 1", []sql.Row{}, nil)
 	})
 
 	t.Run("Naked DELETE with Foreign Key References", func(t *testing.T) {
@@ -1125,7 +1125,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		}
 
 		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t8 ORDER BY 1", []sql.Row{}, nil)
 		RunQuery(t, e, harness, "INSERT INTO t8(v1) VALUES (6)")
 		TestQuery(t, harness, e, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(3), int64(6)}}, nil)
 	})
@@ -1154,7 +1154,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		}
 
 		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t9 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t9 ORDER BY 1", []sql.Row{}, nil)
 	})
 
 	t.Run("DELETE with LIMIT clause", func(t *testing.T) {
@@ -1181,7 +1181,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		}
 
 		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t10 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t10 ORDER BY 1", []sql.Row{}, nil)
 	})
 
 	t.Run("DELETE with ORDER BY clause", func(t *testing.T) {
@@ -1208,7 +1208,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		}
 
 		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil)
-		TestQuery(t, harness, e, "SELECT * FROM t11 ORDER BY 1", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t11 ORDER BY 1", []sql.Row{}, nil)
 	})
 
 	t.Run("Multi-table DELETE", func(t *testing.T) {
@@ -3258,7 +3258,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 		db, err := e.Analyzer.Catalog.Database(ctx, "testdb")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e, "USE testdb", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "USE testdb", []sql.Row(nil), nil)
 
 		require.Equal(t, ctx.GetCurrentDatabase(), "testdb")
 
@@ -3280,7 +3280,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 		db, err := e.Analyzer.Catalog.Database(ctx, "testdb2")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e, "USE testdb2", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "USE testdb2", []sql.Row(nil), nil)
 
 		require.Equal(t, ctx.GetCurrentDatabase(), "testdb2")
 
@@ -3302,7 +3302,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 		db, err := e.Analyzer.Catalog.Database(ctx, "testdb3")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e, "USE testdb3", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		TestQuery(t, harness, e, "USE testdb3", []sql.Row(nil), nil)
 
 		require.Equal(t, ctx.GetCurrentDatabase(), "testdb3")
 
@@ -3806,11 +3806,11 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 			},
 			{
 				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_child4 FOREIGN KEY (pk) REFERENCES delayed_parent4 (pk))",
-				Expected: nil,
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE delayed_parent4 (pk BIGINT PRIMARY KEY)",
-				Expected: nil,
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	})
@@ -5741,10 +5741,11 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	t.Run("Add column invalid after", func(t *testing.T) {
 		ctx := NewContext(harness)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 DISABLE KEYS",
-			[]sql.Row{}, nil, mysql.ERNotSupportedYet, 1,
+			[]sql.Row{{sql.NewOkResult(0)}},
+		nil, mysql.ERNotSupportedYet, 1,
 			"", false)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 ENABLE KEYS",
-			[]sql.Row{}, nil, mysql.ERNotSupportedYet, 1,
+			[]sql.Row{{sql.NewOkResult(0)}}, nil, mysql.ERNotSupportedYet, 1,
 			"", false)
 	})
 }

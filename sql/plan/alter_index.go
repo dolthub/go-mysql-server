@@ -110,7 +110,7 @@ func NewAlterDisableEnableKeys(db sql.Database, table sql.Node, disableKeys bool
 
 // Schema implements the Node interface.
 func (p *AlterIndex) Schema() sql.Schema {
-	return nil
+	return sql.OkResultSchema
 }
 
 // Execute inserts the rows in the database.
@@ -232,7 +232,7 @@ func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(), nil
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 // WithChildren implements the Node interface.

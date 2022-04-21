@@ -115,7 +115,7 @@ func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 		err = renamer.RenameTable(ctx, tbl.Name(), r.newNames[i])
 		if err != nil {
-			break
+			return nil, err
 		}
 	}
 

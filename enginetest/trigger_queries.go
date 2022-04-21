@@ -1729,7 +1729,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "drop table a",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
@@ -1744,7 +1744,7 @@ end;`,
 			},
 			{
 				Query:    "drop table if exists b, d, e",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
@@ -1771,7 +1771,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "drop table a",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "show triggers",

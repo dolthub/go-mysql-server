@@ -1793,7 +1793,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t DROP INDEX myidx, ADD INDEX v5idx (v5)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
