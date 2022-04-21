@@ -1407,6 +1407,14 @@ var InsertErrorScripts = []ScriptTest{
 		Query:       "create table bad (pk1 int auto_increment default 10, c0 int);",
 		ExpectedErr: sql.ErrInvalidAutoIncCols,
 	},
+	{
+		Name: "try inserting string that is too long",
+		SetUpScript: []string{
+			"create table bad (s varchar(9))",
+		},
+		Query:       "insert into bad values ('1234567890')",
+		ExpectedErr: sql.ErrLengthBeyondLimit,
+	},
 }
 
 var InsertIgnoreScripts = []ScriptTest{
