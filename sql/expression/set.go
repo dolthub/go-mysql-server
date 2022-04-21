@@ -63,10 +63,14 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		val, err = getField.fieldType.Convert(val)
+		convertedVal, err := getField.fieldType.Convert(val)
 		if err != nil {
+			if sql.ErrLengthBeyondLimit.Is(err) {
+				return nil, errors.NewKind("string '%v' is too large for column '%v'").New(val, getField.Name())
+			}
 			return nil, err
 		}
+		val = convertedVal
 	}
 	updatedRow := row.Copy()
 	updatedRow[getField.fieldIndex] = val
