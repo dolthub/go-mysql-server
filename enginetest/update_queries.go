@@ -539,3 +539,15 @@ var UpdateErrorTests = []QueryErrorTest{
 		ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 	},
 }
+
+var UpdateErrorScripts = []ScriptTest{
+	{
+		Name: "try updating string that is too long",
+		SetUpScript: []string{
+			"create table bad (s varchar(9))",
+			"insert into bad values ('good')",
+		},
+		Query:       "update bad set s = '1234567890'",
+		ExpectedErr: sql.ErrStringTooLong,
+	},
+}

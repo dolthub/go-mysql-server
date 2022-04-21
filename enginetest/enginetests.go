@@ -843,6 +843,10 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, expectedFailure.ExpectedErr)
 		})
 	}
+
+	for _, script := range UpdateErrorScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestSpatialUpdate(t *testing.T, harness Harness) {

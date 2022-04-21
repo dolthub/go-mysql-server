@@ -355,6 +355,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 						return nil, err
 					}
 					continue
+				} else if sql.ErrLengthBeyondLimit.Is(err) {
+					return nil, sql.ErrStringTooLong.New(row[idx], col.Name)
 				} else {
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
