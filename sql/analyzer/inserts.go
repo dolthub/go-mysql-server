@@ -117,6 +117,7 @@ func resolvePreparedInsert(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return n, transform.SameTree, nil
 		}
 
+		// TriggerExecutor has already been analyzed
 		if _, ok := ins.Source.(*plan.TriggerExecutor); ok {
 			return n, transform.SameTree, nil
 		}

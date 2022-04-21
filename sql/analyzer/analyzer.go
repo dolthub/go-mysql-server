@@ -429,7 +429,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownFiltersId,
 		subqueryIndexesId,
 		inSubqueryIndexesId,
-		//resolveInsertRowsId,
 		resolvePreparedInsertId,
 
 		TrackProcessId,

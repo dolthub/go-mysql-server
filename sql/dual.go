@@ -1,5 +1,7 @@
 package sql
 
+import "strings"
+
 const DualTableName = "dual"
 
 var DualTableSchema = NewPrimaryKeySchema(Schema{
@@ -11,5 +13,5 @@ func IsDualTable(t Table) bool {
 	if t == nil {
 		return false
 	}
-	return t.Name() == DualTableName && t.Schema().Equals(DualTableSchema.Schema)
+	return strings.ToLower(t.Name()) == DualTableName && t.Schema().Equals(DualTableSchema.Schema)
 }

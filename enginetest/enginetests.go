@@ -6494,6 +6494,7 @@ func runQueryPreparedWithCtx(
 
 	_, isInsert := parsed.(*plan.InsertInto)
 	_, isDatabaser := parsed.(sql.Databaser)
+
 	if bl, ok := parsed.(*plan.Block); ok {
 		for _, n := range bl.Children() {
 			if _, ok := n.(*plan.InsertInto); ok {
