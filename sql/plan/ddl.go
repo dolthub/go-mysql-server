@@ -55,7 +55,9 @@ func (c *ddlNode) Database() sql.Database {
 }
 
 // Schema implements the Node interface.
-func (*ddlNode) Schema() sql.Schema { return nil }
+func (*ddlNode) Schema() sql.Schema {
+	return sql.OkResultSchema
+}
 
 // Children implements the Node interface.
 func (c *ddlNode) Children() []sql.Node { return nil }

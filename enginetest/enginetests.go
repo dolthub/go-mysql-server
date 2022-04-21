@@ -2967,7 +2967,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row(nil), nil)
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row{{sql.NewOkResult(0)}}, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
@@ -2984,7 +2984,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		sql.NewRow(int64(3), "third row", int32(42)),
 	}, nil)
 
-	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i", []sql.Row(nil), nil)
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i", []sql.Row{{sql.NewOkResult(0)}}, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
@@ -3017,7 +3017,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
 	}, nil)
 
-	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row(nil), nil)
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row{{sql.NewOkResult(0)}}, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
@@ -3038,7 +3038,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	}, nil)
 
 	// multiple column additions in a single ALTER
-	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(26), ADD COLUMN s5 VARCHAR(27)", []sql.Row(nil), nil)
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(26), ADD COLUMN s5 VARCHAR(27)", []sql.Row{{sql.NewOkResult(0)}}, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
@@ -3069,7 +3069,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row(nil), nil, nil)
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
 		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 		require.NoError(err)
