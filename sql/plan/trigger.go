@@ -155,13 +155,6 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	// Store logicIter to close/flush later
 	t.logicIter = logicIter
 
-	//defer func() {
-	//	err := logicIter.Close(t.ctx)
-	//	if returnErr == nil {
-	//		returnErr = err
-	//	}
-	//}()
-
 	var logicRow sql.Row
 	for {
 		row, err := logicIter.Next(ctx)

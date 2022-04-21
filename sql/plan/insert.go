@@ -552,8 +552,11 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sq
 		}
 		return nil, nil
 	} else {
-		i.rowSource.Close(ctx)
-		i.rowSource = nil
+		// Only close rowSource if it's not a trigger
+		if _, ok := i.rowSource.(*triggerIter); !ok {
+			i.rowSource.Close(ctx)
+			i.rowSource = nil
+		}
 		return nil, sql.NewWrappedInsertError(row, err)
 	}
 }
