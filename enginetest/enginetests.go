@@ -3002,6 +3002,21 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		sql.NewRow(int64(3), nil, "third row", int32(42)),
 	}, nil)
 
+	TestQuery(t, harness, e, "insert into mytable values (4, 's2', 'fourth row', 11)", []sql.Row{
+		{sql.NewOkResult(1)},
+	}, nil)
+	TestQuery(t, harness, e, "update mytable set s2 = 'updated s2' where i2 = 42", []sql.Row{
+		{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
+			Matched: 3, Updated: 3,
+		}}},
+	}, nil)
+	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+		sql.NewRow(int64(1), "updated s2", "first row", int32(42)),
+		sql.NewRow(int64(2), "updated s2", "second row", int32(42)),
+		sql.NewRow(int64(3), "updated s2", "third row", int32(42)),
+		sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
+	}, nil)
+
 	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row(nil), nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
@@ -3016,9 +3031,10 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-		sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
-		sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
-		sql.NewRow("yay", int64(3), nil, "third row", int32(42)),
+		sql.NewRow("yay", int64(1), "updated s2", "first row", int32(42)),
+		sql.NewRow("yay", int64(2), "updated s2", "second row", int32(42)),
+		sql.NewRow("yay", int64(3), "updated s2", "third row", int32(42)),
+		sql.NewRow("yay", int64(4), "s2", "fourth row", int32(11)),
 	}, nil)
 
 	// multiple column additions in a single ALTER
