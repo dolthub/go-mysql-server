@@ -1413,7 +1413,7 @@ var InsertErrorScripts = []ScriptTest{
 			"create table bad (s varchar(9))",
 		},
 		Query:       "insert into bad values ('1234567890')",
-		ExpectedErr: sql.ErrStringTooLong,
+		ExpectedErr: sql.ErrLengthBeyondLimit,
 	},
 }
 

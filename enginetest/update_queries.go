@@ -548,6 +548,6 @@ var UpdateErrorScripts = []ScriptTest{
 			"insert into bad values ('good')",
 		},
 		Query:       "update bad set s = '1234567890'",
-		ExpectedErr: sql.ErrStringTooLong,
+		ExpectedErr: sql.ErrLengthBeyondLimit,
 	},
 }

@@ -65,8 +65,9 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if val != nil {
 		convertedVal, err := getField.fieldType.Convert(val)
 		if err != nil {
+			// Fill in error with information
 			if sql.ErrLengthBeyondLimit.Is(err) {
-				return nil, sql.ErrStringTooLong.New(val, getField.Name())
+				return nil, sql.ErrLengthBeyondLimit.New(val, getField.Name())
 			}
 			return nil, err
 		}
