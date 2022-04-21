@@ -278,7 +278,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					sql.NewRow(3, "row three", sql.JSONDocument{Val: []interface{}{5, 6}}, sql.JSONDocument{Val: map[string]interface{}{"c": 2}}),
 					sql.NewRow(4, "row four", sql.JSONDocument{Val: []interface{}{7, 8}}, sql.JSONDocument{Val: map[string]interface{}{"d": 2}}))
 			} else {
-				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
+				t.Logf("Warning: could not create table %s: %s", "json", err)
 			}
 		})
 	}
