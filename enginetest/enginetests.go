@@ -5742,7 +5742,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 DISABLE KEYS",
 			[]sql.Row{{sql.NewOkResult(0)}},
-		nil, mysql.ERNotSupportedYet, 1,
+			nil, mysql.ERNotSupportedYet, 1,
 			"", false)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 ENABLE KEYS",
 			[]sql.Row{{sql.NewOkResult(0)}}, nil, mysql.ERNotSupportedYet, 1,

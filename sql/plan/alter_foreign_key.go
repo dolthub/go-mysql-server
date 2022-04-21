@@ -398,7 +398,6 @@ func (p *DropForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
-
 // WithChildren implements the interface sql.Node.
 func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(p, children...)
