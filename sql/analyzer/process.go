@@ -35,7 +35,7 @@ func init() {
 
 // trackProcess will wrap the query in a process node and add progress items
 // to the already existing process.
-func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -118,13 +118,13 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	node, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
-				n, err := sq.WithChildren(qp.Child)
+				n, err := sq.WithChildren(qp.Child())
 				return n, transform.NewTree, err
 			}
 		}
 		if t, ok := n.(*plan.TriggerExecutor); ok {
 			if qp, ok := t.Right().(*plan.QueryProcess); ok {
-				n, err := t.WithChildren(t.Left(), qp.Child)
+				n, err := t.WithChildren(t.Left(), qp.Child())
 				return n, transform.NewTree, err
 			}
 		}

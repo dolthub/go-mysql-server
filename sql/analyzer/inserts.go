@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
 		return n, transform.SameTree, nil
 	} else if _, ok := n.(*plan.CreateProcedure); ok {
@@ -64,7 +64,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		// TriggerExecutor has already been analyzed
 		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
 			// Analyze the source of the insert independently
-			source, err = a.Analyze(ctx, insert.Source, scope)
+			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, sel)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

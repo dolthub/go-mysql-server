@@ -26,7 +26,7 @@ import (
 )
 
 func TestReorderProjection(t *testing.T) {
-	f := getRule("reorder_projection")
+	f := getRule(reorderProjectionId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int64},
@@ -148,7 +148,7 @@ func TestReorderProjection(t *testing.T) {
 }
 
 func TestReorderProjectionWithSubqueries(t *testing.T) {
-	f := getRule("reorder_projection")
+	f := getRule(reorderProjectionId)
 
 	onepk := memory.NewTable("one_pk", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "pk", Source: "one_pk", Type: sql.Int64, PrimaryKey: true},

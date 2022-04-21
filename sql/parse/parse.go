@@ -1040,6 +1040,7 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 			Direction: direction,
 			Name:      param.Name,
 			Type:      internalTyp,
+			Variadic:  false,
 		})
 	}
 
@@ -1269,7 +1270,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.AddStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				c.Database = table.Database
+				c.Database = table.Database()
 				c.Table = table.Name()
 				if c.Database == "" {
 					c.Database = ctx.GetCurrentDatabase()
@@ -1284,7 +1285,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				database := table.Database
+				database := table.Database()
 				if database == "" {
 					database = ctx.GetCurrentDatabase()
 				}
@@ -1551,17 +1552,13 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
-	seenPrimary := false
-	seenUnique := false
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
 			constraint = sql.IndexConstraint_Primary
-			seenPrimary = true
 		} else if idxDef.Info.Unique {
 			constraint = sql.IndexConstraint_Unique
-			seenUnique = true
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
@@ -1607,11 +1604,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
 			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
-		if colDef.Type.KeyOpt == colKeyPrimary {
-			seenPrimary = true
-		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
-			seenUnique = true
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -1623,11 +1616,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 				}},
 			})
 		}
-	}
-
-	// can't use unique constraint on keyless tables
-	if seenUnique && !seenPrimary {
-		return nil, sql.ErrUnsupportedFeature.New("unique constraint on keyless tables")
 	}
 
 	qualifier := c.Table.Qualifier.String()
@@ -3385,7 +3373,20 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			return expression.NewLiteral(exprLiteral.Value(), sql.LongBlob), nil
 		}
 		return expr, nil
+	case "_utf8mb4 ", "_utf8mb3 ", "_utf8 ":
+		expr, err := ExprToExpression(ctx, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		// must be string type
+		if !sql.IsText(expr.Type()) {
+			return nil, sql.ErrInvalidType.New(expr.Type().String() + " after character set introducer")
+		}
+		return expr, nil
 	default:
+		if strings.HasPrefix(strings.ToLower(e.Operator), "_") {
+			return nil, sql.ErrUnsupportedFeature.New("unsupported character set: " + e.Operator)
+		}
 		return nil, sql.ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}
 }

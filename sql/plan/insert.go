@@ -77,6 +77,7 @@ type InsertInto struct {
 
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
+var _ sql.Expressioner = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {

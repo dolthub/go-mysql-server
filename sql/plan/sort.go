@@ -339,7 +339,9 @@ func (n *TopN) DebugString() string {
 
 // Expressions implements the Expressioner interface.
 func (n *TopN) Expressions() []sql.Expression {
-	return n.Fields.ToExpressions()
+	exprs := []sql.Expression{n.Limit}
+	exprs = append(exprs, n.Fields.ToExpressions()...)
+	return exprs
 }
 
 // WithChildren implements the Node interface.
@@ -360,13 +362,14 @@ func (n *TopN) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 
 // WithExpressions implements the Expressioner interface.
 func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(n.Fields) {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields))
+	if len(exprs) != len(n.Fields)+1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields)+1)
 	}
 
-	var fields = n.Fields.FromExpressions(exprs...)
+	var limit = exprs[0]
+	var fields = n.Fields.FromExpressions(exprs[1:]...)
 
-	topn := NewTopN(fields, n.Limit, n.Child)
+	topn := NewTopN(fields, limit, n.Child)
 	topn.CalcFoundRows = n.CalcFoundRows
 	return topn, nil
 }

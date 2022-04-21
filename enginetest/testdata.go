@@ -112,12 +112,12 @@ func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables [
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, sql.Point{X: 1, Y: 2}),
-					sql.NewRow(2, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
-					sql.NewRow(3, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
-					sql.NewRow(4, sql.Point{SRID: 4326, X: 1, Y: 2}),
-					sql.NewRow(5, sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}),
-					sql.NewRow(6, sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}),
+					sql.NewRow(1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}),
+					sql.NewRow(2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}),
+					sql.NewRow(3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}),
+					sql.NewRow(4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}),
+					sql.NewRow(5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}),
+					sql.NewRow(6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "geometry_table", err)
@@ -863,6 +863,22 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
 					sql.NewRow(int64(0), int64(0)),
 					sql.NewRow(int64(1), int64(1)),
+					sql.NewRow(int64(1), int64(1)),
+					sql.NewRow(int64(2), int64(2)))
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "keyless", err)
+			}
+		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "unique_keyless", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "c0", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+				{Name: "c1", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(0), int64(0)),
 					sql.NewRow(int64(1), int64(1)),
 					sql.NewRow(int64(2), int64(2)))
 			} else {

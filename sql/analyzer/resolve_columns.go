@@ -30,7 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func checkUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func validateUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// getTableAliases will error if any table name / alias is repeated
 	_, err := getTableAliases(n, scope)
 	if err != nil {
@@ -182,7 +182,7 @@ func dedupStrings(in []string) []string {
 }
 
 // qualifyColumns assigns a table to any column expressions that don't have one already
-func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
@@ -220,7 +220,8 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
-				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias, *plan.RecursiveTable, *information_schema.ColumnsTable:
+				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias,
+					*plan.RecursiveTable, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					names.indexTable(alias, name, i)
@@ -382,7 +383,7 @@ const (
 
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
 // the expression's child node.
-func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
 
@@ -594,7 +595,7 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 
 // pushdownGroupByAliases reorders the aggregation in a groupby so aliases defined in it can be resolved in the grouping
 // of the groupby. To do so, all aliases are pushed down to a projection node under the group by.
-func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -617,6 +618,9 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		g, ok := n.(*plan.GroupBy)
 		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
+			return n, transform.SameTree, nil
+		}
+		if !ok || len(g.GroupByExprs) == 0 {
 			return n, transform.SameTree, nil
 		}
 

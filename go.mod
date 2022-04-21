@@ -3,7 +3,7 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20220411205612-30b631cfdaac
+	github.com/dolthub/vitess v0.0.0-20220420162151-fd557659d30b
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/text v0.3.7
-	golang.org/x/tools v0.1.9
+	golang.org/x/tools v0.1.10
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 )
 
@@ -31,7 +31,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210506142907-4a47615972c2 // indirect

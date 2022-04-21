@@ -73,12 +73,35 @@ func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PointType) Convert(v interface{}) (interface{}, error) {
-	// Must be a Point, fail otherwise
-	if v, ok := v.(Point); ok {
-		return v, nil
+	// Allow null
+	if v == nil {
+		return nil, nil
 	}
-
-	return nil, ErrNotPoint.New(v)
+	// Handle conversions
+	switch val := v.(type) {
+	case []byte:
+		// Parse header
+		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		if err != nil {
+			return nil, err
+		}
+		// Throw error if not marked as point
+		if geomType != WKBPointID {
+			return nil, ErrInvalidGISData.New("PointType.Convert")
+		}
+		// Parse data section
+		point, err := WKBToPoint(val[EWKBHeaderSize:], isBig, srid)
+		if err != nil {
+			return nil, err
+		}
+		return point, nil
+	case string:
+		return t.Convert([]byte(val))
+	case Point:
+		return val, nil
+	default:
+		return nil, ErrNotPoint.New(val)
+	}
 }
 
 // Equals implements the Type interface.

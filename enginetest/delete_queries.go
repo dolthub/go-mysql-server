@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var DeleteTests = []WriteQueryTest{
@@ -37,15 +36,6 @@ var DeleteTests = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
-	},
-	{
-		WriteQuery:          "DELETE FROM mytable WHERE i = ?;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT * FROM mytable;",
-		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(int64(2), sql.Int64),
-		},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i < 3;",

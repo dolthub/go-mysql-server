@@ -85,7 +85,7 @@ func TestResolveSubqueries(t *testing.T) {
 						plan.NewSubqueryAlias(
 							"t1", "",
 							plan.NewDecoratedNode("Projected table access on [a]",
-								plan.NewResolvedTable(foo.WithProjection([]string{"a"}), db, nil)),
+								plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil)),
 						),
 						plan.NewSubqueryAlias(
 							"t2", "",
@@ -94,7 +94,7 @@ func TestResolveSubqueries(t *testing.T) {
 								plan.NewProject(
 									[]sql.Expression{gf(0, "bar", "b")},
 									plan.NewDecoratedNode("Projected table access on [b]",
-										plan.NewResolvedTable(bar.WithProjection([]string{"b"}), db, nil)),
+										plan.NewResolvedTable(bar.WithProjections([]string{"b"}), db, nil)),
 								),
 							),
 						),
@@ -106,16 +106,16 @@ func TestResolveSubqueries(t *testing.T) {
 	}
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
-	resolveSubqueries := getRule("resolve_subqueries")
-	finalizeSubqueries := getRule("finalize_subqueries")
+	resolveSubqueries := getRule(resolveSubqueriesId)
+	finalizeSubqueries := getRule(finalizeSubqueriesId)
 	runTestCases(t, ctx, testCases, a, Rule{
-		Name: "subqueries",
-		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-			n, _, err := resolveSubqueries.Apply(ctx, a, n, scope)
+		Id: -1,
+		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+			n, _, err := resolveSubqueries.Apply(ctx, a, n, scope, DefaultRuleSelector)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return finalizeSubqueries.Apply(ctx, a, n, scope)
+			return finalizeSubqueries.Apply(ctx, a, n, scope, DefaultRuleSelector)
 		},
 	})
 }
@@ -174,7 +174,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 									gf(2, "mytable2", "i"),
 								),
 								plan.NewDecoratedNode("Projected table access on [y i]",
-									plan.NewResolvedTable(table2.WithProjection([]string{"y", "i"}), db, nil),
+									plan.NewResolvedTable(table2.WithProjections([]string{"y", "i"}), db, nil),
 								),
 							),
 						),
@@ -219,7 +219,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 									gf(0, "mytable", "i"),
 								),
 								plan.NewDecoratedNode("Projected table access on [y]",
-									plan.NewResolvedTable(table2.WithProjection([]string{"y"}), db, nil),
+									plan.NewResolvedTable(table2.WithProjections([]string{"y"}), db, nil),
 								),
 							),
 						),
@@ -355,7 +355,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 									gf(2, "mytable2", "i"),
 								),
 								plan.NewDecoratedNode("Projected table access on [i]",
-									plan.NewResolvedTable(table2.WithProjection([]string{"i"}), db, nil),
+									plan.NewResolvedTable(table2.WithProjections([]string{"i"}), db, nil),
 								),
 							),
 						),
@@ -421,7 +421,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 													gf(4, "mytable2", "i"),
 												),
 												plan.NewDecoratedNode("Projected table access on [y i]",
-													plan.NewResolvedTable(table2.WithProjection([]string{"y", "i"}), db, nil),
+													plan.NewResolvedTable(table2.WithProjections([]string{"y", "i"}), db, nil),
 												),
 											),
 										),
@@ -438,7 +438,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 	}
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
-	runTestCases(t, ctx, testCases, a, getRule("resolve_subquery_exprs"))
+	runTestCases(t, ctx, testCases, a, getRule(resolveSubqueryExprsId))
 }
 
 func TestCacheSubqueryResults(t *testing.T) {
@@ -566,7 +566,7 @@ func TestCacheSubqueryResults(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), testCases, nil, getRule("cache_subquery_results"))
+	runTestCases(t, sql.NewEmptyContext(), testCases, nil, getRule(cacheSubqueryResultsId))
 }
 
 func mustExpr(e sql.Expression, err error) sql.Expression {

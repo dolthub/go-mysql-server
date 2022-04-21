@@ -21,8 +21,8 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// Represents the Point type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
+// Represents the Polygon type.
+// https://dev.mysql.com/doc/refman/8.0/en/gis-class-polygon.html
 type Polygon struct {
 	SRID  uint32
 	Lines []Linestring
@@ -86,12 +86,35 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PolygonType) Convert(v interface{}) (interface{}, error) {
-	// Must be a Polygon, fail otherwise
-	if v, ok := v.(Polygon); ok {
-		return v, nil
+	// Allow null
+	if v == nil {
+		return nil, nil
 	}
-
-	return nil, ErrNotPolygon.New(v)
+	// Handle conversions
+	switch val := v.(type) {
+	case []byte:
+		// Parse header
+		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		if err != nil {
+			return nil, err
+		}
+		// Throw error if not marked as linestring
+		if geomType != WKBPolyID {
+			return nil, err
+		}
+		// Parse data section
+		poly, err := WKBToPoly(val[EWKBHeaderSize:], isBig, srid)
+		if err != nil {
+			return nil, err
+		}
+		return poly, nil
+	case string:
+		return t.Convert([]byte(val))
+	case Polygon:
+		return val, nil
+	default:
+		return nil, ErrNotPolygon.New(val)
+	}
 }
 
 // Equals implements the Type interface.

@@ -20,7 +20,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var InsertQueries = []WriteQueryTest{
@@ -71,26 +70,6 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-	},
-	{
-		WriteQuery:          "INSERT INTO mytable VALUES (?, ?);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings: map[string]sql.Expression{
-			"v1": expression.NewLiteral(int64(999), sql.Int64),
-			"v2": expression.NewLiteral("x", sql.Text),
-		},
-	},
-	{
-		WriteQuery:          "INSERT INTO mytable VALUES (:col1, :col2);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Bindings: map[string]sql.Expression{
-			"col1": expression.NewLiteral(int64(999), sql.Int64),
-			"col2": expression.NewLiteral("x", sql.Text),
-		},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET i = 999, s = 'x';",
@@ -633,7 +612,19 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{5, sql.Point{X: 1, Y: 2}}, {1, sql.Point{X: 1, Y: 1}}},
 	},
 	{
+		WriteQuery:          "INSERT INTO point_table VALUES (1, 0x000000000101000000000000000000F03F0000000000000040);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM point_table;",
+		ExpectedSelect:      []sql.Row{{5, sql.Point{X: 1, Y: 2}}, {1, sql.Point{X: 1, Y: 2}}},
+	},
+	{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,2),POINT(3,4)));",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM line_table;",
+		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+	},
+	{
+		WriteQuery:          "INSERT INTO line_table VALUES (2, 0x00000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040);",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
 		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
@@ -643,6 +634,122 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
 		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+	},
+	{
+		WriteQuery:          "INSERT INTO polygon_table VALUES (1, 0x0000000001030000000100000005000000000000000000F03F000000000000F03F000000000000F03F000000000000F0BF000000000000F0BF000000000000F0BF000000000000F0BF000000000000F03F000000000000F03F000000000000F03F);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM polygon_table;",
+		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+	},
+	{
+		WriteQuery:          "INSERT INTO geometry_table VALUES (7, POINT(123.456,7.89));",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM geometry_table;",
+		ExpectedSelect: []sql.Row{
+			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
+			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
+			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{7, sql.Geometry{Inner: sql.Point{X: 123.456, Y: 7.89}}},
+		},
+	},
+	{
+		WriteQuery:          "INSERT INTO geometry_table VALUES (7, 0x00000000010100000077BE9F1A2FDD5E408FC2F5285C8F1F40);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM geometry_table;",
+		ExpectedSelect: []sql.Row{
+			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
+			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
+			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{7, sql.Geometry{Inner: sql.Point{X: 123.456, Y: 7.89}}},
+		},
+	},
+	{
+		WriteQuery:          "INSERT INTO geometry_table VALUES (7, LINESTRING(POINT(1,2),POINT(3,4)));",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM geometry_table;",
+		ExpectedSelect: []sql.Row{
+			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
+			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
+			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{7, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+		},
+	},
+	{
+		WriteQuery:          "INSERT INTO geometry_table VALUES (7, 0x00000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM geometry_table;",
+		ExpectedSelect: []sql.Row{
+			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
+			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
+			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{7, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+		},
+	},
+	{
+		WriteQuery:          "INSERT INTO geometry_table VALUES (7, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM geometry_table;",
+		ExpectedSelect: []sql.Row{
+			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
+			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
+			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{7, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+		},
+	},
+	{
+		WriteQuery:          "INSERT INTO geometry_table VALUES (7, 0x0000000001030000000100000005000000000000000000F03F000000000000F03F000000000000F03F000000000000F0BF000000000000F0BF000000000000F0BF000000000000F0BF000000000000F03F000000000000F03F000000000000F03F);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM geometry_table;",
+		ExpectedSelect: []sql.Row{
+			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
+			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
+			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
+			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{7, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+		},
+	},
+}
+
+var InsertIntoKeylessUnique = []WriteQueryTest{
+	{
+		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 3);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
+		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
+	},
+	{
+		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 4);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
+		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 4}},
+	},
+}
+
+var InsertIntoKeylessUniqueError = []GenericErrorQueryTest{
+	{
+		Name:  "Try to insert into a unique keyless table",
+		Query: "INSERT INTO unique_keyless (100, 2)",
+	},
+	{
+		Name:  "Try to insert into a unique keyless table",
+		Query: "INSERT INTO unique_keyless (1, 1)",
 	},
 }
 
@@ -1138,6 +1245,44 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "insert into test(pk) values (1)",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "Insert on duplicate key",
+		SetUpScript: []string{
+			`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+			`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+			"INSERT INTO users values ('milo'), ('dabe')",
+			"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into nodes(id,owner,status,timestamp) values('id1','dabe','off',2) on duplicate key update owner='milo',status='on'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "insert into nodes(id,owner,status,timestamp) values('id2','dabe','off',3) on duplicate key update owner='milo',status='on'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from nodes",
+				Expected: []sql.Row{
+					{"id1", "milo", "on", 1},
+					{"id2", "dabe", "off", 3},
+				},
 			},
 		},
 	},

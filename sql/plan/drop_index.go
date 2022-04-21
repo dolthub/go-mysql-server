@@ -46,6 +46,10 @@ func NewDropIndex(name string, table sql.Node) *DropIndex {
 	return &DropIndex{name, table, nil, ""}
 }
 
+var _ sql.Databaseable = (*DropIndex)(nil)
+
+func (d *DropIndex) Database() string { return d.CurrentDatabase }
+
 // Resolved implements the Node interface.
 func (d *DropIndex) Resolved() bool { return d.Table.Resolved() }
 

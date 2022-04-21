@@ -864,17 +864,22 @@ func (t *FilteredTable) WithFilters(ctx *sql.Context, filters []sql.Expression) 
 	return &nt
 }
 
-// WithFilters implements the sql.FilteredTable interface.
-func (t *FilteredTable) WithProjection(colNames []string) sql.Table {
-	table := t.Table.WithProjection(colNames)
+// WithProjections implements sql.ProjectedTable
+func (t *FilteredTable) WithProjections(colNames []string) sql.Table {
+	table := t.Table.WithProjections(colNames)
 
 	nt := *t
 	nt.Table = table.(*Table)
 	return &nt
 }
 
-// WithProjection implements the sql.ProjectedTable interface.
-func (t *Table) WithProjection(colNames []string) sql.Table {
+// Projections implements sql.ProjectedTable
+func (t *FilteredTable) Projections() []string {
+	return t.projection
+}
+
+// WithProjections implements sql.ProjectedTable
+func (t *Table) WithProjections(colNames []string) sql.Table {
 	if len(colNames) == 0 {
 		return t
 	}
@@ -889,6 +894,11 @@ func (t *Table) WithProjection(colNames []string) sql.Table {
 	nt.projection = colNames
 
 	return &nt
+}
+
+// Projections implements sql.ProjectedTable
+func (t *Table) Projections() []string {
+	return t.projection
 }
 
 func (t *Table) columnIndexes(colNames []string) ([]int, error) {

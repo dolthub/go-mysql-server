@@ -240,7 +240,7 @@ func (g *GeomFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 func ParseWKBHeader(buf []byte) (bool, uint32, error) {
 	// Header length
 	if len(buf) < WKBHeaderLength {
-		return false, 0, sql.ErrInvalidGISData.New("ST_GeomFromWKB3")
+		return false, 0, sql.ErrInvalidGISData.New("ST_GeomFromWKB")
 	}
 
 	// Get Endianness
@@ -261,7 +261,7 @@ func ParseWKBHeader(buf []byte) (bool, uint32, error) {
 func WKBToPoint(buf []byte, isBig bool, srid uint32, order bool) (sql.Point, error) {
 	// Must be 16 bytes (2 floats)
 	if len(buf) != 16 {
-		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromWKB1")
+		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromWKB")
 	}
 
 	// Read floats x and y
@@ -322,7 +322,7 @@ func WKBToLine(buf []byte, isBig bool, srid uint32, order bool) (sql.Linestring,
 func WKBToPoly(buf []byte, isBig bool, srid uint32, order bool) (sql.Polygon, error) {
 	// Must be at least 4 bytes (length of polygon)
 	if len(buf) < 4 {
-		return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB1")
+		return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
 	}
 
 	// Get number of lines in polygon
@@ -345,10 +345,10 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32, order bool) (sql.Polygon, er
 				lines[i] = line
 				s += 4 + 16*len(line.Points) // shift parsing location over
 			} else {
-				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB2")
+				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
 			}
 		} else {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB3")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
 		}
 	}
 

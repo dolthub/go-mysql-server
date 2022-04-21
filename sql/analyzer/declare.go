@@ -67,11 +67,11 @@ func (d *declarationScope) getCondition(name string) *plan.DeclareCondition {
 
 // resolveDeclarations handles all Declare nodes, ensuring correct node order and assigning variables and conditions to
 // their appropriate references.
-func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	return resolveDeclarationsInner(ctx, a, node, newDeclarationScope(nil))
+func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return resolveDeclarationsInner(ctx, a, node, newDeclarationScope(nil), sel)
 }
 
-func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scope *declarationScope) (sql.Node, transform.TreeIdentity, error) {
+func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scope *declarationScope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
 		return node, transform.SameTree, nil
@@ -121,9 +121,9 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		child = children[i]
 		switch c := child.(type) {
 		case *plan.Procedure, *plan.Block, *plan.IfElseBlock, *plan.IfConditional:
-			newChild, same, err = resolveDeclarationsInner(ctx, a, c, scope)
+			newChild, same, err = resolveDeclarationsInner(ctx, a, child, scope, sel)
 		case *plan.BeginEndBlock, *plan.TriggerBeginEndBlock:
-			newChild, same, err = resolveDeclarationsInner(ctx, a, c, newDeclarationScope(scope))
+			newChild, same, err = resolveDeclarationsInner(ctx, a, child, newDeclarationScope(scope), sel)
 		case *plan.SignalName:
 			condition := scope.GetCondition(c.Name)
 			if condition == nil {

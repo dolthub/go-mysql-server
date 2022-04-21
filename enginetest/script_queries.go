@@ -36,6 +36,8 @@ type ScriptTest struct {
 	Expected []sql.Row
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
+	// SkipPrepared is true when we skip a test for prepared statements only
+	SkipPrepared bool
 }
 
 type ScriptTestAssertion struct {
@@ -894,7 +896,7 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2",
+				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2 order by attribute",
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
@@ -902,7 +904,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color'",
+				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
 			},
 		},
@@ -1280,6 +1282,8 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 		},
+		//todo(max): fix arithmatic on bindvar typing
+		SkipPrepared: true,
 	},
 	{
 		Name: "WHERE clause considers ENUM/SET types for comparisons",
@@ -1960,6 +1964,135 @@ var ScriptTests = []ScriptTest{
 	},
 }
 
+var SpatialScriptTests = []ScriptTest{
+	{
+		Name: "create table using default point value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, p point default point(123.456, 7.89));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(p) from test",
+				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create table using default linestring value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, l linestring default linestring(point(1,2), point(3,4)));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(l) from test",
+				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create table using default polygon value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, p polygon default polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0))));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(p) from test",
+				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create geometry table using default point value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, g geometry  default point(123.456, 7.89));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(g) from test",
+				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create geometry table using default linestring value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, g geometry default linestring(point(1,2), point(3,4)));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(g) from test",
+				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+			},
+		},
+	},
+	{
+		Name: "create geometry table using default polygon value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, g geometry default polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0))));",
+			"insert into test (i) values (0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(g) from test",
+				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
+			},
+			{
+				Query:    "show create table test",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+			},
+			{
+				Query:    "describe test",
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+			},
+		},
+	},
+}
+
 var CreateCheckConstraintsScripts = []ScriptTest{
 	{
 		Name: "Run SHOW CREATE TABLE with different types of check constraints",
@@ -2218,6 +2351,23 @@ var BrokenScriptTests = []ScriptTest{
 					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
 					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
 				},
+			},
+		},
+	},
+	// TODO: We should implement unique indexes with GMS
+	{
+		Name: "Keyless Table with Unique Index",
+		SetUpScript: []string{
+			"create table a (x int, val int unique)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO a VALUES (1, 1)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO a VALUES (1, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},

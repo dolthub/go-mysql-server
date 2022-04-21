@@ -25,7 +25,7 @@ import (
 )
 
 func TestExpandStars(t *testing.T) {
-	f := getRule("expand_stars")
+	f := getRule(expandStarsId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int32, Source: "mytable"},
