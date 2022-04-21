@@ -98,6 +98,10 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
 	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
 	// nodes are things such as indexed access, filters, limits, etc.
+	if sql.IsDualTable(t) {
+		return true
+	}
+
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
 }

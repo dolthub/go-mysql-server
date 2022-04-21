@@ -6564,7 +6564,21 @@ func runQueryPreparedWithCtx(
 	require := require.New(t)
 	parsed, err := parse.Parse(ctx, q)
 
-	if _, ok := parsed.(sql.Databaser); ok {
+	_, isInsert := parsed.(*plan.InsertInto)
+	_, isDatabaser := parsed.(sql.Databaser)
+
+	// *ast.MultiAlterDDL parses arbitrary nodes in a *plan.Block
+	if bl, ok := parsed.(*plan.Block); ok {
+		for _, n := range bl.Children() {
+			if _, ok := n.(*plan.InsertInto); ok {
+				isInsert = true
+			} else if _, ok := n.(sql.Databaser); ok {
+				isDatabaser = true
+			}
+
+		}
+	}
+	if isDatabaser && !isInsert {
 		// DDL statements don't support prepared statements
 		sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, nil)
 		require.NoError(err, "Unexpected error for query %s", q)
@@ -6612,6 +6626,9 @@ func runQueryPreparedWithCtx(
 	}
 
 	prepared, err := e.Analyzer.PrepareQuery(ctx, bound, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	e.PreparedData[ctx.Session.ID()] = sqle.PreparedData{
 		Query: q,
 		Node:  prepared,

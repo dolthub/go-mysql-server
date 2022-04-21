@@ -602,6 +602,26 @@ var InsertQueries = []WriteQueryTest{
 			{4, 44},
 		},
 	},
+	{
+		WriteQuery:          `INSERT INTO keyless (c0, c1) SELECT * from keyless where c0=0 and c1=0`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         `SELECT * from keyless where c0=0`,
+		ExpectedSelect: []sql.Row{
+			{0, 0},
+			{0, 0},
+		},
+	},
+	{
+		WriteQuery:          `insert into keyless (c0, c1) select a.c0, a.c1 from (select 1, 1) as a(c0, c1) join keyless on a.c0 = keyless.c0`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         `SELECT * from keyless where c0=1`,
+		ExpectedSelect: []sql.Row{
+			{1, 1},
+			{1, 1},
+			{1, 1},
+			{1, 1},
+		},
+	},
 }
 
 var SpatialInsertQueries = []WriteQueryTest{
