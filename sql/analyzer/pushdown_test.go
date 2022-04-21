@@ -142,17 +142,68 @@ func TestPushdownFilterToTables(t *testing.T) {
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode("Filtered table access on [(mytable.f = 3.14)]", plan.NewResolvedTable(table.WithFilters(sql.NewEmptyContext(), []sql.Expression{
+					plan.NewDecoratedNode("Filtered table access on [(mytable.f = 3.14)]", plan.NewResolvedTable(
+						newFilteredTableWithFilters(table, []sql.Expression{
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+						}), nil, nil)),
+					plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(
+						newFilteredTableWithFilters(table2, []sql.Expression{
+							expression.NewIsNull(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							),
+						}), nil, nil)),
+				),
+			),
+		},
+		{
+			name: "pushdown filter to aliased tables",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewFilter(
+					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
+							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
 							expression.NewLiteral(3.14, sql.Float64),
 						),
-					}), nil, nil)),
-					plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]", plan.NewResolvedTable(table2.WithFilters(sql.NewEmptyContext(), []sql.Expression{
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
 						),
-					}), nil, nil)),
+					),
+					plan.NewCrossJoin(
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(table, nil, nil)),
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(table2, nil, nil)),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+				},
+				plan.NewCrossJoin(
+					plan.NewDecoratedNode("Filtered table access on [(t1.f = 3.14)]",
+						plan.NewTableAlias("t1",
+							plan.NewResolvedTable(
+								newFilteredTableWithFilters(table, []sql.Expression{
+									expression.NewEquals(
+										expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
+										expression.NewLiteral(3.14, sql.Float64),
+									),
+								}), nil, nil))),
+					plan.NewDecoratedNode("Filtered table access on [t2.i2 IS NULL]",
+						plan.NewTableAlias("t2",
+							plan.NewResolvedTable(
+								newFilteredTableWithFilters(table2, []sql.Expression{
+									expression.NewIsNull(
+										expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
+									),
+								}), nil, nil))),
 				),
 			),
 		},
@@ -174,10 +225,14 @@ func TestPushdownFilterToTables(t *testing.T) {
 					),
 					plan.NewCrossJoin(
 						plan.NewDecoratedNode("Projected table access on [f]",
-							plan.NewResolvedTable(table.WithProjections([]string{"f"}), nil, nil),
+							plan.NewResolvedTable(
+								newFilteredTableWithProjections(table, []string{"f"}),
+								nil, nil),
 						),
 						plan.NewDecoratedNode("Projected table access on [t2 i2]",
-							plan.NewResolvedTable(table2.WithProjections([]string{"t2", "i2"}), nil, nil),
+							plan.NewResolvedTable(
+								newFilteredTableWithProjections(table2, []string{"t2", "i2"}),
+								nil, nil),
 						),
 					),
 				),
@@ -189,16 +244,20 @@ func TestPushdownFilterToTables(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewDecoratedNode("Projected table access on [f]",
 						plan.NewDecoratedNode("Filtered table access on [(mytable.f = 3.14)]",
-							plan.NewResolvedTable(table.WithProjections([]string{"f"}).(*memory.FilteredTable).WithFilters(sql.NewEmptyContext(), []sql.Expression{
-								eq(expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
-							}), nil, nil),
+							plan.NewResolvedTable(
+								newFilteredTableWithProjectionsAndFilters(
+									table, []string{"f"}, []sql.Expression{
+										eq(expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
+									}), nil, nil),
 						),
 					),
 					plan.NewDecoratedNode("Projected table access on [t2 i2]",
 						plan.NewDecoratedNode("Filtered table access on [mytable2.i2 IS NULL]",
-							plan.NewResolvedTable(table2.WithProjections([]string{"t2", "i2"}).(*memory.FilteredTable).WithFilters(sql.NewEmptyContext(), []sql.Expression{
-								expression.NewIsNull(expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false)),
-							}), nil, nil),
+							plan.NewResolvedTable(
+								newFilteredTableWithProjectionsAndFilters(
+									table2, []string{"t2", "i2"}, []sql.Expression{
+										expression.NewIsNull(expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false)),
+									}), nil, nil),
 						),
 					),
 				),
@@ -1410,4 +1469,30 @@ func mustIndexLookup(lookup sql.IndexLookup, err error) sql.IndexLookup {
 		panic(err)
 	}
 	return lookup
+}
+
+// newFilteredTableWithFilters creates a new memory.FilteredTable object and sets the specified filters.
+func newFilteredTableWithFilters(table *memory.FilteredTable, filters []sql.Expression) *memory.FilteredTable {
+	newFilteredTable := memory.NewFilteredTable(table.Name(), table.PrimaryKeySchema(), nil)
+	newFilteredTable.WithFilters(sql.NewEmptyContext(), filters)
+
+	return newFilteredTable
+}
+
+// newFilteredTableWithProjections creates a new memory.FilteredTable object and sets the specified column projections.
+func newFilteredTableWithProjections(table *memory.FilteredTable, colNames []string) *memory.FilteredTable {
+	newFilteredTable := memory.NewFilteredTable(table.Name(), table.PrimaryKeySchema(), nil)
+	newFilteredTable.WithProjections(colNames)
+
+	return newFilteredTable
+}
+
+// newFilteredTableWithProjectionsAndFilters creates a new memory.FilteredTable object and sets the specified filters
+// and column projections.
+func newFilteredTableWithProjectionsAndFilters(table *memory.FilteredTable, colNames []string, filters []sql.Expression) *memory.FilteredTable {
+	newFilteredTable := memory.NewFilteredTable(table.Name(), table.PrimaryKeySchema(), nil)
+	newFilteredTable.WithFilters(sql.NewEmptyContext(), filters)
+	newFilteredTable.WithProjections(colNames)
+
+	return newFilteredTable
 }
