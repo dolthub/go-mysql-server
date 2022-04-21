@@ -2608,6 +2608,32 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 		require.Equal(t, s, testTable.Schema())
 	})
+
+	t.Run("create table statement with charset introducer in column definition", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("mydb")
+
+		TestQueryWithContext(t, ctx, e, `CREATE TABLE types_with_defaults (
+  pk int NOT NULL,
+  col1 blob DEFAULT (_utf8mb4'abc'),
+  col2 json DEFAULT (json_object(_utf8mb4'a',1)),
+  col3 text DEFAULT (_utf8mb4'abc'),
+  PRIMARY KEY (pk)
+)`, []sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(t, err)
+
+		_, ok, err := db.GetTableInsensitive(ctx, "types_with_defaults")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		RunQuery(t, e, harness, "INSERT INTO types_with_defaults (pk) VALUES (1)")
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM types_with_defaults", []sql.Row{{1, "abc", sql.MustJSON(`{"a":1}`), "abc"}}, nil, nil)
+
+		_, _, err = e.Query(ctx, "CREATE TABLE unsupported_charset (pk int NOT NULL, col1 blob DEFAULT (_latin1'abc'))")
+		require.Error(t, err)
+	})
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
@@ -2976,6 +3002,21 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		sql.NewRow(int64(3), nil, "third row", int32(42)),
 	}, nil)
 
+	TestQuery(t, harness, e, "insert into mytable values (4, 's2', 'fourth row', 11)", []sql.Row{
+		{sql.NewOkResult(1)},
+	}, nil)
+	TestQuery(t, harness, e, "update mytable set s2 = 'updated s2' where i2 = 42", []sql.Row{
+		{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
+			Matched: 3, Updated: 3,
+		}}},
+	}, nil)
+	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+		sql.NewRow(int64(1), "updated s2", "first row", int32(42)),
+		sql.NewRow(int64(2), "updated s2", "second row", int32(42)),
+		sql.NewRow(int64(3), "updated s2", "third row", int32(42)),
+		sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
+	}, nil)
+
 	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row(nil), nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
@@ -2990,9 +3031,10 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-		sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
-		sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
-		sql.NewRow("yay", int64(3), nil, "third row", int32(42)),
+		sql.NewRow("yay", int64(1), "updated s2", "first row", int32(42)),
+		sql.NewRow("yay", int64(2), "updated s2", "second row", int32(42)),
+		sql.NewRow("yay", int64(3), "updated s2", "third row", int32(42)),
+		sql.NewRow("yay", int64(4), "s2", "fourth row", int32(11)),
 	}, nil)
 
 	// multiple column additions in a single ALTER
@@ -6136,6 +6178,36 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 				assert.Equal(t,
 					tt.ExpectedPersist, res)
 			}
+		})
+	}
+}
+
+func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
+	for _, insertion := range InsertIntoKeylessUnique {
+		e := NewEngine(t, harness)
+		defer e.Close()
+
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
+
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
+
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
+	}
+
+	for _, expectedFailure := range InsertIntoKeylessUniqueError {
+		t.Run(expectedFailure.Name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
 }

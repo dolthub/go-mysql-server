@@ -747,6 +747,32 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 }
 
+var InsertIntoKeylessUnique = []WriteQueryTest{
+	{
+		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 3);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
+		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
+	},
+	{
+		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 4);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
+		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 4}},
+	},
+}
+
+var InsertIntoKeylessUniqueError = []GenericErrorQueryTest{
+	{
+		Name:  "Try to insert into a unique keyless table",
+		Query: "INSERT INTO unique_keyless (100, 2)",
+	},
+	{
+		Name:  "Try to insert into a unique keyless table",
+		Query: "INSERT INTO unique_keyless (1, 1)",
+	},
+}
+
 var InsertScripts = []ScriptTest{
 	{
 		Name: "insert into sparse auto_increment table",
