@@ -191,7 +191,7 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 
 // Schema implements the sql.Node interface.
 func (c *CreateTable) Schema() sql.Schema {
-	return sql.Schema{}
+	return sql.OkResultSchema
 }
 
 func (c *CreateTable) PkSchema() sql.PrimaryKeySchema {
@@ -302,7 +302,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	return sql.RowsToRowIter(), nil
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 // ForeignKeys returns any foreign keys that will be declared on this table.
@@ -722,7 +722,7 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		}
 	}
 
-	return sql.RowsToRowIter(), err
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 // Children implements the Node interface.

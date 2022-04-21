@@ -119,7 +119,7 @@ func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	return sql.RowsToRowIter(), err
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {

@@ -1830,7 +1830,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test (v2) values (11)",
@@ -1888,7 +1888,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "describe test",
