@@ -602,6 +602,26 @@ var InsertQueries = []WriteQueryTest{
 			{4, 44},
 		},
 	},
+	{
+		WriteQuery:          `INSERT INTO keyless (c0, c1) SELECT * from keyless where c0=0 and c1=0`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         `SELECT * from keyless where c0=0`,
+		ExpectedSelect: []sql.Row{
+			{0, 0},
+			{0, 0},
+		},
+	},
+	{
+		WriteQuery:          `insert into keyless (c0, c1) select a.c0, a.c1 from (select 1, 1) as a(c0, c1) join keyless on a.c0 = keyless.c0`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         `SELECT * from keyless where c0=1`,
+		ExpectedSelect: []sql.Row{
+			{1, 1},
+			{1, 1},
+			{1, 1},
+			{1, 1},
+		},
+	},
 }
 
 var SpatialInsertQueries = []WriteQueryTest{
@@ -724,6 +744,32 @@ var SpatialInsertQueries = []WriteQueryTest{
 			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
 			{7, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
 		},
+	},
+}
+
+var InsertIntoKeylessUnique = []WriteQueryTest{
+	{
+		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 3);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
+		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
+	},
+	{
+		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 4);",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
+		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 4}},
+	},
+}
+
+var InsertIntoKeylessUniqueError = []GenericErrorQueryTest{
+	{
+		Name:  "Try to insert into a unique keyless table",
+		Query: "INSERT INTO unique_keyless (100, 2)",
+	},
+	{
+		Name:  "Try to insert into a unique keyless table",
+		Query: "INSERT INTO unique_keyless (1, 1)",
 	},
 }
 
