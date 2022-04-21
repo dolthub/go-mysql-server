@@ -497,6 +497,7 @@ func (i *insertIter) Close(ctx *sql.Context) error {
 		if i.rowSource != nil {
 			rsErr = i.rowSource.Close(ctx)
 		}
+		// TODO: redundant with tableEditor.inner.Close()?
 		if i.inserter != nil {
 			iErr = i.inserter.Close(ctx)
 		}

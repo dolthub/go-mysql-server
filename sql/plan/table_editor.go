@@ -64,16 +64,18 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Close implements the interface sql.RowIter.
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
-	var err error
+	// Rollback changes if there's an error, and nothing more
 	if s.errorEncountered != nil {
-		err = s.editor.DiscardChanges(ctx, s.errorEncountered)
-	} else {
-		err = s.editor.StatementComplete(ctx)
+		return s.editor.DiscardChanges(ctx, s.errorEncountered)
 	}
-	if err != nil {
-		_ = s.inner.Close(ctx)
-	} else {
-		err = s.inner.Close(ctx)
+
+	// Commit changes
+	err := s.editor.StatementComplete(ctx)
+
+	// Close inner (flushes changes), override error
+	// TODO: redundant with insert.inserter.Close()?
+	if err := s.inner.Close(ctx); err != nil {
+		return err
 	}
 	return err
 }
