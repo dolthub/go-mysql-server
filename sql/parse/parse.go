@@ -2484,45 +2484,61 @@ func tableExprToTable(
 		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
 
 	case *sqlparser.JoinTableExpr:
-		// TODO: add support for using, once we have proper table
-		// qualification of fields
-		if len(t.Condition.Using) > 0 {
-			return nil, sql.ErrUnsupportedFeature.New("USING clause on join")
-		}
+		return joinTableExpr(ctx, t)
 
-		left, err := tableExprToTable(ctx, t.LeftExpr)
-		if err != nil {
-			return nil, err
+	case *sqlparser.ParenTableExpr:
+		if len(t.Exprs) == 1 {
+			switch j := t.Exprs[0].(type) {
+			case *sqlparser.JoinTableExpr:
+				return joinTableExpr(ctx, j)
+			default:
+				return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(t))
+			}
+		} else {
+			return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(t))
 		}
+	}
+}
 
-		right, err := tableExprToTable(ctx, t.RightExpr)
-		if err != nil {
-			return nil, err
-		}
+func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, error) {
+	// TODO: add support for using, once we have proper table
+	// qualification of fields
+	if len(t.Condition.Using) > 0 {
+		return nil, sql.ErrUnsupportedFeature.New("USING clause on join")
+	}
 
-		if t.Join == sqlparser.NaturalJoinStr {
-			return plan.NewNaturalJoin(left, right), nil
-		}
+	left, err := tableExprToTable(ctx, t.LeftExpr)
+	if err != nil {
+		return nil, err
+	}
 
-		if t.Condition.On == nil {
-			return plan.NewCrossJoin(left, right), nil
-		}
+	right, err := tableExprToTable(ctx, t.RightExpr)
+	if err != nil {
+		return nil, err
+	}
 
-		cond, err := ExprToExpression(ctx, t.Condition.On)
-		if err != nil {
-			return nil, err
-		}
+	if t.Join == sqlparser.NaturalJoinStr {
+		return plan.NewNaturalJoin(left, right), nil
+	}
 
-		switch strings.ToLower(t.Join) {
-		case sqlparser.JoinStr:
-			return plan.NewInnerJoin(left, right, cond), nil
-		case sqlparser.LeftJoinStr:
-			return plan.NewLeftJoin(left, right, cond), nil
-		case sqlparser.RightJoinStr:
-			return plan.NewRightJoin(left, right, cond), nil
-		default:
-			return nil, sql.ErrUnsupportedFeature.New("Join type " + t.Join)
-		}
+	if t.Condition.On == nil {
+		return plan.NewCrossJoin(left, right), nil
+	}
+
+	cond, err := ExprToExpression(ctx, t.Condition.On)
+	if err != nil {
+		return nil, err
+	}
+
+	switch strings.ToLower(t.Join) {
+	case sqlparser.JoinStr:
+		return plan.NewInnerJoin(left, right, cond), nil
+	case sqlparser.LeftJoinStr:
+		return plan.NewLeftJoin(left, right, cond), nil
+	case sqlparser.RightJoinStr:
+		return plan.NewRightJoin(left, right, cond), nil
+	default:
+		return nil, sql.ErrUnsupportedFeature.New("Join type " + t.Join)
 	}
 }
 
