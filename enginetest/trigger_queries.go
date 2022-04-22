@@ -2065,6 +2065,94 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger before insert, reverts multiple inserts when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig before insert on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into a values (1), (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "select * from a",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from b",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "insert into a values (0)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query:       "insert into a values (1), (2), (0)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger after insert, reverts multiple inserts when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig after insert on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into a values (1), (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "select * from a",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from b",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "insert into a values (0)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query:       "insert into a values (1), (2), (0)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+		},
+	},
 	// Update Queries that fail, test trigger reverts
 	{
 		Name: "trigger before update, reverts insert when query fails",
@@ -2504,28 +2592,6 @@ var RollbackTriggerTests = []ScriptTest{
 				Expected: []sql.Row{
 					{2},
 				},
-			},
-		},
-	},
-	{
-		Name: "trigger before insert, reverts multiple inserts when query fails",
-		SetUpScript: []string{
-			"create table a (i int primary key)",
-			"create table b (x int)",
-			"create trigger trig before insert on a for each row insert into b values (new.i);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "insert into a values (1), (1)",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query:    "select * from a",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "select * from b",
-				Expected: []sql.Row{},
 			},
 		},
 	},
