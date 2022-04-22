@@ -86,4 +86,13 @@ func TestSwapXY(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}}, v)
 	})
+
+	t.Run("check return type", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+
+		typ := f.Type()
+		_, ok := typ.(sql.PointType)
+		require.True(ok)
+	})
 }

@@ -250,7 +250,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Equal(sql.Polygon{SRID: 0, Lines: []sql.Linestring{{0, []sql.Point{{0, 0, 0}, {0, 1, 1}, {0, 0, 1}, {0, 0, 0}}}}}, v)
 	})
-	t.Run("convert point to geojson", func(t *testing.T) {
+	t.Run("check return type", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
 		require.NoError(err)
