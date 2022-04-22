@@ -1604,6 +1604,12 @@ func TestTriggers(t *testing.T, harness Harness) {
 	})
 }
 
+func TestRollbackTriggers(t *testing.T, harness Harness) {
+	for _, script := range RollbackTriggerTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestShowTriggers(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
@@ -5582,11 +5588,13 @@ func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query 
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
 func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	oldTx := ctx.GetTransaction()
 	sch, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
 	}
 	require.Error(t, err)
+	ctx.SetTransaction(oldTx)
 	if expectedErrKind != nil {
 		_, orig, _ := sql.CastSQLError(err)
 		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
