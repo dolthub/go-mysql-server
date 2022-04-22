@@ -384,9 +384,9 @@ func (a *AddColumn) Children() []sql.Node {
 }
 
 type addColumnIter struct {
-	a       *AddColumn
+	a         *AddColumn
 	alterable sql.AlterableTable
-	runOnce bool
+	runOnce   bool
 }
 
 func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
