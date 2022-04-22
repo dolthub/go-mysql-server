@@ -1,6 +1,7 @@
 enginetest/testdata/test1.txt binary
 enginetest/testdata/test2.csv binary
 enginetest/testdata/test3.csv binary
+enginetest/testdata/test3backwards.csv binary
 enginetest/testdata/test4.txt binary
 enginetest/testdata/test5.txt binary
 enginetest/testdata/test6.csv binary

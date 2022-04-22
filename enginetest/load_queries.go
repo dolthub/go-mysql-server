@@ -63,6 +63,19 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "LOAD DATA with all columns reordered in projection",
+		SetUpScript: []string{
+			"create table loadtable(pk longtext primary key, c1 int)",
+			"LOAD DATA INFILE './testdata/test3backwards.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES (`c1`, `pk`)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from loadtable",
+				Expected: []sql.Row{{"\"abc\"", int8(1)}, {"\"def\"", int8(2)}, {"\"hello\"", nil}},
+			},
+		},
+	},
+	{
 		Name: "Table has more columns than import.",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key, c1 int)",
