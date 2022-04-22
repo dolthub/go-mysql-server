@@ -665,6 +665,22 @@ type RowUpdater interface {
 	Closer
 }
 
+// RewritableTable is an extension to Table that makes it simpler for integrators to adapt to schema changes that must
+// rewrite every row of the table. In this case, rows are streamed from the existing table in the old schema,
+// transformed / updated appropriately, and written with the new format.
+type RewritableTable interface {
+	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old schema, new
+	// schema, and modified column (added, dropped, modified) is provided.
+	// The engine may decide to rewrite tables regardless in some cases, such as when a new non-nullable column is added.
+	ShouldRewriteTable(ctx *Context, oldSchema PrimaryKeySchema, newSchema PrimaryKeySchema, modifiedColumn *Column) bool
+
+	// RewriteInserter returns a RowInserter for the new schema. Rows from the current table, with the old schema, will
+	// be streamed from the table and passed to this RowInsertor. Implementor tables must still return rows in the
+	// current schema until the rewrite operation completes. |Close| will be called on RowInserter when all rows have
+	// been inserted.
+	RewriteInserter(ctx *Context, newSchema PrimaryKeySchema) (RowInserter, error)
+}
+
 // DatabaseProvider is a collection of Database.
 type DatabaseProvider interface {
 	// Database gets a Database from the provider.

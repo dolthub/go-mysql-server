@@ -604,7 +604,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "alter table b add column y int null",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "select row_count()",
@@ -1671,7 +1671,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1695,7 +1695,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v4`, ADD COLUMN v7 int NOT NULL",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1728,7 +1728,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), ADD INDEX myidx (v2)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1776,7 +1776,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1789,11 +1789,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v5 int), RENAME INDEX myidx2 TO myidx3",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t DROP INDEX myidx, ADD INDEX v5idx (v5)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1819,7 +1819,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "describe test",
@@ -1830,7 +1830,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test (v2) values (11)",
@@ -1875,7 +1875,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v3, add column (v5 int NOT NULL)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE test",
@@ -1888,7 +1888,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "describe test",

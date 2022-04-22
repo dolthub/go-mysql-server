@@ -74,7 +74,7 @@ func (a *AlterPK) String() string {
 }
 
 func (a *AlterPK) Schema() sql.Schema {
-	return nil
+	return sql.OkResultSchema
 }
 
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -115,7 +115,7 @@ func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(), nil
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 func hasPrimaryKeys(table sql.Table) bool {
