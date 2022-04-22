@@ -79,6 +79,15 @@ func TestAsWKB(t *testing.T) {
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
+
+	t.Run("check return type", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKB(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+
+		typ := f.Type()
+		_, ok := typ.(sql.JsonType)
+		require.True(ok)
+	})
 }
 
 func TestGeomFromWKB(t *testing.T) {
