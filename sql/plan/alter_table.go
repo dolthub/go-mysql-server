@@ -395,6 +395,15 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		return sql.NewRow(sql.NewOkResult(0)), nil
+	}
+
 	err := i.alterable.AddColumn(ctx, i.a.column, i.a.order)
 	if err != nil {
 		return nil, err
@@ -415,6 +424,76 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (i addColumnIter) Close(context *sql.Context) error {
 	return nil
+}
+
+func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
+	newSch, err := addColumnToSchema(i.alterable.Schema(), i.a.column, i.a.order)
+	if err != nil {
+		return err
+	}
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+
+	// TODO: always rewrite if new column is non-nullable
+	if rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.a.column) {
+		inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+		if err != nil {
+			return err
+		}
+
+		partitions, err := rwt.Partitions(ctx)
+		if err != nil {
+			return err
+		}
+
+		rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+		for {
+			r, err := rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+
+			err = inserter.Insert(ctx, r)
+			if err != nil {
+				return err
+			}
+		}
+
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, error) {
+	idx := -1
+	if order != nil && len(order.AfterColumn) > 0 {
+		idx = schema.IndexOf(column.Name, column.Source)
+		if idx == -1 {
+			// Should be checked in the analyzer already
+			return nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
+		}
+	} else if order != nil && order.First {
+		idx = 0
+	}
+
+	newSch := make(sql.Schema, len(schema) + 1)
+	if idx >= 0 {
+		newSch = append(newSch, schema[:idx]...)
+		newSch = append(newSch, column)
+		newSch = append(newSch, schema[idx:]...)
+	} else { // new column at end
+		newSch = append(newSch, column)
+	}
+
+	return newSch, nil
 }
 
 var _ sql.RowIter = &addColumnIter{}

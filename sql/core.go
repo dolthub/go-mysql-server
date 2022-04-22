@@ -669,6 +669,8 @@ type RowUpdater interface {
 // rewrite every row of the table. In this case, rows are streamed from the existing table in the old schema,
 // transformed / updated appropriately, and written with the new format.
 type RewritableTable interface {
+	Table
+
 	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old schema, new
 	// schema, and modified column (added, dropped, modified) is provided.
 	// The engine may decide to rewrite tables regardless in some cases, such as when a new non-nullable column is added.
