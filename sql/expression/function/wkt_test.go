@@ -64,11 +64,19 @@ func TestAsWKT(t *testing.T) {
 		require.Equal(nil, v)
 	})
 
-	t.Run("wrong type", func(t *testing.T) {
+	t.Run("provide wrong type", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKT(expression.NewLiteral("notageometry", sql.Blob))
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
+	})
+
+	t.Run("check return type", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKT(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		typ := f.Type()
+		_, ok := typ.(sql.StringType)
+		require.True(ok)
 	})
 }
 
@@ -319,5 +327,14 @@ func TestGeomFromText(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.Polygon{SRID: 4230, Lines: []sql.Linestring{{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 0, Y: 0}, {SRID: 4230, X: 1, Y: 0}, {SRID: 4230, X: 0, Y: 1}, {SRID: 4230, X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("check return type", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob))
+		require.NoError(err)
+		typ := f.Type()
+		_, ok := typ.(sql.GeometryType)
+		require.True(ok)
 	})
 }

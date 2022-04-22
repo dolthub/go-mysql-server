@@ -169,7 +169,8 @@ func (g *GeomFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *GeomFromText) Type() sql.Type {
-	return sql.PointType{}
+	// TODO: return type is determined after Eval, use Geometry for now?
+	return sql.GeometryType{}
 }
 
 func (g *GeomFromText) String() string {
