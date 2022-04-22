@@ -19,10 +19,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type RenameTable struct {
@@ -828,7 +829,22 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		}
 		if len(parentFks) > 0 || len(fks) > 0 {
 			if !tblSch[idx].Type.Equals(m.column.Type) {
-				return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+				// There seems to be a special case where you can lengthen a CHAR/VARCHAR/BINARY/VARBINARY.
+				// Have not tested every type nor combination, but this seems specific to those 4 types.
+				if tblSch[idx].Type.Type() == m.column.Type.Type() {
+					switch m.column.Type.Type() {
+					case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
+						oldType := tblSch[idx].Type.(sql.StringType)
+						newType := m.column.Type.(sql.StringType)
+						if oldType.Collation() != newType.Collation() || oldType.MaxCharacterLength() > newType.MaxCharacterLength() {
+							return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+						}
+					default:
+						return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+					}
+				} else {
+					return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+				}
 			}
 			if !m.column.Nullable {
 				lowerColName := strings.ToLower(m.columnName)
