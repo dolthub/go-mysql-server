@@ -52,7 +52,7 @@ func (p *AsWKT) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *AsWKT) Type() sql.Type {
-	return p.Child.Type()
+	return sql.LongText
 }
 
 func (p *AsWKT) String() string {
