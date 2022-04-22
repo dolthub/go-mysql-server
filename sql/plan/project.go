@@ -145,7 +145,7 @@ func (i *iter) Close(ctx *sql.Context) error {
 
 // ProjectRow evaluates a set of projections.
 func ProjectRow(
-	s *sql.Context,
+	ctx *sql.Context,
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
@@ -157,21 +157,19 @@ func ProjectRow(
 		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
 		// This ensures that all columns referenced by expressions will have already been evaluated.
 		// Since literals do not reference other columns, they're evaluated on the first pass.
-		if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok {
-			if !defaultVal.IsLiteral() {
-				fields = append(fields, nil)
-				secondPass = append(secondPass, i)
-				continue
-			}
+		if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok && !defaultVal.IsLiteral() {
+			fields = append(fields, nil)
+			secondPass = append(secondPass, i)
+			continue
 		}
-		f, err := expr.Eval(s, row)
+		f, err := expr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		fields = append(fields, f)
 	}
 	for _, index := range secondPass {
-		fields[index], err = projections[index].Eval(s, fields)
+		fields[index], err = projections[index].Eval(ctx, fields)
 		if err != nil {
 			return nil, err
 		}

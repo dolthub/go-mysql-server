@@ -216,6 +216,14 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 				return plan.ErrInsertIntoMismatchValueCount.New()
 			}
 		}
+	case *plan.LoadData:
+		dataColLen := len(node.ColumnNames)
+		if dataColLen == 0 {
+			dataColLen = len(node.Schema())
+		}
+		if len(columnNames) != dataColLen {
+			return plan.ErrInsertIntoMismatchValueCount.New()
+		}
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
 		if len(columnNames) != len(values.Schema()) {
@@ -255,7 +263,7 @@ func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 	}
 
 	switch n := values.(type) {
-	case *plan.Values:
+	case *plan.Values, *plan.LoadData:
 		// already verified
 		return nil
 	default:

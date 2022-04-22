@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -71,6 +72,110 @@ var LoadDataScripts = []ScriptTest{
 			{
 				Query:    "select * from loadtable ORDER BY pk",
 				Expected: []sql.Row{{1, nil}, {2, nil}, {3, nil}, {4, nil}},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA handles Windows line-endings and a subset of columns that are not in order",
+		SetUpScript: []string{
+			"CREATE TABLE inmate_population_snapshots (id char(21) NOT NULL, snapshot_date date NOT NULL, total int," +
+				"total_off_site int, male int, female int, other_gender int, white int, black int, hispanic int," +
+				"asian int, american_indian int, mexican_american int, multi_racial int, other_race int," +
+				"on_probation int, on_parole int, felony int, misdemeanor int, other_offense int," +
+				"convicted_or_sentenced int, detained_or_awaiting_trial int, first_time_incarcerated int, employed int," +
+				"unemployed int, citizen int, noncitizen int, juvenile int, juvenile_male int, juvenile_female int," +
+				"death_row_condemned int, solitary_confinement int, technical_parole_violators int," +
+				"source_url varchar(2043) NOT NULL, source_url_2 varchar(2043), civil_offense int, federal_offense int," +
+				"PRIMARY KEY (id,snapshot_date), KEY id (id));",
+			"LOAD DATA INFILE './testdata/test6.csv' INTO TABLE inmate_population_snapshots " +
+				"FIELDS TERMINATED BY ',' " +
+				"LINES TERMINATED BY '\r\n' " +
+				"IGNORE 1 LINES " +
+				"(federal_offense, misdemeanor, total, detained_or_awaiting_trial, felony, snapshot_date, id, source_url, source_url_2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM inmate_population_snapshots",
+				Expected: []sql.Row{
+					{"8946", time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 0, nil, nil, nil, 0, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "https://www.website.gov", "https://www.website.gov/other.html", nil, nil},
+					{"8976", time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC), 196, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 0, 73, nil, nil, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "https://www.website.gov", "https://www.website.gov/other.html", nil, 0},
+					{"8978", time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC), 0, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 0, nil, nil, nil, 0, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "https://www.website.gov", "https://www.website.gov/other.html", nil, nil},
+					{"8979", time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC), 71, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 5, 3, nil, nil, 63, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "https://www.website.gov", "https://www.website.gov/other.html", nil, 0},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA handles non-nil default values",
+		SetUpScript: []string{
+			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2 * 10), v2 BIGINT DEFAULT 5);",
+			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2 * 10), v2 BIGINT DEFAULT 5);",
+			"CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk * 10), v2 BIGINT DEFAULT (v1 - 1));",
+			"CREATE TABLE test4 (pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk * 10), v2 BIGINT DEFAULT (v1 - 1));",
+			"LOAD DATA INFILE './testdata/test7.txt' INTO TABLE test1;",
+			"LOAD DATA INFILE './testdata/test7.txt' INTO TABLE test2 (pk);", // The (pk) projection results in a different tree
+			"LOAD DATA INFILE './testdata/test7.txt' INTO TABLE test3;",
+			"LOAD DATA INFILE './testdata/test7.txt' INTO TABLE test4 (pk);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test1",
+				Expected: []sql.Row{
+					{1, 50, 5},
+					{2, 50, 5},
+					{3, 50, 5},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2",
+				Expected: []sql.Row{
+					{1, 50, 5},
+					{2, 50, 5},
+					{3, 50, 5},
+				},
+			},
+			{
+				Query: "SELECT * FROM test3",
+				Expected: []sql.Row{
+					{1, 10, 9},
+					{2, 20, 19},
+					{3, 30, 29},
+				},
+			},
+			{
+				Query: "SELECT * FROM test4",
+				Expected: []sql.Row{
+					{1, 10, 9},
+					{2, 20, 19},
+					{3, 30, 29},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA handles non-nil default values with varying field counts per row",
+		SetUpScript: []string{
+			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2 * 10), v2 BIGINT DEFAULT 5);",
+			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk * 10), v2 BIGINT DEFAULT (v1 - 1));",
+			"LOAD DATA INFILE './testdata/test8.txt' INTO TABLE test1 FIELDS TERMINATED BY ',';",
+			"LOAD DATA INFILE './testdata/test8.txt' INTO TABLE test2 FIELDS TERMINATED BY ',';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test1",
+				Expected: []sql.Row{
+					{1, 50, 5},
+					{2, 100, 5},
+					{3, 50, 5},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2",
+				Expected: []sql.Row{
+					{1, 10, 9},
+					{2, 100, 99},
+					{3, 30, 29},
+				},
 			},
 		},
 	},
