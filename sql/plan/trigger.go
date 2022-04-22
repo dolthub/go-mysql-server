@@ -98,7 +98,7 @@ type triggerIter struct {
 	triggerTime    TriggerTime
 	triggerEvent   TriggerEvent
 	ctx            *sql.Context
-	logicIter      sql.RowIter
+	logicIters     []sql.RowIter
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
@@ -146,14 +146,23 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	ctx, cancelFunc := t.ctx.NewSubContext()
 	defer cancelFunc()
 
-	// TODO: just store one logicIter or all of them?
 	logicIter, err := logic.RowIter(ctx, childRow)
 	if err != nil {
 		return nil, err
 	}
 
-	// Store logicIter to close/flush later
-	t.logicIter = logicIter
+	// TODO: this probably isn't right
+	// Store logicIters to close/flush later
+	if _, ok := logic.(*Update); ok {
+		// Only keep most recent one for update
+		if len(t.logicIters) == 0 {
+			t.logicIters = append(t.logicIters, logicIter)
+		} else {
+			t.logicIters[0] = logicIter
+		}
+	} else {
+		t.logicIters = append(t.logicIters, logicIter)
+	}
 
 	var logicRow sql.Row
 	for {
@@ -216,12 +225,21 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 }
 
 func (t *triggerIter) Close(ctx *sql.Context) error {
-	if t.logicIter != nil {
-		if err := t.logicIter.Close(ctx); err != nil {
+	// Close child
+	// TODO: only close child first if it's a trigger?
+	err := t.child.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Apply trigger changes from logicIter
+	for _, logicIter := range t.logicIters {
+		if err := logicIter.Close(ctx); err != nil {
 			return err
 		}
 	}
-	return t.child.Close(ctx)
+
+	return nil
 }
 
 func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
