@@ -91,8 +91,11 @@ func TestSwapXY(t *testing.T) {
 		require := require.New(t)
 		f := NewSwapXY(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
 
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
 		typ := f.Type()
-		_, ok := typ.(sql.PointType)
-		require.True(ok)
+		_, err = typ.Convert(v)
+		require.NoError(err)
 	})
 }

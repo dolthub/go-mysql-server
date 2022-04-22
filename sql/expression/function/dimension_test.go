@@ -90,8 +90,12 @@ func TestDimension(t *testing.T) {
 	t.Run("check return type", func(t *testing.T) {
 		require := require.New(t)
 		f := NewDimension(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
 		typ := f.Type()
-		_, ok := typ.(sql.NumberType)
-		require.True(ok)
+		_, err = typ.Convert(v)
+		require.NoError(err)
 	})
 }
