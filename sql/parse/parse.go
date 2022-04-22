@@ -2484,15 +2484,15 @@ func tableExprToTable(
 		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
 
 	case *sqlparser.JoinTableExpr:
-		return handleJoinTableExpr(ctx, t)
+		return joinTableExpr(ctx, t)
 
 	case *sqlparser.ParenTableExpr:
 		if len(t.Exprs) == 1 {
 			switch j := t.Exprs[0].(type) {
+			case *sqlparser.JoinTableExpr:
+				return joinTableExpr(ctx, j)
 			default:
 				return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(t))
-			case *sqlparser.JoinTableExpr:
-				return handleJoinTableExpr(ctx, j)
 			}
 		} else {
 			return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(t))
@@ -2500,7 +2500,7 @@ func tableExprToTable(
 	}
 }
 
-func handleJoinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, error) {
+func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, error) {
 	// TODO: add support for using, once we have proper table
 	// qualification of fields
 	if len(t.Condition.Using) > 0 {
