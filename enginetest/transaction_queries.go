@@ -875,7 +875,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ create temporary table tmp(pk int primary key)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "/* client a */  START TRANSACTION READ ONLY",
@@ -900,7 +900,7 @@ var TransactionTests = []TransactionTest{
 			{
 
 				Query:    "/* client a */ alter table t2 add val2 int",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "/* client a */ select * from t2",
