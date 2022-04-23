@@ -670,6 +670,7 @@ type RowUpdater interface {
 // transformed / updated appropriately, and written with the new format.
 type RewritableTable interface {
 	Table
+	AlterableTable
 
 	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old schema, new
 	// schema, and modified column (added, dropped, modified) is provided.

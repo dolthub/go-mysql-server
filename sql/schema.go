@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -142,8 +141,8 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 // present. The resulting PrimaryKeySchema may have an empty key set if the table has no primary keys. Matching for
 // ordinals is performed by column name.
 func SchemaToPrimaryKeySchema(table Table, sch Schema) PrimaryKeySchema {
-	var pks []*sql.Column
-	if pkt, ok := table.(sql.PrimaryKeyTable); ok {
+	var pks []*Column
+	if pkt, ok := table.(PrimaryKeyTable); ok {
 		schema := pkt.PrimaryKeySchema()
 		for _, ordinal := range schema.PkOrdinals {
 			pks = append(pks, schema.Schema[ordinal])
