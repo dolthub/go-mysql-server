@@ -459,6 +459,33 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE MODIFY COLUMN type change only cares about foreign key columns",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (pk INT PRIMARY KEY, v1 INT UNSIGNED, v2 INT UNSIGNED, INDEX (v1));",
+			"CREATE TABLE child1 (pk INT PRIMARY KEY, v1 INT UNSIGNED, v2 INT UNSIGNED, CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent1(v1));",
+			"INSERT INTO parent1 VALUES (1, 2, 3), (4, 5, 6);",
+			"INSERT INTO child1 VALUES (7, 2, 9);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE parent1 MODIFY v1 BIGINT;",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE child1 MODIFY v1 BIGINT;",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:    "ALTER TABLE parent1 MODIFY v2 BIGINT;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE child1 MODIFY v2 BIGINT;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "DROP COLUMN parent",
 		SetUpScript: []string{
 			"ALTER TABLE child ADD CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent(v1);",
