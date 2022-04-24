@@ -542,7 +542,7 @@ func (c colDefaultExpression) WithChildren(children ...sql.Expression) (sql.Expr
 
 func (c colDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	columnDefaultExpr := c.column.Default
-	if columnDefaultExpr == nil && c.column.Nullable {
+	if columnDefaultExpr == nil && !c.column.Nullable {
 		val := c.column.Type.Zero()
 		return c.column.Type.Convert(val)
 	} else if columnDefaultExpr != nil {
