@@ -150,6 +150,7 @@ var _ sql.Node = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
 func NewAddColumn(database sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+	column.Source = table.name
 	return &AddColumn{
 		ddlNode: ddlNode{db: database},
 		Table:   table,
@@ -483,11 +484,12 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
 	idx := -1
 	if order != nil && len(order.AfterColumn) > 0 {
-		idx = schema.IndexOf(column.Name, column.Source)
+		idx = schema.IndexOf(order.AfterColumn, column.Source)
 		if idx == -1 {
 			// Should be checked in the analyzer already
 			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
 		}
+		idx++
 	} else if order != nil && order.First {
 		idx = 0
 	}
@@ -504,7 +506,8 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 		}
 		projections[idx] = colDefaultExpression{column}
 		for i := range schema[idx:] {
-			projections[(idx + i + 1)] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+			schIdx := i + idx
+			projections[schIdx + 1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
 		}
 	} else { // new column at end
 		newSch = append(newSch, schema...)
