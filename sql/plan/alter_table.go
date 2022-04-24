@@ -427,7 +427,7 @@ func (i addColumnIter) Close(context *sql.Context) error {
 }
 
 func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
-	newSch, err := addColumnToSchema(i.alterable.Schema(), i.a.column, i.a.order)
+	newSch, projections, err := addColumnToSchema(i.alterable.Schema(), i.a.column, i.a.order)
 	if err != nil {
 		return err
 	}
@@ -456,13 +456,19 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 				return err
 			}
 
-			err = inserter.Insert(ctx, r)
+			newRow, err := ProjectRow(ctx, projections, r)
+			if err != nil {
+				return err
+			}
+
+			err = inserter.Insert(ctx, newRow)
 			if err != nil {
 				return err
 			}
 		}
 
 		// TODO: move this into iter.close, probably
+		// TODO: this iter closing needs to update session working set, and isn't. Need a wrapper in dolt for that.
 		err = inserter.Close(ctx)
 		if err != nil {
 			return err
@@ -472,28 +478,79 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	return nil
 }
 
-func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, error) {
+// addColumnToSchema returns a new schema and a set of projection expressions that when applied to rows from the old
+// schema will result in rows in the new schema.
+func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
 	idx := -1
 	if order != nil && len(order.AfterColumn) > 0 {
 		idx = schema.IndexOf(column.Name, column.Source)
 		if idx == -1 {
 			// Should be checked in the analyzer already
-			return nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
+			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
 		}
 	} else if order != nil && order.First {
 		idx = 0
 	}
 
-	newSch := make(sql.Schema, len(schema) + 1)
+	newSch := make(sql.Schema, 0, len(schema) + 1)
+	projections := make([]sql.Expression, len(schema)+1)
 	if idx >= 0 {
 		newSch = append(newSch, schema[:idx]...)
 		newSch = append(newSch, column)
 		newSch = append(newSch, schema[idx:]...)
+
+		for i := range schema[:idx] {
+			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+		}
+		projections[idx] = colDefaultExpression{column}
+		for i := range schema[idx:] {
+			projections[(idx + i + 1)] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+		}
 	} else { // new column at end
+		newSch = append(newSch, schema...)
 		newSch = append(newSch, column)
+		for i := range schema {
+			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+		}
+		projections[len(schema)] = colDefaultExpression{column}
 	}
 
-	return newSch, nil
+	return newSch, projections, nil
+}
+
+// colDefault expression evaluates the column default for a row being inserted, correctly handling zero values and
+// nulls
+type colDefaultExpression struct {
+	column *sql.Column
+}
+
+func (c colDefaultExpression) Resolved() bool { return true }
+func (c colDefaultExpression) String() string { return "" }
+func (c colDefaultExpression) Type() sql.Type { return c.column.Type }
+func (c colDefaultExpression) IsNullable() bool { return c.column.Default == nil }
+
+func (c colDefaultExpression) Children() []sql.Expression {
+	panic("colDefaultExpression is only meant for immediate evaluation and should never be modified")
+}
+
+func (c colDefaultExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	panic("colDefaultExpression is only meant for immediate evaluation and should never be modified")
+}
+
+func (c colDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	columnDefaultExpr := c.column.Default
+	if columnDefaultExpr == nil && c.column.Nullable {
+		val := c.column.Type.Zero()
+		return c.column.Type.Convert(val)
+	} else if columnDefaultExpr != nil {
+		val, err := columnDefaultExpr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		return c.column.Type.Convert(val)
+	}
+
+	return nil, nil
 }
 
 var _ sql.RowIter = &addColumnIter{}
