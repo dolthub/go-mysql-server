@@ -119,6 +119,11 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range JoinQueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
+
+	t.Skip()
+	TestQuery(t, harness, engine, "select a.* from one_pk_two_idx a LEFT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.pk = j.v3) on a.pk = i.pk LEFT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v2 = l.v3) on a.v1 = l.v2;",
+		[]sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0},
+			{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {7, 7, 7}}, nil)
 }
 
 // TestInfoSchemaPrepared runs tests of the information_schema database
