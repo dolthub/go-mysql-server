@@ -398,11 +398,13 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	rwt, ok := i.alterable.(sql.RewritableTable)
 	if ok {
-		err := i.rewriteTable(ctx, rwt)
+		rewritten, err := i.rewriteTable(ctx, rwt)
 		if err != nil {
 			return nil, err
 		}
-		return sql.NewRow(sql.NewOkResult(0)), nil
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		}
 	}
 
 	err := i.alterable.AddColumn(ctx, i.a.column, i.a.order)
@@ -427,56 +429,63 @@ func (i addColumnIter) Close(context *sql.Context) error {
 	return nil
 }
 
-func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
+// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	newSch, projections, err := addColumnToSchema(i.alterable.Schema(), i.a.column, i.a.order)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
-	// TODO: always rewrite if new column is non-nullable
-	if rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.a.column) {
-		inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
-		if err != nil {
-			return err
+	rewriteRequired := false
+	if i.a.column.Default != nil || !i.a.column.Nullable {
+		rewriteRequired = true
+	}
+
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.a.column)
+	if !rewriteRequired && !rewriteRequested {
+		return false, nil
+	}
+
+	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	if err != nil {
+		return false, err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return false, err
 		}
 
-		partitions, err := rwt.Partitions(ctx)
+		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
-			return err
+			return false, err
 		}
 
-		rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
-
-		for {
-			r, err := rowIter.Next(ctx)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return err
-			}
-
-			newRow, err := ProjectRow(ctx, projections, r)
-			if err != nil {
-				return err
-			}
-
-			err = inserter.Insert(ctx, newRow)
-			if err != nil {
-				return err
-			}
-		}
-
-		// TODO: move this into iter.close, probably
-		// TODO: this iter closing needs to update session working set, and isn't. Need a wrapper in dolt for that.
-		err = inserter.Close(ctx)
+		err = inserter.Insert(ctx, newRow)
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	return nil
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // addColumnToSchema returns a new schema and a set of projection expressions that when applied to rows from the old
@@ -837,7 +846,7 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			return nil, err
 		}
 		if len(parentFks) > 0 || len(fks) > 0 {
-			err = handleColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
+			err = updateForeignKeysForColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
 			if err != nil {
 				return nil, err
 			}
@@ -924,6 +933,12 @@ func (m *ModifyColumn) TargetSchema() sql.Schema {
 	return m.targetSchema
 }
 
+type modifyColumnIter struct {
+	m         *ModifyColumn
+	alterable sql.AlterableTable
+	runOnce   bool
+}
+
 func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	tbl, err := getTableFromDatabase(ctx, m.Database(), m.Table)
 	if err != nil {
@@ -935,29 +950,41 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
-	tblSch := m.targetSchema
-	idx := tblSch.IndexOf(m.columnName, tbl.Name())
-	if idx < 0 {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.columnName)
+	if err := m.validateDefaultPosition(m.targetSchema); err != nil {
+		return nil, err
 	}
 
-	if m.order != nil && !m.order.First {
-		idx = tblSch.IndexOf(m.order.AfterColumn, tbl.Name())
+	return &modifyColumnIter{
+		m:         m,
+		alterable: alterable,
+	}, nil
+}
+
+func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.runOnce {
+		return nil, io.EOF
+	}
+	i.runOnce = true
+
+	// TODO: fix me
+	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.targetSchema, i.m.columnName, i.m.column.Name); err != nil {
+		return nil, err
+	}
+
+	idx := i.m.targetSchema.IndexOf(i.m.columnName, i.alterable.Name())
+	if idx < 0 {
+		return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.columnName)
+	}
+
+	if i.m.order != nil && !i.m.order.First {
+		idx = i.m.targetSchema.IndexOf(i.m.order.AfterColumn, i.alterable.Name())
 		if idx < 0 {
-			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
+			return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.order.AfterColumn)
 		}
 	}
 
-	if err := m.validateDefaultPosition(tblSch); err != nil {
-		return nil, err
-	}
-	// TODO: fix me
-	if err := updateDefaultsOnColumnRename(ctx, alterable, tblSch, m.columnName, m.column.Name); err != nil {
-		return nil, err
-	}
-
 	// Update the foreign key columns as well
-	if fkTable, ok := alterable.(sql.ForeignKeyTable); ok {
+	if fkTable, ok := i.alterable.(sql.ForeignKeyTable); ok {
 		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
 		if err != nil {
 			return nil, err
@@ -967,29 +994,38 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			return nil, err
 		}
 		if len(parentFks) > 0 || len(fks) > 0 {
-			if !tblSch[idx].Type.Equals(m.column.Type) {
-				return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+			if !i.m.targetSchema[idx].Type.Equals(i.m.column.Type) {
+				return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
 			}
-			if !m.column.Nullable {
-				lowerColName := strings.ToLower(m.columnName)
+			if !i.m.column.Nullable {
+				lowerColName := strings.ToLower(i.m.columnName)
 				for _, fk := range fks {
 					if fk.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fk.OnDelete == sql.ForeignKeyReferentialAction_SetNull {
 						for _, col := range fk.Columns {
 							if lowerColName == strings.ToLower(col) {
-								return nil, sql.ErrForeignKeyTypeChangeSetNull.New(m.columnName, fk.Name)
+								return nil, sql.ErrForeignKeyTypeChangeSetNull.New(i.m.columnName, fk.Name)
 							}
 						}
 					}
 				}
 			}
-			err = handleColumnRename(ctx, fkTable, m.db, m.columnName, m.column.Name)
+			err = updateForeignKeysForColumnRename(ctx, fkTable, i.m.db, i.m.columnName, i.m.column.Name)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
+	err := i.alterable.ModifyColumn(ctx, i.m.columnName, i.m.column, i.m.order)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (i *modifyColumnIter) Close(context *sql.Context) error {
+	return nil
 }
 
 func (m *ModifyColumn) Children() []sql.Node {
@@ -1128,7 +1164,13 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 	return nil
 }
 
-func handleColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
+func updateForeignKeysForColumnRename(
+		ctx *sql.Context,
+		fkTable sql.ForeignKeyTable,
+		db sql.Database,
+		oldName string,
+		newName string,
+) error {
 	lowerOldName := strings.ToLower(oldName)
 	if lowerOldName == strings.ToLower(newName) {
 		return nil
