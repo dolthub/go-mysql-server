@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/dolt/go/libraries/doltcore/doltdb"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	_ "github.com/go-sql-driver/mysql"
