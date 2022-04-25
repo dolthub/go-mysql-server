@@ -930,6 +930,54 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "use procedure parameter in filter expressions and multiple statements",
+		SetUpScript: []string{
+			"CREATE TABLE inventory (store_id int, product varchar(5))",
+			"INSERT INTO inventory VALUES (1, 'a'), (1, 'b'), (1, 'c'), (1, 'd'), (2, 'e'), (2, 'f'), (1, 'g'), (1, 'h'), (3, 'i')",
+			"CREATE PROCEDURE proc1 (IN p_store_id INT) SELECT COUNT(*) FROM inventory WHERE store_id = p_store_id;",
+			"CREATE PROCEDURE proc2 (IN p_store_id INT, OUT p_film_count INT) READS SQL DATA BEGIN SELECT COUNT(*) as counted FROM inventory WHERE store_id = p_store_id; SET p_film_count = 44; END ;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL proc1(1)",
+				Expected: []sql.Row{
+					{
+						int64(6),
+					},
+				},
+			},
+			{
+				Query: "CALL proc1(2)",
+				Expected: []sql.Row{
+					{
+						int64(2),
+					},
+				},
+			}, {
+				Query: "CALL proc1(4)",
+				Expected: []sql.Row{
+					{
+						int64(0),
+					},
+				},
+			}, {
+				Query: "CALL proc2(3, @foo)",
+				Expected: []sql.Row{
+					{
+						int64(1),
+					},
+				},
+			}, {
+				Query: "SELECT @foo",
+				Expected: []sql.Row{
+					{
+						int64(44),
+					},
+				},
+			},
+		},
+	},
 }
 
 var ProcedureDropTests = []ScriptTest{
