@@ -17,7 +17,6 @@ package enginetest
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/dolt/go/libraries/doltcore/doltdb"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -5605,7 +5604,7 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query stri
 	}
 
 	// TODO: need to avoid resetting transactions for specific errors?
-	if doltdb.ErrUnresolvedConflicts.Error() != err.Error() {
+	if err.Error() != "merge has unresolved conflicts. please use the dolt_conflicts table to resolve" {
 		ctx.SetTransaction(oldTx)
 	}
 }
