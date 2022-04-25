@@ -898,39 +898,6 @@ var ProcedureCallTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "use procedure parameter in filter expressions",
-		SetUpScript: []string{
-			"CREATE TABLE inventory (store_id int, product varchar(5))",
-			"INSERT INTO inventory VALUES (1, 'a'), (1, 'b'), (1, 'c'), (1, 'd'), (2, 'e'), (2, 'f'), (1, 'g'), (1, 'h'), (3, 'i')",
-			"CREATE PROCEDURE product_in_stock (IN p_store_id INT) SELECT COUNT(*) FROM inventory WHERE store_id = p_store_id;",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "CALL product_in_stock(1)",
-				Expected: []sql.Row{
-					{
-						int64(6),
-					},
-				},
-			},
-			{
-				Query: "CALL product_in_stock(2)",
-				Expected: []sql.Row{
-					{
-						int64(2),
-					},
-				},
-			}, {
-				Query: "CALL product_in_stock(4)",
-				Expected: []sql.Row{
-					{
-						int64(0),
-					},
-				},
-			},
-		},
-	},
-	{
 		Name: "use procedure parameter in filter expressions and multiple statements",
 		SetUpScript: []string{
 			"CREATE TABLE inventory (store_id int, product varchar(5))",
