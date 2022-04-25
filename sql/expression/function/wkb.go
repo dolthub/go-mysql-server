@@ -53,7 +53,7 @@ func (a *AsWKB) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (a *AsWKB) Type() sql.Type {
-	return a.Child.Type()
+	return sql.LongBlob
 }
 
 func (a *AsWKB) String() string {
