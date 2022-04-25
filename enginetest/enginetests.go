@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/dolt/go/libraries/doltcore/doltdb"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -5588,7 +5589,7 @@ func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query 
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
 func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	//oldTx := ctx.GetTransaction()
+	oldTx := ctx.GetTransaction()
 	sch, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
@@ -5601,6 +5602,11 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query stri
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {
 		require.Equal(t, errStrs[0], err.Error())
+	}
+
+	// TODO: need to avoid resetting transactions for specific errors?
+	if doltdb.ErrUnresolvedConflicts.Error() != err.Error() {
+		ctx.SetTransaction(oldTx)
 	}
 }
 
