@@ -5754,6 +5754,12 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, true)},
 			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
 		}, t32.Schema())
+
+		// Error cases: dropping a column added in the same statement, dropping a column not present in the original schema,
+		// dropping a renamed away
+		AssertErr(t, e, harness, "alter table t32 add column vnew int, drop column vnew", sql.ErrTableColumnNotFound)
+		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v5", sql.ErrTableColumnNotFound)
+		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v3", sql.ErrTableColumnNotFound)
 	})
 
 	t.Run("mix of alter column, add and drop constraints in one statement", func(t *testing.T) {
@@ -5783,7 +5789,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		}, checks)
 	})
 
-	t.Run("Add column invalid after", func(t *testing.T) {
+	t.Run("disable keys / enable keys", func(t *testing.T) {
 		ctx := NewContext(harness)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 DISABLE KEYS",
 			[]sql.Row{{sql.NewOkResult(0)}},

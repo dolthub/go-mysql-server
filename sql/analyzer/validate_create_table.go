@@ -107,7 +107,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch, err = validateModifyColumn(initialSch, sch, n, keyedColumns)
+			sch, err = validateModifyColumn(sch, n, keyedColumns)
 		case *plan.RenameColumn:
 			sch, err = validateRenameColumn(initialSch, sch, n)
 		case *plan.AddColumn:
@@ -146,14 +146,14 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	nameable := table.(sql.Nameable)
 
 	// Check for column name collisions
-	if initialSch.Contains(rc.NewColumnName, nameable.Name()) ||
-		sch.Contains(rc.NewColumnName, nameable.Name()) {
+	if sch.Contains(rc.NewColumnName, nameable.Name()) {
 		return nil, sql.ErrColumnExists.New(rc.NewColumnName)
 	}
 
-	// Make sure this column exists and hasn't already been renamed to something else
-	if !initialSch.Contains(rc.ColumnName, nameable.Name()) ||
-		!sch.Contains(rc.ColumnName, nameable.Name()) {
+	// Make sure this column exists. MySQL only checks the original schema, which means you can't add a column and
+	// rename it in the same statement. But, it also has to exist in the modified schema -- it can't have been renamed or
+	// dropped in this statement.
+	if !initialSch.Contains(rc.ColumnName, nameable.Name()) || !sch.Contains(rc.ColumnName, nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
 	}
 
@@ -170,8 +170,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	nameable := table.(sql.Nameable)
 
 	// Name collisions
-	if initialSch.Contains(ac.Column().Name, nameable.Name()) ||
-		schema.Contains(ac.Column().Name, nameable.Name()) {
+	if schema.Contains(ac.Column().Name, nameable.Name()) {
 		return nil, sql.ErrColumnExists.New(ac.Column().Name)
 	}
 
@@ -198,7 +197,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	return newSch, nil
 }
 
-func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+func validateModifyColumn(schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
 	nameable := table.(sql.Nameable)
 
@@ -225,8 +224,10 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	table := dc.Table
 	nameable := table.(sql.Nameable)
 
-	// Look for the column to be dropped and throw an error if it's not there.
-	if sch.IndexOf(dc.Column, nameable.Name()) == -1 {
+	// Look for the column to be dropped and throw an error if it's not there. It must exist in the original schema before
+	// this statement was run, it cannot have been added as part of this ALTER TABLE statement. This matches the MySQL
+	// behavior.
+	if initialSch.IndexOf(dc.Column, nameable.Name()) == -1 {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
 	}
 
