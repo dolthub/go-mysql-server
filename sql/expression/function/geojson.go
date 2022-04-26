@@ -152,7 +152,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Create map object to hold values
-	obj := make(map[string]interface{}) // TODO: needs to be 3 when including bounding box
+	obj := make(map[string]interface{})
 	switch v := val.(type) {
 	case sql.Geometry:
 		switch inner := v.Inner.(type) {
