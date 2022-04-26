@@ -89,6 +89,7 @@ func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2
 	trackedIter.queryType = qType
 	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
 
+	// trackedRowIter wraps the transactionRowIter
 	return trackedIter, nil
 }
 
@@ -413,7 +414,7 @@ func (i *trackedRowIter) Close(ctx *sql.Context) error {
 
 	i.updateSessionVars(ctx)
 
-	i.done()
+	i.done() // TODO: Fucked
 	return err
 }
 
@@ -548,4 +549,51 @@ func IsShowNode(node sql.Node) bool {
 	default:
 		return false
 	}
+}
+
+// getTransactionDatabase returns the name of the database that should be considered current for the transaction about
+// to begin. The database is not guaranteed to exist.
+// For USE DATABASE statements, we consider the transaction database to be the one being USEd
+func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
+	var dbName string
+	switch n := parsed.(type) {
+	case *QueryProcess, *RowUpdateAccumulator:
+		return getTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
+	case *Use, *CreateProcedure, *DropProcedure, *CreateTrigger, *DropTrigger,
+		*CreateTable, *InsertInto, *AlterIndex, *AlterAutoIncrement, *AlterPK,
+		*DropColumn, *RenameColumn, *ModifyColumn:
+		database := n.(sql.Databaser).Database()
+		if database != nil {
+			dbName = database.Name()
+		}
+	case *DropForeignKey, *DropIndex, *CreateIndex, *Update, *DeleteFrom,
+		*CreateForeignKey:
+		dbName = n.(sql.Databaseable).Database()
+	case *DropTable:
+		dbName = getDbHelper(n.Tables...)
+	case *Truncate:
+		dbName = getDbHelper(n.Child)
+	default:
+	}
+	if dbName != "" {
+		return dbName
+	}
+	return ctx.GetCurrentDatabase()
+}
+
+// getDbHelper returns the first database name from a table-like node
+func getDbHelper(tables ...sql.Node) string {
+	if len(tables) == 0 {
+		return ""
+	}
+	switch t := tables[0].(type) {
+	case *UnresolvedTable:
+		return t.Database()
+	case *ResolvedTable:
+		return t.Database.Name()
+	case *IndexedTableAccess:
+		return t.Database().Name()
+	default:
+	}
+	return ""
 }

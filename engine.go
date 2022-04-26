@@ -16,10 +16,9 @@ package sqle
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"os"
 	"sync"
-
-	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -183,7 +182,7 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
-	transactionDatabase, err := e.beginTransaction(ctx, analyzed)
+	_, err = e.beginTransaction(ctx, analyzed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -201,19 +200,6 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 	if err != nil {
 		return nil, nil, err
-	}
-
-	autoCommit, err := isSessionAutocommit(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if autoCommit {
-		iter = transactionCommittingIter{
-			childIter:           iter,
-			childIter2:          iter2,
-			transactionDatabase: transactionDatabase,
-		}
 	}
 
 	if useIter2 {
@@ -589,7 +575,7 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	}
 	switch node.(type) {
 	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+			*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
 			return sql.ErrNotAuthorized.New()
 		}
