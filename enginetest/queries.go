@@ -8613,6 +8613,11 @@ var errorQueries = []QueryErrorTest{
 						LEFT JOIN mytable as t15 ON t14.i = t15.i`,
 		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
 	},
+	// this query was panicing, but should be allowed and should return error when this query is called
+	{
+		Query:       `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
+		ExpectedErr: sql.ErrFunctionNotFound,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
