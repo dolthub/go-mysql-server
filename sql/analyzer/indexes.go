@@ -1007,11 +1007,8 @@ func containsBindvars(e sql.Expression) bool {
 func containsProcedureParam(e sql.Expression) bool {
 	var result bool
 	sql.Inspect(e, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.ProcedureParam); ok {
-			result = true
-			return false
-		}
-		return true
+		_, result = e.(*expression.ProcedureParam)
+		return !result
 	})
 	return result
 }
