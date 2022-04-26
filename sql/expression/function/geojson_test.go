@@ -123,6 +123,69 @@ func TestAsGeoJSON(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}, "type": "Polygon", "bbox": [4]float64{0, 0, 1, 1}}}, v)
 	})
+	t.Run("convert point with srid 0 and flag 2", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}),
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		obj := map[string]interface{}{
+			"coordinates": [2]float64{1, 2},
+			"type":        "Point",
+		}
+		require.Equal(sql.JSONDocument{Val: obj}, v)
+	})
+	t.Run("convert point with srid 4326 and flag 2", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}),
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		obj := map[string]interface{}{
+			"crs": map[string]interface{}{
+				"type": "name",
+				"properties": map[string]interface{}{
+					"name": "EPSG:4326",
+				},
+			},
+			"coordinates": [2]float64{1, 2},
+			"type":        "Point",
+		}
+		require.Equal(sql.JSONDocument{Val: obj}, v)
+	})
+	t.Run("convert point with srid 4326 and flag 4", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}),
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(4, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		obj := map[string]interface{}{
+			"crs": map[string]interface{}{
+				"type": "name",
+				"properties": map[string]interface{}{
+					"name": "urn:ogc:def:crs:EPSG::4326",
+				},
+			},
+			"coordinates": [2]float64{1, 2},
+			"type":        "Point",
+		}
+		require.Equal(sql.JSONDocument{Val: obj}, v)
+	})
 	t.Run("convert null is null", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
