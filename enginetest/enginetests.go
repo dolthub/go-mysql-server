@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/dolt/go/libraries/doltcore/doltdb"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	_ "github.com/go-sql-driver/mysql"
@@ -5567,7 +5566,9 @@ func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query s
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
+	ctx := NewContext(harness)
+	AssertErrWithCtx(t, e, ctx, query, expectedErrKind, errStrs...)
+	ctx.SetTransaction(nil)
 }
 
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
@@ -5589,7 +5590,6 @@ func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query 
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
 func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	oldTx := ctx.GetTransaction()
 	sch, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
@@ -5602,11 +5602,6 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query stri
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {
 		require.Equal(t, errStrs[0], err.Error())
-	}
-
-	// TODO: need to avoid resetting transactions for specific errors?
-	if err.Error() != "merge has unresolved conflicts. please use the dolt_conflicts table to resolve" {
-		ctx.SetTransaction(oldTx)
 	}
 }
 
