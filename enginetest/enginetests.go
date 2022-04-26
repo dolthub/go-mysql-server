@@ -3092,21 +3092,11 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	})
 
 	t.Run("error cases", func(t *testing.T) {
-		_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
-		require.Error(err)
-		require.True(sql.ErrTableNotFound.Is(err))
-
-		_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist")
-		require.Error(err)
-		require.True(sql.ErrTableColumnNotFound.Is(err))
-
-		_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN i BIGINT COMMENT 'ok'")
-		require.Error(err)
-		require.True(sql.ErrColumnExists.Is(err))
-
-		_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
-		require.Error(err)
-		require.True(sql.ErrIncompatibleDefaultType.Is(err))
+		AssertErr(t, e, harness, "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'", sql.ErrTableNotFound)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN i BIGINT COMMENT 'ok'", sql.ErrColumnExists)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'", sql.ErrIncompatibleDefaultType)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN c int, add c int", sql.ErrColumnExists)
 	})
 
 	t.Run("no database selected", func(t *testing.T) {
@@ -5753,6 +5743,31 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
 			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, true)},
 			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
+		}, t32.Schema())
+
+		RunQuery(t, e, harness, "CREATE TABLE t32_2(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, `alter table t32_2 drop v1, add v1 int`)
+
+		t32, _, err = e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_2")
+		require.NoError(t, err)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32_2", PrimaryKey: true},
+			{Name: "v2", Type: sql.Int32, Nullable: true, Source: "t32_2"},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32_2"},
+			{Name: "v1", Type: sql.Int32, Nullable: true, Source: "t32_2"},
+		}, t32.Schema())
+
+		RunQuery(t, e, harness, "CREATE TABLE t32_3(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, `alter table t32_3 rename column v1 to v5, add v1 int`)
+
+		t32, _, err = e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_3")
+		require.NoError(t, err)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32_3", PrimaryKey: true},
+			{Name: "v5", Type: sql.Int32, Nullable: true, Source: "t32_3"},
+			{Name: "v2", Type: sql.Int32, Nullable: true, Source: "t32_3"},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32_3"},
+			{Name: "v1", Type: sql.Int32, Nullable: true, Source: "t32_3"},
 		}, t32.Schema())
 
 		// Error cases: dropping a column added in the same statement, dropping a column not present in the original schema,
