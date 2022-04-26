@@ -5566,10 +5566,7 @@ func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query s
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	ctx := NewContext(harness)
-	oldTx := ctx.GetTransaction()
-	AssertErrWithCtx(t, e, ctx, query, expectedErrKind, errStrs...)
-	ctx.SetTransaction(oldTx)
+	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
 }
 
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
