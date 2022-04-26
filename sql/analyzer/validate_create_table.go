@@ -104,36 +104,97 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	transform.Inspect(n, func(n sql.Node) bool {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
+			n, err := n.WithTargetSchema(sch)
+			if err != nil {
+				return nil, false, err
+			}
 			sch, err = validateModifyColumn(sch, n, keyedColumns)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.RenameColumn:
+			n, err := n.WithTargetSchema(sch)
+			if err != nil {
+				return nil, false, err
+			}
 			sch, err = validateRenameColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AddColumn:
 			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
 			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
+			n, err := n.WithTargetSchema(sch)
+			if err != nil {
+				return nil, false, err
+			}
 			sch, err = validateAddColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.DropColumn:
+			n, err := n.WithTargetSchema(sch)
+			if err != nil {
+				return nil, false, err
+			}
 			sch, err = validateDropColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
+			// TODO
+			// n, err := n.WithTargetSchema(sch)
+			// if err != nil {
+			// 	return nil, false, err
+			// }
 			indexes, err = validateAlterIndex(initialSch, sch, n, indexes)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterPK:
+			// TODO
+			// n, err := n.WithTargetSchema(sch)
+			// if err != nil {
+			// 	return nil, false, err
+			// }
 			sch, err = validatePrimaryKey(initialSch, sch, n)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterDefaultSet:
+			// TODO
+			// n, err := n.WithTargetSchema(sch)
+			// if err != nil {
+			// 	return nil, false, err
+			// }
 			sch, err = validateAlterDefault(initialSch, sch, n)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterDefaultDrop:
+			// TODO
+			// n, err := n.WithTargetSchema(sch)
+			// if err != nil {
+			// 	return nil, false, err
+			// }
 			sch, err = validateDropDefault(initialSch, sch, n)
+			if err != nil {
+				return nil, false, err
+			}
+			return n, transform.NewTree, nil
 		}
-		if err != nil {
-			return false
-		}
-		return true
+		return n, transform.SameTree, nil
 	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return n, transform.SameTree, nil
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
