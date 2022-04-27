@@ -924,23 +924,4 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
-	{
-		Name: "Concurrent Transactions with Autocommit",
-		SetUpScript: []string{
-			"create table t (pk int primary key, val int)",
-			"insert into t values (0,0)",
-		},
-		Assertions: []ScriptTestAssertion{
-			// Client a starts by insert into t
-			{
-				Query:    "/* client a */ insert into t values (1, 1)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0}}},
-			},
-			// Client b inserts into t
-			{
-				Query:    "/* client b */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0}}},
-			},
-		},
-	},
 }

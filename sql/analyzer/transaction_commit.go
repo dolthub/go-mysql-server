@@ -50,6 +50,10 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
+	if plan.IsShowNode(n) {
+		return n, transform.SameTree, nil
+	}
+
 	transactionDatabase := getTransactionDatabase(ctx, n)
 
 	return plan.NewTransactionCommittingNode(n, transactionDatabase), transform.NewTree, nil

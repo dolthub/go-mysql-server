@@ -68,7 +68,6 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel
 	}
 
 	proc, ok := node.(*plan.QueryProcess)
-	// Should be looking for child nodes
 	if (ok && !shouldParallelize(proc.Child(), nil)) || !shouldParallelize(node, scope) {
 		return node, transform.SameTree, nil
 	}
