@@ -125,11 +125,13 @@ func (a *Arithmetic) IsNullable() bool {
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
-	if sql.IsDeferredType(a.Right.Type()) {
-		return a.Right.Type()
+	rTyp := a.Right.Type()
+	if sql.IsDeferredType(rTyp) {
+		return rTyp
 	}
-	if sql.IsDeferredType(a.Left.Type()) {
-		return a.Left.Type()
+	lTyp := a.Left.Type()
+	if sql.IsDeferredType(lTyp) {
+		return lTyp
 	}
 
 	switch strings.ToLower(a.Op) {
@@ -138,12 +140,12 @@ func (a *Arithmetic) Type() sql.Type {
 			return sql.Datetime
 		}
 
-		if sql.IsTime(a.Left.Type()) && sql.IsTime(a.Right.Type()) {
+		if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
 			return sql.Int64
 		}
 
-		if sql.IsInteger(a.Left.Type()) && sql.IsInteger(a.Right.Type()) {
-			if sql.IsUnsigned(a.Left.Type()) && sql.IsUnsigned(a.Right.Type()) {
+		if sql.IsInteger(lTyp) && sql.IsInteger(rTyp) {
+			if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 				return sql.Uint64
 			}
 			return sql.Int64
@@ -155,7 +157,7 @@ func (a *Arithmetic) Type() sql.Type {
 		return sql.Uint64
 
 	case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.IntDivStr, sqlparser.ModStr:
-		if sql.IsUnsigned(a.Left.Type()) && sql.IsUnsigned(a.Right.Type()) {
+		if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 			return sql.Uint64
 		}
 		return sql.Int64

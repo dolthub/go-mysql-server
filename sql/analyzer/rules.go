@@ -18,125 +18,6 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 )
 
-//go:generate stringer -type=RuleId
-
-type RuleId int
-
-const (
-	// once before
-	validateOffsetAndLimitId RuleId = iota
-	validateCreateTableId
-	validateExprSemId
-	resolveVariablesId
-	resolveNamedWindowsId
-	resolveSetVariablesId
-	resolveViewsId
-	liftCtesId
-	resolveCtesId
-	liftRecursiveCtesId
-	resolveDatabasesId
-	resolveTablesId
-	loadStoredProceduresId
-	validateDropTablesId
-	setTargetSchemasId
-	resolveCreateLikeId
-	parseColumnDefaultsId
-	resolveDropConstraintId
-	validateDropConstraintId
-	loadCheckConstraintsId
-	resolveCreateSelectId
-	resolveSubqueriesId
-	resolveUnionsId
-	resolveDescribeQueryId
-	checkUniqueTableNamesId
-	resolveTableFunctionsId
-	resolveDeclarationsId
-	validateCreateTriggerId
-	validateCreateProcedureId
-	loadInfoSchemaId
-	validateReadOnlyDatabaseId
-	validateReadOnlyTransactionId
-	validateDatabaseSetId
-	validatePriviledgesId
-	stripDecorationsId
-	unresolveTablesId
-	validateJoinComplexityId
-
-	// default
-	resolveNaturalJoinsId
-	resolveOrderbyLiteralsId
-	resolveFunctionsId
-	flattenTableAliasesId
-	pushdownSortId
-	pushdownGroupbyAliasesId
-	pushdownSubqueryAliasFiltersId
-	qualifyColumnsId
-	resolveColumnsId
-	resolveColumnDefaultsId
-	validateCheckConstraintId
-	resolveBarewordSetVariablesId
-	expandStarsId
-	resolveHavingId
-	mergeUnionSchemasId
-	flattenAggregationExprsId
-	reorderProjectionId
-	resolveSubqueryExprsId
-	replaceCrossJoinsId
-	moveJoinCondsToFilterId
-	evalFilterId
-	optimizeDistinctId
-
-	// after default
-	finalizeSubqueriesId
-	finalizeUnionsId
-	loadTriggersId
-	processTruncateId
-	validateAlterColumnId
-	resolveGeneratorsId
-	removeUnnecessaryConvertsId
-	assignCatalogId
-	pruneColumnsId
-	optimizeJoinsId
-	pushdownFiltersId
-	subqueryIndexesId
-	inSubqueryIndexesId
-	pushdownProjectionsId
-	setJoinScopeLenId
-	eraseProjectionId
-	insertTopNId
-	cacheSubqueryResultsId
-	cacheSubqueryAliasesInJoinsId
-	applyHashLookupsId
-	applyHashInId
-	resolveInsertRowsId
-	applyTriggersId
-	applyProceduresId
-	assignRoutinesId
-	modifyUpdateExprsForJoinId
-	applyRowUpdateAccumulatorsId
-	applyFKsId
-
-	// validate
-	validateResolvedId
-	validateOrderById
-	validateGroupById
-	validateSchemaSourceId
-	validateIndexCreationId
-	validateOperandsId
-	validateCaseResultTypesId
-	validateIntervalUsageId
-	validateExplodeUsageId
-	validateSubqueryColumnsId
-	validateUnionSchemasMatchId
-	validateAggregationsId
-
-	// after all
-	Autocommit
-	TrackProcessId
-	parallelizeId
-	clearWarningsId
-)
-
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
@@ -233,6 +114,7 @@ var OnceAfterDefault = []Rule{
 	{applyHashLookupsId, applyHashLookups},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},
+	{resolvePreparedInsertId, resolvePreparedInsert},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
 	{assignRoutinesId, assignRoutines},

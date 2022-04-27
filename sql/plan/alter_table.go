@@ -19,10 +19,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type RenameTable struct {
@@ -115,11 +116,11 @@ func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 		err = renamer.RenameTable(ctx, tbl.Name(), r.newNames[i])
 		if err != nil {
-			break
+			return nil, err
 		}
 	}
 
-	return sql.RowsToRowIter(), err
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -174,7 +175,7 @@ func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 
 // Schema implements the sql.Node interface.
 func (a *AddColumn) Schema() sql.Schema {
-	return sql.Schema{a.column}
+	return sql.OkResultSchema
 }
 
 func (a *AddColumn) String() string {
@@ -205,30 +206,21 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, err
 	}
 
-	err = alterable.AddColumn(ctx, a.column, a.order)
-	if err != nil {
-		return nil, err
-	}
-
-	// Prevents an iter of the full table when adding a new column that is
-	// nullable and has no default. This assumes that the underlying backend
-	// does not need to update defaults in this case.
-	if a.column.Nullable && a.column.Default == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	return sql.RowsToRowIter(), a.updateRowsWithDefaults(ctx, row, tbl)
+	return &addColumnIter{
+		a:         a,
+		alterable: alterable,
+	}, nil
 }
 
 // updateRowsWithDefaults iterates through an updatable table and applies an update to each row.
-func (a *AddColumn) updateRowsWithDefaults(ctx *sql.Context, row sql.Row, table sql.Table) error {
+func (a *AddColumn) updateRowsWithDefaults(ctx *sql.Context, table sql.Table) error {
 	rt := NewResolvedTable(table, a.db, nil)
 	updatable, ok := table.(sql.UpdatableTable)
 	if !ok {
 		return ErrUpdateNotSupported.New(rt.Name())
 	}
 
-	tableIter, err := rt.RowIter(ctx, row)
+	tableIter, err := rt.RowIter(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -392,6 +384,42 @@ func (a *AddColumn) Children() []sql.Node {
 	return []sql.Node{a.Table}
 }
 
+type addColumnIter struct {
+	a         *AddColumn
+	alterable sql.AlterableTable
+	runOnce   bool
+}
+
+func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.runOnce {
+		return nil, io.EOF
+	}
+	i.runOnce = true
+
+	err := i.alterable.AddColumn(ctx, i.a.column, i.a.order)
+	if err != nil {
+		return nil, err
+	}
+
+	// We only need to update all table rows if the new column is non-nil
+	if i.a.column.Nullable && i.a.column.Default == nil {
+		return sql.NewRow(sql.NewOkResult(0)), nil
+	}
+
+	err = i.a.updateRowsWithDefaults(ctx, i.alterable)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (i addColumnIter) Close(context *sql.Context) error {
+	return nil
+}
+
+var _ sql.RowIter = &addColumnIter{}
+
 type DropColumn struct {
 	ddlNode
 	Table        sql.Node
@@ -490,11 +518,11 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 	}
 
-	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.Column)
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.DropColumn(ctx, d.Column)
 }
 
 func (d *DropColumn) Schema() sql.Schema {
-	return nil
+	return sql.OkResultSchema
 }
 
 func (d *DropColumn) Resolved() bool {
@@ -619,7 +647,7 @@ func (r *RenameColumn) Resolved() bool {
 }
 
 func (r *RenameColumn) Schema() sql.Schema {
-	return nil
+	return sql.OkResultSchema
 }
 
 func (r *RenameColumn) Expressions() []sql.Expression {
@@ -670,14 +698,14 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			return nil, err
 		}
 		if len(parentFks) > 0 || len(fks) > 0 {
-			err = handleColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
+			err = handleFkColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
 }
 
 func (r *RenameColumn) Children() []sql.Node {
@@ -741,7 +769,7 @@ func (m *ModifyColumn) Order() *sql.ColumnOrder {
 
 // Schema implements the sql.Node interface.
 func (m *ModifyColumn) Schema() sql.Schema {
-	return sql.Schema{}
+	return sql.OkResultSchema
 }
 
 func (m *ModifyColumn) String() string {
@@ -768,6 +796,7 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
+	lowerColName := strings.ToLower(m.columnName)
 	tblSch := m.targetSchema
 	idx := tblSch.IndexOf(m.columnName, tbl.Name())
 	if idx < 0 {
@@ -791,20 +820,57 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 
 	// Update the foreign key columns as well
 	if fkTable, ok := alterable.(sql.ForeignKeyTable); ok {
-		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
-		if err != nil {
-			return nil, err
-		}
+		// We only care if the column is used in a foreign key
+		usedInFk := false
 		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if len(parentFks) > 0 || len(fks) > 0 {
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+	OuterChildFk:
+		for _, foreignKey := range fks {
+			for _, colName := range foreignKey.Columns {
+				if strings.ToLower(colName) == lowerColName {
+					usedInFk = true
+					break OuterChildFk
+				}
+			}
+		}
+		if !usedInFk {
+		OuterParentFk:
+			for _, foreignKey := range parentFks {
+				for _, colName := range foreignKey.ParentColumns {
+					if strings.ToLower(colName) == lowerColName {
+						usedInFk = true
+						break OuterParentFk
+					}
+				}
+			}
+		}
+
+		if usedInFk {
 			if !tblSch[idx].Type.Equals(m.column.Type) {
-				return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+				// There seems to be a special case where you can lengthen a CHAR/VARCHAR/BINARY/VARBINARY.
+				// Have not tested every type nor combination, but this seems specific to those 4 types.
+				if tblSch[idx].Type.Type() == m.column.Type.Type() {
+					switch m.column.Type.Type() {
+					case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
+						oldType := tblSch[idx].Type.(sql.StringType)
+						newType := m.column.Type.(sql.StringType)
+						if oldType.Collation() != newType.Collation() || oldType.MaxCharacterLength() > newType.MaxCharacterLength() {
+							return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+						}
+					default:
+						return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+					}
+				} else {
+					return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+				}
 			}
 			if !m.column.Nullable {
-				lowerColName := strings.ToLower(m.columnName)
 				for _, fk := range fks {
 					if fk.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fk.OnDelete == sql.ForeignKeyReferentialAction_SetNull {
 						for _, col := range fk.Columns {
@@ -815,14 +881,14 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 					}
 				}
 			}
-			err = handleColumnRename(ctx, fkTable, m.db, m.columnName, m.column.Name)
+			err = handleFkColumnRename(ctx, fkTable, m.db, m.columnName, m.column.Name)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
+	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
 }
 
 func (m *ModifyColumn) Children() []sql.Node {
@@ -961,7 +1027,7 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 	return nil
 }
 
-func handleColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
+func handleFkColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
 	lowerOldName := strings.ToLower(oldName)
 	if lowerOldName == strings.ToLower(newName) {
 		return nil

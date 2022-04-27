@@ -63,10 +63,15 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		val, err = getField.fieldType.Convert(val)
+		convertedVal, err := getField.fieldType.Convert(val)
 		if err != nil {
+			// Fill in error with information
+			if sql.ErrLengthBeyondLimit.Is(err) {
+				return nil, sql.ErrLengthBeyondLimit.New(val, getField.Name())
+			}
 			return nil, err
 		}
+		val = convertedVal
 	}
 	updatedRow := row.Copy()
 	updatedRow[getField.fieldIndex] = val

@@ -202,6 +202,16 @@ var VariableQueries = []ScriptTest{
 			{"ALLOW_INVALID_DATES"},
 		},
 	},
+	{
+		Name: "set sql_mode variable from mysqldump",
+		SetUpScript: []string{
+			`SET sql_mode = 'STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,TRADITIONAL,NO_ENGINE_SUBSTITUTION'`,
+		},
+		Query: "SELECT @@sql_mode",
+		Expected: []sql.Row{
+			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
+		},
+	},
 	// User variables
 	{
 		Name: "set user var",

@@ -50,7 +50,7 @@ func (p *Dimension) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *Dimension) Type() sql.Type {
-	return p.Child.Type()
+	return sql.Int32
 }
 
 func (p *Dimension) String() string {

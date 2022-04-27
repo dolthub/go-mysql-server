@@ -278,7 +278,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					sql.NewRow(3, "row three", sql.JSONDocument{Val: []interface{}{5, 6}}, sql.JSONDocument{Val: map[string]interface{}{"c": 2}}),
 					sql.NewRow(4, "row four", sql.JSONDocument{Val: []interface{}{7, 8}}, sql.JSONDocument{Val: map[string]interface{}{"d": 2}}))
 			} else {
-				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
+				t.Logf("Warning: could not create table %s: %s", "jsontable", err)
 			}
 		})
 	}
@@ -863,6 +863,22 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
 					sql.NewRow(int64(0), int64(0)),
 					sql.NewRow(int64(1), int64(1)),
+					sql.NewRow(int64(1), int64(1)),
+					sql.NewRow(int64(2), int64(2)))
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "keyless", err)
+			}
+		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "unique_keyless", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "c0", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+				{Name: "c1", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(0), int64(0)),
 					sql.NewRow(int64(1), int64(1)),
 					sql.NewRow(int64(2), int64(2)))
 			} else {

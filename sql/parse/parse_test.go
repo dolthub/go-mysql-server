@@ -3867,9 +3867,6 @@ var fixturesErrors = map[string]*errors.Kind{
 	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               sql.ErrUnsupportedFeature,
 	`DROP TABLE curdb.t1, t2`:                                   sql.ErrUnsupportedFeature,
 	`CREATE TABLE test (i int fulltext key)`:                    sql.ErrUnsupportedFeature,
-	`CREATE TABLE test (i int unique)`:                          sql.ErrUnsupportedFeature,
-	`CREATE TABLE test (i int, j int unique)`:                   sql.ErrUnsupportedFeature,
-	`CREATE TABLE test (i int, unique(i))`:                      sql.ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {

@@ -158,14 +158,9 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
+		Query: `SELECT 1, 2`,
 		Expected: []sql.Row{
-			{sql.Point{X: 1, Y: 2}},
-			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Point{X: 1, Y: 2}},
-			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{1, 2},
 		},
 	}
 
@@ -213,18 +208,10 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "information_schema.key_column_usage works with composite foreign keys",
-			SetUpScript: []string{
-				"CREATE TABLE ptable (pk int primary key, test_score int, height int)",
-				"CREATE INDEX myindex on ptable(test_score, height)",
-				"CREATE TABLE ptable2 (pk int primary key, test_score2 int, height2 int, CONSTRAINT fkr FOREIGN KEY (test_score2, height2) REFERENCES ptable(test_score,height));",
-			},
-			Query: "SELECT * FROM information_schema.key_column_usage where table_name='ptable2' ORDER BY constraint_name",
-			Expected: []sql.Row{
-				{"def", "mydb", "PRIMARY", "def", "mydb", "ptable2", "pk", 1, nil, nil, nil, nil},
-				{"def", "mydb", "fkr", "def", "mydb", "ptable2", "test_score2", 1, 1, "mydb", "ptable", "test_score"},
-				{"def", "mydb", "fkr", "def", "mydb", "ptable2", "height2", 2, 2, "mydb", "ptable", "height"},
-			},
+			Name:        "information_schema.key_column_usage works with composite foreign keys",
+			SetUpScript: []string{},
+			Query:       "INSERT INTO mytable (i,s) SELECT i * 2, concat(s,s) from mytable order by 1 desc limit 1",
+			Expected:    []sql.Row{},
 		},
 	}
 
@@ -876,6 +863,12 @@ func TestPrepared(t *testing.T) {
 
 func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestKeylessUniqueIndex(t *testing.T) {
+	// TODO: GMS does not support unique indexes for keyless tables.
+	t.Skip()
+	enginetest.TestKeylessUniqueIndex(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

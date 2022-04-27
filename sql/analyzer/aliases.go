@@ -32,7 +32,7 @@ type TableAliases map[string]sql.Nameable
 // returns an error.
 func (ta TableAliases) add(alias sql.Nameable, target sql.Nameable) error {
 	lowerName := strings.ToLower(alias.Name())
-	if _, ok := ta[lowerName]; ok && lowerName != dualTableName {
+	if _, ok := ta[lowerName]; ok && lowerName != sql.DualTableName {
 		return sql.ErrDuplicateAliasOrTable.New(alias.Name())
 	}
 

@@ -357,7 +357,8 @@ func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
 	case stripDecorationsId,
-		unresolveTablesId:
+		unresolveTablesId,
+		resolvePreparedInsertId:
 		return false
 	}
 	return true
@@ -374,7 +375,7 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 // are applied
 func prePrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case resolveInsertRowsId,
+	case resolvePreparedInsertId,
 		insertTopNId,
 		inSubqueryIndexesId,
 		Autocommit,
@@ -414,6 +415,39 @@ func postPrepareRuleSelector(id RuleId) bool {
 	case stripDecorationsId,
 		unresolveTablesId,
 
+		expandStarsId,
+		resolveFunctionsId,
+		flattenTableAliasesId,
+		pushdownSortId,
+		pushdownGroupbyAliasesId,
+		resolveDatabasesId,
+		resolveTablesId,
+
+		resolveOrderbyLiteralsId,
+		qualifyColumnsId,
+		resolveColumnsId,
+
+		pushdownFiltersId,
+		subqueryIndexesId,
+		inSubqueryIndexesId,
+		resolvePreparedInsertId,
+
+		TrackProcessId,
+		parallelizeId,
+		clearWarningsId:
+		return true
+	}
+	return false
+}
+
+// prePrepareRuleSelector are applied to a cached prepared statement plan
+// after bindvars are applied
+func postPrepareInsertSourceRuleSelector(id RuleId) bool {
+	switch id {
+	case stripDecorationsId,
+		unresolveTablesId,
+
+		expandStarsId,
 		resolveFunctionsId,
 		flattenTableAliasesId,
 		pushdownSortId,

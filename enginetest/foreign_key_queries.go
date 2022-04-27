@@ -56,7 +56,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk_id FOREIGN KEY (v1) REFERENCES parent(id);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -78,6 +78,32 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				Query:       "ALTER TABLE sibling ADD CONSTRAINT fk1 FOREIGN KEY (v1) REFERENCES parent(v1);",
 				ExpectedErr: sql.ErrForeignKeyColumnTypeMismatch,
+			},
+		},
+	},
+	{
+		Name: "CREATE TABLE Type Mismatch special case for strings",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (pk BIGINT PRIMARY KEY, v1 CHAR(20), INDEX (v1));",
+			"CREATE TABLE parent2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(20), INDEX (v1));",
+			"CREATE TABLE parent3 (pk BIGINT PRIMARY KEY, v1 BINARY(20), INDEX (v1));",
+			"CREATE TABLE parent4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), INDEX (v1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE child1 (pk BIGINT PRIMARY KEY, v1 CHAR(30), CONSTRAINT fk_child1 FOREIGN KEY (v1) REFERENCES parent1 (v1));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(30), CONSTRAINT fk_child2 FOREIGN KEY (v1) REFERENCES parent2 (v1));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE child3 (pk BIGINT PRIMARY KEY, v1 BINARY(30), CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3 (v1));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			}, {
+				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(30), CONSTRAINT fk_child4 FOREIGN KEY (v1) REFERENCES parent4 (v1));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -198,7 +224,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE child;",
@@ -256,7 +282,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "RENAME TABLE child TO new_child;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE new_child;",
@@ -276,11 +302,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP TABLE child;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "DROP TABLE parent;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -301,15 +327,15 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child DROP INDEX v1;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent DROP INDEX v1;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -344,6 +370,122 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE MODIFY COLUMN type change allowed when lengthening string",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (pk BIGINT PRIMARY KEY, v1 CHAR(20), INDEX (v1));",
+			"CREATE TABLE parent2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(20), INDEX (v1));",
+			"CREATE TABLE parent3 (pk BIGINT PRIMARY KEY, v1 BINARY(20), INDEX (v1));",
+			"CREATE TABLE parent4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), INDEX (v1));",
+			"CREATE TABLE child1 (pk BIGINT PRIMARY KEY, v1 CHAR(20), CONSTRAINT fk_child1 FOREIGN KEY (v1) REFERENCES parent1 (v1));",
+			"CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(20), CONSTRAINT fk_child2 FOREIGN KEY (v1) REFERENCES parent2 (v1));",
+			"CREATE TABLE child3 (pk BIGINT PRIMARY KEY, v1 BINARY(20), CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3 (v1));",
+			"CREATE TABLE child4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), CONSTRAINT fk_child4 FOREIGN KEY (v1) REFERENCES parent4 (v1));",
+			"INSERT INTO parent2 VALUES (1, 'aa'), (2, 'bb');",
+			"INSERT INTO child2 VALUES (1, 'aa');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE parent1 MODIFY v1 CHAR(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE child1 MODIFY v1 CHAR(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE parent2 MODIFY v1 VARCHAR(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE child2 MODIFY v1 VARCHAR(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE parent3 MODIFY v1 BINARY(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE child3 MODIFY v1 BINARY(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE parent4 MODIFY v1 VARBINARY(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE child4 MODIFY v1 VARBINARY(10);",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:    "ALTER TABLE parent1 MODIFY v1 CHAR(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE child1 MODIFY v1 CHAR(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE parent2 MODIFY v1 VARCHAR(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE child2 MODIFY v1 VARCHAR(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE parent3 MODIFY v1 BINARY(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE child3 MODIFY v1 BINARY(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE parent4 MODIFY v1 VARBINARY(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE child4 MODIFY v1 VARBINARY(30);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{ // Make sure the type change didn't cause INSERTs to break or some other strange behavior
+				Query:    "INSERT INTO child2 VALUES (2, 'bb');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO child2 VALUES (3, 'cc');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY COLUMN type change only cares about foreign key columns",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (pk INT PRIMARY KEY, v1 INT UNSIGNED, v2 INT UNSIGNED, INDEX (v1));",
+			"CREATE TABLE child1 (pk INT PRIMARY KEY, v1 INT UNSIGNED, v2 INT UNSIGNED, CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent1(v1));",
+			"INSERT INTO parent1 VALUES (1, 2, 3), (4, 5, 6);",
+			"INSERT INTO child1 VALUES (7, 2, 9);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE parent1 MODIFY v1 BIGINT;",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:       "ALTER TABLE child1 MODIFY v1 BIGINT;",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+			{
+				Query:    "ALTER TABLE parent1 MODIFY v2 BIGINT;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE child1 MODIFY v2 BIGINT;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "DROP COLUMN parent",
 		SetUpScript: []string{
 			"ALTER TABLE child ADD CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent(v1);",
@@ -355,11 +497,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent DROP COLUMN v1;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -375,11 +517,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child DROP COLUMN v1;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -539,11 +681,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE parent ADD CONSTRAINT fk_name1 FOREIGN KEY (v1) REFERENCES parent(v1);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent ADD CONSTRAINT fk_name2 FOREIGN KEY (v1, v2) REFERENCES parent(v1, v2);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -808,7 +950,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE delayed_parent (pk INT PRIMARY KEY, v1 INT, INDEX (v1));",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO delayed_parent VALUES (1, 2), (2, 3);",
@@ -840,7 +982,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP TABLE parent;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=1;",
@@ -852,7 +994,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE parent (pk INT PRIMARY KEY, v1 INT, INDEX (v1));",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO parent VALUES (1, 5);",
@@ -886,11 +1028,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE INDEX foreign_key1 ON public.states(state);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE public.cities ADD CONSTRAINT foreign_key1 FOREIGN KEY (state) REFERENCES public.states(state);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
@@ -918,19 +1060,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk1 FOREIGN KEY (b) REFERENCES parent (b);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk2 FOREIGN KEY (a) REFERENCES parent (b);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk3 FOREIGN KEY (a, b) REFERENCES parent (a, b);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (b, a) REFERENCES parent (b, a);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
