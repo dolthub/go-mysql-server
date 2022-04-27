@@ -236,6 +236,8 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	}, nil
 }
 
+const SavePointName = "__go_mysql_server_starting_savepoint__"
+
 // TriggerRollback is a node that wraps the entire tree iff it contains a trigger, creates a savepoint, and performs a
 // rollback if something went wrong during execution
 type TriggerRollback struct {
@@ -269,7 +271,10 @@ func (t *TriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		return nil, err
 	}
 
-	t.Db.CreateSavepoint(ctx, ctx.GetTransaction(), "__go_mysql_server_starting_savepoint__")
+	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", SavePointName)
+	if err := t.Db.CreateSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
+	}
 
 	return &triggerRollbackIter{
 		child: childIter,
@@ -294,8 +299,12 @@ func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr err
 
 	// Rollback if error occurred
 	if err != nil && err != io.EOF {
-		t.db.RollbackToSavepoint(ctx, ctx.GetTransaction(), "__go_mysql_server_starting_savepoint__")
-		t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), "__go_mysql_server_starting_savepoint__")
+		if err := t.db.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("RollbackToSavePoint failed")
+		}
+		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("ReleaseSavePoint failed")
+		}
 	}
 
 	return childRow, err
