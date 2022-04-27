@@ -403,7 +403,8 @@ func wrapPlansWithTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	if privilegedDatabase, ok := currDb.(grant_tables.PrivilegedDatabase); ok {
 		currDb = privilegedDatabase.Unwrap()
 	}
-	// TODO: not sure what should happen if not a TransactionDatabase
+
+	// Not a TransactionDatabase, do nothing
 	tdb, ok := currDb.(sql.TransactionDatabase)
 	if !ok {
 		return n, transform.SameTree, err
