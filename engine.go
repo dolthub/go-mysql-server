@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sync"
 
@@ -445,8 +446,10 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 				if err != nil {
 					return "", err
 				}
-				// TODO: still might need to do this Create a save point
-				//tdb.CreateSavepoint(ctx, tx, "__go_mysql_server_starting_save_point")
+				// Replace savepoint if existing
+				tdb.ReleaseSavepoint(ctx, tx, "__go_mysql_server_starting_savepoint__")
+				tdb.CreateSavepoint(ctx, tx, "__go_mysql_server_starting_savepoint__")
+
 				ctx.SetTransaction(tx)
 			}
 		}
@@ -494,13 +497,13 @@ type transactionCommittingIter struct {
 	childIter           sql.RowIter
 	childIter2          sql.RowIter2
 	transactionDatabase string
-	errored             bool
 }
 
 func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := t.childIter.Next(ctx)
-	if err != nil {
-		t.errored = true
+	// TODO: i know this isn't great, but idk how else :(
+	if err != nil && err != io.EOF {
+		ctx.Errored = true
 	}
 	return row, err
 }
@@ -518,18 +521,16 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	tx := ctx.GetTransaction()
 	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
 	if commitTransaction {
-		// Rollback transaction if there was an error
-		if t.errored {
-			if err := ctx.Session.RollbackTransaction(ctx, t.transactionDatabase, tx); err != nil {
-				return err
-			}
-			t.errored = false
+		if ctx.Errored {
+			ctx.Session.RollbackToSavepoint(ctx, "__go_mysql_server_starting_savepoint__", ctx.GetCurrentDatabase(), ctx.GetTransaction())
+			ctx.Errored = false
 		} else {
 			ctx.GetLogger().Tracef("committing transaction %s", tx)
 			if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
 				return err
 			}
 		}
+
 		// Clearing out the current transaction will tell us to start a new one the next time this session queries
 		ctx.SetTransaction(nil)
 	}

@@ -77,8 +77,8 @@ type Session interface {
 	SetCurrentDatabase(dbName string)
 	// CommitTransaction commits the current transaction for this session for the current database
 	CommitTransaction(ctx *Context, dbName string, transaction Transaction) error
-	// RollbackTransaction commits the current transaction for this session for the current database
-	RollbackTransaction(ctx *Context, dbName string, transaction Transaction) error
+	// RollbackToSavepoint rollsback to a previous savepoint
+	RollbackToSavepoint(ctx *Context, savepointName, dbName string, transaction Transaction) error
 	// ID returns the unique ID of the connection.
 	ID() uint32
 	// Warn stores the warning in the session.
@@ -205,7 +205,7 @@ func (s *BaseSession) CommitTransaction(*Context, string, Transaction) error {
 	return nil
 }
 
-func (s *BaseSession) RollbackTransaction(*Context, string, Transaction) error {
+func (s *BaseSession) RollbackToSavepoint(*Context, string, string, Transaction) error {
 	// no-op on BaseSession
 	return nil
 }
@@ -563,6 +563,7 @@ type Context struct {
 	queryTime   time.Time
 	tracer      opentracing.Tracer
 	rootSpan    opentracing.Span
+	Errored     bool
 }
 
 // ContextOption is a function to configure the context.
