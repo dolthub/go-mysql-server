@@ -89,7 +89,6 @@ func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2
 	trackedIter.queryType = qType
 	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
 
-	// trackedRowIter wraps the transactionRowIter
 	return trackedIter, nil
 }
 
@@ -544,7 +543,7 @@ func IsShowNode(node sql.Node) bool {
 		*ShowDatabases, *ShowCreateDatabase,
 		*ShowColumns, *ShowIndexes,
 		*ShowProcessList, *ShowTableStatus,
-		*ShowVariables, *ShowWarnings:
+		*ShowVariables, ShowWarnings:
 		return true
 	default:
 		return false

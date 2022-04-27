@@ -50,13 +50,27 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	if plan.IsShowNode(n) {
+	if hasShowNode(n) {
 		return n, transform.SameTree, nil
 	}
 
 	transactionDatabase := getTransactionDatabase(ctx, n)
 
 	return plan.NewTransactionCommittingNode(n, transactionDatabase), transform.NewTree, nil
+}
+
+func hasShowNode(n sql.Node) bool {
+	var ret bool
+	transform.Inspect(n, func(n sql.Node) bool {
+		if plan.IsShowNode(n) {
+			ret = true
+			return false
+		}
+
+		return true
+	})
+
+	return ret
 }
 
 func isSessionAutocommit(ctx *sql.Context) (bool, error) {
