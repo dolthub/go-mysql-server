@@ -16,7 +16,6 @@ package sqle
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"sync"
 
@@ -446,9 +445,6 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 				if err != nil {
 					return "", err
 				}
-				// Replace savepoint if existing
-				tdb.ReleaseSavepoint(ctx, tx, "__go_mysql_server_starting_savepoint__")
-				tdb.CreateSavepoint(ctx, tx, "__go_mysql_server_starting_savepoint__")
 
 				ctx.SetTransaction(tx)
 			}
@@ -500,12 +496,7 @@ type transactionCommittingIter struct {
 }
 
 func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
-	row, err := t.childIter.Next(ctx)
-	// TODO: i know this isn't great, but idk how else :(
-	if err != nil && err != io.EOF {
-		ctx.Errored = true
-	}
-	return row, err
+	return t.childIter.Next(ctx)
 }
 
 func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
@@ -521,14 +512,9 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	tx := ctx.GetTransaction()
 	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
 	if commitTransaction {
-		if ctx.Errored {
-			//ctx.Session.RollbackToSavepoint(ctx, "__go_mysql_server_starting_savepoint__", ctx.GetCurrentDatabase(), ctx.GetTransaction())
-			ctx.Errored = false
-		} else {
-			ctx.GetLogger().Tracef("committing transaction %s", tx)
-			if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
-				return err
-			}
+		ctx.GetLogger().Tracef("committing transaction %s", tx)
+		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
+			return err
 		}
 
 		// Clearing out the current transaction will tell us to start a new one the next time this session queries

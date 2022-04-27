@@ -556,7 +556,6 @@ type Context struct {
 	queryTime   time.Time
 	tracer      opentracing.Tracer
 	rootSpan    opentracing.Span
-	Errored     bool
 }
 
 // ContextOption is a function to configure the context.
