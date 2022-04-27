@@ -378,7 +378,7 @@ func wrapPlansWithTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			}
 		}
 
-		// Before Triggers are Delete and Update should be in children
+		// Before Triggers on Delete and Update should be in children
 		return true
 	})
 
@@ -387,9 +387,26 @@ func wrapPlansWithTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 		return n, transform.SameTree, nil
 	}
 
-	// No database, do nothing
+	// No database set, find it through tree
 	dbName := ctx.GetCurrentDatabase()
 	if dbName == "" {
+		transform.Inspect(n, func(n sql.Node) bool {
+			switch n := n.(type) {
+			case *plan.InsertInto:
+				if n.Database() != nil && n.Database().Name() != "" {
+					dbName = n.Database().Name()
+				}
+			case *plan.Update:
+				if n.Database() != "" {
+					dbName = n.Database()
+				}
+			case *plan.DeleteFrom:
+				if n.Database() != "" {
+					dbName = n.Database()
+				}
+			}
+			return true
+		})
 		return n, transform.SameTree, nil
 	}
 
