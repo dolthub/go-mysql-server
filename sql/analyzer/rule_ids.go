@@ -93,6 +93,7 @@ const (
 	resolveInsertRowsId           // resolveInsertRows
 	resolvePreparedInsertId       // resolvePreparedInsert
 	applyTriggersId               // applyTriggers
+	rollbackTriggersId            // rollback triggers
 	applyProceduresId             // applyProcedures
 	assignRoutinesId              // assignRoutines
 	modifyUpdateExprsForJoinId    // modifyUpdateExprsForJoin

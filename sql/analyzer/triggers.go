@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -356,4 +357,52 @@ func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.Create
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 	return strings.ToLower((string)(event)) == strings.ToLower(event2)
+}
+
+// wrapPlansWithTriggers wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
+func wrapPlansWithTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// Check if tree contains a TriggerExecutor
+	containsTrigger := false
+	transform.Inspect(n, func(n sql.Node) bool {
+		// After Triggers wrap nodes
+		if _, ok := n.(*plan.TriggerExecutor); ok {
+			containsTrigger = true
+			return false // done, don't bother to recurse
+		}
+
+		// Before Triggers on Inserts are inside Source
+		if n, ok := n.(*plan.InsertInto); ok {
+			if _, ok := n.Source.(*plan.TriggerExecutor); ok {
+				containsTrigger = true
+				return false
+			}
+		}
+
+		// Before Triggers are Delete and Update should be in children
+		return true
+	})
+
+	// No TriggerExecutor, so return same tree
+	if !containsTrigger {
+		return n, transform.SameTree, nil
+	}
+
+	// Get current database
+	currDb, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	// Extract from privilegedDatabase
+	if privilegedDatabase, ok := currDb.(grant_tables.PrivilegedDatabase); ok {
+		currDb = privilegedDatabase.Unwrap()
+	}
+	// TODO: not sure what should happen if not a TransactionDatabase
+	tdb, ok := currDb.(sql.TransactionDatabase)
+	if !ok {
+		return n, transform.SameTree, err
+	}
+
+	// Wrap tree with new node
+	return plan.NewTriggerRollback(n, tdb), transform.NewTree, nil
 }

@@ -522,7 +522,7 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
 	if commitTransaction {
 		if ctx.Errored {
-			ctx.Session.RollbackToSavepoint(ctx, "__go_mysql_server_starting_savepoint__", ctx.GetCurrentDatabase(), ctx.GetTransaction())
+			//ctx.Session.RollbackToSavepoint(ctx, "__go_mysql_server_starting_savepoint__", ctx.GetCurrentDatabase(), ctx.GetTransaction())
 			ctx.Errored = false
 		} else {
 			ctx.GetLogger().Tracef("committing transaction %s", tx)
