@@ -16,9 +16,10 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"os"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -410,7 +411,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	transactionDatabase := getTransactionDatabase(ctx, parsed)
 
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
-	beginNewTransaction := ctx.GetTransaction() == nil || readCommitted(ctx)
+	beginNewTransaction := ctx.GetTransaction() == nil || analyzer.ReadCommitted(ctx)
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
@@ -449,76 +450,6 @@ func (e *Engine) Close() error {
 func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
 	e.BackgroundThreads = b
 	return e
-}
-
-// Returns whether this session has a transaction isolation level of READ COMMITTED.
-// If so, we always begin a new transaction for every statement, and commit after every statement as well.
-// This is not what the READ COMMITTED isolation level is supposed to do.
-func readCommitted(ctx *sql.Context) bool {
-	if !fakeReadCommitted {
-		return false
-	}
-
-	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
-	if err != nil {
-		return false
-	}
-
-	valStr, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return valStr == "READ-COMMITTED"
-}
-
-// transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
-// during the Close() operation
-type transactionCommittingIter struct {
-	childIter           sql.RowIter
-	childIter2          sql.RowIter2
-	transactionDatabase string
-}
-
-func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return t.childIter.Next(ctx)
-}
-
-func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.childIter2.Next2(ctx, frame)
-}
-
-func (t transactionCommittingIter) Close(ctx *sql.Context) error {
-	err := t.childIter.Close(ctx)
-	if err != nil {
-		return err
-	}
-
-	tx := ctx.GetTransaction()
-	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
-	if commitTransaction {
-		ctx.GetLogger().Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
-			return err
-		}
-
-		// Clearing out the current transaction will tell us to start a new one the next time this session queries
-		ctx.SetTransaction(nil)
-	}
-
-	return nil
-}
-
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if readCommitted(ctx) {
-		return true, nil
-	}
-
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 // getDbHelper returns the first database name from a table-like node
@@ -575,7 +506,7 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	}
 	switch node.(type) {
 	case
-			*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
 			return sql.ErrNotAuthorized.New()
 		}

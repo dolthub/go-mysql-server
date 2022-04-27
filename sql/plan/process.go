@@ -414,7 +414,7 @@ func (i *trackedRowIter) Close(ctx *sql.Context) error {
 
 	i.updateSessionVars(ctx)
 
-	i.done() // TODO: Fucked
+	i.done()
 	return err
 }
 

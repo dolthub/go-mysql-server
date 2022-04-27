@@ -16,10 +16,12 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
-	"os"
 )
 
+// TransactionCommittingNode implements autocommit logic. It wraps relevant queries and ensures the database commits
+// the transaction.
 type TransactionCommittingNode struct {
 	UnaryNode
 	transactionDatabase string
@@ -28,14 +30,17 @@ type TransactionCommittingNode struct {
 var _ sql.Node = (*TransactionCommittingNode)(nil)
 var _ sql.Node2 = (*TransactionCommittingNode)(nil)
 
+// NewTransactionCommittingNode returns a TransactionCommittingNode.
 func NewTransactionCommittingNode(child sql.Node, transactionDatabase string) *TransactionCommittingNode {
 	return &TransactionCommittingNode{UnaryNode: UnaryNode{Child: child}, transactionDatabase: transactionDatabase}
 }
 
+// String implements the sql.Node interface.
 func (t *TransactionCommittingNode) String() string {
 	return t.Child.String()
 }
 
+// RowIter implements the sql.Node interface.
 func (t *TransactionCommittingNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	iter, err := t.Child.RowIter(ctx, row)
 	if err != nil {
@@ -45,6 +50,7 @@ func (t *TransactionCommittingNode) RowIter(ctx *sql.Context, row sql.Row) (sql.
 	return transactionCommittingIter{childIter: iter, childIter2: nil, transactionDatabase: t.transactionDatabase}, nil
 }
 
+// RowIter2 implements the sql.Node interface.
 func (t *TransactionCommittingNode) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
 	iter2, err := t.Child.(sql.Node2).RowIter2(ctx, nil)
 	if err != nil {
@@ -54,6 +60,7 @@ func (t *TransactionCommittingNode) RowIter2(ctx *sql.Context, f *sql.RowFrame) 
 	return transactionCommittingIter{childIter: nil, childIter2: iter2, transactionDatabase: t.transactionDatabase}, nil
 }
 
+// WithChildren implements the sql.Node interface.
 func (t *TransactionCommittingNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, fmt.Errorf("ds")
@@ -63,9 +70,9 @@ func (t *TransactionCommittingNode) WithChildren(children ...sql.Node) (sql.Node
 	return t, nil
 }
 
+// CheckPrivileges implements the sql.Node interface.
 func (t *TransactionCommittingNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO implement me
-	panic("implement me")
+	return t.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
@@ -74,7 +81,6 @@ type transactionCommittingIter struct {
 	childIter           sql.RowIter
 	childIter2          sql.RowIter2
 	transactionDatabase string
-	onDone              NotifyFunc
 }
 
 func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -86,7 +92,12 @@ func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) 
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {
-	err := t.childIter.Close(ctx)
+	var err error
+	if t.childIter != nil {
+		err = t.childIter.Close(ctx)
+	} else if t.childIter2 != nil {
+		err = t.childIter2.Close(ctx)
+	}
 	if err != nil {
 		return err
 	}
@@ -103,45 +114,5 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 		ctx.SetTransaction(nil)
 	}
 
-	if t.onDone != nil {
-		t.onDone()
-	}
-
 	return nil
-}
-
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if readCommitted(ctx) {
-		return true, nil
-	}
-
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
-}
-
-// Returns whether this session has a transaction isolation level of READ COMMITTED.
-// If so, we always begin a new transaction for every statement, and commit after every statement as well.
-// This is not what the READ COMMITTED isolation level is supposed to do.
-func readCommitted(ctx *sql.Context) bool {
-	// TODO: Fix this shit
-	_, ok := os.LookupEnv("READ_COMMITTED_HACK")
-
-	if ok {
-		return true
-	}
-
-	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
-	if err != nil {
-		return false
-	}
-
-	valStr, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return valStr == "READ-COMMITTED"
 }

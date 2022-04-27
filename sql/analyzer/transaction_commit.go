@@ -15,13 +15,28 @@
 package analyzer
 
 import (
+	"os"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"os"
 )
 
-func wrapAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+const (
+	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
+)
+
+var fakeReadCommitted bool
+
+func init() {
+	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
+	if ok {
+		fakeReadCommitted = true
+	}
+}
+
+// addAutocommitNode wraps a query with a TransactionCommittingNode when autocommit is on.
+func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -32,37 +47,16 @@ func wrapAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	}
 
 	if !autocommit {
-		return n, transform.SameTree, err
+		return n, transform.SameTree, nil
 	}
 
 	transactionDatabase := getTransactionDatabase(ctx, n)
 
-	// Remove QueryProcess nodes from the subqueries and trigger bodies. Otherwise, the process
-	// will be marked as done as soon as a subquery / trigger finishes.
-	node, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if sq, ok := n.(*plan.SubqueryAlias); ok {
-			if tc, ok := sq.Child.(*plan.TransactionCommittingNode); ok {
-				n, err := sq.WithChildren(tc.Child)
-				return n, transform.NewTree, err
-			}
-		}
-		if t, ok := n.(*plan.TriggerExecutor); ok {
-			if tc, ok := t.Right().(*plan.TransactionCommittingNode); ok {
-				n, err := t.WithChildren(t.Left(), tc.Child)
-				return n, transform.NewTree, err
-			}
-		}
-		return n, transform.SameTree, nil
-	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return plan.NewTransactionCommittingNode(node, transactionDatabase), transform.NewTree, nil
+	return plan.NewTransactionCommittingNode(n, transactionDatabase), transform.NewTree, nil
 }
 
 func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if readCommitted(ctx) {
+	if ReadCommitted(ctx) {
 		return true, nil
 	}
 
@@ -73,15 +67,12 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
-// Returns whether this session has a transaction isolation level of READ COMMITTED.
+// ReadCommitted returns whether this session has a transaction isolation level of READ COMMITTED.
 // If so, we always begin a new transaction for every statement, and commit after every statement as well.
 // This is not what the READ COMMITTED isolation level is supposed to do.
-func readCommitted(ctx *sql.Context) bool {
-	// TODO: Fix this shit
-	_, ok := os.LookupEnv("READ_COMMITTED_HACK")
-
-	if ok {
-		return true
+func ReadCommitted(ctx *sql.Context) bool {
+	if !fakeReadCommitted {
+		return false
 	}
 
 	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")

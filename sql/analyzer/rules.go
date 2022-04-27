@@ -131,7 +131,7 @@ const (
 	validateAggregationsId
 
 	// after all
-	CommittingTransactionId
+	Autocommit
 	TrackProcessId
 	parallelizeId
 	clearWarningsId
@@ -260,7 +260,7 @@ var DefaultValidationRules = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
-	{CommittingTransactionId, wrapAutocommitNode},
+	{Autocommit, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},
 	{clearWarningsId, clearWarnings},
