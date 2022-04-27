@@ -387,8 +387,14 @@ func wrapPlansWithTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 		return n, transform.SameTree, nil
 	}
 
+	// No database, do nothing
+	dbName := ctx.GetCurrentDatabase()
+	if dbName == "" {
+		return n, transform.SameTree, nil
+	}
+
 	// Get current database
-	currDb, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
+	currDb, err := a.Catalog.Database(ctx, dbName)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
