@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -121,6 +122,22 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 	return nil
 }
 
+// GetSRID returns the SRID given a Geometry type, will return -1 otherwise
+func GetSRID(val interface{}) int {
+	switch v := val.(type) {
+	case sql.Geometry:
+		return GetSRID(v.Inner)
+	case sql.Point:
+		return int(v.SRID)
+	case sql.Linestring:
+		return int(v.SRID)
+	case sql.Polygon:
+		return int(v.SRID)
+	default:
+		return -1
+	}
+}
+
 // Eval implements the sql.Expression interface.
 func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -135,8 +152,22 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Create map object to hold values
-	obj := make(map[string]interface{}, 3) // TODO: needs to be 3 when including bounding box
+	obj := make(map[string]interface{})
 	switch v := val.(type) {
+	case sql.Geometry:
+		switch inner := v.Inner.(type) {
+		case sql.Point:
+			obj["type"] = "Point"
+			obj["coordinates"] = PointToSlice(inner)
+		case sql.Linestring:
+			obj["type"] = "LineString"
+			obj["coordinates"] = LineToSlice(inner)
+		case sql.Polygon:
+			obj["type"] = "Polygon"
+			obj["coordinates"] = PolyToSlice(inner)
+		default:
+			return nil, ErrInvalidArgumentType.New(g.FunctionName())
+		}
 	case sql.Point:
 		obj["type"] = "Point"
 		obj["coordinates"] = PointToSlice(v)
@@ -160,6 +191,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Return null if precision is null
 	if p == nil {
 		return nil, nil
 	}
@@ -203,6 +235,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Return null if flag is null
 	if flag == nil {
 		return nil, nil
 	}
@@ -226,15 +259,42 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if _flag < 0 || _flag > 7 {
 		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), _flag)
 	}
-	// TODO: figure out exactly what flags are; only 1,3,5 have bbox
-	if _flag%2 == 1 {
+
+	switch _flag {
+	// Flags 1,3,5 have bounding box
+	case 1, 3, 5:
 		// Calculate bounding box
 		res := FindBBox(val)
 		for i, r := range res {
 			res[i] = math.Round(r*prec) / prec
 		}
 		obj["bbox"] = res
+	// Flag 2 and 4 add CRS URN (EPSG: <srid>); only shows up if SRID != 0
+	case 2, 4:
+		// CRS obj only shows up if srid != 0
+		srid := GetSRID(val)
+		if srid != 0 {
+			// Create CRS URN Object
+			crs := make(map[string]interface{})
+			crs["type"] = "name"
+
+			// Create properties
+			props := make(map[string]interface{})
+			// Flag 2 is short format CRS URN, while 4 is long format
+			sridStr := strconv.Itoa(srid)
+			if _flag == 2 {
+				props["name"] = "EPSG:" + sridStr
+			} else {
+				props["name"] = "urn:ogc:def:crs:EPSG::" + sridStr
+			}
+			// Add properties to crs
+			crs["properties"] = props
+
+			// Add CRS to main object
+			obj["crs"] = crs
+		}
 	}
+
 	return sql.JSONDocument{Val: obj}, nil
 }
 
