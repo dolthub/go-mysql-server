@@ -407,7 +407,6 @@ func wrapPlansWithTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			}
 			return true
 		})
-		return n, transform.SameTree, nil
 	}
 
 	// Get current database
