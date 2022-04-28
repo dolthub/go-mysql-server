@@ -55,7 +55,7 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	}
 
 	if tc, ok := node.(*plan.TransactionCommittingNode); ok {
-		return shouldParallelize(tc.Child, scope)
+		return shouldParallelize(tc.Child(), scope)
 	}
 
 	// Do not try to parallelize DDL or descriptive operations

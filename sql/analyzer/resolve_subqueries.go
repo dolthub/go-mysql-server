@@ -148,7 +148,7 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 		case *plan.StartTransaction:
 			n = tn.Child
 		case *plan.TransactionCommittingNode:
-			n = tn.Child
+			n = tn.Child()
 		default:
 			nodeIsPassthrough = false
 		}

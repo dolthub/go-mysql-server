@@ -408,7 +408,7 @@ func init() {
 func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
 	// Before we begin a transaction, we need to know if the database being operated on is not the one
 	// currently selected
-	transactionDatabase := getTransactionDatabase(ctx, parsed)
+	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
 
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
 	beginNewTransaction := ctx.GetTransaction() == nil || analyzer.ReadCommitted(ctx)
@@ -467,36 +467,6 @@ func getDbHelper(tables ...sql.Node) string {
 	default:
 	}
 	return ""
-}
-
-// getTransactionDatabase returns the name of the database that should be considered current for the transaction about
-// to begin. The database is not guaranteed to exist.
-// For USE DATABASE statements, we consider the transaction database to be the one being USEd
-func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
-	var dbName string
-	switch n := parsed.(type) {
-	case *plan.QueryProcess, *plan.RowUpdateAccumulator:
-		return getTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
-	case *plan.Use, *plan.CreateProcedure, *plan.DropProcedure, *plan.CreateTrigger, *plan.DropTrigger,
-		*plan.CreateTable, *plan.InsertInto, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.AlterPK,
-		*plan.DropColumn, *plan.RenameColumn, *plan.ModifyColumn:
-		database := n.(sql.Databaser).Database()
-		if database != nil {
-			dbName = database.Name()
-		}
-	case *plan.DropForeignKey, *plan.DropIndex, *plan.CreateIndex, *plan.Update, *plan.DeleteFrom,
-		*plan.CreateForeignKey:
-		dbName = n.(sql.Databaseable).Database()
-	case *plan.DropTable:
-		dbName = getDbHelper(n.Tables...)
-	case *plan.Truncate:
-		dbName = getDbHelper(n.Child)
-	default:
-	}
-	if dbName != "" {
-		return dbName
-	}
-	return ctx.GetCurrentDatabase()
 }
 
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.

@@ -54,7 +54,7 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	transactionDatabase := getTransactionDatabase(ctx, n)
+	transactionDatabase := GetTransactionDatabase(ctx, n)
 
 	return plan.NewTransactionCommittingNode(n, transactionDatabase), transform.NewTree, nil
 }
@@ -106,14 +106,14 @@ func ReadCommitted(ctx *sql.Context) bool {
 	return valStr == "READ-COMMITTED"
 }
 
-// getTransactionDatabase returns the name of the database that should be considered current for the transaction about
+// GetTransactionDatabase returns the name of the database that should be considered current for the transaction about
 // to begin. The database is not guaranteed to exist.
 // For USE DATABASE statements, we consider the transaction database to be the one being USEd
-func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
+func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 	var dbName string
 	switch n := parsed.(type) {
-	case *plan.QueryProcess, *plan.RowUpdateAccumulator:
-		return getTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
+	case *plan.QueryProcess, *plan.TransactionCommittingNode, *plan.RowUpdateAccumulator:
+		return GetTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
 	case *plan.Use, *plan.CreateProcedure, *plan.DropProcedure, *plan.CreateTrigger, *plan.DropTrigger,
 		*plan.CreateTable, *plan.InsertInto, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.AlterPK,
 		*plan.DropColumn, *plan.RenameColumn, *plan.ModifyColumn:

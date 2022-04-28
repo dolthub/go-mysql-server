@@ -37,12 +37,12 @@ func NewTransactionCommittingNode(child sql.Node, transactionDatabase string) *T
 
 // String implements the sql.Node interface.
 func (t *TransactionCommittingNode) String() string {
-	return t.Child.String()
+	return t.Child().String()
 }
 
 // RowIter implements the sql.Node interface.
 func (t *TransactionCommittingNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	iter, err := t.Child.RowIter(ctx, row)
+	iter, err := t.Child().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (t *TransactionCommittingNode) RowIter(ctx *sql.Context, row sql.Row) (sql.
 
 // RowIter2 implements the sql.Node interface.
 func (t *TransactionCommittingNode) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	iter2, err := t.Child.(sql.Node2).RowIter2(ctx, nil)
+	iter2, err := t.Child().(sql.Node2).RowIter2(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,12 @@ func (t *TransactionCommittingNode) WithChildren(children ...sql.Node) (sql.Node
 
 // CheckPrivileges implements the sql.Node interface.
 func (t *TransactionCommittingNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return t.Child.CheckPrivileges(ctx, opChecker)
+	return t.Child().CheckPrivileges(ctx, opChecker)
+}
+
+// Child implements the sql.UnaryNode interface.
+func (t *TransactionCommittingNode) Child() sql.Node {
+	return t.UnaryNode.Child
 }
 
 // transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
