@@ -2392,6 +2392,52 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 		},
 	},
+	// Multiple triggers and at least one fails, reverts
+	{
+		Name: "triggers before and after insert fails, rollback",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger a1 before insert on a for each row insert into b values (NEW.x * 7)",
+			"create trigger a2 after insert on a for each row insert into b values (New.x * 11)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (2), (3), (5)",
+				Expected: []sql.Row{
+					{sql.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{2}, {3}, {5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{14}, {21}, {22}, {33}, {35}, {55},
+				},
+			},
+			{
+				Query:       "insert into a values (2), (3), (5)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{2}, {3}, {5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{14}, {21}, {22}, {33}, {35}, {55},
+				},
+			},
+		},
+	},
 	// Queries involving auto_commit = off
 	{
 		Name: "autocommit off, trigger before insert, reverts insert when query fails",
