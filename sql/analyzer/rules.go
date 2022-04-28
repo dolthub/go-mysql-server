@@ -120,7 +120,7 @@ var OnceAfterDefault = []Rule{
 	{assignRoutinesId, assignRoutines},
 	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
-	{rollbackTriggersId, wrapPlansWithTriggers},
+	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
 }
 

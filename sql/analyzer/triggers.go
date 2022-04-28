@@ -359,8 +359,8 @@ func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 	return strings.ToLower((string)(event)) == strings.ToLower(event2)
 }
 
-// wrapPlansWithTriggers wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
-func wrapPlansWithTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// wrapWritesWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
+func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Check if tree contains a TriggerExecutor
 	containsTrigger := false
 	transform.Inspect(n, func(n sql.Node) bool {

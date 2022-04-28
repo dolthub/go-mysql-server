@@ -277,9 +277,9 @@ func (t *TriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	}
 
 	return &triggerRollbackIter{
-		child:                childIter,
-		db:                   t.Db,
-		savepointNotReleased: true,
+		child:        childIter,
+		db:           t.Db,
+		hasSavepoint: true,
 	}, nil
 }
 
@@ -291,9 +291,9 @@ func (t *TriggerRollback) String() string {
 }
 
 type triggerRollbackIter struct {
-	child                sql.RowIter
-	db                   sql.TransactionDatabase
-	savepointNotReleased bool
+	child        sql.RowIter
+	db           sql.TransactionDatabase
+	hasSavepoint bool
 }
 
 func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
@@ -302,12 +302,12 @@ func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr err
 	// Rollback if error occurred
 	if err != nil && err != io.EOF {
 		if err := t.db.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
-			ctx.GetLogger().WithError(err).Errorf("RollbackToSavePoint failed")
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling RollbackToSavePoint during triggerRollbackIter.Next()")
 		}
 		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
-			ctx.GetLogger().WithError(err).Errorf("ReleaseSavePoint failed")
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Next()")
 		} else {
-			t.savepointNotReleased = false
+			t.hasSavepoint = false
 		}
 	}
 
@@ -315,11 +315,11 @@ func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr err
 }
 
 func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
-	if t.savepointNotReleased {
+	if t.hasSavepoint {
 		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
-			ctx.GetLogger().WithError(err).Errorf("ReleaseSavePoint failed")
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Close()")
 		}
-		t.savepointNotReleased = false
+		t.hasSavepoint = false
 	}
 	return t.child.Close(ctx)
 }
