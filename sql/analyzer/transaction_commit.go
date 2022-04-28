@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// addAutocommitNode wraps a query with a TransactionCommittingNode when autocommit is on.
+// addAutocommitNode wraps each query with a TransactionCommittingNode.
 func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
@@ -28,6 +28,7 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 
 	transactionDatabase := GetTransactionDatabase(ctx, n)
 
+	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if hasShowWarningsNode(n) {
 		return n, transform.SameTree, nil
 	}
