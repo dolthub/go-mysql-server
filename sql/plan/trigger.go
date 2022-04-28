@@ -277,8 +277,9 @@ func (t *TriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	}
 
 	return &triggerRollbackIter{
-		child: childIter,
-		db:    t.Db,
+		child:                childIter,
+		db:                   t.Db,
+		savepointNotReleased: true,
 	}, nil
 }
 
@@ -290,8 +291,9 @@ func (t *TriggerRollback) String() string {
 }
 
 type triggerRollbackIter struct {
-	child sql.RowIter
-	db    sql.TransactionDatabase
+	child                sql.RowIter
+	db                   sql.TransactionDatabase
+	savepointNotReleased bool
 }
 
 func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
@@ -304,6 +306,8 @@ func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr err
 		}
 		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
 			ctx.GetLogger().WithError(err).Errorf("ReleaseSavePoint failed")
+		} else {
+			t.savepointNotReleased = false
 		}
 	}
 
@@ -311,5 +315,11 @@ func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr err
 }
 
 func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
+	if t.savepointNotReleased {
+		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("ReleaseSavePoint failed")
+		}
+		t.savepointNotReleased = false
+	}
 	return t.child.Close(ctx)
 }
