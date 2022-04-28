@@ -312,7 +312,6 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 	handler.NewConnection(dummyConn)
 
 	analyzer.SetPreparedStmts(true)
-
 	type testcase struct {
 		name     string
 		prepare  *mysql.PrepareData
@@ -368,6 +367,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 			require.Equal(t, test.expected, res)
 		})
 	}
+	analyzer.SetPreparedStmts(false)
 }
 
 type TestListener struct {
