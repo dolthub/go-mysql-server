@@ -431,7 +431,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
-
+		Autocommit,
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId:

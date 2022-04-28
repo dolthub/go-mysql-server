@@ -452,23 +452,6 @@ func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
 	return e
 }
 
-// getDbHelper returns the first database name from a table-like node
-func getDbHelper(tables ...sql.Node) string {
-	if len(tables) == 0 {
-		return ""
-	}
-	switch t := tables[0].(type) {
-	case *plan.UnresolvedTable:
-		return t.Database()
-	case *plan.ResolvedTable:
-		return t.Database.Name()
-	case *plan.IndexedTableAccess:
-		return t.Database().Name()
-	default:
-	}
-	return ""
-}
-
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
 func (e *Engine) readOnlyCheck(node sql.Node) error {
 	if plan.IsDDLNode(node) && e.IsReadOnly {

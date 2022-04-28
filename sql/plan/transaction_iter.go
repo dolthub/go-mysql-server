@@ -108,7 +108,12 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	tx := ctx.GetTransaction()
-	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
+	autocommit, err := isSessionAutocommit(ctx)
+	if err != nil {
+		return err
+	}
+
+	commitTransaction := ((tx != nil) && !ctx.GetIgnoreAutoCommit()) && autocommit
 	if commitTransaction {
 		ctx.GetLogger().Tracef("committing transaction %s", tx)
 		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
@@ -120,4 +125,12 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	return nil
+}
+
+func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return sql.ConvertToBool(autoCommitSessionVar)
 }

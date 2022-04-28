@@ -41,18 +41,19 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	autocommit, err := isSessionAutocommit(ctx)
-	if err != nil {
-		return n, transform.SameTree, err
-	}
+	// TODO: ADD A CHECK FOR IMPLICIT COMMMIT
+	//autocommit, err := isSessionAutocommit(ctx)
+	//if err != nil {
+	//	return n, transform.SameTree, err
+	//}
+	//
+	//if !autocommit {
+	//	return n, transform.SameTree, nil
+	//}
 
-	if !autocommit {
-		return n, transform.SameTree, nil
-	}
-
-	if hasShowNode(n) {
-		return n, transform.SameTree, nil
-	}
+	//if hasShowNode(n) {
+	//	return n, transform.SameTree, nil
+	//}
 
 	transactionDatabase := GetTransactionDatabase(ctx, n)
 
