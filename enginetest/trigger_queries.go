@@ -2595,6 +2595,114 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 		},
 	},
+	// Queries involving auto_commit = off
+	{
+		Name: "autocommit off, trigger before insert, reverts insert when query fails",
+		SetUpScript: []string{
+			"set @@autocommit = off",
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig before insert on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (2)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select x from b order by x",
+				Expected: []sql.Row{
+					{1}, {2},
+				},
+			},
+			{
+				Query:       "insert into a values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{1}, {2},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before update, reverts insert when query fails",
+		SetUpScript: []string{
+			"set @@autocommit = off",
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"insert into a values (0)",
+			"create trigger trig before update on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update a set i = 1",
+				Expected: []sql.Row{
+					{sql.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select x from b",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:          "update a set i = 'not int'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "autocommit off, trigger before delete, reverts insert when query fails",
+		SetUpScript: []string{
+			"set @@autocommit = off",
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"insert into a values (1), (2)",
+			"create trigger trig before delete on a for each row insert into b values (old.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "delete from a where i = 1",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select x from b",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:          "delete from a where j = 2",
+				ExpectedErrStr: `column "j" could not be found in any table in scope`,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
 }
 
 // BrokenTriggerQueries contains trigger queries that should work but do not yet
