@@ -2512,40 +2512,6 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name: "autocommit off, trigger before delete, reverts insert when query fails",
-		SetUpScript: []string{
-			"set @@autocommit = off",
-			"create table a (i int primary key)",
-			"create table b (x int)",
-			"insert into a values (1), (2)",
-			"create trigger trig before delete on a for each row insert into b values (old.i);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "delete from a where i = 1",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
-				},
-			},
-			{
-				Query: "select x from b",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query:          "delete from a where j = 2",
-				ExpectedErrStr: `column "j" could not be found in any table in scope`,
-			},
-			{
-				Query: "select * from b",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-		},
-	},
 }
 
 // BrokenTriggerQueries contains trigger queries that should work but do not yet
