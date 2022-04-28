@@ -445,6 +445,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 				if err != nil {
 					return "", err
 				}
+
 				ctx.SetTransaction(tx)
 			}
 		}
