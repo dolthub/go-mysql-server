@@ -16,9 +16,23 @@ package plan
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+const (
+	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
+)
+
+var fakeReadCommitted bool
+
+func init() {
+	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
+	if ok {
+		fakeReadCommitted = true
+	}
+}
 
 // TransactionCommittingNode implements autocommit logic. It wraps relevant queries and ensures the database commits
 // the transaction.
@@ -108,6 +122,9 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	tx := ctx.GetTransaction()
+	// TODO: In the future we should ensure that analyzer supports impicit commits instead of directly
+	// accessing autocommit here.
+	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
 	autocommit, err := isSessionAutocommit(ctx)
 	if err != nil {
 		return err
@@ -128,9 +145,31 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 }
 
 func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	if ReadCommitted(ctx) {
+		return true, nil
+	}
+
 	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
 	if err != nil {
 		return false, err
 	}
 	return sql.ConvertToBool(autoCommitSessionVar)
+}
+
+func ReadCommitted(ctx *sql.Context) bool {
+	if !fakeReadCommitted {
+		return false
+	}
+
+	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
+	if err != nil {
+		return false
+	}
+
+	valStr, ok := val.(string)
+	if !ok {
+		return false
+	}
+
+	return valStr == "READ-COMMITTED"
 }

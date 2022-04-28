@@ -15,25 +15,10 @@
 package analyzer
 
 import (
-	"os"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
-
-const (
-	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-)
-
-var fakeReadCommitted bool
-
-func init() {
-	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
-	if ok {
-		fakeReadCommitted = true
-	}
-}
 
 // addAutocommitNode wraps a query with a TransactionCommittingNode when autocommit is on.
 func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -41,29 +26,19 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	// TODO: ADD A CHECK FOR IMPLICIT COMMMIT
-	//autocommit, err := isSessionAutocommit(ctx)
-	//if err != nil {
-	//	return n, transform.SameTree, err
-	//}
-	//
-	//if !autocommit {
-	//	return n, transform.SameTree, nil
-	//}
-
-	//if hasShowNode(n) {
-	//	return n, transform.SameTree, nil
-	//}
-
 	transactionDatabase := GetTransactionDatabase(ctx, n)
+
+	if hasShowWarningsNode(n) {
+		return n, transform.SameTree, nil
+	}
 
 	return plan.NewTransactionCommittingNode(n, transactionDatabase), transform.NewTree, nil
 }
 
-func hasShowNode(n sql.Node) bool {
+func hasShowWarningsNode(n sql.Node) bool {
 	var ret bool
 	transform.Inspect(n, func(n sql.Node) bool {
-		if plan.IsShowNode(n) {
+		if _, ok := n.(plan.ShowWarnings); ok {
 			ret = true
 			return false
 		}
@@ -72,39 +47,6 @@ func hasShowNode(n sql.Node) bool {
 	})
 
 	return ret
-}
-
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if ReadCommitted(ctx) {
-		return true, nil
-	}
-
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
-}
-
-// ReadCommitted returns whether this session has a transaction isolation level of READ COMMITTED.
-// If so, we always begin a new transaction for every statement, and commit after every statement as well.
-// This is not what the READ COMMITTED isolation level is supposed to do.
-func ReadCommitted(ctx *sql.Context) bool {
-	if !fakeReadCommitted {
-		return false
-	}
-
-	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
-	if err != nil {
-		return false
-	}
-
-	valStr, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return valStr == "READ-COMMITTED"
 }
 
 // GetTransactionDatabase returns the name of the database that should be considered current for the transaction about

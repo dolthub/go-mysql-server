@@ -387,19 +387,13 @@ func (t rowFormatSelectorIter) IsNode2() bool {
 }
 
 const (
-	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-	enableIter2EnvVar       = "ENABLE_ROW_ITER_2"
+	enableIter2EnvVar = "ENABLE_ROW_ITER_2"
 )
 
-var fakeReadCommitted bool
 var enableRowIter2 bool
 
 func init() {
-	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
-	if ok {
-		fakeReadCommitted = true
-	}
-	_, ok = os.LookupEnv(enableIter2EnvVar)
+	_, ok := os.LookupEnv(enableIter2EnvVar)
 	if ok {
 		enableRowIter2 = true
 	}
@@ -411,7 +405,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
 
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
-	beginNewTransaction := ctx.GetTransaction() == nil || analyzer.ReadCommitted(ctx)
+	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
