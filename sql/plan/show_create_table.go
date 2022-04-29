@@ -73,7 +73,7 @@ func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	child := children[0]
 
 	switch child.(type) {
-	case *SubqueryAlias, *ResolvedTable, *UnresolvedTable, *DeferredAsOfTable:
+	case *SubqueryAlias, *ResolvedTable, sql.UnresolvedTable:
 	default:
 		return nil, sql.ErrInvalidChildType.New(sc, child, (*SubqueryAlias)(nil))
 	}
@@ -119,7 +119,7 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
 			&sql.Column{Name: "Create View", Type: sql.LongText, Nullable: false},
 		}
-	case *ResolvedTable, *UnresolvedTable, *DeferredAsOfTable:
+	case *ResolvedTable, sql.UnresolvedTable:
 		return sql.Schema{
 			&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
 			&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
