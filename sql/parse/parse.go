@@ -2989,6 +2989,18 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		return expression.NewOr(lhs, rhs), nil
+	case *sqlparser.XorExpr:
+		lhs, err := ExprToExpression(ctx, v.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		rhs, err := ExprToExpression(ctx, v.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewXor(lhs, rhs), nil
 	case *sqlparser.ConvertExpr:
 		expr, err := ExprToExpression(ctx, v.Expr)
 		if err != nil {
