@@ -35,7 +35,6 @@ var OnceBeforeDefault = []Rule{
 	{resolveTablesId, resolveTables},
 	{loadStoredProceduresId, loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{validateDropTablesId, validateDropTables},
-	{setTargetSchemasId, setTargetSchemas},
 	{resolveCreateLikeId, resolveCreateLike},
 	{parseColumnDefaultsId, parseColumnDefaults},
 	{resolveDropConstraintId, resolveDropConstraint},
@@ -58,6 +57,7 @@ var OnceBeforeDefault = []Rule{
 	{stripDecorationsId, stripDecorations},
 	{validateJoinComplexityId, validateJoinComplexity},
 	{unresolveTablesId, unresolveTables},
+	{setTargetSchemasId, setTargetSchemas}, // Need to setTargetSchemas after unresolveTablesId for prepared SHOW CREATE TABLE AS OF ...
 }
 
 // DefaultRules to apply when analyzing nodes.

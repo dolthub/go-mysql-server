@@ -372,7 +372,6 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
-	//t.Skip("prepared queries do not fully support versioning")
 	if _, ok := harness.(VersionedDBHarness); !ok {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
@@ -380,18 +379,14 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	defer engine.Close()
 
-	for _, tt := range TmpQueries {
-		//TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+	for _, tt := range VersionedQueries {
 		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, nil)
 	}
 
-	//for _, tt := range VersionedQueries {
-	//	TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, nil)
-	//}
-
-	//for _, tt := range VersionedScripts {
-	//	TestScriptWithEnginePrepared(t, engine, harness, tt)
-	//}
+	t.Skip("skipping tests that version using UserVars instead of BindVars")
+	for _, tt := range VersionedScripts {
+		TestScriptWithEnginePrepared(t, engine, harness, tt)
+	}
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
