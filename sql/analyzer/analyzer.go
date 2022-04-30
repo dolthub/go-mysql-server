@@ -378,7 +378,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 	case resolvePreparedInsertId,
 		insertTopNId,
 		inSubqueryIndexesId,
-		Autocommit,
+		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId,
@@ -431,7 +431,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
-		Autocommit,
+		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId:
@@ -464,7 +464,7 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 		inSubqueryIndexesId,
 		resolveInsertRowsId,
 
-		Autocommit,
+		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId:

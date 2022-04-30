@@ -108,7 +108,7 @@ func _() {
 	_ = x[validateSubqueryColumnsId-97]
 	_ = x[validateUnionSchemasMatchId-98]
 	_ = x[validateAggregationsId-99]
-	_ = x[Autocommit-100]
+	_ = x[AutocommitId-100]
 	_ = x[TrackProcessId-101]
 	_ = x[parallelizeId-102]
 	_ = x[clearWarningsId-103]

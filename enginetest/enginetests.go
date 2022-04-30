@@ -5080,7 +5080,9 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Equal("foo", ctx.GetCurrentDatabase())
 }
 
-func TestConcurrentTransaction(t *testing.T, harness Harness) {
+// TestConcurrentTransactions tests that two concurrent processes/transactions can successfully execute without early
+// cancellation.
+func TestConcurrentTransactions(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
 	defer e.Close()
@@ -5094,6 +5096,7 @@ func TestConcurrentTransaction(t *testing.T, harness Harness) {
 	clientSessionB.ProcessList = sqle.NewProcessList()
 
 	var err error
+	// We want to add the query to the process list to represent the full workflow.
 	clientSessionA, err = clientSessionA.ProcessList.AddProcess(clientSessionA, "INSERT INTO a VALUES (1,1)")
 	require.NoError(err)
 	sch, iter, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")

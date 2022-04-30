@@ -142,7 +142,7 @@ var DefaultValidationRules = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
-	{Autocommit, addAutocommitNode},
+	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},
 	{clearWarningsId, clearWarnings},

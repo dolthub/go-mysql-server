@@ -114,7 +114,7 @@ const (
 	validateAggregationsId      // validateAggregations
 
 	// after all
-	Autocommit      // addAutocommitNode
+	AutocommitId    // addAutocommitNode
 	TrackProcessId  // trackProcess
 	parallelizeId   // parallelize
 	clearWarningsId // clearWarnings
