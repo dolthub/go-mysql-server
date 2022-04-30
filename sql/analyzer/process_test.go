@@ -56,7 +56,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 
 func withoutProcessTracking(a *Analyzer) *Analyzer {
 	afterAll := a.Batches[len(a.Batches)-1]
-	afterAll.Rules = afterAll.Rules[1:]
+	afterAll.Rules = afterAll.Rules[2:]
 	return a
 }
 
