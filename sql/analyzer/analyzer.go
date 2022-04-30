@@ -52,6 +52,10 @@ func init() {
 	}
 }
 
+func SetPreparedStmts(v bool) {
+	PreparedStmtDisabled = v
+}
+
 // Builder provides an easy way to generate Analyzer with custom rules and options.
 type Builder struct {
 	preAnalyzeRules     []Rule

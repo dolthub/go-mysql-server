@@ -177,7 +177,7 @@ func (e *Engine) QueryNodeWithBindings(
 	if p, ok := e.preparedDataForSession(ctx.Session); ok && p.Query == query {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
 	} else {
-		analyzed, err = e.analyzeQuery(ctx, query, parsed)
+		analyzed, err = e.analyzeQuery(ctx, query, parsed, bindings)
 	}
 	if err != nil {
 		return nil, nil, err
@@ -259,7 +259,7 @@ func (e *Engine) CloseSession(ctx *sql.Context) {
 	delete(e.PreparedData, ctx.Session.ID())
 }
 
-func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node) (sql.Node, error) {
+func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
 	var (
 		analyzed sql.Node
 		err      error
@@ -281,6 +281,14 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node) (
 	if err != nil {
 		return nil, err
 	}
+
+	if len(bindings) > 0 {
+		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return analyzed, nil
 }
 
@@ -426,6 +434,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 				if err != nil {
 					return "", err
 				}
+
 				ctx.SetTransaction(tx)
 			}
 		}

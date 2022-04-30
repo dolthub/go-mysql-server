@@ -1609,6 +1609,12 @@ func TestTriggers(t *testing.T, harness Harness) {
 	})
 }
 
+func TestRollbackTriggers(t *testing.T, harness Harness) {
+	for _, script := range RollbackTriggerTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestShowTriggers(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()

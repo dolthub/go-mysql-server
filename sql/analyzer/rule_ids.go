@@ -97,6 +97,7 @@ const (
 	assignRoutinesId              // assignRoutines
 	modifyUpdateExprsForJoinId    // modifyUpdateExprsForJoin
 	applyRowUpdateAccumulatorsId  // applyRowUpdateAccumulators
+	wrapWithRollbackId            // rollback triggers
 	applyFKsId                    // applyFKs
 
 	// validate

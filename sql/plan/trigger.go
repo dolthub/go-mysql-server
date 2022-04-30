@@ -235,3 +235,91 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		ctx:            ctx,
 	}, nil
 }
+
+const SavePointName = "__go_mysql_server_starting_savepoint__"
+
+// TriggerRollback is a node that wraps the entire tree iff it contains a trigger, creates a savepoint, and performs a
+// rollback if something went wrong during execution
+type TriggerRollback struct {
+	UnaryNode
+	Db sql.TransactionDatabase
+}
+
+func NewTriggerRollback(child sql.Node, db sql.TransactionDatabase) *TriggerRollback {
+	return &TriggerRollback{
+		UnaryNode: UnaryNode{Child: child},
+		Db:        db,
+	}
+}
+
+func (t *TriggerRollback) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+
+	return NewTriggerRollback(children[0], t.Db), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (t *TriggerRollback) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return t.Child.CheckPrivileges(ctx, opChecker)
+}
+
+func (t *TriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	childIter, err := t.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", SavePointName)
+	if err := t.Db.CreateSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
+	}
+
+	return &triggerRollbackIter{
+		child:        childIter,
+		db:           t.Db,
+		hasSavepoint: true,
+	}, nil
+}
+
+func (t *TriggerRollback) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TriggerRollback()")
+	_ = pr.WriteChildren(t.Child.String())
+	return pr.String()
+}
+
+type triggerRollbackIter struct {
+	child        sql.RowIter
+	db           sql.TransactionDatabase
+	hasSavepoint bool
+}
+
+func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
+	childRow, err := t.child.Next(ctx)
+
+	// Rollback if error occurred
+	if err != nil && err != io.EOF {
+		if err := t.db.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling RollbackToSavePoint during triggerRollbackIter.Next()")
+		}
+		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Next()")
+		} else {
+			t.hasSavepoint = false
+		}
+	}
+
+	return childRow, err
+}
+
+func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
+	if t.hasSavepoint {
+		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Close()")
+		}
+		t.hasSavepoint = false
+	}
+	return t.child.Close(ctx)
+}
