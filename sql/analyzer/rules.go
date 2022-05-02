@@ -58,6 +58,7 @@ var OnceBeforeDefault = []Rule{
 	{validateJoinComplexityId, validateJoinComplexity},
 	{unresolveTablesId, unresolveTables},
 	{setTargetSchemasId, setTargetSchemas}, // Need to setTargetSchemas after unresolveTablesId for prepared SHOW CREATE TABLE AS OF ...
+	{parseColumnDefaultsId, parseColumnDefaults},
 }
 
 // DefaultRules to apply when analyzing nodes.
