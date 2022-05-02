@@ -2857,6 +2857,35 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT i,v from stringandtable WHERE i XOR i",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i,v from stringandtable WHERE NOT i XOR NOT i",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "SELECT i,v from stringandtable WHERE i XOR NOT i",
+		Expected: []sql.Row{
+			{int64(0), "0"},
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+			{int64(5), nil},
+		},
+	},
+	{
+		Query: "SELECT i,v from stringandtable WHERE i XOR i XOR i",
+		Expected: []sql.Row{
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+			{int64(5), nil},
+		},
+	},
+	{
 		Query:    "SELECT i,v from stringandtable WHERE v",
 		Expected: []sql.Row{{int64(1), "1"}, {nil, "2"}},
 	},
@@ -2897,6 +2926,25 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE v OR NOT v",
+		Expected: []sql.Row{
+			{int64(0), "0"},
+			{int64(1), "1"},
+			{int64(2), ""},
+			{int64(3), "true"},
+			{int64(4), "false"},
+			{nil, "2"},
+		},
+	},
+	{
+		Query:    "SELECT i,v from stringandtable WHERE v XOR v",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i,v from stringandtable WHERE NOT v XOR NOT v",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "SELECT i,v from stringandtable WHERE v XOR NOT v",
 		Expected: []sql.Row{
 			{int64(0), "0"},
 			{int64(1), "1"},
@@ -8615,6 +8663,11 @@ var errorQueries = []QueryErrorTest{
 						LEFT JOIN mytable as t14 ON t13.i = t14.i
 						LEFT JOIN mytable as t15 ON t14.i = t15.i`,
 		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
+	},
+	// this query was panicing, but should be allowed and should return error when this query is called
+	{
+		Query:       `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
+		ExpectedErr: sql.ErrFunctionNotFound,
 	},
 }
 

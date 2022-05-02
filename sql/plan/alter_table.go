@@ -698,7 +698,7 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			return nil, err
 		}
 		if len(parentFks) > 0 || len(fks) > 0 {
-			err = handleColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
+			err = handleFkColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
 			if err != nil {
 				return nil, err
 			}
@@ -796,6 +796,7 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
+	lowerColName := strings.ToLower(m.columnName)
 	tblSch := m.targetSchema
 	idx := tblSch.IndexOf(m.columnName, tbl.Name())
 	if idx < 0 {
@@ -819,15 +820,38 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 
 	// Update the foreign key columns as well
 	if fkTable, ok := alterable.(sql.ForeignKeyTable); ok {
-		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
-		if err != nil {
-			return nil, err
-		}
+		// We only care if the column is used in a foreign key
+		usedInFk := false
 		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if len(parentFks) > 0 || len(fks) > 0 {
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+	OuterChildFk:
+		for _, foreignKey := range fks {
+			for _, colName := range foreignKey.Columns {
+				if strings.ToLower(colName) == lowerColName {
+					usedInFk = true
+					break OuterChildFk
+				}
+			}
+		}
+		if !usedInFk {
+		OuterParentFk:
+			for _, foreignKey := range parentFks {
+				for _, colName := range foreignKey.ParentColumns {
+					if strings.ToLower(colName) == lowerColName {
+						usedInFk = true
+						break OuterParentFk
+					}
+				}
+			}
+		}
+
+		if usedInFk {
 			if !tblSch[idx].Type.Equals(m.column.Type) {
 				// There seems to be a special case where you can lengthen a CHAR/VARCHAR/BINARY/VARBINARY.
 				// Have not tested every type nor combination, but this seems specific to those 4 types.
@@ -847,7 +871,6 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 				}
 			}
 			if !m.column.Nullable {
-				lowerColName := strings.ToLower(m.columnName)
 				for _, fk := range fks {
 					if fk.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fk.OnDelete == sql.ForeignKeyReferentialAction_SetNull {
 						for _, col := range fk.Columns {
@@ -858,7 +881,7 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 					}
 				}
 			}
-			err = handleColumnRename(ctx, fkTable, m.db, m.columnName, m.column.Name)
+			err = handleFkColumnRename(ctx, fkTable, m.db, m.columnName, m.column.Name)
 			if err != nil {
 				return nil, err
 			}
@@ -1004,7 +1027,7 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 	return nil
 }
 
-func handleColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
+func handleFkColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
 	lowerOldName := strings.ToLower(oldName)
 	if lowerOldName == strings.ToLower(newName) {
 		return nil

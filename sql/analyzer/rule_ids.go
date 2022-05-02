@@ -97,6 +97,7 @@ const (
 	assignRoutinesId              // assignRoutines
 	modifyUpdateExprsForJoinId    // modifyUpdateExprsForJoin
 	applyRowUpdateAccumulatorsId  // applyRowUpdateAccumulators
+	wrapWithRollbackId            // rollback triggers
 	applyFKsId                    // applyFKs
 
 	// validate
@@ -114,6 +115,7 @@ const (
 	validateAggregationsId      // validateAggregations
 
 	// after all
+	AutocommitId    // addAutocommitNode
 	TrackProcessId  // trackProcess
 	parallelizeId   // parallelize
 	clearWarningsId // clearWarnings

@@ -177,13 +177,13 @@ func (e *Engine) QueryNodeWithBindings(
 	if p, ok := e.preparedDataForSession(ctx.Session); ok && p.Query == query {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
 	} else {
-		analyzed, err = e.analyzeQuery(ctx, query, parsed)
+		analyzed, err = e.analyzeQuery(ctx, query, parsed, bindings)
 	}
 	if err != nil {
 		return nil, nil, err
 	}
 
-	transactionDatabase, err := e.beginTransaction(ctx, analyzed)
+	_, err = e.beginTransaction(ctx, analyzed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -201,19 +201,6 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 	if err != nil {
 		return nil, nil, err
-	}
-
-	autoCommit, err := isSessionAutocommit(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if autoCommit {
-		iter = transactionCommittingIter{
-			childIter:           iter,
-			childIter2:          iter2,
-			transactionDatabase: transactionDatabase,
-		}
 	}
 
 	if useIter2 {
@@ -272,7 +259,7 @@ func (e *Engine) CloseSession(ctx *sql.Context) {
 	delete(e.PreparedData, ctx.Session.ID())
 }
 
-func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node) (sql.Node, error) {
+func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
 	var (
 		analyzed sql.Node
 		err      error
@@ -294,6 +281,14 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node) (
 	if err != nil {
 		return nil, err
 	}
+
+	if len(bindings) > 0 {
+		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return analyzed, nil
 }
 
@@ -400,19 +395,13 @@ func (t rowFormatSelectorIter) IsNode2() bool {
 }
 
 const (
-	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-	enableIter2EnvVar       = "ENABLE_ROW_ITER_2"
+	enableIter2EnvVar = "ENABLE_ROW_ITER_2"
 )
 
-var fakeReadCommitted bool
 var enableRowIter2 bool
 
 func init() {
-	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
-	if ok {
-		fakeReadCommitted = true
-	}
-	_, ok = os.LookupEnv(enableIter2EnvVar)
+	_, ok := os.LookupEnv(enableIter2EnvVar)
 	if ok {
 		enableRowIter2 = true
 	}
@@ -421,10 +410,10 @@ func init() {
 func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
 	// Before we begin a transaction, we need to know if the database being operated on is not the one
 	// currently selected
-	transactionDatabase := getTransactionDatabase(ctx, parsed)
+	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
 
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
-	beginNewTransaction := ctx.GetTransaction() == nil || readCommitted(ctx)
+	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
@@ -445,6 +434,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 				if err != nil {
 					return "", err
 				}
+
 				ctx.SetTransaction(tx)
 			}
 		}
@@ -463,123 +453,6 @@ func (e *Engine) Close() error {
 func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
 	e.BackgroundThreads = b
 	return e
-}
-
-// Returns whether this session has a transaction isolation level of READ COMMITTED.
-// If so, we always begin a new transaction for every statement, and commit after every statement as well.
-// This is not what the READ COMMITTED isolation level is supposed to do.
-func readCommitted(ctx *sql.Context) bool {
-	if !fakeReadCommitted {
-		return false
-	}
-
-	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
-	if err != nil {
-		return false
-	}
-
-	valStr, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return valStr == "READ-COMMITTED"
-}
-
-// transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
-// during the Close() operation
-type transactionCommittingIter struct {
-	childIter           sql.RowIter
-	childIter2          sql.RowIter2
-	transactionDatabase string
-}
-
-func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return t.childIter.Next(ctx)
-}
-
-func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.childIter2.Next2(ctx, frame)
-}
-
-func (t transactionCommittingIter) Close(ctx *sql.Context) error {
-	err := t.childIter.Close(ctx)
-	if err != nil {
-		return err
-	}
-
-	tx := ctx.GetTransaction()
-	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
-	if commitTransaction {
-		ctx.GetLogger().Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
-			return err
-		}
-
-		// Clearing out the current transaction will tell us to start a new one the next time this session queries
-		ctx.SetTransaction(nil)
-	}
-
-	return nil
-}
-
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if readCommitted(ctx) {
-		return true, nil
-	}
-
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
-}
-
-// getDbHelper returns the first database name from a table-like node
-func getDbHelper(tables ...sql.Node) string {
-	if len(tables) == 0 {
-		return ""
-	}
-	switch t := tables[0].(type) {
-	case *plan.UnresolvedTable:
-		return t.Database()
-	case *plan.ResolvedTable:
-		return t.Database.Name()
-	case *plan.IndexedTableAccess:
-		return t.Database().Name()
-	default:
-	}
-	return ""
-}
-
-// getTransactionDatabase returns the name of the database that should be considered current for the transaction about
-// to begin. The database is not guaranteed to exist.
-// For USE DATABASE statements, we consider the transaction database to be the one being USEd
-func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
-	var dbName string
-	switch n := parsed.(type) {
-	case *plan.QueryProcess, *plan.RowUpdateAccumulator:
-		return getTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
-	case *plan.Use, *plan.CreateProcedure, *plan.DropProcedure, *plan.CreateTrigger, *plan.DropTrigger,
-		*plan.CreateTable, *plan.InsertInto, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.AlterPK,
-		*plan.DropColumn, *plan.RenameColumn, *plan.ModifyColumn:
-		database := n.(sql.Databaser).Database()
-		if database != nil {
-			dbName = database.Name()
-		}
-	case *plan.DropForeignKey, *plan.DropIndex, *plan.CreateIndex, *plan.Update, *plan.DeleteFrom,
-		*plan.CreateForeignKey:
-		dbName = n.(sql.Databaseable).Database()
-	case *plan.DropTable:
-		dbName = getDbHelper(n.Tables...)
-	case *plan.Truncate:
-		dbName = getDbHelper(n.Child)
-	default:
-	}
-	if dbName != "" {
-		return dbName
-	}
-	return ctx.GetCurrentDatabase()
 }
 
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.

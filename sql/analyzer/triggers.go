@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -356,4 +357,75 @@ func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.Create
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 	return strings.ToLower((string)(event)) == strings.ToLower(event2)
+}
+
+// wrapWritesWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
+func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// Check if tree contains a TriggerExecutor
+	containsTrigger := false
+	transform.Inspect(n, func(n sql.Node) bool {
+		// After Triggers wrap nodes
+		if _, ok := n.(*plan.TriggerExecutor); ok {
+			containsTrigger = true
+			return false // done, don't bother to recurse
+		}
+
+		// Before Triggers on Inserts are inside Source
+		if n, ok := n.(*plan.InsertInto); ok {
+			if _, ok := n.Source.(*plan.TriggerExecutor); ok {
+				containsTrigger = true
+				return false
+			}
+		}
+
+		// Before Triggers on Delete and Update should be in children
+		return true
+	})
+
+	// No TriggerExecutor, so return same tree
+	if !containsTrigger {
+		return n, transform.SameTree, nil
+	}
+
+	// No database set, find it through tree
+	dbName := ctx.GetCurrentDatabase()
+	if dbName == "" {
+		transform.Inspect(n, func(n sql.Node) bool {
+			switch n := n.(type) {
+			case *plan.InsertInto:
+				if n.Database() != nil && n.Database().Name() != "" {
+					dbName = n.Database().Name()
+				}
+			case *plan.Update:
+				if n.Database() != "" {
+					dbName = n.Database()
+				}
+			case *plan.DeleteFrom:
+				if n.Database() != "" {
+					dbName = n.Database()
+				}
+			}
+			return true
+		})
+	}
+
+	// Get current database
+	currDb, err := a.Catalog.Database(ctx, dbName)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	// Extract from privilegedDatabase
+	if privilegedDatabase, ok := currDb.(grant_tables.PrivilegedDatabase); ok {
+		currDb = privilegedDatabase.Unwrap()
+	}
+
+	// Not a TransactionDatabase, do nothing
+	tdb, ok := currDb.(sql.TransactionDatabase)
+	if !ok {
+		return n, transform.SameTree, err
+	}
+
+	// Wrap tree with new node
+	return plan.NewTriggerRollback(n, tdb), transform.NewTree, nil
 }

@@ -182,4 +182,31 @@ func TestSRID(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}, v)
 	})
+
+	t.Run("return type with one argument", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewSRID(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		typ := f.Type()
+		_, err = typ.Convert(v)
+		require.NoError(err)
+	})
+
+	t.Run("return type with two arguments", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewSRID(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.LinestringType{}),
+			expression.NewLiteral(4326, sql.Int32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		typ := f.Type()
+		_, err = typ.Convert(v)
+		require.NoError(err)
+	})
 }

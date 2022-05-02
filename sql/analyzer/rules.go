@@ -120,6 +120,7 @@ var OnceAfterDefault = []Rule{
 	{assignRoutinesId, assignRoutines},
 	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
+	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
 }
 
@@ -142,6 +143,7 @@ var DefaultValidationRules = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
+	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},
 	{clearWarningsId, clearWarnings},
