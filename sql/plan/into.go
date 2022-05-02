@@ -17,7 +17,6 @@ package plan
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -74,7 +73,7 @@ func (i *Into) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	rowNum := len(rows)
 	if rowNum > 1 {
-		return nil, errors.NewKind("Result consisted of more than one row.").New()
+		return nil, sql.ErrMoreThanOneRow.New()
 	}
 	if rowNum == 0 {
 		// a warning with error code 1329 occurs (No data), and make not change to variables

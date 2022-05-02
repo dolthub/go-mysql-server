@@ -165,7 +165,25 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
 	if ss, ok := stmt.(sqlparser.SelectStatement); ok {
-		return convertSelectStatement(ctx, ss)
+		node, err := convertSelectStatement(ctx, ss)
+		if err != nil {
+			return nil, err
+		}
+		// *Into should be outer layer around select/union statements.
+		var into *sqlparser.Into
+		switch s := ss.(type) {
+		case *sqlparser.Select:
+			into = s.Into
+		case *sqlparser.Union:
+			into = s.Into
+		}
+		if into != nil {
+			node, err = intoToInto(ctx, into, node)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return node, nil
 	}
 	switch n := stmt.(type) {
 	default:
@@ -874,13 +892,6 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
-	if s.Into != nil {
-		node, err = intoToInto(ctx, s.Into, node)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return node, nil
 }
 
@@ -899,7 +910,7 @@ func ctesToWith(ctx *sql.Context, with *sqlparser.With, node sql.Node) (sql.Node
 
 func intoToInto(ctx *sql.Context, into *sqlparser.Into, node sql.Node) (sql.Node, error) {
 	if into.Outfile != "" || into.Dumpfile != "" {
-		return nil, errors.NewKind("select into files is not supported yet").New()
+		return nil, sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
 	}
 
 	vars := make([]sql.Expression, len(into.Variables))

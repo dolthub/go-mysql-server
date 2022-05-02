@@ -553,6 +553,9 @@ var (
 	// ErrUnexpectedNilRow is returned when an invalid operation is applied to an empty row
 	ErrUnexpectedNilRow = errors.NewKind("unexpected nil row")
 
+	// ErrMoreThanOneRow is returned when the result consists of multiple rows, when only one row is expected
+	ErrMoreThanOneRow = errors.NewKind("Result consisted of more than one row")
+
 	// ErrUnsupportedJoinFactorCount is returned for a query with more commutable join tables than we support
 	ErrUnsupportedJoinFactorCount = errors.NewKind("unsupported join factor count: expected fewer than %d tables, found %d")
 )

@@ -457,6 +457,52 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Test cases on select into statement",
+		SetUpScript: []string{
+			"SELECT 1 INTO @abc",
+			"SELECT * FROM (VALUES ROW(22,44,88)) AS t INTO @x,@y,@z",
+			"CREATE TABLE tab1 (id int primary key, v1 int)",
+			"INSERT INTO tab1 VALUES (1, 1), (2, 3), (3, 6)",
+			"SELECT id FROM tab1 ORDER BY id DESC LIMIT 1 INTO @myVar",
+			"CREATE TABLE tab2 (i2 int primary key, s text)",
+			"INSERT INTO tab2 VALUES (1, 'b'), (2, 'm'), (3, 'g')",
+			"SELECT m.id, t.s FROM tab1 m JOIN tab2 t on m.id = t.i2 ORDER BY t.s DESC LIMIT 1 INTO @myId, @myText",
+			// TODO: union statement does not handle order by and limit clauses
+			//"SELECT id FROM tab1 UNION select s FROM tab2 LIMIT 1 INTO @myUnion",
+			"SELECT id FROM tab1 WHERE id > 3 UNION select s FROM tab2 WHERE s < 'f' INTO @mustSingleVar",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT @abc`,
+				Expected: []sql.Row{{int8(1)}},
+			},
+			{
+				Query:    `SELECT @z, @x, @y`,
+				Expected: []sql.Row{{88, 22, 44}},
+			},
+			{
+				Query:    `SELECT @myVar, @mustSingleVar`,
+				Expected: []sql.Row{{3, "b"}},
+			},
+			{
+				Query:    `SELECT @myId, @myText, @myUnion`,
+				Expected: []sql.Row{{2, "m", nil}},
+			},
+			{
+				Query:       `SELECT id FROM tab1 ORDER BY id DESC INTO @myvar`,
+				ExpectedErr: sql.ErrMoreThanOneRow,
+			},
+			{
+				Query:       `SELECT 1 INTO OUTFILE 'x.txt'`,
+				ExpectedErr: sql.ErrUnsupportedSyntax,
+			},
+			{
+				Query:       `SELECT id INTO DUMPFILE 'dump.txt' FROM tab1 ORDER BY id DESC LIMIT 15`,
+				ExpectedErr: sql.ErrUnsupportedSyntax,
+			},
+		},
+	},
+	{
 		Name: "CrossDB Queries",
 		SetUpScript: []string{
 			"CREATE DATABASE test",
