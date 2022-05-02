@@ -5086,6 +5086,42 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Equal("foo", ctx.GetCurrentDatabase())
 }
 
+// TestConcurrentTransactions tests that two concurrent processes/transactions can successfully execute without early
+// cancellation.
+func TestConcurrentTransactions(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
+
+	clientSessionA := NewSession(harness)
+	clientSessionA.ProcessList = sqle.NewProcessList()
+
+	clientSessionB := NewSession(harness)
+	clientSessionB.ProcessList = sqle.NewProcessList()
+
+	var err error
+	// We want to add the query to the process list to represent the full workflow.
+	clientSessionA, err = clientSessionA.ProcessList.AddProcess(clientSessionA, "INSERT INTO a VALUES (1,1)")
+	require.NoError(err)
+	sch, iter, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")
+	require.NoError(err)
+
+	clientSessionB, err = clientSessionB.ProcessList.AddProcess(clientSessionB, "INSERT INTO a VALUES (2,2)")
+	require.NoError(err)
+	sch2, iter2, err := e.Query(clientSessionB, "INSERT INTO a VALUES (2,2)")
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(clientSessionA, sch, iter)
+	require.NoError(err)
+	require.Len(rows, 1)
+
+	rows, err = sql.RowIterToRows(clientSessionB, sch2, iter2)
+	require.NoError(err)
+	require.Len(rows, 1)
+}
+
 func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()

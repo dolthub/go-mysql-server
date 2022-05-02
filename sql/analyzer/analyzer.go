@@ -52,6 +52,10 @@ func init() {
 	}
 }
 
+func SetPreparedStmts(v bool) {
+	PreparedStmtDisabled = v
+}
+
 // Builder provides an easy way to generate Analyzer with custom rules and options.
 type Builder struct {
 	preAnalyzeRules     []Rule
@@ -378,6 +382,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 	case resolvePreparedInsertId,
 		insertTopNId,
 		inSubqueryIndexesId,
+		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId,
@@ -431,7 +436,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
-
+		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId:
@@ -464,6 +469,7 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 		inSubqueryIndexesId,
 		resolveInsertRowsId,
 
+		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId:
