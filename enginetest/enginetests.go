@@ -46,7 +46,7 @@ import (
 )
 
 // Tests a variety of queries against databases and tables provided by the given harness.
-func TestQueries(t *testing.T, harness Harness) {
+func TestQueries(t *testing.T, harness CheckpointHarness) {
 	engine := NewEngine(t, harness)
 	defer engine.Close()
 
@@ -61,6 +61,18 @@ func TestQueries(t *testing.T, harness Harness) {
 		for _, tt := range KeylessQueries {
 			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 		}
+	}
+}
+
+func TestParallelUnsafeQueries(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	defer engine.Close()
+
+	CreateIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range ParallelUnsafeQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 }
 
@@ -690,9 +702,12 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 	}
 }
 
-func TestInsertInto(t *testing.T, harness Harness) {
+func TestInsertInto(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
 	for _, insertion := range InsertQueries {
-		e := NewEngine(t, harness)
+		//e := NewEngine(t, harness)
+
 		defer e.Close()
 
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
@@ -704,6 +719,7 @@ func TestInsertInto(t *testing.T, harness Harness) {
 			}
 		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
+		e = harness.RestoreCheckpoint(ctx, t)
 	}
 	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
@@ -4923,6 +4939,43 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
+// Runs tests on SHOW TABLE STATUS queries.
+func TestShowTableStatus(t *testing.T, harness Harness) {
+	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
+	engine := NewEngineWithDbs(t, harness, dbs)
+	defer engine.Close()
+
+	CreateIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range ShowTableStatusQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+	}
+}
+
+func TestDateParse(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	defer engine.Close()
+
+	for _, tt := range DateParseQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+	}
+}
+
+// Runs tests on SHOW TABLE STATUS queries.
+func TestShowTableStatusPrepared(t *testing.T, harness Harness) {
+	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
+	engine := NewEngineWithDbs(t, harness, dbs)
+	defer engine.Close()
+
+	CreateIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range ShowTableStatusQueries {
+		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+	}
+}
+
 func TestVariableErrors(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
@@ -5228,34 +5281,6 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 
 }
 
-// Runs tests on SHOW TABLE STATUS queries.
-func TestShowTableStatus(t *testing.T, harness Harness) {
-	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
-	engine := NewEngineWithDbs(t, harness, dbs)
-	defer engine.Close()
-
-	CreateIndexes(t, harness, engine)
-	createForeignKeys(t, harness, engine)
-
-	for _, tt := range ShowTableStatusQueries {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
-	}
-}
-
-// Runs tests on SHOW TABLE STATUS queries.
-func TestShowTableStatusPrepared(t *testing.T, harness Harness) {
-	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
-	engine := NewEngineWithDbs(t, harness, dbs)
-	defer engine.Close()
-
-	CreateIndexes(t, harness, engine)
-	createForeignKeys(t, harness, engine)
-
-	for _, tt := range ShowTableStatusQueries {
-		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, nil)
-	}
-}
-
 func TestAddDropPks(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -5537,7 +5562,7 @@ func TestNullRanges(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, `CREATE INDEX idx1 ON a (y);`)
 	RunQuery(t, e, harness, `INSERT INTO a VALUES (0,0), (1,1), (2,2), (3,null), (4,null)`)
 	for _, tt := range tests {
-		TestQuery(t, harness, e, tt.query, tt.exp, nil)
+		TestQueryParallel(t, harness, e, tt.query, tt.exp, nil)
 	}
 }
 
@@ -5663,15 +5688,6 @@ func (c customFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 func (c customFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return &customFunc{expression.UnaryExpression{children[0]}}, nil
-}
-
-func TestDateParse(t *testing.T, harness Harness) {
-	engine := NewEngine(t, harness)
-	defer engine.Close()
-
-	for _, tt := range DateParseQueries {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
-	}
 }
 
 func TestAlterTable(t *testing.T, harness Harness) {
@@ -6525,6 +6541,21 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDa
 	}
 
 	return engine
+}
+
+// TestQueryParallel runs a query on the engine given and asserts that results are as expected.
+func TestQueryParallel(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column) {
+	t.Run(q, func(t *testing.T) {
+		t.Parallel()
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(q) {
+				t.Skipf("Skipping query %s", q)
+			}
+		}
+
+		ctx := NewContextWithEngine(harness, e)
+		TestQueryWithContext(t, ctx, e, q, expected, expectedCols, nil)
+	})
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.

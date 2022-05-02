@@ -16,7 +16,9 @@ package enginetest
 
 import (
 	"fmt"
+	sqle "github.com/dolthub/go-mysql-server"
 	"strings"
+	"testing"
 
 	"github.com/dolthub/go-mysql-server/enginetest/mysqlshim"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,6 +29,15 @@ import (
 type MySQLHarness struct {
 	shim           *mysqlshim.MySQLShim
 	skippedQueries map[string]struct{}
+}
+
+func (m *MySQLHarness) NewEngine(context *sql.Context, t *testing.T) *sqle.Engine {
+	panic("not implemented")
+}
+
+func (m *MySQLHarness) Cleanup() error {
+	//TODO implement me
+	return nil
 }
 
 // MySQLDatabase represents a database for a local MySQL server.

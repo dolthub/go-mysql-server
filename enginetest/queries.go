@@ -3391,22 +3391,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(6)}},
 	},
 	{
-		Query:    `SELECT GET_LOCK("test", 0)`,
-		Expected: []sql.Row{{int8(1)}},
-	},
-	{
-		Query:    `SELECT IS_FREE_LOCK("test")`,
-		Expected: []sql.Row{{int8(0)}},
-	},
-	{
-		Query:    `SELECT RELEASE_LOCK("test")`,
-		Expected: []sql.Row{{int8(1)}},
-	},
-	{
-		Query:    `SELECT RELEASE_ALL_LOCKS()`,
-		Expected: []sql.Row{{int32(0)}},
-	},
-	{
 		Query: `SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
 		Expected: []sql.Row{
 			{int64(3), "third row", "first", int64(3)},
@@ -3960,12 +3944,6 @@ var QueryTests = []QueryTest{
 	{
 		Query:    `SELECT -1`,
 		Expected: []sql.Row{{int8(-1)}},
-	},
-	{
-		Query: `
-		SHOW WARNINGS
-		`,
-		Expected: nil,
 	},
 	{
 		Query:    `SHOW WARNINGS LIMIT 0`,
@@ -6812,6 +6790,31 @@ var KeylessQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
+	},
+}
+
+var ParallelUnsafeQueries = []QueryTest{
+	{
+		Query:    `SELECT GET_LOCK("test", 0)`,
+		Expected: []sql.Row{{int8(1)}},
+	},
+	{
+		Query:    `SELECT IS_FREE_LOCK("test")`,
+		Expected: []sql.Row{{int8(0)}},
+	},
+	{
+		Query:    `SELECT RELEASE_LOCK("test")`,
+		Expected: []sql.Row{{int8(1)}},
+	},
+	{
+		Query:    `SELECT RELEASE_ALL_LOCKS()`,
+		Expected: []sql.Row{{int32(0)}},
+	},
+	{
+		Query: `
+		SHOW WARNINGS
+		`,
+		Expected: nil,
 	},
 }
 

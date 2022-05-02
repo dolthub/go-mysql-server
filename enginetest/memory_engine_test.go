@@ -286,7 +286,7 @@ func TestVersionedQueries(t *testing.T) {
 }
 
 func TestVersionedQueriesPrepared(t *testing.T) {
-	t.Skip("prepared statement asof not supported")
+	//t.Skip("prepared statement asof not supported")
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {

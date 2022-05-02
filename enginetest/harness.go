@@ -14,7 +14,11 @@
 
 package enginetest
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/sql"
+	"testing"
+)
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries
 // used to develop and test the engine itself. See memory_engine_test.go for an example.
@@ -35,6 +39,14 @@ type Harness interface {
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
+	// NewEngine creates a new engine
+	NewEngine(*sql.Context, *testing.T) *sqle.Engine
+}
+
+type CheckpointHarness interface {
+	Harness
+	// RestoreCheckpoint resets the database to a saved point
+	RestoreCheckpoint(*sql.Context, *testing.T) *sqle.Engine
 }
 
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.

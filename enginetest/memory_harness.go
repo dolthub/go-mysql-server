@@ -16,7 +16,9 @@ package enginetest
 
 import (
 	"context"
+	sqle "github.com/dolthub/go-mysql-server"
 	"strings"
+	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -33,6 +35,63 @@ type MemoryHarness struct {
 	nativeIndexSupport     bool
 	skippedQueries         map[string]struct{}
 	session                sql.Session
+	checkpointTables       []*memory.Table
+	dbOff                  []int
+	dbNames                []string
+}
+
+func (m *MemoryHarness) RestoreCheckpoint(ctx *sql.Context, t *testing.T) *sqle.Engine {
+	dbs := make([]sql.Database, len(m.dbNames))
+	tableCnt := 0
+	for i := range m.dbNames {
+		db := memory.NewDatabase(m.dbNames[i])
+		for tableCnt < m.dbOff[i] {
+			t := memory.CopyTable(m.checkpointTables[tableCnt])
+			db.AddTable(t.Name(), t)
+			tableCnt++
+		}
+		dbs[i] = db
+	}
+	return NewEngineWithDbs(t, m, dbs)
+}
+
+func (m *MemoryHarness) NewEngine(ctx *sql.Context, t *testing.T) *sqle.Engine {
+	dbs := CreateTestData(t, m)
+	engine := NewEngineWithDbs(t, m, dbs)
+	err := m.copyDbs(ctx, dbs)
+	if err != nil {
+		panic(err)
+	}
+	return engine
+}
+
+func (m *MemoryHarness) copyDbs(ctx *sql.Context, dbs []sql.Database) error {
+	checkpointTables := make([]*memory.Table, 0)
+	dbOff := make([]int, len(dbs))
+	dbNames := make([]string, len(dbs))
+	for _, db := range dbs {
+		names, err := db.GetTableNames(ctx)
+		if err != nil {
+			return err
+		}
+		dbNames = append(dbNames, db.Name())
+		if len(dbOff) == 0 {
+			dbOff = append(dbOff, len(names))
+		} else {
+			dbOff = append(dbOff, len(names)+dbOff[len(dbOff)-1])
+		}
+		for _, n := range names {
+			t, _, err := db.GetTableInsensitive(ctx, n)
+			if err != nil {
+				return err
+			}
+			checkpointTables = append(checkpointTables, memory.CopyTable(t.(*memory.Table)))
+		}
+	}
+	m.checkpointTables = checkpointTables
+	m.dbOff = dbOff
+	m.dbNames = dbNames
+	return nil
 }
 
 func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
@@ -221,6 +280,17 @@ func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyData
 
 type ExternalStoredProcedureMemoryHarness struct {
 	*MemoryHarness
+}
+
+func (h ExternalStoredProcedureMemoryHarness) RestoreCheckpoint() *sqle.Engine {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (h ExternalStoredProcedureMemoryHarness) NewEngine(ctx *sql.Context, t *testing.T) *sqle.Engine {
+	//TODO implement me
+	panic("implement me")
+	return nil
 }
 
 var _ Harness = ExternalStoredProcedureMemoryHarness{}
