@@ -545,6 +545,104 @@ END;`,
 		},
 	},
 	{
+		Name: "Simple SELECT INTO",
+		SetUpScript: []string{
+			"CREATE PROCEDURE testabc(IN x DOUBLE, IN y DOUBLE, OUT abc DOUBLE) SELECT x*y INTO abc",
+			"CALL testabc(2, 3, @res1)",
+			"CALL testabc(9, 9.5, @res2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @res1",
+				Expected: []sql.Row{
+					{
+						float64(6),
+					},
+				},
+			},
+			{
+				Query: "SELECT @res2",
+				Expected: []sql.Row{
+					{
+						float64(85.5),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "Multiple variables in SELECT INTO",
+		SetUpScript: []string{
+			"CREATE PROCEDURE new_proc(IN x DOUBLE, IN y DOUBLE, OUT abc DOUBLE, OUT def DOUBLE) SELECT x*y, x+y INTO abc, def",
+			"CALL new_proc(2, 3, @res1, @res2)",
+			"CALL new_proc(9, 9.5, @res3, @res4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @res1, @res2",
+				Expected: []sql.Row{
+					{
+						float64(6), float64(5),
+					},
+				},
+			},
+			{
+				Query: "SELECT @res3, @res4",
+				Expected: []sql.Row{
+					{
+						float64(85.5), float64(18.5),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "SELECT INTO with condition",
+		SetUpScript: []string{
+			"CREATE TABLE inventory (item_id int primary key, shelf_id int, items varchar(100))",
+			"INSERT INTO inventory VALUES (1, 1, 'a'), (2, 1, 'b'), (3, 2, 'c'), (4, 1, 'd'), (5, 4, 'e')",
+			"CREATE PROCEDURE in_stock (IN p_id INT, OUT p_count INT) SELECT COUNT(*) FROM inventory WHERE shelf_id = p_id INTO p_count",
+			"CALL in_stock(1, @shelf1)",
+			"CALL in_stock(2, @shelf2)",
+			"CALL in_stock(3, @shelf3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @shelf1, @shelf2, @shelf3",
+				Expected: []sql.Row{
+					{
+						3, 1, 0,
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "SELECT INTO with group by, order by and limit",
+		SetUpScript: []string{
+			"CREATE TABLE inventory (item_id int primary key, shelf_id int, items varchar(100))",
+			"INSERT INTO inventory VALUES (1, 1, 'a'), (2, 1, 'b'), (3, 2, 'c'), (4, 1, 'd'), (5, 4, 'e')",
+			"CREATE PROCEDURE first_shelf (OUT p_count INT) SELECT COUNT(*) FROM inventory GROUP BY shelf_id ORDER BY shelf_id ASC LIMIT 1 INTO p_count",
+			"CREATE PROCEDURE last_shelf (OUT p_count INT) SELECT COUNT(*) FROM inventory GROUP BY shelf_id ORDER BY shelf_id DESC LIMIT 1 INTO p_count",
+			"CALL first_shelf(@result1)",
+			"CALL last_shelf(@result2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @result1",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+			{
+				Query: "SELECT @result2",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
 		Name: "DECLARE CONDITION",
 		SetUpScript: []string{
 			`CREATE PROCEDURE p1(x INT)

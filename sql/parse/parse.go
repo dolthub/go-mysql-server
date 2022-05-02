@@ -874,6 +874,13 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
+	if s.Into != nil {
+		node, err = intoToInto(ctx, s.Into, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return node, nil
 }
 
@@ -888,6 +895,22 @@ func ctesToWith(ctx *sql.Context, with *sqlparser.With, node sql.Node) (sql.Node
 	}
 
 	return plan.NewWith(node, ctes, with.Recursive), nil
+}
+
+func intoToInto(ctx *sql.Context, into *sqlparser.Into, node sql.Node) (sql.Node, error) {
+	if into.Outfile != "" || into.Dumpfile != "" {
+		return nil, errors.NewKind("select into files is not supported yet").New()
+	}
+
+	vars := make([]sql.Expression, len(into.Variables))
+	for i, val := range into.Variables {
+		if strings.HasPrefix(val.String(), "@") {
+			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
+		} else {
+			vars[i] = expression.NewProcedureParam(val.String())
+		}
+	}
+	return plan.NewInto(node, vars), nil
 }
 
 func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
