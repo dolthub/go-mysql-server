@@ -1960,6 +1960,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 			})
+		} else if assertion.SkipResultsCheck {
+			RunQuery(t, e, harness, assertion.Query)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil)
 		}
@@ -2075,6 +2077,8 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
 					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, false)
+			} else if assertion.SkipResultsCheck {
+				RunQueryWithContext(t, e, clientSession, assertion.Query)
 			} else {
 				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 			}
