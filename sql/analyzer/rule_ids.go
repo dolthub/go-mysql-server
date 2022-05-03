@@ -41,7 +41,7 @@ const (
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePriviledgesId                       // validatePriviledges
 	stripDecorationsId                          // stripDecorations
-	unresolveTablesId                           // reresolveTables
+	reresolveTablesId                           // reresolveTables
 	validateJoinComplexityId                    // validateJoinComplexity
 
 	// default

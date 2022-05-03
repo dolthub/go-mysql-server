@@ -361,7 +361,7 @@ func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
 	case stripDecorationsId,
-		unresolveTablesId,
+		reresolveTablesId,
 		resolvePreparedInsertId:
 		return false
 	}
@@ -387,7 +387,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		parallelizeId,
 		clearWarningsId,
 		stripDecorationsId,
-		unresolveTablesId,
+		reresolveTablesId,
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,
@@ -420,7 +420,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		// OnceBeforeDefault
 		resolveDatabasesId,
 		resolveTablesId,
-		unresolveTablesId,
+		reresolveTablesId,
 		setTargetSchemasId,
 		stripDecorationsId,
 		parseColumnDefaultsId,
@@ -459,7 +459,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 	switch id {
 	case stripDecorationsId,
-		unresolveTablesId,
+		reresolveTablesId,
 
 		expandStarsId,
 		resolveFunctionsId,
