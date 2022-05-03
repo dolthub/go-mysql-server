@@ -1863,7 +1863,7 @@ end;`,
 		},
 	},
 	{
-		Name: "trigger with non-existent table in trigger body",
+		Name: "simple trigger with non-existent table in trigger body",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 		},
@@ -1897,6 +1897,83 @@ end;`,
 				Expected: []sql.Row{
 					{2}, {4}, {6},
 				},
+			},
+		},
+	},
+	{
+		Name: "insert, update, delete triggers with non-existent table in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE film (film_id smallint unsigned NOT NULL AUTO_INCREMENT, title varchar(128) NOT NULL, description text, PRIMARY KEY (film_id))",
+			"INSERT INTO `film` VALUES (1,'ACADEMY DINOSAUR','A Epic Drama in The Canadian Rockies'),(2,'ACE GOLDFINGER','An Astounding Epistle of a Database Administrator in Ancient China');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TRIGGER ins_film AFTER INSERT ON film FOR EACH ROW BEGIN INSERT INTO film_text (film_id, title, description) VALUES (new.film_id, new.title, new.description); END;",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query: `CREATE TRIGGER upd_film AFTER UPDATE ON film FOR EACH ROW BEGIN
+    IF (old.title != new.title) OR (old.description != new.description) OR (old.film_id != new.film_id)
+    THEN
+        UPDATE film_text
+            SET title=new.title,
+                description=new.description,
+                film_id=new.film_id
+        WHERE film_id=old.film_id;
+    END IF; END;`,
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "CREATE TRIGGER del_film AFTER DELETE ON film FOR EACH ROW BEGIN DELETE FROM film_text WHERE film_id = old.film_id; END;",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:       "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "UPDATE film SET title = 'THE ACADEMY DINOSAUR' WHERE title = 'ACADEMY DINOSAUR'",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "DELETE FROM film WHERE title = 'ACE GOLDFINGER'",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "CREATE TABLE film_text (film_id smallint NOT NULL, title varchar(255) NOT NULL, description text, PRIMARY KEY (film_id))",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film_text",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "UPDATE film SET title = 'DIFFERENT MOVIE' WHERE title = 'ADAPTATION HOLES'",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1, Warnings: 0}}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "DELETE FROM film WHERE title = 'DIFFERENT MOVIE'",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
+				Expected: []sql.Row{{0}},
 			},
 		},
 	},
