@@ -169,7 +169,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		
+
 		switch s := ss.(type) {
 		case *sqlparser.Select:
 
