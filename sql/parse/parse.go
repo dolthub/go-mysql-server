@@ -169,19 +169,11 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		
-		switch s := ss.(type) {
-		case *sqlparser.Select:
-
-		}
-		// *Into should be outer layer around select/union statements.
-		if into, ok := ss.(*sqlparser.Select); ok && into != nil {
-			node, err = intoToInto(ctx, into, node)
-			if err != nil {
+		if ss.HasIntoDefined() {
+			into, iErr := getSelectInto(ctx, ss)
+			if iErr != nil {
 				return nil, err
 			}
-		}
-		if into, ok := ss.(*sqlparser.Select); ok && into != nil {
 			node, err = intoToInto(ctx, into, node)
 			if err != nil {
 				return nil, err
@@ -370,6 +362,19 @@ func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql
 		return convertUnion(ctx, n)
 	case *sqlparser.ParenSelect:
 		return convertSelectStatement(ctx, n.Select)
+	default:
+		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(n))
+	}
+}
+
+func getSelectInto(ctx *sql.Context, s sqlparser.SelectStatement) (*sqlparser.Into, error) {
+	switch n := s.(type) {
+	case *sqlparser.Select:
+		return n.Into, nil
+	case *sqlparser.Union:
+		return n.Into, nil
+	case *sqlparser.ParenSelect:
+		return getSelectInto(ctx, n)
 	default:
 		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(n))
 	}
