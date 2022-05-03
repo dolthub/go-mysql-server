@@ -620,7 +620,7 @@ END;`,
 	{
 		Name: "SELECT INTO with group by, order by and limit",
 		SetUpScript: []string{
-			"CREATE TABLE inventory (item_id int primary key, shelf_id int, items varchar(100))",
+			"CREATE TABLE inventory (item_id int primary key, shelf_id int, item varchar(10))",
 			"INSERT INTO inventory VALUES (1, 1, 'a'), (2, 1, 'b'), (3, 2, 'c'), (4, 1, 'd'), (5, 4, 'e')",
 			"CREATE PROCEDURE first_shelf (OUT p_count INT) SELECT COUNT(*) FROM inventory GROUP BY shelf_id ORDER BY shelf_id ASC LIMIT 1 INTO p_count",
 			"CREATE PROCEDURE last_shelf (OUT p_count INT) SELECT COUNT(*) FROM inventory GROUP BY shelf_id ORDER BY shelf_id DESC LIMIT 1 INTO p_count",
@@ -638,6 +638,26 @@ END;`,
 				Query: "SELECT @result2",
 				Expected: []sql.Row{
 					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "multiple SELECT INTO in begin end block",
+		SetUpScript: []string{
+			"CREATE TABLE inventory (item_id int primary key, shelf_id int, item varchar(10))",
+			"INSERT INTO inventory VALUES (1, 1, 'a'), (2, 1, 'b'), (3, 2, 'c'), (4, 1, 'd'), (5, 4, 'e')",
+			"CREATE PROCEDURE random_info(OUT p_count1 INT, OUT p_count2 VARCHAR(10)) BEGIN " +
+				"SELECT COUNT(*) FROM inventory GROUP BY shelf_id ORDER BY shelf_id ASC LIMIT 1 INTO p_count1;" +
+				"SELECT item INTO p_count2 FROM inventory WHERE shelf_id = 1 ORDER BY item DESC LIMIT 1; " +
+				"END",
+			"CALL random_info(@s1, @s2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @s1, @s2",
+				Expected: []sql.Row{
+					{3, "d"},
 				},
 			},
 		},
