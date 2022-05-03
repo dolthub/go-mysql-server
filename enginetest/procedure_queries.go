@@ -553,20 +553,12 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT @res1",
-				Expected: []sql.Row{
-					{
-						float64(6),
-					},
-				},
+				Query:    "SELECT @res1",
+				Expected: []sql.Row{{float64(6)}},
 			},
 			{
-				Query: "SELECT @res2",
-				Expected: []sql.Row{
-					{
-						float64(85.5),
-					},
-				},
+				Query:    "SELECT @res2",
+				Expected: []sql.Row{{float64(85.5)}},
 			},
 		},
 	},
@@ -579,20 +571,12 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT @res1, @res2",
-				Expected: []sql.Row{
-					{
-						float64(6), float64(5),
-					},
-				},
+				Query:    "SELECT @res1, @res2",
+				Expected: []sql.Row{{float64(6), float64(5)}},
 			},
 			{
-				Query: "SELECT @res3, @res4",
-				Expected: []sql.Row{
-					{
-						float64(85.5), float64(18.5),
-					},
-				},
+				Query:    "SELECT @res3, @res4",
+				Expected: []sql.Row{{float64(85.5), float64(18.5)}},
 			},
 		},
 	},
@@ -608,12 +592,8 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT @shelf1, @shelf2, @shelf3",
-				Expected: []sql.Row{
-					{
-						3, 1, 0,
-					},
-				},
+				Query:    "SELECT @shelf1, @shelf2, @shelf3",
+				Expected: []sql.Row{{3, 1, 0}},
 			},
 		},
 	},
@@ -629,16 +609,12 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT @result1",
-				Expected: []sql.Row{
-					{3},
-				},
+				Query:    "SELECT @result1",
+				Expected: []sql.Row{{3}},
 			},
 			{
-				Query: "SELECT @result2",
-				Expected: []sql.Row{
-					{1},
-				},
+				Query:    "SELECT @result2",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
@@ -655,10 +631,29 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT @s1, @s2",
-				Expected: []sql.Row{
-					{3, "d"},
-				},
+				Query:    "SELECT @s1, @s2",
+				Expected: []sql.Row{{3, "d"}},
+			},
+		},
+	},
+	{
+		Name: "multiple statement with single SELECT INTO in begin end block",
+		SetUpScript: []string{
+			"CREATE TABLE inventory (item_id int primary key, shelf_id int, item varchar(10))",
+			"INSERT INTO inventory VALUES (1, 1, 'a'), (2, 1, 'b'), (3, 2, 'c'), (4, 1, 'd'), (5, 4, 'e')",
+			`CREATE PROCEDURE count_and_print(IN p_shelf_id INT, OUT p_count INT) BEGIN
+SELECT item FROM inventory WHERE shelf_id = p_shelf_id ORDER BY item ASC;
+SELECT COUNT(*) INTO p_count FROM inventory WHERE shelf_id = p_shelf_id;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL count_and_print(1, @total)",
+				Expected: []sql.Row{{"a"}, {"b"}, {"d"}},
+			},
+			{
+				Query:    "SELECT @total",
+				Expected: []sql.Row{{3}},
 			},
 		},
 	},
