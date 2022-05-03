@@ -1863,7 +1863,7 @@ end;`,
 		},
 	},
 	{
-		Name: "trigger after insert, insert into non-existent table",
+		Name: "trigger with non-existent table in trigger body",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 		},

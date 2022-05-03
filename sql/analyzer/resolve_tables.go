@@ -71,6 +71,8 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			newn, _ := p.WithChildren(resolvedTables...)
 			return newn, transform.NewTree, nil
 		case *plan.CreateTrigger:
+			// *plan.CreateTrigger can have non-existent table reference in trigger body.
+			// Table that trigger is on cannot be non-existent table.
 			if _, ok := p.Table.(*plan.ResolvedTable); !ok {
 				return nil, transform.SameTree, sql.ErrTableNotFound.New(p.Table)
 			}

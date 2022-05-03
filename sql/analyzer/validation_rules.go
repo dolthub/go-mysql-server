@@ -464,6 +464,9 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 	// We do not use plan.InspectExpressions here because we're treating
 	// top-level expressions of sql.Node differently from subexpressions.
+	if _, ok := n.(*plan.CreateTrigger); ok {
+		return n, transform.SameTree, nil
+	}
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		if n == nil {
