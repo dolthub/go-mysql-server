@@ -418,7 +418,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 	switch id {
 	case stripDecorationsId,
 		unresolveTablesId,
-		//setTargetSchemasId,
+		setTargetSchemasId,
 
 		expandStarsId,
 		resolveFunctionsId,
