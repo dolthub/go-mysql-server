@@ -110,7 +110,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	)
 
 	triggerLogic, _, err := a.analyzeWithSelector(ctx, ct.Body, (*Scope)(nil).newScope(scopeNode), SelectAllBatches, sel)
-	if err != nil {
+	if err != nil && !sql.ErrTableNotFound.Is(err) {
 		return nil, transform.SameTree, err
 	}
 

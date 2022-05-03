@@ -1862,6 +1862,44 @@ end;`,
 			},
 		},
 	},
+	{
+		Name: "trigger after insert, insert into non-existent table",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create trigger insert_into_b after insert on a for each row insert into b values (new.x + 1)",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:       "insert into a values (1), (3), (5)",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "create table b (y int primary key)",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query: "insert into a values (1), (3), (5)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 3}},
+				},
+			},
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{1}, {3}, {5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {6},
+				},
+			},
+		},
+	},
 }
 
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly

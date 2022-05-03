@@ -81,7 +81,8 @@ func (c *CreateTrigger) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 func (c *CreateTrigger) Resolved() bool {
-	return c.ddlNode.Resolved() && c.Table.Resolved() && c.Body.Resolved()
+	// c.Body can be unresolved since it can have unresolved table reference to non-existent table
+	return c.ddlNode.Resolved() && c.Table.Resolved()
 }
 
 func (c *CreateTrigger) Schema() sql.Schema {

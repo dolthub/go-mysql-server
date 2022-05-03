@@ -44,11 +44,14 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
+	createTriggerIgnore := false
 	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		ignore := false
 		switch p := c.Parent.(type) {
 		case *plan.DropTable:
 			ignore = p.IfExists()
+		case *plan.CreateTrigger:
+			createTriggerIgnore = true
 		}
 
 		switch p := c.Node.(type) {
@@ -67,9 +70,14 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 			newn, _ := p.WithChildren(resolvedTables...)
 			return newn, transform.NewTree, nil
+		case *plan.CreateTrigger:
+			if _, ok := p.Table.(*plan.ResolvedTable); !ok {
+				return nil, transform.SameTree, sql.ErrTableNotFound.New(p.Table)
+			}
+			return p, transform.SameTree, nil
 		case *plan.UnresolvedTable:
 			r, err := resolveTable(ctx, p, a)
-			if sql.ErrTableNotFound.Is(err) && ignore {
+			if sql.ErrTableNotFound.Is(err) && (ignore || createTriggerIgnore) {
 				return p, transform.SameTree, nil
 			}
 			return r, transform.NewTree, err
