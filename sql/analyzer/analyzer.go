@@ -423,7 +423,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		unresolveTablesId,
 		setTargetSchemasId,
 		stripDecorationsId,
-		// TODO: parse column defaults?
+		parseColumnDefaultsId,
 
 		// DefaultRules
 		resolveOrderbyLiteralsId,
@@ -433,6 +433,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
 		resolveColumnsId,
+		resolveColumnDefaultsId,
 		expandStarsId,
 
 		// OnceAfterDefault

@@ -58,8 +58,6 @@ var OnceBeforeDefault = []Rule{
 	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 	{stripDecorationsId, stripDecorations},
 	{validateJoinComplexityId, validateJoinComplexity},
-
-	//{setTargetSchemasId, setTargetSchemas}, // Need to setTargetSchemas after unresolveTablesId for prepared SHOW CREATE TABLE AS OF ...
 }
 
 // DefaultRules to apply when analyzing nodes.
