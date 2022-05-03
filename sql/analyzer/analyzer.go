@@ -416,26 +416,34 @@ func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql
 // after bindvars are applied
 func postPrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case stripDecorationsId,
+	case
+		// OnceBeforeDefault
+		resolveDatabasesId,
+		resolveTablesId,
 		unresolveTablesId,
 		setTargetSchemasId,
+		stripDecorationsId,
+		// TODO: parse column defaults?
 
-		expandStarsId,
+		// DefaultRules
+		resolveOrderbyLiteralsId,
 		resolveFunctionsId,
 		flattenTableAliasesId,
 		pushdownSortId,
 		pushdownGroupbyAliasesId,
-		resolveDatabasesId,
-		resolveTablesId,
-
-		resolveOrderbyLiteralsId,
 		qualifyColumnsId,
 		resolveColumnsId,
+		expandStarsId,
 
+		// OnceAfterDefault
 		pushdownFiltersId,
 		subqueryIndexesId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
+
+		// DefaultValidationRules
+
+		// OnceAfterAll
 		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
