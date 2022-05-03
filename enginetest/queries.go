@@ -7159,6 +7159,19 @@ var BrokenQueries = []QueryTest{
 	},
 }
 
+var VersionedQueriesTmp = []QueryTest{
+	{
+		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-02'",
+		Expected: []sql.Row{
+			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` text NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
+}
+
 var VersionedQueries = []QueryTest{
 	{
 		Query: "SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",

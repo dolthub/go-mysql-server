@@ -379,7 +379,8 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	defer engine.Close()
 
-	for _, tt := range VersionedQueries {
+	//for _, tt := range VersionedQueries {
+	for _, tt := range VersionedQueriesTmp {
 		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, nil)
 	}
 
