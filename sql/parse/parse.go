@@ -169,15 +169,19 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		// *Into should be outer layer around select/union statements.
-		var into *sqlparser.Into
+		
 		switch s := ss.(type) {
 		case *sqlparser.Select:
-			into = s.Into
-		case *sqlparser.Union:
-			into = s.Into
+
 		}
-		if into != nil {
+		// *Into should be outer layer around select/union statements.
+		if into, ok := ss.(*sqlparser.Select); ok && into != nil {
+			node, err = intoToInto(ctx, into, node)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if into, ok := ss.(*sqlparser.Select); ok && into != nil {
 			node, err = intoToInto(ctx, into, node)
 			if err != nil {
 				return nil, err

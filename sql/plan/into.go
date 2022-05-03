@@ -77,8 +77,11 @@ func (i *Into) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, sql.ErrMoreThanOneRow.New()
 	}
 	if rowNum == 0 {
-		// a warning with error code 1329 occurs (No data), and make not change to variables
+		// a warning with error code 1329 occurs (No data), and make no change to variables
 		return sql.RowsToRowIter(sql.Row{}), nil
+	}
+	if len(rows[0]) != len(i.IntoVars) {
+		return nil, sql.ErrColumnNumberDoesNotMatch.New()
 	}
 
 	var rowValues = make([]interface{}, len(rows[0]))

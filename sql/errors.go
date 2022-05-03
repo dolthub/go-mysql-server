@@ -556,6 +556,9 @@ var (
 	// ErrMoreThanOneRow is returned when the result consists of multiple rows, when only one row is expected
 	ErrMoreThanOneRow = errors.NewKind("Result consisted of more than one row")
 
+	// ErrColumnNumberDoesNotMatch is returned when the number of columns in result does not match expected number of variables
+	ErrColumnNumberDoesNotMatch = errors.NewKind("The used SELECT statements have a different number of columns")
+
 	// ErrUnsupportedJoinFactorCount is returned for a query with more commutable join tables than we support
 	ErrUnsupportedJoinFactorCount = errors.NewKind("unsupported join factor count: expected fewer than %d tables, found %d")
 )

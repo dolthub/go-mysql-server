@@ -500,6 +500,18 @@ var ScriptTests = []ScriptTest{
 				Query:       `SELECT id INTO DUMPFILE 'dump.txt' FROM tab1 ORDER BY id DESC LIMIT 15`,
 				ExpectedErr: sql.ErrUnsupportedSyntax,
 			},
+			{
+				Query:       `select 1, 2, 3 into @my1, @my2`,
+				ExpectedErr: sql.ErrColumnNumberDoesNotMatch,
+			},
+			{
+				Query:          `SELECT id, v1 INTO @myFirstVar FROM tab1 ORDER BY id DESC LIMIT 1 INTO @mySecondVar`,
+				ExpectedErrStr: "Multiple INTO clauses in one query block at position 84 near '@mySecondVar'",
+			},
+			{
+				Query:          `SELECT id FROM tab1 WHERE id > 3 UNION select s INTO @mustSingleVar FROM tab2 WHERE s < 'f' ORDER BY s DESC`,
+				ExpectedErrStr: "INTO clause is not allowed at position 98 near 'ORDER'",
+			},
 		},
 	},
 	{
