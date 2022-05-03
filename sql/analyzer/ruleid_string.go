@@ -43,7 +43,7 @@ func _() {
 	_ = x[validateDatabaseSetId-32]
 	_ = x[validatePriviledgesId-33]
 	_ = x[stripDecorationsId-34]
-	_ = x[unresolveTablesId-35]
+	_ = x[reresolveTablesId-35]
 	_ = x[validateJoinComplexityId-36]
 	_ = x[resolveNaturalJoinsId-37]
 	_ = x[resolveOrderbyLiteralsId-38]
