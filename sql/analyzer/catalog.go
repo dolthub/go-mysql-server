@@ -27,6 +27,7 @@ import (
 
 type Catalog struct {
 	GrantTables *grant_tables.GrantTables
+	StatsTables *grant_tables.GrantTables
 
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
