@@ -39,9 +39,11 @@ type AlterDefaultDrop struct {
 	ddlNode
 	Table      sql.Node
 	ColumnName string
+	targetSchema sql.Schema
 }
 
 var _ sql.Node = (*AlterDefaultDrop)(nil)
+var _ sql.SchemaTarget = (*AlterDefaultDrop)(nil)
 
 // NewAlterDefaultSet returns a *AlterDefaultSet node.
 func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
@@ -203,6 +205,28 @@ func (d *AlterDefaultDrop) WithChildren(children ...sql.Node) (sql.Node, error) 
 // Children implements the sql.Node interface.
 func (d *AlterDefaultDrop) Children() []sql.Node {
 	return []sql.Node{d.Table}
+}
+
+func (d AlterDefaultDrop) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	d.targetSchema = schema
+	return &d, nil
+}
+
+func (d *AlterDefaultDrop) TargetSchema() sql.Schema {
+	return d.targetSchema
+}
+
+func (d *AlterDefaultDrop) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(d.targetSchema)
+}
+
+func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(d.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
+	}
+
+	d.targetSchema = schemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	return &d, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
