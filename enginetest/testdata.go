@@ -68,16 +68,16 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 // createSubsetTestData creates test tables and data. Passing a non-nil slice for includedTables will restrict the
 // table creation to just those tables named.
 func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
-	dbs := harness.NewDatabases("mydb", "foo")
-	return createSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
+	dbs := harness.NewDatabases("mydb")
+	return createSubsetTestData(t, harness, includedTables, dbs[0])
 }
 
 func CreateSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
-	dbs := harness.NewDatabases("mydb", "foo")
-	return createSpatialSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
+	dbs := harness.NewDatabases("mydb")
+	return createSpatialSubsetTestData(t, harness, includedTables, dbs[0])
 }
 
-func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
+func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb sql.Database) []sql.Database {
 	var table sql.Table
 	var err error
 
@@ -177,10 +177,10 @@ func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables [
 		})
 	}
 
-	return []sql.Database{myDb, foo}
+	return []sql.Database{myDb}
 }
 
-func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
+func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb sql.Database) []sql.Database {
 	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
 	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
 	// transaction without committing the work done so far.
@@ -405,23 +405,23 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
-	if includeTable(includedTables, "other_table") {
-		wrapInTransaction(t, myDb, harness, func() {
-			table, err = harness.NewTable(foo, "other_table", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
-				{Name: "number", Type: sql.Int32, Source: "other_table"},
-			}))
-
-			if err == nil {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow("a", int32(4)),
-					sql.NewRow("b", int32(2)),
-					sql.NewRow("c", int32(0)))
-			} else {
-				t.Logf("Warning: could not create table %s: %s", "other_table", err)
-			}
-		})
-	}
+	//if includeTable(includedTables, "other_table") {
+	//	wrapInTransaction(t, myDb, harness, func() {
+	//		table, err = harness.NewTable(foo, "other_table", sql.NewPrimaryKeySchema(sql.Schema{
+	//			{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
+	//			{Name: "number", Type: sql.Int32, Source: "other_table"},
+	//		}))
+	//
+	//		if err == nil {
+	//			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+	//				sql.NewRow("a", int32(4)),
+	//				sql.NewRow("b", int32(2)),
+	//				sql.NewRow("c", int32(0)))
+	//		} else {
+	//			t.Logf("Warning: could not create table %s: %s", "other_table", err)
+	//		}
+	//	})
+	//}
 
 	if includeTable(includedTables, "bigtable") {
 		wrapInTransaction(t, myDb, harness, func() {
@@ -887,7 +887,8 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
-	return []sql.Database{myDb, foo}
+	//return []sql.Database{myDb, foo}
+	return []sql.Database{myDb}
 }
 
 func mustSQLTime(d time.Duration) interface{} {

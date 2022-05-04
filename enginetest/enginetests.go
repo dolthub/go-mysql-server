@@ -87,15 +87,19 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 }
 
 // Tests a variety of geometry queries against databases and tables provided by the given harness.
-func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
-	engine := NewSpatialEngine(t, harness)
-	defer engine.Close()
+func TestSpatialQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+	//engine := NewSpatialEngine(t, harness)
+	//defer engine.Close()
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+
 	for _, tt := range SpatialQueryTests {
-		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+		TestPreparedQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 
-	newEngine := func() *sqle.Engine {
-		return NewSpatialEngine(t, harness)
+	newEngine := func(harness CheckpointHarness) *sqle.Engine {
+		ctx = harness.NewContext()
+		return harness.RestoreCheckpoint(ctx, t)
 	}
 	for _, tt := range SpatialDeleteTests {
 		runWriteQueryTest(t, harness, tt, newEngine)
@@ -110,9 +114,9 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 	t.Run("create table with NULL default values for geometry types", func(t *testing.T) {
 		ctx := NewContext(harness)
 
-		TestQuery(t, harness, engine, "CREATE TABLE null_default (pk int NOT NULL PRIMARY KEY, v1 geometry DEFAULT NULL, v2 linestring DEFAULT NULL, v3 point DEFAULT NULL, v4 polygon DEFAULT NULL)",
+		TestQuery(t, harness, e, "CREATE TABLE null_default (pk int NOT NULL PRIMARY KEY, v1 geometry DEFAULT NULL, v2 linestring DEFAULT NULL, v3 point DEFAULT NULL, v4 polygon DEFAULT NULL)",
 			[]sql.Row{{sql.NewOkResult(0)}}, nil)
-		db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
 		require.NoError(t, err)
 
 		_, ok, err := db.GetTableInsensitive(ctx, "null_default")
@@ -260,7 +264,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 		t.Fatal("harness is not ReadOnlyDatabaseHarness")
 	}
 	dbs := createReadOnlyDatabases(ro)
-	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
+	dbs = createSubsetTestData(t, harness, nil, dbs[0])
 	engine := NewEngineWithDbs(t, harness, dbs)
 	defer engine.Close()
 
@@ -710,10 +714,16 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
 	e := harness.NewEngine(ctx, t)
+	defer e.Close()
 	for _, insertion := range InsertQueries {
 		//e := NewEngine(t, harness)
-
-		defer e.Close()
+		ctx = harness.NewContext()
+		//sch, iter, err := e.QueryWithBindings(ctx, "select * from keyless", nil)
+		//if err != nil {
+		//	panic(err)
+		//}
+		//rows, _ := sql.RowIterToRows(ctx, sch, iter)
+		//defer e.Close()
 
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
 		// If we skipped the insert, also skip the select
@@ -795,10 +805,13 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	}
 }
 
-func TestReplaceInto(t *testing.T, harness Harness) {
+func TestReplaceInto(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
+
 	for _, insertion := range ReplaceQueries {
-		e := NewEngine(t, harness)
-		defer e.Close()
+		ctx = harness.NewContext()
 
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
 		// If we skipped the insert, also skip the select
@@ -809,6 +822,7 @@ func TestReplaceInto(t *testing.T, harness Harness) {
 			}
 		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
+		e = harness.RestoreCheckpoint(ctx, t)
 	}
 }
 
@@ -825,10 +839,13 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	}
 }
 
-func TestUpdate(t *testing.T, harness Harness) {
+func TestUpdate(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
+
 	for _, update := range UpdateTests {
-		e := NewEngine(t, harness)
-		defer e.Close()
+		ctx = harness.NewContext()
 
 		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil)
 		// If we skipped the update, also skip the select
@@ -839,6 +856,7 @@ func TestUpdate(t *testing.T, harness Harness) {
 			}
 		}
 		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect, nil)
+		e = harness.RestoreCheckpoint(ctx, t)
 	}
 }
 
@@ -886,10 +904,12 @@ func TestSpatialUpdate(t *testing.T, harness Harness) {
 	}
 }
 
-func TestDelete(t *testing.T, harness Harness) {
+func TestDelete(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
 	for _, delete := range DeleteTests {
-		e := NewEngine(t, harness)
-		defer e.Close()
+		ctx = harness.NewContext()
 
 		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil)
 		// If we skipped the delete, also skip the select
@@ -900,13 +920,14 @@ func TestDelete(t *testing.T, harness Harness) {
 			}
 		}
 		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil)
+		e = harness.RestoreCheckpoint(ctx, t)
 	}
 
 }
 
-func runWriteQueryTest(t *testing.T, harness Harness, tt WriteQueryTest, newEngine func() *sqle.Engine) {
+func runWriteQueryTest(t *testing.T, harness CheckpointHarness, tt WriteQueryTest, newEngine func(CheckpointHarness) *sqle.Engine) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
-		e := newEngine()
+		e := newEngine(harness)
 		defer e.Close()
 
 		ctx := NewContextWithEngine(harness, e)
@@ -928,37 +949,53 @@ func runWriteQueryTest(t *testing.T, harness Harness, tt WriteQueryTest, newEngi
 	})
 }
 
-func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
-	newEngine := func() *sqle.Engine {
-		return NewEngine(t, harness)
+func TestUpdateQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	newEngine := func(harness CheckpointHarness) *sqle.Engine {
+		ctx = harness.NewContext()
+		return harness.RestoreCheckpoint(ctx, t)
 	}
+	defer e.Close()
 	for _, tt := range UpdateTests {
 		runWriteQueryTest(t, harness, tt, newEngine)
 	}
 }
 
-func TestDeleteQueriesPrepared(t *testing.T, harness Harness) {
-	newEngine := func() *sqle.Engine {
-		return NewEngine(t, harness)
+func TestDeleteQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	newEngine := func(harness CheckpointHarness) *sqle.Engine {
+		ctx = harness.NewContext()
+		return harness.RestoreCheckpoint(ctx, t)
 	}
+	defer e.Close()
 	for _, tt := range DeleteTests {
 		runWriteQueryTest(t, harness, tt, newEngine)
 	}
 }
 
-func TestInsertQueriesPrepared(t *testing.T, harness Harness) {
-	newEngine := func() *sqle.Engine {
-		return NewEngine(t, harness)
+func TestInsertQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	newEngine := func(harness CheckpointHarness) *sqle.Engine {
+		ctx = harness.NewContext()
+		return harness.RestoreCheckpoint(ctx, t)
 	}
+	defer e.Close()
 	for _, tt := range InsertQueries {
 		runWriteQueryTest(t, harness, tt, newEngine)
 	}
 }
 
-func TestReplaceQueriesPrepared(t *testing.T, harness Harness) {
-	newEngine := func() *sqle.Engine {
-		return NewEngine(t, harness)
+func TestReplaceQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	newEngine := func(harness CheckpointHarness) *sqle.Engine {
+		ctx = harness.NewContext()
+		return harness.RestoreCheckpoint(ctx, t)
 	}
+	defer e.Close()
 	for _, tt := range ReplaceQueries {
 		runWriteQueryTest(t, harness, tt, newEngine)
 	}
