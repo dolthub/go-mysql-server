@@ -169,7 +169,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		if into, hasInto := ss.HasIntoDefined(); hasInto {
+		if into := ss.GetInto(); into != nil {
 			node, err = intoToInto(ctx, into, node)
 			if err != nil {
 				return nil, err
