@@ -16,14 +16,13 @@ package analyzer
 
 import (
 	"fmt"
-	"os"
-	"reflect"
-	"strings"
-
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
+	"os"
+	"reflect"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -343,14 +342,14 @@ func (a *Analyzer) LogDiff(prev, next sql.Node) {
 
 // PushDebugContext pushes the given context string onto the context stack, to use when logging debug messages.
 func (a *Analyzer) PushDebugContext(msg string) {
-	if a != nil {
+	if a != nil && a.Debug {
 		a.contextStack = append(a.contextStack, msg)
 	}
 }
 
 // PopDebugContext pops a context message off the context stack.
 func (a *Analyzer) PopDebugContext() {
-	if a != nil && len(a.contextStack) > 0 {
+	if a != nil && len(a.contextStack) > 0 && a.Debug {
 		a.contextStack = a.contextStack[:len(a.contextStack)-1]
 	}
 }
