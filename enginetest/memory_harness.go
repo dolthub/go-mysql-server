@@ -16,9 +16,10 @@ package enginetest
 
 import (
 	"context"
-	sqle "github.com/dolthub/go-mysql-server"
 	"strings"
 	"testing"
+
+	sqle "github.com/dolthub/go-mysql-server"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"

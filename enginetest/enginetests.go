@@ -1030,9 +1030,6 @@ func TestSpatialDelete(t *testing.T, harness CheckpointHarness) {
 	e := harness.NewEngine(ctx, t)
 	defer e.Close()
 	for i, delete := range SpatialDeleteTests {
-		e := NewSpatialEngine(t, harness)
-		defer e.Close()
-		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil)
 		// If we skipped the delete, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(delete.WriteQuery) {
@@ -1044,6 +1041,7 @@ func TestSpatialDelete(t *testing.T, harness CheckpointHarness) {
 			e = harness.RestoreCheckpoint(ctx, t, e)
 		}
 		ctx = harness.NewContext()
+		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil)
 		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil)
 	}
 }
