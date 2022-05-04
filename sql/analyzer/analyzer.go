@@ -361,7 +361,7 @@ func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
 	case stripDecorationsId,
-		unresolveTablesId,
+		reresolveTablesId,
 		resolvePreparedInsertId:
 		return false
 	}
@@ -387,7 +387,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		parallelizeId,
 		clearWarningsId,
 		stripDecorationsId,
-		unresolveTablesId,
+		reresolveTablesId,
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,
@@ -416,25 +416,35 @@ func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql
 // after bindvars are applied
 func postPrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case stripDecorationsId,
-		unresolveTablesId,
+	case
+		// OnceBeforeDefault
+		resolveDatabasesId,
+		resolveTablesId,
+		reresolveTablesId,
+		setTargetSchemasId,
+		stripDecorationsId,
+		parseColumnDefaultsId,
 
-		expandStarsId,
+		// DefaultRules
+		resolveOrderbyLiteralsId,
 		resolveFunctionsId,
 		flattenTableAliasesId,
 		pushdownSortId,
 		pushdownGroupbyAliasesId,
-		resolveDatabasesId,
-		resolveTablesId,
-
-		resolveOrderbyLiteralsId,
 		qualifyColumnsId,
 		resolveColumnsId,
+		resolveColumnDefaultsId,
+		expandStarsId,
 
+		// OnceAfterDefault
 		pushdownFiltersId,
 		subqueryIndexesId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
+
+		// DefaultValidationRules
+
+		// OnceAfterAll
 		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
@@ -449,7 +459,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 	switch id {
 	case stripDecorationsId,
-		unresolveTablesId,
+		reresolveTablesId,
 
 		expandStarsId,
 		resolveFunctionsId,
