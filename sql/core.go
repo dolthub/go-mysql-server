@@ -323,9 +323,14 @@ type MultiDatabaser interface {
 	WithDatabaseProvider(DatabaseProvider) (Node, error)
 }
 
-// SchemaTarget is a node that has a target schema that can be set
+// SchemaTarget is a node that has a target schema that can be set during analysis. This is necessary because some
+// schema objects (things that involve expressions, column references, etc.) can only be reified during analysis. The
+// target schema is the schema of a table under a DDL operation, not the schema of rows returned by this node.
 type SchemaTarget interface {
+	// WithTargetSchema returns a copy of this node with the target schema set
 	WithTargetSchema(Schema) (Node, error)
+	// TargetSchema returns the target schema for this node
+	TargetSchema() Schema
 }
 
 // PrimaryKeySchemaTarget is a node that has a primary key target schema that can be set

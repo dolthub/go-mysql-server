@@ -29,7 +29,7 @@ const (
 	PrimaryKeyAction_Drop
 )
 
-// ErrNotPrimaryKeyAlterable is return when a table cannot be determines to be primary key alterable
+// ErrNotPrimaryKeyAlterable is return when a table cannot be determined to be primary key alterable
 var ErrNotPrimaryKeyAlterable = errors.NewKind("error: table is not primary key alterable")
 
 type AlterPK struct {
@@ -39,6 +39,7 @@ type AlterPK struct {
 	Table   sql.Node
 	Columns []sql.IndexColumn
 	Catalog sql.Catalog
+	targetSchema sql.Schema
 }
 
 var _ sql.Databaser = (*AlterPK)(nil)
@@ -75,6 +76,28 @@ func (a *AlterPK) String() string {
 
 func (a *AlterPK) Schema() sql.Schema {
 	return sql.OkResultSchema
+}
+
+func (a AlterPK) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	a.targetSchema = schema
+	return &a, nil
+}
+
+func (a *AlterPK) TargetSchema() sql.Schema {
+	return a.targetSchema
+}
+
+func (a *AlterPK) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(a.targetSchema)
+}
+
+func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(a.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), len(a.targetSchema))
+	}
+
+	a.targetSchema = schemaWithDefaults(a.targetSchema, exprs[:len(a.targetSchema)])
+	return &a, nil
 }
 
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

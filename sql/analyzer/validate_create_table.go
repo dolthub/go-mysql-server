@@ -109,21 +109,21 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.ModifyColumn:
 			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			sch, err = validateModifyColumn(sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.RenameColumn:
 			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			sch, err = validateRenameColumn(initialSch, sch, n.(*plan.RenameColumn))
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.AddColumn:
@@ -131,65 +131,59 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
 			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
 			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			sch, err = validateDropColumn(initialSch, sch, n.(*plan.DropColumn))
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
-			// TODO
-			// n, err := n.WithTargetSchema(sch)
-			// if err != nil {
-			// 	return nil, false, err
-			// }
 			indexes, err = validateAlterIndex(initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterPK:
-			// TODO
-			// n, err := n.WithTargetSchema(sch)
-			// if err != nil {
-			// 	return nil, false, err
-			// }
+			n, err := nn.WithTargetSchema(sch)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			sch, err = validatePrimaryKey(initialSch, sch, n.(*plan.AlterPK))
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterDefaultSet:
 			// TODO
 			// n, err := n.WithTargetSchema(sch)
 			// if err != nil {
-			// 	return nil, false, err
+			// 	return nil, transform.SameTree, err
 			// }
 			sch, err = validateAlterDefault(initialSch, sch, n.(*plan.AlterDefaultSet))
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterDefaultDrop:
 			// TODO
 			// n, err := n.WithTargetSchema(sch)
 			// if err != nil {
-			// 	return nil, false, err
+			// 	return nil, transform.SameTree, err
 			// }
 			sch, err = validateDropDefault(initialSch, sch, n.(*plan.AlterDefaultDrop))
 			if err != nil {
-				return nil, false, err
+				return nil, transform.SameTree, err
 			}
 			return n, transform.NewTree, nil
 		}
