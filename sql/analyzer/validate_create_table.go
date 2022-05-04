@@ -105,23 +105,23 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
+		switch nn := n.(type) {
 		case *plan.ModifyColumn:
-			n, err := n.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
 				return nil, false, err
 			}
-			sch, err = validateModifyColumn(sch, n, keyedColumns)
+			sch, err = validateModifyColumn(sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
 				return nil, false, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.RenameColumn:
-			n, err := n.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
 				return nil, false, err
 			}
-			sch, err = validateRenameColumn(initialSch, sch, n)
+			sch, err = validateRenameColumn(initialSch, sch, n.(*plan.RenameColumn))
 			if err != nil {
 				return nil, false, err
 			}
@@ -129,21 +129,21 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.AddColumn:
 			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
 			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
-			n, err := n.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
 				return nil, false, err
 			}
-			sch, err = validateAddColumn(initialSch, sch, n)
+			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
 			if err != nil {
 				return nil, false, err
 			}
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
-			n, err := n.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch)
 			if err != nil {
 				return nil, false, err
 			}
-			sch, err = validateDropColumn(initialSch, sch, n)
+			sch, err = validateDropColumn(initialSch, sch, n.(*plan.DropColumn))
 			if err != nil {
 				return nil, false, err
 			}
@@ -154,7 +154,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			// if err != nil {
 			// 	return nil, false, err
 			// }
-			indexes, err = validateAlterIndex(initialSch, sch, n, indexes)
+			indexes, err = validateAlterIndex(initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
 				return nil, false, err
 			}
@@ -165,7 +165,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			// if err != nil {
 			// 	return nil, false, err
 			// }
-			sch, err = validatePrimaryKey(initialSch, sch, n)
+			sch, err = validatePrimaryKey(initialSch, sch, n.(*plan.AlterPK))
 			if err != nil {
 				return nil, false, err
 			}
@@ -176,7 +176,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			// if err != nil {
 			// 	return nil, false, err
 			// }
-			sch, err = validateAlterDefault(initialSch, sch, n)
+			sch, err = validateAlterDefault(initialSch, sch, n.(*plan.AlterDefaultSet))
 			if err != nil {
 				return nil, false, err
 			}
@@ -187,7 +187,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			// if err != nil {
 			// 	return nil, false, err
 			// }
-			sch, err = validateDropDefault(initialSch, sch, n)
+			sch, err = validateDropDefault(initialSch, sch, n.(*plan.AlterDefaultDrop))
 			if err != nil {
 				return nil, false, err
 			}
