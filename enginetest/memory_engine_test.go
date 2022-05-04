@@ -158,7 +158,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT 1, 2`,
+		Query: `show create table two_pk`,
 		Expected: []sql.Row{
 			{1, 2},
 		},
