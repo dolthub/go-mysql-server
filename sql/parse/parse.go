@@ -169,8 +169,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		if err != nil {
 			return nil, err
 		}
-		if ss.HasIntoDefined() {
-			node, err = intoToInto(ctx, ss, node)
+		if into, hasInto := ss.HasIntoDefined(); hasInto {
+			node, err = intoToInto(ctx, into, node)
 			if err != nil {
 				return nil, err
 			}
@@ -900,11 +900,7 @@ func ctesToWith(ctx *sql.Context, with *sqlparser.With, node sql.Node) (sql.Node
 	return plan.NewWith(node, ctes, with.Recursive), nil
 }
 
-func intoToInto(ctx *sql.Context, s sqlparser.SelectStatement, node sql.Node) (sql.Node, error) {
-	into, err := getSelectInto(ctx, s)
-	if err != nil {
-		return nil, err
-	}
+func intoToInto(ctx *sql.Context, into *sqlparser.Into, node sql.Node) (sql.Node, error) {
 	if into.Outfile != "" || into.Dumpfile != "" {
 		return nil, sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
 	}
@@ -918,19 +914,6 @@ func intoToInto(ctx *sql.Context, s sqlparser.SelectStatement, node sql.Node) (s
 		}
 	}
 	return plan.NewInto(node, vars), nil
-}
-
-func getSelectInto(ctx *sql.Context, s sqlparser.SelectStatement) (*sqlparser.Into, error) {
-	switch n := s.(type) {
-	case *sqlparser.Select:
-		return n.Into, nil
-	case *sqlparser.Union:
-		return n.Into, nil
-	case *sqlparser.ParenSelect:
-		return getSelectInto(ctx, n)
-	default:
-		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(n))
-	}
 }
 
 func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
