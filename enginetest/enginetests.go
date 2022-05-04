@@ -46,7 +46,7 @@ import (
 )
 
 // Tests a variety of queries against databases and tables provided by the given harness.
-func TestQueries(t *testing.T, harness CheckpointHarness) {
+func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	defer engine.Close()
 
@@ -57,22 +57,14 @@ func TestQueries(t *testing.T, harness CheckpointHarness) {
 		TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 
+	for _, tt := range ParallelUnsafeQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+	}
+
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range KeylessQueries {
 			TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 		}
-	}
-}
-
-func TestParallelUnsafeQueries(t *testing.T, harness Harness) {
-	engine := NewEngine(t, harness)
-	defer engine.Close()
-
-	CreateIndexes(t, harness, engine)
-	createForeignKeys(t, harness, engine)
-
-	for _, tt := range ParallelUnsafeQueries {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 }
 
@@ -88,11 +80,8 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 
 // Tests a variety of geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueriesPrepared(t *testing.T, harness CheckpointHarness) {
-	//engine := NewSpatialEngine(t, harness)
-	//defer engine.Close()
 	ctx := harness.NewContext()
 	e := harness.NewEngine(ctx, t)
-
 	for _, tt := range SpatialQueryTests {
 		TestPreparedQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
@@ -110,20 +99,6 @@ func TestSpatialQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	for _, tt := range SpatialUpdateTests {
 		runWriteQueryTest(t, harness, tt, newEngine)
 	}
-
-	t.Run("create table with NULL default values for geometry types", func(t *testing.T) {
-		ctx := NewContext(harness)
-
-		TestQuery(t, harness, e, "CREATE TABLE null_default (pk int NOT NULL PRIMARY KEY, v1 geometry DEFAULT NULL, v2 linestring DEFAULT NULL, v3 point DEFAULT NULL, v4 polygon DEFAULT NULL)",
-			[]sql.Row{{sql.NewOkResult(0)}}, nil)
-		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
-		require.NoError(t, err)
-
-		_, ok, err := db.GetTableInsensitive(ctx, "null_default")
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
-
 }
 
 // Tests join queries against a provided harness.
@@ -628,12 +603,12 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 		},
 	}
 
+	e := NewEngine(t, harness)
+	defer e.Close()
+	require := require.New(t)
+
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
-			require := require.New(t)
-			e := NewEngine(t, harness)
-			defer e.Close()
-
 			ctx := NewContext(harness)
 			sch, rowIter, err := e.Query(ctx, tt.query)
 			var colNames []string
@@ -712,15 +687,11 @@ func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
 	e := harness.NewEngine(ctx, t)
 	defer e.Close()
-	for _, insertion := range InsertQueries {
-		//e := NewEngine(t, harness)
+	for i, insertion := range InsertQueries {
+		if i > 0 {
+			e = harness.RestoreCheckpoint(ctx, t, e)
+		}
 		ctx = harness.NewContext()
-		//sch, iter, err := e.QueryWithBindings(ctx, "select * from keyless", nil)
-		//if err != nil {
-		//	panic(err)
-		//}
-		//rows, _ := sql.RowIterToRows(ctx, sch, iter)
-		//defer e.Close()
 
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
 		// If we skipped the insert, also skip the select
@@ -731,7 +702,6 @@ func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 			}
 		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
-		e = harness.RestoreCheckpoint(ctx, t, e)
 	}
 	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
@@ -744,15 +714,22 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	}
 }
 
-func TestInsertIntoErrors(t *testing.T, harness Harness) {
-	for _, expectedFailure := range InsertErrorTests {
+func TestInsertIntoErrors(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
+	for i, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(expectedFailure.Query) {
 					t.Skipf("skipping query %s", expectedFailure.Query)
 				}
 			}
-			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
+			if i > 0 {
+				e = harness.RestoreCheckpoint(ctx, t, e)
+			}
+			ctx = harness.NewContext()
+			AssertErr(t, e, harness, expectedFailure.Query, nil)
 		})
 	}
 	for _, script := range InsertErrorScripts {
@@ -823,14 +800,21 @@ func TestReplaceInto(t *testing.T, harness CheckpointHarness) {
 	}
 }
 
-func TestReplaceIntoErrors(t *testing.T, harness Harness) {
-	for _, expectedFailure := range ReplaceErrorTests {
+func TestReplaceIntoErrors(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
+	for i, expectedFailure := range ReplaceErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(expectedFailure.Query) {
 					t.Skipf("skipping query %s", expectedFailure.Query)
 				}
 			}
+			if i > 0 {
+				e = harness.RestoreCheckpoint(ctx, t, e)
+			}
+			ctx = harness.NewContext()
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
 	}
@@ -844,9 +828,7 @@ func TestUpdate(t *testing.T, harness CheckpointHarness) {
 	for _, update := range UpdateTests {
 		ctx = harness.NewContext()
 
-		runAndPrintln(ctx, e, "select * from mytable")
 		TestQueryWithContext(t, ctx, e, update.WriteQuery, update.ExpectedWriteResult, nil, nil)
-		runAndPrintln(ctx, e, "select * from mytable")
 
 		// If we skipped the update, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -860,26 +842,37 @@ func TestUpdate(t *testing.T, harness CheckpointHarness) {
 	}
 }
 
-func TestUpdateErrors(t *testing.T, harness Harness) {
-	for _, expectedFailure := range GenericUpdateErrorTests {
+func TestUpdateErrors(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
+
+	for i, expectedFailure := range GenericUpdateErrorTests {
+		if i > 0 {
+			e = harness.RestoreCheckpoint(ctx, t, e)
+		}
+		ctx = harness.NewContext()
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(expectedFailure.Query) {
 					t.Skipf("skipping query %s", expectedFailure.Query)
 				}
 			}
-			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
+			AssertErr(t, e, harness, expectedFailure.Query, nil)
 		})
 	}
 
-	for _, expectedFailure := range UpdateErrorTests {
+	for i, expectedFailure := range UpdateErrorTests {
+		if i > 0 {
+			e = harness.RestoreCheckpoint(ctx, t, e)
+		}
 		t.Run(expectedFailure.Query, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(expectedFailure.Query) {
 					t.Skipf("skipping query %s", expectedFailure.Query)
 				}
 			}
-			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, expectedFailure.ExpectedErr)
+			AssertErr(t, e, harness, expectedFailure.Query, expectedFailure.ExpectedErr)
 		})
 	}
 
@@ -950,15 +943,12 @@ func runWriteQueryTest(t *testing.T, harness CheckpointHarness, tt WriteQueryTes
 				t.Logf("Skipping query %s", tt.WriteQuery)
 				return
 			}
-		}
-		TestPreparedQueryWithContext(t, ctx, e, tt.WriteQuery, tt.ExpectedWriteResult, nil)
-		// If we skipped the delete, also skip the select
-		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.SelectQuery) {
 				t.Logf("Skipping query %s", tt.SelectQuery)
 				return
 			}
 		}
+		TestPreparedQueryWithContext(t, ctx, e, tt.WriteQuery, tt.ExpectedWriteResult, nil)
 		TestPreparedQueryWithContext(t, ctx, e, tt.SelectQuery, tt.ExpectedSelect, nil)
 	})
 }
@@ -1005,31 +995,41 @@ func TestInsertQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 func TestReplaceQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
 	e := harness.NewEngine(ctx, t)
+	defer e.Close()
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
 		return harness.RestoreCheckpoint(ctx, t, e)
 	}
-	defer e.Close()
 	for _, tt := range ReplaceQueries {
 		runWriteQueryTest(t, harness, tt, newEngine)
 	}
 }
 
-func TestDeleteErrors(t *testing.T, harness Harness) {
-	for _, expectedFailure := range DeleteErrorTests {
+func TestDeleteErrors(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
+	for i, expectedFailure := range DeleteErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(expectedFailure.Query) {
 					t.Skipf("skipping query %s", expectedFailure.Query)
 				}
 			}
-			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
+			if i > 0 {
+				e = harness.RestoreCheckpoint(ctx, t, e)
+			}
+			ctx = harness.NewContext()
+			AssertErr(t, e, harness, expectedFailure.Query, nil)
 		})
 	}
 }
 
-func TestSpatialDelete(t *testing.T, harness Harness) {
-	for _, delete := range SpatialDeleteTests {
+func TestSpatialDelete(t *testing.T, harness CheckpointHarness) {
+	ctx := harness.NewContext()
+	e := harness.NewEngine(ctx, t)
+	defer e.Close()
+	for i, delete := range SpatialDeleteTests {
 		e := NewSpatialEngine(t, harness)
 		defer e.Close()
 		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil)
@@ -1040,6 +1040,10 @@ func TestSpatialDelete(t *testing.T, harness Harness) {
 				continue
 			}
 		}
+		if i > 0 {
+			e = harness.RestoreCheckpoint(ctx, t, e)
+		}
+		ctx = harness.NewContext()
 		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil)
 	}
 }
@@ -1339,7 +1343,10 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 }
 
 func TestScriptsPrepared(t *testing.T, harness Harness) {
-	for _, script := range ScriptTests {
+	//for _, script := range ScriptTests {
+	//	TestScriptPrepared(t, harness, script)
+	//}
+	for _, script := range SpatialScriptTests {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -2060,7 +2067,8 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 				t.Skip()
 			}
 		}
-		runQueryPreparedWithCtx(t, ctx, e, statement)
+		_, _, err := runQueryPreparedWithCtx(t, ctx, e, statement)
+		require.NoError(t, err)
 	}
 
 	assertions := script.Assertions
@@ -6683,6 +6691,25 @@ func TestPreparedQuery(t *testing.T,
 	expectedCols []*sql.Column,
 ) {
 	t.Run(q, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(q) {
+				t.Skipf("Skipping query %s", q)
+			}
+		}
+		ctx := NewContextWithEngine(harness, e)
+		TestPreparedQueryWithContext(t, ctx, e, q, expected, expectedCols)
+	})
+}
+
+// TestPreparedQuery runs a prepared query on the engine given and asserts that results are as expected.
+func TestPreparedQueryParallel(t *testing.T,
+	harness Harness,
+	e *sqle.Engine,
+	q string,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+) {
+	t.Run(q, func(t *testing.T) {
 		t.Parallel()
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -6702,6 +6729,9 @@ func runQueryPreparedWithCtx(
 ) ([]sql.Row, sql.Schema, error) {
 	require := require.New(t)
 	parsed, err := parse.Parse(ctx, q)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	_, isInsert := parsed.(*plan.InsertInto)
 	_, isDatabaser := parsed.(sql.Databaser)
@@ -6768,10 +6798,7 @@ func runQueryPreparedWithCtx(
 	if err != nil {
 		return nil, nil, err
 	}
-	e.PreparedData[ctx.Session.ID()] = sqle.PreparedData{
-		Query: q,
-		Node:  prepared,
-	}
+	e.CachePreparedStmt(ctx, prepared, q)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
 	require.NoError(err, "Unexpected error for query %s", q)

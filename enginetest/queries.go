@@ -2342,74 +2342,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"secon"}},
 	},
 	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%a_%" ESCAPE 'a'`,
-		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$_%" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "first$_%" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{"first_row"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$_row" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$%" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{"%"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$'" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{`'`}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$\"" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{`"`}},
-	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\t' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\t"}},
-	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\n' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\n"}},
-	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\v"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "test$%test" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{"test%test"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$%%" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{"%"}, sql.Row{"test%test"}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$'%" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{`'`}, sql.Row{`test'test`}},
-	},
-	{
-		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%\"%" ESCAPE '$'`,
-		Expected: []sql.Row{sql.Row{`"`}, sql.Row{`test"test`}},
-	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE 'test$\ttest' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"test\ttest"}},
-	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\n%' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\n"}, sql.Row{"test\ntest"}},
-	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\v"}, sql.Row{"test\vtest"}},
-	},
-	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
 		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
 	},
@@ -6763,18 +6695,6 @@ var QueryTests = []QueryTest{
 		Query:    `select (('%' OR 'dsads') OR '%')`,
 		Expected: []sql.Row{{false}},
 	},
-	{
-		Query:    `show function status`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `show function status like 'foo'`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `show function status where Db='mydb'`,
-		Expected: []sql.Row{},
-	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -6863,6 +6783,86 @@ var ParallelUnsafeQueries = []QueryTest{
 		SHOW WARNINGS
 		`,
 		Expected: nil,
+	},
+	{
+		Query:    `show function status`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `show function status like 'foo'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `show function status where Db='mydb'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%a_%" ESCAPE 'a'`,
+		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$_%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "first$_%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"first_row"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$_row" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"%"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$'" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{`'`}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$\"" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{`"`}},
+	},
+	{
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\t' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\t"}},
+	},
+	{
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\n' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\n"}},
+	},
+	{
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\v"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "test$%test" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"test%test"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$%%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"%"}, sql.Row{"test%test"}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$'%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{`'`}, sql.Row{`test'test`}},
+	},
+	{
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%\"%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{`"`}, sql.Row{`test"test`}},
+	},
+	{
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE 'test$\ttest' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"test\ttest"}},
+	},
+	{
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\n%' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\n"}, sql.Row{"test\ntest"}},
+	},
+	{
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\v"}, sql.Row{"test\vtest"}},
 	},
 }
 
