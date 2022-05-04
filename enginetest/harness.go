@@ -46,7 +46,7 @@ type Harness interface {
 type CheckpointHarness interface {
 	Harness
 	// RestoreCheckpoint resets the database to a saved point
-	RestoreCheckpoint(*sql.Context, *testing.T) *sqle.Engine
+	RestoreCheckpoint(*sql.Context, *testing.T, *sqle.Engine) *sqle.Engine
 }
 
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.

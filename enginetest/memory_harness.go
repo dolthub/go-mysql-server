@@ -40,7 +40,7 @@ type MemoryHarness struct {
 	dbNames                []string
 }
 
-func (m *MemoryHarness) RestoreCheckpoint(ctx *sql.Context, t *testing.T) *sqle.Engine {
+func (m *MemoryHarness) RestoreCheckpoint(ctx *sql.Context, t *testing.T, e *sqle.Engine) *sqle.Engine {
 	dbs := make([]sql.Database, len(m.dbNames))
 	tableCnt := 0
 	for i := range m.dbNames {
@@ -146,6 +146,7 @@ var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
+var _ CheckpointHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
 
 type SkippingMemoryHarness struct {

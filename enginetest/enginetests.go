@@ -54,12 +54,12 @@ func TestQueries(t *testing.T, harness CheckpointHarness) {
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range QueryTests {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+		TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range KeylessQueries {
-			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+			TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 		}
 	}
 }
@@ -99,7 +99,7 @@ func TestSpatialQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
-		return harness.RestoreCheckpoint(ctx, t)
+		return harness.RestoreCheckpoint(ctx, t, e)
 	}
 	for _, tt := range SpatialDeleteTests {
 		runWriteQueryTest(t, harness, tt, newEngine)
@@ -172,9 +172,6 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 	for _, tt := range KeylessQueries {
-		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
-	}
-	for _, tt := range DateParseQueries {
 		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 	for _, tt := range DateParseQueries {
@@ -264,7 +261,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 		t.Fatal("harness is not ReadOnlyDatabaseHarness")
 	}
 	dbs := createReadOnlyDatabases(ro)
-	dbs = createSubsetTestData(t, harness, nil, dbs[0])
+	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
 	engine := NewEngineWithDbs(t, harness, dbs)
 	defer engine.Close()
 
@@ -734,7 +731,7 @@ func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 			}
 		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
-		e = harness.RestoreCheckpoint(ctx, t)
+		e = harness.RestoreCheckpoint(ctx, t, e)
 	}
 	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
@@ -822,7 +819,7 @@ func TestReplaceInto(t *testing.T, harness CheckpointHarness) {
 			}
 		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
-		e = harness.RestoreCheckpoint(ctx, t)
+		e = harness.RestoreCheckpoint(ctx, t, e)
 	}
 }
 
@@ -847,7 +844,10 @@ func TestUpdate(t *testing.T, harness CheckpointHarness) {
 	for _, update := range UpdateTests {
 		ctx = harness.NewContext()
 
-		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil)
+		runAndPrintln(ctx, e, "select * from mytable")
+		TestQueryWithContext(t, ctx, e, update.WriteQuery, update.ExpectedWriteResult, nil, nil)
+		runAndPrintln(ctx, e, "select * from mytable")
+
 		// If we skipped the update, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(update.WriteQuery) {
@@ -855,8 +855,8 @@ func TestUpdate(t *testing.T, harness CheckpointHarness) {
 				continue
 			}
 		}
-		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect, nil)
-		e = harness.RestoreCheckpoint(ctx, t)
+		TestQueryWithContext(t, ctx, e, update.SelectQuery, update.ExpectedSelect, nil, nil)
+		e = harness.RestoreCheckpoint(ctx, t, e)
 	}
 }
 
@@ -908,10 +908,11 @@ func TestDelete(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
 	e := harness.NewEngine(ctx, t)
 	defer e.Close()
-	for _, delete := range DeleteTests {
+	for i, delete := range DeleteTests {
+		if i > 0 {
+			e = harness.RestoreCheckpoint(ctx, t, e)
+		}
 		ctx = harness.NewContext()
-
-		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil)
 		// If we skipped the delete, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(delete.WriteQuery) {
@@ -919,10 +920,23 @@ func TestDelete(t *testing.T, harness CheckpointHarness) {
 				continue
 			}
 		}
-		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil)
-		e = harness.RestoreCheckpoint(ctx, t)
+		TestQueryWithContext(t, ctx, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, nil)
+		TestQueryWithContext(t, ctx, e, delete.SelectQuery, delete.ExpectedSelect, nil, nil)
+	}
+}
+
+func runAndPrintln(ctx *sql.Context, e *sqle.Engine, q string) {
+	sch, iter, err := e.QueryWithBindings(ctx, q, nil)
+	if err != nil {
+		panic(err)
 	}
 
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(rows)
 }
 
 func runWriteQueryTest(t *testing.T, harness CheckpointHarness, tt WriteQueryTest, newEngine func(CheckpointHarness) *sqle.Engine) {
@@ -954,7 +968,7 @@ func TestUpdateQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	e := harness.NewEngine(ctx, t)
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
-		return harness.RestoreCheckpoint(ctx, t)
+		return harness.RestoreCheckpoint(ctx, t, e)
 	}
 	defer e.Close()
 	for _, tt := range UpdateTests {
@@ -967,7 +981,7 @@ func TestDeleteQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	e := harness.NewEngine(ctx, t)
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
-		return harness.RestoreCheckpoint(ctx, t)
+		return harness.RestoreCheckpoint(ctx, t, e)
 	}
 	defer e.Close()
 	for _, tt := range DeleteTests {
@@ -980,7 +994,7 @@ func TestInsertQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	e := harness.NewEngine(ctx, t)
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
-		return harness.RestoreCheckpoint(ctx, t)
+		return harness.RestoreCheckpoint(ctx, t, e)
 	}
 	defer e.Close()
 	for _, tt := range InsertQueries {
@@ -993,7 +1007,7 @@ func TestReplaceQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	e := harness.NewEngine(ctx, t)
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
-		return harness.RestoreCheckpoint(ctx, t)
+		return harness.RestoreCheckpoint(ctx, t, e)
 	}
 	defer e.Close()
 	for _, tt := range ReplaceQueries {
@@ -6665,6 +6679,7 @@ func TestPreparedQuery(t *testing.T,
 	expectedCols []*sql.Column,
 ) {
 	t.Run(q, func(t *testing.T) {
+		t.Parallel()
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
 				t.Skipf("Skipping query %s", q)
