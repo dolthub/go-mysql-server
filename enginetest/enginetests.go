@@ -5800,7 +5800,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
 		}, t32.Schema())
 
-		RunQuery(t, e, harness, "CREATE TABLE t32_2(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, "CREATE TABLE t32_2(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
 		RunQuery(t, e, harness, `alter table t32_2 drop v1, add v1 int`)
 
 		t32, _, err = e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_2")
@@ -5812,7 +5812,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int32, Nullable: true, Source: "t32_2"},
 		}, t32.Schema())
 
-		RunQuery(t, e, harness, "CREATE TABLE t32_3(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, "CREATE TABLE t32_3(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
 		RunQuery(t, e, harness, `alter table t32_3 rename column v1 to v5, add v1 int`)
 
 		t32, _, err = e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_3")
@@ -5826,7 +5826,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		}, t32.Schema())
 
 		// Error cases: dropping a column added in the same statement, dropping a column not present in the original schema,
-		// dropping a renamed away
+		// dropping a column renamed away
 		AssertErr(t, e, harness, "alter table t32 add column vnew int, drop column vnew", sql.ErrTableColumnNotFound)
 		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v5", sql.ErrTableColumnNotFound)
 		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v3", sql.ErrTableColumnNotFound)

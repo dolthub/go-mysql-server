@@ -34,6 +34,7 @@ var OnceBeforeDefault = []Rule{
 	{resolveDatabasesId, resolveDatabases},
 	{resolveTablesId, resolveTables},
 	{reresolveTablesId, reresolveTables},
+	{validateAlterColumnId, validateAlterColumn},
 	{loadStoredProceduresId, loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{validateDropTablesId, validateDropTables},
 	{setTargetSchemasId, setTargetSchemas},
@@ -93,7 +94,6 @@ var OnceAfterDefault = []Rule{
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
-	{validateAlterColumnId, validateAlterColumn},
 	{resolveGeneratorsId, resolveGenerators},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{assignCatalogId, assignCatalog},

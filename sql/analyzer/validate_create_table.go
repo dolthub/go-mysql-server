@@ -54,10 +54,6 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if !n.Resolved() {
-		return n, transform.SameTree, nil
-	}
-
 	var sch sql.Schema
 	var indexes []string
 	var keyedColumns map[string]bool
@@ -102,7 +98,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
 
-	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
+	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
@@ -111,7 +107,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			sch, err = validateModifyColumn(sch, n.(*plan.ModifyColumn), keyedColumns)
+			sch, err = validateModifyColumn(initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -250,12 +246,14 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	return newSch, nil
 }
 
-func validateModifyColumn(schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+func validateModifyColumn(initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
 	nameable := table.(sql.Nameable)
 
-	// Look for the old column and throw an error if it's not there.
-	if schema.IndexOf(mc.Column(), nameable.Name()) == -1 {
+	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
+	// statement. This matches the MySQL behavior.
+	if schema.IndexOf(mc.Column(), nameable.Name()) == -1 ||
+		initialSch.IndexOf(mc.Column(), nameable.Name()) == -1 {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
 	}
 
