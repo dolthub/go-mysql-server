@@ -252,8 +252,8 @@ func validateModifyColumn(initialSch sql.Schema, schema sql.Schema, mc *plan.Mod
 
 	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
 	// statement. This matches the MySQL behavior.
-	if schema.IndexOf(mc.Column(), nameable.Name()) == -1 ||
-		initialSch.IndexOf(mc.Column(), nameable.Name()) == -1 {
+	if !schema.Contains(mc.Column(), nameable.Name()) ||
+		!initialSch.Contains(mc.Column(), nameable.Name())  {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
 	}
 
@@ -278,7 +278,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	// Look for the column to be dropped and throw an error if it's not there. It must exist in the original schema before
 	// this statement was run, it cannot have been added as part of this ALTER TABLE statement. This matches the MySQL
 	// behavior.
-	if initialSch.IndexOf(dc.Column, nameable.Name()) == -1 {
+	if !initialSch.Contains(dc.Column, nameable.Name()) || !sch.Contains(dc.Column, nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
 	}
 

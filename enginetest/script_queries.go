@@ -1693,20 +1693,6 @@ var ScriptTests = []ScriptTest{
 					{"v2", "int", "NO", "PRI", "", ""},
 				},
 			},
-			{
-				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v4`, ADD COLUMN v7 int NOT NULL",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
-					{"v5", "int", "NO", "", "", ""},
-					{"v6", "int", "NO", "", "", ""},
-					{"v7", "int", "NO", "", "", ""},
-				},
-			},
 		},
 	},
 	{
@@ -1874,14 +1860,14 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v3, add column (v5 int NOT NULL)",
+				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v2, add column (v5 int NOT NULL)",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
 					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v2", "int", "NO", "", "100", ""},
+					{"v3", "int", "NO", "", "", ""},
 					{"v4", "int", "YES", "", "", ""},
 					{"v5", "int", "NO", "", "", ""},
 				},
@@ -1894,7 +1880,7 @@ var ScriptTests = []ScriptTest{
 				Query: "describe test",
 				Expected: []sql.Row{
 					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v2", "int", "NO", "", "100", ""},
+					{"v3", "int", "NO", "", "", ""},
 					{"mycol", "int", "NO", "", "", ""},
 					{"v6", "int", "NO", "", "", ""},
 					{"v7", "int", "YES", "", "", ""},
@@ -2368,6 +2354,52 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:       "INSERT INTO a VALUES (1, 1)",
 				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		Name: "Multialter DDL with ADD/DROP Primary Key",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, v1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v3 int), drop primary key, add primary key (notacolumn)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
+			},
+			{ // This last modification ends up with a UNIQUE constraint on pk
+				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v2`, ADD COLUMN v7 int NOT NULL",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v4", "int", "NO", "", "", ""},
+					{"v5", "int", "NO", "", "", ""},
+					{"v6", "int", "NO", "", "", ""},
+					{"v7", "int", "NO", "", "", ""},
+				},
 			},
 		},
 	},

@@ -208,18 +208,108 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name:        "information_schema.key_column_usage works with composite foreign keys",
-			SetUpScript: []string{},
-			Query:       "INSERT INTO mytable (i,s) SELECT i * 2, concat(s,s) from mytable order by 1 desc limit 1",
-			Expected:    []sql.Row{},
+			Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
+			SetUpScript: []string{
+				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+			},
+			Assertions: []enginetest.ScriptTestAssertion{
+				{
+					Query:    "INSERT INTO test (pk) VALUES (1);",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
+				},
+				{
+					Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
+					Expected: []sql.Row{{sql.NewOkResult(0)}},
+				},
+				{
+					Query: "describe test",
+					Expected: []sql.Row{
+						{"pk", "bigint", "NO", "PRI", "", ""},
+						{"v2", "int", "NO", "", "100", ""},
+					},
+				},
+				{
+					Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
+					Expected: []sql.Row{{sql.NewOkResult(0)}},
+				},
+				{
+					Query:    "INSERT INTO test (v2) values (11)",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 100}}},
+				},
+				{
+					Query:    "SELECT * from test where pk = 100",
+					Expected: []sql.Row{{100, 11}},
+				},
+				{
+					Query:       "ALTER TABLE test DROP COLUMN v2, ADD COLUMN v3 int NOT NULL after v2",
+					ExpectedErr: sql.ErrTableColumnNotFound,
+				},
+				{
+					Query: "describe test",
+					Expected: []sql.Row{
+						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+						{"v2", "int", "NO", "", "100", ""},
+					},
+				},
+				{
+					Query:       "ALTER TABLE test DROP COLUMN v2, RENAME COLUMN v2 to v3",
+					ExpectedErr: sql.ErrTableColumnNotFound,
+				},
+				{
+					Query: "describe test",
+					Expected: []sql.Row{
+						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+						{"v2", "int", "NO", "", "100", ""},
+					},
+				},
+				{
+					Query:       "ALTER TABLE test RENAME COLUMN v2 to v3, DROP COLUMN v2",
+					ExpectedErr: sql.ErrTableColumnNotFound,
+				},
+				{
+					Query: "describe test",
+					Expected: []sql.Row{
+						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+						{"v2", "int", "NO", "", "100", ""},
+					},
+				},
+				{
+					Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v2, add column (v5 int NOT NULL)",
+					Expected: []sql.Row{{sql.NewOkResult(0)}},
+				},
+				{
+					Query: "DESCRIBE test",
+					Expected: []sql.Row{
+						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+						{"v3", "int", "NO", "", "", ""},
+						{"v4", "int", "YES", "", "", ""},
+						{"v5", "int", "NO", "", "", ""},
+					},
+				},
+				{
+					Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
+					Expected: []sql.Row{{sql.NewOkResult(0)}},
+				},
+				{
+					Query: "describe test",
+					Expected: []sql.Row{
+						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+						{"v3", "int", "NO", "", "", ""},
+						{"mycol", "int", "NO", "", "", ""},
+						{"v6", "int", "NO", "", "", ""},
+						{"v7", "int", "YES", "", "", ""},
+					},
+				},
+				// TODO: Does not include tests with column renames and defaults.
+			},
 		},
 	}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine := enginetest.NewEngine(t, harness)
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
+		// engine.Analyzer.Debug = true
+		// engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
