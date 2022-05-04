@@ -745,7 +745,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
 			if strings.ToLower(getField.Name()) == nameLowercase {
-				memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), getField.Table(), column.Name, getField.IsNullable())
+				memIndex.Exprs[i] = expression.NewGetFieldWithTable(newIdx, column.Type, getField.Table(), column.Name, column.Nullable)
 			}
 		}
 	}

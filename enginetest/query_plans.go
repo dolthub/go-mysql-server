@@ -2216,6 +2216,103 @@ var PlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
+	{
+		Query: `select i.pk, j.v3 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk;`,
+		ExpectedPlan: "Project(i.pk, j.v3)\n" +
+			" └─ IndexedJoin(i.v1 = j.pk)\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ Table(one_pk_two_idx)\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk])\n" +
+			"",
+	},
+	{
+		Query: `select i.pk, j.v3, k.c1 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk JOIN one_pk k on j.v3 = k.pk;`,
+		ExpectedPlan: "Project(i.pk, j.v3, k.c1)\n" +
+			" └─ IndexedJoin(j.v3 = k.pk)\n" +
+			"     ├─ TableAlias(k)\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ IndexedJoin(i.v1 = j.pk)\n" +
+			"         ├─ TableAlias(i)\n" +
+			"         │   └─ Table(one_pk_two_idx)\n" +
+			"         └─ TableAlias(j)\n" +
+			"             └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk])\n" +
+			"",
+	},
+	{
+		Query: `select i.pk, j.v3 from (one_pk_two_idx i JOIN one_pk_three_idx j on((i.v1 = j.pk)));`,
+		ExpectedPlan: "Project(i.pk, j.v3)\n" +
+			" └─ IndexedJoin(i.v1 = j.pk)\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ Table(one_pk_two_idx)\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk])\n" +
+			"",
+	},
+	{
+		Query: `select i.pk, j.v3, k.c1 from ((one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk))) JOIN one_pk k on((j.v3 = k.pk)));`,
+		ExpectedPlan: "Project(i.pk, j.v3, k.c1)\n" +
+			" └─ IndexedJoin(j.v3 = k.pk)\n" +
+			"     ├─ TableAlias(k)\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ IndexedJoin(i.v1 = j.pk)\n" +
+			"         ├─ TableAlias(i)\n" +
+			"         │   └─ Table(one_pk_two_idx)\n" +
+			"         └─ TableAlias(j)\n" +
+			"             └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk])\n" +
+			"",
+	},
+	{
+		Query: `select i.pk, j.v3, k.c1 from (one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk)) JOIN one_pk k on((j.v3 = k.pk)))`,
+		ExpectedPlan: "Project(i.pk, j.v3, k.c1)\n" +
+			" └─ IndexedJoin(j.v3 = k.pk)\n" +
+			"     ├─ TableAlias(k)\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ IndexedJoin(i.v1 = j.pk)\n" +
+			"         ├─ TableAlias(i)\n" +
+			"         │   └─ Table(one_pk_two_idx)\n" +
+			"         └─ TableAlias(j)\n" +
+			"             └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk])\n" +
+			"",
+	},
+	{
+		Query: `select a.* from one_pk_two_idx a RIGHT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk) on a.pk = i.v1 LEFT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v1 = l.pk) on a.pk = l.v2;`,
+		ExpectedPlan: "Project(a.pk, a.v1, a.v2)\n" +
+			" └─ LeftIndexedJoin(a.pk = l.v2)\n" +
+			"     ├─ RightIndexedJoin(a.pk = i.v1)\n" +
+			"     │   ├─ IndexedJoin(i.v1 = j.pk)\n" +
+			"     │   │   ├─ TableAlias(i)\n" +
+			"     │   │   │   └─ Table(one_pk_two_idx)\n" +
+			"     │   │   └─ TableAlias(j)\n" +
+			"     │   │       └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk])\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.pk])\n" +
+			"     └─ IndexedJoin(k.v1 = l.pk)\n" +
+			"         ├─ TableAlias(k)\n" +
+			"         │   └─ Table(one_pk_two_idx)\n" +
+			"         └─ TableAlias(l)\n" +
+			"             └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk])\n" +
+			"",
+	},
+	{
+		Query: `select a.* from one_pk_two_idx a LEFT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.pk = j.v3) on a.pk = i.pk RIGHT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v2 = l.v3) on a.v1 = l.v2;`,
+		ExpectedPlan: "Project(a.pk, a.v1, a.v2)\n" +
+			" └─ RightIndexedJoin(a.v1 = l.v2)\n" +
+			"     ├─ IndexedJoin(k.v2 = l.v3)\n" +
+			"     │   ├─ TableAlias(k)\n" +
+			"     │   │   └─ Table(one_pk_two_idx)\n" +
+			"     │   └─ TableAlias(l)\n" +
+			"     │       └─ Table(one_pk_three_idx)\n" +
+			"     └─ LeftIndexedJoin(a.pk = i.pk)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1])\n" +
+			"         └─ IndexedJoin(i.pk = j.v3)\n" +
+			"             ├─ TableAlias(j)\n" +
+			"             │   └─ Table(one_pk_three_idx)\n" +
+			"             └─ TableAlias(i)\n" +
+			"                 └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.pk])\n" +
+			"",
+	},
 }
 
 var ScriptQueryPlanTest = []ScriptTest{}

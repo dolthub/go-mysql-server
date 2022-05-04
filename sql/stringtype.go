@@ -42,7 +42,7 @@ const (
 var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
 	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
-	ErrLengthBeyondLimit = errors.NewKind("string is too large for column")
+	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
 	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation")
 
 	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength())
@@ -295,7 +295,8 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 			}
 		} else {
 			//TODO: this should count the string's length properly according to the character set
-			if int64(len(val)) > t.charLength {
+			//convert 'val' string to rune to count the character length, not byte length
+			if int64(len([]rune(val))) > t.charLength {
 				return nil, ErrLengthBeyondLimit.New()
 			}
 		}

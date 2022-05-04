@@ -119,6 +119,11 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range JoinQueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
+
+	t.Skip()
+	for _, tt := range SkippedJoinQueryTests {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+	}
 }
 
 // TestInfoSchemaPrepared runs tests of the information_schema database
@@ -367,7 +372,6 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
-	t.Skip("prepared queries do not fully support versioning")
 	if _, ok := harness.(VersionedDBHarness); !ok {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
@@ -379,6 +383,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, nil)
 	}
 
+	t.Skip("skipping tests that version using UserVars instead of BindVars")
 	for _, tt := range VersionedScripts {
 		TestScriptWithEnginePrepared(t, engine, harness, tt)
 	}
@@ -842,6 +847,10 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, expectedFailure.ExpectedErr)
 		})
+	}
+
+	for _, script := range UpdateErrorScripts {
+		TestScript(t, harness, script)
 	}
 }
 
@@ -1600,6 +1609,12 @@ func TestTriggers(t *testing.T, harness Harness) {
 	})
 }
 
+func TestRollbackTriggers(t *testing.T, harness Harness) {
+	for _, script := range RollbackTriggerTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestShowTriggers(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
@@ -1945,6 +1960,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 			})
+		} else if assertion.SkipResultsCheck {
+			RunQuery(t, e, harness, assertion.Query)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil)
 		}
@@ -2060,6 +2077,8 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
 					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, false)
+			} else if assertion.SkipResultsCheck {
+				RunQueryWithContext(t, e, clientSession, assertion.Query)
 			} else {
 				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 			}
@@ -5106,6 +5125,42 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Equal("foo", ctx.GetCurrentDatabase())
 }
 
+// TestConcurrentTransactions tests that two concurrent processes/transactions can successfully execute without early
+// cancellation.
+func TestConcurrentTransactions(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
+
+	clientSessionA := NewSession(harness)
+	clientSessionA.ProcessList = sqle.NewProcessList()
+
+	clientSessionB := NewSession(harness)
+	clientSessionB.ProcessList = sqle.NewProcessList()
+
+	var err error
+	// We want to add the query to the process list to represent the full workflow.
+	clientSessionA, err = clientSessionA.ProcessList.AddProcess(clientSessionA, "INSERT INTO a VALUES (1,1)")
+	require.NoError(err)
+	sch, iter, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")
+	require.NoError(err)
+
+	clientSessionB, err = clientSessionB.ProcessList.AddProcess(clientSessionB, "INSERT INTO a VALUES (2,2)")
+	require.NoError(err)
+	sch2, iter2, err := e.Query(clientSessionB, "INSERT INTO a VALUES (2,2)")
+	require.NoError(err)
+
+	rows, err := sql.RowIterToRows(clientSessionA, sch, iter)
+	require.NoError(err)
+	require.Len(rows, 1)
+
+	rows, err = sql.RowIterToRows(clientSessionB, sch2, iter2)
+	require.NoError(err)
+	require.Len(rows, 1)
+}
+
 func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
@@ -5575,14 +5630,12 @@ func TestNullRanges(t *testing.T, harness Harness) {
 // RunQuery runs the query given and asserts that it doesn't result in an error.
 func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 	ctx := NewContext(harness)
-	sch, iter, err := e.Query(ctx, query)
-	require.NoError(t, err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(t, err)
+	RunQueryWithContext(t, e, ctx, query)
 }
 
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
 func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string) {
+	ctx = ctx.WithQuery(query)
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(t, err)
 	_, err = sql.RowIterToRows(ctx, sch, iter)
@@ -5613,6 +5666,7 @@ func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query 
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
 func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	ctx = ctx.WithQuery(query)
 	sch, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
@@ -5648,6 +5702,7 @@ func AssertWarningAndTestQuery(
 		ctx = NewContext(harness)
 	}
 	ctx.ClearWarnings()
+	ctx = ctx.WithQuery(query)
 
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(err, "Unexpected error for query %s", query)
@@ -6726,6 +6781,7 @@ func TestPreparedQueryWithContext(
 }
 
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)

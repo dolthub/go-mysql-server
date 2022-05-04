@@ -989,7 +989,7 @@ func containsSubquery(e sql.Expression) bool {
 }
 
 func isEvaluable(e sql.Expression) bool {
-	return !containsColumns(e) && !containsSubquery(e) && !containsBindvars(e)
+	return !containsColumns(e) && !containsSubquery(e) && !containsBindvars(e) && !containsProcedureParam(e)
 }
 
 func containsBindvars(e sql.Expression) bool {
@@ -1000,6 +1000,15 @@ func containsBindvars(e sql.Expression) bool {
 			return false
 		}
 		return true
+	})
+	return result
+}
+
+func containsProcedureParam(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		_, result = e.(*expression.ProcedureParam)
+		return !result
 	})
 	return result
 }

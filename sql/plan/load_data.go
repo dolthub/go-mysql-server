@@ -82,7 +82,7 @@ func (l *LoadData) splitLines(data []byte, atEOF bool) (advance int, token []byt
 
 	// Find the index of the LINES TERMINATED BY delim.
 	if i := strings.Index(string(data), l.linesTerminatedByDelim); i >= 0 {
-		return i + 1, data[0:i], nil
+		return i + len(l.linesTerminatedByDelim), data[0:i], nil
 	}
 
 	// If at end of file with data return the data.
@@ -196,10 +196,26 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, scanner.Err()
 	}
 
+	sch := l.Schema()
+	source := sch[0].Source // Schema will always have at least one column
+	columnNames := l.ColumnNames
+	if len(columnNames) == 0 {
+		columnNames = make([]string, len(sch))
+		for i, col := range sch {
+			columnNames[i] = col.Name
+		}
+	}
+	fieldToColumnMap := make([]int, len(columnNames))
+	for fieldIndex, columnName := range columnNames {
+		fieldToColumnMap[fieldIndex] = sch.IndexOf(columnName, source)
+	}
+
 	return &loadDataIter{
 		destination:             l.Destination,
 		reader:                  reader,
 		scanner:                 scanner,
+		columnCount:             len(l.ColumnNames), // Needs to be the original column count
+		fieldToColumnMap:        fieldToColumnMap,
 		fieldsTerminatedByDelim: l.fieldsTerminatedByDelim,
 		fieldsEnclosedByDelim:   l.fieldsEnclosedByDelim,
 		fieldsOptionallyDelim:   l.fieldsOptionallyDelim,
@@ -213,6 +229,8 @@ type loadDataIter struct {
 	scanner                 *bufio.Scanner
 	destination             sql.Node
 	reader                  io.ReadCloser
+	columnCount             int
+	fieldToColumnMap        []int
 	fieldsTerminatedByDelim string
 	fieldsEnclosedByDelim   string
 	fieldsOptionallyDelim   bool
@@ -222,24 +240,12 @@ type loadDataIter struct {
 }
 
 func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
-	keepGoing := l.scanner.Scan()
-	if !keepGoing {
-		if l.scanner.Err() != nil {
-			return nil, l.scanner.Err()
-		}
-		return nil, io.EOF
-	}
-
-	line := l.scanner.Text()
-	exprs, err := l.parseFields(line)
-	if err != nil {
-		return nil, err
-	}
-
+	var exprs []sql.Expression
+	var err error
 	// If exprs is nil then this is a skipped line (see test cases). Keep skipping
 	// until exprs != nil
 	for exprs == nil {
-		keepGoing = l.scanner.Scan()
+		keepGoing := l.scanner.Scan()
 		if !keepGoing {
 			if l.scanner.Err() != nil {
 				return nil, l.scanner.Err()
@@ -247,7 +253,7 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 			return nil, io.EOF
 		}
 
-		line = l.scanner.Text()
+		line := l.scanner.Text()
 		exprs, err = l.parseFields(line)
 
 		if err != nil {
@@ -255,19 +261,28 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 		}
 	}
 
-	// TODO: Match schema with column order
-	// return the exprs as a row
-	vals := make([]interface{}, len(exprs))
+	row := make(sql.Row, len(exprs))
+	var secondPass []int
 	for i, expr := range exprs {
 		if expr != nil {
-			vals[i], err = expr.Eval(ctx, returnRow)
+			if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok && !defaultVal.IsLiteral() {
+				secondPass = append(secondPass, i)
+				continue
+			}
+			row[i], err = expr.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
+	for _, index := range secondPass {
+		row[index], err = exprs[index].Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	return sql.NewRow(vals...), nil
+	return sql.NewRow(row...), nil
 }
 
 func (l loadDataIter) Close(ctx *sql.Context) error {
@@ -334,21 +349,36 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 		limit = len(fields)
 	}
 
+	destSch := l.destination.Schema()
 	for i := 0; i < limit; i++ {
 		field := fields[i]
-		dSchema := l.destination.Schema()[i]
+		destCol := destSch[l.fieldToColumnMap[i]]
 		// Replace the empty string with defaults
 		if field == "" {
-			_, ok := dSchema.Type.(sql.StringType)
+			_, ok := destCol.Type.(sql.StringType)
 			if !ok {
-				exprs[i] = expression.NewLiteral(dSchema.Default, dSchema.Type)
+				if destCol.Default != nil {
+					exprs[i] = destCol.Default
+				} else {
+					exprs[i] = expression.NewLiteral(nil, sql.Null)
+				}
 			} else {
 				exprs[i] = expression.NewLiteral(field, sql.LongText)
 			}
 		} else if field == "NULL" {
-			exprs[i] = nil
+			exprs[i] = expression.NewLiteral(nil, sql.Null)
 		} else {
 			exprs[i] = expression.NewLiteral(field, sql.LongText)
+		}
+	}
+
+	// Due to how projections work, if no columns are provided (each row may have a variable number of values), the
+	// projection will not insert default values, so we must do it here.
+	if l.columnCount == 0 {
+		for i, expr := range exprs {
+			if expr == nil && destSch[i].Default != nil {
+				exprs[i] = destSch[i].Default
+			}
 		}
 	}
 

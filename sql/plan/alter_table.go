@@ -19,10 +19,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type RenameTable struct {
@@ -848,7 +849,7 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			return nil, err
 		}
 		if len(parentFks) > 0 || len(fks) > 0 {
-			err = updateForeignKeysForColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
+			err = handleFkColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
 			if err != nil {
 				return nil, err
 			}
@@ -985,19 +986,60 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	lowerColName := strings.ToLower(i.m.columnName)
+
 	// Update the foreign key columns as well
 	if fkTable, ok := i.alterable.(sql.ForeignKeyTable); ok {
-		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
-		if err != nil {
-			return nil, err
-		}
+		// We only care if the column is used in a foreign key
+		usedInFk := false
 		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if len(parentFks) > 0 || len(fks) > 0 {
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+	OuterChildFk:
+		for _, foreignKey := range fks {
+			for _, colName := range foreignKey.Columns {
+				if strings.ToLower(colName) == lowerColName {
+					usedInFk = true
+					break OuterChildFk
+				}
+			}
+		}
+		if !usedInFk {
+		OuterParentFk:
+			for _, foreignKey := range parentFks {
+				for _, colName := range foreignKey.ParentColumns {
+					if strings.ToLower(colName) == lowerColName {
+						usedInFk = true
+						break OuterParentFk
+					}
+				}
+			}
+		}
+
+		tblSch := i.m.targetSchema
+		if usedInFk {
 			if !i.m.targetSchema[idx].Type.Equals(i.m.column.Type) {
-				return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
+				// There seems to be a special case where you can lengthen a CHAR/VARCHAR/BINARY/VARBINARY.
+				// Have not tested every type nor combination, but this seems specific to those 4 types.
+				if tblSch[idx].Type.Type() == i.m.column.Type.Type() {
+					switch i.m.column.Type.Type() {
+					case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
+						oldType := tblSch[idx].Type.(sql.StringType)
+						newType := i.m.column.Type.(sql.StringType)
+						if oldType.Collation() != newType.Collation() || oldType.MaxCharacterLength() > newType.MaxCharacterLength() {
+							return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
+						}
+					default:
+						return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
+					}
+				} else {
+					return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
+				}
 			}
 			if !i.m.column.Nullable {
 				lowerColName := strings.ToLower(i.m.columnName)
@@ -1011,7 +1053,7 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 					}
 				}
 			}
-			err = updateForeignKeysForColumnRename(ctx, fkTable, i.m.db, i.m.columnName, i.m.column.Name)
+			err = handleFkColumnRename(ctx, fkTable, i.m.db, i.m.columnName, i.m.column.Name)
 			if err != nil {
 				return nil, err
 			}
@@ -1166,13 +1208,7 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 	return nil
 }
 
-func updateForeignKeysForColumnRename(
-		ctx *sql.Context,
-		fkTable sql.ForeignKeyTable,
-		db sql.Database,
-		oldName string,
-		newName string,
-) error {
+func handleFkColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
 	lowerOldName := strings.ToLower(oldName)
 	if lowerOldName == strings.ToLower(newName) {
 		return nil

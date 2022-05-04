@@ -434,6 +434,7 @@ func TestAnalyzer(t *testing.T) {
 			require.NoError(t, err)
 
 			analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
+			analyzed = analyzer.StripPassthroughNodes(analyzed)
 			if tt.err != nil {
 				require.Error(t, err)
 				assert.True(t, tt.err.Is(err))

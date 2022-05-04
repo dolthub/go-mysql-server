@@ -33,6 +33,7 @@ var OnceBeforeDefault = []Rule{
 	{liftRecursiveCtesId, hoistRecursiveCte},
 	{resolveDatabasesId, resolveDatabases},
 	{resolveTablesId, resolveTables},
+	{reresolveTablesId, reresolveTables},
 	{loadStoredProceduresId, loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{validateDropTablesId, validateDropTables},
 	{setTargetSchemasId, setTargetSchemas},
@@ -57,7 +58,6 @@ var OnceBeforeDefault = []Rule{
 	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 	{stripDecorationsId, stripDecorations},
 	{validateJoinComplexityId, validateJoinComplexity},
-	{unresolveTablesId, unresolveTables},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -120,6 +120,7 @@ var OnceAfterDefault = []Rule{
 	{assignRoutinesId, assignRoutines},
 	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
+	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
 }
 
@@ -142,6 +143,7 @@ var DefaultValidationRules = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
+	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},
 	{clearWarningsId, clearWarnings},

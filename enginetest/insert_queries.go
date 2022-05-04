@@ -1269,6 +1269,18 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "INSERT string with exact char length but extra byte length",
+		SetUpScript: []string{
+			"CREATE TABLE city (id int PRIMARY KEY, district char(20) NOT NULL DEFAULT '');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO city VALUES (1,'San Pedro de Macorís');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
 		Name: "Insert on duplicate key",
 		SetUpScript: []string{
 			`CREATE TABLE users (
@@ -1406,6 +1418,14 @@ var InsertErrorScripts = []ScriptTest{
 		Name:        "create auto_increment column with default",
 		Query:       "create table bad (pk1 int auto_increment default 10, c0 int);",
 		ExpectedErr: sql.ErrInvalidAutoIncCols,
+	},
+	{
+		Name: "try inserting string that is too long",
+		SetUpScript: []string{
+			"create table bad (s varchar(9))",
+		},
+		Query:       "insert into bad values ('1234567890')",
+		ExpectedErr: sql.ErrLengthBeyondLimit,
 	},
 }
 

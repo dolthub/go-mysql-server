@@ -811,6 +811,8 @@ func fds(e sql.Expression) int {
 	switch e.(type) {
 	case *expression.UnresolvedColumn:
 		return 1
+	case *expression.UnresolvedFunction:
+		return 1
 	default:
 		return sql.NumColumns(e.Type())
 	}

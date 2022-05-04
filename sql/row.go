@@ -117,7 +117,7 @@ func RowIterToRows(ctx *Context, sch Schema, i RowIter) ([]Row, error) {
 		}
 
 		if err != nil {
-			_ = i.Close(ctx)
+			i.Close(ctx)
 			return nil, err
 		}
 

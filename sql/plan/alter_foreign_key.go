@@ -243,7 +243,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	for i := range fkDef.Columns {
 		col := cols[strings.ToLower(fkDef.Columns[i])]
 		parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
-		if !col.Type.Equals(parentCol.Type) {
+		if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
 			return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
 		}
 		sqlParserType := col.Type.Type()
@@ -496,9 +496,8 @@ func FindForeignKeyColMapping(
 			return nil, nil, fmt.Errorf("index column `%s` in foreign key `%s` cannot be found",
 				destFKCols[fkIdx], fkName)
 		}
-		//TODO: add equality checks to types
-		if indexTypeMap[destFkCol] != expectedType {
-			return nil, nil, fmt.Errorf("mismatched types")
+		if !foreignKeyComparableTypes(ctx, indexTypeMap[destFkCol], expectedType) {
+			return nil, nil, sql.ErrForeignKeyColumnTypeMismatch.New(colName, destFkCol)
 		}
 		indexPositions[indexPos] = localRowPos
 	}
@@ -573,6 +572,30 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexedTable, prefixCols []st
 		sortedIndexes[i] = indexesWithLen[i].Index
 	}
 	return sortedIndexes[0], true, nil
+}
+
+// foreignKeyComparableTypes returns whether the two given types are able to be used as parent/child columns in a
+// foreign key.
+func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type) bool {
+	if !type1.Equals(type2) {
+		// There seems to be a special case where CHAR/VARCHAR/BINARY/VARBINARY can have unequal lengths.
+		// Have not tested every type nor combination, but this seems specific to those 4 types.
+		if type1.Type() == type2.Type() {
+			switch type1.Type() {
+			case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
+				type1String := type1.(sql.StringType)
+				type2String := type2.(sql.StringType)
+				if type1String.Collation() != type2String.Collation() {
+					return false
+				}
+			default:
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
 }
 
 // TODO: copy of analyzer.exprsAreIndexSubset, need to shift stuff around to eliminate import cycle

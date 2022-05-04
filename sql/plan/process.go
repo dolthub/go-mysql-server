@@ -543,7 +543,7 @@ func IsShowNode(node sql.Node) bool {
 		*ShowDatabases, *ShowCreateDatabase,
 		*ShowColumns, *ShowIndexes,
 		*ShowProcessList, *ShowTableStatus,
-		*ShowVariables, *ShowWarnings:
+		*ShowVariables, ShowWarnings:
 		return true
 	default:
 		return false
