@@ -166,10 +166,10 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return n, transform.NewTree, nil
 		case *plan.AlterDefaultSet:
 			// TODO
-			// n, err := n.WithTargetSchema(sch)
-			// if err != nil {
-			// 	return nil, transform.SameTree, err
-			// }
+			n, err := nn.WithTargetSchema(sch)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			sch, err = validateAlterDefault(initialSch, sch, n.(*plan.AlterDefaultSet))
 			if err != nil {
 				return nil, transform.SameTree, err

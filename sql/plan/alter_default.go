@@ -25,12 +25,14 @@ import (
 // AlterDefaultSet represents the ALTER COLUMN SET DEFAULT statement.
 type AlterDefaultSet struct {
 	ddlNode
-	Table      sql.Node
-	ColumnName string
-	Default    *sql.ColumnDefaultValue
+	Table        sql.Node
+	ColumnName   string
+	Default      *sql.ColumnDefaultValue
+	targetSchema sql.Schema
 }
 
 var _ sql.Expressioner = (*AlterDefaultSet)(nil)
+var _ sql.SchemaTarget = (*AlterDefaultSet)(nil)
 
 // AlterDefaultDrop represents the ALTER COLUMN DROP DEFAULT statement.
 type AlterDefaultDrop struct {
@@ -113,24 +115,33 @@ func (d *AlterDefaultSet) Resolved() bool {
 	return d.Table.Resolved() && d.ddlNode.Resolved()
 }
 
-// Expressions implements the sql.Expressioner interface.
 func (d *AlterDefaultSet) Expressions() []sql.Expression {
-	return expression.WrapExpressions(d.Default)
+	return append(wrappedColumnDefaults(d.targetSchema), expression.WrapExpressions(d.Default)...)
 }
 
-// WithExpressions implements the sql.Expressioner interface.
-func (d *AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), 1)
+func (d AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1+len(d.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), 1+len(d.targetSchema))
 	}
-	nd := *d
-	unwrappedColDefVal, ok := exprs[0].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+
+	d.targetSchema = schemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+
+	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
-		nd.Default = unwrappedColDefVal
+		d.Default = unwrappedColDefVal
 	} else { // nil fails type check
-		nd.Default = nil
+		d.Default = nil
 	}
-	return &nd, nil
+	return &d, nil
+}
+
+func (d AlterDefaultSet) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	d.targetSchema = schema
+	return &d, nil
+}
+
+func (d *AlterDefaultSet) TargetSchema() sql.Schema {
+	return d.targetSchema
 }
 
 func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) {
