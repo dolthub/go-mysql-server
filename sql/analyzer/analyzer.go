@@ -16,13 +16,14 @@ package analyzer
 
 import (
 	"fmt"
+	"os"
+	"reflect"
+	"strings"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
-	"os"
-	"reflect"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
