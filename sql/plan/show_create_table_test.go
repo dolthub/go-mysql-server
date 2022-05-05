@@ -60,7 +60,7 @@ func TestShowCreateTable(t *testing.T) {
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`)\n"+
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
 	require.Equal(expected, row)
@@ -110,7 +110,7 @@ func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
 			"  `zab` int DEFAULT 0\n"+
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
 	require.Equal(expected, row)
@@ -152,7 +152,7 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 			"  `pok` char(123),\n"+
 			"  `zab` int DEFAULT 0,\n"+
 			"  PRIMARY KEY (`zab`,`baz`)\n"+
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
 	require.Equal(expected, row)
@@ -265,7 +265,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
 			"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`),\n"+
 			"  CONSTRAINT `mycheck` CHECK ((`zab` > 0))\n"+
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
 	require.Equal(expected, row)
