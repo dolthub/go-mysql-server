@@ -33,6 +33,7 @@ var OnceBeforeDefault = []Rule{
 	{liftRecursiveCtesId, hoistRecursiveCte},
 	{resolveDatabasesId, resolveDatabases},
 	{resolveTablesId, resolveTables},
+	{reresolveTablesId, reresolveTables},
 	{loadStoredProceduresId, loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{validateDropTablesId, validateDropTables},
 	{setTargetSchemasId, setTargetSchemas},
@@ -57,7 +58,6 @@ var OnceBeforeDefault = []Rule{
 	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 	{stripDecorationsId, stripDecorations},
 	{validateJoinComplexityId, validateJoinComplexity},
-	{unresolveTablesId, unresolveTables},
 }
 
 // DefaultRules to apply when analyzing nodes.

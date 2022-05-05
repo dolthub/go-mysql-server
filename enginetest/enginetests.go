@@ -372,7 +372,6 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
-	t.Skip("prepared queries do not fully support versioning")
 	if _, ok := harness.(VersionedDBHarness); !ok {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
@@ -384,6 +383,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 		TestPreparedQuery(t, harness, engine, tt.Query, tt.Expected, nil)
 	}
 
+	t.Skip("skipping tests that version using UserVars instead of BindVars")
 	for _, tt := range VersionedScripts {
 		TestScriptWithEnginePrepared(t, engine, harness, tt)
 	}
@@ -1960,6 +1960,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 			})
+		} else if assertion.SkipResultsCheck {
+			RunQuery(t, e, harness, assertion.Query)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil)
 		}
@@ -2075,6 +2077,8 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
 					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, false)
+			} else if assertion.SkipResultsCheck {
+				RunQueryWithContext(t, e, clientSession, assertion.Query)
 			} else {
 				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 			}
@@ -5591,14 +5595,12 @@ func TestNullRanges(t *testing.T, harness Harness) {
 // RunQuery runs the query given and asserts that it doesn't result in an error.
 func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 	ctx := NewContext(harness)
-	sch, iter, err := e.Query(ctx, query)
-	require.NoError(t, err)
-	_, err = sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(t, err)
+	RunQueryWithContext(t, e, ctx, query)
 }
 
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
 func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string) {
+	ctx = ctx.WithQuery(query)
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(t, err)
 	_, err = sql.RowIterToRows(ctx, sch, iter)
@@ -5629,6 +5631,7 @@ func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query 
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
 func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	ctx = ctx.WithQuery(query)
 	sch, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
@@ -5664,6 +5667,7 @@ func AssertWarningAndTestQuery(
 		ctx = NewContext(harness)
 	}
 	ctx.ClearWarnings()
+	ctx = ctx.WithQuery(query)
 
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(err, "Unexpected error for query %s", query)
@@ -6711,6 +6715,7 @@ func TestPreparedQueryWithContext(
 }
 
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)
