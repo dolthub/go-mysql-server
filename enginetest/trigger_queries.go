@@ -1976,6 +1976,86 @@ end;`,
 				Expected: []sql.Row{{0}},
 			},
 		},
+	}, {
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+			"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+			"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t0;",
+				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+			},
+			{
+				Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL add_to_t1(NEW.v1, NEW.v2); END;",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "CREATE PROCEDURE add_to_t1(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num+3, msg);",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM t0;",
+				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 5, "ggg"}},
+			},
+			{
+				Query:    "SELECT * FROM t1;",
+				Expected: []sql.Row{{1, 8, "ggg"}},
+			},
+		},
+	}, {
+		Name: "procedure that triggers with non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+			"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+			"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t0;",
+				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+			},
+			{
+				Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
+INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
+				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+			},
+			{
+				Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "CALL add_entry(4, 'aaa');",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM t0;",
+				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
+			},
+			{
+				Query:    "SELECT * FROM t1;",
+				Expected: []sql.Row{{1, 8, "aaa"}},
+			},
+			{
+				Query:          "CALL add_entry(54, 'bbb');",
+				ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
+			},
+		},
 	},
 }
 
