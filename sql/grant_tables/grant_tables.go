@@ -30,7 +30,7 @@ import (
 
 // PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
-type PersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
+type PersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge, colStats []*ColStats) error
 
 // GrantTables are the collection of tables that are used with any user or privilege-related operations.
 // https://dev.mysql.com/doc/refman/8.0/en/grant-tables.html
@@ -227,6 +227,8 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 		return g.db, true, nil
 	case tablesPrivTblName:
 		return g.tables_priv, true, nil
+	case colStatsTblName:
+		return g.col_stats, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -234,7 +236,13 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 
 // GetTableNames implements the interface sql.Database.
 func (g *GrantTables) GetTableNames(ctx *sql.Context) ([]string, error) {
-	return []string{userTblName, dbTblName, tablesPrivTblName, roleEdgesTblName}, nil
+	return []string{
+		userTblName,
+		dbTblName,
+		tablesPrivTblName,
+		roleEdgesTblName,
+		colStatsTblName,
+	}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
@@ -337,6 +345,11 @@ func (g *GrantTables) UserTable() *grantTable {
 // RoleEdgesTable returns the "role_edges" table.
 func (g *GrantTables) RoleEdgesTable() *grantTable {
 	return g.role_edges
+}
+
+// ColumnStatisticsTable returns the "col_stats" table.
+func (g *GrantTables) ColumnStatisticsTable() *colStatsTable {
+	return g.col_stats
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given

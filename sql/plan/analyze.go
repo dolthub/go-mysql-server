@@ -3,8 +3,11 @@ package plan
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"io"
 )
 
+// TODO: do i need additional database argument?
 type Analyze struct {
 	db  sql.Database
 	tbl sql.Node
@@ -28,9 +31,22 @@ func (n *Analyze) String() string {
 	return fmt.Sprintf("Analyze table %s.%s", n.db.Name(), n.tbl.String())
 }
 
+// Database implements the interface sql.Databaser.
+func (n *Analyze) Database() sql.Database {
+	return n.db
+}
+
+// WithDatabase implements the interface sql.Databaser.
+func (n *Analyze) WithDatabase(db sql.Database) (sql.Node, error) {
+	nn := *n
+	nn.db = db
+	return &nn, nil
+}
+
 // Resolved implements the Resolvable interface.
 func (n *Analyze) Resolved() bool {
-	return true
+	_, ok := n.db.(sql.UnresolvedDatabase)
+	return !ok
 }
 
 // Children implements the interface sql.Node.
@@ -53,5 +69,79 @@ func (n *Analyze) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOper
 
 // RowIter implements the interface sql.Node.
 func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	// Assume table is in current database
+	database := ctx.GetCurrentDatabase()
+	if database == "" {
+		return nil, sql.ErrNoDatabaseSelected.New()
+	}
+
+	// Access mysql db, which is called GrantTables for now
+	mysql, ok := n.db.(*grant_tables.GrantTables)
+	if !ok {
+		return nil, sql.ErrDatabaseNotFound.New("mysql")
+	}
+
+	// Get column statistics table
+	colStatsTableData := mysql.ColumnStatisticsTable().Data()
+
+	// Check if table was resolved
+	tbl, ok := n.tbl.(*ResolvedTable)
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(n.tbl.String())
+	}
+
+	// Calculate stats
+	tblIter, err := tbl.RowIter(ctx, row)
+	if err != nil {
+		return nil, sql.ErrTableNotFound.New("couldn't read from table")
+	}
+	defer func() {
+		tblIter.Close(ctx)
+	}()
+
+	count := 0
+	//means := make([]float64, len(tbl.Schema()))
+	for {
+		// Get row
+		_, err := tblIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: means, median, not null
+		count++
+	}
+
+	// Go through each column of table we want to analyze
+	for _, col := range tbl.Schema() {
+		// Create Primary Key for lookup
+		colStatsPk := grant_tables.ColStatsPrimaryKey{
+			SchemaName: database,
+			TableName:  tbl.String(),
+			ColumnName: col.Name,
+		}
+
+		// Remove if existing
+		existingRows := colStatsTableData.Get(colStatsPk)
+		for _, row := range existingRows {
+			colStatsTableData.Remove(ctx, colStatsPk, row)
+		}
+
+		// Insert new
+		colStatsTableData.Put(ctx, &grant_tables.ColStats{
+			SchemaName: database,
+			TableName:  tbl.String(),
+			ColumnName: col.Name,
+			Count:      uint64(count),
+			Mean:       0,
+			Median:     0,
+		})
+	}
+
+	// TODO: persist?
+
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }
