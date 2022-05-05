@@ -110,8 +110,10 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	)
 
 	triggerLogic, _, err := a.analyzeWithSelector(ctx, ct.Body, (*Scope)(nil).newScope(scopeNode), SelectAllBatches, sel)
-	if err != nil && !sql.ErrTableNotFound.Is(err) {
-		return nil, transform.SameTree, err
+	if err != nil {
+		if !sql.ErrTableNotFound.Is(err) && !sql.ErrStoredProcedureDoesNotExist.Is(err) {
+			return nil, transform.SameTree, err
+		}
 	}
 
 	node, err = ct.WithChildren(ct.Table, StripPassthroughNodes(triggerLogic))
