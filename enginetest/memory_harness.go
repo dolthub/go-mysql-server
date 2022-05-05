@@ -42,18 +42,21 @@ type MemoryHarness struct {
 }
 
 func (m *MemoryHarness) RestoreCheckpoint(ctx *sql.Context, t *testing.T, e *sqle.Engine) *sqle.Engine {
-	dbs := make([]sql.Database, len(m.dbNames))
-	tableCnt := 0
-	for i := range m.dbNames {
-		db := memory.NewDatabase(m.dbNames[i])
-		for tableCnt < m.dbOff[i] {
-			t := memory.CopyTable(m.checkpointTables[tableCnt])
-			db.AddTable(t.Name(), t)
-			tableCnt++
-		}
-		dbs[i] = db
-	}
-	return NewEngineWithDbs(t, m, dbs)
+	dbs := CreateTestData(t, m)
+	engine := NewEngineWithDbs(t, m, dbs)
+	return engine
+	//dbs := make([]sql.Database, len(m.dbNames))
+	//tableCnt := 0
+	//for i := range m.dbNames {
+	//	db := memory.NewDatabase(m.dbNames[i])
+	//	for tableCnt < m.dbOff[i] {
+	//		t := memory.CopyTable(m.checkpointTables[tableCnt])
+	//		db.AddTable(t.Name(), t)
+	//		tableCnt++
+	//	}
+	//	dbs[i] = db
+	//}
+	//return NewEngineWithDbs(t, m, dbs)
 }
 
 func (m *MemoryHarness) NewEngine(ctx *sql.Context, t *testing.T) *sqle.Engine {
@@ -282,17 +285,6 @@ func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyData
 
 type ExternalStoredProcedureMemoryHarness struct {
 	*MemoryHarness
-}
-
-func (h ExternalStoredProcedureMemoryHarness) RestoreCheckpoint() *sqle.Engine {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (h ExternalStoredProcedureMemoryHarness) NewEngine(ctx *sql.Context, t *testing.T) *sqle.Engine {
-	//TODO implement me
-	panic("implement me")
-	return nil
 }
 
 var _ Harness = ExternalStoredProcedureMemoryHarness{}

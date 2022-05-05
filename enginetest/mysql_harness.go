@@ -33,11 +33,12 @@ type MySQLHarness struct {
 }
 
 func (m *MySQLHarness) NewEngine(context *sql.Context, t *testing.T) *sqle.Engine {
-	panic("not implemented")
+	dbs := CreateTestData(t, m)
+	engine := NewEngineWithDbs(t, m, dbs)
+	return engine
 }
 
 func (m *MySQLHarness) Cleanup() error {
-	//TODO implement me
 	return nil
 }
 

@@ -688,19 +688,17 @@ func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 	e := harness.NewEngine(ctx, t)
 	defer e.Close()
 	for i, insertion := range InsertQueries {
-		if i > 0 {
-			e = harness.RestoreCheckpoint(ctx, t, e)
-		}
-		ctx = harness.NewContext()
-
-		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
-		// If we skipped the insert, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(insertion.WriteQuery) {
 				t.Logf("Skipping query %s", insertion.SelectQuery)
 				continue
 			}
 		}
+		if i > 0 {
+			e = harness.RestoreCheckpoint(ctx, t, e)
+		}
+		ctx = harness.NewContext()
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
 	}
 	for _, script := range InsertScripts {
