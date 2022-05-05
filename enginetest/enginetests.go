@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -45,6 +46,15 @@ import (
 	"github.com/dolthub/go-mysql-server/test"
 )
 
+var enableParallel = true
+var enableParallelFlag = "GMS_ENABLE_PARALLEL_ENGINETESTS"
+
+func init() {
+	if v := os.Getenv(enableParallelFlag); v == "0" {
+		enableParallel = false
+	}
+}
+
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
@@ -54,7 +64,11 @@ func TestQueries(t *testing.T, harness Harness) {
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range QueryTests {
-		TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+		if enableParallel {
+			TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+		} else {
+			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+		}
 	}
 
 	for _, tt := range ParallelUnsafeQueries {
@@ -63,7 +77,11 @@ func TestQueries(t *testing.T, harness Harness) {
 
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range KeylessQueries {
-			TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+			if enableParallel {
+				TestQueryParallel(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+			} else {
+				TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns)
+			}
 		}
 	}
 }
@@ -683,6 +701,18 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func mustCall(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
+	sch, iter, err := e.Query(ctx, q)
+	if err != nil {
+		panic(err)
+	}
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	if err != nil {
+		panic(err)
+	}
+	return rows
+}
+
 func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
 	e := harness.NewEngine(ctx, t)
@@ -698,8 +728,8 @@ func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 			e = harness.RestoreCheckpoint(ctx, t, e)
 		}
 		ctx = harness.NewContext()
-		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil)
-		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil)
+		TestQueryWithContext(t, ctx, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, nil)
+		TestQueryWithContext(t, ctx, e, insertion.SelectQuery, insertion.ExpectedSelect, nil, nil)
 	}
 	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
@@ -5668,7 +5698,11 @@ func TestNullRanges(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, `CREATE INDEX idx1 ON a (y);`)
 	RunQuery(t, e, harness, `INSERT INTO a VALUES (0,0), (1,1), (2,2), (3,null), (4,null)`)
 	for _, tt := range tests {
-		TestQueryParallel(t, harness, e, tt.query, tt.exp, nil)
+		if enableParallel {
+			TestQueryParallel(t, harness, e, tt.query, tt.exp, nil)
+		} else {
+			TestQuery(t, harness, e, tt.query, tt.exp, nil)
+		}
 	}
 }
 
