@@ -41,6 +41,8 @@ type GrantTables struct {
 	role_edges  *grantTable
 	db          *grantTableShim
 	tables_priv *grantTableShim
+
+	col_stats *colStatsTable
 	//TODO: add the rest of these tables
 	//global_grants    *grantTable
 	//columns_priv     *grantTable
@@ -61,6 +63,7 @@ func CreateEmptyGrantTables() *GrantTables {
 	grantTables := &GrantTables{
 		user:       newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
 		role_edges: newGrantTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
+		col_stats:  newStatsTable(colStatsTblName, colStatsTblSchema, &ColStats{}, ColStatsPrimaryKey{}, ColStatsSecondaryKey{}),
 	}
 
 	// shims
