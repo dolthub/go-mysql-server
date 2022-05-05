@@ -462,11 +462,13 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 	// columns of the expression on the left.
 	// * Every other expression with operands must have NumColumns == 1.
 
-	// We do not use plan.InspectExpressions here because we're treating
-	// top-level expressions of sql.Node differently from subexpressions.
+	// *plan.CreateTrigger can contain UnresolvedTable with UnresolvedColumns that cannot be operand-validated.
 	if _, ok := n.(*plan.CreateTrigger); ok {
 		return n, transform.SameTree, nil
 	}
+
+	// We do not use plan.InspectExpressions here because we're treating
+	// top-level expressions of sql.Node differently from subexpressions.
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		if n == nil {
