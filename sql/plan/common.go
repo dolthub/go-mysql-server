@@ -104,7 +104,7 @@ func nodeRepresentsSelect(s sql.Node) bool {
 	transform.Inspect(s, func(node sql.Node) bool {
 		switch node.(type) {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
-			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update:
+			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update, *Into:
 			return false
 		case *ResolvedTable, *ProcedureResolvedTable:
 			isSelect = true
