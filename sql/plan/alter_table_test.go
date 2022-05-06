@@ -99,7 +99,7 @@ func TestAddColumnToSchema(t *testing.T) {
 			},
 			order: &sql.ColumnOrder{First: true},
 			newSchema:   sql.Schema{
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, sql.Int64, "i", false), sql.Int64, false, true),},
+				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true),},
 				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
@@ -127,6 +127,32 @@ func TestAddColumnToSchema(t *testing.T) {
 			projections: []sql.Expression{
 				expression.NewGetField(0, sql.Int64, "i", false),
 				colDefaultExpression{&sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"}},
+				expression.NewGetField(1, varchar20, "s", false),
+			},
+		},
+		{
+			name: "add in middle with default",
+			schema:      myTable,
+			newColumn:   &sql.Column{
+				Name: "i2",
+				Type: sql.Int64,
+				Source: "mytable",
+				Default: mustDefault(expression.NewGetField(2, sql.Int64, "s", false), sql.Int64, false, true),
+			},
+			order: &sql.ColumnOrder{AfterColumn: "i"},
+			newSchema:   sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true),},
+				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
+			},
+			projections: []sql.Expression{
+				expression.NewGetField(0, sql.Int64, "i", false),
+				colDefaultExpression{&sql.Column{
+					Name: "i2",
+					Type: sql.Int64,
+					Source: "mytable",
+					Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true),
+				}},
 				expression.NewGetField(1, varchar20, "s", false),
 			},
 		},
