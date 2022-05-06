@@ -3,9 +3,10 @@ package plan
 import (
 	"fmt"
 
+	"io"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
-	"io"
 )
 
 // TODO: do i need additional database argument?
