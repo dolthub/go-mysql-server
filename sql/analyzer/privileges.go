@@ -27,18 +27,18 @@ import (
 // to execute it.
 //TODO: add the remaining statements that interact with the grant tables
 func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	grantTables := a.Catalog.MySQLTables
+	mysqlTables := a.Catalog.MySQLTables
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
-		grantTables.Enabled = true
+		mysqlTables.Enabled = true
 	}
-	if !grantTables.Enabled {
+	if !mysqlTables.Enabled {
 		return n, transform.SameTree, nil
 	}
 
 	client := ctx.Session.Client()
-	user := grantTables.GetUser(client.User, client.Address, false)
+	user := mysqlTables.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
