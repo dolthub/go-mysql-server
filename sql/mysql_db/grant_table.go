@@ -20,9 +20,7 @@ import (
 )
 
 type grantTable struct {
-	name string
-	sch  sql.Schema
-	data *in_mem_table.Data
+	mysqlTableImpl
 }
 
 //var _ sql.Table = (*grantTable)(nil)
@@ -43,9 +41,11 @@ func newGrantTable(
 	secondaryKeys ...in_mem_table.Key,
 ) *grantTable {
 	return &grantTable{
-		name: name,
-		sch:  sch,
-		data: in_mem_table.NewData(entryRef, primaryKey, secondaryKeys),
+		mysqlTableImpl{
+			name: name,
+			sch:  sch,
+			data: in_mem_table.NewData(entryRef, primaryKey, secondaryKeys),
+		},
 	}
 }
 
