@@ -21,14 +21,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 )
 
-// User represents a user from the user Grant Table.
+// User represents a user from the user Grant Tables.
 type ColStats struct {
 	SchemaName string
 	TableName  string
 	ColumnName string
 	Count      uint64
 	Mean       float64
-	Median     float64
+	Min        float64
+	Max        float64
 }
 
 var _ in_mem_table.Entry = (*ColStats)(nil)
@@ -44,7 +45,8 @@ func (c *ColStats) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry
 		ColumnName: row[colStatsTblColIndex_Column].(string),
 		Count:      row[colStatsTblColIndex_Count].(uint64),
 		Mean:       row[colStatsTblColIndex_Mean].(float64),
-		Median:     row[colStatsTblColIndex_Median].(float64),
+		Min:        row[colStatsTblColIndex_Min].(float64),
+		Max:        row[colStatsTblColIndex_Max].(float64),
 	}, nil
 }
 
@@ -73,7 +75,8 @@ func (c *ColStats) ToRow(ctx *sql.Context) sql.Row {
 	row[colStatsTblColIndex_Column] = c.ColumnName
 	row[colStatsTblColIndex_Count] = c.Count
 	row[colStatsTblColIndex_Mean] = c.Mean
-	row[colStatsTblColIndex_Median] = c.Median
+	row[colStatsTblColIndex_Min] = c.Min
+	row[colStatsTblColIndex_Max] = c.Max
 	return row
 }
 
@@ -88,7 +91,8 @@ func (c *ColStats) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool 
 		c.ColumnName == other.ColumnName &&
 		c.Count == other.Count &&
 		c.Mean == other.Mean &&
-		c.Median == other.Median
+		c.Min == other.Min &&
+		c.Max == other.Max
 }
 
 // Copy implements the interface in_mem_table.Entry.

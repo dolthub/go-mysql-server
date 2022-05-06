@@ -41,12 +41,13 @@ type ColStatsPrimaryKey struct {
 	ColumnName string
 }
 
-// ColStatsSecondaryKey is a key that represents the secondary key for the "user" Grant Table, which contains stats data.
+// ColStatsSecondaryKey is a key that represents the secondary key for the "user" Grant Tables, which contains stats data.
 type ColStatsSecondaryKey struct {
 	//TODO: eventually condense into histogram with json(?) type
-	Count  uint64
-	Mean   float64
-	Median float64
+	Count uint64
+	Mean  float64
+	Min   float64
+	Max   float64
 }
 
 var _ in_mem_table.Key = ColStatsPrimaryKey{}
@@ -97,9 +98,10 @@ func (u ColStatsSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.
 		return nil, errColStatsSkEntry
 	}
 	return ColStatsSecondaryKey{
-		Count:  colStats.Count,
-		Mean:   colStats.Mean,
-		Median: colStats.Median,
+		Count: colStats.Count,
+		Mean:  colStats.Mean,
+		Min:   colStats.Min,
+		Max:   colStats.Max,
 	}, nil
 }
 
@@ -116,19 +118,24 @@ func (u ColStatsSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_
 	if !ok {
 		return u, errColStatsSkRow
 	}
-	median, ok := row[colStatsTblColIndex_Median].(float64)
+	min, ok := row[colStatsTblColIndex_Min].(float64)
+	if !ok {
+		return u, errColStatsSkRow
+	}
+	max, ok := row[colStatsTblColIndex_Max].(float64)
 	if !ok {
 		return u, errColStatsSkRow
 	}
 
 	return ColStatsSecondaryKey{
-		Count:  count,
-		Mean:   mean,
-		Median: median,
+		Count: count,
+		Mean:  mean,
+		Min:   min,
+		Max:   max,
 	}, nil
 }
 
-// init creates the schema for the "user" Grant Table.
+// init creates the schema for the "user" Grant Tables.
 func init() {
 	// Types
 	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
@@ -159,22 +166,24 @@ func init() {
 
 	colStatsTblSchema = sql.Schema{
 		columnTemplate("Schema", colStatsTblName, true, char64_utf8_bin_not_null_default_empty),
-		columnTemplate("Table", colStatsTblName, true, char64_utf8_bin_not_null_default_empty),
+		columnTemplate("Tables", colStatsTblName, true, char64_utf8_bin_not_null_default_empty),
 		columnTemplate("Column", colStatsTblName, true, char64_utf8_bin_not_null_default_empty),
 		columnTemplate("Count", colStatsTblName, true, uint64_default_nil),
 		columnTemplate("Mean", colStatsTblName, true, float64_default_nil),
-		columnTemplate("Median", colStatsTblName, true, float64_default_nil),
+		columnTemplate("Min", colStatsTblName, true, float64_default_nil),
+		columnTemplate("Max", colStatsTblName, true, float64_default_nil),
 		//columnTemplate("Histogram", colStatsTblName, true, json_nullable_default_nil),
 	}
 }
 
-// These represent the column indexes of the "user" Grant Table.
+// These represent the column indexes of the "user" Grant Tables.
 const (
 	colStatsTblColIndex_Schema int = iota
 	colStatsTblColIndex_Table
 	colStatsTblColIndex_Column
 	colStatsTblColIndex_Count
 	colStatsTblColIndex_Mean
-	colStatsTblColIndex_Median
+	colStatsTblColIndex_Min
+	colStatsTblColIndex_Max
 	// colStatsTblColIndex_Histogram
 )

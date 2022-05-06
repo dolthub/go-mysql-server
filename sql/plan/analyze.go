@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
@@ -22,7 +23,7 @@ func NewAnalyze(db sql.Database, tbl sql.Node) *Analyze {
 }
 
 // Schema implements the interface sql.Node.
-// TODO: should be |Table|Op|Msg_type|Msg_text|
+// TODO: should be |Tables|Op|Msg_type|Msg_text|
 func (n *Analyze) Schema() sql.Schema {
 	return sql.OkResultSchema
 }
@@ -107,11 +108,19 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		tblIter.Close(ctx)
 	}()
 
+	// TODO: helper method probably
 	count := 0
-	//means := make([]float64, len(tbl.Schema()))
+	means := make([]float64, len(tbl.Schema()))
+	mins := make([]float64, len(tbl.Schema()))
+	maxs := make([]float64, len(tbl.Schema()))
+	for i := 0; i < len(tbl.Schema()); i++ {
+		mins[i] = math.MaxFloat64
+		maxs[i] = math.SmallestNonzeroFloat64 // not sure if this is right
+	}
+
 	for {
 		// Get row
-		_, err := tblIter.Next(ctx)
+		row, err := tblIter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -119,12 +128,26 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, err
 		}
 
+		// accumulate sum of every column
+		// TODO: watch out for types
+		// TODO: watch out for precision/overflow issues
+		for i := 0; i < len(tbl.Schema()); i++ {
+			num, err := sql.Float64.Convert(row[i])
+			if err != nil {
+				return nil, err
+			}
+			numFloat := num.(float64)
+			means[i] += numFloat
+			mins[i] = math.Min(numFloat, mins[i])
+			maxs[i] = math.Max(numFloat, maxs[i])
+		}
+
 		// TODO: means, median, not null
 		count++
 	}
 
 	// Go through each column of table we want to analyze
-	for _, col := range tbl.Schema() {
+	for i, col := range tbl.Schema() {
 		// Create Primary Key for lookup
 		colStatsPk := grant_tables.ColStatsPrimaryKey{
 			SchemaName: database,
@@ -144,8 +167,9 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			TableName:  tbl.String(),
 			ColumnName: col.Name,
 			Count:      uint64(count),
-			Mean:       0,
-			Median:     0,
+			Mean:       means[i] / float64(count),
+			Min:        mins[i],
+			Max:        maxs[i],
 		})
 	}
 
