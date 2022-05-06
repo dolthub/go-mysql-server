@@ -8239,6 +8239,11 @@ type QueryErrorTest struct {
 
 var errorQueries = []QueryErrorTest{
 	{
+		// Test for: https://github.com/dolthub/dolt/issues/3247
+		Query:       "select * from dual where foo() and true;",
+		ExpectedErr: sql.ErrFunctionNotFound,
+	},
+	{
 		Query:       "select * from mytable where (i = 1, i = 0 or i = 2) and (i > -1)",
 		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},
