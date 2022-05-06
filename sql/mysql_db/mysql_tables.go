@@ -58,16 +58,16 @@ var _ mysql.AuthServer = (*MySQLTables)(nil)
 // CreateEmptyMySQLTables returns a collection of Grant Tables that do not contain any data.
 func CreateEmptyMySQLTables() *MySQLTables {
 	// original tables
-	grantTables := &MySQLTables{
+	mysqlTables := &MySQLTables{
 		user:       newMySQLTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
 		role_edges: newMySQLTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
 	}
 
 	// mysqlTable shims
-	grantTables.db = newMySQLTableShim(dbTblName, dbTblSchema, grantTables.user, DbConverter{})
-	grantTables.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, grantTables.user, TablesPrivConverter{})
+	mysqlTables.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlTables.user, DbConverter{})
+	mysqlTables.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, mysqlTables.user, TablesPrivConverter{})
 
-	return grantTables
+	return mysqlTables
 }
 
 // LoadData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
