@@ -280,7 +280,11 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 }
 
 func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.Node, error) {
-	return plan.NewAnalyze(sql.UnresolvedDatabase("mysql"), tableNameToUnresolvedTable(n.Table)), nil
+	tables := make([]sql.Node, len(n.Tables))
+	for i, table := range n.Tables {
+		tables[i] = tableNameToUnresolvedTable(table)
+	}
+	return plan.NewAnalyze(sql.UnresolvedDatabase("mysql"), tables), nil
 }
 
 func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {

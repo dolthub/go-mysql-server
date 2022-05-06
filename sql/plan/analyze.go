@@ -3,6 +3,7 @@ package plan
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
@@ -11,14 +12,14 @@ import (
 
 // TODO: do i need additional database argument?
 type Analyze struct {
-	db  sql.Database
-	tbl sql.Node
+	db   sql.Database
+	tbls []sql.Node
 }
 
-func NewAnalyze(db sql.Database, tbl sql.Node) *Analyze {
+func NewAnalyze(db sql.Database, tbls []sql.Node) *Analyze {
 	return &Analyze{
-		db:  db,
-		tbl: tbl,
+		db:   db,
+		tbls: tbls,
 	}
 }
 
@@ -30,7 +31,18 @@ func (n *Analyze) Schema() sql.Schema {
 
 // String implements the interface sql.Node.
 func (n *Analyze) String() string {
-	return fmt.Sprintf("Analyze table %s.%s", n.db.Name(), n.tbl.String())
+	tblNames := make([]string, len(n.tbls))
+	for i, tbl := range n.tbls {
+		switch resTbl := tbl.(type) {
+		case *ResolvedTable:
+			tblNames[i] = resTbl.Name()
+		case *UnresolvedTable:
+			tblNames[i] = resTbl.Name()
+		case *Exchange:
+			tblNames[i] = resTbl.Child.String()
+		}
+	}
+	return fmt.Sprintf("Analyze table %s", strings.Join(tblNames, ", "))
 }
 
 // Database implements the interface sql.Databaser.
@@ -48,21 +60,29 @@ func (n *Analyze) WithDatabase(db sql.Database) (sql.Node, error) {
 // Resolved implements the Resolvable interface.
 func (n *Analyze) Resolved() bool {
 	_, ok := n.db.(sql.UnresolvedDatabase)
-	return !ok && n.tbl.Resolved()
+	for _, tbl := range n.tbls {
+		if !tbl.Resolved() {
+			return false
+		}
+	}
+	return !ok
 }
 
 // Children implements the interface sql.Node.
 func (n *Analyze) Children() []sql.Node {
-	return []sql.Node{n.tbl}
+	return n.tbls
 }
 
 // WithChildren implements the interface sql.Node.
 func (n *Analyze) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
+	// Deep copy kids
+	newChildren := make([]sql.Node, len(children))
+	for i, child := range children {
+		newChildren[i] = child
 	}
+
 	nn := *n
-	nn.tbl = children[0]
+	nn.tbls = newChildren
 	return &nn, nil
 }
 
@@ -88,89 +108,92 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Get column statistics table
 	colStatsTableData := mysql.ColumnStatisticsTable().Data()
 
-	// Check if table was resolved
-	var tbl *ResolvedTable
-	switch v := n.tbl.(type) {
-	case *ResolvedTable:
-		tbl = v
-	case *Exchange:
-		tbl = v.Child.(*ResolvedTable)
-	default:
-		return nil, sql.ErrTableNotFound.New(n.tbl.String())
-	}
-
-	// Calculate stats
-	tblIter, err := tbl.RowIter(ctx, row)
-	if err != nil {
-		return nil, sql.ErrTableNotFound.New("couldn't read from table")
-	}
-	defer func() {
-		tblIter.Close(ctx)
-	}()
-
-	// TODO: helper method probably
-	count := 0
-	means := make([]float64, len(tbl.Schema()))
-	mins := make([]float64, len(tbl.Schema()))
-	maxs := make([]float64, len(tbl.Schema()))
-	for i := 0; i < len(tbl.Schema()); i++ {
-		mins[i] = math.MaxFloat64
-		maxs[i] = math.SmallestNonzeroFloat64 // not sure if this is right
-	}
-
-	for {
-		// Get row
-		row, err := tblIter.Next(ctx)
-		if err == io.EOF {
-			break
+	// Go through each table in node
+	for _, tbl := range n.tbls {
+		// Check if table was resolved
+		var resTbl *ResolvedTable
+		switch v := tbl.(type) {
+		case *ResolvedTable:
+			resTbl = v
+		case *Exchange:
+			resTbl = v.Child.(*ResolvedTable)
+		default:
+			return nil, sql.ErrTableNotFound.New(tbl.String())
 		}
+
+		// Calculate stats
+		tblIter, err := resTbl.RowIter(ctx, row)
 		if err != nil {
-			return nil, err
+			return nil, sql.ErrTableNotFound.New("couldn't read from table")
+		}
+		defer func() {
+			tblIter.Close(ctx)
+		}()
+
+		// TODO: helper method probably
+		count := 0
+		means := make([]float64, len(resTbl.Schema()))
+		mins := make([]float64, len(resTbl.Schema()))
+		maxs := make([]float64, len(resTbl.Schema()))
+		for i := 0; i < len(resTbl.Schema()); i++ {
+			mins[i] = math.MaxFloat64
+			maxs[i] = -math.MaxFloat64 // not sure if this is right
 		}
 
-		// accumulate sum of every column
-		// TODO: watch out for types
-		// TODO: watch out for precision/overflow issues
-		for i := 0; i < len(tbl.Schema()); i++ {
-			num, err := sql.Float64.Convert(row[i])
+		for {
+			// Get row
+			row, err := tblIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
 			if err != nil {
 				return nil, err
 			}
-			numFloat := num.(float64)
-			means[i] += numFloat
-			mins[i] = math.Min(numFloat, mins[i])
-			maxs[i] = math.Max(numFloat, maxs[i])
+
+			// accumulate sum of every column
+			// TODO: watch out for types
+			// TODO: watch out for precision/overflow issues
+			for i := 0; i < len(resTbl.Schema()); i++ {
+				num, err := sql.Float64.Convert(row[i])
+				if err != nil {
+					return nil, err
+				}
+				numFloat := num.(float64)
+				means[i] += numFloat
+				mins[i] = math.Min(numFloat, mins[i])
+				maxs[i] = math.Max(numFloat, maxs[i])
+			}
+
+			// TODO: means, median, not null
+			count++
 		}
 
-		// TODO: means, median, not null
-		count++
-	}
+		// Go through each column of table we want to analyze
+		for i, col := range resTbl.Schema() {
+			// Create Primary Key for lookup
+			colStatsPk := grant_tables.ColStatsPrimaryKey{
+				SchemaName: database,
+				TableName:  resTbl.Name(),
+				ColumnName: col.Name,
+			}
 
-	// Go through each column of table we want to analyze
-	for i, col := range tbl.Schema() {
-		// Create Primary Key for lookup
-		colStatsPk := grant_tables.ColStatsPrimaryKey{
-			SchemaName: database,
-			TableName:  tbl.String(),
-			ColumnName: col.Name,
+			// Remove if existing
+			existingRows := colStatsTableData.Get(colStatsPk)
+			for _, row := range existingRows {
+				colStatsTableData.Remove(ctx, colStatsPk, row)
+			}
+
+			// Insert new
+			colStatsTableData.Put(ctx, &grant_tables.ColStats{
+				SchemaName: database,
+				TableName:  resTbl.Name(),
+				ColumnName: col.Name,
+				Count:      uint64(count),
+				Mean:       means[i] / float64(count),
+				Min:        mins[i],
+				Max:        maxs[i],
+			})
 		}
-
-		// Remove if existing
-		existingRows := colStatsTableData.Get(colStatsPk)
-		for _, row := range existingRows {
-			colStatsTableData.Remove(ctx, colStatsPk, row)
-		}
-
-		// Insert new
-		colStatsTableData.Put(ctx, &grant_tables.ColStats{
-			SchemaName: database,
-			TableName:  tbl.String(),
-			ColumnName: col.Name,
-			Count:      uint64(count),
-			Mean:       means[i] / float64(count),
-			Min:        mins[i],
-			Max:        maxs[i],
-		})
 	}
 
 	if err := mysql.Persist(ctx); err != nil {
