@@ -121,10 +121,10 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		allSame = same && allSame
 		if next != nil {
 			a.LogNode(next)
+			// We should only do this if the result has changed, but some rules currently misbehave and falsely report nothing
+			// changed
+			a.LogDiff(prev, next)
 		}
-		// We should only do this if the result has changed, but some rules currently misbehave and falsely report nothing
-		// changed
-		a.LogDiff(prev, next)
 		a.PopDebugContext()
 		if err != nil {
 			// Returning the last node before the error is important. This is non-idiomatic, but in the case of partial

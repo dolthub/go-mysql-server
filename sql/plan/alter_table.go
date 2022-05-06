@@ -523,13 +523,11 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 		idx = 0
 	}
 
-	// Now build the new schema, keeping track of three things:
+	// Now build the new schema, keeping track of:
 	// 1) the new result schema
-	// 2) A set of projectsion to translate rows in the old schema to rows in the new schema
-	// 3) A translation of field indexes from old schema to new schema
+	// 2) A set of projections to translate rows in the old schema to rows in the new schema
 	newSch := make(sql.Schema, 0, len(schema) + 1)
 	projections := make([]sql.Expression, len(schema)+1)
-	fieldIndexTranslations := make(map[int]int)
 
 	if idx >= 0 {
 		newSch = append(newSch, schema[:idx]...)
@@ -538,38 +536,40 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 
 		for i := range schema[:idx] {
 			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
-			fieldIndexTranslations[i] = i
 		}
 		projections[idx] = colDefaultExpression{column}
 		for i := range schema[idx:] {
 			schIdx := i + idx
 			projections[schIdx + 1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
-			fieldIndexTranslations[schIdx] = schIdx + 1
 		}
 	} else { // new column at end
 		newSch = append(newSch, schema...)
 		newSch = append(newSch, column)
 		for i := range schema {
 			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
-			fieldIndexTranslations[i] = i
 		}
 		projections[len(schema)] = colDefaultExpression{column}
 	}
 
-	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the old
-	// schema, so now we have to make them match the new one.
+	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the
+	// column indexes in the new result schema, which is not what we want here: we want the positions in the old
+	// (current) schema, since that is what we'll be evaluating when we rewrite the table.
 	for i := range projections {
 		switch p := projections[i].(type) {
 		case colDefaultExpression:
-			if p.column.Default.Expression != nil {
+			if p.column.Default != nil {
 				newExpr, _, err := transform.Expr(p.column.Default.Expression, func(s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					switch s := s.(type) {
 					case *expression.GetField:
-						return s.WithIndex(fieldIndexTranslations[s.Index()]), transform.NewTree, nil
+						idx := schema.IndexOf(s.Name(), schema[0].Source)
+						if idx < 0 {
+							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
+						}
+						return s.WithIndex(idx), transform.NewTree, nil
 					default:
 						return s, transform.SameTree, nil
 					}
-					return nil, transform.SameTree, nil
+					return s, transform.SameTree, nil
 				})
 				if err != nil {
 					return nil, nil, err
