@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	. "github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -1808,7 +1808,7 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	var views []ViewDefinition
 	dbName := db.Name()
 
-	if privilegedDatabase, ok := db.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
 		db = privilegedDatabase.Unwrap()
 	}
 	if vdb, ok := db.(ViewDatabase); ok {

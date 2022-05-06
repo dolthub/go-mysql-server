@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -116,7 +116,7 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	grantTables, ok := n.GrantTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -155,7 +155,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	//TODO: display the table and column privileges
 
 	sb.Reset()
-	roleEdges := grantTables.RoleEdgesTable().Data().Get(grant_tables.RoleEdgesToKey{
+	roleEdges := grantTables.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
@@ -163,7 +163,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(roleEdge.(*grant_tables.RoleEdge).FromString("`"))
+		sb.WriteString(roleEdge.(*mysql_db.RoleEdge).FromString("`"))
 	}
 	if sb.Len() > 0 {
 		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})

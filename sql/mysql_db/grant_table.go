@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grant_tables
+package mysql_db
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,12 +25,14 @@ type grantTable struct {
 	data *in_mem_table.Data
 }
 
-var _ sql.Table = (*grantTable)(nil)
-var _ sql.InsertableTable = (*grantTable)(nil)
-var _ sql.UpdatableTable = (*grantTable)(nil)
-var _ sql.DeletableTable = (*grantTable)(nil)
-var _ sql.ReplaceableTable = (*grantTable)(nil)
-var _ sql.TruncateableTable = (*grantTable)(nil)
+//var _ sql.Table = (*grantTable)(nil)
+//var _ sql.InsertableTable = (*grantTable)(nil)
+//var _ sql.UpdatableTable = (*grantTable)(nil)
+//var _ sql.DeletableTable = (*grantTable)(nil)
+//var _ sql.ReplaceableTable = (*grantTable)(nil)
+//var _ sql.TruncateableTable = (*grantTable)(nil)
+
+var _ MySQLTable = (*grantTable)(nil)
 
 // newGrantTable returns a new Grant Table with the given schema and keys.
 func newGrantTable(

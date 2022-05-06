@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grant_tables
+package mysql_db
 
 import (
 	"bytes"
@@ -32,9 +32,8 @@ import (
 // persisted.
 type PersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
 
-// GrantTables are the collection of tables that are used with any user or privilege-related operations.
-// https://dev.mysql.com/doc/refman/8.0/en/grant-tables.html
-type GrantTables struct {
+// MySQLTables are the collection of tables that are in the MySQL database
+type MySQLTables struct {
 	Enabled bool
 
 	user        *grantTable
@@ -52,18 +51,18 @@ type GrantTables struct {
 	persistFunc PersistCallback
 }
 
-var _ sql.Database = (*GrantTables)(nil)
-var _ mysql.AuthServer = (*GrantTables)(nil)
+var _ sql.Database = (*MySQLTables)(nil)
+var _ mysql.AuthServer = (*MySQLTables)(nil)
 
 // CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
-func CreateEmptyGrantTables() *GrantTables {
+func CreateEmptyGrantTables() *MySQLTables {
 	// original tables
-	grantTables := &GrantTables{
+	grantTables := &MySQLTables{
 		user:       newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
 		role_edges: newGrantTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
 	}
 
-	// shims
+	// grantTable shims
 	grantTables.db = newGrantTableShim(dbTblName, dbTblSchema, grantTables.user, DbConverter{})
 	grantTables.tables_priv = newGrantTableShim(tablesPrivTblName, tablesPrivTblSchema, grantTables.user, TablesPrivConverter{})
 
@@ -72,7 +71,7 @@ func CreateEmptyGrantTables() *GrantTables {
 
 // LoadData adds the given data to the Grant Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+func (g *MySQLTables) LoadData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
 	g.Enabled = true
 	for _, user := range users {
 		if user == nil {
@@ -94,19 +93,19 @@ func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections 
 }
 
 // SetPersistCallback sets the callback to be used when the Grant Tables have been updated and need to be persisted.
-func (g *GrantTables) SetPersistCallback(persistFunc PersistCallback) {
+func (g *MySQLTables) SetPersistCallback(persistFunc PersistCallback) {
 	g.persistFunc = persistFunc
 }
 
 // AddRootAccount adds the root account to the list of accounts.
-func (g *GrantTables) AddRootAccount() {
+func (g *MySQLTables) AddRootAccount() {
 	g.Enabled = true
 	addSuperUser(g.user, "root", "localhost", "")
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
 // meant to replace the "auth.New..." functions while the remaining functions are added.
-func (g *GrantTables) AddSuperUser(username string, password string) {
+func (g *MySQLTables) AddSuperUser(username string, password string) {
 	//TODO: remove this function and the called function
 	g.Enabled = true
 	if len(password) > 0 {
@@ -123,7 +122,7 @@ func (g *GrantTables) AddSuperUser(username string, password string) {
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
 // roles, roleSearch changes whether the search matches against user or role rules.
-func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
+func (g *MySQLTables) GetUser(user string, host string, roleSearch bool) *User {
 	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
 	// For now, this just does another check for localhost if the host is 127.0.0.1
 	//TODO: match on anonymous users, which have an empty username (different for roles)
@@ -153,7 +152,7 @@ func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
 
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
 // active roles, which are set in the context, therefore the user is also pulled from the context.
-func (g *GrantTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
+func (g *MySQLTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	client := ctx.Session.Client()
 	user := g.GetUser(client.User, client.Address, false)
 	if user == nil {
@@ -179,7 +178,7 @@ func (g *GrantTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 // UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.
-func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
+func (g *MySQLTables) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
 	privSet := g.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
 		for _, operationPriv := range operation.Privileges {
@@ -209,12 +208,12 @@ func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...sql.Priv
 }
 
 // Name implements the interface sql.Database.
-func (g *GrantTables) Name() string {
+func (g *MySQLTables) Name() string {
 	return "mysql"
 }
 
 // GetTableInsensitive implements the interface sql.Database.
-func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
+func (g *MySQLTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	switch strings.ToLower(tblName) {
 	case userTblName:
 		return g.user, true, nil
@@ -230,23 +229,23 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 }
 
 // GetTableNames implements the interface sql.Database.
-func (g *GrantTables) GetTableNames(ctx *sql.Context) ([]string, error) {
+func (g *MySQLTables) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return []string{userTblName, dbTblName, tablesPrivTblName, roleEdgesTblName}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (g *GrantTables) AuthMethod(user string) (string, error) {
+func (g *MySQLTables) AuthMethod(user string) (string, error) {
 	//TODO: this should pass in the host as well to correctly determine which auth method to use
 	return "mysql_native_password", nil
 }
 
 // Salt implements the interface mysql.AuthServer.
-func (g *GrantTables) Salt() ([]byte, error) {
+func (g *MySQLTables) Salt() ([]byte, error) {
 	return mysql.NewSalt()
 }
 
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
-func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
+func (g *MySQLTables) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
 		host, _, err := net.SplitHostPort(addr.String())
 		if err != nil {
@@ -277,7 +276,7 @@ func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte
 }
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
-func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
+func (g *MySQLTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
 		host, _, err := net.SplitHostPort(addr.String())
 		if err != nil {
@@ -289,7 +288,7 @@ func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysq
 }
 
 // Persist passes along all changes to the integrator.
-func (g *GrantTables) Persist(ctx *sql.Context) error {
+func (g *MySQLTables) Persist(ctx *sql.Context) error {
 	persistFunc := g.persistFunc
 	if persistFunc == nil {
 		return nil
@@ -327,12 +326,12 @@ func (g *GrantTables) Persist(ctx *sql.Context) error {
 }
 
 // UserTable returns the "user" table.
-func (g *GrantTables) UserTable() *grantTable {
+func (g *MySQLTables) UserTable() *grantTable {
 	return g.user
 }
 
 // RoleEdgesTable returns the "role_edges" table.
-func (g *GrantTables) RoleEdgesTable() *grantTable {
+func (g *MySQLTables) RoleEdgesTable() *grantTable {
 	return g.role_edges
 }
 

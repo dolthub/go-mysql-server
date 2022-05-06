@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -102,13 +102,13 @@ func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	grantTables, ok := n.GrantTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
 	userTableData := grantTables.UserTable().Data()
 	for _, role := range n.Roles {
-		userPk := grant_tables.UserPrimaryKey{
+		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
 			User: role.Name,
 		}
@@ -124,10 +124,10 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 
 		//TODO: When password expiration is implemented, make sure that roles have an expired password on creation
-		err := userTableData.Put(ctx, &grant_tables.User{
+		err := userTableData.Put(ctx, &mysql_db.User{
 			User:                userPk.User,
 			Host:                userPk.Host,
-			PrivilegeSet:        grant_tables.NewPrivilegeSet(),
+			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
 			Plugin:              "mysql_native_password",
 			Password:            "",
 			PasswordLastChanged: time.Now().UTC(),

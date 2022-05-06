@@ -27,7 +27,7 @@ import (
 // to execute it.
 //TODO: add the remaining statements that interact with the grant tables
 func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	grantTables := a.Catalog.GrantTables
+	grantTables := a.Catalog.MySQLTables
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
@@ -45,7 +45,7 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	if sql.IsDualTable(getTable(n)) {
 		return n, transform.SameTree, nil
 	}
-	if !n.CheckPrivileges(ctx, a.Catalog.GrantTables) {
+	if !n.CheckPrivileges(ctx, a.Catalog.MySQLTables) {
 		return nil, transform.SameTree, sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))
 	}
 	return n, transform.SameTree, nil

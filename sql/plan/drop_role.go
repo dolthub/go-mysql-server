@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // DropRole represents the statement DROP ROLE.
@@ -101,14 +101,14 @@ func (n *DropRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 // RowIter implements the interface sql.Node.
 func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	grantTables, ok := n.GrantTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
 	userTableData := grantTables.UserTable().Data()
 	roleEdgesData := grantTables.RoleEdgesTable().Data()
 	for _, role := range n.Roles {
-		userPk := grant_tables.UserPrimaryKey{
+		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
 			User: role.Name,
 		}
@@ -122,21 +122,21 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 			return nil, sql.ErrRoleDeletionFailure.New(role.String("'"))
 		}
-		existingUser := existingRows[0].(*grant_tables.User)
+		existingUser := existingRows[0].(*mysql_db.User)
 
 		//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be dropped
 		err := userTableData.Remove(ctx, userPk, nil)
 		if err != nil {
 			return nil, err
 		}
-		err = roleEdgesData.Remove(ctx, grant_tables.RoleEdgesFromKey{
+		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesFromKey{
 			FromHost: existingUser.Host,
 			FromUser: existingUser.User,
 		}, nil)
 		if err != nil {
 			return nil, err
 		}
-		err = roleEdgesData.Remove(ctx, grant_tables.RoleEdgesToKey{
+		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesToKey{
 			ToHost: existingUser.Host,
 			ToUser: existingUser.User,
 		}, nil)

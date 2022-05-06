@@ -22,11 +22,11 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 type Catalog struct {
-	GrantTables *grant_tables.GrantTables
+	MySQLTables *mysql_db.MySQLTables
 
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
@@ -47,7 +47,7 @@ type sessionLocks map[uint32]dbLocks
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
-		GrantTables:      grant_tables.CreateEmptyGrantTables(),
+		MySQLTables:      mysql_db.CreateEmptyGrantTables(),
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
@@ -59,8 +59,8 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 }
 
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
-	if c.GrantTables.Enabled {
-		return grant_tables.NewPrivilegedDatabaseProvider(c.GrantTables, c.provider).AllDatabases(ctx)
+	if c.MySQLTables.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLTables, c.provider).AllDatabases(ctx)
 	} else {
 		return c.provider.AllDatabases(ctx)
 	}
@@ -93,8 +93,8 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 }
 
 func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
-	if c.GrantTables.Enabled {
-		return grant_tables.NewPrivilegedDatabaseProvider(c.GrantTables, c.provider).HasDatabase(ctx, db)
+	if c.MySQLTables.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLTables, c.provider).HasDatabase(ctx, db)
 	} else {
 		return c.provider.HasDatabase(ctx, db)
 	}
@@ -102,8 +102,8 @@ func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
-	if c.GrantTables.Enabled {
-		return grant_tables.NewPrivilegedDatabaseProvider(c.GrantTables, c.provider).Database(ctx, db)
+	if c.MySQLTables.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLTables, c.provider).Database(ctx, db)
 	} else {
 		return c.provider.Database(ctx, db)
 	}

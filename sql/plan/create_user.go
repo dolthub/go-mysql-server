@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // CreateUser represents the statement CREATE USER.
@@ -96,13 +96,13 @@ func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	grantTables, ok := n.GrantTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
 	userTableData := grantTables.UserTable().Data()
 	for _, user := range n.Users {
-		userPk := grant_tables.UserPrimaryKey{
+		userPk := mysql_db.UserPrimaryKey{
 			Host: user.UserName.Host,
 			User: user.UserName.Name,
 		}
@@ -121,10 +121,10 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			password = user.Auth1.Password()
 		}
 		//TODO: validate all of the data
-		err := userTableData.Put(ctx, &grant_tables.User{
+		err := userTableData.Put(ctx, &mysql_db.User{
 			User:                user.UserName.Name,
 			Host:                user.UserName.Host,
-			PrivilegeSet:        grant_tables.NewPrivilegeSet(),
+			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
 			Plugin:              plugin,
 			Password:            password,
 			PasswordLastChanged: time.Now().UTC(),

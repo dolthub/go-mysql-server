@@ -17,7 +17,7 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -46,7 +46,7 @@ func (s *StartTransaction) Database() sql.Database {
 }
 
 func (s StartTransaction) WithDatabase(database sql.Database) (sql.Node, error) {
-	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
 	}
 	s.db = database
@@ -179,7 +179,7 @@ func (c *Commit) Database() sql.Database {
 }
 
 func (c Commit) WithDatabase(database sql.Database) (sql.Node, error) {
-	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
 	}
 	c.db = database
@@ -286,7 +286,7 @@ func (r *Rollback) Database() sql.Database {
 }
 
 func (r Rollback) WithDatabase(database sql.Database) (sql.Node, error) {
-	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
 	}
 	r.db = database
@@ -366,7 +366,7 @@ func (c *CreateSavepoint) Database() sql.Database {
 }
 
 func (c CreateSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
-	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
 	}
 	c.db = database
@@ -443,7 +443,7 @@ func (r *RollbackSavepoint) Database() sql.Database {
 }
 
 func (r RollbackSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
-	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
 	}
 	r.db = database
@@ -520,7 +520,7 @@ func (r *ReleaseSavepoint) Database() sql.Database {
 }
 
 func (r ReleaseSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
-	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
 	}
 	r.db = database

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -119,7 +119,7 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 	// TODO: currently there is no way to see views AS OF a particular time
 	maybeVdb := p.db
-	if privilegedDatabase, ok := maybeVdb.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := maybeVdb.(mysql_db.PrivilegedDatabase); ok {
 		maybeVdb = privilegedDatabase.Unwrap()
 	}
 	if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {

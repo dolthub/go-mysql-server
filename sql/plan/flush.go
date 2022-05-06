@@ -16,7 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // FlushPrivileges reads privileges from grant tables and registers any unregistered privileges found.
@@ -38,7 +38,7 @@ func NewFlushPrivileges(ft bool) *FlushPrivileges {
 
 // RowIter implements the interface sql.Node.
 func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	gts, ok := f.grantTables.(*grant_tables.GrantTables)
+	gts, ok := f.grantTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
