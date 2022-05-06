@@ -26,7 +26,7 @@ import (
 type DropRole struct {
 	IfExists    bool
 	Roles       []UserName
-	GrantTables sql.Database
+	MySQLTables sql.Database
 }
 
 // NewDropRole returns a new DropRole node.
@@ -34,7 +34,7 @@ func NewDropRole(ifExists bool, roles []UserName) *DropRole {
 	return &DropRole{
 		IfExists:    ifExists,
 		Roles:       roles,
-		GrantTables: sql.UnresolvedDatabase("mysql"),
+		MySQLTables: sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -61,19 +61,19 @@ func (n *DropRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *DropRole) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLTables
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *DropRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLTables = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *DropRole) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -101,12 +101,12 @@ func (n *DropRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 // RowIter implements the interface sql.Node.
 func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := grantTables.UserTable().Data()
-	roleEdgesData := grantTables.RoleEdgesTable().Data()
+	userTableData := mysqlTables.UserTable().Data()
+	roleEdgesData := mysqlTables.RoleEdgesTable().Data()
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
@@ -144,7 +144,7 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, err
 		}
 	}
-	if err := grantTables.Persist(ctx); err != nil {
+	if err := mysqlTables.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

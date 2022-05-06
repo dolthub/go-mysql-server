@@ -28,7 +28,7 @@ type ShowGrants struct {
 	CurrentUser bool
 	For         *UserName
 	Using       []UserName
-	GrantTables sql.Database
+	MySQLTables sql.Database
 }
 
 var _ sql.Node = (*ShowGrants)(nil)
@@ -40,7 +40,7 @@ func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *Sh
 		CurrentUser: currentUser,
 		For:         targetUser,
 		Using:       using,
-		GrantTables: sql.UnresolvedDatabase("mysql"),
+		MySQLTables: sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -75,19 +75,19 @@ func (n *ShowGrants) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *ShowGrants) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLTables
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *ShowGrants) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLTables = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *ShowGrants) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -116,7 +116,7 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -127,7 +127,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			Host: client.Address,
 		}
 	}
-	user := grantTables.GetUser(n.For.Name, n.For.Host, false)
+	user := mysqlTables.GetUser(n.For.Name, n.For.Host, false)
 	if user == nil {
 		return nil, sql.ErrShowGrantsUserDoesNotExist.New(n.For.Name, n.For.Host)
 	}
@@ -155,7 +155,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	//TODO: display the table and column privileges
 
 	sb.Reset()
-	roleEdges := grantTables.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+	roleEdges := mysqlTables.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})

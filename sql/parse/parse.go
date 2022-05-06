@@ -2286,7 +2286,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		PasswordOptions: passwordOptions,
 		Locked:          n.Locked,
 		Attribute:       n.Attribute,
-		GrantTables:     sql.UnresolvedDatabase("mysql"),
+		MySQLTables:     sql.UnresolvedDatabase("mysql"),
 	}, nil
 }
 
