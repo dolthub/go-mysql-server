@@ -16,6 +16,7 @@ package grant_tables
 
 import (
 	"encoding/json"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 )
