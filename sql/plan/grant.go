@@ -31,7 +31,7 @@ type Grant struct {
 	Users           []UserName
 	WithGrantOption bool
 	As              *GrantUserAssumption
-	GrantTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*Grant)(nil)
@@ -46,7 +46,7 @@ func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level
 		Users:           users,
 		WithGrantOption: withGrant,
 		As:              as,
-		GrantTables:     db,
+		MySQLDb:         db,
 	}
 }
 
@@ -66,19 +66,19 @@ func (n *Grant) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *Grant) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *Grant) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *Grant) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -197,7 +197,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 
 // RowIter implements the interface sql.Node.
 func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*mysql_db.MySQLTables)
+	grantTables, ok := n.MySQLDb.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}

@@ -26,7 +26,7 @@ import (
 
 func TestGrantTableData(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	testTable := newGrantTable(
+	testTable := newMySQLTable(
 		"test",
 		sql.Schema{
 			&sql.Column{

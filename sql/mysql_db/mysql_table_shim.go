@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 )
 
-// grantTableShim acts as a kind of "view" on top of another Grant Table. It does not use its own underlying data
+// mysqlTableShim acts as a kind of "view" on top of another Grant Table. It does not use its own underlying data
 // storage, and instead it transforms the data of another table.
 //
 // To give an example, in MySQL global and database-level privileges are stored in two separate tables. This could be
@@ -29,27 +29,27 @@ import (
 // means that, internally (since we don't actually care about whether they're tables or not) we can access that singular
 // store to easily find and use our data, and externally show multiple tables which each manipulate that data in a
 // unique way.
-type grantTableShim struct {
+type mysqlTableShim struct {
 	name      string
 	sch       sql.Schema
-	original  *grantTable
+	original  *mysqlTable
 	converter in_mem_table.DataEditorConverter
 }
 
-var _ sql.Table = (*grantTableShim)(nil)
-var _ sql.InsertableTable = (*grantTableShim)(nil)
-var _ sql.UpdatableTable = (*grantTableShim)(nil)
-var _ sql.DeletableTable = (*grantTableShim)(nil)
-var _ sql.ReplaceableTable = (*grantTableShim)(nil)
+var _ sql.Table = (*mysqlTableShim)(nil)
+var _ sql.InsertableTable = (*mysqlTableShim)(nil)
+var _ sql.UpdatableTable = (*mysqlTableShim)(nil)
+var _ sql.DeletableTable = (*mysqlTableShim)(nil)
+var _ sql.ReplaceableTable = (*mysqlTableShim)(nil)
 
 // newGrantTableShim returns a new shim for the given Grant Table with the given schema.
 func newGrantTableShim(
 	name string,
 	sch sql.Schema,
-	original *grantTable,
+	original *mysqlTable,
 	converter in_mem_table.DataEditorConverter,
-) *grantTableShim {
-	return &grantTableShim{
+) *mysqlTableShim {
+	return &mysqlTableShim{
 		name:      name,
 		sch:       sch,
 		original:  original,
@@ -58,27 +58,27 @@ func newGrantTableShim(
 }
 
 // Name implements the interface sql.Table.
-func (g *grantTableShim) Name() string {
+func (g *mysqlTableShim) Name() string {
 	return g.name
 }
 
 // String implements the interface sql.Table.
-func (g *grantTableShim) String() string {
+func (g *mysqlTableShim) String() string {
 	return g.name
 }
 
 // Schema implements the interface sql.Table.
-func (g *grantTableShim) Schema() sql.Schema {
+func (g *mysqlTableShim) Schema() sql.Schema {
 	return g.sch.Copy()
 }
 
 // Partitions implements the interface sql.Table.
-func (g *grantTableShim) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+func (g *mysqlTableShim) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return sql.PartitionsToPartitionIter(dummyPartition{}), nil
 }
 
 // PartitionRows implements the interface sql.Table.
-func (g *grantTableShim) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+func (g *mysqlTableShim) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	return &grantTableShimRowIter{
 		buffer:    nil,
 		entries:   g.original.data.ToSlice(ctx),
@@ -87,22 +87,22 @@ func (g *grantTableShim) PartitionRows(ctx *sql.Context, partition sql.Partition
 }
 
 // Inserter implements the interface sql.InsertableTable.
-func (g *grantTableShim) Inserter(ctx *sql.Context) sql.RowInserter {
+func (g *mysqlTableShim) Inserter(ctx *sql.Context) sql.RowInserter {
 	return in_mem_table.NewDataEditorView(g.original.data, g.converter)
 }
 
 // Updater implements the interface sql.UpdatableTable.
-func (g *grantTableShim) Updater(ctx *sql.Context) sql.RowUpdater {
+func (g *mysqlTableShim) Updater(ctx *sql.Context) sql.RowUpdater {
 	return in_mem_table.NewDataEditorView(g.original.data, g.converter)
 }
 
 // Deleter implements the interface sql.DeletableTable.
-func (g *grantTableShim) Deleter(ctx *sql.Context) sql.RowDeleter {
+func (g *mysqlTableShim) Deleter(ctx *sql.Context) sql.RowDeleter {
 	return in_mem_table.NewDataEditorView(g.original.data, g.converter)
 }
 
 // Replacer implements the interface sql.ReplaceableTable.
-func (g *grantTableShim) Replacer(ctx *sql.Context) sql.RowReplacer {
+func (g *mysqlTableShim) Replacer(ctx *sql.Context) sql.RowReplacer {
 	return in_mem_table.NewDataEditorView(g.original.data, g.converter)
 }
 
