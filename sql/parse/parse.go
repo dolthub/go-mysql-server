@@ -165,7 +165,17 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
 	if ss, ok := stmt.(sqlparser.SelectStatement); ok {
-		return convertSelectStatement(ctx, ss)
+		node, err := convertSelectStatement(ctx, ss)
+		if err != nil {
+			return nil, err
+		}
+		if into := ss.GetInto(); into != nil {
+			node, err = intoToInto(ctx, into, node)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return node, nil
 	}
 	switch n := stmt.(type) {
 	default:
@@ -898,6 +908,22 @@ func ctesToWith(ctx *sql.Context, with *sqlparser.With, node sql.Node) (sql.Node
 	}
 
 	return plan.NewWith(node, ctes, with.Recursive), nil
+}
+
+func intoToInto(ctx *sql.Context, into *sqlparser.Into, node sql.Node) (sql.Node, error) {
+	if into.Outfile != "" || into.Dumpfile != "" {
+		return nil, sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
+	}
+
+	vars := make([]sql.Expression, len(into.Variables))
+	for i, val := range into.Variables {
+		if strings.HasPrefix(val.String(), "@") {
+			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
+		} else {
+			vars[i] = expression.NewProcedureParam(val.String())
+		}
+	}
+	return plan.NewInto(node, vars), nil
 }
 
 func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
