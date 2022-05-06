@@ -46,20 +46,22 @@ func (n *Analyze) WithDatabase(db sql.Database) (sql.Node, error) {
 // Resolved implements the Resolvable interface.
 func (n *Analyze) Resolved() bool {
 	_, ok := n.db.(sql.UnresolvedDatabase)
-	return !ok
+	return !ok && n.tbl.Resolved()
 }
 
 // Children implements the interface sql.Node.
 func (n *Analyze) Children() []sql.Node {
-	return nil
+	return []sql.Node{n.tbl}
 }
 
 // WithChildren implements the interface sql.Node.
 func (n *Analyze) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
-	return n, nil
+	nn := *n
+	nn.tbl = children[0]
+	return &nn, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -85,8 +87,13 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	colStatsTableData := mysql.ColumnStatisticsTable().Data()
 
 	// Check if table was resolved
-	tbl, ok := n.tbl.(*ResolvedTable)
-	if !ok {
+	var tbl *ResolvedTable
+	switch v := n.tbl.(type) {
+	case *ResolvedTable:
+		tbl = v
+	case *Exchange:
+		tbl = v.Child.(*ResolvedTable)
+	default:
 		return nil, sql.ErrTableNotFound.New(n.tbl.String())
 	}
 
@@ -141,7 +148,9 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		})
 	}
 
-	// TODO: persist?
+	if err := mysql.Persist(ctx); err != nil {
+		return nil, err
+	}
 
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }

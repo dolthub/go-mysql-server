@@ -75,7 +75,7 @@ func CreateEmptyGrantTables() *GrantTables {
 
 // LoadData adds the given data to the Grant Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge, colStats []*ColStats) error {
 	g.Enabled = true
 	for _, user := range users {
 		if user == nil {
@@ -90,6 +90,11 @@ func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections 
 			continue
 		}
 		if err := g.role_edges.data.Put(ctx, role); err != nil {
+			return err
+		}
+	}
+	for _, colStat := range colStats {
+		if err := g.col_stats.data.Put(ctx, colStat); err != nil {
 			return err
 		}
 	}
@@ -334,7 +339,24 @@ func (g *GrantTables) Persist(ctx *sql.Context) error {
 		}
 		return roles[i].FromHost < roles[j].FromHost
 	})
-	return persistFunc(ctx, users, roles)
+
+	colStatsEntries := g.col_stats.data.ToSlice(ctx)
+	colStats := make([]*ColStats, len(colStatsEntries))
+	for i, colStat := range colStatsEntries {
+		colStats[i] = colStat.(*ColStats)
+	}
+
+	sort.Slice(colStats, func(i, j int) bool {
+		if colStats[i].SchemaName != colStats[j].SchemaName {
+			return colStats[i].SchemaName < colStats[j].SchemaName
+		}
+		if colStats[i].TableName != colStats[j].TableName {
+			return colStats[i].TableName < colStats[j].TableName
+		}
+		return colStats[i].ColumnName < colStats[j].ColumnName
+	})
+
+	return persistFunc(ctx, users, roles, colStats)
 }
 
 // UserTable returns the "user" table.

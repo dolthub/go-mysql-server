@@ -43,7 +43,7 @@ type ColStatsPrimaryKey struct {
 // ColStatsSecondaryKey is a key that represents the secondary key for the "user" Grant Table, which contains stats data.
 type ColStatsSecondaryKey struct {
 	//TODO: eventually condense into histogram with json(?) type
-	Count  uint
+	Count  uint64
 	Mean   float64
 	Median float64
 }
@@ -52,7 +52,7 @@ var _ in_mem_table.Key = ColStatsPrimaryKey{}
 var _ in_mem_table.Key = ColStatsSecondaryKey{}
 
 // KeyFromEntry implements the interface in_mem_table.Key.
-func (u ColStatsPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
+func (c ColStatsPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
 	col, ok := entry.(*ColStats)
 	if !ok {
 		return nil, errColStatsPkEntry
@@ -65,46 +65,65 @@ func (u ColStatsPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.En
 }
 
 // KeyFromRow implements the interface in_mem_table.Key.
-func (u ColStatsPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(userTblSchema) {
-		return u, errColStatsPkEntry
+func (c ColStatsPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
+	if len(row) != len(colStatsTblSchema) {
+		return c, errColStatsPkEntry
 	}
-	host, ok := row[userTblColIndex_Host].(string)
+	schema, ok := row[colStatsTblColIndex_Schema].(string)
 	if !ok {
-		return u, errUserPkRow
+		return c, errColStatsPkRow
 	}
-	user, ok := row[userTblColIndex_User].(string)
+	table, ok := row[colStatsTblColIndex_Table].(string)
 	if !ok {
-		return u, errUserPkRow
+		return c, errColStatsPkRow
 	}
-	return UserPrimaryKey{
-		Host: host,
-		User: user,
+	col, ok := row[colStatsTblColIndex_Column].(string)
+	if !ok {
+		return c, errColStatsPkRow
+	}
+
+	return ColStatsPrimaryKey{
+		SchemaName: schema,
+		TableName:  table,
+		ColumnName: col,
 	}, nil
 }
 
 // KeyFromEntry implements the interface in_mem_table.Key.
 func (u ColStatsSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
-	user, ok := entry.(*User)
+	colStats, ok := entry.(*ColStats)
 	if !ok {
-		return nil, errUserSkEntry
+		return nil, errColStatsSkEntry
 	}
-	return UserSecondaryKey{
-		User: user.User,
+	return ColStatsSecondaryKey{
+		Count:  colStats.Count,
+		Mean:   colStats.Mean,
+		Median: colStats.Median,
 	}, nil
 }
 
 // KeyFromRow implements the interface in_mem_table.Key.
 func (u ColStatsSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
-	if len(row) != len(userTblSchema) {
-		return u, errUserSkRow
+	if len(row) != len(colStatsTblSchema) {
+		return u, errColStatsSkRow
 	}
-	user, ok := row[userTblColIndex_User].(string)
+	count, ok := row[colStatsTblColIndex_Count].(uint64)
 	if !ok {
-		return u, errUserSkRow
+		return u, errColStatsSkRow
 	}
-	return UserSecondaryKey{
-		User: user,
+	mean, ok := row[colStatsTblColIndex_Mean].(float64)
+	if !ok {
+		return u, errColStatsSkRow
+	}
+	median, ok := row[colStatsTblColIndex_Median].(float64)
+	if !ok {
+		return u, errColStatsSkRow
+	}
+
+	return ColStatsSecondaryKey{
+		Count:  count,
+		Mean:   mean,
+		Median: median,
 	}, nil
 }
 
