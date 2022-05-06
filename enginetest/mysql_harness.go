@@ -32,7 +32,7 @@ type MySQLHarness struct {
 	skippedQueries map[string]struct{}
 }
 
-func (m *MySQLHarness) NewEngine(context *sql.Context, t *testing.T) *sqle.Engine {
+func (m *MySQLHarness) NewEngineDepr(context *sql.Context, t *testing.T) *sqle.Engine {
 	dbs := CreateTestData(t, m)
 	engine := NewEngineWithDbs(t, m, dbs)
 	return engine

@@ -16,6 +16,8 @@ package enginetest
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"io"
 	"strings"
 	"testing"
 
@@ -39,27 +41,16 @@ type MemoryHarness struct {
 	checkpointTables       []*memory.Table
 	dbOff                  []int
 	dbNames                []string
+	setupData              []setupSource
 }
 
 func (m *MemoryHarness) RestoreCheckpoint(ctx *sql.Context, t *testing.T, e *sqle.Engine) *sqle.Engine {
 	dbs := CreateTestData(t, m)
 	engine := NewEngineWithDbs(t, m, dbs)
 	return engine
-	//dbs := make([]sql.Database, len(m.dbNames))
-	//tableCnt := 0
-	//for i := range m.dbNames {
-	//	db := memory.NewDatabase(m.dbNames[i])
-	//	for tableCnt < m.dbOff[i] {
-	//		t := memory.CopyTable(m.checkpointTables[tableCnt])
-	//		db.AddTable(t.Name(), t)
-	//		tableCnt++
-	//	}
-	//	dbs[i] = db
-	//}
-	//return NewEngineWithDbs(t, m, dbs)
 }
 
-func (m *MemoryHarness) NewEngine(ctx *sql.Context, t *testing.T) *sqle.Engine {
+func (m *MemoryHarness) NewEngineDepr(ctx *sql.Context, t *testing.T) *sqle.Engine {
 	dbs := CreateTestData(t, m)
 	engine := NewEngineWithDbs(t, m, dbs)
 	err := m.copyDbs(ctx, dbs)
@@ -150,7 +141,7 @@ var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
-var _ CheckpointHarness = (*MemoryHarness)(nil)
+var _ ScriptHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
 
 type SkippingMemoryHarness struct {
@@ -159,6 +150,31 @@ type SkippingMemoryHarness struct {
 
 func (s SkippingMemoryHarness) SkipQueryTest(query string) bool {
 	return true
+}
+
+func (m *MemoryHarness) Setup(setupData ...setupSource) {
+	m.setupData = append(m.setupData, setupData...)
+}
+
+func (m *MemoryHarness) NewEngine() *sqle.Engine {
+	e := sqle.NewDefault(
+		memory.NewMemoryDBProvider(
+			information_schema.NewInformationSchemaDatabase(),
+		))
+	ctx := sql.NewEmptyContext()
+	for _, s := range m.setupData {
+		for {
+			ok, err := s.Next()
+			if err == io.EOF || !ok {
+				break
+			}
+			if err != nil {
+				panic(err)
+			}
+			mustQuery(ctx, e, s.Data().sql)
+		}
+	}
+	return e
 }
 
 func (m *MemoryHarness) SupportsNativeIndexCreation() bool {

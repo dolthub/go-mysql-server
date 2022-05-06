@@ -149,7 +149,7 @@ func (e *Engine) PrepareQuery(
 	return node, nil
 }
 
-// Query executes a query. If parsed is non-nil, it will be used instead of parsing the query from text.
+// Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
 	return e.QueryWithBindings(ctx, query, nil)
 }

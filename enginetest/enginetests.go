@@ -99,7 +99,7 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 // Tests a variety of geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	for _, tt := range SpatialQueryTests {
 		TestPreparedQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
@@ -701,7 +701,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 	}
 }
 
-func mustCall(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
+func mustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
 	sch, iter, err := e.Query(ctx, q)
 	if err != nil {
 		panic(err)
@@ -715,7 +715,7 @@ func mustCall(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
 
 func TestInsertInto(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 	for i, insertion := range InsertQueries {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -742,22 +742,30 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	}
 }
 
-func TestInsertIntoErrors(t *testing.T, harness CheckpointHarness) {
-	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
-	defer e.Close()
-	for i, expectedFailure := range InsertErrorTests {
+func TestInsertIntoErrors(t *testing.T, harness Harness) {
+	if h := harness.(ScriptHarness); h != nil {
+		setups, err := newFileSetups("testdata/mytable")
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.Setup(setups...)
+	}
+	var e *sqle.Engine
+	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(expectedFailure.Query) {
 					t.Skipf("skipping query %s", expectedFailure.Query)
 				}
 			}
-			if i > 0 {
-				e = harness.RestoreCheckpoint(ctx, t, e)
+			switch h := harness.(type) {
+			case ScriptHarness:
+				e = h.NewEngine()
+			default:
+				e = NewEngine(t, harness)
 			}
-			ctx = harness.NewContext()
-			AssertErr(t, e, harness, expectedFailure.Query, nil)
+			ctx := harness.NewContext()
+			AssertErrWithCtx(t, e, ctx, expectedFailure.Query, nil)
 		})
 	}
 	for _, script := range InsertErrorScripts {
@@ -809,7 +817,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 
 func TestReplaceInto(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 
 	for _, insertion := range ReplaceQueries {
@@ -830,7 +838,7 @@ func TestReplaceInto(t *testing.T, harness CheckpointHarness) {
 
 func TestReplaceIntoErrors(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 	for i, expectedFailure := range ReplaceErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
@@ -850,7 +858,7 @@ func TestReplaceIntoErrors(t *testing.T, harness CheckpointHarness) {
 
 func TestUpdate(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 
 	for _, update := range UpdateTests {
@@ -872,7 +880,7 @@ func TestUpdate(t *testing.T, harness CheckpointHarness) {
 
 func TestUpdateErrors(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 
 	for i, expectedFailure := range GenericUpdateErrorTests {
@@ -927,7 +935,7 @@ func TestSpatialUpdate(t *testing.T, harness Harness) {
 
 func TestDelete(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 	for i, delete := range DeleteTests {
 		if i > 0 {
@@ -983,7 +991,7 @@ func runWriteQueryTest(t *testing.T, harness CheckpointHarness, tt WriteQueryTes
 
 func TestUpdateQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
 		return harness.RestoreCheckpoint(ctx, t, e)
@@ -996,7 +1004,7 @@ func TestUpdateQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 
 func TestDeleteQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
 		return harness.RestoreCheckpoint(ctx, t, e)
@@ -1009,7 +1017,7 @@ func TestDeleteQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 
 func TestInsertQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
 		return harness.RestoreCheckpoint(ctx, t, e)
@@ -1022,7 +1030,7 @@ func TestInsertQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 
 func TestReplaceQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 	newEngine := func(harness CheckpointHarness) *sqle.Engine {
 		ctx = harness.NewContext()
@@ -1035,7 +1043,7 @@ func TestReplaceQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 
 func TestDeleteErrors(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 	for i, expectedFailure := range DeleteErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
@@ -1055,7 +1063,7 @@ func TestDeleteErrors(t *testing.T, harness CheckpointHarness) {
 
 func TestSpatialDelete(t *testing.T, harness CheckpointHarness) {
 	ctx := harness.NewContext()
-	e := harness.NewEngine(ctx, t)
+	e := harness.NewEngineDepr(ctx, t)
 	defer e.Close()
 	for i, delete := range SpatialDeleteTests {
 		// If we skipped the delete, also skip the select

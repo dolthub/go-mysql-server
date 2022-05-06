@@ -41,7 +41,7 @@ type Harness interface {
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
 	// NewEngine creates a new engine
-	NewEngine(*sql.Context, *testing.T) *sqle.Engine
+	NewEngineDepr(*sql.Context, *testing.T) *sqle.Engine
 }
 
 type CheckpointHarness interface {

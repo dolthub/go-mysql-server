@@ -193,7 +193,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//engine := enginetest.NewEngine(t, harness)
+	//engine := enginetest.NewEngineDepr(t, harness)
 	engine := enginetest.NewSpatialEngine(t, harness)
 	//enginetest.CreateIndexes(t, harness, engine)
 	engine.Analyzer.Debug = true
