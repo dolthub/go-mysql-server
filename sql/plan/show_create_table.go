@@ -325,7 +325,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	return fmt.Sprintf(
-		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	), nil

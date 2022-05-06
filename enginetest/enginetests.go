@@ -5463,7 +5463,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that the pk is not primary key
 		TestQuery(t, harness, e, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
-			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		}, nil)
 
 		// Drop all primary key from other database table
@@ -5471,7 +5471,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that NOT NULL constraint is kept
 		TestQuery(t, harness, e, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
-			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		}, nil)
 	})
 }
@@ -6063,7 +6063,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			"  `v1y` bigint,\n" +
 			"  `v2` bigint DEFAULT ((v1y + 1)),\n" +
 			"  PRIMARY KEY (`pk`)\n" +
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}}, nil)
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}}, nil)
 	})
 
 	t.Run("Add multiple columns same ALTER", func(t *testing.T) {
