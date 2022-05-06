@@ -35,10 +35,10 @@ var ErrNotPrimaryKeyAlterable = errors.NewKind("error: table is not primary key 
 type AlterPK struct {
 	ddlNode
 
-	Action  PKAction
-	Table   sql.Node
-	Columns []sql.IndexColumn
-	Catalog sql.Catalog
+	Action       PKAction
+	Table        sql.Node
+	Columns      []sql.IndexColumn
+	Catalog      sql.Catalog
 	targetSchema sql.Schema
 }
 

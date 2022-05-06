@@ -37,8 +37,8 @@ var _ sql.SchemaTarget = (*AlterDefaultSet)(nil)
 // AlterDefaultDrop represents the ALTER COLUMN DROP DEFAULT statement.
 type AlterDefaultDrop struct {
 	ddlNode
-	Table      sql.Node
-	ColumnName string
+	Table        sql.Node
+	ColumnName   string
 	targetSchema sql.Schema
 }
 

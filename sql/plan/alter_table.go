@@ -526,7 +526,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 	// Now build the new schema, keeping track of:
 	// 1) the new result schema
 	// 2) A set of projections to translate rows in the old schema to rows in the new schema
-	newSch := make(sql.Schema, 0, len(schema) + 1)
+	newSch := make(sql.Schema, 0, len(schema)+1)
 	projections := make([]sql.Expression, len(schema)+1)
 
 	if idx >= 0 {
@@ -540,7 +540,7 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 		projections[idx] = colDefaultExpression{column}
 		for i := range schema[idx:] {
 			schIdx := i + idx
-			projections[schIdx + 1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
+			projections[schIdx+1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
 		}
 	} else { // new column at end
 		newSch = append(newSch, schema...)
@@ -590,9 +590,9 @@ type colDefaultExpression struct {
 	column *sql.Column
 }
 
-func (c colDefaultExpression) Resolved() bool { return true }
-func (c colDefaultExpression) String() string { return "" }
-func (c colDefaultExpression) Type() sql.Type { return c.column.Type }
+func (c colDefaultExpression) Resolved() bool   { return true }
+func (c colDefaultExpression) String() string   { return "" }
+func (c colDefaultExpression) Type() sql.Type   { return c.column.Type }
 func (c colDefaultExpression) IsNullable() bool { return c.column.Default == nil }
 
 func (c colDefaultExpression) Children() []sql.Expression {
