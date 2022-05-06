@@ -16,8 +16,6 @@ package enginetest
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
-	"io"
 	"strings"
 	"testing"
 
@@ -141,7 +139,6 @@ var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
-var _ ScriptHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
 
 type SkippingMemoryHarness struct {
@@ -152,29 +149,13 @@ func (s SkippingMemoryHarness) SkipQueryTest(query string) bool {
 	return true
 }
 
-func (m *MemoryHarness) Setup(setupData ...setupSource) {
-	m.setupData = append(m.setupData, setupData...)
+func (m *MemoryHarness) SetSetup(setupData ...setupSource) error {
+	m.setupData = setupData
+	return nil
 }
 
-func (m *MemoryHarness) NewEngine() *sqle.Engine {
-	e := sqle.NewDefault(
-		memory.NewMemoryDBProvider(
-			information_schema.NewInformationSchemaDatabase(),
-		))
-	ctx := sql.NewEmptyContext()
-	for _, s := range m.setupData {
-		for {
-			ok, err := s.Next()
-			if err == io.EOF || !ok {
-				break
-			}
-			if err != nil {
-				panic(err)
-			}
-			mustQuery(ctx, e, s.Data().sql)
-		}
-	}
-	return e
+func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
+	return NewEngineWithSetup(t, m, m.setupData)
 }
 
 func (m *MemoryHarness) SupportsNativeIndexCreation() bool {

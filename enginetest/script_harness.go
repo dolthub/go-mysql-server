@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	sqle "github.com/dolthub/go-mysql-server"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"os"
@@ -12,11 +11,7 @@ import (
 )
 
 type ScriptHarness interface {
-	Harness
-	// Setup establishes initial data for the databases in this harness
-	Setup(setupData ...setupSource)
-	// NewEngine creates a new engine with the same test data given in Setup
-	NewEngine() *sqle.Engine
+	Setup() []setupSource
 }
 
 type setupSource interface {
@@ -33,7 +28,7 @@ type fileSetup struct {
 	rewrite *bytes.Buffer
 }
 
-func newFileSetups(paths ...string) ([]setupSource, error) {
+func newFileSetups(dir string, paths ...string) ([]setupSource, error) {
 	sources := make([]setupSource, len(paths))
 	var err error
 	for i := range paths {

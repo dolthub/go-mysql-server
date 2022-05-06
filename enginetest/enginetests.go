@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -743,14 +744,14 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 }
 
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
-	if h := harness.(ScriptHarness); h != nil {
-		setups, err := newFileSetups("testdata/mytable")
-		if err != nil {
-			t.Fatal(err)
-		}
-		h.Setup(setups...)
+	setup, err := newFileSetups("testdata", "mytable")
+	if err != nil {
+		t.Fatal(err)
 	}
-	var e *sqle.Engine
+	err = harness.SetSetup(setup...)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
@@ -758,11 +759,9 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 					t.Skipf("skipping query %s", expectedFailure.Query)
 				}
 			}
-			switch h := harness.(type) {
-			case ScriptHarness:
-				e = h.NewEngine()
-			default:
-				e = NewEngine(t, harness)
+			e, err := harness.NewEngine(t)
+			if err != nil {
+				t.Fatal(err)
 			}
 			ctx := harness.NewContext()
 			AssertErrWithCtx(t, e, ctx, expectedFailure.Query, nil)
@@ -6659,6 +6658,36 @@ func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateSpatialTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness, dbs)
 	return engine
+}
+
+// NewEngineWithSetup creates test data and returns an engine using the harness provided.
+func NewEngineWithSetup(t *testing.T, harness Harness, setup []setupSource) (*sqle.Engine, error) {
+	pro := harness.NewDatabaseProvider(information_schema.NewInformationSchemaDatabase())
+	e := NewEngineWithProvider(t, harness, pro)
+	return RunEngineScripts(e, setup)
+}
+
+func RunEngineScripts(e *sqle.Engine, setupData []setupSource) (*sqle.Engine, error) {
+	ctx := sql.NewEmptyContext()
+	for _, s := range setupData {
+		for {
+			ok, err := s.Next()
+			if err == io.EOF || !ok {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			sch, iter, err := e.Query(ctx, s.Data().sql)
+			if err != nil {
+				return nil, err
+			}
+			_, err = sql.RowIterToRows(ctx, sch, iter)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 }
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
