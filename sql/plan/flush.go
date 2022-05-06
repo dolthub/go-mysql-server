@@ -19,10 +19,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
-// FlushPrivileges reads privileges from grant tables and registers any unregistered privileges found.
+// FlushPrivileges reads privileges from mysql tables and registers any unregistered privileges found.
 type FlushPrivileges struct {
 	writesToBinlog bool
-	grantTables    sql.Database
+	mysqlTables    sql.Database
 }
 
 var _ sql.Node = (*FlushPrivileges)(nil)
@@ -32,13 +32,13 @@ var _ sql.Databaser = (*FlushPrivileges)(nil)
 func NewFlushPrivileges(ft bool) *FlushPrivileges {
 	return &FlushPrivileges{
 		writesToBinlog: ft,
-		grantTables:    sql.UnresolvedDatabase("mysql"),
+		mysqlTables:    sql.UnresolvedDatabase("mysql"),
 	}
 }
 
 // RowIter implements the interface sql.Node.
 func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	gts, ok := f.grantTables.(*mysql_db.MySQLTables)
+	gts, ok := f.mysqlTables.(*mysql_db.MySQLTables)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -73,7 +73,7 @@ func (f *FlushPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 
 // Resolved implements the interface sql.Node.
 func (f *FlushPrivileges) Resolved() bool {
-	_, ok := f.grantTables.(sql.UnresolvedDatabase)
+	_, ok := f.mysqlTables.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -85,12 +85,12 @@ func (*FlushPrivileges) Schema() sql.Schema { return sql.OkResultSchema }
 
 // Database implements the sql.Databaser interface.
 func (f *FlushPrivileges) Database() sql.Database {
-	return f.grantTables
+	return f.mysqlTables
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (f *FlushPrivileges) WithDatabase(db sql.Database) (sql.Node, error) {
 	fp := *f
-	fp.grantTables = db
+	fp.mysqlTables = db
 	return &fp, nil
 }
