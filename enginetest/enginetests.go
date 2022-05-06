@@ -6921,11 +6921,12 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	var users []*grant_tables.User
 	var roles []*grant_tables.RoleEdge
+	//var colStats []*grant_tables.ColStats
 	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(
 		func(ctx *sql.Context, updatedUsers []*grant_tables.User, updatedRoles []*grant_tables.RoleEdge, updatedColStats []*grant_tables.ColStats) error {
 			users = updatedUsers
 			roles = updatedRoles
-			colStats = updatedColStats
+			//colStats = updatedColStats
 			return nil
 		},
 	)
