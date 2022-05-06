@@ -55,8 +55,8 @@ type MySQLTables struct {
 var _ sql.Database = (*MySQLTables)(nil)
 var _ mysql.AuthServer = (*MySQLTables)(nil)
 
-// CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
-func CreateEmptyGrantTables() *MySQLTables {
+// CreateEmptyMySQLTables returns a collection of Grant Tables that do not contain any data.
+func CreateEmptyMySQLTables() *MySQLTables {
 	// original tables
 	grantTables := &MySQLTables{
 		user:       newMySQLTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
@@ -64,8 +64,8 @@ func CreateEmptyGrantTables() *MySQLTables {
 	}
 
 	// mysqlTable shims
-	grantTables.db = newGrantTableShim(dbTblName, dbTblSchema, grantTables.user, DbConverter{})
-	grantTables.tables_priv = newGrantTableShim(tablesPrivTblName, tablesPrivTblSchema, grantTables.user, TablesPrivConverter{})
+	grantTables.db = newMySQLTableShim(dbTblName, dbTblSchema, grantTables.user, DbConverter{})
+	grantTables.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, grantTables.user, TablesPrivConverter{})
 
 	return grantTables
 }

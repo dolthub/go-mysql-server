@@ -42,8 +42,8 @@ var _ sql.UpdatableTable = (*mysqlTableShim)(nil)
 var _ sql.DeletableTable = (*mysqlTableShim)(nil)
 var _ sql.ReplaceableTable = (*mysqlTableShim)(nil)
 
-// newGrantTableShim returns a new shim for the given Grant Table with the given schema.
-func newGrantTableShim(
+// newMySQLTableShim returns a new shim for the given Grant Table with the given schema.
+func newMySQLTableShim(
 	name string,
 	sch sql.Schema,
 	original *mysqlTable,

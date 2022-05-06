@@ -47,7 +47,7 @@ type sessionLocks map[uint32]dbLocks
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
-		MySQLTables:      mysql_db.CreateEmptyGrantTables(),
+		MySQLTables:      mysql_db.CreateEmptyMySQLTables(),
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
