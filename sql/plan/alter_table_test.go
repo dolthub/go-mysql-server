@@ -89,6 +89,32 @@ func TestAddColumnToSchema(t *testing.T) {
 			},
 		},
 		{
+			name: "add at beginning with default",
+			schema:      myTable,
+			newColumn:   &sql.Column{
+				Name: "i2",
+				Type: sql.Int64,
+				Source: "mytable",
+				Default: mustDefault(expression.NewGetField(1, sql.Int64, "i", false), sql.Int64, false, true),
+			},
+			order: &sql.ColumnOrder{First: true},
+			newSchema:   sql.Schema{
+				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, sql.Int64, "i", false), sql.Int64, false, true),},
+				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
+			},
+			projections: []sql.Expression{
+				colDefaultExpression{&sql.Column{
+					Name: "i2",
+					Type: sql.Int64,
+					Source: "mytable",
+					Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true),
+				}},
+				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(1, varchar20, "s", false),
+			},
+		},
+		{
 			name: "add in middle",
 			schema:      myTable,
 			newColumn:   &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"},
@@ -117,4 +143,13 @@ func TestAddColumnToSchema(t *testing.T) {
 			assert.Equal(t, tc.projections, projections)
 		})
 	}
+}
+
+// mustDefault enforces that no error occurred when constructing the column default value.
+func mustDefault(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
+	colDef, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+	if err != nil {
+		panic(err)
+	}
+	return colDef
 }

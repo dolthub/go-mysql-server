@@ -147,6 +147,20 @@ type AddColumn struct {
 	targetSch sql.Schema
 }
 
+func (a *AddColumn) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("add column %s to %s", a.column.Name, a.Table)
+
+	var children []string
+	children = append(children, sql.DebugString(a.column))
+	for _, col := range a.targetSch {
+		children = append(children, sql.DebugString(col))
+	}
+
+	pr.WriteChildren(children...)
+	return pr.String()
+}
+
 var _ sql.Node = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
@@ -306,6 +320,9 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	a.targetSch = schemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+
+	// *sql.Column is a reference type, make a copy before we modify it so we don't affect the original node
+	a.column = a.column.Copy()
 	if ok {
 		a.column.Default = unwrappedColDefVal
 	} else { // nil fails type check
@@ -506,8 +523,14 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 		idx = 0
 	}
 
+	// Now build the new schema, keeping track of three things:
+	// 1) the new result schema
+	// 2) A set of projectsion to translate rows in the old schema to rows in the new schema
+	// 3) A translation of field indexes from old schema to new schema
 	newSch := make(sql.Schema, 0, len(schema) + 1)
 	projections := make([]sql.Expression, len(schema)+1)
+	fieldIndexTranslations := make(map[int]int)
+
 	if idx >= 0 {
 		newSch = append(newSch, schema[:idx]...)
 		newSch = append(newSch, column)
@@ -515,19 +538,47 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 
 		for i := range schema[:idx] {
 			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+			fieldIndexTranslations[i] = i
 		}
 		projections[idx] = colDefaultExpression{column}
 		for i := range schema[idx:] {
 			schIdx := i + idx
 			projections[schIdx + 1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
+			fieldIndexTranslations[schIdx] = schIdx + 1
 		}
 	} else { // new column at end
 		newSch = append(newSch, schema...)
 		newSch = append(newSch, column)
 		for i := range schema {
 			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+			fieldIndexTranslations[i] = i
 		}
 		projections[len(schema)] = colDefaultExpression{column}
+	}
+
+	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the old
+	// schema, so now we have to make them match the new one.
+	for i := range projections {
+		switch p := projections[i].(type) {
+		case colDefaultExpression:
+			if p.column.Default.Expression != nil {
+				newExpr, _, err := transform.Expr(p.column.Default.Expression, func(s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch s := s.(type) {
+					case *expression.GetField:
+						return s.WithIndex(fieldIndexTranslations[s.Index()]), transform.NewTree, nil
+					default:
+						return s, transform.SameTree, nil
+					}
+					return nil, transform.SameTree, nil
+				})
+				if err != nil {
+					return nil, nil, err
+				}
+				p.column.Default.Expression = newExpr
+				projections[i] = p
+			}
+			break
+		}
 	}
 
 	return newSch, projections, nil

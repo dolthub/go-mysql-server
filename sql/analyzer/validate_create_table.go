@@ -103,7 +103,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
 		case *plan.ModifyColumn:
-			n, err := nn.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -113,7 +113,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 			return n, transform.NewTree, nil
 		case *plan.RenameColumn:
-			n, err := nn.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -125,7 +125,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.AddColumn:
 			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
 			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
-			n, err := nn.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -135,7 +135,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
-			n, err := nn.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -151,7 +151,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterPK:
-			n, err := nn.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -161,7 +161,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterDefaultSet:
-			n, err := nn.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -171,7 +171,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterDefaultDrop:
-			n, err := nn.WithTargetSchema(sch)
+			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
