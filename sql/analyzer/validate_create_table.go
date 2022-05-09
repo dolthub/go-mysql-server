@@ -53,11 +53,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return n, transform.SameTree, nil
 }
 
-func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if !n.Resolved() {
-		return n, transform.SameTree, nil
-	}
-
+func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var sch sql.Schema
 	var indexes []string
 	var keyedColumns map[string]bool
@@ -102,38 +98,91 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
 
-	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
+	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	transform.Inspect(n, func(n sql.Node) bool {
-		switch n := n.(type) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch nn := n.(type) {
 		case *plan.ModifyColumn:
-			sch, err = validateModifyColumn(initialSch, sch, n, keyedColumns)
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			sch, err = validateModifyColumn(initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.RenameColumn:
-			sch, err = validateRenameColumn(initialSch, sch, n)
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			sch, err = validateRenameColumn(initialSch, sch, n.(*plan.RenameColumn))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AddColumn:
 			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
 			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
-			sch, err = validateAddColumn(initialSch, sch, n)
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.DropColumn:
-			sch, err = validateDropColumn(initialSch, sch, n)
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			sch, err = validateDropColumn(initialSch, sch, n.(*plan.DropColumn))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
-			indexes, err = validateAlterIndex(initialSch, sch, n, indexes)
+			indexes, err = validateAlterIndex(initialSch, sch, n.(*plan.AlterIndex), indexes)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterPK:
-			sch, err = validatePrimaryKey(initialSch, sch, n)
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			sch, err = validatePrimaryKey(initialSch, sch, n.(*plan.AlterPK))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterDefaultSet:
-			sch, err = validateAlterDefault(initialSch, sch, n)
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			sch, err = validateAlterDefault(initialSch, sch, n.(*plan.AlterDefaultSet))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.AlterDefaultDrop:
-			sch, err = validateDropDefault(initialSch, sch, n)
+			n, err := nn.WithTargetSchema(sch.Copy())
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			sch, err = validateDropDefault(initialSch, sch, n.(*plan.AlterDefaultDrop))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		}
-		if err != nil {
-			return false
-		}
-		return true
+		return n, transform.SameTree, nil
 	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return n, transform.SameTree, nil
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
@@ -146,14 +195,14 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	nameable := table.(sql.Nameable)
 
 	// Check for column name collisions
-	if initialSch.Contains(rc.NewColumnName, nameable.Name()) ||
-		sch.Contains(rc.NewColumnName, nameable.Name()) {
+	if sch.Contains(rc.NewColumnName, nameable.Name()) {
 		return nil, sql.ErrColumnExists.New(rc.NewColumnName)
 	}
 
-	// Make sure this column exists and hasn't already been renamed to something else
-	if !initialSch.Contains(rc.ColumnName, nameable.Name()) ||
-		!sch.Contains(rc.ColumnName, nameable.Name()) {
+	// Make sure this column exists. MySQL only checks the original schema, which means you can't add a column and
+	// rename it in the same statement. But, it also has to exist in the modified schema -- it can't have been renamed or
+	// dropped in this statement.
+	if !initialSch.Contains(rc.ColumnName, nameable.Name()) || !sch.Contains(rc.ColumnName, nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
 	}
 
@@ -170,8 +219,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	nameable := table.(sql.Nameable)
 
 	// Name collisions
-	if initialSch.Contains(ac.Column().Name, nameable.Name()) ||
-		schema.Contains(ac.Column().Name, nameable.Name()) {
+	if schema.Contains(ac.Column().Name, nameable.Name()) {
 		return nil, sql.ErrColumnExists.New(ac.Column().Name)
 	}
 
@@ -198,12 +246,14 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	return newSch, nil
 }
 
-func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+func validateModifyColumn(initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
 	nameable := table.(sql.Nameable)
 
-	// Look for the old column and throw an error if it's not there.
-	if schema.IndexOf(mc.Column(), nameable.Name()) == -1 {
+	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
+	// statement. This matches the MySQL behavior.
+	if !schema.Contains(mc.Column(), nameable.Name()) ||
+		!initialSch.Contains(mc.Column(), nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
 	}
 
@@ -225,8 +275,10 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	table := dc.Table
 	nameable := table.(sql.Nameable)
 
-	// Look for the column to be dropped and throw an error if it's not there.
-	if sch.IndexOf(dc.Column, nameable.Name()) == -1 {
+	// Look for the column to be dropped and throw an error if it's not there. It must exist in the original schema before
+	// this statement was run, it cannot have been added as part of this ALTER TABLE statement. This matches the MySQL
+	// behavior.
+	if !initialSch.Contains(dc.Column, nameable.Name()) || !sch.Contains(dc.Column, nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
 	}
 
