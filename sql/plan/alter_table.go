@@ -1018,6 +1018,18 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
+	// TODO: replace with different node in analyzer
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		rewritten, err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		}
+	}
+
 	// TODO: fix me
 	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.targetSchema, i.m.columnName, i.m.column.Name); err != nil {
 		return nil, err
@@ -1119,6 +1131,157 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (i *modifyColumnIter) Close(context *sql.Context) error {
 	return nil
+}
+
+// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+	newSch, projections, err := modifyColumnInSchema(i.m.targetSchema, i.m.columnName, i.m.column, i.m.order)
+	if err != nil {
+		return false, err
+	}
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+
+	// TODO: codify rewrite requirements
+	rewriteRequired := true
+
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.column)
+	if !rewriteRequired && !rewriteRequested {
+		return false, nil
+	}
+
+	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	if err != nil {
+		return false, err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return false, err
+		}
+
+		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
+		if err != nil {
+			return false, err
+		}
+
+		err = inserter.Insert(ctx, newRow)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// projectRowWithTypes projects the row given with the projections given and additionally converts them to the
+// corresponding types found in the schema given, using the standard type conversion logic.
+func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
+	newRow, err := ProjectRow(ctx, projections, r)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range newRow {
+		newRow[i], err = sch[i].Type.Convert(newRow[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return newRow, nil
+}
+
+// modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
+// projections to adapt the old schema to the new one.
+func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
+	idx := -1
+	if order != nil && len(order.AfterColumn) > 0 {
+		idx = schema.IndexOf(order.AfterColumn, column.Source)
+		if idx == -1 {
+			// Should be checked in the analyzer already
+			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
+		}
+		idx++
+	} else if order != nil && order.First {
+		idx = 0
+	}
+
+	// Now build the new schema, keeping track of:
+	// 1) the new result schema
+	// 2) A set of projections to translate rows in the old schema to rows in the new schema
+	newSch := make(sql.Schema, 0, len(schema)+1)
+	projections := make([]sql.Expression, len(schema)+1)
+
+	if idx >= 0 {
+		newSch = append(newSch, schema[:idx]...)
+		newSch = append(newSch, column)
+		newSch = append(newSch, schema[idx:]...)
+
+		for i := range schema[:idx] {
+			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+		}
+		projections[idx] = colDefaultExpression{column}
+		for i := range schema[idx:] {
+			schIdx := i + idx
+			projections[schIdx+1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
+		}
+	} else { // new column at end
+		newSch = append(newSch, schema...)
+		newSch = append(newSch, column)
+		for i := range schema {
+			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+		}
+		projections[len(schema)] = colDefaultExpression{column}
+	}
+
+	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the
+	// column indexes in the new result schema, which is not what we want here: we want the positions in the old
+	// (current) schema, since that is what we'll be evaluating when we rewrite the table.
+	for i := range projections {
+		switch p := projections[i].(type) {
+		case colDefaultExpression:
+			if p.column.Default != nil {
+				newExpr, _, err := transform.Expr(p.column.Default.Expression, func(s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch s := s.(type) {
+					case *expression.GetField:
+						idx := schema.IndexOf(s.Name(), schema[0].Source)
+						if idx < 0 {
+							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
+						}
+						return s.WithIndex(idx), transform.NewTree, nil
+					default:
+						return s, transform.SameTree, nil
+					}
+					return s, transform.SameTree, nil
+				})
+				if err != nil {
+					return nil, nil, err
+				}
+				p.column.Default.Expression = newExpr
+				projections[i] = p
+			}
+			break
+		}
+	}
+
+	return newSch, projections, nil
 }
 
 func (m *ModifyColumn) Children() []sql.Node {
