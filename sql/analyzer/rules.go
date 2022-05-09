@@ -36,7 +36,7 @@ var OnceBeforeDefault = []Rule{
 	{reresolveTablesId, reresolveTables},
 	{setTargetSchemasId, setTargetSchemas},
 	{loadCheckConstraintsId, loadChecks},
-	{validateAlterColumnId, validateAlterColumn},
+	{resolveAlterColumnId, resolveAlterColumn},
 	{loadStoredProceduresId, loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{validateDropTablesId, validateDropTables},
 	{resolveCreateLikeId, resolveCreateLike},

@@ -449,8 +449,6 @@ func (i addColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
 func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	//return false, nil
-
 	newSch, projections, err := addColumnToSchema(i.a.targetSch, i.a.column, i.a.order)
 	if err != nil {
 		return false, err
