@@ -53,6 +53,11 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 		})
 
+		// Do nothing if no resolved table under sort
+		if tbl == nil {
+			return tc.Node, transform.SameTree, nil
+		}
+
 		// Extract primary key columns
 		var pkColNames []string
 		for _, col := range tbl.Schema() {
