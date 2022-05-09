@@ -86,7 +86,7 @@ func (c *Column) DebugString() string {
 	sb.WriteString(c.Comment)
 	sb.WriteString(", ")
 	sb.WriteString("Default: ")
-	sb.WriteString(c.Default.String())
+	sb.WriteString(DebugString(c.Default))
 	sb.WriteString(", ")
 	sb.WriteString("AutoIncrement: ")
 	sb.WriteString(fmt.Sprintf("%v", c.AutoIncrement))

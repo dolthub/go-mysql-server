@@ -323,9 +323,14 @@ type MultiDatabaser interface {
 	WithDatabaseProvider(DatabaseProvider) (Node, error)
 }
 
-// SchemaTarget is a node that has a target schema that can be set
+// SchemaTarget is a node that has a target schema that can be set during analysis. This is necessary because some
+// schema objects (things that involve expressions, column references, etc.) can only be reified during analysis. The
+// target schema is the schema of a table under a DDL operation, not the schema of rows returned by this node.
 type SchemaTarget interface {
+	// WithTargetSchema returns a copy of this node with the target schema set
 	WithTargetSchema(Schema) (Node, error)
+	// TargetSchema returns the target schema for this node
+	TargetSchema() Schema
 }
 
 // PrimaryKeySchemaTarget is a node that has a primary key target schema that can be set
@@ -669,6 +674,9 @@ type RowUpdater interface {
 // rewrite every row of the table. In this case, rows are streamed from the existing table in the old schema,
 // transformed / updated appropriately, and written with the new format.
 type RewritableTable interface {
+	Table
+	AlterableTable
+
 	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old schema, new
 	// schema, and modified column (added, dropped, modified) is provided.
 	// The engine may decide to rewrite tables regardless in some cases, such as when a new non-nullable column is added.

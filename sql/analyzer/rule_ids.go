@@ -73,7 +73,7 @@ const (
 	finalizeUnionsId              // finalizeUnions
 	loadTriggersId                // loadTriggers
 	processTruncateId             // processTruncate
-	validateAlterColumnId         // validateAlterColumn
+	resolveAlterColumnId          // resolveAlterColumn
 	resolveGeneratorsId           // resolveGenerators
 	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
 	assignCatalogId               // assignCatalog
