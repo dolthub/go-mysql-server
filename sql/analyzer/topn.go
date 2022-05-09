@@ -104,9 +104,24 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				break
 			}
 		}
+		if pkIndex == nil {
+			return tc.Node, transform.SameTree, nil
+		}
 
-		// TODO: Recreate keyExpressions?
-		newNode := plan.NewIndexedTableAccess(tbl.(*plan.ResolvedTable), pkIndex, nil)
+		keyExprs := make([]sql.Expression, len(s.SortFields))
+		for i, sf := range s.SortFields {
+			keyExprs[i] = sf.Column.(*expression.GetField).WithIndex(i)
+		}
+
+		r := sql.Range{
+			sql.AllRangeColumnExpr(s.SortFields[0].Column.Type()),
+		}
+		lookup, err := pkIndex.NewLookup(ctx, r)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		newNode := plan.NewStaticIndexedTableAccess(tbl.(*plan.ResolvedTable), lookup, pkIndex, keyExprs)
 		return newNode, transform.SameTree, nil
 	})
 }
