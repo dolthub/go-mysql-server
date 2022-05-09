@@ -193,7 +193,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 
 // RowIter implements the interface sql.Node.
 func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -588,7 +588,7 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		return true
 	}
 	//TODO: only active roles may be revoked if the SUPER privilege is not held
-	mysqlTables := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables := n.MySQLTables.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
 	user := mysqlTables.GetUser(client.User, client.Address, false)
 	if user == nil {
@@ -623,7 +623,7 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}

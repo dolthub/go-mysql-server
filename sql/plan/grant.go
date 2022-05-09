@@ -197,7 +197,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 
 // RowIter implements the interface sql.Node.
 func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -636,7 +636,7 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 		return true
 	}
 	//TODO: only active roles may be assigned if the SUPER privilege is not held
-	mysqlTables := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables := n.MySQLTables.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
 	user := mysqlTables.GetUser(client.User, client.Address, false)
 	if user == nil {
@@ -671,7 +671,7 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 
 // RowIter implements the interface sql.Node.
 func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}

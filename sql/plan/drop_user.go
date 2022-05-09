@@ -99,7 +99,7 @@ func (n *DropUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 // RowIter implements the interface sql.Node.
 func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}

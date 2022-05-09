@@ -96,7 +96,7 @@ func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLTables)
+	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}

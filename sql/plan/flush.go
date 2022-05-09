@@ -38,7 +38,7 @@ func NewFlushPrivileges(ft bool) *FlushPrivileges {
 
 // RowIter implements the interface sql.Node.
 func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	gts, ok := f.mysqlTables.(*mysql_db.MySQLTables)
+	gts, ok := f.mysqlTables.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}

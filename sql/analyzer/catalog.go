@@ -26,7 +26,7 @@ import (
 )
 
 type Catalog struct {
-	MySQLTables *mysql_db.MySQLTables
+	MySQLTables *mysql_db.MySQLDb
 
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
