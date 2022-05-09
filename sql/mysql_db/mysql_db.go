@@ -19,11 +19,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"net"
 	"sort"
 	"strings"
-
-	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -70,9 +69,9 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	return mysqlDb
 }
 
-// LoadData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
+// LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (t *MySQLDb) LoadData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
 	t.Enabled = true
 	for _, user := range users {
 		if user == nil {
@@ -90,6 +89,52 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, users []*User, roleConnections []*R
 			return err
 		}
 	}
+	return nil
+}
+
+// LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
+// pre-existing data.
+func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data map[string]interface{}) error {
+	t.Enabled = true
+
+	// TODO: this can't possible be the best way
+	for key, val := range data {
+		switch strings.ToLower(key) {
+		case "users":
+			for _, userVal := range val.([]interface{}) {
+				userMap := userVal.(map[string]interface{})
+				user := User{
+					User:                userMap["User"].(string),
+					Host:                userMap["Host"].(string),
+					PrivilegeSet:        userMap["User"].(string),
+					Plugin:              userMap["User"].(string),
+					Password:            userMap["User"].(string),
+					PasswordLastChanged: userMap["User"].(string),
+					Locked:              userMap["User"].(string),
+					Attributes:          userMap["User"].(string),
+					IsRole:              userMap["User"].(string),
+				}
+			}
+
+		}
+
+	}
+	//for _, user := range users {
+	//	if user == nil {
+	//		continue
+	//	}
+	//	if err := t.user.data.Put(ctx, user); err != nil {
+	//		return err
+	//	}
+	//}
+	//for _, role := range roleConnections {
+	//	if role == nil {
+	//		continue
+	//	}
+	//	if err := t.role_edges.data.Put(ctx, role); err != nil {
+	//		return err
+	//	}
+	//}
 	return nil
 }
 
