@@ -105,6 +105,7 @@ var OnceAfterDefault = []Rule{
 	{pushdownProjectionsId, pushdownProjections},
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
+	{replaceSortPkId, replacePkSort},
 	{insertTopNId, insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
