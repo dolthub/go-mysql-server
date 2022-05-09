@@ -25,9 +25,9 @@ import (
 
 // DropUser represents the statement DROP USER.
 type DropUser struct {
-	IfExists    bool
-	Users       []UserName
-	MySQLTables sql.Database
+	IfExists bool
+	Users    []UserName
+	MySQLDb  sql.Database
 }
 
 var _ sql.Node = (*DropUser)(nil)
@@ -36,9 +36,9 @@ var _ sql.Databaser = (*DropUser)(nil)
 // NewDropUser returns a new DropUser node.
 func NewDropUser(ifExists bool, users []UserName) *DropUser {
 	return &DropUser{
-		IfExists:    ifExists,
-		Users:       users,
-		MySQLTables: sql.UnresolvedDatabase("mysql"),
+		IfExists: ifExists,
+		Users:    users,
+		MySQLDb:  sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -62,19 +62,19 @@ func (n *DropUser) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *DropUser) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *DropUser) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *DropUser) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -99,14 +99,14 @@ func (n *DropUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 // RowIter implements the interface sql.Node.
 func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlTables.UserTable().Data()
-	roleEdgesData := mysqlTables.RoleEdgesTable().Data()
+	userTableData := mysqlDb.UserTable().Data()
+	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, user := range n.Users {
-		existingUser := mysqlTables.GetUser(user.Name, user.Host, false)
+		existingUser := mysqlDb.GetUser(user.Name, user.Host, false)
 		if existingUser == nil {
 			if n.IfExists {
 				continue
@@ -137,7 +137,7 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, err
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

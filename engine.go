@@ -85,10 +85,10 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		versionPostfix = cfg.VersionPostfix
 		isReadOnly = cfg.IsReadOnly
 		if cfg.IncludeRootAccount {
-			a.Catalog.MySQLTables.AddRootAccount()
+			a.Catalog.MySQLDb.AddRootAccount()
 		}
 		for _, tempUser := range cfg.TemporaryUsers {
-			a.Catalog.MySQLTables.AddSuperUser(tempUser.Username, tempUser.Password)
+			a.Catalog.MySQLDb.AddSuperUser(tempUser.Username, tempUser.Password)
 		}
 	}
 

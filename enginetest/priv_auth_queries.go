@@ -1035,7 +1035,7 @@ var ServerAuthTests = []ServerAuthenticationTest{
 	{
 		Name: "Adding a Super User directly",
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
-			engine.Analyzer.Catalog.MySQLTables.AddSuperUser("bestuser", "the_pass")
+			engine.Analyzer.Catalog.MySQLDb.AddSuperUser("bestuser", "the_pass")
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{

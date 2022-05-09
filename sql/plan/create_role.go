@@ -28,7 +28,7 @@ import (
 type CreateRole struct {
 	IfNotExists bool
 	Roles       []UserName
-	MySQLTables sql.Database
+	MySQLDb     sql.Database
 }
 
 // NewCreateRole returns a new CreateRole node.
@@ -36,7 +36,7 @@ func NewCreateRole(ifNotExists bool, roles []UserName) *CreateRole {
 	return &CreateRole{
 		IfNotExists: ifNotExists,
 		Roles:       roles,
-		MySQLTables: sql.UnresolvedDatabase("mysql"),
+		MySQLDb:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -62,19 +62,19 @@ func (n *CreateRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *CreateRole) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *CreateRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *CreateRole) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -102,11 +102,11 @@ func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlTables.UserTable().Data()
+	userTableData := mysqlDb.UserTable().Data()
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
@@ -139,7 +139,7 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, err
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

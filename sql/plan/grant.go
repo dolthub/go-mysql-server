@@ -31,7 +31,7 @@ type Grant struct {
 	Users           []UserName
 	WithGrantOption bool
 	As              *GrantUserAssumption
-	MySQLTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*Grant)(nil)
@@ -46,7 +46,7 @@ func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level
 		Users:           users,
 		WithGrantOption: withGrant,
 		As:              as,
-		MySQLTables:     db,
+		MySQLDb:         db,
 	}
 }
 
@@ -66,19 +66,19 @@ func (n *Grant) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *Grant) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *Grant) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *Grant) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -197,7 +197,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 
 // RowIter implements the interface sql.Node.
 func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -209,7 +209,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -235,7 +235,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -262,7 +262,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -274,7 +274,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 
@@ -564,7 +564,7 @@ type GrantRole struct {
 	Roles           []UserName
 	TargetUsers     []UserName
 	WithAdminOption bool
-	MySQLTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*GrantRole)(nil)
@@ -576,7 +576,7 @@ func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole
 		Roles:           roles,
 		TargetUsers:     users,
 		WithAdminOption: withAdmin,
-		MySQLTables:     sql.UnresolvedDatabase("mysql"),
+		MySQLDb:         sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -600,19 +600,19 @@ func (n *GrantRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *GrantRole) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *GrantRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *GrantRole) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -636,18 +636,18 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 		return true
 	}
 	//TODO: only active roles may be assigned if the SUPER privilege is not held
-	mysqlTables := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := mysqlTables.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return false
 	}
-	roleEntries := mysqlTables.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+	roleEntries := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
 	for _, roleName := range n.Roles {
-		role := mysqlTables.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
 		if role == nil {
 			return false
 		}
@@ -671,18 +671,18 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 
 // RowIter implements the interface sql.Node.
 func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := mysqlTables.RoleEdgesTable().Data()
+	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlTables.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlTables.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
@@ -698,7 +698,7 @@ func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 			}
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

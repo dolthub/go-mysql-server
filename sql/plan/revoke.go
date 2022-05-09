@@ -29,7 +29,7 @@ type Revoke struct {
 	ObjectType     ObjectType
 	PrivilegeLevel PrivilegeLevel
 	Users          []UserName
-	MySQLTables    sql.Database
+	MySQLDb        sql.Database
 }
 
 var _ sql.Node = (*Revoke)(nil)
@@ -42,7 +42,7 @@ func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel,
 		ObjectType:     objType,
 		PrivilegeLevel: level,
 		Users:          users,
-		MySQLTables:    sql.UnresolvedDatabase("mysql"),
+		MySQLDb:        sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -62,19 +62,19 @@ func (n *Revoke) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *Revoke) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *Revoke) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *Revoke) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -193,7 +193,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 
 // RowIter implements the interface sql.Node.
 func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -202,7 +202,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlTables.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -222,7 +222,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlTables.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -243,7 +243,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented object types")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -252,7 +252,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
@@ -517,7 +517,7 @@ func (n *RevokeAll) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 type RevokeRole struct {
 	Roles       []UserName
 	TargetUsers []UserName
-	MySQLTables sql.Database
+	MySQLDb     sql.Database
 }
 
 var _ sql.Node = (*RevokeRole)(nil)
@@ -528,7 +528,7 @@ func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
 	return &RevokeRole{
 		Roles:       roles,
 		TargetUsers: users,
-		MySQLTables: sql.UnresolvedDatabase("mysql"),
+		MySQLDb:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -552,19 +552,19 @@ func (n *RevokeRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *RevokeRole) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *RevokeRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *RevokeRole) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -588,18 +588,18 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		return true
 	}
 	//TODO: only active roles may be revoked if the SUPER privilege is not held
-	mysqlTables := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := mysqlTables.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return false
 	}
-	roleEntries := mysqlTables.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+	roleEntries := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
 	for _, roleName := range n.Roles {
-		role := mysqlTables.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
 		if role == nil {
 			return false
 		}
@@ -623,18 +623,18 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := mysqlTables.RoleEdgesTable().Data()
+	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlTables.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlTables.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
@@ -650,7 +650,7 @@ func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

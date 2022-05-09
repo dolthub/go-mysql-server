@@ -1375,7 +1375,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 				User:    "root",
 				Address: "localhost",
 			})
-			engine.Analyzer.Catalog.MySQLTables.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -1434,7 +1434,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 			engine := sqle.New(analyzer.NewDefault(provider), new(sqle.Config))
 			defer engine.Close()
 
-			engine.Analyzer.Catalog.MySQLTables.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			rootCtx := harness.NewContextWithClient(sql.Client{
 				User:    "root",
 				Address: "localhost",
@@ -1532,7 +1532,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 
 			engine := sqle.NewDefault(harness.NewDatabaseProvider())
-			engine.Analyzer.Catalog.MySQLTables.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			if script.SetUpFunc != nil {
 				script.SetUpFunc(ctx, t, engine)
 			}
@@ -6567,7 +6567,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDa
 		a = analyzer.NewDefault(provider)
 	}
 	// All tests will run with all privileges on the built-in root account
-	a.Catalog.MySQLTables.AddRootAccount()
+	a.Catalog.MySQLDb.AddRootAccount()
 
 	engine := sqle.New(a, new(sqle.Config))
 
@@ -6917,11 +6917,11 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 	databases := []sql.Database{myDb}
 	engine := NewEngineWithDbs(t, harness, databases)
 	defer engine.Close()
-	engine.Analyzer.Catalog.MySQLTables.AddRootAccount()
+	engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 
 	var users []*mysql_db.User
 	var roles []*mysql_db.RoleEdge
-	engine.Analyzer.Catalog.MySQLTables.SetPersistCallback(
+	engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
 		func(ctx *sql.Context, updatedUsers []*mysql_db.User, updatedRoles []*mysql_db.RoleEdge) error {
 			users = updatedUsers
 			roles = updatedRoles

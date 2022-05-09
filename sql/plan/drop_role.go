@@ -24,17 +24,17 @@ import (
 
 // DropRole represents the statement DROP ROLE.
 type DropRole struct {
-	IfExists    bool
-	Roles       []UserName
-	MySQLTables sql.Database
+	IfExists bool
+	Roles    []UserName
+	MySQLDb  sql.Database
 }
 
 // NewDropRole returns a new DropRole node.
 func NewDropRole(ifExists bool, roles []UserName) *DropRole {
 	return &DropRole{
-		IfExists:    ifExists,
-		Roles:       roles,
-		MySQLTables: sql.UnresolvedDatabase("mysql"),
+		IfExists: ifExists,
+		Roles:    roles,
+		MySQLDb:  sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -61,19 +61,19 @@ func (n *DropRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *DropRole) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *DropRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *DropRole) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -101,12 +101,12 @@ func (n *DropRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 // RowIter implements the interface sql.Node.
 func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlTables.UserTable().Data()
-	roleEdgesData := mysqlTables.RoleEdgesTable().Data()
+	userTableData := mysqlDb.UserTable().Data()
+	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
@@ -144,7 +144,7 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, err
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

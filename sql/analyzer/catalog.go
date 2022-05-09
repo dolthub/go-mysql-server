@@ -26,7 +26,7 @@ import (
 )
 
 type Catalog struct {
-	MySQLTables *mysql_db.MySQLDb
+	MySQLDb *mysql_db.MySQLDb
 
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
@@ -47,7 +47,7 @@ type sessionLocks map[uint32]dbLocks
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
-		MySQLTables:      mysql_db.CreateEmptyMySQLTables(),
+		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
@@ -59,8 +59,8 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 }
 
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
-	if c.MySQLTables.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLTables, c.provider).AllDatabases(ctx)
+	if c.MySQLDb.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).AllDatabases(ctx)
 	} else {
 		return c.provider.AllDatabases(ctx)
 	}
@@ -93,8 +93,8 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 }
 
 func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
-	if c.MySQLTables.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLTables, c.provider).HasDatabase(ctx, db)
+	if c.MySQLDb.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).HasDatabase(ctx, db)
 	} else {
 		return c.provider.HasDatabase(ctx, db)
 	}
@@ -102,8 +102,8 @@ func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
-	if c.MySQLTables.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLTables, c.provider).Database(ctx, db)
+	if c.MySQLDb.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).Database(ctx, db)
 	} else {
 		return c.provider.Database(ctx, db)
 	}

@@ -33,7 +33,7 @@ type CreateUser struct {
 	PasswordOptions *PasswordOptions
 	Locked          bool
 	Attribute       string
-	MySQLTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*CreateUser)(nil)
@@ -59,19 +59,19 @@ func (n *CreateUser) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *CreateUser) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *CreateUser) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *CreateUser) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -96,11 +96,11 @@ func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlTables.UserTable().Data()
+	userTableData := mysqlDb.UserTable().Data()
 	for _, user := range n.Users {
 		userPk := mysql_db.UserPrimaryKey{
 			Host: user.UserName.Host,
@@ -136,7 +136,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, err
 		}
 	}
-	if err := mysqlTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

@@ -55,8 +55,8 @@ type MySQLDb struct {
 var _ sql.Database = (*MySQLDb)(nil)
 var _ mysql.AuthServer = (*MySQLDb)(nil)
 
-// CreateEmptyMySQLTables returns a collection of Grant Tables that do not contain any data.
-func CreateEmptyMySQLTables() *MySQLDb {
+// CreateEmptyMySQLDb returns a collection of MySQL Tables that do not contain any data.
+func CreateEmptyMySQLDb() *MySQLDb {
 	// original tables
 	mysqlDb := &MySQLDb{
 		user:       newMySQLTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),

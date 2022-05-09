@@ -27,25 +27,25 @@ import (
 // to execute it.
 //TODO: add the remaining statements that interact with the grant tables
 func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	mysqlTables := a.Catalog.MySQLTables
+	mysqlDb := a.Catalog.MySQLDb
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
-		mysqlTables.Enabled = true
+		mysqlDb.Enabled = true
 	}
-	if !mysqlTables.Enabled {
+	if !mysqlDb.Enabled {
 		return n, transform.SameTree, nil
 	}
 
 	client := ctx.Session.Client()
-	user := mysqlTables.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
 	if sql.IsDualTable(getTable(n)) {
 		return n, transform.SameTree, nil
 	}
-	if !n.CheckPrivileges(ctx, a.Catalog.MySQLTables) {
+	if !n.CheckPrivileges(ctx, a.Catalog.MySQLDb) {
 		return nil, transform.SameTree, sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))
 	}
 	return n, transform.SameTree, nil

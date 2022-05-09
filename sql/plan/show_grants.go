@@ -28,7 +28,7 @@ type ShowGrants struct {
 	CurrentUser bool
 	For         *UserName
 	Using       []UserName
-	MySQLTables sql.Database
+	MySQLDb     sql.Database
 }
 
 var _ sql.Node = (*ShowGrants)(nil)
@@ -40,7 +40,7 @@ func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *Sh
 		CurrentUser: currentUser,
 		For:         targetUser,
 		Using:       using,
-		MySQLTables: sql.UnresolvedDatabase("mysql"),
+		MySQLDb:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -75,19 +75,19 @@ func (n *ShowGrants) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *ShowGrants) Database() sql.Database {
-	return n.MySQLTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *ShowGrants) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.MySQLTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *ShowGrants) Resolved() bool {
-	_, ok := n.MySQLTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -116,7 +116,7 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlTables, ok := n.MySQLTables.(*mysql_db.MySQLDb)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -127,7 +127,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			Host: client.Address,
 		}
 	}
-	user := mysqlTables.GetUser(n.For.Name, n.For.Host, false)
+	user := mysqlDb.GetUser(n.For.Name, n.For.Host, false)
 	if user == nil {
 		return nil, sql.ErrShowGrantsUserDoesNotExist.New(n.For.Name, n.For.Host)
 	}
@@ -155,7 +155,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	//TODO: display the table and column privileges
 
 	sb.Reset()
-	roleEdges := mysqlTables.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+	roleEdges := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
