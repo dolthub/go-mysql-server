@@ -962,14 +962,14 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return tc.Node, transform.SameTree, nil
 		}
 
-		ranges := make([]sql.Range, len(s.SortFields))
+		r := make([]sql.RangeColumnExpr, len(s.SortFields))
 		keyExprs := make([]sql.Expression, len(s.SortFields))
 		for i, sf := range s.SortFields {
-			ranges[i] = sql.Range{sql.AllRangeColumnExpr(sf.Column.Type())}
+			r[i] = sql.AllRangeColumnExpr(sf.Column.Type())
 			keyExprs[i] = sf.Column.(*expression.GetField).WithIndex(i)
 		}
 
-		lookup, err := pkIndex.NewLookup(ctx, ranges...)
+		lookup, err := pkIndex.NewLookup(ctx, r)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
