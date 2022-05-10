@@ -903,25 +903,24 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 	if updateExists {
 		return n, transform.SameTree, nil
 	}
-
-	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		// Find order by nodes
-		s, ok := tc.Node.(*plan.Sort)
+		s, ok := n.(*plan.Sort)
 		if !ok {
-			return tc.Node, transform.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// Must be sorting by ascending
 		for _, field := range s.SortFields {
 			if field.Order != sql.Ascending {
-				return tc.Node, transform.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 		}
 
 		// Only replace iff immediate child is ResolvedTable
 		rs, ok := s.UnaryNode.Child.(*plan.ResolvedTable)
 		if !ok {
-			return tc.Node, transform.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// Extract primary key columns
@@ -937,7 +936,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		for _, field := range s.SortFields {
 			gf, ok := field.Column.(*expression.GetField)
 			if !ok {
-				return tc.Node, transform.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 			sfColNames = append(sfColNames, gf.Name())
 		}
@@ -946,17 +945,17 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		if len(pkColNames) == len(sfColNames) {
 			for i := 0; i < len(pkColNames); i++ {
 				if pkColNames[i] != sfColNames[i] {
-					return tc.Node, transform.SameTree, nil
+					return n, transform.SameTree, nil
 				}
 			}
 		} else {
-			return tc.Node, transform.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// Get indexes
 		idxTbl, ok := rs.Table.(sql.IndexedTable)
 		if !ok {
-			return tc.Node, transform.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 		idxs, err := idxTbl.GetIndexes(ctx)
 		if err != nil {
@@ -972,7 +971,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 		}
 		if pkIndex == nil {
-			return tc.Node, transform.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		r := make([]sql.RangeColumnExpr, len(s.SortFields))
@@ -990,4 +989,92 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		newNode := plan.NewStaticIndexedTableAccess(rs, lookup, pkIndex, keyExprs)
 		return newNode, transform.NewTree, nil
 	})
+	/*
+		return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
+			// Find order by nodes
+			s, ok := tc.Node.(*plan.Sort)
+			if !ok {
+				return tc.Node, transform.SameTree, nil
+			}
+
+			// Must be sorting by ascending
+			for _, field := range s.SortFields {
+				if field.Order != sql.Ascending {
+					return tc.Node, transform.SameTree, nil
+				}
+			}
+
+			// Only replace iff immediate child is ResolvedTable
+			rs, ok := s.UnaryNode.Child.(*plan.ResolvedTable)
+			if !ok {
+				return tc.Node, transform.SameTree, nil
+			}
+
+			// Extract primary key columns
+			var pkColNames []string
+			for _, col := range rs.Schema() {
+				if col.PrimaryKey {
+					pkColNames = append(pkColNames, col.Name)
+				}
+			}
+
+			// Extract SortField Column Names
+			var sfColNames []string
+			for _, field := range s.SortFields {
+				gf, ok := field.Column.(*expression.GetField)
+				if !ok {
+					return tc.Node, transform.SameTree, nil
+				}
+				sfColNames = append(sfColNames, gf.Name())
+			}
+
+			// If Primary Key matches SortFields exactly
+			if len(pkColNames) == len(sfColNames) {
+				for i := 0; i < len(pkColNames); i++ {
+					if pkColNames[i] != sfColNames[i] {
+						return tc.Node, transform.SameTree, nil
+					}
+				}
+			} else {
+				return tc.Node, transform.SameTree, nil
+			}
+
+			// Get indexes
+			idxTbl, ok := rs.Table.(sql.IndexedTable)
+			if !ok {
+				return tc.Node, transform.SameTree, nil
+			}
+			idxs, err := idxTbl.GetIndexes(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			// Extract primary index
+			var pkIndex sql.Index
+			for _, idx := range idxs {
+				if idx.ID() == "PRIMARY" {
+					pkIndex = idx
+					break
+				}
+			}
+			if pkIndex == nil {
+				return tc.Node, transform.SameTree, nil
+			}
+
+			r := make([]sql.RangeColumnExpr, len(s.SortFields))
+			keyExprs := make([]sql.Expression, len(s.SortFields))
+			for i, sf := range s.SortFields {
+				r[i] = sql.AllRangeColumnExpr(sf.Column.Type())
+				keyExprs[i] = sf.Column.(*expression.GetField).WithIndex(i)
+			}
+
+			lookup, err := pkIndex.NewLookup(ctx, r)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			newNode := plan.NewStaticIndexedTableAccess(rs, lookup, pkIndex, keyExprs)
+			return newNode, transform.NewTree, nil
+		})
+	*/
 }
