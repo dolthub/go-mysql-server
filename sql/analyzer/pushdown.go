@@ -975,6 +975,6 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		newNode := plan.NewStaticIndexedTableAccess(rs, lookup, pkIndex, keyExprs)
-		return newNode, transform.SameTree, nil
+		return newNode, transform.NewTree, nil
 	})
 }
