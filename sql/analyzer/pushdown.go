@@ -892,8 +892,6 @@ func stripDecorations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope
 // TODO: replace Limit(Sort()) iff sort is same as primary key with index lookup?
 func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		// TODO: limit?
-
 		// Find order by nodes
 		s, ok := tc.Node.(*plan.Sort)
 		if !ok {
@@ -907,26 +905,15 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 		}
 
-		// Find resolved table
-		var tbl sql.Table
-		transform.Inspect(tc.Node, func(node sql.Node) bool {
-			switch node := node.(type) {
-			case *plan.ResolvedTable:
-				tbl = node
-				return false
-			default:
-				return true
-			}
-		})
-
-		// Do nothing if not resolved table under sort
-		if tbl == nil {
+		// Only replace iff immediate child is ResolvedTable
+		rs, ok := s.UnaryNode.Child.(*plan.ResolvedTable)
+		if !ok {
 			return tc.Node, transform.SameTree, nil
 		}
 
 		// Extract primary key columns
 		var pkColNames []string
-		for _, col := range tbl.Schema() {
+		for _, col := range rs.Schema() {
 			if col.PrimaryKey {
 				pkColNames = append(pkColNames, col.Name)
 			}
@@ -954,7 +941,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		// Get indexes
-		idxTbl, ok := tbl.(*plan.ResolvedTable).Table.(sql.IndexedTable)
+		idxTbl, ok := rs.Table.(sql.IndexedTable)
 		if !ok {
 			return tc.Node, transform.SameTree, nil
 		}
@@ -987,7 +974,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return nil, transform.SameTree, err
 		}
 
-		newNode := plan.NewStaticIndexedTableAccess(tbl.(*plan.ResolvedTable), lookup, pkIndex, keyExprs)
+		newNode := plan.NewStaticIndexedTableAccess(rs, lookup, pkIndex, keyExprs)
 		return newNode, transform.SameTree, nil
 	})
 }
