@@ -1224,7 +1224,6 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 			// Should be checked in the analyzer already
 			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
 		}
-		newIdx++
 	} else if order != nil && order.First {
 		newIdx = 0
 	}
@@ -1232,12 +1231,12 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 	// establish a map from old column index to new column index
 	oldToNewIdxMapping := make(map[int]int)
 	var i, j int
-	for i < len(schema) {
+	// TODO: loop needs to end with i AND j
+	for j < len(schema) || i < len(schema) {
 		if i == currIdx {
-			oldToNewIdxMapping[i] = j
+			oldToNewIdxMapping[i] = newIdx
 			i++
 		} else if j == newIdx {
-			oldToNewIdxMapping[j] = currIdx
 			j++
 		} else {
 			oldToNewIdxMapping[i] = j
@@ -1253,12 +1252,16 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 
 	// append all the columns before the new index
 	for i := range schema {
-		c := schema[oldToNewIdxMapping[i]]
+		oldCol := schema[oldToNewIdxMapping[i]]
+		c := oldCol
+		if i == newIdx {
+			c = column
+		}
 		newSch[i] = c
-		projections[i] = expression.NewGetField(oldToNewIdxMapping[i], c.Type, c.Name, c.Nullable)
+		projections[i] = expression.NewGetField(oldToNewIdxMapping[i], oldCol.Type, oldCol.Name, oldCol.Nullable)
 	}
 
-	// TODO: do we need col defaults here?
+	// TODO: do we need col defaults here? probably when changing a column to be non-null?
 	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the
 	// column indexes in the new result schema, which is not what we want here: we want the positions in the old
 	// (current) schema, since that is what we'll be evaluating when we rewrite the table.
