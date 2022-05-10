@@ -61,6 +61,20 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 	}, nil
 }
 
+// NewAutoIncrementForColumn creates a new AutoIncrement expression for the column given.
+func NewAutoIncrementForColumn(ctx *sql.Context, table sql.Table, autoCol *sql.Column, given sql.Expression) (*AutoIncrement, error) {
+	autoTbl, ok := table.(sql.AutoIncrementTable)
+	if !ok {
+		return nil, ErrAutoIncrementUnsupported.New(table.Name())
+	}
+
+	return &AutoIncrement{
+		UnaryExpression{Child: given},
+		autoTbl,
+		autoCol,
+	}, nil
+}
+
 // IsNullable implements the Expression interface.
 func (i *AutoIncrement) IsNullable() bool {
 	return false

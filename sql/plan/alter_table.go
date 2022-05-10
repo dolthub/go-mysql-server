@@ -940,6 +940,7 @@ var _ sql.Expressioner = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
 
 func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+	column.Source = table.name
 	return &ModifyColumn{
 		ddlNode:    ddlNode{db: database},
 		Table:      table,
@@ -1140,6 +1141,17 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
+	// Wrap any auto increment columns in auto increment expressions. This mirrors what happens to row sources for normal
+	// INSERT statements during analysis.
+	for i, col := range newSch {
+		if col.AutoIncrement {
+			projections[i], err = expression.NewAutoIncrementForColumn(ctx, rwt, col, projections[i])
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	// TODO: codify rewrite requirements
@@ -1217,6 +1229,11 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 		return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, name)
 	}
 
+	// Primary key-ness isn't included in the column description as part of the ALTER statement, preserve it
+	if schema[currIdx].PrimaryKey {
+		column.PrimaryKey = true
+	}
+
 	newIdx := currIdx
 	if order != nil && len(order.AfterColumn) > 0 {
 		newIdx = schema.IndexOf(order.AfterColumn, column.Source)
@@ -1231,7 +1248,6 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 	// establish a map from old column index to new column index
 	oldToNewIdxMapping := make(map[int]int)
 	var i, j int
-	// TODO: loop needs to end with i AND j
 	for j < len(schema) || i < len(schema) {
 		if i == currIdx {
 			oldToNewIdxMapping[i] = newIdx
@@ -1262,35 +1278,6 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 	}
 
 	// TODO: do we need col defaults here? probably when changing a column to be non-null?
-	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the
-	// column indexes in the new result schema, which is not what we want here: we want the positions in the old
-	// (current) schema, since that is what we'll be evaluating when we rewrite the table.
-	for i := range projections {
-		switch p := projections[i].(type) {
-		case colDefaultExpression:
-			if p.column.Default != nil {
-				newExpr, _, err := transform.Expr(p.column.Default.Expression, func(s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					switch s := s.(type) {
-					case *expression.GetField:
-						idx := schema.IndexOf(s.Name(), schema[0].Source)
-						if idx < 0 {
-							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
-						}
-						return s.WithIndex(idx), transform.NewTree, nil
-					default:
-						return s, transform.SameTree, nil
-					}
-				})
-				if err != nil {
-					return nil, nil, err
-				}
-				p.column.Default.Expression = newExpr
-				projections[i] = p
-			}
-			break
-		}
-	}
-
 	return newSch, projections, nil
 }
 
