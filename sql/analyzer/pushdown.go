@@ -891,6 +891,19 @@ func stripDecorations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope
 // TODO: move this to it's own file
 // TODO: replace Limit(Sort()) iff sort is same as primary key with index lookup?
 func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// TODO: this does not work with Update statements, so skip for now
+	updateExists := false
+	transform.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(*plan.Update); ok {
+			updateExists = true
+			return false
+		}
+		return true
+	})
+	if updateExists {
+		return n, transform.SameTree, nil
+	}
+
 	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		// Find order by nodes
 		s, ok := tc.Node.(*plan.Sort)
