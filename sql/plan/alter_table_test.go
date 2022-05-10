@@ -258,6 +258,40 @@ func TestModifyColumnInSchema(t *testing.T) {
 				expression.NewGetField(0, sql.Int64, "i", false),
 			},
 		},
+		{
+			name:      "modify last, move first",
+			schema:    myTable,
+			colName: "s",
+			order: &sql.ColumnOrder{First: true},
+			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newSchema: sql.Schema{
+				{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "f", Type: sql.Float64, Source: "mytable"},
+			},
+			projections: []sql.Expression{
+				expression.NewGetField(2, varchar20, "s", false),
+				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(1, sql.Float64, "f", false),
+			},
+		},
+		{
+			name:      "modify last, move to middle",
+			schema:    myTable,
+			colName: "s",
+			order: &sql.ColumnOrder{AfterColumn: "F"},
+			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newSchema: sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "f", Type: sql.Float64, Source: "mytable"},
+			},
+			projections: []sql.Expression{
+				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(2, varchar20, "s", false),
+				expression.NewGetField(1, sql.Float64, "f", false),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
