@@ -1240,7 +1240,7 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 			j++
 		} else {
 			oldToNewIdxMapping[i] = j
-			i, j = i+1, i+1
+			i, j = i+1, j+1
 		}
 	}
 
@@ -1250,15 +1250,15 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 	newSch := make(sql.Schema, len(schema))
 	projections := make([]sql.Expression, len(schema))
 
-	// append all the columns before the new index
 	for i := range schema {
-		oldCol := schema[oldToNewIdxMapping[i]]
+		j := oldToNewIdxMapping[i]
+		oldCol := schema[i]
 		c := oldCol
-		if i == newIdx {
+		if j == newIdx {
 			c = column
 		}
-		newSch[i] = c
-		projections[i] = expression.NewGetField(oldToNewIdxMapping[i], oldCol.Type, oldCol.Name, oldCol.Nullable)
+		newSch[j] = c
+		projections[j] = expression.NewGetField(i, oldCol.Type, oldCol.Name, oldCol.Nullable)
 	}
 
 	// TODO: do we need col defaults here? probably when changing a column to be non-null?
