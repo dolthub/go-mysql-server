@@ -184,7 +184,7 @@ func TestModifyColumnInSchema(t *testing.T) {
 	type testCase struct {
 		name        string
 		schema      sql.Schema
-		colName string
+		colName     string
 		newColumn   *sql.Column
 		order       *sql.ColumnOrder
 		newSchema   sql.Schema
@@ -195,7 +195,7 @@ func TestModifyColumnInSchema(t *testing.T) {
 		{
 			name:      "modify last in place",
 			schema:    myTable,
-			colName: "s",
+			colName:   "s",
 			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable"},
 			newSchema: sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
@@ -211,7 +211,7 @@ func TestModifyColumnInSchema(t *testing.T) {
 		{
 			name:      "modify first in place",
 			schema:    myTable,
-			colName: "i",
+			colName:   "i",
 			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 			newSchema: sql.Schema{
 				{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
@@ -227,8 +227,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 		{
 			name:      "modify first, move to middle",
 			schema:    myTable,
-			colName: "i",
-			order: &sql.ColumnOrder{AfterColumn: "F"},
+			colName:   "i",
+			order:     &sql.ColumnOrder{AfterColumn: "F"},
 			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 			newSchema: sql.Schema{
 				{Name: "f", Type: sql.Float64, Source: "mytable"},
@@ -244,8 +244,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 		{
 			name:      "modify first, move to end",
 			schema:    myTable,
-			colName: "i",
-			order: &sql.ColumnOrder{AfterColumn: "s"},
+			colName:   "i",
+			order:     &sql.ColumnOrder{AfterColumn: "s"},
 			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 			newSchema: sql.Schema{
 				{Name: "f", Type: sql.Float64, Source: "mytable"},
@@ -261,8 +261,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 		{
 			name:      "modify last, move first",
 			schema:    myTable,
-			colName: "s",
-			order: &sql.ColumnOrder{First: true},
+			colName:   "s",
+			order:     &sql.ColumnOrder{First: true},
 			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
 			newSchema: sql.Schema{
 				{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
@@ -278,8 +278,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 		{
 			name:      "modify last, move to middle",
 			schema:    myTable,
-			colName: "s",
-			order: &sql.ColumnOrder{AfterColumn: "F"},
+			colName:   "s",
+			order:     &sql.ColumnOrder{AfterColumn: "F"},
 			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
 			newSchema: sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
@@ -306,7 +306,6 @@ func TestModifyColumnInSchema(t *testing.T) {
 		})
 	}
 }
-
 
 // mustDefault enforces that no error occurred when constructing the column default value.
 func mustDefault(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
