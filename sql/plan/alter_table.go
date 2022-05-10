@@ -1211,46 +1211,54 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
 // projections to adapt the old schema to the new one.
 func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
-	idx := -1
+	currIdx := schema.IndexOf(name, column.Source)
+	if currIdx < 0 {
+		// Should be checked in the analyzer already
+		return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, name)
+	}
+
+	newIdx := currIdx
 	if order != nil && len(order.AfterColumn) > 0 {
-		idx = schema.IndexOf(order.AfterColumn, column.Source)
-		if idx == -1 {
+		newIdx = schema.IndexOf(order.AfterColumn, column.Source)
+		if newIdx == -1 {
 			// Should be checked in the analyzer already
 			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
 		}
-		idx++
+		newIdx++
 	} else if order != nil && order.First {
-		idx = 0
+		newIdx = 0
+	}
+
+	// establish a map from old column index to new column index
+	oldToNewIdxMapping := make(map[int]int)
+	var i, j int
+	for i < len(schema) {
+		if i == currIdx {
+			oldToNewIdxMapping[i] = j
+			i++
+		} else if j == newIdx {
+			oldToNewIdxMapping[j] = currIdx
+			j++
+		} else {
+			oldToNewIdxMapping[i] = j
+			i, j = i+1, i+1
+		}
 	}
 
 	// Now build the new schema, keeping track of:
-	// 1) the new result schema
+	// 1) The new result schema
 	// 2) A set of projections to translate rows in the old schema to rows in the new schema
-	newSch := make(sql.Schema, 0, len(schema)+1)
-	projections := make([]sql.Expression, len(schema)+1)
+	newSch := make(sql.Schema, len(schema))
+	projections := make([]sql.Expression, len(schema))
 
-	if idx >= 0 {
-		newSch = append(newSch, schema[:idx]...)
-		newSch = append(newSch, column)
-		newSch = append(newSch, schema[idx:]...)
-
-		for i := range schema[:idx] {
-			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
-		}
-		projections[idx] = colDefaultExpression{column}
-		for i := range schema[idx:] {
-			schIdx := i + idx
-			projections[schIdx+1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
-		}
-	} else { // new column at end
-		newSch = append(newSch, schema...)
-		newSch = append(newSch, column)
-		for i := range schema {
-			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
-		}
-		projections[len(schema)] = colDefaultExpression{column}
+	// append all the columns before the new index
+	for i := range schema {
+		c := schema[oldToNewIdxMapping[i]]
+		newSch[i] = c
+		projections[i] = expression.NewGetField(oldToNewIdxMapping[i], c.Type, c.Name, c.Nullable)
 	}
 
+	// TODO: do we need col defaults here?
 	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the
 	// column indexes in the new result schema, which is not what we want here: we want the positions in the old
 	// (current) schema, since that is what we'll be evaluating when we rewrite the table.
@@ -1269,7 +1277,6 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 					default:
 						return s, transform.SameTree, nil
 					}
-					return s, transform.SameTree, nil
 				})
 				if err != nil {
 					return nil, nil, err
