@@ -369,6 +369,10 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "CREATE TABLE T1(c BLOB DEFAULT NULL)",
+		Expected: []sql.Row{{sql.OkResult{}}},
+	},
+	{
 		Query: "SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},
