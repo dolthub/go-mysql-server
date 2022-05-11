@@ -79,7 +79,7 @@ func (g *mysqlTableShim) Partitions(ctx *sql.Context) (sql.PartitionIter, error)
 
 // PartitionRows implements the interface sql.Table.
 func (g *mysqlTableShim) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return &grantTableShimRowIter{
+	return &mysqlTableShimRowIter{
 		buffer:    nil,
 		entries:   g.original.data.ToSlice(ctx),
 		converter: g.converter,
@@ -106,18 +106,18 @@ func (g *mysqlTableShim) Replacer(ctx *sql.Context) sql.RowReplacer {
 	return in_mem_table.NewDataEditorView(g.original.data, g.converter)
 }
 
-// grantTableShimRowIter handles the translation from the original row iterator output to the output expected from this
+// mysqlTableShimRowIter handles the translation from the original row iterator output to the output expected from this
 // table.
-type grantTableShimRowIter struct {
+type mysqlTableShimRowIter struct {
 	buffer    []sql.Row
 	entries   []in_mem_table.Entry
 	converter in_mem_table.DataEditorConverter
 }
 
-var _ sql.RowIter = (*grantTableShimRowIter)(nil)
+var _ sql.RowIter = (*mysqlTableShimRowIter)(nil)
 
 // Next implements the interface sql.RowIter.
-func (g *grantTableShimRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (g *mysqlTableShimRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
 		if len(g.buffer) == 0 {
 			if len(g.entries) == 0 {
@@ -139,7 +139,7 @@ func (g *grantTableShimRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 // Close implements the interface sql.RowIter.
-func (g *grantTableShimRowIter) Close(ctx *sql.Context) error {
+func (g *mysqlTableShimRowIter) Close(ctx *sql.Context) error {
 	g.buffer = nil
 	g.entries = nil
 	return nil
