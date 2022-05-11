@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type ScriptHarness interface {
