@@ -34,15 +34,15 @@ type MySQLDataJSON struct {
 	// TODO: other tables in mysql db
 }
 
-// PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
+// PrivilegePersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
-type PersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
+type PrivilegePersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
+type DataPersistCallback func(ctx *sql.Context, mysqlDb *MySQLDataJSON) error
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
 	Enabled bool
 
-	// TODO: should it be a map of tables?
 	user        *mysqlTable
 	role_edges  *mysqlTable
 	db          *mysqlTableShim
@@ -55,7 +55,8 @@ type MySQLDb struct {
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
 
-	persistFunc PersistCallback
+	privilegePersistFunc PrivilegePersistCallback
+	dataPersistFunc      DataPersistCallback
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -79,6 +80,12 @@ func CreateEmptyMySQLDb() *MySQLDb {
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
 func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+	// if there are already entries in user or role_edges table, clear them
+	if t.user.data.Count() > 0 {
+		t.user.data.Clear()
+		t.role_edges.data.Clear()
+	}
+
 	t.Enabled = true
 	for _, user := range users {
 		if user == nil {
@@ -102,6 +109,11 @@ func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnect
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
 func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *MySQLDataJSON) error {
+	// Do nothing if data file didn't exist
+	if data == nil {
+		return nil
+	}
+
 	t.Enabled = true
 
 	// Fill in Users table
@@ -128,9 +140,10 @@ func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *MySQLDataJSON) error {
 	return nil
 }
 
-// SetPersistCallback sets the callback to be used when the Grant Tables have been updated and need to be persisted.
-func (t *MySQLDb) SetPersistCallback(persistFunc PersistCallback) {
-	t.persistFunc = persistFunc
+// SetPersistCallbacks sets the callback to be used when the Grant Tables have been updated and need to be persisted.
+func (t *MySQLDb) SetPersistCallbacks(privilegePersistFunc PrivilegePersistCallback, dataPersistFunc DataPersistCallback) {
+	t.privilegePersistFunc = privilegePersistFunc
+	t.dataPersistFunc = dataPersistFunc
 }
 
 // AddRootAccount adds the root account to the list of accounts.
@@ -325,10 +338,14 @@ func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Ge
 
 // Persist passes along all changes to the integrator.
 func (t *MySQLDb) Persist(ctx *sql.Context) error {
-	persistFunc := t.persistFunc
-	if persistFunc == nil {
+	// TODO: just persist to both for now
+
+	// Do nothing if both persist functions are nil
+	if t.dataPersistFunc == nil && t.privilegePersistFunc == nil {
 		return nil
 	}
+
+	// Extract all user entries from table, and sort
 	userEntries := t.user.data.ToSlice(ctx)
 	users := make([]*User, len(userEntries))
 	for i, userEntry := range userEntries {
@@ -341,6 +358,7 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 		return users[i].Host < users[j].Host
 	})
 
+	// Extract all role entries from table, and sort
 	roleEntries := t.role_edges.data.ToSlice(ctx)
 	roles := make([]*RoleEdge, len(roleEntries))
 	for i, roleEntry := range roleEntries {
@@ -358,7 +376,35 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 		}
 		return roles[i].FromHost < roles[j].FromHost
 	})
-	return persistFunc(ctx, users, roles)
+
+	// Persist to privilege file
+	var err error
+	if t.privilegePersistFunc != nil {
+		err = t.privilegePersistFunc(ctx, users, roles)
+	}
+
+	// Error from persisting to privilege file
+	if err != nil {
+		return err
+	}
+
+	// Persist to mysql.db file
+	if t.dataPersistFunc == nil {
+		return nil
+	}
+
+	// TODO: Extract all other table entries
+
+	// Convert to json
+	data := &MySQLDataJSON{
+		Users: users,
+		Roles: roles,
+	}
+
+	// Persist
+	err = t.dataPersistFunc(ctx, data)
+
+	return err
 }
 
 // UserTable returns the "user" table.
