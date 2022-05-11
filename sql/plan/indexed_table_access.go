@@ -287,7 +287,6 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 	if err != nil {
 		return nil, err
 	}
-
 	i.ResolvedTable = nrt
 	return &i, nil
 }

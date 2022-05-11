@@ -166,6 +166,17 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	ctx := NewContextWithEngine(harness, engine)
+
+	RunQueryWithContext(t, engine, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
+	engine.PrepareQuery(ctx, "select * from squares where i = 1")
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
+	TestQueryWithContext(t, ctx, engine, "select * from squares where i = 1",
+		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: sql.Int64}, {Name: "square", Type: sql.Int64}}, nil)
+}
+
 // Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
 // debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
