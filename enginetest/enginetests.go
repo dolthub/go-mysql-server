@@ -2653,6 +2653,15 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		_, _, err = e.Query(ctx, "CREATE TABLE unsupported_charset (pk int NOT NULL, col1 blob DEFAULT (_latin1'abc'))")
 		require.Error(t, err)
 	})
+
+	t.Run("create table with blob column with null default", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)",
+			[]sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		RunQuery(t, e, harness, "INSERT INTO t_blob_default_null VALUES ()")
+		TestQuery(t, harness, e, "SELECT * FROM t_blob_default_null",
+			[]sql.Row{{nil}}, nil)
+	})
 }
 
 func TestDropTable(t *testing.T, harness Harness) {

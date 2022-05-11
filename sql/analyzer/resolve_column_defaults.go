@@ -646,7 +646,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		return e, transform.SameTree, nil
 	}
 
-	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() {
+	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
 		return nil, transform.SameTree, sql.ErrInvalidTextBlobColumnDefault.New()
 	}
 
