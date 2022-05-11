@@ -135,8 +135,8 @@ func (t Table) Truncate(ctx *sql.Context) (int, error) {
 }
 
 // WithIndexLookup implements the interface sql.IndexAddressableTable.
-func (t Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	return t
+func (t Table) WithIndexLookup(_ *sql.Context, lookup sql.IndexLookup) (sql.Table, error) {
+	return t, nil
 }
 
 // AddColumn implements the interface sql.AlterableTable.

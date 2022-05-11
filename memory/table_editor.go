@@ -173,12 +173,12 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 }
 
 // WithIndexLookup returns
-func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+func (t *tableEditor) WithIndexLookup(ctx *sql.Context, lookup sql.IndexLookup) (sql.Table, error) {
 	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
 		newTable, err := copyTable(pkTea.table, pkTea.table.schema)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		adds := make(map[string]sql.Row)
 		deletes := make(map[string]sql.Row)
@@ -194,18 +194,18 @@ func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 			deletes: deletes,
 		}).ApplyEdits(sql.NewEmptyContext())
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		memoryLookup := lookup.(*IndexLookup)
 		lookupIndex := *memoryLookup.idx.(*Index)
 		lookupIndex.Tbl = newTable
 		memoryLookup.idx = &lookupIndex
-		return newTable.WithIndexLookup(memoryLookup)
+		return newTable.WithIndexLookup(ctx, memoryLookup)
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
 		newTable, err := copyTable(nonPkTea.table, nonPkTea.table.schema)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		adds := make([]sql.Row, len(nonPkTea.adds))
 		deletes := make([]sql.Row, len(nonPkTea.deletes))
@@ -221,13 +221,13 @@ func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 			deletes: deletes,
 		}).ApplyEdits(sql.NewEmptyContext())
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		memoryLookup := lookup.(*IndexLookup)
 		lookupIndex := *memoryLookup.idx.(*Index)
 		lookupIndex.Tbl = newTable
 		memoryLookup.idx = &lookupIndex
-		return newTable.WithIndexLookup(memoryLookup)
+		return newTable.WithIndexLookup(ctx, memoryLookup)
 	}
 }
 

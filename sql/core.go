@@ -450,7 +450,7 @@ type IndexedTable interface {
 type IndexAddressable interface {
 	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
 	// which was in turn created by a call to Index.Get() for a set of keys for this table.
-	WithIndexLookup(IndexLookup) Table
+	WithIndexLookup(*Context, IndexLookup) (Table, error)
 }
 
 // IndexAddressableTable is a table that can restrict its row iteration to only the rows that match the given index

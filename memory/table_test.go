@@ -320,10 +320,11 @@ func TestIndexed(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			projected := table.WithProjections(test.columns)
-			indexed := projected.(*memory.Table).WithIndexLookup(test.lookup)
-
 			ctx := sql.NewEmptyContext()
+			projected := table.WithProjections(test.columns)
+			indexed, err := projected.(*memory.Table).WithIndexLookup(ctx, test.lookup)
+			require.NoError(err)
+
 			iter, err := indexed.PartitionRows(ctx, test.partition)
 			require.NoError(err)
 

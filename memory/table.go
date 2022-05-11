@@ -1141,15 +1141,15 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 }
 
 // WithIndexLookup implements the sql.IndexAddressableTable interface.
-func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+func (t *Table) WithIndexLookup(_ *sql.Context, lookup sql.IndexLookup) (sql.Table, error) {
 	if lookup == nil {
-		return t
+		return t, nil
 	}
 
 	nt := *t
 	nt.lookup = lookup
 
-	return &nt
+	return &nt, nil
 }
 
 // IndexKeyValues implements the sql.IndexableTable interface.

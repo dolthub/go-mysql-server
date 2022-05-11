@@ -110,7 +110,10 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, err
 	}
 
-	indexedTable := resolvedTable.WithIndexLookup(lookup)
+	indexedTable, err := resolvedTable.WithIndexLookup(ctx, lookup)
+	if err != nil {
+		return nil, err
+	}
 	partIter, err := indexedTable.Partitions(ctx)
 	if err != nil {
 		return nil, err
@@ -130,7 +133,10 @@ func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.Ro
 		return nil, err
 	}
 
-	indexedTable := resolvedTable.WithIndexLookup(lookup)
+	indexedTable, err := resolvedTable.WithIndexLookup(ctx, lookup)
+	if err != nil {
+		return nil, err
+	}
 
 	partIter, err := indexedTable.Partitions(ctx)
 	if err != nil {

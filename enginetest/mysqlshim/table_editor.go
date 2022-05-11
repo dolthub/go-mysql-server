@@ -91,9 +91,9 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 }
 
 // WithIndexLookup implements the interface sql.ForeignKeyUpdater.
-func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+func (t *tableEditor) WithIndexLookup(_ *sql.Context, lookup sql.IndexLookup) (sql.Table, error) {
 	// Not sure what to do here, will worry about that when the shim fully supports foreign keys
-	return nil
+	return nil, nil
 }
 
 // Close implements the interface sql.TableEditor.
