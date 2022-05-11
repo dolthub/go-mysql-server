@@ -166,6 +166,17 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	ctx := NewContextWithEngine(harness, engine)
+
+	RunQueryWithContext(t, engine, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
+	engine.PrepareQuery(ctx, "select * from squares where i = 1")
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
+	TestQueryWithContext(t, ctx, engine, "select * from squares where i = 1",
+		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: sql.Int64}, {Name: "square", Type: sql.Int64}}, nil)
+}
+
 // Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
 // debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
@@ -2653,6 +2664,15 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		_, _, err = e.Query(ctx, "CREATE TABLE unsupported_charset (pk int NOT NULL, col1 blob DEFAULT (_latin1'abc'))")
 		require.Error(t, err)
 	})
+
+	t.Run("create table with blob column with null default", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)",
+			[]sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		RunQuery(t, e, harness, "INSERT INTO t_blob_default_null VALUES ()")
+		TestQuery(t, harness, e, "SELECT * FROM t_blob_default_null",
+			[]sql.Row{{nil}}, nil)
+	})
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
@@ -3147,7 +3167,9 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 	require.NoError(t, err)
 
-	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row{{sql.NewOkResult(0)}}, nil)
+	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'",
+		[]sql.Row{{sql.NewOkResult(0)}},
+		nil)
 
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(t, err)
