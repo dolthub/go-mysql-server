@@ -80,11 +80,12 @@ func CreateEmptyMySQLDb() *MySQLDb {
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
 func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+	// TODO: this is bad do something else
 	// if there are already entries in user or role_edges table, clear them
-	if t.user.data.Count() > 0 {
-		t.user.data.Clear()
-		t.role_edges.data.Clear()
-	}
+	//if t.user.data.Count() > 0 {
+	//	t.user.data.Clear()
+	//	t.role_edges.data.Clear()
+	//}
 
 	t.Enabled = true
 	for _, user := range users {
