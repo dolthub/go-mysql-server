@@ -269,29 +269,43 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				db = n.Database.Name()
 			}
 			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.Name(), db), a)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			new := transferProjections(from, to.(*plan.ResolvedTable))
+			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			from = n.ResolvedTable
 			if n.Database() != nil {
 				db = n.Database().Name()
 			}
 			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.ResolvedTable.Name(), db), a)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			new := *n
+			new.ResolvedTable = transferProjections(from, to.(*plan.ResolvedTable))
+			return &new, transform.NewTree, nil
 		case *plan.DeferredAsOfTable:
 			from = n.ResolvedTable
 			to, err = resolveTable(ctx, plan.NewDeferredAsOfTable(n.ResolvedTable, n.AsOf()), a)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			new := *n
+			new.ResolvedTable = transferProjections(from, to.(*plan.ResolvedTable))
+			return &new, transform.NewTree, nil
 		default:
-			return n, transform.SameTree, nil
 		}
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
-		new := transferProjections(from, to.(*plan.ResolvedTable))
-		return new, transform.NewTree, nil
+		return n, transform.SameTree, nil
 	})
 }
 
 // transferProjections moves projections from one table scan to another
-func transferProjections(from, to *plan.ResolvedTable) sql.Node {
+func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
 	var fromTable sql.Table
 	switch t := from.Table.(type) {
 	case sql.TableWrapper:

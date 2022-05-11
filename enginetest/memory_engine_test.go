@@ -142,6 +142,10 @@ func TestSpatialQueriesSimple(t *testing.T) {
 	enginetest.TestSpatialQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+func TestPreparedStaticIndexQuerySimple(t *testing.T) {
+	enginetest.TestPreparedStaticIndexQuery(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
