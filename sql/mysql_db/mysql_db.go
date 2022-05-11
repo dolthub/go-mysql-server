@@ -27,6 +27,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// MySQLDataJSON is used to marshal/unmarshal data to/from JSON.
+type MySQLDataJSON struct {
+	Users []*User
+	Roles []*RoleEdge
+	// TODO: other tables in mysql db
+}
+
 // PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
 type PersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
@@ -94,47 +101,30 @@ func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnect
 
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data map[string]interface{}) error {
+func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *MySQLDataJSON) error {
 	t.Enabled = true
 
-	// TODO: this can't possible be the best way
-	for key, val := range data {
-		switch strings.ToLower(key) {
-		case "users":
-			for _, userVal := range val.([]interface{}) {
-				userMap := userVal.(map[string]interface{})
-				user := User{
-					User:                userMap["User"].(string),
-					Host:                userMap["Host"].(string),
-					PrivilegeSet:        userMap["User"].(string),
-					Plugin:              userMap["User"].(string),
-					Password:            userMap["User"].(string),
-					PasswordLastChanged: userMap["User"].(string),
-					Locked:              userMap["User"].(string),
-					Attributes:          userMap["User"].(string),
-					IsRole:              userMap["User"].(string),
-				}
-			}
-
+	// Fill in Users table
+	for _, user := range data.Users {
+		if user == nil {
+			continue
 		}
-
+		if err := t.user.data.Put(ctx, user); err != nil {
+			return err
+		}
 	}
-	//for _, user := range users {
-	//	if user == nil {
-	//		continue
-	//	}
-	//	if err := t.user.data.Put(ctx, user); err != nil {
-	//		return err
-	//	}
-	//}
-	//for _, role := range roleConnections {
-	//	if role == nil {
-	//		continue
-	//	}
-	//	if err := t.role_edges.data.Put(ctx, role); err != nil {
-	//		return err
-	//	}
-	//}
+
+	// Fill in Roles table
+	for _, role := range data.Roles {
+		if role == nil {
+			continue
+		}
+		if err := t.role_edges.data.Put(ctx, role); err != nil {
+			return err
+		}
+	}
+
+	// TODO: fill in other tables when they exist
 	return nil
 }
 
