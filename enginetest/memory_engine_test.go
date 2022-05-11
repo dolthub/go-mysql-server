@@ -154,11 +154,11 @@ func TestJoinQueries(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT 1, 2`,
+		Query: `show create table floattable`,
 		Expected: []sql.Row{
 			{1, 2},
 		},
@@ -168,10 +168,23 @@ func TestSingleQuery(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
 	enginetest.CreateIndexes(t, harness, engine)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil)
+	tabs := []string{
+		"fk_tbl",
+		"auto_increment_tbl",
+		"reservedWordsTable",
+	}
+	for _, tn := range tabs {
+		ctx := harness.NewContext()
+		res := enginetest.MustQuery(ctx, engine, fmt.Sprintf("show create table %s", tn))
+		for i := range res {
+			fmt.Println(res[i])
+		}
+	}
+
+	//enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -199,7 +212,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestPreparedQuery(t, harness, engine, test.Query, test.Expected, nil)
+	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -257,15 +270,14 @@ func TestUnbuildableIndex(t *testing.T) {
 }
 
 func TestBrokenQueries(t *testing.T) {
-	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)
+	enginetest.TestBrokenQueries(t, enginetest.NewSkippingMemoryHarness())
 }
 
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
-	engine := enginetest.NewEngine(t, harness)
 	for _, tt := range enginetest.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, enginetest.NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
+			enginetest.TestQueryPlan(t, harness, tt.Query, tt.ExpectedPlan)
 		})
 	}
 }
@@ -621,10 +633,6 @@ func TestInsertIgnoreScriptsPrepared(t *testing.T) {
 
 func TestInsertErrorScriptsPrepared(t *testing.T) {
 	enginetest.TestInsertErrorScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-}
-
-func TestScriptQueryPlan(t *testing.T) {
-	enginetest.TestScriptQueryPlan(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestUserPrivileges(t *testing.T) {

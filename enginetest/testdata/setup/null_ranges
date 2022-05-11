@@ -1,0 +1,19 @@
+	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
+	RunQuery(t, e, harness, `CREATE INDEX idx1 ON a (y);`)
+	RunQuery(t, e, harness, `INSERT INTO a VALUES (0,0), (1,1), (2,2), (3,null), (4,null)`)
+exec
+create table null_ranges (x int primary key, y int)
+----
+
+exec
+create index idx1 on null_ranges (y);
+----
+
+exec
+insert into null_ranges values
+    (0,0),
+    (1,1),
+    (2,2),
+    (3,null),
+    (4,null)
+----

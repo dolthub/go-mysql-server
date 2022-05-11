@@ -7,6 +7,7 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,6 +21,14 @@ type setupSource interface {
 	Data() testdata
 }
 
+type testdata struct {
+	pos      string // file and line number
+	cmd      string // exec, query, ...
+	sql      string
+	stmt     ast.Statement
+	expected string
+}
+
 type fileSetup struct {
 	path    string
 	file    *os.File
@@ -28,11 +37,13 @@ type fileSetup struct {
 	rewrite *bytes.Buffer
 }
 
-func newFileSetups(dir string, paths ...string) ([]setupSource, error) {
+const setupDir = "testdata/setup"
+
+func newFileSetups(paths ...string) ([]setupSource, error) {
 	sources := make([]setupSource, len(paths))
 	var err error
 	for i := range paths {
-		sources[i], err = newFileSetup(paths[i])
+		sources[i], err = newFileSetup(filepath.Join(setupDir, paths[i]))
 		if err != nil {
 			return nil, err
 		}
@@ -145,12 +156,4 @@ func (l *lineScanner) Scan() bool {
 		l.line++
 	}
 	return ok
-}
-
-type testdata struct {
-	pos      string // file and line number
-	cmd      string // exec, query, ...
-	sql      string
-	stmt     ast.Statement
-	expected string
 }

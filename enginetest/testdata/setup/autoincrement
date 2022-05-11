@@ -1,0 +1,7 @@
+exec
+CREATE TABLE `auto_increment_tbl` (
+  `pk` bigint NOT NULL AUTO_INCREMENT,
+  `c0` bigint,
+  PRIMARY KEY (`pk`)
+)
+----

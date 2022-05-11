@@ -1,0 +1,7 @@
+exec
+create database if not exists mydb
+----
+
+exec
+use mydb
+----

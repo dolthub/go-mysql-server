@@ -1,0 +1,16 @@
+
+exec
+CREATE TABLE `invert_pk` (
+  `x` bigint NOT NULL,
+  `y` bigint NOT NULL,
+  `z` bigint NOT NULL,
+  PRIMARY KEY (`y`,`z`,`x`)
+)
+----
+
+exec
+insert into invert_pk values
+    (0, 2, 2),
+    (1, 1, 0),
+    (2, 0, 1)
+----

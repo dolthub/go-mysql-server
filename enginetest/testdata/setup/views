@@ -1,0 +1,7 @@
+exec
+CREATE VIEW myview1 AS SELECT * FROM myhistorytable
+----
+
+exec
+CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1
+----

@@ -1,0 +1,7 @@
+exec
+CREATE TABLE parent (id INT PRIMARY KEY, v1 INT, v2 INT, INDEX v1 (v1), INDEX v2 (v2))
+----
+
+exec
+CREATE TABLE child (id INT PRIMARY KEY, v1 INT, v2 INT)
+----

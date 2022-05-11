@@ -2315,8 +2315,6 @@ var PlanTests = []QueryPlanTest{
 	},
 }
 
-var ScriptQueryPlanTest = []ScriptTest{}
-
 // Queries where the query planner produces a correct (results) but suboptimal plan.
 var QueryPlanTODOs = []QueryPlanTest{
 	{

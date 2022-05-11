@@ -1,0 +1,12 @@
+exec
+CREATE TABLE `fk_tbl` (
+  `pk` bigint NOT NULL,
+  `a` bigint,
+  `b` varchar(20),
+  PRIMARY KEY (`pk`)
+)
+----
+
+exec
+ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE
+----

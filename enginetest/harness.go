@@ -40,8 +40,10 @@ type Harness interface {
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
+	// NewEngine creates a new engine
+	NewEngineDepr(*sql.Context, *testing.T) *sqle.Engine
 	// SetSetup injects a test suites setup scripts
-	SetSetup(...setupSource) error
+	SetSetup(...string)
 	// NewEngine creates a new sqle.Engine
 	NewEngine(*testing.T) (*sqle.Engine, error)
 }
@@ -124,6 +126,6 @@ type TransactionHarness interface {
 type ReadOnlyDatabaseHarness interface {
 	Harness
 
-	// NewReadOnlyDatabases returns a []sql.ReadOnlyDatabase to use for a test.
-	NewReadOnlyDatabases(name ...string) []sql.ReadOnlyDatabase
+	// NewReadOnlyDatabase returns a sql.ReadOnlyDatabase to use for a test.
+	NewReadOnlyDatabase(name string) sql.ReadOnlyDatabase
 }

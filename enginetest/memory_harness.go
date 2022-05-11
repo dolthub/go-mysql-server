@@ -39,7 +39,7 @@ type MemoryHarness struct {
 	checkpointTables       []*memory.Table
 	dbOff                  []int
 	dbNames                []string
-	setupData              []setupSource
+	setupData              []string
 }
 
 func (m *MemoryHarness) RestoreCheckpoint(ctx *sql.Context, t *testing.T, e *sqle.Engine) *sqle.Engine {
@@ -137,7 +137,6 @@ var _ IndexHarness = (*MemoryHarness)(nil)
 var _ VersionedDBHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
-var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
 
@@ -149,13 +148,17 @@ func (s SkippingMemoryHarness) SkipQueryTest(query string) bool {
 	return true
 }
 
-func (m *MemoryHarness) SetSetup(setupData ...setupSource) error {
+func (m *MemoryHarness) SetSetup(setupData ...string) {
 	m.setupData = setupData
-	return nil
+	return
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	return NewEngineWithSetup(t, m, m.setupData)
+	setup, err := newFileSetups(m.setupData...)
+	if err != nil {
+		return nil, err
+	}
+	return NewEngineWithSetup(t, m, setup)
 }
 
 func (m *MemoryHarness) SupportsNativeIndexCreation() bool {
@@ -272,14 +275,6 @@ func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Primar
 	return table, nil
 }
 
-func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
-	dbs := make([]sql.ReadOnlyDatabase, len(names))
-	for i, name := range names {
-		dbs[i] = memory.NewReadOnlyDatabase(name)
-	}
-	return dbs
-}
-
 type ExternalStoredProcedureMemoryHarness struct {
 	*MemoryHarness
 }
@@ -302,6 +297,24 @@ func (h ExternalStoredProcedureMemoryHarness) NewDatabases(names ...string) []sq
 	var dbs []sql.Database
 	for _, name := range names {
 		dbs = append(dbs, h.NewDatabase(name))
+	}
+	return dbs
+}
+
+type ReadOnlyMemoryHarness struct {
+	MemoryHarness
+}
+
+var _ ReadOnlyDatabaseHarness = (*ReadOnlyMemoryHarness)(nil)
+
+func (h *ReadOnlyMemoryHarness) NewReadOnlyDatabase(name string) sql.ReadOnlyDatabase {
+	return memory.NewReadOnlyDatabase(name)
+}
+
+func (h *ReadOnlyMemoryHarness) NewDatabases(names ...string) []sql.Database {
+	dbs := make([]sql.Database, len(names))
+	for i := range names {
+		dbs[i] = h.NewReadOnlyDatabase(names[i])
 	}
 	return dbs
 }

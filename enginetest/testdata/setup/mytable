@@ -1,12 +1,4 @@
 exec
-create database if not exists mydb;
-----
-
-exec
-use mydb
-----
-
-exec
 create table mytable (i bigint primary key, s varchar(20) comment 'column s')
 ----
 
@@ -17,3 +9,10 @@ insert into mytable values
     (3, 'third row')
 ----
 
+exec
+create unique index mytable_s on mytable (s)
+----
+
+exec
+create index mytable_i_s on mytable (i,s)
+----

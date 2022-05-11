@@ -32,6 +32,16 @@ type MySQLHarness struct {
 	skippedQueries map[string]struct{}
 }
 
+func (m *MySQLHarness) SetSetup(source ...string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MySQLHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *MySQLHarness) NewEngineDepr(context *sql.Context, t *testing.T) *sqle.Engine {
 	dbs := CreateTestData(t, m)
 	engine := NewEngineWithDbs(t, m, dbs)
