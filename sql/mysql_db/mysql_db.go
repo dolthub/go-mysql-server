@@ -19,10 +19,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"net"
 	"sort"
 	"strings"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
