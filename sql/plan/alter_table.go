@@ -1155,10 +1155,9 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	// TODO: codify rewrite requirements
-	rewriteRequired := true
 
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.column)
-	if !rewriteRequired && !rewriteRequested {
+	if !rewriteRequested {
 		return false, nil
 	}
 
