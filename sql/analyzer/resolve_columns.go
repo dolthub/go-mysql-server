@@ -214,7 +214,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.RecursiveCte, *information_schema.ColumnsTable:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				names.indexTable(name, name, i)
 				return false

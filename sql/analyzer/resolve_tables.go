@@ -292,9 +292,8 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			new := *n
-			new.ResolvedTable = transferProjections(from, to.(*plan.ResolvedTable))
-			return &new, transform.NewTree, nil
+			new := transferProjections(from, to.(*plan.ResolvedTable))
+			return new, transform.NewTree, nil
 		default:
 		}
 		if err != nil {
