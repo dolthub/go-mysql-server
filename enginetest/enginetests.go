@@ -265,10 +265,7 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 }
 
 func TestIndexQueryPlans(t *testing.T, harness Harness) {
-	harness.SetSetup("mydb")
-	for _, script := range ComplexIndexQueries {
-		TestScript(t, harness, script)
-	}
+	harness.SetSetup(complexIndexSetup...)
 
 	for _, tt := range IndexPlanTests {
 		TestQueryPlan(t, harness, tt.Query, tt.ExpectedPlan)
@@ -1191,8 +1188,9 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 }
 
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
-	for _, script := range ComplexIndexQueries {
-		TestScriptPrepared(t, harness, script)
+	harness.SetSetup(complexIndexSetup...)
+	for _, tt := range ComplexIndexQueries {
+		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 }
 
@@ -1441,8 +1439,9 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 }
 
 func TestComplexIndexQueries(t *testing.T, harness Harness) {
-	for _, script := range ComplexIndexQueries {
-		TestScript(t, harness, script)
+	harness.SetSetup(complexIndexSetup...)
+	for _, tt := range ComplexIndexQueries {
+		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	}
 }
 

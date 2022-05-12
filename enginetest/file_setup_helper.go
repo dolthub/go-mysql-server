@@ -1,19 +1,20 @@
 package enginetest
 
 var (
-	mytable        []string
-	keylessSetup   []string
-	versionedSetup []string
-	specialSetup   []string
-	simpleSetup    []string
-	ordinalSetup   []string
-	spatialSetup   []string
-	jsonSetup      []string
-	fooSetup       []string
-	graphSetup     []string
-	reservedSetup  []string
-	checksSetup    []string
-	nullsSetup     []string
+	mytable           []string
+	keylessSetup      []string
+	versionedSetup    []string
+	specialSetup      []string
+	simpleSetup       []string
+	ordinalSetup      []string
+	spatialSetup      []string
+	jsonSetup         []string
+	fooSetup          []string
+	graphSetup        []string
+	reservedSetup     []string
+	checksSetup       []string
+	nullsSetup        []string
+	complexIndexSetup []string
 )
 
 func init() {
@@ -47,6 +48,7 @@ func init() {
 	mytable = []string{"mydb", "mytable"}
 	checksSetup = []string{"mydb", "check_constraints"}
 	nullsSetup = []string{"mydb", "null_ranges"}
+	complexIndexSetup = []string{"mydb", "comp_index_tables"}
 	simpleSetup = concatenateSetupSources(
 		mytable,
 		specialSetup,

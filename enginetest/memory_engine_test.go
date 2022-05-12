@@ -504,12 +504,6 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 	engine := enginetest.NewEngine(t, harness)
 
 	enginetest.CreateIndexes(t, harness, engine)
-	for i, script := range enginetest.ComplexIndexQueries {
-		for _, statement := range script.SetUpScript {
-			statement = strings.Replace(statement, "test", fmt.Sprintf("t%d", i), -1)
-			enginetest.RunQuery(t, engine, harness, statement)
-		}
-	}
 
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -561,7 +555,7 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 }
 
 func TestWriteComplexIndexQueries(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {
 		return
@@ -572,29 +566,11 @@ func TestWriteComplexIndexQueries(t *testing.T) {
 	require.NoError(t, err)
 
 	w := bufio.NewWriter(f)
-	_, _ = w.WriteString("var ComplexIndexQueries = []ScriptTest{\n")
-	for i, tt := range enginetest.ComplexIndexQueries {
+	_, _ = w.WriteString("var ComplexIndexQueries = []QueryTest{\n")
+	for _, tt := range enginetest.ComplexIndexQueries {
 		w.WriteString("  {\n")
-		w.WriteString(fmt.Sprintf("    Name: \"%s\",\n", tt.Name))
-		if len(tt.SetUpScript) > 0 {
-			w.WriteString("    SetUpScript: []string{\n")
-			for _, s := range tt.SetUpScript {
-				newS := strings.Replace(s, "test", fmt.Sprintf("comp_index_t%d", i), -1)
-				w.WriteString(fmt.Sprintf("    `%s`,\n", newS))
-			}
-			w.WriteString("    },\n")
-		}
-		if len(tt.Assertions) > 0 {
-			w.WriteString("    Assertions: []ScriptTestAssertion{\n")
-			for _, s := range tt.Assertions {
-				q := strings.Replace(s.Query, "test", fmt.Sprintf("comp_index_t%d", i), -1)
-				w.WriteString("      {\n")
-				w.WriteString(fmt.Sprintf("        Query: `%s`,\n", q))
-				w.WriteString(fmt.Sprintf("        Expected: %#v,\n", s.Expected))
-				w.WriteString("      },\n")
-			}
-			w.WriteString("      },\n")
-		}
+		w.WriteString(fmt.Sprintf("    Query: `%s`,\n", tt.Query))
+		w.WriteString(fmt.Sprintf("    Expected: %#v,\n", tt.Expected))
 		w.WriteString("  },\n")
 	}
 	w.WriteString("}\n")
