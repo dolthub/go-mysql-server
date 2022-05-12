@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 	"github.com/dolthub/vitess/go/mysql"
 	"net"
 	"sort"
@@ -109,7 +110,7 @@ func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnect
 
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *MySQLDataJSON) error {
+func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
 	// Do nothing if data file didn't exist
 	if data == nil {
 		return nil
@@ -124,6 +125,28 @@ func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *MySQLDataJSON) error {
 		}
 		if err := t.user.data.Put(ctx, user); err != nil {
 			return err
+		}
+	}
+
+	// TODO: do we want schema to be stored too?
+
+	// Fill in user table
+	userTbl := data.Users(nil)
+	numRows := userTbl.DataLength()
+	for i := 0; i < numRows; i++ {
+		row := &serial.Row{}
+		// should never happen, right?
+		if !userTbl.Data(row, i) {
+			break
+		}
+		// Create user from row
+		user := User{
+			User: string(row.Entry(0)),
+			Host: string(row.Entry(1)),
+		}
+		numEntries := row.EntryLength()
+		for j := i; j < numEntries; j++ {
+			entry := row.Entry(j)
 		}
 	}
 
