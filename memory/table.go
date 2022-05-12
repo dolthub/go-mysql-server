@@ -1276,7 +1276,7 @@ func (t *Table) sortRows() {
 
 type partidx struct {
 	key string
-	i int
+	i   int
 }
 
 type partitionssort struct {
