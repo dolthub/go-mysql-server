@@ -44,8 +44,8 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	ignore := false
 	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		ignore := false
 		switch p := c.Parent.(type) {
 		case *plan.DropTable:
 			ignore = p.IfExists()
