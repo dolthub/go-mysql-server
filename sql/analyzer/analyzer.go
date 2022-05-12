@@ -382,7 +382,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 	case resolvePreparedInsertId,
 		insertTopNId,
 		inSubqueryIndexesId,
-		replaceSortPkId,
 		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
