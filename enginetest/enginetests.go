@@ -149,6 +149,17 @@ func TestBrokenQueries(t *testing.T, harness Harness) {
 	RunQueryTests(t, harness, BrokenQueries)
 }
 
+func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	ctx := NewContextWithEngine(harness, engine)
+
+	RunQueryWithContext(t, engine, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
+	engine.PrepareQuery(ctx, "select * from squares where i = 1")
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
+	TestQueryWithContext(t, ctx, engine, "select * from squares where i = 1",
+		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: sql.Int64}, {Name: "square", Type: sql.Int64}}, nil)
+}
+
 // Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
 // debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
@@ -2468,6 +2479,15 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		_, _, err = e.Query(ctx, "CREATE TABLE unsupported_charset (pk int NOT NULL, col1 blob DEFAULT (_latin1'abc'))")
 		require.Error(t, err)
 	})
+
+	t.Run("create table with blob column with null default", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)",
+			[]sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+
+		RunQuery(t, e, harness, "INSERT INTO t_blob_default_null VALUES ()")
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t_blob_default_null",
+			[]sql.Row{{nil}}, nil, nil)
+	})
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
@@ -2805,111 +2825,66 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 	require.NoError(err)
 
-	TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+	t.Run("column at end with default", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
-	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	assertSchemasEqualWithDefaults(t, sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
-	}, tbl.Schema())
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
+		}, tbl.Schema())
 
-	TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-		sql.NewRow(int64(1), "first row", int32(42)),
-		sql.NewRow(int64(2), "second row", int32(42)),
-		sql.NewRow(int64(3), "third row", int32(42)),
-	}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+			sql.NewRow(int64(1), "first row", int32(42)),
+			sql.NewRow(int64(2), "second row", int32(42)),
+			sql.NewRow(int64(3), "third row", int32(42)),
+		}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+	})
 
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	assertSchemasEqualWithDefaults(t, sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
-	}, tbl.Schema())
+	t.Run("in middle, no default", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
+		}, tbl.Schema())
 
-	TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-		sql.NewRow(int64(1), nil, "first row", int32(42)),
-		sql.NewRow(int64(2), nil, "second row", int32(42)),
-		sql.NewRow(int64(3), nil, "third row", int32(42)),
-	}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+			sql.NewRow(int64(1), nil, "first row", int32(42)),
+			sql.NewRow(int64(2), nil, "second row", int32(42)),
+			sql.NewRow(int64(3), nil, "third row", int32(42)),
+		}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, "insert into mytable values (4, 's2', 'fourth row', 11)", []sql.Row{
-		{sql.NewOkResult(1)},
-	}, nil, nil)
-	TestQueryWithContext(t, ctx, e, "update mytable set s2 = 'updated s2' where i2 = 42", []sql.Row{
-		{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
-			Matched: 3, Updated: 3,
-		}}},
-	}, nil, nil)
-	TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-		sql.NewRow(int64(1), "updated s2", "first row", int32(42)),
-		sql.NewRow(int64(2), "updated s2", "second row", int32(42)),
-		sql.NewRow(int64(3), "updated s2", "third row", int32(42)),
-		sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
-	}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "insert into mytable values (4, 's2', 'fourth row', 11)", []sql.Row{
+			{sql.NewOkResult(1)},
+		}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "update mytable set s2 = 'updated s2' where i2 = 42", []sql.Row{
+			{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
+				Matched: 3, Updated: 3,
+			}}},
+		}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+			sql.NewRow(int64(1), "updated s2", "first row", int32(42)),
+			sql.NewRow(int64(2), "updated s2", "second row", int32(42)),
+			sql.NewRow(int64(3), "updated s2", "third row", int32(42)),
+			sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
+		}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+	})
 
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	assertSchemasEqualWithDefaults(t, sql.Schema{
-		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
-	}, tbl.Schema())
+	t.Run("first with default", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
-		sql.NewRow("yay", int64(1), "updated s2", "first row", int32(42)),
-		sql.NewRow("yay", int64(2), "updated s2", "second row", int32(42)),
-		sql.NewRow("yay", int64(3), "updated s2", "third row", int32(42)),
-		sql.NewRow("yay", int64(4), "s2", "fourth row", int32(11)),
-	}, nil, nil)
-
-	// multiple column additions in a single ALTER
-	TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(26), ADD COLUMN s5 VARCHAR(27)", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
-
-	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	assertSchemasEqualWithDefaults(t, sql.Schema{
-		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
-		{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
-		{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
-	}, tbl.Schema())
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
-	require.Error(err)
-	require.True(sql.ErrIncompatibleDefaultType.Is(err))
-
-	t.Run("no database selected", func(t *testing.T) {
-		ctx := NewContext(harness)
-		ctx.SetCurrentDatabase("")
-
-		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
-
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
@@ -2918,8 +2893,90 @@ func TestAddColumn(t *testing.T, harness Harness) {
 			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
 			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
-			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
-			{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
+		}, tbl.Schema())
+
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+			sql.NewRow("yay", int64(1), "updated s2", "first row", int32(42)),
+			sql.NewRow("yay", int64(2), "updated s2", "second row", int32(42)),
+			sql.NewRow("yay", int64(3), "updated s2", "third row", int32(42)),
+			sql.NewRow("yay", int64(4), "s2", "fourth row", int32(11)),
+		}, nil, nil)
+	})
+
+	t.Run("middle, no default, non null", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(1) not null after s3", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
+		}, tbl.Schema())
+
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+			sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42)),
+			sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42)),
+			sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42)),
+			sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11)),
+		}, nil, nil)
+	})
+
+	t.Run("multiple in one statement", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable ADD COLUMN s5 VARCHAR(26), ADD COLUMN s6 VARCHAR(27)", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
+			{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+			{Name: "s6", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
+		}, tbl.Schema())
+
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+			sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42), nil, nil),
+			sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42), nil, nil),
+			sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42), nil, nil),
+			sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11), nil, nil),
+		}, nil, nil)
+	})
+
+	t.Run("error cases", func(t *testing.T) {
+		AssertErr(t, e, harness, "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'", sql.ErrTableNotFound)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN b BIGINT COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN i BIGINT COMMENT 'ok'", sql.ErrColumnExists)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'", sql.ErrIncompatibleDefaultType)
+		AssertErr(t, e, harness, "ALTER TABLE mytable ADD COLUMN c int, add c int", sql.ErrColumnExists)
+	})
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
+			{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+			{Name: "s6", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 			{Name: "s10", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 		}, tbl.Schema())
 	})
@@ -2934,7 +2991,6 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	TestQueryWithContext(t, ctx, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
-
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -5388,7 +5444,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that the pk is not primary key
 		TestQueryWithContext(t, ctx, e, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
-			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		}, nil, nil)
 
 		// Drop all primary key from other database table
@@ -5396,7 +5452,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that NOT NULL constraint is kept
 		TestQueryWithContext(t, ctx, e, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
-			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		}, nil, nil)
 	})
 }
@@ -5674,6 +5730,37 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, true)},
 			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
 		}, t32.Schema())
+
+		RunQuery(t, e, harness, "CREATE TABLE t32_2(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
+		RunQuery(t, e, harness, `alter table t32_2 drop v1, add v1 int`)
+
+		t32, _, err = e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_2")
+		require.NoError(t, err)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32_2", PrimaryKey: true},
+			{Name: "v2", Type: sql.Int32, Nullable: true, Source: "t32_2"},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32_2"},
+			{Name: "v1", Type: sql.Int32, Nullable: true, Source: "t32_2"},
+		}, t32.Schema())
+
+		RunQuery(t, e, harness, "CREATE TABLE t32_3(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int)")
+		RunQuery(t, e, harness, `alter table t32_3 rename column v1 to v5, add v1 int`)
+
+		t32, _, err = e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32_3")
+		require.NoError(t, err)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32_3", PrimaryKey: true},
+			{Name: "v5", Type: sql.Int32, Nullable: true, Source: "t32_3"},
+			{Name: "v2", Type: sql.Int32, Nullable: true, Source: "t32_3"},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32_3"},
+			{Name: "v1", Type: sql.Int32, Nullable: true, Source: "t32_3"},
+		}, t32.Schema())
+
+		// Error cases: dropping a column added in the same statement, dropping a column not present in the original schema,
+		// dropping a column renamed away
+		AssertErr(t, e, harness, "alter table t32 add column vnew int, drop column vnew", sql.ErrTableColumnNotFound)
+		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v5", sql.ErrTableColumnNotFound)
+		AssertErr(t, e, harness, "alter table t32 rename column v3 to v5, drop column v3", sql.ErrTableColumnNotFound)
 	})
 
 	t.Run("mix of alter column, add and drop constraints in one statement", func(t *testing.T) {
@@ -5703,7 +5790,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		}, checks)
 	})
 
-	t.Run("Add column invalid after", func(t *testing.T) {
+	t.Run("disable keys / enable keys", func(t *testing.T) {
 		ctx := NewContext(harness)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 DISABLE KEYS",
 			[]sql.Row{{sql.NewOkResult(0)}},
@@ -5974,7 +6061,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			"  `v1y` bigint,\n" +
 			"  `v2` bigint DEFAULT ((v1y + 1)),\n" +
 			"  PRIMARY KEY (`pk`)\n" +
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}}, nil, nil)
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}}, nil, nil)
 	})
 
 	t.Run("Add multiple columns same ALTER", func(t *testing.T) {

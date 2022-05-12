@@ -1232,9 +1232,9 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "Nested Subquery projections (NTC)",
 		SetUpScript: []string{
-			`CREATE TABLE dcim_site (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,_name varchar(100) NOT NULL,slug varchar(100) NOT NULL,facility varchar(50) NOT NULL,asn bigint,time_zone varchar(63) NOT NULL,description varchar(200) NOT NULL,physical_address varchar(200) NOT NULL,shipping_address varchar(200) NOT NULL,latitude decimal(8,6),longitude decimal(9,6),contact_name varchar(50) NOT NULL,contact_phone varchar(20) NOT NULL,contact_email varchar(254) NOT NULL,comments longtext NOT NULL,region_id char(32),status_id char(32),tenant_id char(32),PRIMARY KEY (id),KEY dcim_site_region_id_45210932 (region_id),KEY dcim_site_status_id_e6a50f56 (status_id),KEY dcim_site_tenant_id_15e7df63 (tenant_id),UNIQUE KEY name (name),UNIQUE KEY slug (slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
-			`CREATE TABLE dcim_rackgroup (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,slug varchar(100) NOT NULL,description varchar(200) NOT NULL,lft int unsigned NOT NULL,rght int unsigned NOT NULL,tree_id int unsigned NOT NULL,level int unsigned NOT NULL,parent_id char(32),site_id char(32) NOT NULL,PRIMARY KEY (id),KEY dcim_rackgroup_parent_id_cc315105 (parent_id),KEY dcim_rackgroup_site_id_13520e89 (site_id),KEY dcim_rackgroup_slug_3f4582a7 (slug),KEY dcim_rackgroup_tree_id_9c2ad6f4 (tree_id),UNIQUE KEY site_idname (site_id,name),UNIQUE KEY site_idslug (site_id,slug),CONSTRAINT dcim_rackgroup_parent_id_cc315105_fk_dcim_rackgroup_id FOREIGN KEY (parent_id) REFERENCES dcim_rackgroup (id),CONSTRAINT dcim_rackgroup_site_id_13520e89_fk_dcim_site_id FOREIGN KEY (site_id) REFERENCES dcim_site (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
-			`CREATE TABLE dcim_rack (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,_name varchar(100) NOT NULL,facility_id varchar(50),serial varchar(50) NOT NULL,asset_tag varchar(50),type varchar(50) NOT NULL,width smallint unsigned NOT NULL,u_height smallint unsigned NOT NULL,desc_units tinyint NOT NULL,outer_width smallint unsigned,outer_depth smallint unsigned,outer_unit varchar(50) NOT NULL,comments longtext NOT NULL,group_id char(32),role_id char(32),site_id char(32) NOT NULL,status_id char(32),tenant_id char(32),PRIMARY KEY (id),UNIQUE KEY asset_tag (asset_tag),KEY dcim_rack_group_id_44e90ea9 (group_id),KEY dcim_rack_role_id_62d6919e (role_id),KEY dcim_rack_site_id_403c7b3a (site_id),KEY dcim_rack_status_id_ee3dee3e (status_id),KEY dcim_rack_tenant_id_7cdf3725 (tenant_id),UNIQUE KEY group_idfacility_id (group_id,facility_id),UNIQUE KEY group_idname (group_id,name),CONSTRAINT dcim_rack_group_id_44e90ea9_fk_dcim_rackgroup_id FOREIGN KEY (group_id) REFERENCES dcim_rackgroup (id),CONSTRAINT dcim_rack_site_id_403c7b3a_fk_dcim_site_id FOREIGN KEY (site_id) REFERENCES dcim_site (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+			`CREATE TABLE dcim_site (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,_name varchar(100) NOT NULL,slug varchar(100) NOT NULL,facility varchar(50) NOT NULL,asn bigint,time_zone varchar(63) NOT NULL,description varchar(200) NOT NULL,physical_address varchar(200) NOT NULL,shipping_address varchar(200) NOT NULL,latitude decimal(8,6),longitude decimal(9,6),contact_name varchar(50) NOT NULL,contact_phone varchar(20) NOT NULL,contact_email varchar(254) NOT NULL,comments longtext NOT NULL,region_id char(32),status_id char(32),tenant_id char(32),PRIMARY KEY (id),KEY dcim_site_region_id_45210932 (region_id),KEY dcim_site_status_id_e6a50f56 (status_id),KEY dcim_site_tenant_id_15e7df63 (tenant_id),UNIQUE KEY name (name),UNIQUE KEY slug (slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+			`CREATE TABLE dcim_rackgroup (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,slug varchar(100) NOT NULL,description varchar(200) NOT NULL,lft int unsigned NOT NULL,rght int unsigned NOT NULL,tree_id int unsigned NOT NULL,level int unsigned NOT NULL,parent_id char(32),site_id char(32) NOT NULL,PRIMARY KEY (id),KEY dcim_rackgroup_parent_id_cc315105 (parent_id),KEY dcim_rackgroup_site_id_13520e89 (site_id),KEY dcim_rackgroup_slug_3f4582a7 (slug),KEY dcim_rackgroup_tree_id_9c2ad6f4 (tree_id),UNIQUE KEY site_idname (site_id,name),UNIQUE KEY site_idslug (site_id,slug),CONSTRAINT dcim_rackgroup_parent_id_cc315105_fk_dcim_rackgroup_id FOREIGN KEY (parent_id) REFERENCES dcim_rackgroup (id),CONSTRAINT dcim_rackgroup_site_id_13520e89_fk_dcim_site_id FOREIGN KEY (site_id) REFERENCES dcim_site (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+			`CREATE TABLE dcim_rack (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,_name varchar(100) NOT NULL,facility_id varchar(50),serial varchar(50) NOT NULL,asset_tag varchar(50),type varchar(50) NOT NULL,width smallint unsigned NOT NULL,u_height smallint unsigned NOT NULL,desc_units tinyint NOT NULL,outer_width smallint unsigned,outer_depth smallint unsigned,outer_unit varchar(50) NOT NULL,comments longtext NOT NULL,group_id char(32),role_id char(32),site_id char(32) NOT NULL,status_id char(32),tenant_id char(32),PRIMARY KEY (id),UNIQUE KEY asset_tag (asset_tag),KEY dcim_rack_group_id_44e90ea9 (group_id),KEY dcim_rack_role_id_62d6919e (role_id),KEY dcim_rack_site_id_403c7b3a (site_id),KEY dcim_rack_status_id_ee3dee3e (status_id),KEY dcim_rack_tenant_id_7cdf3725 (tenant_id),UNIQUE KEY group_idfacility_id (group_id,facility_id),UNIQUE KEY group_idname (group_id,name),CONSTRAINT dcim_rack_group_id_44e90ea9_fk_dcim_rackgroup_id FOREIGN KEY (group_id) REFERENCES dcim_rackgroup (id),CONSTRAINT dcim_rack_site_id_403c7b3a_fk_dcim_site_id FOREIGN KEY (site_id) REFERENCES dcim_site (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
 			`INSERT INTO dcim_site (id, created, last_updated, _custom_field_data, status_id, name, _name, slug, region_id, tenant_id, facility, asn, time_zone, description, physical_address, shipping_address, latitude, longitude, contact_name, contact_phone, contact_email, comments) VALUES ('f0471f313b694d388c8ec39d9590e396', '2021-05-20', '2021-05-20 18:51:46.416695', '{}', NULL, 'Site 1', 'Site 00000001', 'site-1', NULL, NULL, '', NULL, '', '', '', '', NULL, NULL, '', '', '', '')`,
 			`INSERT INTO dcim_site (id, created, last_updated, _custom_field_data, status_id, name, _name, slug, region_id, tenant_id, facility, asn, time_zone, description, physical_address, shipping_address, latitude, longitude, contact_name, contact_phone, contact_email, comments) VALUES ('442bab8b517149ab87207e8fb5ba1569', '2021-05-20', '2021-05-20 18:51:47.333720', '{}', NULL, 'Site 2', 'Site 00000002', 'site-2', NULL, NULL, '', NULL, '', '', '', '', NULL, NULL, '', '', '', '')`,
 			`INSERT INTO dcim_rackgroup (id, created, last_updated, _custom_field_data, name, slug, site_id, parent_id, description, lft, rght, tree_id, level) VALUES ('5c107f979f434bf7a7820622f18a5211', '2021-05-20', '2021-05-20 18:51:48.150116', '{}', 'Parent Rack Group 1', 'parent-rack-group-1', 'f0471f313b694d388c8ec39d9590e396', NULL, '', 1, 2, 1, 0)`,
@@ -1601,7 +1601,7 @@ var ScriptTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `t1b` (`b`),\n" +
 						"  CONSTRAINT `ck1` CHECK (`b` LIKE \"%abc%\")\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -1613,7 +1613,7 @@ var ScriptTests = []ScriptTest{
 						"  PRIMARY KEY (`c`),\n" +
 						"  UNIQUE KEY `d` (`d`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -1624,7 +1624,7 @@ var ScriptTests = []ScriptTest{
 						"  `b` varchar(100) NOT NULL,\n" +
 						"  `c` datetime,\n" +
 						"  PRIMARY KEY (`b`,`a`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -1633,7 +1633,7 @@ var ScriptTests = []ScriptTest{
 					{"t4", "CREATE TABLE `t4` (\n" +
 						"  `a` int DEFAULT (FLOOR(1)),\n" +
 						"  `b` int DEFAULT (coalesce(a, 10))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -1752,20 +1752,6 @@ var ScriptTests = []ScriptTest{
 					{"pk", "int", "NO", "", "", ""},
 					{"v1", "int", "YES", "", "", ""},
 					{"v2", "int", "NO", "PRI", "", ""},
-				},
-			},
-			{
-				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v4`, ADD COLUMN v7 int NOT NULL",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
-					{"v5", "int", "NO", "", "", ""},
-					{"v6", "int", "NO", "", "", ""},
-					{"v7", "int", "NO", "", "", ""},
 				},
 			},
 		},
@@ -1935,14 +1921,14 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v3, add column (v5 int NOT NULL)",
+				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v2, add column (v5 int NOT NULL)",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
 					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v2", "int", "NO", "", "100", ""},
+					{"v3", "int", "NO", "", "", ""},
 					{"v4", "int", "YES", "", "", ""},
 					{"v5", "int", "NO", "", "", ""},
 				},
@@ -1955,7 +1941,7 @@ var ScriptTests = []ScriptTest{
 				Query: "describe test",
 				Expected: []sql.Row{
 					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v2", "int", "NO", "", "100", ""},
+					{"v3", "int", "NO", "", "", ""},
 					{"mycol", "int", "NO", "", "", ""},
 					{"v6", "int", "NO", "", "", ""},
 					{"v7", "int", "YES", "", "", ""},
@@ -2039,7 +2025,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
@@ -2060,7 +2046,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
@@ -2081,7 +2067,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
@@ -2102,7 +2088,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
@@ -2123,7 +2109,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
@@ -2144,7 +2130,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
@@ -2195,7 +2181,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check1` CHECK ((`pk` = 5)),\n" +
 							"  CONSTRAINT `check11` CHECK ((`pk` < 6))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2209,7 +2195,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check2` CHECK ((`v` < 5)),\n" +
 							"  CONSTRAINT `check12` CHECK (((`pk` + `v`) = 6))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2223,7 +2209,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5))),\n" +
 							"  CONSTRAINT `check13` CHECK ((`pk` BETWEEN 2 AND 100))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2236,7 +2222,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check4` CHECK ((((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9)))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2249,7 +2235,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check5` CHECK (((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9))))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2262,7 +2248,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check6` CHECK ((NOT(`pk`)))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2275,7 +2261,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check7` CHECK ((NOT((`pk` = `v`))))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2288,7 +2274,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check8` CHECK ((((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10)))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2301,7 +2287,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check9` CHECK ((((`pk` + `v`) / 2) >= 1))\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2314,7 +2300,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check10` CHECK ((`v` < 5)) /*!80016 NOT ENFORCED */\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -2442,6 +2428,52 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:       "INSERT INTO a VALUES (1, 1)",
 				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		Name: "Multialter DDL with ADD/DROP Primary Key",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, v1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v3 int), drop primary key, add primary key (notacolumn)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
+			},
+			{ // This last modification ends up with a UNIQUE constraint on pk
+				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v2`, ADD COLUMN v7 int NOT NULL",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v4", "int", "NO", "", "", ""},
+					{"v5", "int", "NO", "", "", ""},
+					{"v6", "int", "NO", "", "", ""},
+					{"v7", "int", "NO", "", "", ""},
+				},
 			},
 		},
 	},

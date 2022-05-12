@@ -37,6 +37,10 @@ type ShowCreateTable struct {
 	AsOf             sql.Expression
 }
 
+var _ sql.Node = (*ShowCreateTable)(nil)
+var _ sql.Expressioner = (*ShowCreateTable)(nil)
+var _ sql.SchemaTarget = (*ShowCreateTable)(nil)
+
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
 	return NewShowCreateTableWithAsOf(table, isView, nil)
@@ -91,6 +95,10 @@ func (sc *ShowCreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privi
 func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	sc.targetSchema = schema
 	return &sc, nil
+}
+
+func (sc *ShowCreateTable) TargetSchema() sql.Schema {
+	return sc.targetSchema
 }
 
 func (sc ShowCreateTable) WithPrimaryKeySchema(schema sql.PrimaryKeySchema) (sql.Node, error) {
@@ -325,7 +333,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	return fmt.Sprintf(
-		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	), nil

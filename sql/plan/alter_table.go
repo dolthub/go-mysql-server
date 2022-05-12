@@ -147,10 +147,25 @@ type AddColumn struct {
 	targetSch sql.Schema
 }
 
+func (a *AddColumn) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("add column %s to %s", a.column.Name, a.Table)
+
+	var children []string
+	children = append(children, sql.DebugString(a.column))
+	for _, col := range a.targetSch {
+		children = append(children, sql.DebugString(col))
+	}
+
+	pr.WriteChildren(children...)
+	return pr.String()
+}
+
 var _ sql.Node = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
 func NewAddColumn(database sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+	column.Source = table.name
 	return &AddColumn{
 		ddlNode: ddlNode{db: database},
 		Table:   table,
@@ -305,6 +320,9 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	a.targetSch = schemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+
+	// *sql.Column is a reference type, make a copy before we modify it so we don't affect the original node
+	a.column = a.column.Copy()
 	if ok {
 		a.column.Default = unwrappedColDefVal
 	} else { // nil fails type check
@@ -396,6 +414,17 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		rewritten, err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		}
+	}
+
 	err := i.alterable.AddColumn(ctx, i.a.column, i.a.order)
 	if err != nil {
 		return nil, err
@@ -416,6 +445,177 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (i addColumnIter) Close(context *sql.Context) error {
 	return nil
+}
+
+// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+	newSch, projections, err := addColumnToSchema(i.a.targetSch, i.a.column, i.a.order)
+	if err != nil {
+		return false, err
+	}
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+
+	rewriteRequired := false
+	if i.a.column.Default != nil || !i.a.column.Nullable {
+		rewriteRequired = true
+	}
+
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.a.column)
+	if !rewriteRequired && !rewriteRequested {
+		return false, nil
+	}
+
+	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	if err != nil {
+		return false, err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return false, err
+		}
+
+		newRow, err := ProjectRow(ctx, projections, r)
+		if err != nil {
+			return false, err
+		}
+
+		err = inserter.Insert(ctx, newRow)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// addColumnToSchema returns a new schema and a set of projection expressions that when applied to rows from the old
+// schema will result in rows in the new schema.
+func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
+	idx := -1
+	if order != nil && len(order.AfterColumn) > 0 {
+		idx = schema.IndexOf(order.AfterColumn, column.Source)
+		if idx == -1 {
+			// Should be checked in the analyzer already
+			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
+		}
+		idx++
+	} else if order != nil && order.First {
+		idx = 0
+	}
+
+	// Now build the new schema, keeping track of:
+	// 1) the new result schema
+	// 2) A set of projections to translate rows in the old schema to rows in the new schema
+	newSch := make(sql.Schema, 0, len(schema)+1)
+	projections := make([]sql.Expression, len(schema)+1)
+
+	if idx >= 0 {
+		newSch = append(newSch, schema[:idx]...)
+		newSch = append(newSch, column)
+		newSch = append(newSch, schema[idx:]...)
+
+		for i := range schema[:idx] {
+			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+		}
+		projections[idx] = colDefaultExpression{column}
+		for i := range schema[idx:] {
+			schIdx := i + idx
+			projections[schIdx+1] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
+		}
+	} else { // new column at end
+		newSch = append(newSch, schema...)
+		newSch = append(newSch, column)
+		for i := range schema {
+			projections[i] = expression.NewGetField(i, schema[i].Type, schema[i].Name, schema[i].Nullable)
+		}
+		projections[len(schema)] = colDefaultExpression{column}
+	}
+
+	// Alter the new default if it refers to other columns. The column indexes computed during analysis refer to the
+	// column indexes in the new result schema, which is not what we want here: we want the positions in the old
+	// (current) schema, since that is what we'll be evaluating when we rewrite the table.
+	for i := range projections {
+		switch p := projections[i].(type) {
+		case colDefaultExpression:
+			if p.column.Default != nil {
+				newExpr, _, err := transform.Expr(p.column.Default.Expression, func(s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch s := s.(type) {
+					case *expression.GetField:
+						idx := schema.IndexOf(s.Name(), schema[0].Source)
+						if idx < 0 {
+							return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
+						}
+						return s.WithIndex(idx), transform.NewTree, nil
+					default:
+						return s, transform.SameTree, nil
+					}
+					return s, transform.SameTree, nil
+				})
+				if err != nil {
+					return nil, nil, err
+				}
+				p.column.Default.Expression = newExpr
+				projections[i] = p
+			}
+			break
+		}
+	}
+
+	return newSch, projections, nil
+}
+
+// colDefault expression evaluates the column default for a row being inserted, correctly handling zero values and
+// nulls
+type colDefaultExpression struct {
+	column *sql.Column
+}
+
+func (c colDefaultExpression) Resolved() bool   { return true }
+func (c colDefaultExpression) String() string   { return "" }
+func (c colDefaultExpression) Type() sql.Type   { return c.column.Type }
+func (c colDefaultExpression) IsNullable() bool { return c.column.Default == nil }
+
+func (c colDefaultExpression) Children() []sql.Expression {
+	panic("colDefaultExpression is only meant for immediate evaluation and should never be modified")
+}
+
+func (c colDefaultExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	panic("colDefaultExpression is only meant for immediate evaluation and should never be modified")
+}
+
+func (c colDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	columnDefaultExpr := c.column.Default
+
+	if columnDefaultExpr == nil && !c.column.Nullable {
+		val := c.column.Type.Zero()
+		return c.column.Type.Convert(val)
+	} else if columnDefaultExpr != nil {
+		val, err := columnDefaultExpr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		return c.column.Type.Convert(val)
+	}
+
+	return nil, nil
 }
 
 var _ sql.RowIter = &addColumnIter{}
@@ -740,6 +940,7 @@ var _ sql.Expressioner = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
 
 func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+	column.Source = table.name
 	return &ModifyColumn{
 		ddlNode:    ddlNode{db: database},
 		Table:      table,
@@ -785,6 +986,12 @@ func (m *ModifyColumn) TargetSchema() sql.Schema {
 	return m.targetSchema
 }
 
+type modifyColumnIter struct {
+	m         *ModifyColumn
+	alterable sql.AlterableTable
+	runOnce   bool
+}
+
 func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	tbl, err := getTableFromDatabase(ctx, m.Database(), m.Table)
 	if err != nil {
@@ -796,30 +1003,55 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
-	lowerColName := strings.ToLower(m.columnName)
-	tblSch := m.targetSchema
-	idx := tblSch.IndexOf(m.columnName, tbl.Name())
-	if idx < 0 {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.columnName)
+	if err := m.validateDefaultPosition(m.targetSchema); err != nil {
+		return nil, err
 	}
 
-	if m.order != nil && !m.order.First {
-		idx = tblSch.IndexOf(m.order.AfterColumn, tbl.Name())
-		if idx < 0 {
-			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.order.AfterColumn)
+	return &modifyColumnIter{
+		m:         m,
+		alterable: alterable,
+	}, nil
+}
+
+func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.runOnce {
+		return nil, io.EOF
+	}
+	i.runOnce = true
+
+	// TODO: replace with different node in analyzer
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		rewritten, err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
 		}
 	}
 
-	if err := m.validateDefaultPosition(tblSch); err != nil {
-		return nil, err
-	}
 	// TODO: fix me
-	if err := updateDefaultsOnColumnRename(ctx, alterable, tblSch, m.columnName, m.column.Name); err != nil {
+	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.targetSchema, i.m.columnName, i.m.column.Name); err != nil {
 		return nil, err
 	}
 
+	idx := i.m.targetSchema.IndexOf(i.m.columnName, i.alterable.Name())
+	if idx < 0 {
+		return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.columnName)
+	}
+
+	if i.m.order != nil && !i.m.order.First {
+		idx = i.m.targetSchema.IndexOf(i.m.order.AfterColumn, i.alterable.Name())
+		if idx < 0 {
+			return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.order.AfterColumn)
+		}
+	}
+
+	lowerColName := strings.ToLower(i.m.columnName)
+
 	// Update the foreign key columns as well
-	if fkTable, ok := alterable.(sql.ForeignKeyTable); ok {
+	if fkTable, ok := i.alterable.(sql.ForeignKeyTable); ok {
 		// We only care if the column is used in a foreign key
 		usedInFk := false
 		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
@@ -851,44 +1083,201 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			}
 		}
 
+		tblSch := i.m.targetSchema
 		if usedInFk {
-			if !tblSch[idx].Type.Equals(m.column.Type) {
+			if !i.m.targetSchema[idx].Type.Equals(i.m.column.Type) {
 				// There seems to be a special case where you can lengthen a CHAR/VARCHAR/BINARY/VARBINARY.
 				// Have not tested every type nor combination, but this seems specific to those 4 types.
-				if tblSch[idx].Type.Type() == m.column.Type.Type() {
-					switch m.column.Type.Type() {
+				if tblSch[idx].Type.Type() == i.m.column.Type.Type() {
+					switch i.m.column.Type.Type() {
 					case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
 						oldType := tblSch[idx].Type.(sql.StringType)
-						newType := m.column.Type.(sql.StringType)
+						newType := i.m.column.Type.(sql.StringType)
 						if oldType.Collation() != newType.Collation() || oldType.MaxCharacterLength() > newType.MaxCharacterLength() {
-							return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+							return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
 						}
 					default:
-						return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+						return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
 					}
 				} else {
-					return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+					return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
 				}
 			}
-			if !m.column.Nullable {
+			if !i.m.column.Nullable {
+				lowerColName := strings.ToLower(i.m.columnName)
 				for _, fk := range fks {
 					if fk.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fk.OnDelete == sql.ForeignKeyReferentialAction_SetNull {
 						for _, col := range fk.Columns {
 							if lowerColName == strings.ToLower(col) {
-								return nil, sql.ErrForeignKeyTypeChangeSetNull.New(m.columnName, fk.Name)
+								return nil, sql.ErrForeignKeyTypeChangeSetNull.New(i.m.columnName, fk.Name)
 							}
 						}
 					}
 				}
 			}
-			err = handleFkColumnRename(ctx, fkTable, m.db, m.columnName, m.column.Name)
+			err = handleFkColumnRename(ctx, fkTable, i.m.db, i.m.columnName, i.m.column.Name)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
+	err := i.alterable.ModifyColumn(ctx, i.m.columnName, i.m.column, i.m.order)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (i *modifyColumnIter) Close(context *sql.Context) error {
+	return nil
+}
+
+// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+	newSch, projections, err := modifyColumnInSchema(i.m.targetSchema, i.m.columnName, i.m.column, i.m.order)
+	if err != nil {
+		return false, err
+	}
+
+	// Wrap any auto increment columns in auto increment expressions. This mirrors what happens to row sources for normal
+	// INSERT statements during analysis.
+	for i, col := range newSch {
+		if col.AutoIncrement {
+			projections[i], err = expression.NewAutoIncrementForColumn(ctx, rwt, col, projections[i])
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+
+	// TODO: codify rewrite requirements
+
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.column)
+	if !rewriteRequested {
+		return false, nil
+	}
+
+	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	if err != nil {
+		return false, err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return false, err
+		}
+
+		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
+		if err != nil {
+			return false, err
+		}
+
+		err = inserter.Insert(ctx, newRow)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// projectRowWithTypes projects the row given with the projections given and additionally converts them to the
+// corresponding types found in the schema given, using the standard type conversion logic.
+func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
+	newRow, err := ProjectRow(ctx, projections, r)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range newRow {
+		newRow[i], err = sch[i].Type.Convert(newRow[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return newRow, nil
+}
+
+// modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
+// projections to adapt the old schema to the new one.
+func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
+	currIdx := schema.IndexOf(name, column.Source)
+	if currIdx < 0 {
+		// Should be checked in the analyzer already
+		return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, name)
+	}
+
+	// Primary key-ness isn't included in the column description as part of the ALTER statement, preserve it
+	if schema[currIdx].PrimaryKey {
+		column.PrimaryKey = true
+	}
+
+	newIdx := currIdx
+	if order != nil && len(order.AfterColumn) > 0 {
+		newIdx = schema.IndexOf(order.AfterColumn, column.Source)
+		if newIdx == -1 {
+			// Should be checked in the analyzer already
+			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
+		}
+	} else if order != nil && order.First {
+		newIdx = 0
+	}
+
+	// establish a map from old column index to new column index
+	oldToNewIdxMapping := make(map[int]int)
+	var i, j int
+	for j < len(schema) || i < len(schema) {
+		if i == currIdx {
+			oldToNewIdxMapping[i] = newIdx
+			i++
+		} else if j == newIdx {
+			j++
+		} else {
+			oldToNewIdxMapping[i] = j
+			i, j = i+1, j+1
+		}
+	}
+
+	// Now build the new schema, keeping track of:
+	// 1) The new result schema
+	// 2) A set of projections to translate rows in the old schema to rows in the new schema
+	newSch := make(sql.Schema, len(schema))
+	projections := make([]sql.Expression, len(schema))
+
+	for i := range schema {
+		j := oldToNewIdxMapping[i]
+		oldCol := schema[i]
+		c := oldCol
+		if j == newIdx {
+			c = column
+		}
+		newSch[j] = c
+		projections[j] = expression.NewGetField(i, oldCol.Type, oldCol.Name, oldCol.Nullable)
+	}
+
+	// TODO: do we need col defaults here? probably when changing a column to be non-null?
+	return newSch, projections, nil
 }
 
 func (m *ModifyColumn) Children() []sql.Node {

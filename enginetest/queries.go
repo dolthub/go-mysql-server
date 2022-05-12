@@ -42,7 +42,7 @@ var SpatialQueryTests = []QueryTest{
 				"  `i` bigint NOT NULL,\n" +
 				"  `p` point NOT NULL,\n" +
 				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -53,7 +53,7 @@ var SpatialQueryTests = []QueryTest{
 				"  `i` bigint NOT NULL,\n" +
 				"  `l` linestring NOT NULL,\n" +
 				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -64,7 +64,7 @@ var SpatialQueryTests = []QueryTest{
 				"  `i` bigint NOT NULL,\n" +
 				"  `p` polygon NOT NULL,\n" +
 				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -75,7 +75,7 @@ var SpatialQueryTests = []QueryTest{
 				"  `i` bigint NOT NULL,\n" +
 				"  `g` geometry NOT NULL,\n" +
 				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -3904,7 +3904,7 @@ var QueryTests = []QueryTest{
 				"  `c4` tinyint NOT NULL,\n" +
 				"  `c5` tinyint NOT NULL,\n" +
 				"  PRIMARY KEY (`pk1`,`pk2`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -6756,7 +6756,7 @@ var KeylessQueries = []QueryTest{
 	{
 		Query: "SHOW CREATE TABLE keyless",
 		Expected: []sql.Row{
-			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
 }
@@ -7215,7 +7215,7 @@ var VersionedQueries = []QueryTest{
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` text NOT NULL,\n" +
 				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
 	{
@@ -7226,7 +7226,7 @@ var VersionedQueries = []QueryTest{
 				"  `s` text NOT NULL,\n" +
 				"  `c` text NOT NULL,\n" +
 				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
 }
@@ -7591,7 +7591,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  KEY `idx_si` (`s`,`i`),\n" +
 				"  KEY `mytable_i_s` (`i`,`s`),\n" +
 				"  UNIQUE KEY `mytable_s` (`s`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
 	{
@@ -7604,7 +7604,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  PRIMARY KEY (`pk`),\n" +
 				"  KEY `ab` (`a`,`b`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
 	{
@@ -8227,6 +8227,11 @@ type QueryErrorTest struct {
 }
 
 var errorQueries = []QueryErrorTest{
+	{
+		// Test for: https://github.com/dolthub/dolt/issues/3247
+		Query:       "select * from dual where foo() and true;",
+		ExpectedErr: sql.ErrFunctionNotFound,
+	},
 	{
 		Query:       "select * from mytable where (i = 1, i = 0 or i = 2) and (i > -1)",
 		ExpectedErr: sql.ErrInvalidOperandColumns,

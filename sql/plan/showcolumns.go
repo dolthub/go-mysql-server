@@ -58,6 +58,8 @@ func NewShowColumns(full bool, child sql.Node) *ShowColumns {
 }
 
 var _ sql.Node = (*ShowColumns)(nil)
+var _ sql.Expressioner = (*ShowColumns)(nil)
+var _ sql.SchemaTarget = (*ShowColumns)(nil)
 
 // Schema implements the sql.Node interface.
 func (s *ShowColumns) Schema() sql.Schema {
@@ -102,6 +104,10 @@ func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 func (s ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	s.targetSchema = schema
 	return &s, nil
+}
+
+func (s *ShowColumns) TargetSchema() sql.Schema {
+	return s.targetSchema
 }
 
 // RowIter creates a new ShowColumns node.
