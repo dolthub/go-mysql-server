@@ -2948,18 +2948,16 @@ var TriggerErrorTests = []ScriptTest{
 		Name: "source column doesn't exist",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
-			"create trigger not_found before insert on x for each row set new.d = new.d + 1",
 		},
-		Query:       "insert into x values (1, 1, 1)",
+		Query:       "create trigger not_found before insert on x for each row set new.d = new.d + 1",
 		ExpectedErr: sql.ErrUnknownColumn,
 	},
 	{
 		Name: "target column doesn't exist",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
-			"create trigger not_found before insert on x for each row set new.d = new.a + 1",
 		},
-		Query:       "insert into x values (1, 1, 1)",
+		Query:       "create trigger not_found before insert on x for each row set new.d = new.a + 1",
 		ExpectedErr: sql.ErrUnknownColumn,
 	},
 }
