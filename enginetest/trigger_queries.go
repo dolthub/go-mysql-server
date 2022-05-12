@@ -2951,7 +2951,7 @@ var TriggerErrorTests = []ScriptTest{
 			"create trigger not_found before insert on x for each row set new.d = new.d + 1",
 		},
 		Query:       "insert into x values (1, 1, 1)",
-		ExpectedErr: sql.ErrTableColumnNotFound,
+		ExpectedErr: sql.ErrUnknownColumn,
 	},
 	{
 		Name: "target column doesn't exist",
@@ -2960,6 +2960,6 @@ var TriggerErrorTests = []ScriptTest{
 			"create trigger not_found before insert on x for each row set new.d = new.a + 1",
 		},
 		Query:       "insert into x values (1, 1, 1)",
-		ExpectedErr: sql.ErrTableColumnNotFound,
+		ExpectedErr: sql.ErrUnknownColumn,
 	},
 }
