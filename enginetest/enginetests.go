@@ -266,13 +266,12 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 
 func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	harness.SetSetup(complexIndexSetup...)
-
+	e := mustNewEngine(t, harness)
 	for _, tt := range IndexPlanTests {
-		TestQueryPlan(t, harness, tt.Query, tt.ExpectedPlan)
+		TestQueryPlanWithEngine(t, harness, e, tt)
 	}
 
 	t.Run("no database selected", func(t *testing.T) {
-		e := mustNewEngine(t, harness)
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
@@ -359,6 +358,26 @@ func TestQueryPlan(t *testing.T, harness Harness, query string, expectedPlan str
 		}
 
 		assert.Equal(t, expectedPlan, extractQueryNode(node).String(), "Unexpected result for query: "+query)
+	})
+
+}
+
+func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt QueryPlanTest) {
+	t.Run(tt.Query, func(t *testing.T) {
+		ctx := NewContext(harness)
+		parsed, err := parse.Parse(ctx, tt.Query)
+		require.NoError(t, err)
+
+		node, err := e.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.Query) {
+				t.Skipf("Skipping query plan for %s", tt.Query)
+			}
+		}
+
+		assert.Equal(t, tt.ExpectedPlan, extractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
 	})
 
 }
@@ -1189,8 +1208,9 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup(complexIndexSetup...)
+	e := mustNewEngine(t, harness)
 	for _, tt := range ComplexIndexQueries {
-		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
+		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 }
 
@@ -1440,8 +1460,9 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 
 func TestComplexIndexQueries(t *testing.T, harness Harness) {
 	harness.SetSetup(complexIndexSetup...)
+	e := mustNewEngine(t, harness)
 	for _, tt := range ComplexIndexQueries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+		TestQueryWithEngine(t, harness, e, tt)
 	}
 }
 
@@ -6638,6 +6659,19 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 	})
 }
 
+func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt QueryTest) {
+	t.Run(tt.Query, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.Query) {
+				t.Skipf("Skipping query %s", tt.Query)
+			}
+		}
+
+		ctx := NewContext(harness)
+		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+	})
+}
+
 // TestPreparedQuery runs a prepared query on the engine given and asserts that results are as expected.
 func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column) {
 	t.Run(q, func(t *testing.T) {
@@ -6649,6 +6683,18 @@ func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.R
 		e := mustNewEngine(t, harness)
 		ctx := NewContext(harness)
 		TestPreparedQueryWithContext(t, ctx, e, q, expected, expectedCols)
+	})
+}
+
+func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt QueryTest) {
+	t.Run(tt.Query, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.Query) {
+				t.Skipf("Skipping query %s", tt.Query)
+			}
+		}
+		ctx := NewContext(harness)
+		TestPreparedQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns)
 	})
 }
 

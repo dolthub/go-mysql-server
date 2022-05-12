@@ -318,3 +318,23 @@ func (h *ReadOnlyMemoryHarness) NewDatabases(names ...string) []sql.Database {
 	}
 	return dbs
 }
+
+type ReusableMemoryHarness struct {
+	*MemoryHarness
+	e *sqle.Engine
+}
+
+func NewReusableMemoryHarness() *ReusableMemoryHarness {
+	return &ReusableMemoryHarness{MemoryHarness: NewDefaultMemoryHarness()}
+}
+
+func (h *ReusableMemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
+	if h.e == nil {
+		e, err := h.MemoryHarness.NewEngine(t)
+		if err != nil {
+			return nil, err
+		}
+		h.e = e
+	}
+	return h.e, nil
+}

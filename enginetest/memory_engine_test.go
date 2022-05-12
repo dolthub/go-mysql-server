@@ -432,7 +432,8 @@ func TestIndexQueryPlans(t *testing.T) {
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			//harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			harness := enginetest.NewReusableMemoryHarness()
 			enginetest.TestIndexQueryPlans(t, harness)
 		})
 	}
