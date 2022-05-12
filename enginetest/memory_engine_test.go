@@ -369,6 +369,7 @@ func TestBrokenQueries(t *testing.T) {
 
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
+	harness.SetSetup("mydb", "pk_tables", "niltable")
 	for _, tt := range enginetest.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
 			enginetest.TestQueryPlan(t, harness, tt.Query, tt.ExpectedPlan)
@@ -381,7 +382,7 @@ func TestVersionedQueries(t *testing.T) {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+				harness := enginetest.NewVersionedMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
 
 				t.Run(testName, func(t *testing.T) {
 					enginetest.TestVersionedQueries(t, harness)

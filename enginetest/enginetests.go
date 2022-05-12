@@ -47,6 +47,8 @@ import (
 	"github.com/dolthub/go-mysql-server/test"
 )
 
+var DefaultDatabases = []string{"mydb", "foo"}
+
 var enableParallel = true
 var enableParallelFlag = "GMS_ENABLE_PARALLEL_ENGINETESTS"
 
@@ -102,7 +104,7 @@ func TestSpatialQueriesPrepared(t *testing.T, harness CheckpointHarness) {
 
 // Tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
-	harness.SetSetup("mydb", "mytable", "pk_tables")
+	harness.SetSetup("mydb", "mytable", "pk_tables", "othertable")
 	for _, tt := range JoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}

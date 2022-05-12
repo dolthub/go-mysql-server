@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"strings"
 	"testing"
 
@@ -134,7 +135,6 @@ func NewSkippingMemoryHarness() *SkippingMemoryHarness {
 var _ Harness = (*MemoryHarness)(nil)
 var _ IndexDriverHarness = (*MemoryHarness)(nil)
 var _ IndexHarness = (*MemoryHarness)(nil)
-var _ VersionedDBHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
@@ -198,30 +198,6 @@ func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
 		context.Background(),
 		sql.WithSession(session),
 	)
-}
-
-func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
-	var fkColl *memory.ForeignKeyCollection
-	if memDb, ok := db.(*memory.HistoryDatabase); ok {
-		fkColl = memDb.GetForeignKeyCollection()
-	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
-		fkColl = memDb.GetForeignKeyCollection()
-	}
-	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
-	if m.nativeIndexSupport {
-		table.EnablePrimaryKeyIndexes()
-	}
-	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
-		ro.HistoryDatabase.AddTableAsOf(name, table, asOf)
-	} else {
-		db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
-	}
-	return table
-}
-
-func (m *MemoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error {
-	// Nothing to do for this implementation: the NewTableAsOf method does all the work of creating the snapshot.
-	return nil
 }
 
 func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
@@ -311,7 +287,49 @@ func (h *ReadOnlyMemoryHarness) NewReadOnlyDatabase(name string) sql.ReadOnlyDat
 	return memory.NewReadOnlyDatabase(name)
 }
 
-func (h *ReadOnlyMemoryHarness) NewDatabases(names ...string) []sql.Database {
+func (h *ReadOnlyMemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
+	dbs := make([]sql.Database, len(DefaultDatabases)+1)
+	for i := range DefaultDatabases {
+		dbs[i] = h.NewReadOnlyDatabase(DefaultDatabases[i])
+	}
+	dbs[len(DefaultDatabases)] = information_schema.NewInformationSchemaDatabase()
+
+	pro := h.NewDatabaseProvider(dbs...)
+	e := NewEngineWithProvider(t, h, pro)
+	ctx := NewContext(h)
+
+	setup, err := newFileSetups(h.setupData...)
+	if err != nil {
+		return nil, err
+	}
+
+	return RunEngineScripts(ctx, e, setup)
+}
+
+func NewVersionedMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer IndexDriverInitalizer) *VersionedMemoryHarness {
+	return &VersionedMemoryHarness{
+		MemoryHarness{
+			name:                   name,
+			numTablePartitions:     numTablePartitions,
+			indexDriverInitializer: indexDriverInitalizer,
+			parallelism:            parallelism,
+			nativeIndexSupport:     useNativeIndexes,
+			skippedQueries:         make(map[string]struct{}),
+		},
+	}
+}
+
+type VersionedMemoryHarness struct {
+	MemoryHarness
+}
+
+var _ VersionedDBHarness = (*VersionedMemoryHarness)(nil)
+
+func (h *VersionedMemoryHarness) NewReadOnlyDatabase(name string) sql.ReadOnlyDatabase {
+	return memory.NewReadOnlyDatabase(name)
+}
+
+func (h *VersionedMemoryHarness) NewDatabases(names ...string) []sql.Database {
 	dbs := make([]sql.Database, len(names))
 	for i := range names {
 		dbs[i] = h.NewReadOnlyDatabase(names[i])
@@ -319,22 +337,26 @@ func (h *ReadOnlyMemoryHarness) NewDatabases(names ...string) []sql.Database {
 	return dbs
 }
 
-type ReusableMemoryHarness struct {
-	*MemoryHarness
-	e *sqle.Engine
-}
-
-func NewReusableMemoryHarness() *ReusableMemoryHarness {
-	return &ReusableMemoryHarness{MemoryHarness: NewDefaultMemoryHarness()}
-}
-
-func (h *ReusableMemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	if h.e == nil {
-		e, err := h.MemoryHarness.NewEngine(t)
-		if err != nil {
-			return nil, err
-		}
-		h.e = e
+func (h *VersionedMemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
+	var fkColl *memory.ForeignKeyCollection
+	if memDb, ok := db.(*memory.HistoryDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
 	}
-	return h.e, nil
+	table := memory.NewPartitionedTable(name, schema, fkColl, h.numTablePartitions)
+	if h.nativeIndexSupport {
+		table.EnablePrimaryKeyIndexes()
+	}
+	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
+		ro.HistoryDatabase.AddTableAsOf(name, table, asOf)
+	} else {
+		db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
+	}
+	return table
+}
+
+func (h *VersionedMemoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error {
+	// Nothing to do for this implementation: the NewTableAsOf method does all the work of creating the snapshot.
+	return nil
 }

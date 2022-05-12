@@ -1,5 +1,5 @@
 exec
-create table one_pk (pk smallint, c1 smallint, c2 smallint, c3 smallint, c4 smallint, c5 smallint)
+create table one_pk (pk smallint primary key, c1 smallint, c2 smallint, c3 smallint, c4 smallint, c5 smallint)
 ----
 
 exec
@@ -21,6 +21,7 @@ create table two_pk (
     c5 tinyint NOT NULL,
     primary key (pk1, pk2)
 )
+----
 
 exec
 insert into two_pk values
