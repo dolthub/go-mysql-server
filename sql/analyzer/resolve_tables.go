@@ -49,10 +49,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		switch p := c.Parent.(type) {
 		case *plan.DropTable:
 			ignore = p.IfExists()
-		case *plan.CreateTrigger:
-			// create trigger body can have reference to non-existent table,
-			// so ErrTableNotFound should be ignored
-			ignore = true
 		}
 
 		switch p := c.Node.(type) {
@@ -62,7 +58,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			// child tables. In this case, the output node
 			// will have fewer children. The UnresolvedNode
 			// case is modified to skip those undesired children
-			// lower in the tree.Ï
+			// lower in the tree.
 			var resolvedTables []sql.Node
 			for _, t := range p.Children() {
 				if _, ok := t.(*plan.ResolvedTable); ok {
@@ -71,13 +67,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 			newn, _ := p.WithChildren(resolvedTables...)
 			return newn, transform.NewTree, nil
-		case *plan.CreateTrigger:
-			// *plan.CreateTrigger can have non-existent table reference in trigger body.
-			// Table that trigger is on cannot be non-existent table.
-			if _, ok := p.Table.(*plan.ResolvedTable); !ok {
-				return nil, transform.SameTree, sql.ErrTableNotFound.New(p.Table)
-			}
-			return p, transform.SameTree, nil
 		case *plan.UnresolvedTable:
 			r, err := resolveTable(ctx, p, a)
 			if sql.ErrTableNotFound.Is(err) && ignore {

@@ -237,8 +237,6 @@ func expressionSources(expr sql.Expression) []string {
 func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
-	} else if _, ok := node.(*plan.CreateTrigger); ok {
-		return node, transform.SameTree, nil
 	}
 
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
