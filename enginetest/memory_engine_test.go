@@ -158,7 +158,7 @@ func TestJoinQueries(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
@@ -172,10 +172,23 @@ func TestSingleQuery(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
 	enginetest.CreateIndexes(t, harness, engine)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil)
+	tabs := []string{
+		"fk_tbl",
+		"auto_increment_tbl",
+		"reservedWordsTable",
+	}
+	for _, tn := range tabs {
+		ctx := harness.NewContext()
+		res := enginetest.MustQuery(ctx, engine, fmt.Sprintf("show create table %s", tn))
+		for i := range res {
+			fmt.Println(res[i])
+		}
+	}
+
+	//enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -197,13 +210,13 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//engine := enginetest.NewEngine(t, harness)
+	//engine := enginetest.NewEngineDepr(t, harness)
 	engine := enginetest.NewSpatialEngine(t, harness)
 	//enginetest.CreateIndexes(t, harness, engine)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestPreparedQuery(t, harness, engine, test.Query, test.Expected, nil)
+	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -351,15 +364,14 @@ func TestUnbuildableIndex(t *testing.T) {
 }
 
 func TestBrokenQueries(t *testing.T) {
-	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)
+	enginetest.TestBrokenQueries(t, enginetest.NewSkippingMemoryHarness())
 }
 
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
-	engine := enginetest.NewEngine(t, harness)
 	for _, tt := range enginetest.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, enginetest.NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
+			enginetest.TestQueryPlan(t, harness, tt.Query, tt.ExpectedPlan)
 		})
 	}
 }
@@ -420,7 +432,8 @@ func TestIndexQueryPlans(t *testing.T) {
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			//harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			harness := enginetest.NewReusableMemoryHarness()
 			enginetest.TestIndexQueryPlans(t, harness)
 		})
 	}
@@ -492,12 +505,6 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 	engine := enginetest.NewEngine(t, harness)
 
 	enginetest.CreateIndexes(t, harness, engine)
-	for i, script := range enginetest.ComplexIndexQueries {
-		for _, statement := range script.SetUpScript {
-			statement = strings.Replace(statement, "test", fmt.Sprintf("t%d", i), -1)
-			enginetest.RunQuery(t, engine, harness, statement)
-		}
-	}
 
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -549,7 +556,7 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 }
 
 func TestWriteComplexIndexQueries(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {
 		return
@@ -560,29 +567,11 @@ func TestWriteComplexIndexQueries(t *testing.T) {
 	require.NoError(t, err)
 
 	w := bufio.NewWriter(f)
-	_, _ = w.WriteString("var ComplexIndexQueries = []ScriptTest{\n")
-	for i, tt := range enginetest.ComplexIndexQueries {
+	_, _ = w.WriteString("var ComplexIndexQueries = []QueryTest{\n")
+	for _, tt := range enginetest.ComplexIndexQueries {
 		w.WriteString("  {\n")
-		w.WriteString(fmt.Sprintf("    Name: \"%s\",\n", tt.Name))
-		if len(tt.SetUpScript) > 0 {
-			w.WriteString("    SetUpScript: []string{\n")
-			for _, s := range tt.SetUpScript {
-				newS := strings.Replace(s, "test", fmt.Sprintf("comp_index_t%d", i), -1)
-				w.WriteString(fmt.Sprintf("    `%s`,\n", newS))
-			}
-			w.WriteString("    },\n")
-		}
-		if len(tt.Assertions) > 0 {
-			w.WriteString("    Assertions: []ScriptTestAssertion{\n")
-			for _, s := range tt.Assertions {
-				q := strings.Replace(s.Query, "test", fmt.Sprintf("comp_index_t%d", i), -1)
-				w.WriteString("      {\n")
-				w.WriteString(fmt.Sprintf("        Query: `%s`,\n", q))
-				w.WriteString(fmt.Sprintf("        Expected: %#v,\n", s.Expected))
-				w.WriteString("      },\n")
-			}
-			w.WriteString("      },\n")
-		}
+		w.WriteString(fmt.Sprintf("    Query: `%s`,\n", tt.Query))
+		w.WriteString(fmt.Sprintf("    Expected: %#v,\n", tt.Expected))
 		w.WriteString("  },\n")
 	}
 	w.WriteString("}\n")
@@ -758,10 +747,6 @@ func TestInsertIgnoreScriptsPrepared(t *testing.T) {
 
 func TestInsertErrorScriptsPrepared(t *testing.T) {
 	enginetest.TestInsertErrorScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-}
-
-func TestScriptQueryPlan(t *testing.T) {
-	enginetest.TestScriptQueryPlan(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestUserPrivileges(t *testing.T) {
