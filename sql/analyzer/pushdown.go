@@ -905,42 +905,29 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 		}
 
-		// Only replace iff immediate child is ResolvedTable
-		rs, ok := s.UnaryNode.Child.(*plan.ResolvedTable)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		// Extract primary key columns
-		var pkColNames []string
-		for _, col := range rs.Schema() {
-			if col.PrimaryKey {
-				pkColNames = append(pkColNames, col.Name)
-			}
-		}
-
-		// Extract SortField Column Names
-		var sfColNames []string
-		for _, field := range s.SortFields {
-			gf, ok := field.Column.(*expression.GetField)
-			if !ok {
+		// Check for any alias projections
+		var rs *plan.ResolvedTable
+		aliasMap := make(map[string]string)
+		pj, ok := s.UnaryNode.Child.(*plan.Project)
+		if ok {
+			// If there is a projection, its immediate child must be ResolvedTable
+			if rs, ok = pj.UnaryNode.Child.(*plan.ResolvedTable); !ok {
 				return n, transform.SameTree, nil
 			}
-			sfColNames = append(sfColNames, gf.Name())
-		}
-
-		// If Primary Key matches SortFields exactly
-		if len(pkColNames) == len(sfColNames) {
-			for i := 0; i < len(pkColNames); i++ {
-				if pkColNames[i] != sfColNames[i] {
-					return n, transform.SameTree, nil
+			// Extract aliases
+			for _, expr := range pj.Expressions() {
+				if alias, ok := expr.(*expression.Alias); ok {
+					aliasMap[alias.Name()] = alias.UnaryExpression.Child.String()
 				}
 			}
 		} else {
-			return n, transform.SameTree, nil
+			// Otherwise, sorts immediate child must be ResolvedTable
+			if rs, ok = s.UnaryNode.Child.(*plan.ResolvedTable); !ok {
+				return n, transform.SameTree, nil
+			}
 		}
 
-		// Get indexes
+		// Extract primary key columns from index to maintain order
 		idxTbl, ok := rs.Table.(sql.IndexedTable)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -962,19 +949,51 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return n, transform.SameTree, nil
 		}
 
-		r := make([]sql.RangeColumnExpr, len(s.SortFields))
-		keyExprs := make([]sql.Expression, len(s.SortFields))
-		for i, sf := range s.SortFields {
-			r[i] = sql.AllRangeColumnExpr(sf.Column.Type())
-			keyExprs[i] = sf.Column.(*expression.GetField).WithIndex(i)
+		// Get primary key column names; these are qualified
+		pkColNames := pkIndex.Expressions()
+
+		// Extract SortField Column Names
+		var sfColNames []string
+		for _, field := range s.SortFields {
+			gf, ok := field.Column.(*expression.GetField)
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+			// Resolve aliases; aliases should have empty table in GetField
+			if name, ok := aliasMap[gf.String()]; ok {
+				sfColNames = append(sfColNames, name)
+			} else {
+				sfColNames = append(sfColNames, gf.String())
+			}
 		}
 
-		lookup, err := pkIndex.NewLookup(ctx, r)
+		// SortField is definitely not a prefix to PrimaryKey
+		if len(sfColNames) > len(pkColNames) {
+			return n, transform.SameTree, nil
+		}
+
+		// Check if SortField is a prefix to PrimaryKey
+		for i := 0; i < len(sfColNames); i++ {
+			// Stop when column names stop matching
+			if sfColNames[i] != pkColNames[i] {
+				return n, transform.SameTree, nil
+			}
+		}
+
+		// Create lookup based off of PrimaryKey
+		indexBuilder := sql.NewIndexBuilder(ctx, pkIndex)
+		lookup, err := indexBuilder.Build(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+		newNode := plan.NewStaticIndexedTableAccess(rs, lookup, pkIndex, nil)
 
-		newNode := plan.NewStaticIndexedTableAccess(rs, lookup, pkIndex, keyExprs)
+		// Don't forget aliases
+		if pj != nil {
+			pj.UnaryNode.Child = newNode
+			return pj, transform.NewTree, nil
+		}
+
 		return newNode, transform.NewTree, nil
 	})
 }

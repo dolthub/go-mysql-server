@@ -36,6 +36,26 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM two_pk ORDER BY pk1`,
+		ExpectedPlan: "Projected table access on [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2] with ranges: [{(-∞, ∞), (-∞, ∞)}])\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY pk1, pk2`,
+		ExpectedPlan: "Project(two_pk.pk1 as one, two_pk.pk2 as two)\n" +
+			" └─ Projected table access on [pk1 pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2] with ranges: [{(-∞, ∞), (-∞, ∞)}])\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY one, two`,
+		ExpectedPlan: "Project(two_pk.pk1 as one, two_pk.pk2 as two)\n" +
+			" └─ Projected table access on [pk1 pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2] with ranges: [{(-∞, ∞), (-∞, ∞)}])\n" +
+			"",
+	},
+	{
 		Query: `SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ IndexedJoin(t1.i = (t2.i + 1))\n" +
