@@ -232,6 +232,9 @@ var (
 	// ErrInvalidUpdateInAfterTrigger is returned when a trigger attempts to assign to a new row in an AFTER trigger
 	ErrInvalidUpdateInAfterTrigger = errors.NewKind("Updating of new row is not allowed in after trigger")
 
+	// ErrUnknownColumn is returned when the given column is not found in referenced table
+	ErrUnknownColumn = errors.NewKind("Unknown column '%s' in '%s'")
+
 	// ErrUnboundPreparedStatementVariable is returned when a query is executed without a binding for one its variables.
 	ErrUnboundPreparedStatementVariable = errors.NewKind(`unbound variable "%s" in query`)
 

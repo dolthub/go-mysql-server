@@ -124,7 +124,7 @@ func (c *Call) String() string {
 // RowIter implements the sql.Node interface.
 func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	for i, paramExpr := range c.Params {
-		val, err := paramExpr.Eval(ctx, nil)
+		val, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
