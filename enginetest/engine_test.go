@@ -17,7 +17,6 @@ package enginetest_test
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"io"
 	"strings"
 	"testing"
@@ -31,6 +30,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"

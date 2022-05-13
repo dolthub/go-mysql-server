@@ -49,7 +49,7 @@ type Harness interface {
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.
 type ClientHarness interface {
 	Harness
-	
+
 	// NewContextWithClient returns a context that will return the given client when requested from the session.
 	NewContextWithClient(client sql.Client) *sql.Context
 }
