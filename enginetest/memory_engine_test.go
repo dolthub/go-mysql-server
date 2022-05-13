@@ -642,7 +642,11 @@ func TestStoredProcedures(t *testing.T) {
 func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewExternalStoredProcedureMemoryHarness()
 	for _, script := range enginetest.ExternalProcedureTests {
-		enginetest.TestScript(t, harness, script)
+		myDb := harness.NewDatabase("mydb")
+		databases := []sql.Database{myDb}
+		e := enginetest.NewEngineWithDbs(t, harness, databases)
+		defer e.Close()
+		enginetest.TestScriptWithEngine(t, e, harness, script)
 	}
 }
 

@@ -135,7 +135,7 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	//	TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	//}
 
-	harness.SetSetup(keylessSetup...)
+	harness.SetSetup("mydb", "keyless", "mytable")
 	for _, tt := range KeylessQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
