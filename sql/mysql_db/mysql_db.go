@@ -19,14 +19,15 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
-	"github.com/dolthub/vitess/go/mysql"
 	"net"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 )
 
 // MySQLDataJSON is used to marshal/unmarshal data to/from JSON.
