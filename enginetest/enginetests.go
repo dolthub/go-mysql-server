@@ -76,16 +76,18 @@ func TestQueries(t *testing.T, harness Harness) {
 // Tests a variety of geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueries(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
+	e := mustNewEngine(t, harness)
 	for _, tt := range SpatialQueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQueryWithEngine(t, harness, e, tt)
 	}
 }
 
 // Tests a variety of geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
+	e := mustNewEngine(t, harness)
 	for _, tt := range SpatialQueryTests {
-		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
+		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 
 	for _, tt := range SpatialDeleteTests {
