@@ -1,4 +1,4 @@
-package enginetest
+package queries
 
 import (
 	"github.com/dolthub/vitess/go/sqltypes"

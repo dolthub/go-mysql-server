@@ -17,6 +17,7 @@ package enginetest_test
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"io"
 	"strings"
 	"testing"
@@ -471,7 +472,7 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 }
 
 func TestTableFunctions(t *testing.T) {
-	var tableFunctionScriptTests = []enginetest.ScriptTest{
+	var tableFunctionScriptTests = []queries.ScriptTest{
 		{
 			Name:        "undefined table function",
 			Query:       "SELECT * from does_not_exist('q', 123);",

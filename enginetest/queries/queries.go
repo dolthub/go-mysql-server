@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package enginetest
+package queries
 
 import (
 	"time"
@@ -5988,8 +5988,8 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
 		Expected: []sql.Row{
-			sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),
-			sql.NewRow(dob(2010, 3, 15), "jane", "doe", "", int64(69), int64(1)),
+			sql.NewRow(time.Date(1990, time.Month(2), 21, 0, 0, 0, 0, time.UTC), "jane", "doe", "", int64(68), int64(1)),
+			sql.NewRow(time.Date(2010, time.Month(3), 15, 0, 0, 0, 0, time.UTC), "jane", "doe", "", int64(69), int64(1)),
 		},
 	},
 	{
@@ -8097,7 +8097,7 @@ type QueryErrorTest struct {
 	ExpectedErrStr string
 }
 
-var errorQueries = []QueryErrorTest{
+var ErrorQueries = []QueryErrorTest{
 	{
 		// Test for: https://github.com/dolthub/dolt/issues/3247
 		Query:       "select * from dual where foo() and true;",

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package enginetest
+package queries
 
 import (
 	"gopkg.in/src-d/go-errors.v1"

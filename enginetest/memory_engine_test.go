@@ -16,6 +16,7 @@ package enginetest_test
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"log"
 	"testing"
 
@@ -143,8 +144,8 @@ func TestJoinQueries(t *testing.T) {
 func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
-	var test enginetest.QueryTest
-	test = enginetest.QueryTest{
+	var test queries.QueryTest
+	test = queries.QueryTest{
 		Query: `show create table two_pk`,
 		Expected: []sql.Row{
 			{1, 2},
@@ -165,8 +166,8 @@ func TestSingleQuery(t *testing.T) {
 func TestSingleQueryPrepared(t *testing.T) {
 	t.Skip()
 
-	var test enginetest.QueryTest
-	test = enginetest.QueryTest{
+	var test queries.QueryTest
+	test = queries.QueryTest{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
 			{sql.Point{X: 1, Y: 2}},
@@ -193,13 +194,13 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	t.Skip()
 
-	var scripts = []enginetest.ScriptTest{
+	var scripts = []queries.ScriptTest{
 		{
 			Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
 			SetUpScript: []string{
 				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
 			},
-			Assertions: []enginetest.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query:    "INSERT INTO test (pk) VALUES (1);",
 					Expected: []sql.Row{{sql.NewOkResult(1)}},
@@ -303,7 +304,7 @@ func TestSingleScript(t *testing.T) {
 }
 
 func TestUnbuildableIndex(t *testing.T) {
-	var scripts = []enginetest.ScriptTest{
+	var scripts = []queries.ScriptTest{
 		{
 			Name: "Failing index builder still returning correct results",
 			SetUpScript: []string{
@@ -312,7 +313,7 @@ func TestUnbuildableIndex(t *testing.T) {
 				fmt.Sprintf("CREATE INDEX mytable2_i_s ON mytable2 (i, s) COMMENT '%s'", memory.CommentPreventingIndexBuilding),
 				"INSERT INTO mytable2 VALUES (1, 'first row'), (2, 'second row'), (3, 'third row')",
 			},
-			Assertions: []enginetest.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "SELECT i FROM mytable2 WHERE i IN (SELECT i FROM mytable2) ORDER BY i",
 					Expected: []sql.Row{
@@ -342,7 +343,7 @@ func TestTestQueryPlanTODOs(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, tt := range enginetest.QueryPlanTODOs {
+	for _, tt := range queries.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
 			enginetest.TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
 		})
@@ -548,9 +549,9 @@ func TestLoadDataPrepared(t *testing.T) {
 
 func TestScriptsPrepared(t *testing.T) {
 	//TODO: when foreign keys are implemented in the memory table, we can do the following test
-	for i := len(enginetest.ScriptTests) - 1; i >= 0; i-- {
-		if enginetest.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
-			enginetest.ScriptTests = append(enginetest.ScriptTests[:i], enginetest.ScriptTests[i+1:]...)
+	for i := len(queries.ScriptTests) - 1; i >= 0; i-- {
+		if queries.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
+			queries.ScriptTests = append(queries.ScriptTests[:i], queries.ScriptTests[i+1:]...)
 		}
 	}
 	enginetest.TestScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
@@ -607,7 +608,7 @@ func TestShowTriggers(t *testing.T) {
 
 func TestBrokenTriggers(t *testing.T) {
 	h := enginetest.NewSkippingMemoryHarness()
-	for _, script := range enginetest.BrokenTriggerQueries {
+	for _, script := range queries.BrokenTriggerQueries {
 		enginetest.TestScript(t, h, script)
 	}
 }
@@ -618,7 +619,7 @@ func TestStoredProcedures(t *testing.T) {
 
 func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewExternalStoredProcedureMemoryHarness()
-	for _, script := range enginetest.ExternalProcedureTests {
+	for _, script := range queries.ExternalProcedureTests {
 		myDb := harness.NewDatabase("mydb")
 		databases := []sql.Database{myDb}
 		e := enginetest.NewEngineWithDbs(t, harness, databases)

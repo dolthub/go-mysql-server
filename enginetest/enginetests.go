@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"io"
 	"net"
 	"strings"
@@ -51,13 +52,13 @@ func TestQueries(t *testing.T, harness Harness) {
 	harness.SetSetup(simpleSetup...)
 	e := mustNewEngine(t, harness)
 	ctx := NewContext(harness)
-	for _, tt := range QueryTests {
+	for _, tt := range queries.QueryTests {
 		t.Run(tt.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		})
 	}
 
-	for _, tt := range ParallelUnsafeQueries {
+	for _, tt := range queries.ParallelUnsafeQueries {
 		if strings.Contains(tt.Query, "\v") {
 			t.Skip("todo: encode vertical escape via SQL shell")
 		}
@@ -67,7 +68,7 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
-		for _, tt := range KeylessQueries {
+		for _, tt := range queries.KeylessQueries {
 			TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		}
 	}
@@ -77,7 +78,7 @@ func TestQueries(t *testing.T, harness Harness) {
 func TestSpatialQueries(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
 	e := mustNewEngine(t, harness)
-	for _, tt := range SpatialQueryTests {
+	for _, tt := range queries.SpatialQueryTests {
 		TestQueryWithEngine(t, harness, e, tt)
 	}
 }
@@ -86,17 +87,17 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
 	e := mustNewEngine(t, harness)
-	for _, tt := range SpatialQueryTests {
+	for _, tt := range queries.SpatialQueryTests {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 
-	for _, tt := range SpatialDeleteTests {
+	for _, tt := range queries.SpatialDeleteTests {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
-	for _, tt := range SpatialInsertQueries {
+	for _, tt := range queries.SpatialInsertQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
-	for _, tt := range SpatialUpdateTests {
+	for _, tt := range queries.SpatialUpdateTests {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
@@ -104,12 +105,12 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 // Tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "pk_tables", "othertable")
-	for _, tt := range JoinQueryTests {
+	for _, tt := range queries.JoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 
 	t.Skip()
-	for _, tt := range SkippedJoinQueryTests {
+	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 }
@@ -117,10 +118,10 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 // TestInfoSchemaPrepared runs tests of the information_schema database
 func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "fk_tbl", "foo")
-	for _, tt := range InfoSchemaQueries {
+	for _, tt := range queries.InfoSchemaQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
-	for _, script := range InfoSchemaScripts {
+	for _, script := range queries.InfoSchemaScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -128,7 +129,7 @@ func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 func TestQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup(simpleSetup...)
 	e := mustNewEngine(t, harness)
-	for _, tt := range QueryTests {
+	for _, tt := range queries.QueryTests {
 		if tt.SkipPrepared {
 			continue
 		}
@@ -137,20 +138,20 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 
 	harness.SetSetup("mydb", "keyless", "mytable")
 	e = mustNewEngine(t, harness)
-	for _, tt := range KeylessQueries {
+	for _, tt := range queries.KeylessQueries {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 
 	harness.SetSetup("mydb")
 	e = mustNewEngine(t, harness)
-	for _, tt := range DateParseQueries {
+	for _, tt := range queries.DateParseQueries {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 }
 
 func TestBrokenQueries(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "pk_tables", "fk_tbl")
-	RunQueryTests(t, harness, BrokenQueries)
+	RunQueryTests(t, harness, queries.BrokenQueries)
 }
 
 func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
@@ -166,7 +167,7 @@ func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
 
 // Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
 // debugging.
-func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
+func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	for _, tt := range queries {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
@@ -196,9 +197,9 @@ var infoSchemaTables = []string{
 // TestInfoSchema runs tests of the information_schema database
 func TestInfoSchema(t *testing.T, h Harness) {
 	h.SetSetup("mydb", "mytable", "fk_tbl", "foo")
-	RunQueryTests(t, h, InfoSchemaQueries)
+	RunQueryTests(t, h, queries.InfoSchemaQueries)
 
-	for _, script := range InfoSchemaScripts {
+	for _, script := range queries.InfoSchemaScripts {
 		TestScript(t, h, script)
 	}
 
@@ -248,21 +249,21 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	engine := NewEngineWithDbs(t, harness, dbs)
 	defer engine.Close()
 
-	for _, querySet := range [][]QueryTest{
-		QueryTests,
-		KeylessQueries,
-		VersionedQueries,
+	for _, querySet := range [][]queries.QueryTest{
+		queries.QueryTests,
+		queries.KeylessQueries,
+		queries.VersionedQueries,
 	} {
 		for _, tt := range querySet {
 			TestQueryWithEngine(t, harness, engine, tt)
 		}
 	}
 
-	for _, querySet := range [][]WriteQueryTest{
-		InsertQueries,
-		UpdateTests,
-		DeleteTests,
-		ReplaceQueries,
+	for _, querySet := range [][]queries.WriteQueryTest{
+		queries.InsertQueries,
+		queries.UpdateTests,
+		queries.DeleteTests,
+		queries.ReplaceQueries,
 	} {
 		for _, tt := range querySet {
 			t.Run(tt.WriteQuery, func(t *testing.T) {
@@ -277,7 +278,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 func TestQueryPlans(t *testing.T, harness Harness) {
 	harness.SetSetup(simpleSetup...)
 	e := mustNewEngine(t, harness)
-	for _, tt := range PlanTests {
+	for _, tt := range queries.PlanTests {
 		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
 	}
 }
@@ -285,7 +286,7 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	harness.SetSetup(complexIndexSetup...)
 	e := mustNewEngine(t, harness)
-	for _, tt := range IndexPlanTests {
+	for _, tt := range queries.IndexPlanTests {
 		TestQueryPlanWithEngine(t, harness, e, tt)
 	}
 
@@ -313,18 +314,18 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	defer engine.Close()
 
-	for _, tt := range VersionedQueries {
+	for _, tt := range queries.VersionedQueries {
 		TestQueryWithEngine(t, harness, engine, tt)
 	}
 
-	for _, tt := range VersionedScripts {
+	for _, tt := range queries.VersionedScripts {
 		TestScriptWithEngine(t, engine, harness, tt)
 	}
 
 	// These queries return different errors in the Memory engine and in the Dolt engine.
 	// Memory engine returns ErrTableNotFound, while Dolt engine returns ErrBranchNotFound.
 	// Until that is fixed, this test will not pass in both GMS and Dolt.
-	skippedTests := []ScriptTest{
+	skippedTests := []queries.ScriptTest{
 		{
 			Query:       "DESCRIBE myhistorytable AS OF '2018-12-01'",
 			ExpectedErr: sql.ErrTableNotFound,
@@ -351,12 +352,12 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
 
-	for _, tt := range VersionedQueries {
+	for _, tt := range queries.VersionedQueries {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 
 	t.Skip("skipping tests that version using UserVars instead of BindVars")
-	for _, tt := range VersionedScripts {
+	for _, tt := range queries.VersionedScripts {
 		TestScriptPrepared(t, harness, tt)
 	}
 }
@@ -382,7 +383,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, 
 
 }
 
-func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt QueryPlanTest) {
+func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, tt.Query)
@@ -501,7 +502,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 func TestExplode(t *testing.T, harness Harness) {
 	t.Skip("TODO support ARRAY types")
 	harness.SetSetup("mydb", "explode")
-	for _, q := range ExplodeQueries {
+	for _, q := range queries.ExplodeQueries {
 		TestQuery(t, harness, q.Query, q.Expected, nil, nil)
 	}
 }
@@ -509,7 +510,7 @@ func TestExplode(t *testing.T, harness Harness) {
 func TestExplodePrepared(t *testing.T, harness Harness) {
 	t.Skip("TODO support ARRAY types")
 	harness.SetSetup("mydb", "explode")
-	for _, q := range ExplodeQueries {
+	for _, q := range queries.ExplodeQueries {
 		TestPreparedQuery(t, harness, q.Query, q.Expected, nil)
 	}
 }
@@ -518,7 +519,7 @@ func TestExplodePrepared(t *testing.T, harness Harness) {
 // file checks that the name of the columns in the result schema is correct.
 func TestColumnAliases(t *testing.T, harness Harness) {
 	harness.SetSetup(mytable...)
-	for _, tt := range ColumnAliasQueries {
+	for _, tt := range queries.ColumnAliasQueries {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 }
@@ -559,7 +560,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 
 func TestQueryErrors(t *testing.T, harness Harness) {
 	harness.SetSetup("mytable", "pk_tables", "myhistorytable")
-	for _, tt := range errorQueries {
+	for _, tt := range queries.ErrorQueries {
 		runQueryErrorTest(t, harness, tt)
 	}
 }
@@ -578,121 +579,121 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
 
 func TestInsertInto(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "keyless", "niltable", "typestable", "emptytable", "autoincrement", "othertable")
-	for _, insertion := range InsertQueries {
+	for _, insertion := range queries.InsertQueries {
 		runWriteQueryTest(t, harness, insertion)
 	}
 
 	harness.SetSetup("mydb")
-	for _, script := range InsertScripts {
+	for _, script := range queries.InsertScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb")
-	for _, script := range InsertIgnoreScripts {
+	for _, script := range queries.InsertIgnoreScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	harness.SetSetup(mytable...)
-	for _, expectedFailure := range InsertErrorTests {
+	for _, expectedFailure := range queries.InsertErrorTests {
 		runGenericErrorTest(t, harness, expectedFailure)
 	}
 
 	harness.SetSetup("mydb")
-	for _, script := range InsertErrorScripts {
+	for _, script := range queries.InsertErrorScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 	t.Skip()
-	for _, script := range InsertScripts {
+	for _, script := range queries.InsertScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestSpatialInsertInto(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
-	for _, tt := range SpatialInsertQueries {
+	for _, tt := range queries.SpatialInsertQueries {
 		runWriteQueryTest(t, harness, tt)
 	}
 }
 
 func TestLoadData(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb")
-	for _, script := range LoadDataScripts {
+	for _, script := range queries.LoadDataScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestLoadDataErrors(t *testing.T, harness Harness) {
-	for _, script := range LoadDataErrorScripts {
+	for _, script := range queries.LoadDataErrorScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestLoadDataFailing(t *testing.T, harness Harness) {
 	t.Skip()
-	for _, script := range LoadDataFailingScripts {
+	for _, script := range queries.LoadDataFailingScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestReplaceInto(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "typestable")
-	for _, tt := range ReplaceQueries {
+	for _, tt := range queries.ReplaceQueries {
 		runWriteQueryTest(t, harness, tt)
 	}
 }
 
 func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable")
-	for _, tt := range ReplaceErrorTests {
+	for _, tt := range queries.ReplaceErrorTests {
 		runGenericErrorTest(t, harness, tt)
 	}
 }
 
 func TestUpdate(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "floattable", "niltable", "typestable", "pk_tables", "othertable", "tabletest")
-	for _, tt := range UpdateTests {
+	for _, tt := range queries.UpdateTests {
 		runWriteQueryTest(t, harness, tt)
 	}
 }
 
 func TestUpdateErrors(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "floattable", "typestable")
-	for _, expectedFailure := range GenericUpdateErrorTests {
+	for _, expectedFailure := range queries.GenericUpdateErrorTests {
 		runGenericErrorTest(t, harness, expectedFailure)
 	}
 
 	harness.SetSetup("mydb", "keyless", "people")
-	for _, expectedFailure := range UpdateErrorTests {
+	for _, expectedFailure := range queries.UpdateErrorTests {
 		runQueryErrorTest(t, harness, expectedFailure)
 	}
 
-	for _, script := range UpdateErrorScripts {
+	for _, script := range queries.UpdateErrorScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestSpatialUpdate(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
-	for _, update := range SpatialUpdateTests {
+	for _, update := range queries.SpatialUpdateTests {
 		runWriteQueryTest(t, harness, update)
 	}
 }
 
 func TestDelete(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "tabletest")
-	for _, tt := range DeleteTests {
+	for _, tt := range queries.DeleteTests {
 		runWriteQueryTest(t, harness, tt)
 	}
 }
 
-func runWriteQueryTest(t *testing.T, harness Harness, tt WriteQueryTest) {
+func runWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
@@ -712,7 +713,7 @@ func runWriteQueryTest(t *testing.T, harness Harness, tt WriteQueryTest) {
 	})
 }
 
-func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt WriteQueryTest) {
+func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
@@ -732,7 +733,7 @@ func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt WriteQueryTest)
 	})
 }
 
-func runGenericErrorTest(t *testing.T, h Harness, tt GenericErrorQueryTest) {
+func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTest) {
 	t.Run(tt.Name, func(t *testing.T) {
 		if sh, ok := h.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.Query) {
@@ -745,7 +746,7 @@ func runGenericErrorTest(t *testing.T, h Harness, tt GenericErrorQueryTest) {
 	})
 }
 
-func runQueryErrorTest(t *testing.T, h Harness, tt QueryErrorTest) {
+func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := h.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.Query) {
@@ -760,42 +761,42 @@ func runQueryErrorTest(t *testing.T, h Harness, tt QueryErrorTest) {
 
 func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "othertable", "typestable", "pk_tables", "floattable", "niltable", "tabletest")
-	for _, tt := range UpdateTests {
+	for _, tt := range queries.UpdateTests {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
 func TestDeleteQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "tabletest")
-	for _, tt := range DeleteTests {
+	for _, tt := range queries.DeleteTests {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
 func TestInsertQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "keyless", "typestable", "niltable", "emptytable", "autoincrement", "othertable")
-	for _, tt := range InsertQueries {
+	for _, tt := range queries.InsertQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
 func TestReplaceQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "typestable")
-	for _, tt := range ReplaceQueries {
+	for _, tt := range queries.ReplaceQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
 func TestDeleteErrors(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable")
-	for _, expectedFailure := range DeleteErrorTests {
+	for _, expectedFailure := range queries.DeleteErrorTests {
 		runGenericErrorTest(t, harness, expectedFailure)
 	}
 }
 
 func TestSpatialDelete(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
-	for _, delete := range SpatialDeleteTests {
+	for _, delete := range queries.SpatialDeleteTests {
 		runWriteQueryTest(t, harness, delete)
 	}
 }
@@ -1076,34 +1077,34 @@ func TestTruncate(t *testing.T, harness Harness) {
 }
 
 func TestScripts(t *testing.T, harness Harness) {
-	for _, script := range ScriptTests {
+	for _, script := range queries.ScriptTests {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestSpatialScripts(t *testing.T, harness Harness) {
-	for _, script := range SpatialScriptTests {
+	for _, script := range queries.SpatialScriptTests {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestLoadDataPrepared(t *testing.T, harness Harness) {
-	for _, script := range LoadDataScripts {
+	for _, script := range queries.LoadDataScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
 
 func TestScriptsPrepared(t *testing.T, harness Harness) {
-	for _, script := range ScriptTests {
+	for _, script := range queries.ScriptTests {
 		TestScriptPrepared(t, harness, script)
 	}
-	for _, script := range SpatialScriptTests {
+	for _, script := range queries.SpatialScriptTests {
 		TestScriptPrepared(t, harness, script)
 	}
 }
 
 func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
-	for _, script := range InsertScripts {
+	for _, script := range queries.InsertScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -1111,31 +1112,31 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup(complexIndexSetup...)
 	e := mustNewEngine(t, harness)
-	for _, tt := range ComplexIndexQueries {
+	for _, tt := range queries.ComplexIndexQueries {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 }
 
 func TestJsonScriptsPrepared(t *testing.T, harness Harness) {
-	for _, script := range JsonScripts {
+	for _, script := range queries.JsonScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
 
 func TestCreateCheckConstraintsScriptsPrepared(t *testing.T, harness Harness) {
-	for _, script := range CreateCheckConstraintsScripts {
+	for _, script := range queries.CreateCheckConstraintsScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
 
 func TestInsertIgnoreScriptsPrepared(t *testing.T, harness Harness) {
-	for _, script := range InsertIgnoreScripts {
+	for _, script := range queries.InsertIgnoreScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
 
 func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
-	for _, script := range InsertErrorScripts {
+	for _, script := range queries.InsertErrorScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -1147,7 +1148,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 	}
 
 	harness.SetSetup("mydb", "mytable")
-	for _, script := range UserPrivTests {
+	for _, script := range queries.UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {
 			myDb := harness.NewDatabase("mydb")
 			databases := []sql.Database{myDb}
@@ -1207,7 +1208,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 
 	// These tests are functionally identical to UserPrivTests, hence their inclusion in the same testing function.
 	// They're just written a little differently to ease the developer's ability to produce as many as possible.
-	for _, script := range QuickPrivTests {
+	for _, script := range queries.QuickPrivTests {
 		t.Run(strings.Join(script.Queries, "\n > "), func(t *testing.T) {
 			provider := harness.NewDatabaseProvider(
 				harness.NewDatabase("mydb"),
@@ -1303,7 +1304,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 	harness.SetSetup("mydb", "mytable")
 
 	port := getEmptyPort(t)
-	for _, script := range ServerAuthTests {
+	for _, script := range queries.ServerAuthTests {
 		t.Run(script.Name, func(t *testing.T) {
 			ctx := NewContextWithClient(harness, sql.Client{
 				User:    "root",
@@ -1363,13 +1364,13 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 func TestComplexIndexQueries(t *testing.T, harness Harness) {
 	harness.SetSetup(complexIndexSetup...)
 	e := mustNewEngine(t, harness)
-	for _, tt := range ComplexIndexQueries {
+	for _, tt := range queries.ComplexIndexQueries {
 		TestQueryWithEngine(t, harness, e, tt)
 	}
 }
 
 func TestTriggers(t *testing.T, harness Harness) {
-	for _, script := range TriggerTests {
+	for _, script := range queries.TriggerTests {
 		TestScript(t, harness, script)
 	}
 
@@ -1396,7 +1397,7 @@ func TestTriggers(t *testing.T, harness Harness) {
 
 func TestRollbackTriggers(t *testing.T, harness Harness) {
 	harness.SetSetup()
-	for _, script := range RollbackTriggerTests {
+	for _, script := range queries.RollbackTriggerTests {
 		TestScript(t, harness, script)
 	}
 }
@@ -1649,19 +1650,19 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 }
 
 func TestStoredProcedures(t *testing.T, harness Harness) {
-	for _, script := range ProcedureLogicTests {
+	for _, script := range queries.ProcedureLogicTests {
 		TestScript(t, harness, script)
 	}
-	for _, script := range ProcedureCallTests {
+	for _, script := range queries.ProcedureCallTests {
 		TestScript(t, harness, script)
 	}
-	for _, script := range ProcedureDropTests {
+	for _, script := range queries.ProcedureDropTests {
 		TestScript(t, harness, script)
 	}
-	for _, script := range ProcedureShowStatus {
+	for _, script := range queries.ProcedureShowStatus {
 		TestScript(t, harness, script)
 	}
-	for _, script := range ProcedureShowCreate {
+	for _, script := range queries.ProcedureShowCreate {
 		TestScript(t, harness, script)
 	}
 
@@ -1691,20 +1692,20 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 }
 
 func TestTriggerErrors(t *testing.T, harness Harness) {
-	for _, script := range TriggerErrorTests {
+	for _, script := range queries.TriggerErrorTests {
 		TestScript(t, harness, script)
 	}
 }
 
 // TestScript runs the test script given, making any assertions given
-func TestScript(t *testing.T, harness Harness, script ScriptTest) {
+func TestScript(t *testing.T, harness Harness, script queries.ScriptTest) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	TestScriptWithEngine(t, e, harness, script)
 }
 
 // TestScriptWithEngine runs the test script given with the engine provided.
-func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script ScriptTest) {
+func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script queries.ScriptTest) {
 	t.Run(script.Name, func(t *testing.T) {
 		for _, statement := range script.SetUpScript {
 			if sh, ok := harness.(SkippingHarness); ok {
@@ -1718,7 +1719,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 
 		assertions := script.Assertions
 		if len(assertions) == 0 {
-			assertions = []ScriptTestAssertion{
+			assertions = []queries.ScriptTestAssertion{
 				{
 					Query:       script.Query,
 					Expected:    script.Expected,
@@ -1754,7 +1755,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 
 // TestScriptPrepared substitutes literals for bindvars, runs the test script given,
 // and makes any assertions given
-func TestScriptPrepared(t *testing.T, harness Harness, script ScriptTest) bool {
+func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		if script.SkipPrepared {
 			t.Skip()
@@ -1769,7 +1770,7 @@ func TestScriptPrepared(t *testing.T, harness Harness, script ScriptTest) bool {
 
 // TestScriptWithEnginePrepared runs the test script with bindvars substituted for literals
 // using the engine provided.
-func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness, script ScriptTest) {
+func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness, script queries.ScriptTest) {
 	ctx := NewContextWithEngine(harness, e)
 	for _, statement := range script.SetUpScript {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -1783,7 +1784,7 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 
 	assertions := script.Assertions
 	if len(assertions) == 0 {
-		assertions = []ScriptTestAssertion{
+		assertions = []queries.ScriptTestAssertion{
 			{
 				Query:       script.Query,
 				Expected:    script.Expected,
@@ -1819,13 +1820,13 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 }
 
 func TestTransactionScripts(t *testing.T, harness Harness) {
-	for _, script := range TransactionTests {
+	for _, script := range queries.TransactionTests {
 		TestTransactionScript(t, harness, script)
 	}
 }
 
 // TestTransactionScript runs the test script given, making any assertions given
-func TestTransactionScript(t *testing.T, harness Harness, script TransactionTest) bool {
+func TestTransactionScript(t *testing.T, harness Harness, script queries.TransactionTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		myDb := harness.NewDatabase("mydb")
 		e := NewEngineWithDbs(t, harness, []sql.Database{myDb})
@@ -1835,7 +1836,7 @@ func TestTransactionScript(t *testing.T, harness Harness, script TransactionTest
 }
 
 // TestTransactionScriptWithEngine runs the transaction test script given with the engine provided.
-func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script TransactionTest) {
+func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script queries.TransactionTest) {
 	setupSession := NewSession(harness)
 	for _, statement := range script.SetUpScript {
 		RunQueryWithContext(t, e, setupSession, statement)
@@ -1893,7 +1894,7 @@ func TestViews(t *testing.T, harness Harness) {
 
 	// nested views
 	RunQueryWithContext(t, e, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
-	for _, testCase := range ViewTests {
+	for _, testCase := range queries.ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, nil, nil)
 		})
@@ -1927,7 +1928,7 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 
 	RunQueryWithContext(t, e, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
-	for _, testCase := range ViewTests {
+	for _, testCase := range queries.ViewTests {
 		TestPreparedQueryWithEngine(t, harness, e, testCase)
 	}
 }
@@ -1951,7 +1952,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 	require.NoError(err)
 	iter.Close(ctx)
 
-	for _, testCase := range VersionedViewTests {
+	for _, testCase := range queries.VersionedViewTests {
 		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, testCase.ExpectedColumns, nil)
 	}
@@ -1976,14 +1977,14 @@ func TestVersionedViewsPrepared(t *testing.T, harness Harness) {
 	require.NoError(err)
 	iter.Close(ctx)
 
-	for _, testCase := range VersionedViewTests {
+	for _, testCase := range queries.VersionedViewTests {
 		TestPreparedQueryWithEngine(t, harness, e, testCase)
 	}
 }
 
 func TestCreateTable(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "foo")
-	for _, tt := range CreateTableQueries {
+	for _, tt := range queries.CreateTableQueries {
 		runWriteQueryTest(t, harness, tt)
 	}
 
@@ -2803,11 +2804,11 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 
 func TestPkOrdinalsDDL(t *testing.T, harness Harness) {
 	harness.SetSetup(ordinalSetup...)
-	for _, tt := range OrdinalDDLQueries {
+	for _, tt := range queries.OrdinalDDLQueries {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 
-	for _, tt := range OrdinalDDLWriteQueries {
+	for _, tt := range queries.OrdinalDDLWriteQueries {
 		runWriteQueryTest(t, harness, tt)
 	}
 }
@@ -3158,9 +3159,9 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE child3 ADD COLUMN v1 BIGINT NULL, ADD CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3(v1);", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 	})
 
-	TestScript(t, harness, ScriptTest{
+	TestScript(t, harness, queries.ScriptTest{
 		Name: "Do not validate foreign keys if FOREIGN_KEY_CHECKS is set to zero",
-		Assertions: []ScriptTestAssertion{
+		Assertions: []queries.ScriptTestAssertion{
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=0;",
 				Expected: []sql.Row{{}},
@@ -3245,7 +3246,7 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 
 func TestForeignKeys(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "parent_child")
-	for _, script := range ForeignKeyTests {
+	for _, script := range queries.ForeignKeyTests {
 		TestScript(t, harness, script)
 	}
 }
@@ -3372,7 +3373,7 @@ CREATE TABLE t4
 
 	// Test any scripts relevant to CheckConstraints. We do this separately from the rest of the scripts
 	// as certain integrators might not implement check constraints.
-	for _, script := range CreateCheckConstraintsScripts {
+	for _, script := range queries.CreateCheckConstraintsScripts {
 		TestScript(t, harness, script)
 	}
 }
@@ -4127,13 +4128,13 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 }
 
 func TestVariables(t *testing.T, harness Harness) {
-	for _, query := range VariableQueries {
+	for _, query := range queries.VariableQueries {
 		TestScript(t, harness, query)
 	}
 	// Test session pulling from global
 	engine := sqle.NewDefault(harness.NewDatabaseProvider())
 	ctx1 := sql.NewEmptyContext()
-	for _, assertion := range []ScriptTestAssertion{
+	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@select_into_buffer_size",
 			Expected: []sql.Row{{131072}},
@@ -4166,7 +4167,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx1, engine, assertion.Query, assertion.Expected, nil, nil)
 	}
 	ctx2 := sql.NewEmptyContext()
-	for _, assertion := range []ScriptTestAssertion{
+	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@select_into_buffer_size",
 			Expected: []sql.Row{{9002}},
@@ -4185,14 +4186,14 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	tests := []ScriptTest{
+	tests := []queries.ScriptTest{
 		{
 			Name: "simple insert",
 			SetUpScript: []string{
 				"create table test (pk int primary key, value int)",
 				"insert into test values (0,0)",
 			},
-			Assertions: []ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into test values (?, ?)",
 					Bindings: map[string]sql.Expression{
@@ -4221,7 +4222,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				"INSERT INTO users values ('milo'), ('dabe')",
 				"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
 			},
-			Assertions: []ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
 					Bindings: map[string]sql.Expression{
@@ -4268,14 +4269,14 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 // Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "othertable")
-	for _, tt := range ShowTableStatusQueries {
+	for _, tt := range queries.ShowTableStatusQueries {
 		TestQuery(t, harness, tt.Query, tt.Expected, nil, nil)
 	}
 }
 
 func TestDateParse(t *testing.T, harness Harness) {
 	harness.SetSetup()
-	for _, tt := range DateParseQueries {
+	for _, tt := range queries.DateParseQueries {
 		TestQuery(t, harness, tt.Query, tt.Expected, nil, nil)
 	}
 }
@@ -4283,7 +4284,7 @@ func TestDateParse(t *testing.T, harness Harness) {
 // Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatusPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "othertable")
-	for _, tt := range ShowTableStatusQueries {
+	for _, tt := range queries.ShowTableStatusQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, nil)
 	}
 }
@@ -4291,13 +4292,13 @@ func TestShowTableStatusPrepared(t *testing.T, harness Harness) {
 func TestVariableErrors(t *testing.T, harness Harness) {
 	harness.SetSetup()
 	e := mustNewEngine(t, harness)
-	for _, test := range VariableErrorTests {
+	for _, test := range queries.VariableErrorTests {
 		AssertErr(t, e, harness, test.Query, test.ExpectedErr)
 	}
 }
 
 func TestWarnings(t *testing.T, harness Harness) {
-	var queries = []QueryTest{
+	var queries = []queries.QueryTest{
 		{
 			Query: `
 			SHOW WARNINGS
@@ -4490,7 +4491,7 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 }
 
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
-	q := []QueryTest{
+	q := []queries.QueryTest{
 		{
 			Query:    "SELECT * FROM mytable ORDER BY i",
 			Expected: []sql.Row{{int64(1), "first row"}},
@@ -4585,7 +4586,7 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 		time.UTC,  // location (UTC)
 	)
 
-	testCases := []QueryTest{
+	testCases := []queries.QueryTest{
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(0)`,
 			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 0, time.UTC)}},
@@ -4616,7 +4617,7 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 		},
 	}
 
-	errorTests := []GenericErrorQueryTest{
+	errorTests := []queries.GenericErrorQueryTest{
 		{
 			Query: "SELECT CURRENT_TIMESTAMP(-1)",
 		},
@@ -4811,7 +4812,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 func TestNullRanges(t *testing.T, harness Harness) {
 	harness.SetSetup(nullsSetup...)
-	for _, tt := range NullRangeTests {
+	for _, tt := range queries.NullRangeTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, nil, nil)
 	}
 }
@@ -5487,17 +5488,17 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 
 func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
 	harness.SetSetup(keylessSetup...)
-	for _, tt := range InsertIntoKeylessUnique {
+	for _, tt := range queries.InsertIntoKeylessUnique {
 		runWriteQueryTest(t, harness, tt)
 	}
 
-	for _, tt := range InsertIntoKeylessUniqueError {
+	for _, tt := range queries.InsertIntoKeylessUniqueError {
 		runGenericErrorTest(t, harness, tt)
 	}
 }
 
 func TestPrepared(t *testing.T, harness Harness) {
-	qtests := []QueryTest{
+	qtests := []queries.QueryTest{
 		{
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
 			Expected: []sql.Row{
@@ -5634,7 +5635,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		})
 	}
 
-	repeatTests := []QueryTest{
+	repeatTests := []queries.QueryTest{
 		{
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(int64(2), sql.Int64),
@@ -5899,7 +5900,7 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 	})
 }
 
-func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt QueryTest) {
+func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.Query) {
@@ -5926,7 +5927,7 @@ func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.R
 	})
 }
 
-func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt QueryTest) {
+func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.Query) {
@@ -5935,26 +5936,6 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, 
 		}
 		ctx := NewContext(harness)
 		TestPreparedQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns)
-	})
-}
-
-// TestPreparedQuery runs a prepared query on the engine given and asserts that results are as expected.
-func TestPreparedQueryParallel(t *testing.T,
-	harness Harness,
-	e *sqle.Engine,
-	q string,
-	expected []sql.Row,
-	expectedCols []*sql.Column,
-) {
-	t.Run(q, func(t *testing.T) {
-		t.Parallel()
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(q) {
-				t.Skipf("Skipping query %s", q)
-			}
-		}
-		ctx := NewContextWithEngine(harness, e)
-		TestPreparedQueryWithContext(t, ctx, e, q, expected, expectedCols)
 	})
 }
 
@@ -6126,7 +6107,7 @@ func stripSchema(s sql.Schema) []*sql.Column {
 }
 
 func TestJsonScripts(t *testing.T, harness Harness) {
-	for _, script := range JsonScripts {
+	for _, script := range queries.JsonScripts {
 		TestScript(t, harness, script)
 	}
 }

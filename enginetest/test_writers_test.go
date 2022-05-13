@@ -3,6 +3,7 @@ package enginetest
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ func TestWriteQueryPlans(t *testing.T) {
 
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var PlanTests = []QueryPlanTest{\n")
-	for _, tt := range PlanTests {
+	for _, tt := range queries.PlanTests {
 		_, _ = w.WriteString("\t{\n")
 		ctx := NewContextWithEngine(harness, engine)
 		parsed, err := parse.Parse(ctx, tt.Query)
@@ -92,7 +93,7 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var IndexPlanTests = []QueryPlanTest{\n")
-	for _, tt := range IndexPlanTests {
+	for _, tt := range queries.IndexPlanTests {
 		_, _ = w.WriteString("\t{\n")
 		ctx := NewContextWithEngine(harness, engine)
 		parsed, err := parse.Parse(ctx, tt.Query)
@@ -143,7 +144,7 @@ func TestWriteComplexIndexQueries(t *testing.T) {
 
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var ComplexIndexQueries = []QueryTest{\n")
-	for _, tt := range ComplexIndexQueries {
+	for _, tt := range queries.ComplexIndexQueries {
 		w.WriteString("  {\n")
 		w.WriteString(fmt.Sprintf("    Query: `%s`,\n", tt.Query))
 		w.WriteString(fmt.Sprintf("    Expected: %#v,\n", tt.Expected))
@@ -170,7 +171,7 @@ func TestWriteCreateTableQueries(t *testing.T) {
 
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var CreateTableQueries = []WriteQueryTest{\n")
-	for _, tt := range CreateTableQueries {
+	for _, tt := range queries.CreateTableQueries {
 		ctx := NewContext(harness)
 		engine := mustNewEngine(t, harness)
 		_ = MustQuery(ctx, engine, tt.WriteQuery)
