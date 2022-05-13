@@ -888,8 +888,6 @@ func stripDecorations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope
 	})
 }
 
-// TODO: move this to it's own file
-// TODO: replace Limit(Sort()) iff sort is same as primary key with index lookup?
 func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		n := tc.Node
