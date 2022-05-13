@@ -300,9 +300,9 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueries(t *testing.T, harness Harness) {
-	//if _, ok := harness.(VersionedDBHarness); !ok {
-	//	t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	//}
+	if _, ok := harness.(VersionedDBHarness); !ok {
+		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
+	}
 
 	engine := NewEngine(t, harness)
 	defer engine.Close()
@@ -311,7 +311,6 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 		TestQueryWithEngine(t, harness, engine, tt)
 	}
 
-	//harness.SetSetup()
 	for _, tt := range VersionedScripts {
 		TestScriptWithEngine(t, engine, harness, tt)
 	}
@@ -343,9 +342,11 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
 
-	harness.SetSetup(versionedSetup...)
+	e := NewEngine(t, harness)
+	defer e.Close()
+
 	for _, tt := range VersionedQueries {
-		TestPreparedQuery(t, harness, tt.Query, tt.Expected, nil)
+		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 
 	t.Skip("skipping tests that version using UserVars instead of BindVars")
@@ -1930,9 +1931,23 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
 
-	harness.SetSetup("mydb", "mytable", "views")
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	require.NoError(err)
+	iter.Close(ctx)
+
+	// nested views
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
+	require.NoError(err)
+	iter.Close(ctx)
+
 	for _, testCase := range VersionedViewTests {
-		TestQuery(t, harness, testCase.Query, testCase.Expected, testCase.ExpectedColumns, nil)
+		ctx := NewContext(harness)
+		TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, testCase.ExpectedColumns, nil)
 	}
 }
 
@@ -1941,9 +1956,22 @@ func TestVersionedViewsPrepared(t *testing.T, harness Harness) {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
 
-	harness.SetSetup("mydb", "mytable", "views")
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	require.NoError(err)
+	iter.Close(ctx)
+
+	// nested views
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
+	require.NoError(err)
+	iter.Close(ctx)
+
 	for _, testCase := range VersionedViewTests {
-		TestPreparedQuery(t, harness, testCase.Query, testCase.Expected, testCase.ExpectedColumns)
+		TestPreparedQueryWithEngine(t, harness, e, testCase)
 	}
 }
 

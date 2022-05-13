@@ -3,8 +3,9 @@ CREATE TABLE comp_index_t0 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT)
 ----
 
 exec
-create INDEX v_idx on comp_index_t2 (v1, v2)
+create INDEX v_idx on comp_index_t0 (v1, v2)
 ----
+
 exec
 INSERT INTO comp_index_t0 VALUES (0,0,48),(1,0,52),(2,2,4),(3,2,10),(4,3,35),(5,5,36),(6,5,60),(7,6,1),(8,6,51),
 (9,6,60),(10,6,73),(11,9,44),(12,9,97),(13,13,44),(14,14,53),(15,14,57),(16,14,98),(17,16,19),(18,16,53),(19,16,95),
@@ -23,7 +24,7 @@ CREATE TABLE comp_index_t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, v3 BIGI
 ----
 
 exec
-create INDEX v_idx on comp_index_t2 (v1, v2, v3)
+create INDEX v_idx on comp_index_t1 (v1, v2, v3)
 ----
 
 exec

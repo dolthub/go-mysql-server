@@ -133,6 +133,7 @@ func NewSkippingMemoryHarness() *SkippingMemoryHarness {
 var _ Harness = (*MemoryHarness)(nil)
 var _ IndexDriverHarness = (*MemoryHarness)(nil)
 var _ IndexHarness = (*MemoryHarness)(nil)
+var _ VersionedDBHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
@@ -157,6 +158,30 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
 		return nil, err
 	}
 	return NewEngineWithSetup(t, m, setup)
+}
+
+func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
+	var fkColl *memory.ForeignKeyCollection
+	if memDb, ok := db.(*memory.HistoryDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	}
+	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
+	if m.nativeIndexSupport {
+		table.EnablePrimaryKeyIndexes()
+	}
+	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
+		ro.HistoryDatabase.AddTableAsOf(name, table, asOf)
+	} else {
+		db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
+	}
+	return table
+}
+
+func (m *MemoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error {
+	// Nothing to do for this implementation: the NewTableAsOf method does all the work of creating the snapshot.
+	return nil
 }
 
 func (m *MemoryHarness) SupportsNativeIndexCreation() bool {
