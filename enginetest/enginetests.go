@@ -82,7 +82,7 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 }
 
 // Tests a variety of geometry queries against databases and tables provided by the given harness.
-func TestSpatialQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
 	for _, tt := range SpatialQueryTests {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
@@ -229,20 +229,33 @@ func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	}
 }
 
-func TestReadOnlyDatabases(t *testing.T, harness Harness) {
-	if _, ok := harness.(ReadOnlyDatabaseHarness); !ok {
-		t.Skipf("Skipping read only test, harness doesn't implement ReadOnlyDatabaseHarness")
+func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) (dbs []sql.Database) {
+	for _, r := range h.NewReadOnlyDatabases("mydb", "foo") {
+		dbs = append(dbs, sql.Database(r)) // FURP
 	}
-	harness.SetSetup(simpleSetup...)
-	RunQueryTests(t, harness, QueryTests)
+	return dbs
+}
 
-	harness.SetSetup(keylessSetup...)
-	RunQueryTests(t, harness, KeylessQueries)
+func TestReadOnlyDatabases(t *testing.T, harness Harness) {
+	ro, ok := harness.(ReadOnlyDatabaseHarness)
+	if !ok {
+		t.Fatal("harness is not ReadOnlyDatabaseHarness")
+	}
+	dbs := createReadOnlyDatabases(ro)
+	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
+	engine := NewEngineWithDbs(t, harness, dbs)
+	defer engine.Close()
 
-	harness.SetSetup(versionedSetup...)
-	RunQueryTests(t, harness, VersionedQueries)
+	for _, querySet := range [][]QueryTest{
+		QueryTests,
+		KeylessQueries,
+		VersionedQueries,
+	} {
+		for _, tt := range querySet {
+			TestQueryWithEngine(t, harness, engine, tt)
+		}
+	}
 
-	e := mustNewEngine(t, harness)
 	for _, querySet := range [][]WriteQueryTest{
 		InsertQueries,
 		UpdateTests,
@@ -251,7 +264,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	} {
 		for _, tt := range querySet {
 			t.Run(tt.WriteQuery, func(t *testing.T) {
-				AssertErrWithBindings(t, e, harness, tt.WriteQuery, tt.Bindings, analyzer.ErrReadOnlyDatabase)
+				AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzer.ErrReadOnlyDatabase)
 			})
 		}
 	}
@@ -561,7 +574,7 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
 	return rows
 }
 
-func TestInsertInto(t *testing.T, harness CheckpointHarness) {
+func TestInsertInto(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "keyless", "niltable", "typestable", "emptytable", "autoincrement", "othertable")
 	for _, insertion := range InsertQueries {
 		runWriteQueryTest(t, harness, insertion)
@@ -626,28 +639,28 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	}
 }
 
-func TestReplaceInto(t *testing.T, harness CheckpointHarness) {
+func TestReplaceInto(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "typestable")
 	for _, tt := range ReplaceQueries {
 		runWriteQueryTest(t, harness, tt)
 	}
 }
 
-func TestReplaceIntoErrors(t *testing.T, harness CheckpointHarness) {
+func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable")
 	for _, tt := range ReplaceErrorTests {
 		runGenericErrorTest(t, harness, tt)
 	}
 }
 
-func TestUpdate(t *testing.T, harness CheckpointHarness) {
+func TestUpdate(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "floattable", "niltable", "typestable", "pk_tables", "othertable", "tabletest")
 	for _, tt := range UpdateTests {
 		runWriteQueryTest(t, harness, tt)
 	}
 }
 
-func TestUpdateErrors(t *testing.T, harness CheckpointHarness) {
+func TestUpdateErrors(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "floattable", "typestable")
 	for _, expectedFailure := range GenericUpdateErrorTests {
 		runGenericErrorTest(t, harness, expectedFailure)
@@ -670,7 +683,7 @@ func TestSpatialUpdate(t *testing.T, harness Harness) {
 	}
 }
 
-func TestDelete(t *testing.T, harness CheckpointHarness) {
+func TestDelete(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "tabletest")
 	for _, tt := range DeleteTests {
 		runWriteQueryTest(t, harness, tt)
@@ -697,7 +710,7 @@ func runWriteQueryTest(t *testing.T, harness Harness, tt WriteQueryTest) {
 	})
 }
 
-func runWriteQueryTestPrepared(t *testing.T, harness CheckpointHarness, tt WriteQueryTest) {
+func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
@@ -743,42 +756,42 @@ func runQueryErrorTest(t *testing.T, h Harness, tt QueryErrorTest) {
 	})
 }
 
-func TestUpdateQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "othertable", "typestable", "pk_tables", "floattable", "niltable", "tabletest")
 	for _, tt := range UpdateTests {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
-func TestDeleteQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+func TestDeleteQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "tabletest")
 	for _, tt := range DeleteTests {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
-func TestInsertQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+func TestInsertQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "keyless", "typestable", "niltable", "emptytable", "autoincrement", "othertable")
 	for _, tt := range InsertQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
-func TestReplaceQueriesPrepared(t *testing.T, harness CheckpointHarness) {
+func TestReplaceQueriesPrepared(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable", "typestable")
 	for _, tt := range ReplaceQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 }
 
-func TestDeleteErrors(t *testing.T, harness CheckpointHarness) {
+func TestDeleteErrors(t *testing.T, harness Harness) {
 	harness.SetSetup("mydb", "mytable")
 	for _, expectedFailure := range DeleteErrorTests {
 		runGenericErrorTest(t, harness, expectedFailure)
 	}
 }
 
-func TestSpatialDelete(t *testing.T, harness CheckpointHarness) {
+func TestSpatialDelete(t *testing.T, harness Harness) {
 	harness.SetSetup(spatialSetup...)
 	for _, delete := range SpatialDeleteTests {
 		runWriteQueryTest(t, harness, delete)
