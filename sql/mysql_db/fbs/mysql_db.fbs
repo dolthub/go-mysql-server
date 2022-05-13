@@ -12,11 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: not sure how to do this
+table PrivilegeSetColumn {
+    name:string;
+    privs:[int];
+}
+
+table PrivilegeSetTable {
+    name:string;
+    privs:[int];
+    columns:[PrivilegeSetColumn];
+}
+
+table PrivilegeSetDatabase {
+    name:string;
+    privs:[int];
+    tables:[PrivilegeSetTable];
+}
+
 table PrivilegeSet {
-    global_static:[string];
+    global_static:[int];
     global_dynamic:[string];
-    databases:[string];
+    databases:[PrivilegeSetDatabase];
 }
 
 // Entries in the user table
@@ -26,9 +42,9 @@ table User {
     privilege_set:PrivilegeSet;
     plugin:string;
     password:string;
-    password_last_changed:uint64; // time.Time?
+    password_last_changed:int64; // time.Time?
     locked:bool;
-    attributes:ubyte; // *string?
+    attributes:string; // *string?
 }
 
 // Entries in the role_edges table

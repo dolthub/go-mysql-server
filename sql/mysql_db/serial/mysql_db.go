@@ -20,6 +20,289 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type PrivilegeSetColumn struct {
+	_tab flatbuffers.Table
+}
+
+func GetRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetColumn {
+	n := flatbuffers.GetUOffsetT(buf[offset:])
+	x := &PrivilegeSetColumn{}
+	x.Init(buf, n+offset)
+	return x
+}
+
+func GetSizePrefixedRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetColumn {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &PrivilegeSetColumn{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
+func (rcv *PrivilegeSetColumn) Init(buf []byte, i flatbuffers.UOffsetT) {
+	rcv._tab.Bytes = buf
+	rcv._tab.Pos = i
+}
+
+func (rcv *PrivilegeSetColumn) Table() flatbuffers.Table {
+	return rcv._tab
+}
+
+func (rcv *PrivilegeSetColumn) Name() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *PrivilegeSetColumn) Privs(j int) int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt32(a + flatbuffers.UOffsetT(j*4))
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetColumn) PrivsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetColumn) MutatePrivs(j int, n int32) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt32(a+flatbuffers.UOffsetT(j*4), n)
+	}
+	return false
+}
+
+func PrivilegeSetColumnStart(builder *flatbuffers.Builder) {
+	builder.StartObject(2)
+}
+func PrivilegeSetColumnAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(name), 0)
+}
+func PrivilegeSetColumnAddPrivs(builder *flatbuffers.Builder, privs flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(privs), 0)
+}
+func PrivilegeSetColumnStartPrivsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetColumnEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	return builder.EndObject()
+}
+
+type PrivilegeSetTable struct {
+	_tab flatbuffers.Table
+}
+
+func GetRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetTable {
+	n := flatbuffers.GetUOffsetT(buf[offset:])
+	x := &PrivilegeSetTable{}
+	x.Init(buf, n+offset)
+	return x
+}
+
+func GetSizePrefixedRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetTable {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &PrivilegeSetTable{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
+func (rcv *PrivilegeSetTable) Init(buf []byte, i flatbuffers.UOffsetT) {
+	rcv._tab.Bytes = buf
+	rcv._tab.Pos = i
+}
+
+func (rcv *PrivilegeSetTable) Table() flatbuffers.Table {
+	return rcv._tab
+}
+
+func (rcv *PrivilegeSetTable) Name() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *PrivilegeSetTable) Privs(j int) int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt32(a + flatbuffers.UOffsetT(j*4))
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetTable) PrivsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetTable) MutatePrivs(j int, n int32) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt32(a+flatbuffers.UOffsetT(j*4), n)
+	}
+	return false
+}
+
+func (rcv *PrivilegeSetTable) Columns(obj *PrivilegeSetColumn, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *PrivilegeSetTable) ColumnsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func PrivilegeSetTableStart(builder *flatbuffers.Builder) {
+	builder.StartObject(3)
+}
+func PrivilegeSetTableAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(name), 0)
+}
+func PrivilegeSetTableAddPrivs(builder *flatbuffers.Builder, privs flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(privs), 0)
+}
+func PrivilegeSetTableStartPrivsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetTableAddColumns(builder *flatbuffers.Builder, columns flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(columns), 0)
+}
+func PrivilegeSetTableStartColumnsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetTableEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	return builder.EndObject()
+}
+
+type PrivilegeSetDatabase struct {
+	_tab flatbuffers.Table
+}
+
+func GetRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetDatabase {
+	n := flatbuffers.GetUOffsetT(buf[offset:])
+	x := &PrivilegeSetDatabase{}
+	x.Init(buf, n+offset)
+	return x
+}
+
+func GetSizePrefixedRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetDatabase {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &PrivilegeSetDatabase{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
+func (rcv *PrivilegeSetDatabase) Init(buf []byte, i flatbuffers.UOffsetT) {
+	rcv._tab.Bytes = buf
+	rcv._tab.Pos = i
+}
+
+func (rcv *PrivilegeSetDatabase) Table() flatbuffers.Table {
+	return rcv._tab
+}
+
+func (rcv *PrivilegeSetDatabase) Name() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *PrivilegeSetDatabase) Privs(j int) int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetInt32(a + flatbuffers.UOffsetT(j*4))
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetDatabase) PrivsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSetDatabase) MutatePrivs(j int, n int32) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt32(a+flatbuffers.UOffsetT(j*4), n)
+	}
+	return false
+}
+
+func (rcv *PrivilegeSetDatabase) Tables(obj *PrivilegeSetTable, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *PrivilegeSetDatabase) TablesLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func PrivilegeSetDatabaseStart(builder *flatbuffers.Builder) {
+	builder.StartObject(3)
+}
+func PrivilegeSetDatabaseAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(name), 0)
+}
+func PrivilegeSetDatabaseAddPrivs(builder *flatbuffers.Builder, privs flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(privs), 0)
+}
+func PrivilegeSetDatabaseStartPrivsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetDatabaseAddTables(builder *flatbuffers.Builder, tables flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(tables), 0)
+}
+func PrivilegeSetDatabaseStartTablesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetDatabaseEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	return builder.EndObject()
+}
+
 type PrivilegeSet struct {
 	_tab flatbuffers.Table
 }
@@ -47,13 +330,13 @@ func (rcv *PrivilegeSet) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *PrivilegeSet) GlobalStatic(j int) []byte {
+func (rcv *PrivilegeSet) GlobalStatic(j int) int32 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
-		return rcv._tab.ByteVector(a + flatbuffers.UOffsetT(j*4))
+		return rcv._tab.GetInt32(a + flatbuffers.UOffsetT(j*4))
 	}
-	return nil
+	return 0
 }
 
 func (rcv *PrivilegeSet) GlobalStaticLength() int {
@@ -62,6 +345,15 @@ func (rcv *PrivilegeSet) GlobalStaticLength() int {
 		return rcv._tab.VectorLen(o)
 	}
 	return 0
+}
+
+func (rcv *PrivilegeSet) MutateGlobalStatic(j int, n int32) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateInt32(a+flatbuffers.UOffsetT(j*4), n)
+	}
+	return false
 }
 
 func (rcv *PrivilegeSet) GlobalDynamic(j int) []byte {
@@ -81,13 +373,16 @@ func (rcv *PrivilegeSet) GlobalDynamicLength() int {
 	return 0
 }
 
-func (rcv *PrivilegeSet) Databases(j int) []byte {
+func (rcv *PrivilegeSet) Databases(obj *PrivilegeSetDatabase, j int) bool {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
-		a := rcv._tab.Vector(o)
-		return rcv._tab.ByteVector(a + flatbuffers.UOffsetT(j*4))
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
 	}
-	return nil
+	return false
 }
 
 func (rcv *PrivilegeSet) DatabasesLength() int {
@@ -195,16 +490,16 @@ func (rcv *User) Password() []byte {
 	return nil
 }
 
-func (rcv *User) PasswordLastChanged() uint64 {
+func (rcv *User) PasswordLastChanged() int64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
 	if o != 0 {
-		return rcv._tab.GetUint64(o + rcv._tab.Pos)
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
 	}
 	return 0
 }
 
-func (rcv *User) MutatePasswordLastChanged(n uint64) bool {
-	return rcv._tab.MutateUint64Slot(14, n)
+func (rcv *User) MutatePasswordLastChanged(n int64) bool {
+	return rcv._tab.MutateInt64Slot(14, n)
 }
 
 func (rcv *User) Locked() bool {
@@ -219,16 +514,12 @@ func (rcv *User) MutateLocked(n bool) bool {
 	return rcv._tab.MutateBoolSlot(16, n)
 }
 
-func (rcv *User) Attributes() byte {
+func (rcv *User) Attributes() []byte {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
 	if o != 0 {
-		return rcv._tab.GetByte(o + rcv._tab.Pos)
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
-	return 0
-}
-
-func (rcv *User) MutateAttributes(n byte) bool {
-	return rcv._tab.MutateByteSlot(18, n)
+	return nil
 }
 
 func UserStart(builder *flatbuffers.Builder) {
@@ -249,14 +540,14 @@ func UserAddPlugin(builder *flatbuffers.Builder, plugin flatbuffers.UOffsetT) {
 func UserAddPassword(builder *flatbuffers.Builder, password flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(password), 0)
 }
-func UserAddPasswordLastChanged(builder *flatbuffers.Builder, passwordLastChanged uint64) {
-	builder.PrependUint64Slot(5, passwordLastChanged, 0)
+func UserAddPasswordLastChanged(builder *flatbuffers.Builder, passwordLastChanged int64) {
+	builder.PrependInt64Slot(5, passwordLastChanged, 0)
 }
 func UserAddLocked(builder *flatbuffers.Builder, locked bool) {
 	builder.PrependBoolSlot(6, locked, false)
 }
-func UserAddAttributes(builder *flatbuffers.Builder, attributes byte) {
-	builder.PrependByteSlot(7, attributes, 0)
+func UserAddAttributes(builder *flatbuffers.Builder, attributes flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(attributes), 0)
 }
 func UserEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

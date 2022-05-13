@@ -24,6 +24,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -118,42 +119,39 @@ func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
 
 	t.Enabled = true
 
-	// Fill in Users table
-	for _, user := range data.Users {
-		if user == nil {
+	// TODO: do we want schema to be stored too?
+	// Fill in user table
+	for i := 0; i < data.UserLength(); i++ {
+		serialUser := new(serial.User)
+		if !data.User(serialUser, i) {
 			continue
+		}
+		user := &User{
+			User:                string(serialUser.User()),
+			Host:                string(serialUser.Host()),
+			PrivilegeSet:        PrivilegeSet{},
+			Plugin:              string(serialUser.Plugin()),
+			Password:            string(serialUser.Password()),
+			PasswordLastChanged: time.Unix(int64(serialUser.PasswordLastChanged()), 0),
+			Locked:              serialUser.Locked(),
+			Attributes:          nil,
 		}
 		if err := t.user.data.Put(ctx, user); err != nil {
 			return err
 		}
 	}
 
-	// TODO: do we want schema to be stored too?
-
-	// Fill in user table
-	userTbl := data.Users(nil)
-	numRows := userTbl.DataLength()
-	for i := 0; i < numRows; i++ {
-		row := &serial.Row{}
-		// should never happen, right?
-		if !userTbl.Data(row, i) {
-			break
-		}
-		// Create user from row
-		user := User{
-			User: string(row.Entry(0)),
-			Host: string(row.Entry(1)),
-		}
-		numEntries := row.EntryLength()
-		for j := i; j < numEntries; j++ {
-			entry := row.Entry(j)
-		}
-	}
-
 	// Fill in Roles table
-	for _, role := range data.Roles {
-		if role == nil {
+	for i := 0; i < data.RoleEdgesLength(); i++ {
+		serialRoleEdge := new(serial.RoleEdge)
+		if !data.RoleEdges(serialRoleEdge, i) {
 			continue
+		}
+		role := &RoleEdge{
+			FromHost: string(serialRoleEdge.FromHost()),
+			FromUser: string(serialRoleEdge.FromUser()),
+			ToHost:   string(serialRoleEdge.ToHost()),
+			ToUser:   string(serialRoleEdge.ToUser()),
 		}
 		if err := t.role_edges.data.Put(ctx, role); err != nil {
 			return err
