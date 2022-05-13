@@ -26,8 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
-var spatialSupported = true
-
 // returns whether to include the table name given in the test data setup. A nil set of included tables will include
 // every table.
 func includeTable(includedTables []string, tableName string) bool {
@@ -65,10 +63,6 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 			ctx.SetTransaction(nil)
 		}
 	}
-}
-
-func SetSpatialSupported(v bool) {
-	spatialSupported = v
 }
 
 // createSubsetTestData creates test tables and data. Passing a non-nil slice for includedTables will restrict the

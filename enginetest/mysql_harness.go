@@ -42,12 +42,6 @@ func (m *MySQLHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
 	panic("implement me")
 }
 
-func (m *MySQLHarness) NewEngineDepr(context *sql.Context, t *testing.T) *sqle.Engine {
-	dbs := CreateTestData(t, m)
-	engine := NewEngineWithDbs(t, m, dbs)
-	return engine
-}
-
 func (m *MySQLHarness) Cleanup() error {
 	return nil
 }

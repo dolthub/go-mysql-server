@@ -22,7 +22,6 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
 type IndexDriverInitalizer func([]sql.Database) sql.IndexDriver
@@ -40,51 +39,6 @@ type MemoryHarness struct {
 	dbOff                  []int
 	dbNames                []string
 	setupData              []string
-}
-
-func (m *MemoryHarness) RestoreCheckpoint(ctx *sql.Context, t *testing.T, e *sqle.Engine) *sqle.Engine {
-	dbs := CreateTestData(t, m)
-	engine := NewEngineWithDbs(t, m, dbs)
-	return engine
-}
-
-func (m *MemoryHarness) NewEngineDepr(ctx *sql.Context, t *testing.T) *sqle.Engine {
-	dbs := CreateTestData(t, m)
-	engine := NewEngineWithDbs(t, m, dbs)
-	err := m.copyDbs(ctx, dbs)
-	if err != nil {
-		panic(err)
-	}
-	return engine
-}
-
-func (m *MemoryHarness) copyDbs(ctx *sql.Context, dbs []sql.Database) error {
-	checkpointTables := make([]*memory.Table, 0)
-	dbOff := make([]int, len(dbs))
-	dbNames := make([]string, len(dbs))
-	for _, db := range dbs {
-		names, err := db.GetTableNames(ctx)
-		if err != nil {
-			return err
-		}
-		dbNames = append(dbNames, db.Name())
-		if len(dbOff) == 0 {
-			dbOff = append(dbOff, len(names))
-		} else {
-			dbOff = append(dbOff, len(names)+dbOff[len(dbOff)-1])
-		}
-		for _, n := range names {
-			t, _, err := db.GetTableInsensitive(ctx, n)
-			if err != nil {
-				return err
-			}
-			checkpointTables = append(checkpointTables, memory.CopyTable(t.(*memory.Table)))
-		}
-	}
-	m.checkpointTables = checkpointTables
-	m.dbOff = dbOff
-	m.dbNames = dbNames
-	return nil
 }
 
 func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
@@ -135,6 +89,7 @@ var _ Harness = (*MemoryHarness)(nil)
 var _ IndexDriverHarness = (*MemoryHarness)(nil)
 var _ IndexHarness = (*MemoryHarness)(nil)
 var _ VersionedDBHarness = (*MemoryHarness)(nil)
+var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
@@ -247,6 +202,14 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 	var dbs []sql.Database
 	for _, name := range names {
 		dbs = append(dbs, m.NewDatabase(name))
+	}
+	return dbs
+}
+
+func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
+	dbs := make([]sql.ReadOnlyDatabase, len(names))
+	for i, name := range names {
+		dbs[i] = memory.NewReadOnlyDatabase(name)
 	}
 	return dbs
 }

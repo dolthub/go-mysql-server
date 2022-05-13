@@ -165,23 +165,10 @@ func TestSingleQuery(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
 	enginetest.CreateIndexes(t, harness, engine)
-	//engine.Analyzer.Debug = true
-	//engine.Analyzer.Verbose = true
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
 
-	tabs := []string{
-		"fk_tbl",
-		"auto_increment_tbl",
-		"reservedWordsTable",
-	}
-	for _, tn := range tabs {
-		ctx := harness.NewContext()
-		res := enginetest.MustQuery(ctx, engine, fmt.Sprintf("show create table %s", tn))
-		for i := range res {
-			fmt.Println(res[i])
-		}
-	}
-
-	//enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil)
+	enginetest.TestQueryWithEngine(t, harness, engine, test)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.

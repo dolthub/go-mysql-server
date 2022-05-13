@@ -40,23 +40,16 @@ type Harness interface {
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
-	// NewEngine creates a new engine
-	NewEngineDepr(*sql.Context, *testing.T) *sqle.Engine
-	// SetSetup injects a test suites setup scripts
+	// SetSetup injects a test suite's setup scripts
 	SetSetup(...string)
 	// NewEngine creates a new sqle.Engine
 	NewEngine(*testing.T) (*sqle.Engine, error)
 }
 
-type CheckpointHarness interface {
-	Harness
-	// RestoreCheckpoint resets the database to a saved point
-	RestoreCheckpoint(*sql.Context, *testing.T, *sqle.Engine) *sqle.Engine
-}
-
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.
 type ClientHarness interface {
 	Harness
+	
 	// NewContextWithClient returns a context that will return the given client when requested from the session.
 	NewContextWithClient(client sql.Client) *sql.Context
 }
@@ -72,6 +65,7 @@ type SkippingHarness interface {
 // driver they provide.
 type IndexDriverHarness interface {
 	Harness
+
 	// InitializeIndexDriver initializes the index driver for this test run with the databases given
 	InitializeIndexDriver(dbs []sql.Database)
 }
@@ -80,6 +74,7 @@ type IndexDriverHarness interface {
 // (table-supplied) indexes. Integrator tables must implement sql.IndexAlterableTable.
 type IndexHarness interface {
 	Harness
+
 	// SupportsNativeIndexCreation returns whether this harness should accept CREATE INDEX statements as part of test
 	// setup.
 	SupportsNativeIndexCreation() bool
@@ -89,6 +84,7 @@ type IndexHarness interface {
 // Integrator tables must implement sql.ForeignKeyTable.
 type ForeignKeyHarness interface {
 	Harness
+
 	// SupportsForeignKeys returns whether this harness should accept CREATE FOREIGN KEY statements as part of test
 	// setup.
 	SupportsForeignKeys() bool
@@ -99,6 +95,7 @@ type ForeignKeyHarness interface {
 // call to NewTableAsOf, some number of Delete and Insert operations, and then a call to SnapshotTable.
 type VersionedDBHarness interface {
 	Harness
+
 	// NewTableAsOf creates a new table with the given name and schema, optionally handling snapshotting with the asOf
 	// identifier. NewTableAsOf must ignore tables that already exist in the database. Tables returned by this method do
 	// not need to have any previously created data in them, but they can. This behavior is implementation specific, and
@@ -112,12 +109,14 @@ type VersionedDBHarness interface {
 // KeylessTableHarness is an extension to Harness that lets an integrator test their implementation with keyless tables.
 type KeylessTableHarness interface {
 	Harness
+
 	// SupportsKeylessTables indicates integrator support for keyless tables.
 	SupportsKeylessTables() bool
 }
 
 type TransactionHarness interface {
 	Harness
+
 	// NewSession returns a context with a new Session, rather than reusing an existing session from previous calls to
 	// NewContext()
 	NewSession() *sql.Context
@@ -126,6 +125,6 @@ type TransactionHarness interface {
 type ReadOnlyDatabaseHarness interface {
 	Harness
 
-	// NewReadOnlyDatabase returns a sql.ReadOnlyDatabase to use for a test.
-	NewReadOnlyDatabase(name string) sql.ReadOnlyDatabase
+	// NewReadOnlyDatabases returns a sql.ReadOnlyDatabase to use for a test.
+	NewReadOnlyDatabases(...string) []sql.ReadOnlyDatabase
 }
