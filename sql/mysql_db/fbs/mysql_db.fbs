@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
+// TODO: not sure how to do this
 table PrivilegeSet {
-
+    global_static:[string];
+    global_dynamic:[string];
+    databases:[string];
 }
 
 // Entries in the user table
