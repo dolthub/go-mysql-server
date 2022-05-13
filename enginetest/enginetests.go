@@ -154,9 +154,9 @@ func TestBrokenQueries(t *testing.T, harness Harness) {
 }
 
 func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
-	engine := NewEngine(t, harness)
-	ctx := NewContextWithEngine(harness, engine)
-
+	harness.SetSetup("mydb")
+	engine := mustNewEngine(t, harness)
+	ctx := NewContext(harness)
 	RunQueryWithContext(t, engine, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
 	engine.PrepareQuery(ctx, "select * from squares where i = 1")
 	RunQueryWithContext(t, engine, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
