@@ -295,14 +295,16 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
 
-	harness.SetSetup(versionedSetup...)
+	engine := NewEngine(t, harness)
+	defer engine.Close()
+
 	for _, tt := range VersionedQueries {
-		TestQuery(t, harness, tt.Query, tt.Expected, nil, nil)
+		TestQueryWithEngine(t, harness, engine, tt)
 	}
 
-	harness.SetSetup()
+	//harness.SetSetup()
 	for _, tt := range VersionedScripts {
-		TestScript(t, harness, tt)
+		TestScriptWithEngine(t, engine, harness, tt)
 	}
 
 	// These queries return different errors in the Memory engine and in the Dolt engine.
@@ -790,14 +792,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 	t.Run("Standard TRUNCATE", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX(v1))")
 		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1), (2,2), (3,3)")
-		TestQuery(t, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}}, nil, nil)
-		TestQuery(t, harness, "TRUNCATE t1", []sql.Row{{sql.NewOkResult(3)}}, nil, nil)
-		TestQuery(t, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "TRUNCATE t1", []sql.Row{{sql.NewOkResult(3)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,4), (5,5)")
-		TestQuery(t, harness, "SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1", []sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}}, nil, nil)
-		TestQuery(t, harness, "TRUNCATE TABLE t1", []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
-		TestQuery(t, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1", []sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "TRUNCATE TABLE t1", []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil)
 	})
 
 	t.Run("Foreign Key References", func(t *testing.T) {
@@ -1679,59 +1681,59 @@ func TestTriggerErrors(t *testing.T, harness Harness) {
 }
 
 // TestScript runs the test script given, making any assertions given
-func TestScript(t *testing.T, harness Harness, script ScriptTest) bool {
-	return t.Run(script.Name, func(t *testing.T) {
-		e := mustNewEngine(t, harness)
-		defer e.Close()
-		TestScriptWithEngine(t, e, harness, script)
-	})
+func TestScript(t *testing.T, harness Harness, script ScriptTest) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	TestScriptWithEngine(t, e, harness, script)
 }
 
 // TestScriptWithEngine runs the test script given with the engine provided.
 func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script ScriptTest) {
-	for _, statement := range script.SetUpScript {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(statement) {
-				t.Skip()
+	t.Run(script.Name, func(t *testing.T) {
+		for _, statement := range script.SetUpScript {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(statement) {
+					t.Skip()
+				}
+			}
+
+			RunQuery(t, e, harness, statement)
+		}
+
+		assertions := script.Assertions
+		if len(assertions) == 0 {
+			assertions = []ScriptTestAssertion{
+				{
+					Query:       script.Query,
+					Expected:    script.Expected,
+					ExpectedErr: script.ExpectedErr,
+				},
 			}
 		}
 
-		RunQuery(t, e, harness, statement)
-	}
-
-	assertions := script.Assertions
-	if len(assertions) == 0 {
-		assertions = []ScriptTestAssertion{
-			{
-				Query:       script.Query,
-				Expected:    script.Expected,
-				ExpectedErr: script.ExpectedErr,
-			},
+		for _, assertion := range assertions {
+			if assertion.ExpectedErr != nil {
+				t.Run(assertion.Query, func(t *testing.T) {
+					AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+				})
+			} else if assertion.ExpectedErrStr != "" {
+				t.Run(assertion.Query, func(t *testing.T) {
+					AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+				})
+			} else if assertion.ExpectedWarning != 0 {
+				t.Run(assertion.Query, func(t *testing.T) {
+					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
+						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
+				})
+			} else if assertion.SkipResultsCheck {
+				RunQuery(t, e, harness, assertion.Query)
+			} else {
+				ctx := NewContext(harness)
+				TestQueryWithContext(t, ctx, e, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+			}
 		}
-	}
-
-	for _, assertion := range assertions {
-		if assertion.ExpectedErr != nil {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-			})
-		} else if assertion.ExpectedErrStr != "" {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-			})
-		} else if assertion.ExpectedWarning != 0 {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
-					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
-					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
-			})
-		} else if assertion.SkipResultsCheck {
-			RunQuery(t, e, harness, assertion.Query)
-		} else {
-			ctx := NewContext(harness)
-			TestQueryWithContext(t, ctx, e, assertion.Query, assertion.Expected, nil, assertion.Bindings)
-		}
-	}
+	})
 }
 
 // TestScriptPrepared substitutes literals for bindvars, runs the test script given,

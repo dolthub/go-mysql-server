@@ -75,9 +75,6 @@ func SetSpatialSupported(v bool) {
 // table creation to just those tables named.
 func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
 	dbs := harness.NewDatabases("mydb", "foo")
-	if spatialSupported {
-		dbs = createSpatialSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
-	}
 	return createSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
 }
 
