@@ -20,7 +20,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -148,7 +147,6 @@ type informationSchemaTable struct {
 	schema  Schema
 	catalog Catalog
 	rowIter func(*Context, Catalog) (RowIter, error)
-	mu      *sync.Mutex
 }
 
 type informationSchemaPartition struct {
@@ -1372,18 +1370,15 @@ func NewInformationSchemaDatabase() Database {
 			FilesTableName: &informationSchemaTable{
 				name:   FilesTableName,
 				schema: filesSchema,
-				mu:     &sync.Mutex{},
 			},
 			ColumnStatisticsTableName: &informationSchemaTable{
 				name:   ColumnStatisticsTableName,
 				schema: columnStatisticsSchema,
-				mu:     &sync.Mutex{},
 			},
 			TablesTableName: &informationSchemaTable{
 				name:    TablesTableName,
 				schema:  tablesSchema,
 				rowIter: tablesRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ColumnsTableName: &ColumnsTable{
 				name: ColumnsTableName,
@@ -1392,431 +1387,386 @@ func NewInformationSchemaDatabase() Database {
 				name:    SchemataTableName,
 				schema:  schemataSchema,
 				rowIter: schemataRowIter,
-				mu:      &sync.Mutex{},
 			},
 			CollationsTableName: &informationSchemaTable{
 				name:    CollationsTableName,
 				schema:  collationsSchema,
 				rowIter: collationsRowIter,
-				mu:      &sync.Mutex{},
 			},
 			CharacterSetsTableName: &informationSchemaTable{
 				name:    CharacterSetsTableName,
 				schema:  characterSetSchema,
 				rowIter: charsetRowIter,
-				mu:      &sync.Mutex{},
 			},
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
 				schema:  statisticsSchema,
 				rowIter: statisticsRowIter,
-				mu:      &sync.Mutex{},
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:    TableConstraintsTableName,
 				schema:  tableConstraintsSchema,
 				rowIter: tableConstraintRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ReferentialConstraintsTableName: &informationSchemaTable{
 				name:    ReferentialConstraintsTableName,
 				schema:  referentialConstraintsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			KeyColumnUsageTableName: &informationSchemaTable{
 				name:    KeyColumnUsageTableName,
 				schema:  keyColumnUsageSchema,
 				rowIter: keyColumnConstraintRowIter,
-				mu:      &sync.Mutex{},
 			},
 			TriggersTableName: &informationSchemaTable{
 				name:    TriggersTableName,
 				schema:  triggersSchema,
 				rowIter: triggersRowIter,
-				mu:      &sync.Mutex{},
 			},
 			EventsTableName: &informationSchemaTable{
 				name:    EventsTableName,
 				schema:  eventsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			RoutinesTableName: &routineTable{
 				name:    RoutinesTableName,
 				schema:  routinesSchema,
 				rowIter: routinesRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ViewsTableName: &informationSchemaTable{
 				name:    ViewsTableName,
 				schema:  viewsSchema,
 				rowIter: viewRowIter,
-				mu:      &sync.Mutex{},
 			},
 			UserPrivilegesTableName: &informationSchemaTable{
 				name:    UserPrivilegesTableName,
 				schema:  userPrivilegesSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			EnginesTableName: &informationSchemaTable{
 				name:    EnginesTableName,
 				schema:  enginesSchema,
 				rowIter: engineRowIter,
-				mu:      &sync.Mutex{},
 			},
 			CheckConstraintsTableName: &informationSchemaTable{
 				name:    CheckConstraintsTableName,
 				schema:  checkConstraintsSchema,
 				rowIter: checkConstraintsRowIter,
-				mu:      &sync.Mutex{},
 			},
 			PartitionsTableName: &informationSchemaTable{
 				name:    PartitionsTableName,
 				schema:  partitionSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ProcessListTableName: &informationSchemaTable{
 				name:    ProcessListTableName,
 				schema:  processListSchema,
 				rowIter: processListRowIter,
-				mu:      &sync.Mutex{},
 			},
 			CollationCharSetApplicabilityTableName: &informationSchemaTable{
 				name:    CollationCharSetApplicabilityTableName,
 				schema:  collationCharSetApplicabilitySchema,
 				rowIter: collationCharSetApplicabilityRowIter,
-				mu:      &sync.Mutex{},
 			},
 			AdministrableRoleAuthorizationsTableName: &informationSchemaTable{
 				name:    AdministrableRoleAuthorizationsTableName,
 				schema:  administrableRoleAuthorizationsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ApplicableRolesTableName: &informationSchemaTable{
 				name:    ApplicableRolesTableName,
 				schema:  applicableRolesSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ColumnPrivilegesTableName: &informationSchemaTable{
 				name:    ColumnPrivilegesTableName,
 				schema:  columnPrivilegesSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ColumnsExtensionsTableName: &informationSchemaTable{
 				name:    ColumnsExtensionsTableName,
 				schema:  columnExtensionsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ConnectionControlFailedLoginAttemptsTableName: &informationSchemaTable{
 				name:    ConnectionControlFailedLoginAttemptsTableName,
 				schema:  connectionControlFailedLoginAttemptsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			EnabledRolesTablesName: &informationSchemaTable{
 				name:    EnabledRolesTablesName,
 				schema:  enabledRolesSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			KeywordsTableName: &informationSchemaTable{
 				name:    KeywordsTableName,
 				schema:  keywordsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			MysqlFirewallUsersTableName: &informationSchemaTable{
 				name:    MysqlFirewallUsersTableName,
 				schema:  mysqlFirewallUsersSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			MysqlFirewallWhitelistTableName: &informationSchemaTable{
 				name:    MysqlFirewallWhitelistTableName,
 				schema:  mysqlFirewallWhitelistSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			OptimizerTraceTableName: &informationSchemaTable{
 				name:    OptimizerTraceTableName,
 				schema:  optimizerTraceSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			PluginsTableName: &informationSchemaTable{
 				name:    PluginsTableName,
 				schema:  pluginsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ProfilingTableName: &informationSchemaTable{
 				name:    ProfilingTableName,
 				schema:  profilingSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ResourceGroupsTableName: &informationSchemaTable{
 				name:    ResourceGroupsTableName,
 				schema:  resourceGroupSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			RoleColumnGrantsTableName: &informationSchemaTable{
 				name:    RoleColumnGrantsTableName,
 				schema:  roleColumnGrantsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			RoleRoutineGrantsTableName: &informationSchemaTable{
 				name:    RoleRoutineGrantsTableName,
 				schema:  roleRoutineGrantsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			RoleTableGrantsTableName: &informationSchemaTable{
 				name:    RoleTableGrantsTableName,
 				schema:  roleTableGrantsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			SchemaPrivilegesTableName: &informationSchemaTable{
 				name:    SchemaPrivilegesTableName,
 				schema:  schemaPrivilegesTableName,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			SchemataExtensionsTableName: &informationSchemaTable{
 				name:    SchemataExtensionsTableName,
 				schema:  schemataExtensionTableName,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			StGeometryColumnsTableName: &informationSchemaTable{
 				name:    StGeometryColumnsTableName,
 				schema:  stGeometryColumnsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			StSpatialReferenceSystemsTableName: &informationSchemaTable{
 				name:    StSpatialReferenceSystemsTableName,
 				schema:  stSpatialReferenceSystemsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			StUnitsOfMeasureTableName: &informationSchemaTable{
 				name:    StUnitsOfMeasureTableName,
 				schema:  stUnitsOfMeasureSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			TableConstraintsExtensionsTableName: &informationSchemaTable{
 				name:    TableConstraintsExtensionsTableName,
 				schema:  tableConstraintsExtensionsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			TablePrivilegesTableName: &informationSchemaTable{
 				name:    TablePrivilegesTableName,
 				schema:  tablePrivilegesSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			TablesExtensionsTableName: &informationSchemaTable{
 				name:    TablesExtensionsTableName,
 				schema:  tablesExtensionsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			TablespacesTableName: &informationSchemaTable{
 				name:    TablespacesTableName,
 				schema:  tablespacesSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			TablespacesExtensionsTableName: &informationSchemaTable{
 				name:    TablespacesExtensionsTableName,
 				schema:  tablespacesExtensionsSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			UserAttributesTableName: &informationSchemaTable{
 				name:    UserAttributesTableName,
 				schema:  userAttributesSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ViewRoutineUsageTableName: &informationSchemaTable{
 				name:    ViewRoutineUsageTableName,
 				schema:  viewRoutineUsageSchema,
 				rowIter: emptyRowIter,
-				mu:      &sync.Mutex{},
 			},
 			ViewTableUsageTableName: &informationSchemaTable{
 				name:    ViewTableUsageTableName,
 				schema:  viewTableUsageSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBBufferPageName: &informationSchemaTable{
 				name:    InnoDBBufferPageName,
 				schema:  innoDBBufferPageSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBBufferPageLRUName: &informationSchemaTable{
 				name:    InnoDBBufferPageLRUName,
 				schema:  innoDBBufferPageLRUSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBBufferPoolStatsName: &informationSchemaTable{
 				name:    InnoDBBufferPoolStatsName,
 				schema:  innoDBBufferPoolStatsSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBCachedIndexesName: &informationSchemaTable{
 				name:    InnoDBCachedIndexesName,
 				schema:  innoDBCachedIndexesSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBCmpName: &informationSchemaTable{
 				name:    InnoDBCmpName,
 				schema:  innoDBCmpSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBCmpResetName: &informationSchemaTable{
 				name:    InnoDBCmpResetName,
 				schema:  innoDBCmpResetSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBCmpmemName: &informationSchemaTable{
 				name:    InnoDBCmpmemName,
 				schema:  innoDBCmpmemSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBCmpmemResetName: &informationSchemaTable{
 				name:    InnoDBCmpmemResetName,
 				schema:  innoDBCmpmemResetSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBCmpPerIndexName: &informationSchemaTable{
 				name:    InnoDBCmpPerIndexName,
 				schema:  innoDBCmpPerIndexSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBCmpPerIndexResetName: &informationSchemaTable{
 				name:    InnoDBCmpPerIndexResetName,
 				schema:  innoDBCmpPerIndexResetSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBColumnsName: &informationSchemaTable{
 				name:    InnoDBColumnsName,
 				schema:  innoDBColumnsSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBDatafilesName: &informationSchemaTable{
 				name:    InnoDBDatafilesName,
 				schema:  innoDBDatafilesSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBFieldsName: &informationSchemaTable{
 				name:    InnoDBFieldsName,
 				schema:  innoDBFieldsSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBForeignName: &informationSchemaTable{
 				name:    InnoDBForeignName,
 				schema:  innoDBForeignSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBForeignColsName: &informationSchemaTable{
 				name:    InnoDBForeignColsName,
 				schema:  innoDBForeignColsSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBFtBeingDeletedName: &informationSchemaTable{
 				name:    InnoDBFtBeingDeletedName,
 				schema:  innoDBFtBeingDeletedSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBFtConfigName: &informationSchemaTable{
 				name:    InnoDBFtConfigName,
 				schema:  innoDBFtConfigSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBFtDefaultStopwordName: &informationSchemaTable{
 				name:    InnoDBFtDefaultStopwordName,
 				schema:  innoDBFtDefaultStopwordSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBFtDeletedName: &informationSchemaTable{
 				name:    InnoDBFtDeletedName,
 				schema:  innoDBFtDeletedSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBFtIndexCacheName: &informationSchemaTable{
 				name:    InnoDBFtIndexCacheName,
 				schema:  innoDBFtIndexCacheSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBFtIndexTableName: &informationSchemaTable{
 				name:    InnoDBFtIndexTableName,
 				schema:  innoDBFtIndexTableSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBIndexesName: &informationSchemaTable{
 				name:    InnoDBIndexesName,
 				schema:  innoDBIndexesSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBMetricsName: &informationSchemaTable{
 				name:    InnoDBMetricsName,
 				schema:  innoDBMetricsSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBSessionTempTablespacesName: &informationSchemaTable{
 				name:    InnoDBSessionTempTablespacesName,
 				schema:  innoDBSessionTempTablespacesSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBTablesName: &informationSchemaTable{
 				name:    InnoDBTablesName,
 				schema:  innoDBTablesSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBTablespacesName: &informationSchemaTable{
 				name:    InnoDBTablespacesName,
 				schema:  innoDBTablespacesSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBTablespacesBriefName: &informationSchemaTable{
 				name:    InnoDBTablespacesBriefName,
 				schema:  innoDBTablespacesBriefSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBTablestatsName: &informationSchemaTable{
 				name:    InnoDBTablestatsName,
 				schema:  innoDBTablestatsSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBTempTableInfoName: &informationSchemaTable{
 				name:    InnoDBTempTableInfoName,
 				schema:  innoDBTempTableSchema,
-				rowIter: innoDBTempTableRowIter, mu: &sync.Mutex{},
+				rowIter: innoDBTempTableRowIter,
 			},
 			InnoDBTrxName: &informationSchemaTable{
 				name:    InnoDBTrxName,
 				schema:  innoDBTrxSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 			InnoDBVirtualName: &informationSchemaTable{
 				name:    InnoDBVirtualName,
 				schema:  innoDBVirtualSchema,
-				rowIter: emptyRowIter, mu: &sync.Mutex{},
+				rowIter: emptyRowIter,
 			},
 		},
 	}
@@ -1913,8 +1863,6 @@ func (t *informationSchemaTable) Schema() Schema {
 }
 
 func (t *informationSchemaTable) AssignCatalog(cat Catalog) Table {
-	t.mu.Lock()
-	defer t.mu.Unlock()
 	t.catalog = cat
 	return t
 }
@@ -1932,8 +1880,6 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 	if t.rowIter == nil {
 		return RowsToRowIter(), nil
 	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
 	if t.catalog == nil {
 		return nil, fmt.Errorf("nil catalog for info schema table %s", t.name)
 	}

@@ -12,7 +12,7 @@ insert into specialtable values
     (6, '\"'),
     (7, '\t'),
     (8, '\n'),
-    (9, '\v'),
+    (9, "\v"),
     (10, 'test%test'),
     (11, 'test\'test'),
     (12, 'test\"test'),

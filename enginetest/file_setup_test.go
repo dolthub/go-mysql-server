@@ -1,13 +1,14 @@
 package enginetest
 
 import (
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileSourceScanner(t *testing.T) {
-	s, err := newFileSetup("testdata/setup/mytable")
+	s, err := newFileSetup("testdata/setup/mydb")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,11 +27,6 @@ func TestFileSourceScanner(t *testing.T) {
 	exp := []string{
 		"create database if not exists mydb",
 		"use mydb",
-		"create table mytable (i bigint primary key, s varchar(20) comment 'column s')",
-		`insert into mytable values
-    (1, 'first row'),
-    (2, 'second row'),
-    (3, 'third row')`,
 	}
 	require.Equal(t, exp, out)
 }

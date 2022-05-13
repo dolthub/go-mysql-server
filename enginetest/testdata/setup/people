@@ -22,4 +22,3 @@ insert into people values
 exec
 create index people_l_f on people (last_name,first_name)
 ----
-					sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),

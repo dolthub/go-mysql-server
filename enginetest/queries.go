@@ -6833,10 +6833,6 @@ var ParallelUnsafeQueries = []QueryTest{
 		Expected: []sql.Row{sql.Row{"\n"}},
 	},
 	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\v"}},
-	},
-	{
 		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "test$%test" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{"test%test"}},
 	},
@@ -6863,6 +6859,10 @@ var ParallelUnsafeQueries = []QueryTest{
 	{
 		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"\v"}, sql.Row{"test\vtest"}},
+	},
+	{
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\v"}},
 	},
 }
 

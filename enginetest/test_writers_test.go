@@ -3,13 +3,15 @@ package enginetest
 import (
 	"bufio"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/parse"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
 // This test will write a new set of query plan expected results to a file that you can copy and paste over the existing

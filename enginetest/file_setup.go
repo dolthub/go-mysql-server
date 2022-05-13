@@ -102,7 +102,8 @@ func (f *fileSetup) Next() (bool, error) {
 				separator = true
 				break
 			}
-			fmt.Fprintln(&buf, line)
+			buf.WriteString(line)
+			//fmt.Fprintln(&buf, line)
 		}
 
 		f.data.sql = strings.TrimSpace(buf.String())

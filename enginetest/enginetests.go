@@ -61,12 +61,21 @@ func init() {
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
 	harness.SetSetup(simpleSetup...)
+	e := mustNewEngine(t, harness)
+	ctx := NewContext(harness)
 	for _, tt := range QueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		})
 	}
 
 	for _, tt := range ParallelUnsafeQueries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		if strings.Contains(tt.Query, "\v") {
+			t.Skip("todo: encode vertical escape via SQL shell")
+		}
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		})
 	}
 
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
@@ -291,9 +300,9 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueries(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
+	//if _, ok := harness.(VersionedDBHarness); !ok {
+	//	t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
+	//}
 
 	engine := NewEngine(t, harness)
 	defer engine.Close()
@@ -606,7 +615,7 @@ func TestSpatialInsertInto(t *testing.T, harness Harness) {
 }
 
 func TestLoadData(t *testing.T, harness Harness) {
-	harness.SetSetup(loadDataSetup...)
+	harness.SetSetup("mydb")
 	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
 	}
@@ -4588,7 +4597,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 
 func TestClearWarnings(t *testing.T, harness Harness) {
 	require := require.New(t)
-	harness.SetSetup()
+	harness.SetSetup(mytable...)
 	e := mustNewEngine(t, harness)
 	ctx := NewContext(harness)
 
@@ -4745,10 +4754,11 @@ func TestTracing(t *testing.T, harness Harness) {
 	require := require.New(t)
 	harness.SetSetup("mydb", "mytable")
 	e := mustNewEngine(t, harness)
+	ctx := NewContext(harness)
 
 	tracer := new(test.MemTracer)
 
-	ctx := harness.NewContext().WithCurrentDB("mydb")
+	//ctx := harness.NewContext().WithCurrentDB("mydb")
 	sql.WithTracer(tracer)(ctx)
 
 	sch, iter, err := e.Query(ctx, `SELECT DISTINCT i
@@ -4768,8 +4778,7 @@ func TestTracing(t *testing.T, harness Harness) {
 		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",
-		"plan.Filter",
-		"plan.ResolvedTable",
+		"plan.IndexedTableAccess",
 	}
 
 	var spanOperations []string
@@ -6010,10 +6019,16 @@ func NewEngineWithSetup(t *testing.T, harness Harness, setup []setupSource) (*sq
 	pro := harness.NewDatabaseProvider(dbs...)
 	e := NewEngineWithProvider(t, harness, pro)
 	ctx := NewContext(harness)
-	return RunEngineScripts(ctx, e, setup)
+
+	var supportsIndexes bool
+	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
+		supportsIndexes = true
+
+	}
+	return RunEngineScripts(ctx, e, setup, supportsIndexes)
 }
 
-func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, setupData []setupSource) (*sqle.Engine, error) {
+func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, setupData []setupSource, supportsIndexes bool) (*sqle.Engine, error) {
 	for _, s := range setupData {
 		for {
 			ok, err := s.Next()
@@ -6023,6 +6038,11 @@ func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, setupData []setupSource)
 				return nil, setupErrf(err, s.Data())
 			} else if !ok {
 				break
+			}
+			if !supportsIndexes {
+				if strings.Contains("create index", s.Data().sql) {
+					continue
+				}
 			}
 			if err != nil {
 				return nil, setupErrf(err, s.Data())

@@ -350,7 +350,7 @@ func (a *Analyzer) PushDebugContext(msg string) {
 
 // PopDebugContext pops a context message off the context stack.
 func (a *Analyzer) PopDebugContext() {
-	if a != nil && len(a.contextStack) > 0 && a.Debug {
+	if a != nil && len(a.contextStack) > 0 {
 		a.contextStack = a.contextStack[:len(a.contextStack)-1]
 	}
 }

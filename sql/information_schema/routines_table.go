@@ -17,7 +17,6 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
-	"sync"
 
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -30,7 +29,6 @@ type routineTable struct {
 	procedures map[string][]*plan.Procedure
 	// functions
 	rowIter func(*Context, Catalog, map[string][]*plan.Procedure) (RowIter, error)
-	mu      *sync.Mutex
 }
 
 var (
@@ -38,8 +36,6 @@ var (
 )
 
 func (t *routineTable) AssignCatalog(cat Catalog) Table {
-	t.mu.Lock()
-	defer t.mu.Unlock()
 	t.catalog = cat
 	return t
 }
@@ -75,8 +71,6 @@ func (r *routineTable) PartitionRows(context *Context, partition Partition) (Row
 	if r.rowIter == nil {
 		return RowsToRowIter(), nil
 	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	if r.catalog == nil {
 		return nil, fmt.Errorf("nil catalog for info schema table %s", r.name)
 	}

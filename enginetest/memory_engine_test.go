@@ -59,24 +59,24 @@ var parallelVals = []int{
 // 1) Partitioned tables / non partitioned tables
 // 2) Mergeable / unmergeable / native / no indexes
 // 3) Parallelism on / off
-//func TestQueries(t *testing.T) {
-//	for _, numPartitions := range numPartitionsVals {
-//		for _, indexBehavior := range indexBehaviors {
-//			for _, parallelism := range parallelVals {
-//				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
-//					// This case is covered by TestQueriesSimple
-//					continue
-//				}
-//				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
-//				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
-//
-//				t.Run(testName, func(t *testing.T) {
-//					enginetest.TestQueries(t, harness)
-//				})
-//			}
-//		}
-//	}
-//}
+func TestQueries(t *testing.T) {
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexBehavior := range indexBehaviors {
+			for _, parallelism := range parallelVals {
+				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
+					// This case is covered by TestQueriesSimple
+					continue
+				}
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
+				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
+
+				t.Run(testName, func(t *testing.T) {
+					enginetest.TestQueries(t, harness)
+				})
+			}
+		}
+	}
+}
 
 func TestSpatialQueries(t *testing.T) {
 	for _, numPartitions := range numPartitionsVals {
@@ -140,11 +140,11 @@ func TestPreparedStaticIndexQuerySimple(t *testing.T) {
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
-//func TestQueriesSimple(t *testing.T) {
-//	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
-//}
+func TestQueriesSimple(t *testing.T) {
+	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
 
-// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+// TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
@@ -377,7 +377,7 @@ func TestVersionedQueries(t *testing.T) {
 		for _, indexInit := range indexBehaviors {
 			for _, parallelism := range parallelVals {
 				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
-				harness := enginetest.NewVersionedMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
 
 				t.Run(testName, func(t *testing.T) {
 					enginetest.TestVersionedQueries(t, harness)
