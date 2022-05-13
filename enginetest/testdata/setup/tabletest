@@ -1,7 +1,7 @@
 exec
 create table tabletest (
-    i mediumint primary key,
-    s text
+    i int primary key,
+    s text not null
 )
 ----
 

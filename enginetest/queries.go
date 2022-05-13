@@ -7306,41 +7306,17 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SHOW TABLES",
 		Expected: []sql.Row{
-			{"auto_increment_tbl"},
-			{"bigtable"},
-			{"floattable"},
+			{"myview"},
 			{"fk_tbl"},
 			{"mytable"},
-			{"myview"},
-			{"newlinetable"},
-			{"niltable"},
-			{"one_pk_three_idx"},
-			{"one_pk_two_idx"},
-			{"othertable"},
-			{"tabletest"},
-			{"people"},
-			{"datetime_table"},
-			{"invert_pk"},
 		},
 	},
 	{
 		Query: "SHOW FULL TABLES",
 		Expected: []sql.Row{
-			{"auto_increment_tbl", "BASE TABLE"},
-			{"bigtable", "BASE TABLE"},
 			{"fk_tbl", "BASE TABLE"},
-			{"floattable", "BASE TABLE"},
-			{"mytable", "BASE TABLE"},
 			{"myview", "VIEW"},
-			{"newlinetable", "BASE TABLE"},
-			{"niltable", "BASE TABLE"},
-			{"one_pk_three_idx", "BASE TABLE"},
-			{"one_pk_two_idx", "BASE TABLE"},
-			{"othertable", "BASE TABLE"},
-			{"tabletest", "BASE TABLE"},
-			{"people", "BASE TABLE"},
-			{"datetime_table", "BASE TABLE"},
-			{"invert_pk", "BASE TABLE"},
+			{"mytable", "BASE TABLE"},
 		},
 	},
 	{
@@ -7353,12 +7329,6 @@ var InfoSchemaQueries = []QueryTest{
 		Query: "SHOW TABLES LIKE '%table'",
 		Expected: []sql.Row{
 			{"mytable"},
-			{"othertable"},
-			{"bigtable"},
-			{"floattable"},
-			{"niltable"},
-			{"newlinetable"},
-			{"datetime_table"},
 		},
 	},
 	{
@@ -7380,13 +7350,6 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"i", "bigint", "NO", "PRI", "", ""},
 			{"s", "varchar(20)", "NO", "UNI", "", ""},
-		},
-	},
-	{
-		Query: `DESCRIBE auto_increment_tbl`,
-		Expected: []sql.Row{
-			{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-			{"c0", "bigint", "YES", "", "", ""},
 		},
 	},
 	{
@@ -7455,21 +7418,9 @@ var InfoSchemaQueries = []QueryTest{
 		ORDER BY 1
 		`,
 		Expected: []sql.Row{
-			{"auto_increment_tbl"},
-			{"bigtable"},
-			{"datetime_table"},
 			{"fk_tbl"},
-			{"floattable"},
-			{"invert_pk"},
 			{"mytable"},
 			{"myview"},
-			{"newlinetable"},
-			{"niltable"},
-			{"one_pk_three_idx"},
-			{"one_pk_two_idx"},
-			{"othertable"},
-			{"people"},
-			{"tabletest"},
 		},
 	},
 	{
@@ -7491,18 +7442,6 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"s"},
 			{"i"},
-			{"s2"},
-			{"i2"},
-			{"t"},
-			{"n"},
-			{"f32"},
-			{"f64"},
-			{"b"},
-			{"f"},
-			{"date_col"},
-			{"datetime_col"},
-			{"timestamp_col"},
-			{"time_col"},
 		},
 	},
 	{
@@ -7514,18 +7453,6 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"s"},
 			{"i"},
-			{"s2"},
-			{"i2"},
-			{"t"},
-			{"n"},
-			{"f32"},
-			{"f64"},
-			{"b"},
-			{"f"},
-			{"date_col"},
-			{"datetime_col"},
-			{"timestamp_col"},
-			{"time_col"},
 		},
 	},
 	{
@@ -7537,18 +7464,6 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"s"},
 			{"i"},
-			{"s2"},
-			{"i2"},
-			{"t"},
-			{"n"},
-			{"f32"},
-			{"f64"},
-			{"b"},
-			{"f"},
-			{"date_col"},
-			{"datetime_col"},
-			{"timestamp_col"},
-			{"time_col"},
 		},
 	},
 	{
@@ -7557,28 +7472,28 @@ var InfoSchemaQueries = []QueryTest{
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
 		`,
-		Expected: []sql.Row{{"s"}, {"s2"}},
+		Expected: []sql.Row{{"s"}},
 	},
 	{
 		Query: `SHOW INDEXES FROM mytaBLE`,
 		Expected: []sql.Row{
-			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "PRIMARY", 1, "i", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 0, "mytable_s", 1, "s", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "mytable_i_s", 1, "i", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "mytable_i_s", 2, "s", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "idx_si", 1, "s", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "idx_si", 2, "i", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
 		},
 	},
 	{
 		Query: `SHOW KEYS FROM mytaBLE`,
 		Expected: []sql.Row{
-			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "PRIMARY", 1, "i", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 0, "mytable_s", 1, "s", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "mytable_i_s", 1, "i", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "mytable_i_s", 2, "s", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "idx_si", 1, "s", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
+			{"mytable", 1, "idx_si", 2, "i", "NULL", 0, "NULL", "NULL", "", "BTREE", "", "", "YES", "NULL"},
 		},
 	},
 	{
@@ -7612,20 +7527,8 @@ var InfoSchemaQueries = []QueryTest{
 		Query: "SELECT table_name, `auto_increment` FROM information_schema.tables " +
 			"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
 		Expected: []sql.Row{
-			{"auto_increment_tbl", nil},
-			{"bigtable", nil},
-			{"datetime_table", nil},
 			{"fk_tbl", nil},
-			{"floattable", nil},
-			{"invert_pk", nil},
 			{"mytable", nil},
-			{"newlinetable", nil},
-			{"niltable", nil},
-			{"one_pk_three_idx", nil},
-			{"one_pk_two_idx", nil},
-			{"othertable", nil},
-			{"people", nil},
-			{"tabletest", nil},
 		},
 	},
 	{
@@ -7637,23 +7540,11 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
 		Expected: []sql.Row{
-			{"def", "mydb", "PRIMARY", "mydb", "auto_increment_tbl", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "bigtable", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "datetime_table", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "invert_pk", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "one_pk_three_idx", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "one_pk_two_idx", "PRIMARY KEY", "YES"},
 			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "othertable", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "people", "PRIMARY KEY", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "tabletest", "PRIMARY KEY", "YES"},
 		},
 	},
 	{
@@ -7664,28 +7555,11 @@ var InfoSchemaQueries = []QueryTest{
 		Query: "SELECT * FROM information_schema.key_column_usage ORDER BY constraint_schema, table_name",
 		Expected: []sql.Row{
 			{"def", "foo", "PRIMARY", "def", "foo", "other_table", "text", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "auto_increment_tbl", "pk", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "bigtable", "t", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "datetime_table", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "fk_tbl", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "floattable", "i", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "y", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "z", 2, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "x", 3, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "mytable_s", "def", "mydb", "mytable", "s", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "newlinetable", "i", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "niltable", "i", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "one_pk_three_idx", "pk", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "one_pk_two_idx", "pk", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "othertable", "i2", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "dob", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "first_name", 2, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "last_name", 3, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "middle_name", 4, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "tabletest", "i", 1, nil, nil, nil, nil},
 		},
 	},
 	{
@@ -7698,22 +7572,19 @@ var InfoSchemaQueries = []QueryTest{
 				       col.column_name, GROUP_CONCAT(kcu.column_name SEPARATOR ',') as pk
 				from information_schema.tables as tbl
 				join information_schema.columns as col
- 				  on tbl.table_name = col.table_name
+				  on tbl.table_name = col.table_name
 				join information_schema.key_column_usage as kcu
 				  on tbl.table_name = kcu.table_name
 				join information_schema.table_constraints as tc
 				  on kcu.constraint_name = tc.constraint_name
 				where tbl.table_schema = 'mydb' and
- 					  tbl.table_name = kcu.table_name and
-  					  tc.constraint_type = 'PRIMARY KEY' and
+					  tbl.table_name = kcu.table_name and
+					  tc.constraint_type = 'PRIMARY KEY' and
 					  col.column_name like 'pk%'
 				group by the_table, col.column_name
 				`,
 		Expected: []sql.Row{
-			{"mydb.one_pk_two_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
-			{"mydb.one_pk_three_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
-			{"mydb.auto_increment_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
-			{"mydb.fk_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.fk_tbl", "pk", "pk,pk,pk"},
 		},
 	},
 	{
@@ -7963,14 +7834,14 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.table_constraints ignores non-unique indexes",
 		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
-			"CREATE INDEX myindex on mytable(test_score)",
+			"CREATE TABLE t (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on t(test_score)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='t' ORDER BY constraint_type,constraint_name",
 				Expected: []sql.Row{
-					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+					{"def", "mydb", "PRIMARY", "mydb", "t", "PRIMARY KEY", "YES"},
 				},
 			},
 		},
@@ -7978,14 +7849,14 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.key_column_usage ignores non-unique indexes",
 		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
-			"CREATE INDEX myindex on mytable(test_score)",
+			"CREATE TABLE t (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on t(test_score)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.key_column_usage where table_name='mytable'",
+				Query: "SELECT * FROM information_schema.key_column_usage where table_name='t'",
 				Expected: []sql.Row{
-					{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "pk", 1, nil, nil, nil, nil},
+					{"def", "mydb", "PRIMARY", "def", "mydb", "t", "pk", 1, nil, nil, nil, nil},
 				},
 			},
 		},
@@ -8041,16 +7912,16 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.statistics shows non unique index",
 		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
-			"CREATE INDEX myindex on mytable(test_score)",
-			"INSERT INTO mytable VALUES (2,23,25), (3,24,26)",
+			"CREATE TABLE t (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on t(test_score)",
+			"INSERT INTO t VALUES (2,23,25), (3,24,26)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.statistics where table_name='mytable'",
+				Query: "SELECT * FROM information_schema.statistics where table_name='t'",
 				Expected: []sql.Row{
-					{"def", "mydb", "mytable", 1, "mydb", "myindex", 1, "test_score", "A", int64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"def", "mydb", "mytable", 0, "mydb", "PRIMARY", 1, "pk", "A", int64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "t", 1, "mydb", "myindex", 1, "test_score", "A", int64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "t", 0, "mydb", "PRIMARY", 1, "pk", "A", int64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},
@@ -8058,19 +7929,19 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value",
 		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, fname varchar(20), lname varchar(20), height int)",
-			"ALTER TABLE mytable CHANGE fname fname varchar(20) NOT NULL DEFAULT ''",
-			"ALTER TABLE mytable CHANGE lname lname varchar(20) NOT NULL DEFAULT 'ln'",
-			"ALTER TABLE mytable CHANGE height h int DEFAULT NULL",
+			"CREATE TABLE t (pk int primary key, fname varchar(20), lname varchar(20), height int)",
+			"ALTER TABLE t CHANGE fname fname varchar(20) NOT NULL DEFAULT ''",
+			"ALTER TABLE t CHANGE lname lname varchar(20) NOT NULL DEFAULT 'ln'",
+			"ALTER TABLE t CHANGE height h int DEFAULT NULL",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='mytable'",
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='t'",
 				Expected: []sql.Row{
-					{"mytable", "pk", nil, "NO"},
-					{"mytable", "fname", "", "NO"},
-					{"mytable", "lname", "ln", "NO"},
-					{"mytable", "h", nil, "YES"},
+					{"t", "pk", nil, "NO"},
+					{"t", "fname", "", "NO"},
+					{"t", "lname", "ln", "NO"},
+					{"t", "h", nil, "YES"},
 				},
 			},
 		},
@@ -8174,7 +8045,7 @@ var InfoSchemaScripts = []ScriptTest{
 
 var ExplodeQueries = []QueryTest{
 	{
-		Query: `SELECT a, EXPLODE(b), c FROM t`,
+		Query: `SELECT a, EXPLODE(b), c FROM explode`,
 		Expected: []sql.Row{
 			{int64(1), "a", "first"},
 			{int64(1), "b", "first"},
@@ -8185,7 +8056,7 @@ var ExplodeQueries = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM t`,
+		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode`,
 		Expected: []sql.Row{
 			{int64(1), "a", "first"},
 			{int64(1), "b", "first"},
@@ -8196,7 +8067,7 @@ var ExplodeQueries = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT EXPLODE(SPLIT(c, "")) FROM t LIMIT 5`,
+		Query: `SELECT EXPLODE(SPLIT(c, "")) FROM explode LIMIT 5`,
 		Expected: []sql.Row{
 			{"f"},
 			{"i"},
@@ -8206,7 +8077,7 @@ var ExplodeQueries = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM t WHERE x = 'e'`,
+		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode WHERE x = 'e'`,
 		Expected: []sql.Row{
 			{int64(3), "e", "third"},
 		},

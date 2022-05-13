@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -67,16 +68,16 @@ func (n *ShowIndexes) Schema() sql.Schema {
 		&sql.Column{Name: "Key_name", Type: sql.LongText},
 		&sql.Column{Name: "Seq_in_index", Type: sql.Int32},
 		&sql.Column{Name: "Column_name", Type: sql.LongText, Nullable: true},
-		&sql.Column{Name: "Collation", Type: sql.LongText, Nullable: true},
+		&sql.Column{Name: "Collation", Type: sql.LongText, Default: sql.MustNewNullDefault(expression.NewLiteral("NULL", sql.LongText), sql.LongText, true, false)},
 		&sql.Column{Name: "Cardinality", Type: sql.Int64},
-		&sql.Column{Name: "Sub_part", Type: sql.Int64, Nullable: true},
-		&sql.Column{Name: "Packed", Type: sql.LongText, Nullable: true},
+		&sql.Column{Name: "Sub_part", Type: sql.Int64, Default: sql.MustNewNullDefault(expression.NewLiteral("NULL", sql.LongText), sql.LongText, true, false)},
+		&sql.Column{Name: "Packed", Type: sql.LongText, Default: sql.MustNewNullDefault(expression.NewLiteral("NULL", sql.LongText), sql.LongText, true, false)},
 		&sql.Column{Name: "Null", Type: sql.LongText},
 		&sql.Column{Name: "Index_type", Type: sql.LongText},
 		&sql.Column{Name: "Comment", Type: sql.LongText},
 		&sql.Column{Name: "Index_comment", Type: sql.LongText},
 		&sql.Column{Name: "Visible", Type: sql.LongText},
-		&sql.Column{Name: "Expression", Type: sql.LongText, Nullable: true},
+		&sql.Column{Name: "Expression", Type: sql.LongText, Default: sql.MustNewNullDefault(expression.NewLiteral("NULL", sql.LongText), sql.LongText, true, false)},
 	}
 }
 
@@ -126,6 +127,10 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	if expression == nil {
+		expression = "NULL"
+	}
+
 	visible := "YES"
 	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0 {
 		if !ctx.GetIndexRegistry().CanUseIndex(x) {
@@ -144,10 +149,10 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 		show.index.ID(),        // "Key_name" string
 		show.exPosition+1,      // "Seq_in_index" int32
 		columnName,             // "Column_name" string
-		nil,                    // "Collation" string, Values [A, D, NULL]
+		"NULL",                 // "Collation" string, Values [A, D, NULL]
 		int64(0),               // "Cardinality" int64 (not calculated)
-		nil,                    // "Sub_part" int64
-		nil,                    // "Packed" string
+		"NULL",                 // "Sub_part" int64
+		"NULL",                 // "Packed" string
 		nullable,               // "Null" string, Values [YES, '']
 		show.index.IndexType(), // "Index_type" string
 		show.index.Comment(),   // "Comment" string

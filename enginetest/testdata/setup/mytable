@@ -1,5 +1,5 @@
 exec
-create table mytable (i bigint primary key, s varchar(20) comment 'column s')
+create table mytable (i bigint primary key, s varchar(20) comment 'column s' NOT NULL)
 ----
 
 exec
@@ -15,4 +15,8 @@ create unique index mytable_s on mytable (s)
 
 exec
 create index mytable_i_s on mytable (i,s)
+----
+
+exec
+create index `idx_si` on mytable (`s`,`i`)
 ----

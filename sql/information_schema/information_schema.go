@@ -1539,7 +1539,7 @@ func NewInformationSchemaDatabase() Database {
 				mu:      &sync.Mutex{},
 			},
 			MysqlFirewallWhitelistTableName: &informationSchemaTable{
-				name:    MysqlFirewallUsersTableName,
+				name:    MysqlFirewallWhitelistTableName,
 				schema:  mysqlFirewallWhitelistSchema,
 				rowIter: emptyRowIter,
 				mu:      &sync.Mutex{},
@@ -1617,7 +1617,7 @@ func NewInformationSchemaDatabase() Database {
 				mu:      &sync.Mutex{},
 			},
 			TableConstraintsExtensionsTableName: &informationSchemaTable{
-				name:    RoleColumnGrantsTableName,
+				name:    TableConstraintsExtensionsTableName,
 				schema:  tableConstraintsExtensionsSchema,
 				rowIter: emptyRowIter,
 				mu:      &sync.Mutex{},

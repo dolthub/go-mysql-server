@@ -5,3 +5,10 @@ CREATE TABLE `auto_increment_tbl` (
   PRIMARY KEY (`pk`)
 )
 ----
+
+exec
+INSERT INTO auto_increment_tbl values
+    (1, 11),
+    (2, 22),
+    (3, 33)
+----

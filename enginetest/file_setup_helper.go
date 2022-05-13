@@ -15,6 +15,7 @@ var (
 	checksSetup       []string
 	nullsSetup        []string
 	complexIndexSetup []string
+	loadDataSetup     []string
 )
 
 func init() {
@@ -38,7 +39,7 @@ func init() {
 		"people",
 		"reserved_keywords",
 	}
-	ordinalSetup = []string{"mydb", "invert_pk"}
+	ordinalSetup = []string{"mydb", "invert_pk", "ordinals_ddl"}
 	fooSetup = []string{"mydb", "foo"}
 	jsonSetup = []string{"mydb", "jsontable"}
 	spatialSetup = []string{"mydb", "spatial"}
@@ -46,9 +47,10 @@ func init() {
 	graphSetup = []string{"mydb", "graph_tables"}
 	reservedSetup = []string{"mydb", "reserved"}
 	mytable = []string{"mydb", "mytable"}
-	checksSetup = []string{"mydb", "check_constraints"}
+	checksSetup = []string{"mydb", "check_constraint"}
 	nullsSetup = []string{"mydb", "null_ranges"}
 	complexIndexSetup = []string{"mydb", "comp_index_tables"}
+	loadDataSetup = []string{"mydb", "loadtable"}
 	simpleSetup = concatenateSetupSources(
 		mytable,
 		specialSetup,
