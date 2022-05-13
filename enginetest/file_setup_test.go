@@ -1,9 +1,10 @@
 package enginetest
 
 import (
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileSourceScanner(t *testing.T) {
