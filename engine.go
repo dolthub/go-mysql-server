@@ -454,7 +454,10 @@ func init() {
 func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
 	// Before we begin a transaction, we need to know if the database being operated on is not the one
 	// currently selected
-	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
+	transactionDatabase, err := analyzer.GetTransactionDatabase(ctx, parsed)
+	if err != nil {
+		return "", err
+	}
 
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)

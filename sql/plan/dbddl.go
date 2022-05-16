@@ -23,11 +23,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+var _ sql.Databaseable = (*CreateDB)(nil)
+
 // CreateDB creates an in memory database that lasts the length of the process only.
 type CreateDB struct {
 	Catalog     sql.Catalog
 	dbName      string
 	IfNotExists bool
+}
+
+func (c CreateDB) Database() string {
+	return c.dbName
 }
 
 func (c CreateDB) Resolved() bool {

@@ -86,6 +86,35 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
+		Name: "Transaction initialization syncs the correct database",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ use mydb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ create database db2",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "/* client b */ use db2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ create table t (pk int primary key)",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "/* client a */ insert into t values (1)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "/* client b */ select count(*) from mydb.t;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "autocommit on",
 		SetUpScript: []string{
 			"create table t (x int primary key, y int)",
