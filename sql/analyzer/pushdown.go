@@ -990,7 +990,11 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 
 		// Don't forget aliases
 		if pj != nil {
-			return pj.WithChildren(newNode), transform.NewTree, nil
+			resNode, err := pj.WithChildren(newNode)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return resNode, transform.NewTree, nil
 		}
 
 		return newNode, transform.NewTree, nil
