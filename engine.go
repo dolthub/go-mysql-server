@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"sync"
 
@@ -192,6 +193,11 @@ func (e *Engine) QueryNodeWithBindings(
 		analyzed, err = e.analyzeQuery(ctx, query, parsed, bindings)
 	}
 	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
 		return nil, nil, err
 	}
 
@@ -207,6 +213,11 @@ func (e *Engine) QueryNodeWithBindings(
 		iter, err = analyzed.RowIter(ctx, nil)
 	}
 	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
 		return nil, nil, err
 	}
 
@@ -219,6 +230,22 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	return analyzed.Schema(), iter, nil
+}
+
+// clearAutocommitTransaction unsets the transaction from the current session if it is an implicitly
+// created autocommit transaction. This enables the next request to have an autocommit transaction
+// correctly started.
+func clearAutocommitTransaction(ctx *sql.Context) error {
+	autocommit, err := plan.IsSessionAutocommit(ctx)
+	if err != nil {
+		return err
+	}
+
+	if autocommit {
+		ctx.SetTransaction(nil)
+	}
+
+	return nil
 }
 
 func (e *Engine) cachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
