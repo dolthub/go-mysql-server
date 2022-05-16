@@ -46,9 +46,6 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	if !referencesProcedures {
 		return n, transform.SameTree, nil
 	}
-	if a.ProcedureCache == nil {
-		a.ProcedureCache = NewProcedureCache()
-	}
 
 	err := a.ProcedureCache.Register(ctx, func(ctx *sql.Context) (procedureSet, error) {
 		return collectStoredProcedures(ctx, a, scope, sel)
