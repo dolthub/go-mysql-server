@@ -18,6 +18,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -27,6 +28,7 @@ import (
 type ProcedureCache struct {
 	dbToProcedureMap map[string]map[string]map[int]*plan.Procedure
 	IsPopulating     bool
+	mu               sync.RWMutex
 }
 
 // NewProcedureCache returns a *ProcedureCache.
@@ -41,6 +43,9 @@ func NewProcedureCache() *ProcedureCache {
 // procedure does not exist, then this returns nil. If the number of parameters do not match any given procedure, then
 // returns the procedure with the largest number of parameters.
 func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *plan.Procedure {
+	pc.mu.RLock()
+	defer pc.mu.RUnlock()
+
 	dbName = strings.ToLower(dbName)
 	procedureName = strings.ToLower(procedureName)
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
@@ -70,6 +75,9 @@ func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *pl
 // AllForDatabase returns all of the stored procedures for the given database, sorted by name and parameter count
 // ascending. The database name is case-insensitive.
 func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
+	pc.mu.RLock()
+	defer pc.mu.RUnlock()
+
 	dbName = strings.ToLower(dbName)
 	var proceduresForDb []*plan.Procedure
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
@@ -91,6 +99,9 @@ func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
 // Register adds the given stored procedure to the cache. Will overwrite any procedures that already exist with the
 // same name and same number of parameters for the given database name.
 func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) error {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
 	dbName = strings.ToLower(dbName)
 	paramLen := len(procedure.Params)
 	if procedure.HasVariadicParameter() {
