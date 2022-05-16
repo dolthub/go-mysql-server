@@ -134,6 +134,7 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 		return sql.ErrDatabaseNotFound.New(db)
 	}
 
+	sess.SetLogger(ctx.GetLogger().WithField(sqle.ConnectionDbLogField, db))
 	sess.SetCurrentDatabase(db)
 	return nil
 }
