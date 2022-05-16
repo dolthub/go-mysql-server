@@ -35,8 +35,16 @@ type TransactionTest struct {
 
 var TransactionTests = []TransactionTest{
 	{
-		Name: "Changes from transactions are available before analyzing statements in other sessions",
+		Name: "Changes from transactions are available before analyzing statements in other sessions (autocommit on)",
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ select @@autocommit;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "/* client b */ select @@autocommit;",
+				Expected: []sql.Row{{1}},
+			},
 			{
 				Query:       "/* client a */ select * from t;",
 				ExpectedErr: sql.ErrTableNotFound,
@@ -48,6 +56,57 @@ var TransactionTests = []TransactionTest{
 			{
 				Query:    "/* client a */ create table t(pk int primary key);",
 				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select count(*) from t;",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
+		Name: "Changes from transactions are available before analyzing statements in other sessions (autocommit off)",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ select @@autocommit;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "/* client b */ select @@autocommit;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "/* client a */ select * from t;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "/* client a */ create table t(pk int primary key);",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				// Trigger a query error to make sure explicit transaction is still
+				// correctly configured in the session despite the error
+				Query:       "/* client a */ select * from t2;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "/* client a */ commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ start transaction;",
+				Expected: []sql.Row{},
 			},
 			{
 				Query:    "/* client b */ select count(*) from t;",
@@ -206,12 +265,23 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
+				// Trigger an analyzer error to make sure transaction state is managed correctly
+				Query:       "/* client a */ select * from doesnotexist;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
 				Query:    "/* client a */ insert into t values (2, 2)",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
 				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				// Trigger an analyzer error to make sure state for the explicitly started
+				// transaction is managed correctly and not cleared
+				Query:       "/* client a */ select * from doesnotexist;",
+				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
 				Query:    "/* client a */ commit",
