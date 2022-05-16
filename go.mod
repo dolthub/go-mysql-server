@@ -8,6 +8,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529
+	github.com/google/flatbuffers v2.0.6+incompatible
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/lestrrat-go/strftime v1.0.4
@@ -29,7 +30,6 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/flatbuffers v2.0.6+incompatible // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
