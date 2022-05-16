@@ -47,7 +47,9 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			dbs := a.Catalog.AllDatabases(ctx)
 			pm := make(map[string][]*plan.Procedure)
 			for _, db := range dbs {
-				pm[db.Name()] = a.ProcedureCache.AllForDatabase(db.Name())
+				if scope != nil && scope.procedures != nil {
+					pm[db.Name()] = scope.procedures.AllForDatabase(db.Name())
+				}
 			}
 
 			if ok {
