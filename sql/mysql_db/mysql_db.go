@@ -29,17 +29,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// MySQLDataJSON is used to marshal/unmarshal data to/from JSON.
-type MySQLDataJSON struct {
-	Users []*User
-	Roles []*RoleEdge
-	// TODO: other tables in mysql db
-}
-
 // PrivilegePersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
 type PrivilegePersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
-type DataPersistCallback func(ctx *sql.Context, mysqlDb *MySQLDataJSON) error
+type DataPersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
@@ -416,15 +409,8 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 	}
 
 	// TODO: Extract all other table entries
-
-	// Convert to json
-	data := &MySQLDataJSON{
-		Users: users,
-		Roles: roles,
-	}
-
-	// Persist
-	err = t.dataPersistFunc(ctx, data)
+	// Persist data
+	err = t.dataPersistFunc(ctx, users, roles)
 
 	return err
 }

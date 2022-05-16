@@ -31,7 +31,7 @@ table PrivilegeSetDatabase {
 
 table PrivilegeSet {
     global_static:[int];
-    global_dynamic:[string];
+    //TODO: global_dynamic:[string];
     databases:[PrivilegeSetDatabase];
 }
 
