@@ -16,11 +16,10 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/pkg/errors"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -30,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Config for the Engine.
