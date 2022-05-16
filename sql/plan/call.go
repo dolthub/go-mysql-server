@@ -97,11 +97,6 @@ func (c *Call) WithProcedure(proc *Procedure) *Call {
 	return &nc
 }
 
-// HasProcedure returns whether a *Call has had its procedure set.
-func (c *Call) HasProcedure() bool {
-	return c.proc != nil
-}
-
 // WithParamReference returns a new *Call containing the given *expression.ProcedureParamReference.
 func (c *Call) WithParamReference(pRef *expression.ProcedureParamReference) *Call {
 	nc := *c

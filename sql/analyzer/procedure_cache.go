@@ -27,7 +27,6 @@ import (
 // ProcedureCache contains all of the stored procedures for each database.
 type ProcedureCache struct {
 	dbToProcedureMap map[string]map[string]map[int]*plan.Procedure
-	IsPopulating     bool
 	mu               sync.RWMutex
 }
 
@@ -35,7 +34,6 @@ type ProcedureCache struct {
 func NewProcedureCache() *ProcedureCache {
 	return &ProcedureCache{
 		dbToProcedureMap: make(map[string]map[string]map[int]*plan.Procedure),
-		IsPopulating:     false,
 	}
 }
 
@@ -96,28 +94,55 @@ func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
 	return proceduresForDb
 }
 
-// Register adds the given stored procedure to the cache. Will overwrite any procedures that already exist with the
-// same name and same number of parameters for the given database name.
-func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) error {
+// procedureSet holds stores a slice of Procedures for one or more databases.
+type procedureSet map[string][]*plan.Procedure
+
+// Register registers stored procedures.
+func (pc *ProcedureCache) Register(ctx *sql.Context, cb func(ctx *sql.Context) (procedureSet, error)) (err error) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	dbName = strings.ToLower(dbName)
-	paramLen := len(procedure.Params)
-	if procedure.HasVariadicParameter() {
-		paramLen = math.MaxInt
+	var set procedureSet
+	if set, err = cb(ctx); err != nil {
+		return err
 	}
-	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
-		if procedures, ok := procMap[strings.ToLower(procedure.Name)]; ok {
-			if _, ok := procedures[paramLen]; ok {
-				return sql.ErrExternalProcedureAmbiguousOverload.New(procedure.Name, paramLen)
+
+	// register all or none
+	for db, slice := range set {
+		db = strings.ToLower(db)
+
+		for _, proc := range slice {
+			card := len(proc.Params)
+			name := strings.ToLower(proc.Name)
+
+			if _, ok := pc.dbToProcedureMap[db]; !ok {
+				continue
 			}
-			procedures[paramLen] = procedure
-		} else {
-			procMap[strings.ToLower(procedure.Name)] = map[int]*plan.Procedure{paramLen: procedure}
+			if _, ok := pc.dbToProcedureMap[db][name]; !ok {
+				continue
+			}
+			if _, ok := pc.dbToProcedureMap[db][name][card]; ok {
+				return sql.ErrExternalProcedureAmbiguousOverload.New(proc.Name, card)
+			}
 		}
-	} else {
-		pc.dbToProcedureMap[dbName] = map[string]map[int]*plan.Procedure{strings.ToLower(procedure.Name): {paramLen: procedure}}
+	}
+
+	for db, slice := range set {
+		db = strings.ToLower(db)
+
+		for _, proc := range slice {
+			card := len(proc.Params)
+			name := strings.ToLower(proc.Name)
+
+			if _, ok := pc.dbToProcedureMap[db]; !ok {
+				pc.dbToProcedureMap[db] = make(map[string]map[int]*plan.Procedure)
+			}
+			if _, ok := pc.dbToProcedureMap[db][name]; !ok {
+				pc.dbToProcedureMap[db][name] = make(map[int]*plan.Procedure)
+			}
+
+			pc.dbToProcedureMap[db][name][card] = proc
+		}
 	}
 	return nil
 }
