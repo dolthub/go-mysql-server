@@ -107,6 +107,26 @@ func (pc *ProcedureCache) Register(ctx *sql.Context, cb func(ctx *sql.Context) (
 		return err
 	}
 
+	// register all or none
+	for db, slice := range set {
+		db = strings.ToLower(db)
+
+		for _, proc := range slice {
+			card := len(proc.Params)
+			name := strings.ToLower(proc.Name)
+
+			if _, ok := pc.dbToProcedureMap[db]; !ok {
+				continue
+			}
+			if _, ok := pc.dbToProcedureMap[db][name]; !ok {
+				continue
+			}
+			if _, ok := pc.dbToProcedureMap[db][name][card]; ok {
+				return sql.ErrExternalProcedureAmbiguousOverload.New(proc.Name, card)
+			}
+		}
+	}
+
 	for db, slice := range set {
 		db = strings.ToLower(db)
 
