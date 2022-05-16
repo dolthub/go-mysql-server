@@ -236,7 +236,7 @@ func (e *Engine) QueryNodeWithBindings(
 // created autocommit transaction. This enables the next request to have an autocommit transaction
 // correctly started.
 func clearAutocommitTransaction(ctx *sql.Context) error {
-	// The GetignoreAutoCommit property essentially says the current transaction is an explicit,
+	// The GetIgnoreAutoCommit property essentially says the current transaction is an explicit,
 	// user-created transaction and we should not process autocommit. So, if it's set, then we
 	// don't need to do anything here to clear implicit transaction state.
 	//

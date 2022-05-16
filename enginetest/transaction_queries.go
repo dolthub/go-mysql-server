@@ -35,6 +35,7 @@ type TransactionTest struct {
 
 var TransactionTests = []TransactionTest{
 	{
+		// Repro for https://github.com/dolthub/dolt/issues/3402
 		Name: "Changes from transactions are available before analyzing statements in other sessions (autocommit on)",
 		Assertions: []ScriptTestAssertion{
 			{
