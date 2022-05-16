@@ -18,21 +18,22 @@ import (
 	"math"
 	"sort"
 	"strings"
-	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // ProcedureCache contains all of the stored procedures for each database.
 type ProcedureCache struct {
 	dbToProcedureMap map[string]map[string]map[int]*plan.Procedure
-	mu               sync.RWMutex
+	IsPopulating     bool
 }
 
 // NewProcedureCache returns a *ProcedureCache.
 func NewProcedureCache() *ProcedureCache {
 	return &ProcedureCache{
 		dbToProcedureMap: make(map[string]map[string]map[int]*plan.Procedure),
+		IsPopulating:     false,
 	}
 }
 
@@ -40,9 +41,6 @@ func NewProcedureCache() *ProcedureCache {
 // procedure does not exist, then this returns nil. If the number of parameters do not match any given procedure, then
 // returns the procedure with the largest number of parameters.
 func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *plan.Procedure {
-	pc.mu.RLock()
-	defer pc.mu.RUnlock()
-
 	dbName = strings.ToLower(dbName)
 	procedureName = strings.ToLower(procedureName)
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
@@ -72,9 +70,6 @@ func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *pl
 // AllForDatabase returns all of the stored procedures for the given database, sorted by name and parameter count
 // ascending. The database name is case-insensitive.
 func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
-	pc.mu.RLock()
-	defer pc.mu.RUnlock()
-
 	dbName = strings.ToLower(dbName)
 	var proceduresForDb []*plan.Procedure
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
@@ -96,22 +91,22 @@ func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
 // Register adds the given stored procedure to the cache. Will overwrite any procedures that already exist with the
 // same name and same number of parameters for the given database name.
 func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) error {
-	pc.mu.Lock()
-	defer pc.mu.Unlock()
-
+	dbName = strings.ToLower(dbName)
 	paramLen := len(procedure.Params)
 	if procedure.HasVariadicParameter() {
 		paramLen = math.MaxInt
 	}
-	name := strings.ToLower(procedure.Name)
-
-	if _, ok := pc.dbToProcedureMap[dbName]; !ok {
-		pc.dbToProcedureMap[dbName] = make(map[string]map[int]*plan.Procedure)
+	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
+		if procedures, ok := procMap[strings.ToLower(procedure.Name)]; ok {
+			if _, ok := procedures[paramLen]; ok {
+				return sql.ErrExternalProcedureAmbiguousOverload.New(procedure.Name, paramLen)
+			}
+			procedures[paramLen] = procedure
+		} else {
+			procMap[strings.ToLower(procedure.Name)] = map[int]*plan.Procedure{paramLen: procedure}
+		}
+	} else {
+		pc.dbToProcedureMap[dbName] = map[string]map[int]*plan.Procedure{strings.ToLower(procedure.Name): {paramLen: procedure}}
 	}
-	if _, ok := pc.dbToProcedureMap[dbName][name]; !ok {
-		pc.dbToProcedureMap[dbName][name] = make(map[int]*plan.Procedure)
-	}
-	pc.dbToProcedureMap[dbName][name][paramLen] = procedure
-
 	return nil
 }

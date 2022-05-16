@@ -29,6 +29,9 @@ import (
 
 // loadStoredProcedures loads stored procedures for all databases on relevant calls.
 func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if a.ProcedureCache.IsPopulating {
+		return n, transform.SameTree, nil
+	}
 	referencesProcedures := false
 	transform.Inspect(n, func(n sql.Node) bool {
 		if _, ok := n.(*plan.Call); ok {
@@ -46,6 +49,11 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	if !referencesProcedures {
 		return n, transform.SameTree, nil
 	}
+	a.ProcedureCache = NewProcedureCache()
+	a.ProcedureCache.IsPopulating = true
+	defer func() {
+		a.ProcedureCache.IsPopulating = false
+	}()
 
 	allDatabases := a.Catalog.AllDatabases(ctx)
 	for _, database := range allDatabases {
@@ -330,6 +338,9 @@ func resolveProcedureParamsTransform(ctx *sql.Context, paramNames map[string]str
 
 // applyProcedures applies the relevant stored procedures to the node given (if necessary).
 func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if a.ProcedureCache.IsPopulating {
+		return n, transform.SameTree, nil
+	}
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
 	}
