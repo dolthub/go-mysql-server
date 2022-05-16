@@ -35,6 +35,27 @@ type TransactionTest struct {
 
 var TransactionTests = []TransactionTest{
 	{
+		Name: "Changes from transactions are available before analyzing statements in other sessions",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "/* client a */ select * from t;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "/* client b */ select * from t;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "/* client a */ create table t(pk int primary key);",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select count(*) from t;",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
 		Name: "autocommit on",
 		SetUpScript: []string{
 			"create table t (x int primary key, y int)",

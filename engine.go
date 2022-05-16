@@ -174,16 +174,23 @@ func (e *Engine) QueryNodeWithBindings(
 		err      error
 	)
 
+	if parsed == nil {
+		parsed, err = parse.Parse(ctx, query)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	_, err = e.beginTransaction(ctx, parsed)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if p, ok := e.preparedDataForSession(ctx.Session); ok && p.Query == query {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
 	} else {
 		analyzed, err = e.analyzeQuery(ctx, query, parsed, bindings)
 	}
-	if err != nil {
-		return nil, nil, err
-	}
-
-	_, err = e.beginTransaction(ctx, analyzed)
 	if err != nil {
 		return nil, nil, err
 	}
