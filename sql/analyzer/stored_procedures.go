@@ -29,25 +29,30 @@ import (
 
 // loadStoredProcedures loads stored procedures for all databases on relevant calls.
 func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	referencesProcedures := false
+	var call *plan.Call
+	var refresh bool
+
 	transform.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(*plan.Call); ok {
-			referencesProcedures = true
+		if c, ok := n.(*plan.Call); ok {
+			call = c
 			return false
 		} else if rt, ok := n.(*plan.ResolvedTable); ok {
 			_, rOk := rt.Table.(RoutineTable)
 			if rOk {
-				referencesProcedures = true
+				refresh = true
 				return false
 			}
 		}
 		return true
 	})
-	if !referencesProcedures {
-		return n, transform.SameTree, nil
+
+	if call != nil {
+		if a.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params)) == nil {
+			refresh = true
+		}
 	}
-	if a.ProcedureCache == nil {
-		a.ProcedureCache = NewProcedureCache()
+	if !refresh {
+		return n, transform.SameTree, nil
 	}
 
 	err := a.ProcedureCache.Register(ctx, func(ctx *sql.Context) (procedureSet, error) {
