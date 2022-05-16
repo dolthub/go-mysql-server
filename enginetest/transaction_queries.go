@@ -35,36 +35,6 @@ type TransactionTest struct {
 
 var TransactionTests = []TransactionTest{
 	{
-		// Repro for https://github.com/dolthub/dolt/issues/3402
-		Name: "Changes from transactions are available before analyzing statements in other sessions (autocommit on)",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "/* client a */ select @@autocommit;",
-				Expected: []sql.Row{{1}},
-			},
-			{
-				Query:    "/* client b */ select @@autocommit;",
-				Expected: []sql.Row{{1}},
-			},
-			{
-				Query:       "/* client a */ select * from t;",
-				ExpectedErr: sql.ErrTableNotFound,
-			},
-			{
-				Query:       "/* client b */ select * from t;",
-				ExpectedErr: sql.ErrTableNotFound,
-			},
-			{
-				Query:    "/* client a */ create table t(pk int primary key);",
-				Expected: []sql.Row{{sql.OkResult{}}},
-			},
-			{
-				Query:    "/* client b */ select count(*) from t;",
-				Expected: []sql.Row{{0}},
-			},
-		},
-	},
-	{
 		Name: "Changes from transactions are available before analyzing statements in other sessions (autocommit off)",
 		Assertions: []ScriptTestAssertion{
 			{
