@@ -85,6 +85,7 @@ const (
 	pushdownProjectionsId         // pushdownProjections
 	setJoinScopeLenId             // setJoinScopeLen
 	eraseProjectionId             // eraseProjection
+	replaceSortPkId               // replaceSortPk
 	insertTopNId                  // insertTopN
 	cacheSubqueryResultsId        // cacheSubqueryResults
 	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins

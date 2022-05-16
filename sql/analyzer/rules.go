@@ -102,6 +102,7 @@ var OnceAfterDefault = []Rule{
 	{pushdownFiltersId, pushdownFilters},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
+	{replaceSortPkId, replacePkSort},
 	{pushdownProjectionsId, pushdownProjections},
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
