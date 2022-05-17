@@ -661,12 +661,104 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		rewritten, err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		}
+	}
+
 	err := i.alterable.DropColumn(ctx, i.d.Column)
 	if err != nil {
 		return nil, err
 	}
 
 	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+	newSch, projections, err := dropColumnFromSchema(i.d.targetSchema, i.d.Column, i.alterable.Name())
+	if err != nil {
+		return false, err
+	}
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+	droppedColIdx := oldPkSchema.IndexOf(i.d.Column, i.alterable.Name())
+
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, 	oldPkSchema.Schema[droppedColIdx])
+	if !rewriteRequested {
+		return false, nil
+	}
+
+	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	if err != nil {
+		return false, err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return false, err
+		}
+
+		newRow, err := ProjectRow(ctx, projections, r)
+		if err != nil {
+			return false, err
+		}
+
+		err = inserter.Insert(ctx, newRow)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func dropColumnFromSchema(schema sql.Schema, column string, tableName string) (sql.Schema, []sql.Expression, error) {
+	idx := schema.IndexOf(column, tableName)
+	if idx < 0 {
+		return nil, nil, sql.ErrTableColumnNotFound.New(tableName, column)
+	}
+
+	newSch := make(sql.Schema, len(schema)-1, 0)
+	projections := make([]sql.Expression, len(schema)-1, 0)
+
+	i := 0
+	for j := range schema[:idx] {
+		newSch[i] = schema[j]
+		projections[i] = expression.NewGetField(j, schema[j].Type, schema[j].Name, schema[j].Nullable)
+		i++
+	}
+
+	for j := range schema[:idx] {
+		schIdx := j + i + 1
+		newSch[i] = schema[schIdx]
+		projections[i] = expression.NewGetField(j, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
+		i++
+	}
+
+	return newSch, projections, nil
 }
 
 func (i *dropColumnIter) Close(context *sql.Context) error {
@@ -1194,7 +1286,6 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	// TODO: codify rewrite requirements
-
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.column)
 	if !rewriteRequested {
 		return false, nil
