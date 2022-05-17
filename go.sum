@@ -63,6 +63,12 @@ github.com/dolthub/vitess v0.0.0-20220504220708-70dd916eb224 h1:cjqtjhShlo0CD0Bu
 github.com/dolthub/vitess v0.0.0-20220504220708-70dd916eb224/go.mod h1:jxgvpEvrTNw2i4BKlwT75E775eUXBeMv5MPeQkIb9zI=
 github.com/dolthub/vitess v0.0.0-20220506214606-1a0fb4aab742 h1:hlRT6htzhXA2CBfsQrXb24aUkT4JTJVMcD+RPCzGrmY=
 github.com/dolthub/vitess v0.0.0-20220506214606-1a0fb4aab742/go.mod h1:jxgvpEvrTNw2i4BKlwT75E775eUXBeMv5MPeQkIb9zI=
+github.com/dolthub/vitess v0.0.0-20220513182440-524e5e33327c h1:tGWtSm6epKMDmtnn5i6tK/P9oJ0Rd+dCi5t5tQN6vpg=
+github.com/dolthub/vitess v0.0.0-20220513182440-524e5e33327c/go.mod h1:jxgvpEvrTNw2i4BKlwT75E775eUXBeMv5MPeQkIb9zI=
+github.com/dolthub/vitess v0.0.0-20220513192109-d363badace3a h1:GnFsof8fMfxDduHLkYtdtlLLJXoL1P3KfBI7FT4frnk=
+github.com/dolthub/vitess v0.0.0-20220513192109-d363badace3a/go.mod h1:jxgvpEvrTNw2i4BKlwT75E775eUXBeMv5MPeQkIb9zI=
+github.com/dolthub/vitess v0.0.0-20220516180143-4cf61a86b650 h1:L7ZRCloIXkptjQhP5ImBobbfWqt+2YZDmESrAuDO54Q=
+github.com/dolthub/vitess v0.0.0-20220516180143-4cf61a86b650/go.mod h1:jxgvpEvrTNw2i4BKlwT75E775eUXBeMv5MPeQkIb9zI=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=

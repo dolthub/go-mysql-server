@@ -2135,6 +2135,34 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "create geometry table using SRID value",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int primary key, g geometry default (point(1,1)));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE test ADD COLUMN p point null srid 0",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:       "ALTER TABLE test ADD COLUMN p point not null srid 1",
+				ExpectedErr: sql.ErrUnsupportedFeature,
+			},
+			{
+				Query:    "INSERT INTO test (i, p) VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2))))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(g), ST_ASWKT(p) FROM test",
+				Expected: []sql.Row{{1, "POINT(1 1)", "POINT(1 2)"}},
+			},
+			{
+				Query:       "INSERT INTO test (i, p) VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(2,4)), 4326))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{

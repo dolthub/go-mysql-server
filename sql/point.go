@@ -28,9 +28,13 @@ type Point struct {
 	Y    float64
 }
 
-type PointType struct{}
+type PointType struct {
+	SRID        uint32
+	definedSRID bool
+}
 
 var _ Type = PointType{}
+var _ SpatialColumnType = PointType{}
 
 var ErrNotPoint = errors.NewKind("value of type %T is not a point")
 
@@ -98,6 +102,9 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(val))
 	case Point:
+		if t.definedSRID && t.SRID != val.SRID {
+			return nil, ErrNotMatchingSRID.New(val.SRID, t.SRID)
+		}
 		return val, nil
 	default:
 		return nil, ErrNotPoint.New(val)
@@ -142,4 +149,14 @@ func (t PointType) Type() query.Type {
 // Zero implements Type interface.
 func (t PointType) Zero() interface{} {
 	return Point{X: 0.0, Y: 0.0}
+}
+
+func (t PointType) GetSRID() (uint32, bool) {
+	return t.SRID, t.definedSRID
+}
+
+func (t PointType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.definedSRID = true
+	return t
 }

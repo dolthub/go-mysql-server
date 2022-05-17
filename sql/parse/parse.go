@@ -2010,6 +2010,19 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		extra = "auto_increment"
 	}
 
+	if cd.Type.SRID != nil {
+		sridVal, sErr := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
+		if sErr != nil {
+			return nil, sErr
+		}
+		if sridVal != 0 && sridVal != 4326 {
+			return nil, sql.ErrUnsupportedFeature.New("unsupported value for SRID")
+		}
+		if s, ok := internalTyp.(sql.SpatialColumnType); ok {
+			internalTyp = s.SetSRID(uint32(sridVal))
+		}
+	}
+
 	return &sql.Column{
 		Nullable:      !isPkey && !bool(cd.Type.NotNull),
 		Type:          internalTyp,

@@ -28,9 +28,13 @@ type Polygon struct {
 	Lines []Linestring
 }
 
-type PolygonType struct{}
+type PolygonType struct {
+	SRID        uint32
+	definedSRID bool
+}
 
 var _ Type = PolygonType{}
+var _ SpatialColumnType = PolygonType{}
 
 var ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
 
@@ -155,4 +159,14 @@ func (t PolygonType) Type() query.Type {
 // Zero implements Type interface.
 func (t PolygonType) Zero() interface{} {
 	return Polygon{Lines: []Linestring{{Points: []Point{{}, {}, {}, {}}}}}
+}
+
+func (t PolygonType) GetSRID() (uint32, bool) {
+	return t.SRID, t.definedSRID
+}
+
+func (t PolygonType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.definedSRID = true
+	return t
 }

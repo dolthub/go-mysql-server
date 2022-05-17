@@ -84,6 +84,14 @@ type Type2 interface {
 	SQL2(Value) (sqltypes.Value, error)
 }
 
+// SpatialColumnType is a node that contains a reference to all spatial types.
+type SpatialColumnType interface {
+	// GetSRID returns the SRID value for spatial types.
+	GetSRID() (uint32, bool)
+	// SetSRID sets SRID value for spatial types.
+	SetSRID(uint32) Type
+}
+
 type LikeMatcher interface {
 	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }

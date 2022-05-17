@@ -28,9 +28,13 @@ type Linestring struct {
 	Points []Point
 }
 
-type LinestringType struct{}
+type LinestringType struct {
+	SRID        uint32
+	definedSRID bool
+}
 
 var _ Type = LinestringType{}
+var _ SpatialColumnType = LinestringType{}
 
 var ErrNotLinestring = errors.NewKind("value of type %T is not a linestring")
 
@@ -157,4 +161,14 @@ func (t LinestringType) Type() query.Type {
 // Zero implements Type interface.
 func (t LinestringType) Zero() interface{} {
 	return Linestring{Points: []Point{{}, {}}}
+}
+
+func (t LinestringType) GetSRID() (uint32, bool) {
+	return t.SRID, t.definedSRID
+}
+
+func (t LinestringType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.definedSRID = true
+	return t
 }

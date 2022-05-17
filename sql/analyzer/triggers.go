@@ -106,7 +106,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	}
 
 	// Check to see if the columns with "new" and "old" table reference are valid columns from the trigger table.
-	transform.InspectExpressionsWithNode(ct.Body, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressions(ct.Body, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "old" || strings.ToLower(e.Table()) == "new" {

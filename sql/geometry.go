@@ -30,10 +30,13 @@ type Geometry struct {
 }
 
 type GeometryType struct {
-	InnerType Type // Will be PointType, LinestringType, or PolygonType
+	InnerType   Type // Will be PointType, LinestringType, or PolygonType
+	SRID        uint32
+	definedSRID bool
 }
 
 var _ Type = GeometryType{}
+var _ SpatialColumnType = GeometryType{}
 
 var ErrNotGeometry = errors.NewKind("Value of type %T is not a geometry")
 
@@ -292,4 +295,14 @@ func (t GeometryType) Type() query.Type {
 func (t GeometryType) Zero() interface{} {
 	// TODO: it doesn't make sense for geometry to have a zero type
 	return nil
+}
+
+func (t GeometryType) GetSRID() (uint32, bool) {
+	return t.SRID, t.definedSRID
+}
+
+func (t GeometryType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.definedSRID = true
+	return t
 }
