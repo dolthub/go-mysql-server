@@ -413,7 +413,7 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Must be valid SRID
-	if srid != 0 && srid != 4326 {
+	if srid != CartesianSRID && srid != GeoSpatialSRID {
 		return nil, ErrInvalidSRID.New(srid)
 	}
 
@@ -538,7 +538,7 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	// Must be valid SRID
-	if srid != 0 && srid != 4326 {
+	if srid != CartesianSRID && srid != GeoSpatialSRID {
 		return nil, ErrInvalidSRID.New(srid)
 	}
 
@@ -653,7 +653,7 @@ func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Must be valid SRID
-	if srid != 0 && srid != 4326 {
+	if srid != CartesianSRID && srid != GeoSpatialSRID {
 		return nil, ErrInvalidSRID.New(srid)
 	}
 
@@ -768,7 +768,7 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Must be valid SRID
-	if srid != 0 && srid != 4326 {
+	if srid != CartesianSRID && srid != GeoSpatialSRID {
 		return nil, ErrInvalidSRID.New(srid)
 	}
 

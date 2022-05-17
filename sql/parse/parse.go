@@ -2015,7 +2015,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		if sErr != nil {
 			return nil, sErr
 		}
-		if sridVal != 0 && sridVal != 4326 {
+		if sridVal != function.CartesianSRID && sridVal != function.GeoSpatialSRID {
 			return nil, sql.ErrUnsupportedFeature.New("unsupported value for SRID")
 		}
 		if s, ok := internalTyp.(sql.SpatialColumnType); ok {
