@@ -3389,7 +3389,7 @@ func TestDropColumnKeylessTables(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assert.Equal(t, sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "mytable"},
+			{Name: "i", Type: sql.Int64, Source: "t0", Nullable: true},
 		}, tbl.Schema())
 	})
 
@@ -3450,7 +3450,7 @@ func TestDropColumnKeylessTables(t *testing.T, harness Harness) {
 
 	t.Run("error cases", func(t *testing.T) {
 		AssertErr(t, e, harness, "ALTER TABLE not_exist DROP COLUMN s", sql.ErrTableNotFound)
-		AssertErr(t, e, harness, "ALTER TABLE mytable DROP COLUMN s", sql.ErrTableColumnNotFound)
+		AssertErr(t, e, harness, "ALTER TABLE t0 DROP COLUMN s", sql.ErrTableColumnNotFound)
 	})
 }
 
