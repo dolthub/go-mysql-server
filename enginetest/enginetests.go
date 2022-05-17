@@ -53,6 +53,11 @@ func TestQueries(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 	for _, tt := range queries.QueryTests {
 		t.Run(tt.Query, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(tt.Query) {
+					t.Skipf("Skipping query plan for %s", tt.Query)
+				}
+			}
 			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		})
 	}
@@ -60,6 +65,11 @@ func TestQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.ParallelUnsafeQueries {
 		if strings.Contains(tt.Query, "\v") {
 			t.Skip("todo: encode vertical escape via SQL shell")
+		}
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.Query) {
+				t.Skipf("Skipping query plan for %s", tt.Query)
+			}
 		}
 		t.Run(tt.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)

@@ -30,6 +30,13 @@ type Testdata struct {
 	expected string
 }
 
+func NewTestdataExec(sql string) Testdata {
+	return Testdata{
+		cmd: "exec",
+		sql: sql,
+	}
+}
+
 type fileSetup struct {
 	path    string
 	file    *os.File
