@@ -208,103 +208,53 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
-
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
+			Name: "non-existent procedure in trigger body",
 			SetUpScript: []string{
-				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    "INSERT INTO test (pk) VALUES (1);",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "SELECT * FROM t0;",
+					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
 				},
 				{
-					Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
-					Expected: []sql.Row{{sql.NewOkResult(0)}},
+					Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
+INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
+					Expected: []sql.Row{{sql.OkResult{}}},
 				},
 				{
-					Query: "describe test",
-					Expected: []sql.Row{
-						{"pk", "bigint", "NO", "PRI", "", ""},
-						{"v2", "int", "NO", "", "100", ""},
-					},
+					Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
+					Expected: []sql.Row{{sql.OkResult{}}},
 				},
 				{
-					Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
-					Expected: []sql.Row{{sql.NewOkResult(0)}},
+					Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
+					ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
 				},
 				{
-					Query:    "INSERT INTO test (v2) values (11)",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 100}}},
+					Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
+					Expected: []sql.Row{{sql.OkResult{}}},
 				},
 				{
-					Query:    "SELECT * from test where pk = 100",
-					Expected: []sql.Row{{100, 11}},
+					Query:    "CALL add_entry(4, 'aaa');",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
 				},
 				{
-					Query:       "ALTER TABLE test DROP COLUMN v2, ADD COLUMN v3 int NOT NULL after v2",
-					ExpectedErr: sql.ErrTableColumnNotFound,
+					Query:    "SELECT * FROM t0;",
+					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
 				},
 				{
-					Query: "describe test",
-					Expected: []sql.Row{
-						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-						{"v2", "int", "NO", "", "100", ""},
-					},
+					Query:    "SELECT * FROM t1;",
+					Expected: []sql.Row{{1, 8, "aaa"}},
 				},
 				{
-					Query:       "ALTER TABLE test DROP COLUMN v2, RENAME COLUMN v2 to v3",
-					ExpectedErr: sql.ErrTableColumnNotFound,
+					Query:          "CALL add_entry(54, 'bbb');",
+					ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
 				},
-				{
-					Query: "describe test",
-					Expected: []sql.Row{
-						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-						{"v2", "int", "NO", "", "100", ""},
-					},
-				},
-				{
-					Query:       "ALTER TABLE test RENAME COLUMN v2 to v3, DROP COLUMN v2",
-					ExpectedErr: sql.ErrTableColumnNotFound,
-				},
-				{
-					Query: "describe test",
-					Expected: []sql.Row{
-						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-						{"v2", "int", "NO", "", "100", ""},
-					},
-				},
-				{
-					Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v2, add column (v5 int NOT NULL)",
-					Expected: []sql.Row{{sql.NewOkResult(0)}},
-				},
-				{
-					Query: "DESCRIBE test",
-					Expected: []sql.Row{
-						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-						{"v3", "int", "NO", "", "", ""},
-						{"v4", "int", "YES", "", "", ""},
-						{"v5", "int", "NO", "", "", ""},
-					},
-				},
-				{
-					Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
-					Expected: []sql.Row{{sql.NewOkResult(0)}},
-				},
-				{
-					Query: "describe test",
-					Expected: []sql.Row{
-						{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-						{"v3", "int", "NO", "", "", ""},
-						{"mycol", "int", "NO", "", "", ""},
-						{"v6", "int", "NO", "", "", ""},
-						{"v7", "int", "YES", "", "", ""},
-					},
-				},
-				// TODO: Does not include tests with column renames and defaults.
 			},
 		},
 	}

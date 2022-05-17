@@ -83,6 +83,13 @@ func (s *Scope) MemoNodes() []sql.Node {
 	return s.memos
 }
 
+func (s *Scope) procedureCache() *ProcedureCache {
+	if s == nil {
+		return nil
+	}
+	return s.procedures
+}
+
 func (s *Scope) withProcedureCache(cache *ProcedureCache) *Scope {
 	if s == nil {
 		return &Scope{procedures: cache}
