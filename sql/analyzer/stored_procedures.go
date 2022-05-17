@@ -32,20 +32,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	if scope.proceduresPopulating() {
 		return scope, nil
 	}
-	referencesProcedures := false
-	transform.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(*plan.Call); ok {
-			referencesProcedures = true
-			return false
-		} else if rt, ok := n.(*plan.ResolvedTable); ok {
-			_, rOk := rt.Table.(RoutineTable)
-			if rOk {
-				referencesProcedures = true
-				return false
-			}
-		}
-		return true
-	})
+	referencesProcedures := hasProcedureCall(n)
 	if !referencesProcedures {
 		return scope, nil
 	}
@@ -121,6 +108,24 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 	}
 	return scope, nil
+}
+
+func hasProcedureCall(n sql.Node) bool {
+	referencesProcedures := false
+	transform.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(*plan.Call); ok {
+			referencesProcedures = true
+			return false
+		} else if rt, ok := n.(*plan.ResolvedTable); ok {
+			_, rOk := rt.Table.(RoutineTable)
+			if rOk {
+				referencesProcedures = true
+				return false
+			}
+		}
+		return true
+	})
+	return referencesProcedures
 }
 
 // analyzeProcedureBodies analyzes each statement in a procedure's body individually, as the analyzer is designed to
@@ -344,14 +349,20 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
 	}
+
+	hasProcedureCall := hasProcedureCall(n)
+	if !hasProcedureCall {
+		return n, transform.SameTree, nil
+	}
+
+	scope, err := loadStoredProcedures(ctx, a, n, scope, sel)
+	if err != nil {
+		return nil, false, err
+	}
+
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Call:
-			var err error
-			scope, err = loadStoredProcedures(ctx, a, n, scope, sel)
-			if err != nil {
-				return nil, false, err
-			}
 			return applyProceduresCall(ctx, a, n, scope, sel)
 		default:
 			return n, transform.SameTree, nil
