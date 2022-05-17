@@ -649,8 +649,37 @@ func (d *DropColumn) String() string {
 	return fmt.Sprintf("drop column %s", d.Column)
 }
 
+type dropColumnIter struct {
+	d *DropColumn
+	alterable sql.AlterableTable
+	runOnce bool
+}
+
+func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.runOnce {
+		return nil, io.EOF
+	}
+	i.runOnce = true
+
+	err := i.alterable.DropColumn(ctx, i.d.Column)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (i *dropColumnIter) Close(context *sql.Context) error {
+	return nil
+}
+
 func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	tbl, err := getTableFromDatabase(ctx, d.Database(), d.Table)
+	if err != nil {
+		return nil, err
+	}
+
+	err = d.validate(ctx, tbl)
 	if err != nil {
 		return nil, err
 	}
@@ -660,8 +689,18 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
+	return &dropColumnIter{
+		d:         d,
+		alterable: alterable,
+	}, nil
+}
+
+// validate returns an error if this drop column operation is invalid (because it would invalidate a column default
+// or other constraint).
+// TODO: move this check to analyzer
+func (d *DropColumn) validate(ctx *sql.Context, tbl sql.Table) error {
 	found := false
-	for _, column := range tbl.Schema() {
+	for _, column := range d.targetSchema {
 		if column.Name == d.Column {
 			found = true
 			break
@@ -669,7 +708,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	if !found {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
+		return sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
 	}
 
 	for _, col := range d.targetSchema {
@@ -688,7 +727,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return true
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -696,29 +735,29 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		lowercaseColumn := strings.ToLower(d.Column)
 		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for _, fk := range fks {
 			for _, fkCol := range fk.Columns {
 				if lowercaseColumn == strings.ToLower(fkCol) {
-					return nil, sql.ErrForeignKeyDropColumn.New(d.Column, fk.Name)
+					return sql.ErrForeignKeyDropColumn.New(d.Column, fk.Name)
 				}
 			}
 		}
 		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for _, parentFk := range parentFks {
 			for _, parentFkCol := range parentFk.Columns {
 				if lowercaseColumn == strings.ToLower(parentFkCol) {
-					return nil, sql.ErrForeignKeyDropColumn.New(d.Column, parentFk.Name)
+					return sql.ErrForeignKeyDropColumn.New(d.Column, parentFk.Name)
 				}
 			}
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.DropColumn(ctx, d.Column)
+	return nil
 }
 
 func (d *DropColumn) Schema() sql.Schema {
