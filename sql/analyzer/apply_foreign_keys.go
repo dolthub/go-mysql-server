@@ -92,7 +92,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 		var fkEditor *plan.ForeignKeyEditor
-		if n.IsReplace {
+		if n.IsReplace || len(n.OnDupExprs) > 0 {
 			fkEditor, err = getForeignKeyEditor(ctx, a, tbl, cache, fkChain)
 			if err != nil {
 				return nil, transform.SameTree, err
