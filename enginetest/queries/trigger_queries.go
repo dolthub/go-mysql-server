@@ -1862,6 +1862,169 @@ end;`,
 			},
 		},
 	},
+	{
+		Name: "simple trigger with non-existent table in trigger body",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create trigger insert_into_b after insert on a for each row insert into b values (new.x + 1)",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:       "insert into a values (1), (3), (5)",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "create table b (y int primary key)",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query: "insert into a values (1), (3), (5)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 3}},
+				},
+			},
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{1}, {3}, {5},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {6},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert, update, delete triggers with non-existent table in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE film (film_id smallint unsigned NOT NULL AUTO_INCREMENT, title varchar(128) NOT NULL, description text, PRIMARY KEY (film_id))",
+			"INSERT INTO `film` VALUES (1,'ACADEMY DINOSAUR','A Epic Drama in The Canadian Rockies'),(2,'ACE GOLDFINGER','An Astounding Epistle of a Database Administrator in Ancient China');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TRIGGER ins_film AFTER INSERT ON film FOR EACH ROW BEGIN INSERT INTO film_text (film_id, title, description) VALUES (new.film_id, new.title, new.description); END;",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query: `CREATE TRIGGER upd_film AFTER UPDATE ON film FOR EACH ROW BEGIN
+    IF (old.title != new.title) OR (old.description != new.description) OR (old.film_id != new.film_id)
+    THEN
+        UPDATE film_text
+            SET title=new.title,
+                description=new.description,
+                film_id=new.film_id
+        WHERE film_id=old.film_id;
+    END IF; END;`,
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "CREATE TRIGGER del_film AFTER DELETE ON film FOR EACH ROW BEGIN DELETE FROM film_text WHERE film_id = old.film_id; END;",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:       "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "UPDATE film SET title = 'THE ACADEMY DINOSAUR' WHERE title = 'ACADEMY DINOSAUR'",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "DELETE FROM film WHERE title = 'ACE GOLDFINGER'",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "CREATE TABLE film_text (film_id smallint NOT NULL, title varchar(255) NOT NULL, description text, PRIMARY KEY (film_id))",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film_text",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "UPDATE film SET title = 'DIFFERENT MOVIE' WHERE title = 'ADAPTATION HOLES'",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1, Warnings: 0}}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "DELETE FROM film WHERE title = 'DIFFERENT MOVIE'",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+			"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+			"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t0;",
+				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+			},
+			{
+				Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
+INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
+				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+			},
+			{
+				Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
+				Expected: []sql.Row{{sql.OkResult{}}},
+			},
+			{
+				Query:    "CALL add_entry(4, 'aaa');",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM t0;",
+				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
+			},
+			{
+				Query:    "SELECT * FROM t1;",
+				Expected: []sql.Row{{1, 8, "aaa"}},
+			},
+			{
+				Query:          "CALL add_entry(54, 'bbb');",
+				ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
+			},
+		},
+	},
 }
 
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly
@@ -2782,22 +2945,20 @@ var TriggerErrorTests = []ScriptTest{
 		Query:       "create trigger update_new after update on x for each row BEGIN set new.c = new.a + 1; END",
 		ExpectedErr: sql.ErrInvalidUpdateInAfterTrigger,
 	},
-	// This isn't an error in MySQL until runtime, but we catch it earlier because why not
 	{
 		Name: "source column doesn't exist",
 		SetUpScript: []string{
 			"create table x (a int primary key, b int, c int)",
 		},
 		Query:       "create trigger not_found before insert on x for each row set new.d = new.d + 1",
-		ExpectedErr: sql.ErrTableColumnNotFound,
+		ExpectedErr: sql.ErrUnknownColumn,
 	},
-	// TODO: this isn't an error in MySQL, but we could catch it and make it one
-	// {
-	// 	Name:        "target column doesn't exist",
-	// 	SetUpScript: []string{
-	// 		"create table x (a int primary key, b int, c int)",
-	// 	},
-	// 	Query:       "create trigger not_found before insert on x for each row set new.d = new.a + 1",
-	// 	ExpectedErr: sql.ErrTableColumnNotFound,
-	// },
+	{
+		Name: "target column doesn't exist",
+		SetUpScript: []string{
+			"create table x (a int primary key, b int, c int)",
+		},
+		Query:       "create trigger not_found before insert on x for each row set new.d = new.a + 1",
+		ExpectedErr: sql.ErrUnknownColumn,
+	},
 }

@@ -58,7 +58,13 @@ The import path for the package is `github.com/dolthub/go-mysql-server`.
 To install it, run:
 
 ```
-go get github.com/dolthub/go-mysql-server
+go install github.com/dolthub/go-mysql-server@latest
+```
+
+Or to add it as a dependency to your project, in the directory with the go.mod file, run:
+
+```
+go get github.com/dolthub/go-mysql-server@latest
 ```
 
 ## Go Documentation

@@ -1283,6 +1283,73 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 	return nil
 }
 
+// Sorts the rows in the partitions of the table to be in primary key order.
+func (t *Table) sortRows() {
+	type pkfield struct {
+		i int
+		c *sql.Column
+	}
+	var pk []pkfield
+	for _, column := range t.schema.Schema {
+		if column.PrimaryKey {
+			idx, col := t.getField(column.Name)
+			pk = append(pk, pkfield{idx, col})
+		}
+	}
+
+	less := func(l, r sql.Row) bool {
+		for _, f := range pk {
+			r, err := f.c.Type.Compare(l[f.i], r[f.i])
+			if err != nil {
+				panic(err)
+			}
+			if r != 0 {
+				return r < 0
+			}
+		}
+		return false
+	}
+
+	var idx []partidx
+	for _, k := range t.partitionKeys {
+		p := t.partitions[string(k)]
+		for i := 0; i < len(p); i++ {
+			idx = append(idx, partidx{string(k), i})
+		}
+	}
+
+	sort.Sort(partitionssort{t.partitions, idx, less})
+}
+
+type partidx struct {
+	key string
+	i   int
+}
+
+type partitionssort struct {
+	ps   map[string][]sql.Row
+	idx  []partidx
+	less func(l, r sql.Row) bool
+}
+
+func (ps partitionssort) Len() int {
+	return len(ps.idx)
+}
+
+func (ps partitionssort) Less(i, j int) bool {
+	lidx := ps.idx[i]
+	ridx := ps.idx[j]
+	lr := ps.ps[lidx.key][lidx.i]
+	rr := ps.ps[ridx.key][ridx.i]
+	return ps.less(lr, rr)
+}
+
+func (ps partitionssort) Swap(i, j int) {
+	lidx := ps.idx[i]
+	ridx := ps.idx[j]
+	ps.ps[lidx.key][lidx.i], ps.ps[ridx.key][ridx.i] = ps.ps[ridx.key][ridx.i], ps.ps[lidx.key][lidx.i]
+}
+
 func copyschema(sch sql.Schema) sql.Schema {
 	potentialSchema := make(sql.Schema, len(sch))
 

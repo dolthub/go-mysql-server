@@ -121,10 +121,28 @@ func (c *Call) String() string {
 	return fmt.Sprintf("CALL %s(%s)", c.Name, paramStr)
 }
 
+// DebugString implements sql.DebugStringer
+func (c *Call) DebugString() string {
+	paramStr := ""
+	for i, param := range c.Params {
+		if i > 0 {
+			paramStr += ", "
+		}
+		paramStr += sql.DebugString(param)
+	}
+	tp := sql.NewTreePrinter()
+	tp.WriteNode("CALL %s(%s)", c.Name, paramStr)
+	if c.proc != nil {
+		tp.WriteChildren(sql.DebugString(c.proc.Body))
+	}
+
+	return tp.String()
+}
+
 // RowIter implements the sql.Node interface.
 func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	for i, paramExpr := range c.Params {
-		val, err := paramExpr.Eval(ctx, nil)
+		val, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}

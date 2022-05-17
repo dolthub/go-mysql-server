@@ -23,7 +23,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
@@ -116,8 +115,8 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	}
 
 	s.sessions[conn.ConnectionID].session.SetLogger(
-		logger.WithField(sqle.ConnectionIdLogField, conn.ConnectionID).
-			WithField(sqle.ConnectTimeLogKey, time.Now()),
+		logger.WithField(sql.ConnectionIdLogField, conn.ConnectionID).
+			WithField(sql.ConnectTimeLogKey, time.Now()),
 	)
 
 	return err
@@ -134,6 +133,7 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 		return sql.ErrDatabaseNotFound.New(db)
 	}
 
+	sess.SetLogger(ctx.GetLogger().WithField(sql.ConnectionDbLogField, db))
 	sess.SetCurrentDatabase(db)
 	return nil
 }

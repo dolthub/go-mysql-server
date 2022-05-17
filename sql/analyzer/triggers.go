@@ -40,7 +40,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	// UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
 	// TODO: this might work badly for databases with tables named new and old. Needs tests.
 	var err error
-	transform.InspectExpressions(ct, func(e sql.Expression) bool {
+	transform.InspectExpressions(ct.Body, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "new" {
@@ -73,7 +73,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	}
 
 	// Check to see if the plan sets a value for "old" rows, or if an AFTER trigger assigns to NEW. Both are illegal.
-	transform.InspectExpressionsWithNode(node, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(ct.Body, func(n sql.Node, e sql.Expression) bool {
 		if _, ok := n.(*plan.Set); !ok {
 			return true
 		}
@@ -98,23 +98,32 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 		return nil, transform.SameTree, err
 	}
 
-	// Finally analyze the entire trigger body with an appropriate scope for any "old" and "new" table references. This
-	// will catch (most) other errors in a trigger body. We set the trigger body at the end to pass to final validation
-	// steps at the end of analysis.
-	scopeNode := plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewCrossJoin(
-			plan.NewTableAlias("old", getResolvedTable(ct.Table)),
-			plan.NewTableAlias("new", getResolvedTable(ct.Table)),
-		),
-	)
-
-	triggerLogic, _, err := a.analyzeWithSelector(ctx, ct.Body, (*Scope)(nil).newScope(scopeNode), SelectAllBatches, sel)
-	if err != nil {
-		return nil, transform.SameTree, err
+	trigTable := getResolvedTable(ct.Table)
+	sch := trigTable.Schema()
+	colsList := make(map[string]struct{})
+	for _, c := range sch {
+		colsList[c.Name] = struct{}{}
 	}
 
-	node, err = ct.WithChildren(ct.Table, StripPassthroughNodes(triggerLogic))
+	// Check to see if the columns with "new" and "old" table reference are valid columns from the trigger table.
+	transform.InspectExpressionsWithNode(ct.Body, func(n sql.Node, e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.UnresolvedColumn:
+			if strings.ToLower(e.Table()) == "old" || strings.ToLower(e.Table()) == "new" {
+				if _, ok := colsList[e.Name()]; !ok {
+					err = sql.ErrUnknownColumn.New(e.Name(), e.Table())
+				}
+			}
+		case *deferredColumn:
+			if strings.ToLower(e.Table()) == "old" || strings.ToLower(e.Table()) == "new" {
+				if _, ok := colsList[e.Name()]; !ok {
+					err = sql.ErrUnknownColumn.New(e.Name(), e.Table())
+				}
+			}
+		}
+		return true
+	})
+
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -287,6 +296,13 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
 func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+	// For trigger body analysis, we don't want any row update accumulators applied to insert / update / delete
+	// statements, we need the raw output from them.
+	var noRowUpdateAccumulators RuleSelector
+	noRowUpdateAccumulators = func(id RuleId) bool {
+		return DefaultRuleSelector(id) && id != applyRowUpdateAccumulatorsId
+	}
+
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
 	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
@@ -298,7 +314,8 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("new", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.UpdateStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
@@ -307,13 +324,15 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 				plan.NewTableAlias("new", getResolvedTable(n)),
 			),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	}
 
 	return StripPassthroughNodes(triggerLogic), err

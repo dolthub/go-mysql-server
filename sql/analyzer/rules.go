@@ -37,7 +37,6 @@ var OnceBeforeDefault = []Rule{
 	{setTargetSchemasId, setTargetSchemas},
 	{loadCheckConstraintsId, loadChecks},
 	{resolveAlterColumnId, resolveAlterColumn},
-	{loadStoredProceduresId, loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{validateDropTablesId, validateDropTables},
 	{resolveCreateLikeId, resolveCreateLike},
 	{parseColumnDefaultsId, parseColumnDefaults},
@@ -102,6 +101,7 @@ var OnceAfterDefault = []Rule{
 	{pushdownFiltersId, pushdownFilters},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
+	{replaceSortPkId, replacePkSort},
 	{pushdownProjectionsId, pushdownProjections},
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},

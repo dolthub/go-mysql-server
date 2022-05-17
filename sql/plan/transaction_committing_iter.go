@@ -122,10 +122,10 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	tx := ctx.GetTransaction()
-	// TODO: In the future we should ensure that analyzer supports impicit commits instead of directly
+	// TODO: In the future we should ensure that analyzer supports implicit commits instead of directly
 	// accessing autocommit here.
 	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
-	autocommit, err := isSessionAutocommit(ctx)
+	autocommit, err := IsSessionAutocommit(ctx)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,9 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+// IsSessionAutocommit returns true if the current session is using implicit transaction management
+// through autocommit.
+func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if ReadCommitted(ctx) {
 		return true, nil
 	}

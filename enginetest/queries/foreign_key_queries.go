@@ -1205,4 +1205,30 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "INSERT on DUPLICATE correctly works with FKs",
+		SetUpScript: []string{
+			"INSERT INTO parent values (1,1,1),(2,2,2),(3,3,3)",
+			"ALTER TABLE child ADD CONSTRAINT fk_named FOREIGN KEY (v1) REFERENCES parent(v1);",
+			"INSERT into child values (1, 1, 1)",
+			"CREATE TABLE one (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX v1 (v1));",
+			"CREATE TABLE two (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX v1v2 (v1, v2), CONSTRAINT fk_name_1 FOREIGN KEY (v1) REFERENCES one(v1) ON DELETE CASCADE ON UPDATE CASCADE);",
+			"INSERT INTO one VALUES (1, 1, 4), (2, 2, 5), (3, 3, 6), (4, 4, 5);",
+			"INSERT INTO two VALUES (2, 1, 1), (3, 2, 2), (4, 3, 3), (5, 4, 4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO parent VALUES (1,200,1) ON DUPLICATE KEY UPDATE v1 = values(v1)",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query:    "INSERT INTO one VALUES (1, 2, 4) on duplicate key update v1 = VALUES(v1)",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM two where pk = 2",
+				Expected: []sql.Row{{2, 2, 1}},
+			},
+		},
+	},
 }
