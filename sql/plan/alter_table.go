@@ -741,8 +741,8 @@ func dropColumnFromSchema(schema sql.Schema, column string, tableName string) (s
 		return nil, nil, sql.ErrTableColumnNotFound.New(tableName, column)
 	}
 
-	newSch := make(sql.Schema, len(schema)-1, 0)
-	projections := make([]sql.Expression, len(schema)-1, 0)
+	newSch := make(sql.Schema, len(schema)-1)
+	projections := make([]sql.Expression, len(schema)-1)
 
 	i := 0
 	for j := range schema[:idx] {
@@ -751,11 +751,10 @@ func dropColumnFromSchema(schema sql.Schema, column string, tableName string) (s
 		i++
 	}
 
-	for j := range schema[:idx] {
+	for j := range schema[idx+1:] {
 		schIdx := j + i + 1
-		newSch[i] = schema[schIdx]
-		projections[i] = expression.NewGetField(j, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
-		i++
+		newSch[j+i] = schema[schIdx]
+		projections[j+i] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
 	}
 
 	return newSch, projections, nil
