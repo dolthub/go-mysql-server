@@ -44,6 +44,12 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			nc := *node
 			ct, ok := nc.Table.(RoutineTable)
 
+			var err error
+			scope, err = loadStoredProcedures(ctx, a, n, scope, sel)
+			if err != nil {
+				return nil, false, err
+			}
+
 			dbs := a.Catalog.AllDatabases(ctx)
 			pm := make(map[string][]*plan.Procedure)
 			for _, db := range dbs {

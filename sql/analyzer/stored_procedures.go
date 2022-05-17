@@ -28,9 +28,9 @@ import (
 )
 
 // loadStoredProcedures loads stored procedures for all databases on relevant calls.
-func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (*Scope, error) {
 	if scope.proceduresPopulating() {
-		return n, transform.SameTree, nil
+		return scope, nil
 	}
 	referencesProcedures := false
 	transform.Inspect(n, func(n sql.Node) bool {
@@ -47,7 +47,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		return true
 	})
 	if !referencesProcedures {
-		return n, transform.SameTree, nil
+		return scope, nil
 	}
 	scope = scope.withProcedureCache(NewProcedureCache())
 	scope.procedures.IsPopulating = true
@@ -60,16 +60,16 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		if epdb, ok := database.(sql.ExternalStoredProcedureDatabase); ok {
 			externalProcedures, err := epdb.GetExternalStoredProcedures(ctx)
 			if err != nil {
-				return nil, transform.SameTree, err
+				return nil, err
 			}
 			for _, externalProcedure := range externalProcedures {
 				procedure, err := resolveExternalStoredProcedure(ctx, epdb.Name(), externalProcedure)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 				err = scope.procedures.Register(database.Name(), procedure)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 			}
 		}
@@ -79,48 +79,48 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
 			procedures, err := pdb.GetStoredProcedures(ctx)
 			if err != nil {
-				return nil, transform.SameTree, err
+				return nil, err
 			}
 
 			for _, procedure := range procedures {
 				parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 				cp, ok := parsedProcedure.(*plan.CreateProcedure)
 				if !ok {
-					return nil, transform.SameTree, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
+					return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
 				}
 
 				paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 				analyzedNode, _, err := resolveDeclarations(ctx, a, cp.Procedure, scope, sel)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 				analyzedNode, _, err = resolveProcedureParams(ctx, paramNames, analyzedNode)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 				analyzedNode, _, err = analyzeProcedureBodies(ctx, a, analyzedNode, false, scope, sel)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 				analyzedProc, ok := analyzedNode.(*plan.Procedure)
 				if !ok {
-					return nil, transform.SameTree, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
+					return nil, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
 				}
 
 				err = scope.procedures.Register(database.Name(), analyzedProc)
 				if err != nil {
-					return nil, transform.SameTree, err
+					return nil, err
 				}
 			}
 		}
 	}
-	return n, transform.SameTree, nil
+	return scope, nil
 }
 
 // analyzeProcedureBodies analyzes each statement in a procedure's body individually, as the analyzer is designed to
@@ -347,6 +347,11 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Call:
+			var err error
+			scope, err = loadStoredProcedures(ctx, a, n, scope, sel)
+			if err != nil {
+				return nil, false, err
+			}
 			return applyProceduresCall(ctx, a, n, scope, sel)
 		default:
 			return n, transform.SameTree, nil
