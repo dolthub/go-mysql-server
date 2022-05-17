@@ -296,6 +296,13 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
 func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+	// For trigger body analysis, we don't want any row update accumulators applied to insert / update / delete
+	// statements, we need the raw output from them.
+	var noRowUpdateAccumulators RuleSelector
+	noRowUpdateAccumulators = func(id RuleId) bool {
+		return DefaultRuleSelector(id) && id != applyRowUpdateAccumulatorsId
+	}
+
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
 	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
@@ -308,7 +315,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 			plan.NewTableAlias("new", getResolvedTable(n)),
 		)
 		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, s)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.UpdateStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
@@ -318,14 +325,14 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 			),
 		)
 		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, s)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", getResolvedTable(n)),
 		)
 		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, s)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	}
 
 	return StripPassthroughNodes(triggerLogic), err

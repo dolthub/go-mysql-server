@@ -205,7 +205,7 @@ func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return ([]byte)(msg), nil
 }
 
-// Build creates a new Analyzer using all previous data setted to the Builder
+// Build creates a new Analyzer from the builder parameters
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
 	var batches = []*Batch{

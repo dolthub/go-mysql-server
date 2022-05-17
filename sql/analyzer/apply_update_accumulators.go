@@ -26,13 +26,6 @@ import (
 // applyUpdateAccumulators wraps any Insert, Update, or Delete nodes with RowUpdateAccumulators to tally the results
 // for report to the client.
 func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// Scope will be non-null in the case of trigger execution analysis as well as when analyzing stored procedure logic.
-	// We don't want to apply update accumulators for triggers analysis, but we do during stored procedures.
-	// TODO: probably better to tweak the analyzer rule set for this special case than to do this
-	if scope != nil && scope.procedures == nil {
-		return n, transform.SameTree, nil
-	}
-
 	switch n := n.(type) {
 	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 		accumulatorType, err := getUpdateAccumulatorType(n)
