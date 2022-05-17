@@ -15,10 +15,10 @@
 package analyzer
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"strings"
 )
 
 // addAutocommitNode wraps each query with a TransactionCommittingNode.
@@ -59,67 +59,33 @@ func hasShowWarningsNode(n sql.Node) bool {
 // For USE DATABASE statements, we consider the transaction database to be the one being USEd.
 // If any errors are encountered determining the database for the transaction, an empty string and an error are returned.
 func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) (string, error) {
-	var dbName string
-	switch n := parsed.(type) {
-	case sql.Databaser:
-		database := n.Database()
-		if database != nil {
-			dbName = database.Name()
-		}
-	case sql.Databaseable:
-		dbName = n.Database()
-
-	case *plan.QueryProcess, *plan.TransactionCommittingNode, *plan.RowUpdateAccumulator:
-		return GetTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
-	case *plan.DropTable:
-		dbName = getDbHelper(n.Tables...)
-	case *plan.Truncate:
-		dbName = getDbHelper(n.Child)
-	case *plan.Values, *plan.Set, *plan.Sort, *plan.Exchange, *plan.Call, *plan.DecoratedNode:
-		// TODO: First pass experimenting with refactoring this function
-	case *plan.Project, *plan.GroupBy:
-		var dbNames []string
-		transform.Inspect(n, func(node sql.Node) bool {
-			switch n2 := node.(type) {
-			case sql.Databaseable:
-				if n2.Database() != "" {
-					dbNames = append(dbNames, n2.Database())
-				}
-			case sql.Databaser:
-				if n2.Database() != nil && n2.Database().Name() != "" {
-					dbNames = append(dbNames, n2.Database().Name())
-				}
+	dbNames := make(map[string]struct{})
+	transform.Inspect(parsed, func(node sql.Node) bool {
+		switch n2 := node.(type) {
+		case sql.Databaseable:
+			if n2.Database() != "" {
+				dbNames[n2.Database()] = struct{}{}
 			}
-			return true
-		})
-		if len(dbNames) == 1 {
-			dbName = dbNames[0]
-		} else if len(dbNames) > 1 {
-			// TODO: Throw error about there being too many dbs referenced in the expression
+		case sql.Databaser:
+			if n2.Database() != nil && n2.Database().Name() != "" {
+				dbNames[n2.Database().Name()] = struct{}{}
+			}
 		}
+		return true
+	})
 
-	default:
-		return "", fmt.Errorf("unexpected statement type: %T", n)
+	if len(dbNames) == 1 {
+		for dbName := range dbNames {
+			return dbName, nil
+		}
+	} else if len(dbNames) > 1 {
+		s := make([]string, 0, len(dbNames))
+		for dbName := range dbNames {
+			s = append(s, dbName)
+		}
+		return "", sql.ErrMultipleDatabaseTransaction.New(strings.Join(s, ", "))
 	}
-	if dbName != "" {
-		return dbName, nil
-	}
+
+	// If no databases were explicitly referenced, then return any session selected database
 	return ctx.GetCurrentDatabase(), nil
-}
-
-// getDbHelper returns the first database name from a table-like node
-func getDbHelper(tables ...sql.Node) string {
-	if len(tables) == 0 {
-		return ""
-	}
-	switch t := tables[0].(type) {
-	case *plan.UnresolvedTable:
-		return t.Database()
-	case *plan.ResolvedTable:
-		return t.Database.Name()
-	case *plan.IndexedTableAccess:
-		return t.Database().Name()
-	default:
-	}
-	return ""
 }
