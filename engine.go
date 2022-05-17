@@ -19,7 +19,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/pkg/errors"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Config for the Engine.
@@ -174,17 +175,29 @@ func (e *Engine) QueryNodeWithBindings(
 		err      error
 	)
 
+	if parsed == nil {
+		parsed, err = parse.Parse(ctx, query)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	_, err = e.beginTransaction(ctx, parsed)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if p, ok := e.preparedDataForSession(ctx.Session); ok && p.Query == query {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
 	} else {
 		analyzed, err = e.analyzeQuery(ctx, query, parsed, bindings)
 	}
 	if err != nil {
-		return nil, nil, err
-	}
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
 
-	_, err = e.beginTransaction(ctx, analyzed)
-	if err != nil {
 		return nil, nil, err
 	}
 
@@ -200,6 +213,11 @@ func (e *Engine) QueryNodeWithBindings(
 		iter, err = analyzed.RowIter(ctx, nil)
 	}
 	if err != nil {
+		err2 := clearAutocommitTransaction(ctx)
+		if err2 != nil {
+			err = errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+		}
+
 		return nil, nil, err
 	}
 
@@ -212,6 +230,32 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	return analyzed.Schema(), iter, nil
+}
+
+// clearAutocommitTransaction unsets the transaction from the current session if it is an implicitly
+// created autocommit transaction. This enables the next request to have an autocommit transaction
+// correctly started.
+func clearAutocommitTransaction(ctx *sql.Context) error {
+	// The GetIgnoreAutoCommit property essentially says the current transaction is an explicit,
+	// user-created transaction and we should not process autocommit. So, if it's set, then we
+	// don't need to do anything here to clear implicit transaction state.
+	//
+	// TODO: This logic would probably read more clearly if we could just ask the session/ctx if the
+	//       current transaction is automatically created or explicitly created by the caller.
+	if ctx.GetIgnoreAutoCommit() {
+		return nil
+	}
+
+	autocommit, err := plan.IsSessionAutocommit(ctx)
+	if err != nil {
+		return err
+	}
+
+	if autocommit {
+		ctx.SetTransaction(nil)
+	}
+
+	return nil
 }
 
 func (e *Engine) cachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
