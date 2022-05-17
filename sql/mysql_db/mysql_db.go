@@ -103,6 +103,103 @@ func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnect
 	return nil
 }
 
+// loadPrivilegeTypes is a helper method that loads privilege types given the length and loading function
+// and returns them as a set
+func loadPrivilegeTypes(n int, f func(j int) int32) map[sql.PrivilegeType]struct{} {
+	privs := make(map[sql.PrivilegeType]struct{}, n)
+	for i := 0; i < n; i++ {
+		privs[sql.PrivilegeType(f(i))] = struct{}{}
+	}
+	return privs
+}
+
+func loadColumn(serialColumn *serial.PrivilegeSetColumn) *PrivilegeSetColumn {
+	return &PrivilegeSetColumn{
+		name:  string(serialColumn.Name()),
+		privs: loadPrivilegeTypes(serialColumn.PrivsLength(), serialColumn.Privs),
+	}
+}
+
+func loadTable(serialTable *serial.PrivilegeSetTable) *PrivilegeSetTable {
+	columns := make(map[string]PrivilegeSetColumn, serialTable.ColumnsLength())
+	for i := 0; i < serialTable.ColumnsLength(); i++ {
+		serialColumn := new(serial.PrivilegeSetColumn)
+		if !serialTable.Columns(serialColumn, i) {
+			continue
+		}
+		column := loadColumn(serialColumn)
+		columns[column.Name()] = *column
+	}
+
+	return &PrivilegeSetTable{
+		name:    string(serialTable.Name()),
+		privs:   loadPrivilegeTypes(serialTable.PrivsLength(), serialTable.Privs),
+		columns: columns,
+	}
+}
+
+func loadDatabase(serialDatabase *serial.PrivilegeSetDatabase) *PrivilegeSetDatabase {
+	tables := make(map[string]PrivilegeSetTable, serialDatabase.TablesLength())
+	for i := 0; i < serialDatabase.TablesLength(); i++ {
+		serialTable := new(serial.PrivilegeSetTable)
+		if !serialDatabase.Tables(serialTable, i) {
+			continue
+		}
+		table := loadTable(serialTable)
+		tables[table.Name()] = *table
+	}
+
+	return &PrivilegeSetDatabase{
+		name:   string(serialDatabase.Name()),
+		privs:  loadPrivilegeTypes(serialDatabase.PrivsLength(), serialDatabase.Privs),
+		tables: tables,
+	}
+}
+
+func loadPrivilegeSet(serialPrivilegeSet *serial.PrivilegeSet) *PrivilegeSet {
+	databases := make(map[string]PrivilegeSetDatabase, serialPrivilegeSet.DatabasesLength())
+	for i := 0; i < serialPrivilegeSet.DatabasesLength(); i++ {
+		serialDatabase := new(serial.PrivilegeSetDatabase)
+		if !serialPrivilegeSet.Databases(serialDatabase, i) {
+			continue
+		}
+		database := loadDatabase(serialDatabase)
+		databases[database.Name()] = *database
+	}
+
+	return &PrivilegeSet{
+		globalStatic:  loadPrivilegeTypes(serialPrivilegeSet.GlobalStaticLength(), serialPrivilegeSet.GlobalStatic),
+		globalDynamic: nil,
+		databases:     databases,
+	}
+}
+
+func loadUser(serialUser *serial.User) *User {
+	serialPrivilegeSet := new(serial.PrivilegeSet)
+	serialUser.PrivilegeSet(serialPrivilegeSet)
+	privilegeSet := loadPrivilegeSet(serialPrivilegeSet)
+
+	return &User{
+		User:                string(serialUser.User()),
+		Host:                string(serialUser.Host()),
+		PrivilegeSet:        *privilegeSet,
+		Plugin:              string(serialUser.Plugin()),
+		Password:            string(serialUser.Password()),
+		PasswordLastChanged: time.Unix(serialUser.PasswordLastChanged(), 0),
+		Locked:              serialUser.Locked(),
+		Attributes:          nil, // TODO
+	}
+}
+
+func loadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
+	return &RoleEdge{
+		FromHost: string(serialRoleEdge.FromHost()),
+		FromUser: string(serialRoleEdge.FromUser()),
+		ToHost:   string(serialRoleEdge.ToHost()),
+		ToUser:   string(serialRoleEdge.ToUser()),
+	}
+}
+
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
 func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
@@ -113,23 +210,13 @@ func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
 
 	t.Enabled = true
 
-	// TODO: do we want schema to be stored too?
 	// Fill in user table
 	for i := 0; i < data.UserLength(); i++ {
 		serialUser := new(serial.User)
 		if !data.User(serialUser, i) {
 			continue
 		}
-		user := &User{
-			User:                string(serialUser.User()),
-			Host:                string(serialUser.Host()),
-			PrivilegeSet:        PrivilegeSet{},
-			Plugin:              string(serialUser.Plugin()),
-			Password:            string(serialUser.Password()),
-			PasswordLastChanged: time.Unix(int64(serialUser.PasswordLastChanged()), 0),
-			Locked:              serialUser.Locked(),
-			Attributes:          nil,
-		}
+		user := loadUser(serialUser)
 		if err := t.user.data.Put(ctx, user); err != nil {
 			return err
 		}
@@ -141,12 +228,7 @@ func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
 		if !data.RoleEdges(serialRoleEdge, i) {
 			continue
 		}
-		role := &RoleEdge{
-			FromHost: string(serialRoleEdge.FromHost()),
-			FromUser: string(serialRoleEdge.FromUser()),
-			ToHost:   string(serialRoleEdge.ToHost()),
-			ToUser:   string(serialRoleEdge.ToUser()),
-		}
+		role := loadRoleEdge(serialRoleEdge)
 		if err := t.role_edges.data.Put(ctx, role); err != nil {
 			return err
 		}
