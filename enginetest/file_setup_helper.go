@@ -1,56 +1,56 @@
 package enginetest
 
 var (
-	mytable           []string
-	keylessSetup      []string
-	versionedSetup    []string
-	specialSetup      []string
-	simpleSetup       []string
-	ordinalSetup      []string
-	spatialSetup      []string
-	jsonSetup         []string
-	fooSetup          []string
-	graphSetup        []string
-	reservedSetup     []string
-	checksSetup       []string
-	nullsSetup        []string
-	complexIndexSetup []string
-	loadDataSetup     []string
+	mytable           [][]Testdata
+	keylessSetup      [][]Testdata
+	versionedSetup    [][]Testdata
+	specialSetup      [][]Testdata
+	simpleSetup       [][]Testdata
+	ordinalSetup      [][]Testdata
+	spatialSetup      [][]Testdata
+	jsonSetup         [][]Testdata
+	fooSetup          [][]Testdata
+	graphSetup        [][]Testdata
+	reservedSetup     [][]Testdata
+	checksSetup       [][]Testdata
+	nullsSetup        [][]Testdata
+	complexIndexSetup [][]Testdata
+	loadDataSetup     [][]Testdata
 )
 
 func init() {
-	keylessSetup = []string{"mydb", "keyless"}
-	versionedSetup = []string{"mydb", "myhistorytable"}
-	specialSetup = []string{
-		"mydb",
-		"autoincrement",
-		"bigtable",
-		"datetimetable",
-		"emptytable",
-		"fk_tbl",
-		"floattable",
-		"newlinetable",
-		"niltable",
-		"othertable",
-		"specialtable",
-		"stringandtable",
-		"tabletest",
-		"typestable",
-		"people",
-		"reserved_keywords",
+	keylessSetup = [][]Testdata{MydbData, KeylessData}
+	versionedSetup = [][]Testdata{MydbData, MyhistorytableData}
+	specialSetup = [][]Testdata{
+		MydbData,
+		AutoincrementData,
+		BigtableData,
+		DatetimetableData,
+		EmptytableData,
+		Fk_tblData,
+		FloattableData,
+		NewlinetableData,
+		NiltableData,
+		OthertableData,
+		SpecialtableData,
+		StringandtableData,
+		TabletestData,
+		TypestableData,
+		PeopleData,
+		Reserved_keywordsData,
 	}
-	ordinalSetup = []string{"mydb", "invert_pk", "ordinals_ddl"}
-	fooSetup = []string{"mydb", "foo"}
-	jsonSetup = []string{"mydb", "jsontable"}
-	spatialSetup = []string{"mydb", "spatial"}
-	pksSetup := []string{"mydb", "pk_tables"}
-	graphSetup = []string{"mydb", "graph_tables"}
-	reservedSetup = []string{"mydb", "reserved"}
-	mytable = []string{"mydb", "mytable"}
-	checksSetup = []string{"mydb", "check_constraint"}
-	nullsSetup = []string{"mydb", "null_ranges"}
-	complexIndexSetup = []string{"mydb", "comp_index_tables"}
-	loadDataSetup = []string{"mydb", "loadtable"}
+	ordinalSetup = [][]Testdata{MydbData, Invert_pkData, Ordinals_ddlData}
+	fooSetup = [][]Testdata{MydbData, FooData}
+	jsonSetup = [][]Testdata{MydbData, JsontableData}
+	spatialSetup = [][]Testdata{MydbData, SpatialData}
+	pksSetup := [][]Testdata{MydbData, Pk_tablesData}
+	graphSetup = [][]Testdata{MydbData, Graph_tablesData}
+	reservedSetup = [][]Testdata{MydbData, Reserved_keywordsData}
+	mytable = [][]Testdata{MydbData, MytableData}
+	checksSetup = [][]Testdata{MydbData, Check_constraintData}
+	nullsSetup = [][]Testdata{MydbData, Null_rangesData}
+	complexIndexSetup = [][]Testdata{MydbData, Comp_index_tablesData}
+	loadDataSetup = [][]Testdata{MydbData, LoadtableData}
 	simpleSetup = concatenateSetupSources(
 		mytable,
 		specialSetup,
@@ -62,11 +62,10 @@ func init() {
 		fooSetup,
 		graphSetup,
 	)
-
 }
 
-func concatenateSetupSources(in ...[]string) []string {
-	out := make([]string, 0)
+func concatenateSetupSources(in ...[][]Testdata) [][]Testdata {
+	out := make([][]Testdata, 0)
 	for i := range in {
 		out = append(out, in[i]...)
 	}

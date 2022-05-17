@@ -339,7 +339,7 @@ func TestBrokenQueries(t *testing.T) {
 
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
-	harness.SetSetup("mydb", "pk_tables", "niltable")
+	harness.SetSetup(enginetest.MydbData, enginetest.Pk_tablesData, enginetest.NiltableData)
 	e, err := harness.NewEngine(t)
 	if err != nil {
 		log.Fatal(err)
@@ -711,14 +711,6 @@ func TestDropCheckConstraints(t *testing.T) {
 
 func TestDropConstraints(t *testing.T) {
 	enginetest.TestDropConstraints(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestExplode(t *testing.T) {
-	enginetest.TestExplode(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestExplodePrepared(t *testing.T) {
-	enginetest.TestExplodePrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestReadOnly(t *testing.T) {

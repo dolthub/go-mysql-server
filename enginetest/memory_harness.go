@@ -38,7 +38,7 @@ type MemoryHarness struct {
 	checkpointTables       []*memory.Table
 	dbOff                  []int
 	dbNames                []string
-	setupData              []string
+	setupData              []Testdata
 }
 
 func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
@@ -103,17 +103,16 @@ func (s SkippingMemoryHarness) SkipQueryTest(query string) bool {
 	return true
 }
 
-func (m *MemoryHarness) SetSetup(setupData ...string) {
-	m.setupData = setupData
+func (m *MemoryHarness) SetSetup(setupData ...[]Testdata) {
+	m.setupData = nil
+	for i := range setupData {
+		m.setupData = append(m.setupData, setupData[i]...)
+	}
 	return
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	setup, err := newFileSetups(m.setupData...)
-	if err != nil {
-		return nil, err
-	}
-	return NewEngineWithSetup(t, m, setup)
+	return NewEngineWithSetup(t, m, m.setupData)
 }
 
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {

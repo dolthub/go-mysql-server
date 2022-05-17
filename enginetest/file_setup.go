@@ -19,10 +19,10 @@ type ScriptHarness interface {
 type setupSource interface {
 	Next() (bool, error)
 	Close() error
-	Data() testdata
+	Data() Testdata
 }
 
-type testdata struct {
+type Testdata struct {
 	pos      string // file and line number
 	cmd      string // exec, query, ...
 	sql      string
@@ -34,17 +34,20 @@ type fileSetup struct {
 	path    string
 	file    *os.File
 	scanner *lineScanner
-	data    testdata
+	data    Testdata
 	rewrite *bytes.Buffer
 }
 
-const setupDir = "testdata/setup"
+const setupDir = "./testdata/setup"
 
-func newFileSetups(paths ...string) ([]setupSource, error) {
+func NewFileSetups(paths ...string) ([]setupSource, error) {
 	sources := make([]setupSource, len(paths))
-	var err error
 	for i := range paths {
-		sources[i], err = newFileSetup(filepath.Join(setupDir, paths[i]))
+		d, err := filepath.Abs(setupDir)
+		if err != nil {
+			return nil, err
+		}
+		sources[i], err = newFileSetup(filepath.Join(d, paths[i]))
 		if err != nil {
 			return nil, err
 		}
@@ -67,12 +70,12 @@ func newFileSetup(path string) (*fileSetup, error) {
 
 var _ setupSource = (*fileSetup)(nil)
 
-func (f *fileSetup) Data() testdata {
+func (f *fileSetup) Data() Testdata {
 	return f.data
 }
 
 func (f *fileSetup) Next() (bool, error) {
-	f.data = testdata{}
+	f.data = Testdata{}
 	for f.scanner.Scan() {
 		line := f.scanner.Text()
 		f.emit(line)
@@ -158,4 +161,52 @@ func (l *lineScanner) Scan() bool {
 		l.line++
 	}
 	return ok
+}
+
+type stringSetup struct {
+	setup []string
+	pos   int
+	data  Testdata
+}
+
+var _ setupSource = (*stringSetup)(nil)
+
+func NewStringSetup(s ...string) []setupSource {
+	return []setupSource{
+		stringSetup{
+			setup: s,
+			pos:   0,
+			data:  Testdata{},
+		},
+	}
+}
+
+func (s stringSetup) Next() (bool, error) {
+	if s.pos > len(s.setup) {
+		return false, io.EOF
+	}
+
+	stmt, err := ast.Parse(s.setup[s.pos])
+	if err != nil {
+		return false, err
+	}
+
+	d := Testdata{
+		pos:  fmt.Sprintf("line %d, query: '%s'", s.pos, s.setup[s.pos]),
+		cmd:  "exec",
+		sql:  s.setup[s.pos],
+		stmt: stmt,
+	}
+	s.data = d
+	s.pos++
+	return true, nil
+}
+
+func (s stringSetup) Close() error {
+	s.setup = nil
+	return nil
+}
+
+func (s stringSetup) Data() Testdata {
+	return s.data
 }

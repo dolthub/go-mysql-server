@@ -41,7 +41,7 @@ type Harness interface {
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
 	// SetSetup injects a test suite's setup scripts
-	SetSetup(...string)
+	SetSetup(...[]Testdata)
 	// NewEngine creates a new sqle.Engine
 	NewEngine(*testing.T) (*sqle.Engine, error)
 }

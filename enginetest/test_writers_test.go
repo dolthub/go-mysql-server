@@ -167,7 +167,7 @@ func TestWriteCreateTableQueries(t *testing.T) {
 	require.NoError(t, err)
 
 	harness := NewDefaultMemoryHarness()
-	harness.SetSetup("mydb", "mytable", "foo")
+	harness.SetSetup(MydbData, MytableData, FooData)
 
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var CreateTableQueries = []WriteQueryTest{\n")
