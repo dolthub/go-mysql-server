@@ -121,7 +121,7 @@ func (c *Call) String() string {
 	return fmt.Sprintf("CALL %s(%s)", c.Name, paramStr)
 }
 
-// String implements the sql.Node interface.
+// DebugString implements sql.DebugStringer
 func (c *Call) DebugString() string {
 	paramStr := ""
 	for i, param := range c.Params {
