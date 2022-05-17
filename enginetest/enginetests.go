@@ -6047,15 +6047,12 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("drop column prevents foreign key violations", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t36 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "create table t37 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t36 ADD COLUMN j int, ADD COLUMN k int")
-		RunQuery(t, e, harness, "ALTER TABLE t36 ADD CONSTRAINT test_check CHECK (j < 12345)")
+		RunQuery(t, e, harness, "create table t36 (i bigint primary key, j varchar(20))")
+		RunQuery(t, e, harness, "create table t37 (i bigint primary key, j varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t36 ADD key (j)")
+		RunQuery(t, e, harness, "ALTER TABLE t37 ADD constraint fk_36 foreign key (j) references t36(j)")
 
-		AssertErr(t, e, harness, "ALTER TABLE mytable DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
-
-		RunQuery(t, e, harness, "ALTER TABLE mytable DROP COLUMN k")
-		TestQuery(t, harness, e, "show create table t34", nil, nil)
+		AssertErr(t, e, harness, "ALTER TABLE t37 DROP COLUMN j", sql.ErrForeignKeyDropColumn)
 	})
 
 	t.Run("disable keys / enable keys", func(t *testing.T) {
