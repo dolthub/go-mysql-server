@@ -81,7 +81,8 @@ func (c *CreateTrigger) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 func (c *CreateTrigger) Resolved() bool {
-	return c.ddlNode.Resolved() && c.Table.Resolved() && c.Body.Resolved()
+	// c.Body can be unresolved since it can have unresolved table reference to non-existent table
+	return c.ddlNode.Resolved() && c.Table.Resolved()
 }
 
 func (c *CreateTrigger) Schema() sql.Schema {
@@ -89,17 +90,16 @@ func (c *CreateTrigger) Schema() sql.Schema {
 }
 
 func (c *CreateTrigger) Children() []sql.Node {
-	return []sql.Node{c.Table, c.Body}
+	return []sql.Node{c.Table}
 }
 
 func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 2)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 
 	nc := *c
 	nc.Table = children[0]
-	nc.Body = children[1]
 	return &nc, nil
 }
 

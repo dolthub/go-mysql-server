@@ -88,7 +88,7 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
-	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
+	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
@@ -149,7 +149,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 
 	defer h.e.CloseSession(ctx)
 
-	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
+	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
 
 func (h *Handler) ComMultiQuery(

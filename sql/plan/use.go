@@ -68,6 +68,8 @@ func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	ctx.SetCurrentDatabase(dbName)
+	ctx.SetLogger(ctx.GetLogger().WithField(sql.ConnectionDbLogField, dbName))
+
 	return sql.RowsToRowIter(), nil
 }
 
