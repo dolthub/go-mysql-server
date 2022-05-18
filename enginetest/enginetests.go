@@ -6022,12 +6022,12 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN k")
 		TestQuery(t, harness, e, "show create table t34",
 			[]sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
-					"  `i` bigint NOT NULL,\n" +
-					"  `s` varchar(20),\n" +
-					"  `j` int,\n" +
-					"  PRIMARY KEY (`i`),\n" +
-					"  CONSTRAINT `test_check` CHECK ((`j` < 12345))\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  `j` int,\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  CONSTRAINT `test_check` CHECK ((`j` < 12345))\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			nil)
 	})
 
@@ -6043,7 +6043,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 				"  PRIMARY KEY (`i`),\n" +
 				"  UNIQUE KEY `test_key` (`s`)\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		nil)
+			nil)
 	})
 
 	t.Run("drop column prevents foreign key violations", func(t *testing.T) {

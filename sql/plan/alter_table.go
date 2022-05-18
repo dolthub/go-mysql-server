@@ -650,9 +650,9 @@ func (d *DropColumn) String() string {
 }
 
 type dropColumnIter struct {
-	d *DropColumn
+	d         *DropColumn
 	alterable sql.AlterableTable
-	runOnce bool
+	runOnce   bool
 }
 
 func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -690,7 +690,7 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 	droppedColIdx := oldPkSchema.IndexOf(i.d.Column, i.alterable.Name())
 
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, 	oldPkSchema.Schema[droppedColIdx])
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx])
 	if !rewriteRequested {
 		return false, nil
 	}
