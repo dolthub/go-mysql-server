@@ -406,7 +406,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	}
 
 	if includeTable(includedTables, "other_table") {
-		wrapInTransaction(t, myDb, harness, func() {
+		wrapInTransaction(t, foo, harness, func() {
 			table, err = harness.NewTable(foo, "other_table", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
 				{Name: "number", Type: sql.Int32, Source: "other_table"},
