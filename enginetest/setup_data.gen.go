@@ -384,6 +384,27 @@ var MytableData = []Testdata{
 	},
 }
 
+var Mytable_del_idxData = []Testdata{
+	{
+		pos:      "testdata/setup/mytable_del_idx:1",
+		cmd:      "exec",
+		sql:      `drop index mytable_s on mytable;`,
+		expected: "",
+	},
+	{
+		pos:      "testdata/setup/mytable_del_idx:5",
+		cmd:      "exec",
+		sql:      `drop index mytable_i_s on mytable;`,
+		expected: "",
+	},
+	{
+		pos:      "testdata/setup/mytable_del_idx:9",
+		cmd:      "exec",
+		sql:      `drop index idx_si on mytable;`,
+		expected: "",
+	},
+}
+
 var NewlinetableData = []Testdata{
 	{
 		pos:      "testdata/setup/newlinetable:1",
@@ -737,6 +758,15 @@ var TabletestData = []Testdata{
 		pos:      "testdata/setup/tabletest:8",
 		cmd:      "exec",
 		sql:      `insert into tabletest values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+		expected: "",
+	},
+}
+
+var TestdbData = []Testdata{
+	{
+		pos:      "testdata/setup/testdb:1",
+		cmd:      "exec",
+		sql:      `create database test;`,
 		expected: "",
 	},
 }

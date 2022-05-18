@@ -720,6 +720,10 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    "select * from b where x < 2",
+				Expected: []sql.Row{{1}},
+			},
+			{
 				Query:    "select found_rows()",
 				Expected: []sql.Row{{1}},
 			},

@@ -41,7 +41,7 @@ func TestFileSourceScanner(t *testing.T) {
 }
 
 func TestCodegenSetups(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var buf bytes.Buffer
 
 	fmt.Fprintf(&buf, "package enginetest\n\n")

@@ -454,29 +454,28 @@ var TriggerTests = []ScriptTest{
 	{
 		Name: "Create a trigger on a new database and verify that the trigger works when selected on another database",
 		SetUpScript: []string{
-			"create database test",
-			"create table test.a (x int primary key)",
-			"create table test.b (y int primary key)",
-			"use test",
-			"create trigger insert_into_b after insert on test.a for each row insert into test.b values (new.x + 1)",
+			"create table foo.a (x int primary key)",
+			"create table foo.b (y int primary key)",
+			"use foo",
+			"create trigger insert_into_b after insert on foo.a for each row insert into foo.b values (new.x + 1)",
 			"use mydb",
-			"insert into test.a values (1), (3), (5)",
+			"insert into foo.a values (1), (3), (5)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from test.a order by 1",
+				Query: "select x from foo.a order by 1",
 				Expected: []sql.Row{
 					{1}, {3}, {5},
 				},
 			},
 			{
-				Query: "select y from test.b order by 1",
+				Query: "select y from foo.b order by 1",
 				Expected: []sql.Row{
 					{2}, {4}, {6},
 				},
 			},
 			{
-				Query: "insert into test.a values (7), (9)",
+				Query: "insert into foo.a values (7), (9)",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 2}},
 				},
@@ -2736,25 +2735,24 @@ var BrokenTriggerQueries = []ScriptTest{
 	{
 		Name: "trigger after update, delete from other table",
 		SetUpScript: []string{
-			"create database test",
-			"create table test.a (x int primary key)",
-			"create table test.b (y int primary key)",
-			"insert into test.a values (0), (2), (4), (6), (8)",
-			"insert into test.b values (1), (3), (5), (7), (9)",
-			"use test",
+			"create table foo.a (x int primary key)",
+			"create table foo.b (y int primary key)",
+			"insert into foo.a values (0), (2), (4), (6), (8)",
+			"insert into foo.b values (1), (3), (5), (7), (9)",
+			"use foo",
 			"create trigger insert_into_b after update on a for each row insert into b values (old.x + new.x + 1)",
 			"use mydb",
-			"update test.a set x = x + 1 where x in (2,4)",
+			"update foo.a set x = x + 1 where x in (2,4)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from test.a order by 1",
+				Query: "select x from foo.a order by 1",
 				Expected: []sql.Row{
 					{0}, {3}, {5}, {6}, {8},
 				},
 			},
 			{
-				Query: "select y from test.b order by 1",
+				Query: "select y from foo.b order by 1",
 				Expected: []sql.Row{
 					{1}, {3}, {7},
 				},

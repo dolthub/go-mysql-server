@@ -130,6 +130,7 @@ func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	for _, tt := range queries.InfoSchemaQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
+	harness.SetSetup(MydbData, MytableData, Fk_tblData, FooData)
 	for _, script := range queries.InfoSchemaScripts {
 		TestScriptPrepared(t, harness, script)
 	}
@@ -185,7 +186,7 @@ func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 // TestInfoSchema runs tests of the information_schema database
 func TestInfoSchema(t *testing.T, h Harness) {
 	h.SetSetup(MydbData, MytableData, Fk_tblData, FooData)
-	RunQueryTests(t, h, queries.InfoSchemaQueries)
+	//RunQueryTests(t, h, queries.InfoSchemaQueries)
 
 	for _, script := range queries.InfoSchemaScripts {
 		TestScript(t, h, script)
@@ -550,7 +551,7 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
 }
 
 func TestInsertInto(t *testing.T, harness Harness) {
-	harness.SetSetup(MydbData, MytableData, KeylessData, NiltableData, TypestableData, EmptytableData, AutoincrementData, OthertableData)
+	harness.SetSetup(MydbData, MytableData, Mytable_del_idxData, KeylessData, NiltableData, TypestableData, EmptytableData, AutoincrementData, OthertableData)
 	for _, insertion := range queries.InsertQueries {
 		runWriteQueryTest(t, harness, insertion)
 	}
@@ -629,7 +630,7 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 }
 
 func TestUpdate(t *testing.T, harness Harness) {
-	harness.SetSetup(MydbData, MytableData, FloattableData, NiltableData, TypestableData, Pk_tablesData, OthertableData, TabletestData)
+	harness.SetSetup(MydbData, MytableData, Mytable_del_idxData, FloattableData, NiltableData, TypestableData, Pk_tablesData, OthertableData, TabletestData)
 	for _, tt := range queries.UpdateTests {
 		runWriteQueryTest(t, harness, tt)
 	}
@@ -732,7 +733,7 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 }
 
 func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
-	harness.SetSetup(MydbData, MytableData, OthertableData, TypestableData, Pk_tablesData, FloattableData, NiltableData, TabletestData)
+	harness.SetSetup(MydbData, MytableData, Mytable_del_idxData, OthertableData, TypestableData, Pk_tablesData, FloattableData, NiltableData, TabletestData)
 	for _, tt := range queries.UpdateTests {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
@@ -746,7 +747,7 @@ func TestDeleteQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 func TestInsertQueriesPrepared(t *testing.T, harness Harness) {
-	harness.SetSetup(MydbData, MytableData, KeylessData, TypestableData, NiltableData, EmptytableData, AutoincrementData, OthertableData)
+	harness.SetSetup(MydbData, MytableData, Mytable_del_idxData, KeylessData, TypestableData, NiltableData, EmptytableData, AutoincrementData, OthertableData)
 	for _, tt := range queries.InsertQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
@@ -1342,6 +1343,7 @@ func TestComplexIndexQueries(t *testing.T, harness Harness) {
 }
 
 func TestTriggers(t *testing.T, harness Harness) {
+	harness.SetSetup(MydbData, FooData)
 	for _, script := range queries.TriggerTests {
 		TestScript(t, harness, script)
 	}
@@ -1732,9 +1734,8 @@ func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest
 		if script.SkipPrepared {
 			t.Skip()
 		}
-		myDb := harness.NewDatabase("mydb")
-		databases := []sql.Database{myDb}
-		e := NewEngineWithDbs(t, harness, databases)
+
+		e := mustNewEngine(t, harness)
 		defer e.Close()
 		TestScriptWithEnginePrepared(t, e, harness, script)
 	})
@@ -5761,7 +5762,7 @@ func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
 
 // NewEngineWithSetup creates test data and returns an engine using the harness provided.
 func NewEngineWithSetup(t *testing.T, harness Harness, setup []Testdata) (*sqle.Engine, error) {
-	dbs := harness.NewDatabases("mydb", "foo")
+	dbs := harness.NewDatabases("mydb")
 	dbs = append(dbs, information_schema.NewInformationSchemaDatabase())
 	pro := harness.NewDatabaseProvider(dbs...)
 	e := NewEngineWithProvider(t, harness, pro)
