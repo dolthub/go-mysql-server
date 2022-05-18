@@ -35,10 +35,6 @@ table PrivilegeSet {
     databases:[PrivilegeSetDatabase];
 }
 
-table Attributes {
-    val:string;
-}
-
 // Entries in the user table
 table User {
     user:string;
@@ -48,7 +44,8 @@ table User {
     password:string;
     password_last_changed:int64; // represents time.Time
     locked:bool;
-    attributes:Attributes; // represents *string
+    is_attributes_null:bool; // true if attributes is null
+    attributes:string; // represents *string (with help from is_attributes_null)
 }
 
 // Entries in the role_edges table
@@ -65,7 +62,5 @@ table MySQLDb {
     user:[User];
     role_edges:[RoleEdge];
 }
-
-// TODO: do i need a fileidentifier? there's only 1 file...
 
 root_type MySQLDb;

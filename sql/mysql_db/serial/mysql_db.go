@@ -418,51 +418,6 @@ func PrivilegeSetEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
 }
 
-type Attributes struct {
-	_tab flatbuffers.Table
-}
-
-func GetRootAsAttributes(buf []byte, offset flatbuffers.UOffsetT) *Attributes {
-	n := flatbuffers.GetUOffsetT(buf[offset:])
-	x := &Attributes{}
-	x.Init(buf, n+offset)
-	return x
-}
-
-func GetSizePrefixedRootAsAttributes(buf []byte, offset flatbuffers.UOffsetT) *Attributes {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
-	x := &Attributes{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
-	return x
-}
-
-func (rcv *Attributes) Init(buf []byte, i flatbuffers.UOffsetT) {
-	rcv._tab.Bytes = buf
-	rcv._tab.Pos = i
-}
-
-func (rcv *Attributes) Table() flatbuffers.Table {
-	return rcv._tab
-}
-
-func (rcv *Attributes) Val() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
-	}
-	return nil
-}
-
-func AttributesStart(builder *flatbuffers.Builder) {
-	builder.StartObject(1)
-}
-func AttributesAddVal(builder *flatbuffers.Builder, val flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(val), 0)
-}
-func AttributesEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	return builder.EndObject()
-}
-
 type User struct {
 	_tab flatbuffers.Table
 }
@@ -559,21 +514,28 @@ func (rcv *User) MutateLocked(n bool) bool {
 	return rcv._tab.MutateBoolSlot(16, n)
 }
 
-func (rcv *User) Attributes(obj *Attributes) *Attributes {
+func (rcv *User) IsAttributesNull() bool {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
 	if o != 0 {
-		x := rcv._tab.Indirect(o + rcv._tab.Pos)
-		if obj == nil {
-			obj = new(Attributes)
-		}
-		obj.Init(rcv._tab.Bytes, x)
-		return obj
+		return rcv._tab.GetBool(o + rcv._tab.Pos)
+	}
+	return false
+}
+
+func (rcv *User) MutateIsAttributesNull(n bool) bool {
+	return rcv._tab.MutateBoolSlot(18, n)
+}
+
+func (rcv *User) Attributes() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
 	return nil
 }
 
 func UserStart(builder *flatbuffers.Builder) {
-	builder.StartObject(8)
+	builder.StartObject(9)
 }
 func UserAddUser(builder *flatbuffers.Builder, user flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(user), 0)
@@ -596,8 +558,11 @@ func UserAddPasswordLastChanged(builder *flatbuffers.Builder, passwordLastChange
 func UserAddLocked(builder *flatbuffers.Builder, locked bool) {
 	builder.PrependBoolSlot(6, locked, false)
 }
+func UserAddIsAttributesNull(builder *flatbuffers.Builder, isAttributesNull bool) {
+	builder.PrependBoolSlot(7, isAttributesNull, false)
+}
 func UserAddAttributes(builder *flatbuffers.Builder, attributes flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(attributes), 0)
+	builder.PrependUOffsetTSlot(8, flatbuffers.UOffsetT(attributes), 0)
 }
 func UserEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

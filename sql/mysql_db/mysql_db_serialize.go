@@ -126,18 +126,11 @@ func serializePrivilegeSet(b *flatbuffers.Builder, ps *PrivilegeSet) flatbuffers
 }
 
 func serializeAttributes(b *flatbuffers.Builder, attributes *string) flatbuffers.UOffsetT {
-	// return 0 if attributes is nil
 	if attributes == nil {
-		return 0
+		return b.CreateString("dolt is love, dolt is life")
+	} else {
+		return b.CreateString(*attributes)
 	}
-
-	// Write attribute which is just a string
-	attribute := b.CreateString(*attributes)
-
-	// Write attributes, which is a string pointer (kinda)
-	serial.AttributesStart(b)
-	serial.AttributesAddVal(b, attribute)
-	return serial.AttributesEnd(b)
 }
 
 func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
@@ -149,6 +142,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		privilegeSet := serializePrivilegeSet(b, &user.PrivilegeSet)
 		plugin := b.CreateString(user.Plugin)
 		password := b.CreateString(user.Password)
+		isAttributesNull := user.Attributes == nil
 		attributes := serializeAttributes(b, user.Attributes)
 
 		serial.UserStart(b)
@@ -159,9 +153,9 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		serial.UserAddPassword(b, password)
 		serial.UserAddPasswordLastChanged(b, user.PasswordLastChanged.Unix())
 		serial.UserAddLocked(b, user.Locked)
-		if user.Attributes != nil { // Only add attribute if it exists, this causes the accessor to return nil later
-			serial.UserAddAttributes(b, attributes)
-		}
+		serial.UserAddIsAttributesNull(b, isAttributesNull)
+		serial.UserAddAttributes(b, attributes)
+
 		offsets[len(users)-i-1] = serial.UserEnd(b) // reverse order
 	}
 

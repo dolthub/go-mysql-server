@@ -335,7 +335,7 @@ func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Ge
 
 // Persist passes along all changes to the integrator.
 func (t *MySQLDb) Persist(ctx *sql.Context) error {
-	// TODO: future databases will no longer persist to privilege file, only to mysql.db
+	// TODO: future databases will no longer persist to privilege file, only to mysql.db; should document this
 
 	// Do nothing if persist function is nil
 	if t.persistFunc == nil {
