@@ -1976,7 +1976,8 @@ end;`,
 				Expected: []sql.Row{{0}},
 			},
 		},
-	}, {
+	},
+	{
 		Name: "non-existent procedure in trigger body",
 		SetUpScript: []string{
 			"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
