@@ -92,7 +92,7 @@ func loadPrivilegeSet(serialPrivilegeSet *serial.PrivilegeSet) *PrivilegeSet {
 	}
 }
 
-func loadUser(serialUser *serial.User) *User {
+func LoadUser(serialUser *serial.User) *User {
 	serialPrivilegeSet := new(serial.PrivilegeSet)
 	serialUser.PrivilegeSet(serialPrivilegeSet)
 	privilegeSet := loadPrivilegeSet(serialPrivilegeSet)
@@ -109,7 +109,7 @@ func loadUser(serialUser *serial.User) *User {
 	}
 }
 
-func loadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
+func LoadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
 	return &RoleEdge{
 		FromHost: string(serialRoleEdge.FromHost()),
 		FromUser: string(serialRoleEdge.FromUser()),

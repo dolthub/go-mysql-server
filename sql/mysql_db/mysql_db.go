@@ -116,7 +116,7 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 		if !serialMySQLDb.User(serialUser, i) {
 			continue
 		}
-		user := loadUser(serialUser)
+		user := LoadUser(serialUser)
 		if err := t.user.data.Put(ctx, user); err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 		if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
 			continue
 		}
-		role := loadRoleEdge(serialRoleEdge)
+		role := LoadRoleEdge(serialRoleEdge)
 		if err := t.role_edges.data.Put(ctx, role); err != nil {
 			return err
 		}

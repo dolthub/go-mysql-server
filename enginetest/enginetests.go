@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -7010,12 +7011,32 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 	var users []*mysql_db.User
 	var roles []*mysql_db.RoleEdge
 	engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
-		func(ctx *sql.Context, updatedUsers []*mysql_db.User, updatedRoles []*mysql_db.RoleEdge) error {
-			users = updatedUsers
-			roles = updatedRoles
+		func(ctx *sql.Context, buf []byte) error {
+			// Deserialize the flatbuffer
+			serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
+
+			// Fill in users
+			for i := 0; i < serialMySQLDb.UserLength(); i++ {
+				serialUser := new(serial.User)
+				if !serialMySQLDb.User(serialUser, i) {
+					continue
+				}
+				user := mysql_db.LoadUser(serialUser)
+				users = append(users, user)
+			}
+
+			// Fill in roles
+			for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
+				serialRoleEdge := new(serial.RoleEdge)
+				if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
+					continue
+				}
+				role := mysql_db.LoadRoleEdge(serialRoleEdge)
+				roles = append(roles, role)
+			}
+
 			return nil
 		},
-		nil,
 	)
 
 	RunQueryWithContext(t, engine, ctx, "CREATE USER tester@localhost")
