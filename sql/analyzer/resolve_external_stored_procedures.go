@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"time"
@@ -145,15 +144,14 @@ func resolveExternalStoredProcedure(ctx *sql.Context, dbName string, externalPro
 		}
 	}
 
-	comment := fmt.Sprintf("External stored procedure defined by %s", dbName)
 	procedure := plan.NewProcedure(
 		externalProcedure.Name,
 		"root",
 		paramDefinitions,
 		plan.ProcedureSecurityContext_Definer,
-		comment,
+		externalProcedure.Comment(dbName),
 		nil,
-		comment,
+		externalProcedure.FakeCreateProcedureStmt(dbName),
 		&plan.ExternalProcedure{
 			ExternalStoredProcedureDetails: externalProcedure,
 			ParamDefinitions:               paramDefinitions,

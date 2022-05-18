@@ -205,7 +205,7 @@ func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return ([]byte)(msg), nil
 }
 
-// Build creates a new Analyzer using all previous data setted to the Builder
+// Build creates a new Analyzer from the builder parameters
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
 	var batches = []*Batch{
@@ -257,12 +257,11 @@ func (ab *Builder) Build() *Analyzer {
 	}
 
 	return &Analyzer{
-		Debug:          debug || ab.debug,
-		contextStack:   make([]string, 0),
-		Batches:        batches,
-		Catalog:        NewCatalog(ab.provider),
-		Parallelism:    ab.parallelism,
-		ProcedureCache: NewProcedureCache(),
+		Debug:        debug || ab.debug,
+		contextStack: make([]string, 0),
+		Batches:      batches,
+		Catalog:      NewCatalog(ab.provider),
+		Parallelism:  ab.parallelism,
 	}
 }
 
@@ -280,8 +279,6 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
-	// ProcedureCache is a cache of stored procedures.
-	ProcedureCache *ProcedureCache
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
