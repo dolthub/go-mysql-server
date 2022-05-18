@@ -31,8 +31,12 @@ table PrivilegeSetDatabase {
 
 table PrivilegeSet {
     global_static:[int];
-    //TODO: global_dynamic:[string];
+    global_dynamic:[string];
     databases:[PrivilegeSetDatabase];
+}
+
+table StringPtr {
+    val:string
 }
 
 // Entries in the user table
@@ -42,9 +46,9 @@ table User {
     privilege_set:PrivilegeSet;
     plugin:string;
     password:string;
-    password_last_changed:int64; // time.Time?
+    password_last_changed:int64; // represents time.Time
     locked:bool;
-    //attributes:string; // *string?
+    attributes:StringPtr;
 }
 
 // Entries in the role_edges table
