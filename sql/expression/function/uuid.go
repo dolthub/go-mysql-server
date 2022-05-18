@@ -16,12 +16,10 @@ package function
 
 import (
 	"fmt"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/google/uuid"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // UUID()
@@ -77,12 +75,7 @@ func (u UUIDFunc) Type() sql.Type {
 }
 
 func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	nUUID, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
-
-	return nUUID.String(), nil
+	return uuid.New().String(), nil
 }
 
 func (u UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {

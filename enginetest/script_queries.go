@@ -2006,6 +2006,20 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "createing UUID quickly is still random",
+		SetUpScript: []string{
+			"create table t select uuid() as a, uuid() as b",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select a = b from t",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
