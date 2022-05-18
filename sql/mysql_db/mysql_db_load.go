@@ -31,6 +31,16 @@ func loadPrivilegeTypes(n int, f func(j int) int32) map[sql.PrivilegeType]struct
 	return privs
 }
 
+// loadPrivilegeTypes is a helper method that loads strings given the length and loading function
+// and returns them as a set
+func loadGlobalDynamic(n int, f func(j int) []byte) map[string]struct{} {
+	strings := make(map[string]struct{}, n)
+	for i := 0; i < n; i++ {
+		strings[string(f(i))] = struct{}{}
+	}
+	return strings
+}
+
 func loadColumn(serialColumn *serial.PrivilegeSetColumn) *PrivilegeSetColumn {
 	return &PrivilegeSetColumn{
 		name:  string(serialColumn.Name()),
@@ -87,15 +97,22 @@ func loadPrivilegeSet(serialPrivilegeSet *serial.PrivilegeSet) *PrivilegeSet {
 
 	return &PrivilegeSet{
 		globalStatic:  loadPrivilegeTypes(serialPrivilegeSet.GlobalStaticLength(), serialPrivilegeSet.GlobalStatic),
-		globalDynamic: nil,
+		globalDynamic: loadGlobalDynamic(serialPrivilegeSet.GlobalDynamicLength(), serialPrivilegeSet.GlobalDynamic),
 		databases:     databases,
 	}
+}
+
+func loadAttributes(serialAttributes *serial.Attributes) *string {
+	str := string(serialAttributes.Val())
+	return &str
 }
 
 func LoadUser(serialUser *serial.User) *User {
 	serialPrivilegeSet := new(serial.PrivilegeSet)
 	serialUser.PrivilegeSet(serialPrivilegeSet)
 	privilegeSet := loadPrivilegeSet(serialPrivilegeSet)
+	serialAttributes := new(serial.Attributes)
+	attributes := loadAttributes(serialAttributes) // will hopefully be nil if it isn't there
 
 	return &User{
 		User:                string(serialUser.User()),
@@ -105,7 +122,7 @@ func LoadUser(serialUser *serial.User) *User {
 		Password:            string(serialUser.Password()),
 		PasswordLastChanged: time.Unix(serialUser.PasswordLastChanged(), 0),
 		Locked:              serialUser.Locked(),
-		Attributes:          nil, // TODO
+		Attributes:          attributes, // TODO
 	}
 }
 

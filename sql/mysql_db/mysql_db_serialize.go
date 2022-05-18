@@ -32,6 +32,8 @@ func serializePrivilegeTypes(b *flatbuffers.Builder, StartPTVector func(builder 
 	return b.EndVector(len(pts))
 }
 
+// TODO: should have a generic serialize strings helper method if used in future
+
 // serializeVectorOffsets writes the given offsets slice to the flatbuffer Builder using the given start vector function, and returns the offset
 func serializeVectorOffsets(b *flatbuffers.Builder, StartVector func(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT, offsets []flatbuffers.UOffsetT) flatbuffers.UOffsetT {
 	// Expect the given offsets slice to already be in reverse order
@@ -40,6 +42,19 @@ func serializeVectorOffsets(b *flatbuffers.Builder, StartVector func(builder *fl
 		b.PrependUOffsetT(offset)
 	}
 	return b.EndVector(len(offsets))
+}
+
+// serializeStrings writes the set of strings to flatbuffer builder, and returns offset of resulting vector
+func serializeGlobalDynamic(b *flatbuffers.Builder, strs map[string]struct{}) flatbuffers.UOffsetT {
+	// Write strings, and save offsets
+	i := 0
+	offsets := make([]flatbuffers.UOffsetT, len(strs))
+	for str := range strs {
+		offsets[i] = b.CreateString(str)
+		i++
+	}
+	// Write string offsets (already reversed)
+	return serializeVectorOffsets(b, serial.PrivilegeSetStartGlobalDynamicVector, offsets)
 }
 
 func serializeColumns(b *flatbuffers.Builder, columns []PrivilegeSetColumn) flatbuffers.UOffsetT {
@@ -99,14 +114,30 @@ func serializeDatabases(b *flatbuffers.Builder, databases []PrivilegeSetDatabase
 func serializePrivilegeSet(b *flatbuffers.Builder, ps *PrivilegeSet) flatbuffers.UOffsetT {
 	// Write privilege set variables, and save offsets
 	globalStatic := serializePrivilegeTypes(b, serial.PrivilegeSetStartGlobalStaticVector, ps.ToSlice())
-	// TODO: Serialize global_dynamic (it seems like it's currently not used?)
+	globalDynamic := serializeGlobalDynamic(b, ps.globalDynamic)
 	databases := serializeDatabases(b, ps.GetDatabases())
 
 	// Write PrivilegeSet
 	serial.PrivilegeSetStart(b)
 	serial.PrivilegeSetAddGlobalStatic(b, globalStatic)
+	serial.PrivilegeSetAddGlobalDynamic(b, globalDynamic)
 	serial.PrivilegeSetAddDatabases(b, databases)
 	return serial.PrivilegeSetEnd(b)
+}
+
+func serializeAttributes(b *flatbuffers.Builder, attributes *string) flatbuffers.UOffsetT {
+	// return 0 if attributes is nil
+	if attributes == nil {
+		return 0
+	}
+
+	// Write attribute which is just a string
+	attribute := b.CreateString(*attributes)
+
+	// Write attributes, which is a string pointer (kinda)
+	serial.AttributesStart(b)
+	serial.AttributesAddVal(b, attribute)
+	return serial.AttributesEnd(b)
 }
 
 func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
@@ -118,7 +149,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		privilegeSet := serializePrivilegeSet(b, &user.PrivilegeSet)
 		plugin := b.CreateString(user.Plugin)
 		password := b.CreateString(user.Password)
-		//attributes := b.CreateString(*user.Attributes)
+		attributes := serializeAttributes(b, user.Attributes)
 
 		serial.UserStart(b)
 		serial.UserAddUser(b, userName)
@@ -128,7 +159,9 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		serial.UserAddPassword(b, password)
 		serial.UserAddPasswordLastChanged(b, user.PasswordLastChanged.Unix())
 		serial.UserAddLocked(b, user.Locked)
-		//serial.UserAddAttributes(b, attributes)
+		if user.Attributes != nil { // Only add attribute if it exists, this causes the accessor to return nil later
+			serial.UserAddAttributes(b, attributes)
+		}
 		offsets[len(users)-i-1] = serial.UserEnd(b) // reverse order
 	}
 

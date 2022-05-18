@@ -35,8 +35,8 @@ table PrivilegeSet {
     databases:[PrivilegeSetDatabase];
 }
 
-table StringPtr {
-    val:string
+table Attributes {
+    val:string;
 }
 
 // Entries in the user table
@@ -48,7 +48,7 @@ table User {
     password:string;
     password_last_changed:int64; // represents time.Time
     locked:bool;
-    attributes:StringPtr;
+    attributes:Attributes; // represents *string
 }
 
 // Entries in the role_edges table
