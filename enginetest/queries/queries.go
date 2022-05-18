@@ -6759,9 +6759,7 @@ var KeylessQueries = []QueryTest{
 			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
-}
-
-var ParallelUnsafeQueries = []QueryTest{
+	// parallel unsafe
 	{
 		Query:    `SELECT GET_LOCK("test", 0)`,
 		Expected: []sql.Row{{int8(1)}},
@@ -6856,14 +6854,15 @@ var ParallelUnsafeQueries = []QueryTest{
 		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\n%' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"\n"}, sql.Row{"test\ntest"}},
 	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\v"}, sql.Row{"test\vtest"}},
-	},
-	{
-		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
-		Expected: []sql.Row{sql.Row{"\v"}},
-	},
+	//todo(max): how to insert vertical tab via SQL?,
+	//{
+	//	Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
+	//	Expected: []sql.Row{sql.Row{"\v"}, sql.Row{"test\vtest"}},
+	//},
+	//{
+	//	Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
+	//	Expected: []sql.Row{sql.Row{"\v"}},
+	//},
 }
 
 // Queries that are known to be broken in the engine.

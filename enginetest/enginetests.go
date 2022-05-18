@@ -63,20 +63,6 @@ func TestQueries(t *testing.T, harness Harness) {
 		})
 	}
 
-	for _, tt := range queries.ParallelUnsafeQueries {
-		if strings.Contains(tt.Query, "\v") {
-			t.Skip("todo: encode vertical escape via SQL shell")
-		}
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.Query) {
-				t.Skipf("Skipping query plan for %s", tt.Query)
-			}
-		}
-		t.Run(tt.Query, func(t *testing.T) {
-			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
-		})
-	}
-
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
 			TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
@@ -588,8 +574,8 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 }
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
-	t.Skip()
 	for _, script := range queries.InsertScripts {
+		t.Skip()
 		TestScript(t, harness, script)
 	}
 }
