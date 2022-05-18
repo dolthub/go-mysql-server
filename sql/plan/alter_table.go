@@ -649,8 +649,128 @@ func (d *DropColumn) String() string {
 	return fmt.Sprintf("drop column %s", d.Column)
 }
 
+type dropColumnIter struct {
+	d         *DropColumn
+	alterable sql.AlterableTable
+	runOnce   bool
+}
+
+func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.runOnce {
+		return nil, io.EOF
+	}
+	i.runOnce = true
+
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		rewritten, err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		}
+	}
+
+	err := i.alterable.DropColumn(ctx, i.d.Column)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+	newSch, projections, err := dropColumnFromSchema(i.d.targetSchema, i.d.Column, i.alterable.Name())
+	if err != nil {
+		return false, err
+	}
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+	droppedColIdx := oldPkSchema.IndexOf(i.d.Column, i.alterable.Name())
+
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx])
+	if !rewriteRequested {
+		return false, nil
+	}
+
+	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	if err != nil {
+		return false, err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return false, err
+		}
+
+		newRow, err := ProjectRow(ctx, projections, r)
+		if err != nil {
+			return false, err
+		}
+
+		err = inserter.Insert(ctx, newRow)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func dropColumnFromSchema(schema sql.Schema, column string, tableName string) (sql.Schema, []sql.Expression, error) {
+	idx := schema.IndexOf(column, tableName)
+	if idx < 0 {
+		return nil, nil, sql.ErrTableColumnNotFound.New(tableName, column)
+	}
+
+	newSch := make(sql.Schema, len(schema)-1)
+	projections := make([]sql.Expression, len(schema)-1)
+
+	i := 0
+	for j := range schema[:idx] {
+		newSch[i] = schema[j]
+		projections[i] = expression.NewGetField(j, schema[j].Type, schema[j].Name, schema[j].Nullable)
+		i++
+	}
+
+	for j := range schema[idx+1:] {
+		schIdx := j + i + 1
+		newSch[j+i] = schema[schIdx]
+		projections[j+i] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
+	}
+
+	return newSch, projections, nil
+}
+
+func (i *dropColumnIter) Close(context *sql.Context) error {
+	return nil
+}
+
 func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	tbl, err := getTableFromDatabase(ctx, d.Database(), d.Table)
+	if err != nil {
+		return nil, err
+	}
+
+	err = d.validate(ctx, tbl)
 	if err != nil {
 		return nil, err
 	}
@@ -660,8 +780,18 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
+	return &dropColumnIter{
+		d:         d,
+		alterable: alterable,
+	}, nil
+}
+
+// validate returns an error if this drop column operation is invalid (because it would invalidate a column default
+// or other constraint).
+// TODO: move this check to analyzer
+func (d *DropColumn) validate(ctx *sql.Context, tbl sql.Table) error {
 	found := false
-	for _, column := range tbl.Schema() {
+	for _, column := range d.targetSchema {
 		if column.Name == d.Column {
 			found = true
 			break
@@ -669,7 +799,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	if !found {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
+		return sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
 	}
 
 	for _, col := range d.targetSchema {
@@ -688,7 +818,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return true
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -696,29 +826,29 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		lowercaseColumn := strings.ToLower(d.Column)
 		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for _, fk := range fks {
 			for _, fkCol := range fk.Columns {
 				if lowercaseColumn == strings.ToLower(fkCol) {
-					return nil, sql.ErrForeignKeyDropColumn.New(d.Column, fk.Name)
+					return sql.ErrForeignKeyDropColumn.New(d.Column, fk.Name)
 				}
 			}
 		}
 		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for _, parentFk := range parentFks {
 			for _, parentFkCol := range parentFk.Columns {
 				if lowercaseColumn == strings.ToLower(parentFkCol) {
-					return nil, sql.ErrForeignKeyDropColumn.New(d.Column, parentFk.Name)
+					return sql.ErrForeignKeyDropColumn.New(d.Column, parentFk.Name)
 				}
 			}
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.DropColumn(ctx, d.Column)
+	return nil
 }
 
 func (d *DropColumn) Schema() sql.Schema {
@@ -1155,7 +1285,6 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	// TODO: codify rewrite requirements
-
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.column)
 	if !rewriteRequested {
 		return false, nil
