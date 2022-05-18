@@ -2136,30 +2136,144 @@ var SpatialScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "create geometry table using SRID value",
+		Name: "create table using SRID value for geometry type",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, g geometry default (point(1,1)));",
+			"CREATE TABLE tab0 (i int primary key, g geometry srid 4326 default (point(1,1)));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "ALTER TABLE test ADD COLUMN p point null srid 0",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Query:    "show create table tab0",
+				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry SRID 4326 DEFAULT (POINT(1, 1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:       "ALTER TABLE test ADD COLUMN p point not null srid 1",
-				ExpectedErr: sql.ErrUnsupportedFeature,
-			},
-			{
-				Query:    "INSERT INTO test (i, p) VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2))))",
+				Query:    "INSERT INTO tab0 VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4326))",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:    "select i, ST_ASWKT(g), ST_ASWKT(p) FROM test",
-				Expected: []sql.Row{{1, "POINT(1 1)", "POINT(1 2)"}},
+				Query:    "select i, ST_ASWKT(g) FROM tab0",
+				Expected: []sql.Row{{1, "POINT(1 2)"}},
 			},
 			{
-				Query:       "INSERT INTO test (i, p) VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(2,4)), 4326))",
+				Query:       "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(2,4))))",
 				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(g) FROM tab0",
+				Expected: []sql.Row{{1, "POINT(1 2)"}, {2, "LINESTRING(1 6,4 3)"}},
+			},
+		},
+	},
+	{
+		Name: "create table using SRID value for linestring type",
+		SetUpScript: []string{
+			"CREATE TABLE tab1 (i int primary key, l linestring srid 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table tab1",
+				Expected: []sql.Row{{"tab1", "CREATE TABLE `tab1` (\n  `i` int NOT NULL,\n  `l` linestring SRID 0,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO tab1 VALUES (1, LINESTRING(POINT(0, 0),POINT(2, 2)))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(l) FROM tab1",
+				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
+			},
+			{
+				Query:       "INSERT INTO tab1 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "select i, ST_ASWKT(l) FROM tab1",
+				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
+			},
+		},
+	},
+	{
+		Name: "create table using SRID value for point type",
+		SetUpScript: []string{
+			"CREATE TABLE tab2 (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE tab2 ADD COLUMN p POINT NOT NULL SRID 0",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table tab2",
+				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL SRID 0,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO tab2 VALUES (1, POINT(2, 2))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(p) FROM tab2",
+				Expected: []sql.Row{{1, "POINT(2 2)"}},
+			},
+			{
+				Query:       "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "select i, ST_ASWKT(p) FROM tab2",
+				Expected: []sql.Row{{1, "POINT(2 2)"}},
+			},
+		},
+	},
+	{
+		Name: "invalid cases of SRID value",
+		SetUpScript: []string{
+			"CREATE TABLE table1 (i int primary key, p point srid 4326);",
+			"INSERT INTO table1 VALUES (1, ST_SRID(POINT(1, 5), 4326))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE table2 (i int primary key, p point srid 1);",
+				// error should be ErrInvalidSRID once we support all mysql valid srid values
+				ExpectedErr: sql.ErrUnsupportedFeature,
+			},
+			{
+				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
+				Expected: []sql.Row{{1, "POINT(1 5)"}},
+			},
+			{
+				Query:       "INSERT INTO table1 VALUES (2, POINT(2, 5))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
+				Expected: []sql.Row{{1, "POINT(1 5)"}},
+			},
+			{
+				Query:       "ALTER TABLE table1 CHANGE COLUMN p p linestring srid 4326",
+				ExpectedErr: sql.ErrSpatialTypeConversion,
+			},
+			{
+				Query:       "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 0",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 4326",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table table1",
+				Expected: []sql.Row{{"table1", "CREATE TABLE `table1` (\n  `i` int NOT NULL,\n  `p` geometry SRID 4326,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO table1 VALUES (2, ST_SRID(LINESTRING(POINT(0, 0),POINT(2, 2)),4326))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "ALTER TABLE table1 CHANGE COLUMN p p point srid 4326",
+				ExpectedErr: sql.ErrSpatialTypeConversion,
 			},
 		},
 	},

@@ -32,7 +32,7 @@ type Geometry struct {
 type GeometryType struct {
 	InnerType   Type // Will be PointType, LinestringType, or PolygonType
 	SRID        uint32
-	definedSRID bool
+	DefinedSRID bool
 }
 
 var _ Type = GeometryType{}
@@ -240,15 +240,27 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(inner))
 	case Point:
+		if err := t.MatchSRID(inner); err != nil {
+			return nil, err
+		}
 		return Geometry{Inner: inner}, nil
 	case Linestring:
+		if err := t.MatchSRID(inner); err != nil {
+			return nil, err
+		}
 		return Geometry{Inner: inner}, nil
 	case Polygon:
+		if err := t.MatchSRID(inner); err != nil {
+			return nil, err
+		}
 		return Geometry{Inner: inner}, nil
 	case Geometry:
+		if err := t.MatchSRID(inner.Inner); err != nil {
+			return nil, err
+		}
 		return inner, nil
 	default:
-		return nil, ErrNotGeometry.New(inner)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -298,11 +310,35 @@ func (t GeometryType) Zero() interface{} {
 }
 
 func (t GeometryType) GetSRID() (uint32, bool) {
-	return t.SRID, t.definedSRID
+	return t.SRID, t.DefinedSRID
 }
 
 func (t GeometryType) SetSRID(v uint32) Type {
 	t.SRID = v
-	t.definedSRID = true
+	t.DefinedSRID = true
 	return t
+}
+
+func (t GeometryType) MatchSRID(v interface{}) error {
+	if !t.DefinedSRID {
+		return nil
+	}
+	// if matched with SRID value of row value
+	var srid uint32
+	switch val := v.(type) {
+	case Point:
+		srid = val.SRID
+	case Linestring:
+		srid = val.SRID
+	case Polygon:
+		srid = val.SRID
+	case Geometry:
+		return t.MatchSRID(val.Inner)
+	default:
+		return ErrNotMatchingSRID.New(val, t.SRID)
+	}
+	if t.SRID == srid {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(srid, t.SRID)
 }

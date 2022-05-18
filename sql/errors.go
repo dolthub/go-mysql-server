@@ -570,6 +570,9 @@ var (
 
 	// ErrNotMatchingSRIDWithColName is returned for error of SRID values not matching with column name detail
 	ErrNotMatchingSRIDWithColName = errors.NewKind("The SRID of the geometry does not match the SRID of the column '%s'. %v")
+
+	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
+	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

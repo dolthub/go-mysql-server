@@ -30,7 +30,7 @@ type Polygon struct {
 
 type PolygonType struct {
 	SRID        uint32
-	definedSRID bool
+	DefinedSRID bool
 }
 
 var _ Type = PolygonType{}
@@ -115,9 +115,12 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(val))
 	case Polygon:
+		if err := t.MatchSRID(val); err != nil {
+			return nil, err
+		}
 		return val, nil
 	default:
-		return nil, ErrNotPolygon.New(val)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -162,11 +165,24 @@ func (t PolygonType) Zero() interface{} {
 }
 
 func (t PolygonType) GetSRID() (uint32, bool) {
-	return t.SRID, t.definedSRID
+	return t.SRID, t.DefinedSRID
 }
 
 func (t PolygonType) SetSRID(v uint32) Type {
 	t.SRID = v
-	t.definedSRID = true
+	t.DefinedSRID = true
 	return t
+}
+
+func (t PolygonType) MatchSRID(v interface{}) error {
+	val, ok := v.(Polygon)
+	if !ok {
+		ErrNotPolygon.New(v)
+	}
+	if !t.DefinedSRID {
+		return nil
+	} else if t.SRID == val.SRID {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }

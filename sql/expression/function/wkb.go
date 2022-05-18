@@ -521,7 +521,7 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	// TODO: convert to this block to helper function
 	// Determine SRID
-	srid := uint32(0)
+	srid := CartesianSRID
 	if len(p.ChildExpressions) >= 2 {
 		s, err := p.ChildExpressions[1].Eval(ctx, row)
 		if err != nil {

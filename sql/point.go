@@ -30,7 +30,7 @@ type Point struct {
 
 type PointType struct {
 	SRID        uint32
-	definedSRID bool
+	DefinedSRID bool
 }
 
 var _ Type = PointType{}
@@ -102,12 +102,12 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(val))
 	case Point:
-		if t.definedSRID && t.SRID != val.SRID {
-			return nil, ErrNotMatchingSRID.New(val.SRID, t.SRID)
+		if err := t.MatchSRID(val); err != nil {
+			return nil, err
 		}
 		return val, nil
 	default:
-		return nil, ErrNotPoint.New(val)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -152,11 +152,24 @@ func (t PointType) Zero() interface{} {
 }
 
 func (t PointType) GetSRID() (uint32, bool) {
-	return t.SRID, t.definedSRID
+	return t.SRID, t.DefinedSRID
 }
 
 func (t PointType) SetSRID(v uint32) Type {
 	t.SRID = v
-	t.definedSRID = true
+	t.DefinedSRID = true
 	return t
+}
+
+func (t PointType) MatchSRID(v interface{}) error {
+	val, ok := v.(Point)
+	if !ok {
+		ErrNotPoint.New(v)
+	}
+	if !t.DefinedSRID {
+		return nil
+	} else if t.SRID == val.SRID {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }

@@ -30,7 +30,7 @@ type Linestring struct {
 
 type LinestringType struct {
 	SRID        uint32
-	definedSRID bool
+	DefinedSRID bool
 }
 
 var _ Type = LinestringType{}
@@ -115,9 +115,12 @@ func (t LinestringType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(val))
 	case Linestring:
+		if err := t.MatchSRID(val); err != nil {
+			return nil, err
+		}
 		return val, nil
 	default:
-		return nil, ErrNotLinestring.New(val)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -164,11 +167,24 @@ func (t LinestringType) Zero() interface{} {
 }
 
 func (t LinestringType) GetSRID() (uint32, bool) {
-	return t.SRID, t.definedSRID
+	return t.SRID, t.DefinedSRID
 }
 
 func (t LinestringType) SetSRID(v uint32) Type {
 	t.SRID = v
-	t.definedSRID = true
+	t.DefinedSRID = true
 	return t
+}
+
+func (t LinestringType) MatchSRID(v interface{}) error {
+	val, ok := v.(Linestring)
+	if !ok {
+		ErrNotPoint.New(v)
+	}
+	if !t.DefinedSRID {
+		return nil
+	} else if t.SRID == val.SRID {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
