@@ -335,14 +335,13 @@ func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Ge
 
 // Persist passes along all changes to the integrator.
 func (t *MySQLDb) Persist(ctx *sql.Context) error {
-	// TODO: future databases will no longer persist to privilege file, only mysql.db
+	// TODO: future databases will no longer persist to privilege file, only to mysql.db
 
 	// Do nothing if persist function is nil
 	if t.persistFunc == nil {
 		return nil
 	}
 
-	// TODO: sorting necessary?
 	// Extract all user entries from table, and sort
 	userEntries := t.user.data.ToSlice(ctx)
 	users := make([]*User, len(userEntries))
