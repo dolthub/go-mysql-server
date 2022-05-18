@@ -103,7 +103,7 @@ func (s SkippingMemoryHarness) SkipQueryTest(query string) bool {
 	return true
 }
 
-func (m *MemoryHarness) SetSetup(setupData ...[]Testdata) {
+func (m *MemoryHarness) Setup(setupData ...[]Testdata) {
 	m.setupData = nil
 	for i := range setupData {
 		m.setupData = append(m.setupData, setupData[i]...)

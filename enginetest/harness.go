@@ -40,9 +40,12 @@ type Harness interface {
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
-	// SetSetup injects a test suite's setup scripts
-	SetSetup(...[]Testdata)
-	// NewEngine creates a new sqle.Engine
+	// Setup injects a test suite's setup scripts. The harness is expected to run
+	// these scripts before returning NewEngine
+	Setup(...[]Testdata)
+	// NewEngine creates a new sqle.Engine. Ready only tests may re-use an
+	// engine. Write tests call NewEngine before every test, expecting the
+	// fresh state provided by Setup.
 	NewEngine(*testing.T) (*sqle.Engine, error)
 }
 

@@ -61,53 +61,6 @@ type Table struct {
 	autoColIdx int
 }
 
-func CopyTable(t *Table) *Table {
-	newSchema := make(sql.Schema, len(t.schema.Schema))
-	copy(newSchema, t.schema.Schema)
-	newPkORds := make([]int, len(t.schema.PkOrdinals))
-	copy(newPkORds, t.schema.PkOrdinals)
-	newFkColl := make([]sql.ForeignKeyConstraint, len(t.fkColl.fks))
-	copy(newFkColl, t.fkColl.fks)
-	newChecks := make([]sql.CheckDefinition, len(t.checks))
-	copy(newChecks, t.checks)
-	newFilters := make([]sql.Expression, len(t.filters))
-	copy(newFilters, t.filters)
-	newProjection := make([]string, len(t.projection))
-	copy(newProjection, t.projection)
-	newColumns := make([]int, len(t.columns))
-	copy(newColumns, t.columns)
-	newPartitions := make(map[string][]sql.Row, len(t.partitions))
-	for k, v := range t.partitions {
-		newv := make([]sql.Row, len(v))
-		copy(newv, v)
-		newPartitions[k] = newv
-	}
-	newKeys := make([][]byte, len(t.partitionKeys))
-	for i := range t.partitionKeys {
-		part := t.partitionKeys[i]
-		newPart := make([]byte, len(part))
-		copy(newPart, part)
-		newKeys[i] = newPart
-
-	}
-	return &Table{
-		name:             t.name,
-		schema:           sql.NewPrimaryKeySchema(newSchema, newPkORds...),
-		fkColl:           &ForeignKeyCollection{fks: newFkColl},
-		checks:           newChecks,
-		pkIndexesEnabled: t.pkIndexesEnabled,
-		filters:          newFilters,
-		projection:       newProjection,
-		columns:          newColumns,
-		partitions:       newPartitions,
-		partitionKeys:    newKeys,
-		insertPartIdx:    t.insertPartIdx,
-		lookup:           t.lookup,
-		autoColIdx:       t.autoColIdx,
-		autoIncVal:       t.autoIncVal,
-	}
-}
-
 var _ sql.Table = (*Table)(nil)
 var _ sql.Table2 = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)

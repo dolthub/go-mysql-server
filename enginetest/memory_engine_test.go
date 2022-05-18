@@ -80,26 +80,6 @@ func TestQueries(t *testing.T) {
 	}
 }
 
-//func TestSpatialQueries(t *testing.T) {
-//	enginetest.TestSpatialQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
-//	for _, numPartitions := range numPartitionsVals {
-//		for _, indexBehavior := range indexBehaviors {
-//			for _, parallelism := range parallelVals {
-//				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
-//					// This case is covered by TestQueriesSimple
-//					continue
-//				}
-//				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
-//				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
-//
-//				t.Run(testName, func(t *testing.T) {
-//					enginetest.TestSpatialQueries(t, harness)
-//				})
-//			}
-//		}
-//	}
-//}
-
 // TestQueriesPrepared runs the canonical test queries against the gamut of thread, index and partition options
 // with prepared statement caching enabled.
 func TestQueriesPrepared(t *testing.T) {
@@ -108,18 +88,7 @@ func TestQueriesPrepared(t *testing.T) {
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestSpatialQueriesPrepared(t *testing.T) {
-	for _, numPartitions := range numPartitionsVals {
-		for _, indexBehavior := range indexBehaviors {
-			for _, parallelism := range parallelVals {
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
-
-				t.Run(testName, func(t *testing.T) {
-					enginetest.TestSpatialQueriesPrepared(t, harness)
-				})
-			}
-		}
-	}
+	enginetest.TestSpatialQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
@@ -182,9 +151,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//engine := enginetest.NewEngineDepr(t, harness)
 	engine := enginetest.NewSpatialEngine(t, harness)
-	//enginetest.CreateIndexes(t, harness, engine)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
@@ -291,7 +258,7 @@ func TestBrokenQueries(t *testing.T) {
 
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
-	harness.SetSetup(enginetest.MydbData, enginetest.Pk_tablesData, enginetest.NiltableData)
+	harness.Setup(enginetest.MydbData, enginetest.Pk_tablesData, enginetest.NiltableData)
 	e, err := harness.NewEngine(t)
 	if err != nil {
 		log.Fatal(err)

@@ -32,7 +32,7 @@ type MySQLHarness struct {
 	skippedQueries map[string]struct{}
 }
 
-func (m *MySQLHarness) SetSetup(source ...[]Testdata) {
+func (m *MySQLHarness) Setup(source ...[]Testdata) {
 	//TODO implement me
 	panic("implement me")
 }
