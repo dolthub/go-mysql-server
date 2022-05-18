@@ -7009,7 +7009,7 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	var users []*mysql_db.User
 	var roles []*mysql_db.RoleEdge
-	engine.Analyzer.Catalog.MySQLDb.SetPersistCallbacks(
+	engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
 		func(ctx *sql.Context, updatedUsers []*mysql_db.User, updatedRoles []*mysql_db.RoleEdge) error {
 			users = updatedUsers
 			roles = updatedRoles

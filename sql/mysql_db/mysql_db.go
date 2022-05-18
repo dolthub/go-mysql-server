@@ -22,18 +22,18 @@ import (
 	"net"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/dolthub/vitess/go/mysql"
+	flatbuffers "github.com/google/flatbuffers/go"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // PrivilegePersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
 type PrivilegePersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
-type DataPersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
+type PersistCallback func(ctx *sql.Context, data []byte) error
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
@@ -52,7 +52,7 @@ type MySQLDb struct {
 	//password_history *mysqlTable
 
 	privilegePersistFunc PrivilegePersistCallback
-	dataPersistFunc      DataPersistCallback
+	persistFunc          PersistCallback
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -76,13 +76,6 @@ func CreateEmptyMySQLDb() *MySQLDb {
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
 func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
-	// TODO: this is bad do something else
-	// if there are already entries in user or role_edges table, clear them
-	//if t.user.data.Count() > 0 {
-	//	t.user.data.Clear()
-	//	t.role_edges.data.Clear()
-	//}
-
 	t.Enabled = true
 	for _, user := range users {
 		if user == nil {
@@ -103,117 +96,24 @@ func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnect
 	return nil
 }
 
-// loadPrivilegeTypes is a helper method that loads privilege types given the length and loading function
-// and returns them as a set
-func loadPrivilegeTypes(n int, f func(j int) int32) map[sql.PrivilegeType]struct{} {
-	privs := make(map[sql.PrivilegeType]struct{}, n)
-	for i := 0; i < n; i++ {
-		privs[sql.PrivilegeType(f(i))] = struct{}{}
-	}
-	return privs
-}
-
-func loadColumn(serialColumn *serial.PrivilegeSetColumn) *PrivilegeSetColumn {
-	return &PrivilegeSetColumn{
-		name:  string(serialColumn.Name()),
-		privs: loadPrivilegeTypes(serialColumn.PrivsLength(), serialColumn.Privs),
-	}
-}
-
-func loadTable(serialTable *serial.PrivilegeSetTable) *PrivilegeSetTable {
-	columns := make(map[string]PrivilegeSetColumn, serialTable.ColumnsLength())
-	for i := 0; i < serialTable.ColumnsLength(); i++ {
-		serialColumn := new(serial.PrivilegeSetColumn)
-		if !serialTable.Columns(serialColumn, i) {
-			continue
-		}
-		column := loadColumn(serialColumn)
-		columns[column.Name()] = *column
-	}
-
-	return &PrivilegeSetTable{
-		name:    string(serialTable.Name()),
-		privs:   loadPrivilegeTypes(serialTable.PrivsLength(), serialTable.Privs),
-		columns: columns,
-	}
-}
-
-func loadDatabase(serialDatabase *serial.PrivilegeSetDatabase) *PrivilegeSetDatabase {
-	tables := make(map[string]PrivilegeSetTable, serialDatabase.TablesLength())
-	for i := 0; i < serialDatabase.TablesLength(); i++ {
-		serialTable := new(serial.PrivilegeSetTable)
-		if !serialDatabase.Tables(serialTable, i) {
-			continue
-		}
-		table := loadTable(serialTable)
-		tables[table.Name()] = *table
-	}
-
-	return &PrivilegeSetDatabase{
-		name:   string(serialDatabase.Name()),
-		privs:  loadPrivilegeTypes(serialDatabase.PrivsLength(), serialDatabase.Privs),
-		tables: tables,
-	}
-}
-
-func loadPrivilegeSet(serialPrivilegeSet *serial.PrivilegeSet) *PrivilegeSet {
-	databases := make(map[string]PrivilegeSetDatabase, serialPrivilegeSet.DatabasesLength())
-	for i := 0; i < serialPrivilegeSet.DatabasesLength(); i++ {
-		serialDatabase := new(serial.PrivilegeSetDatabase)
-		if !serialPrivilegeSet.Databases(serialDatabase, i) {
-			continue
-		}
-		database := loadDatabase(serialDatabase)
-		databases[database.Name()] = *database
-	}
-
-	return &PrivilegeSet{
-		globalStatic:  loadPrivilegeTypes(serialPrivilegeSet.GlobalStaticLength(), serialPrivilegeSet.GlobalStatic),
-		globalDynamic: nil,
-		databases:     databases,
-	}
-}
-
-func loadUser(serialUser *serial.User) *User {
-	serialPrivilegeSet := new(serial.PrivilegeSet)
-	serialUser.PrivilegeSet(serialPrivilegeSet)
-	privilegeSet := loadPrivilegeSet(serialPrivilegeSet)
-
-	return &User{
-		User:                string(serialUser.User()),
-		Host:                string(serialUser.Host()),
-		PrivilegeSet:        *privilegeSet,
-		Plugin:              string(serialUser.Plugin()),
-		Password:            string(serialUser.Password()),
-		PasswordLastChanged: time.Unix(serialUser.PasswordLastChanged(), 0),
-		Locked:              serialUser.Locked(),
-		Attributes:          nil, // TODO
-	}
-}
-
-func loadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
-	return &RoleEdge{
-		FromHost: string(serialRoleEdge.FromHost()),
-		FromUser: string(serialRoleEdge.FromUser()),
-		ToHost:   string(serialRoleEdge.ToHost()),
-		ToUser:   string(serialRoleEdge.ToUser()),
-	}
-}
-
-// LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
+// LoadData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
-	// Do nothing if data file didn't exist
-	if data == nil {
+func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
+	// Do nothing if data file doesn't exist or is empty
+	if buf == nil || len(buf) == 0 {
 		return nil
 	}
 
+	// Indicate that mysql db exists
 	t.Enabled = true
 
+	// Deserialize the flatbuffer
+	serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
+
 	// Fill in user table
-	for i := 0; i < data.UserLength(); i++ {
+	for i := 0; i < serialMySQLDb.UserLength(); i++ {
 		serialUser := new(serial.User)
-		if !data.User(serialUser, i) {
+		if !serialMySQLDb.User(serialUser, i) {
 			continue
 		}
 		user := loadUser(serialUser)
@@ -223,9 +123,9 @@ func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
 	}
 
 	// Fill in Roles table
-	for i := 0; i < data.RoleEdgesLength(); i++ {
+	for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
 		serialRoleEdge := new(serial.RoleEdge)
-		if !data.RoleEdges(serialRoleEdge, i) {
+		if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
 			continue
 		}
 		role := loadRoleEdge(serialRoleEdge)
@@ -238,10 +138,9 @@ func (t *MySQLDb) LoadMySQLData(ctx *sql.Context, data *serial.MySQLDb) error {
 	return nil
 }
 
-// SetPersistCallbacks sets the callback to be used when the Grant Tables have been updated and need to be persisted.
-func (t *MySQLDb) SetPersistCallbacks(privilegePersistFunc PrivilegePersistCallback, dataPersistFunc DataPersistCallback) {
-	t.privilegePersistFunc = privilegePersistFunc
-	t.dataPersistFunc = dataPersistFunc
+// SetPersistCallback sets the callback to be used when the Grant Tables have been updated and need to be persisted.
+func (t *MySQLDb) SetPersistCallback(persistFunc PersistCallback) {
+	t.persistFunc = persistFunc
 }
 
 // AddRootAccount adds the root account to the list of accounts.
@@ -436,13 +335,14 @@ func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Ge
 
 // Persist passes along all changes to the integrator.
 func (t *MySQLDb) Persist(ctx *sql.Context) error {
-	// TODO: just persist to both for now
+	// TODO: future databases will no longer persist to privilege file, only mysql.db
 
-	// Do nothing if both persist functions are nil
-	if t.dataPersistFunc == nil && t.privilegePersistFunc == nil {
+	// Do nothing if persist function is nil
+	if t.persistFunc == nil {
 		return nil
 	}
 
+	// TODO: sorting necessary?
 	// Extract all user entries from table, and sort
 	userEntries := t.user.data.ToSlice(ctx)
 	users := make([]*User, len(userEntries))
@@ -475,27 +375,24 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 		return roles[i].FromHost < roles[j].FromHost
 	})
 
-	// Persist to privilege file
-	var err error
-	if t.privilegePersistFunc != nil {
-		err = t.privilegePersistFunc(ctx, users, roles)
-	}
+	// TODO: serialize other tables when the exist
 
-	// Error from persisting to privilege file
-	if err != nil {
-		return err
-	}
+	// Create flatbuffer
+	b := flatbuffers.NewBuilder(0)
+	user := serializeUser(b, users)
+	roleEdge := serializeRoleEdge(b, roles)
 
-	// Persist to mysql.db file
-	if t.dataPersistFunc == nil {
-		return nil
-	}
+	// Write MySQL DB
+	serial.MySQLDbStart(b)
+	serial.MySQLDbAddUser(b, user)
+	serial.MySQLDbAddRoleEdges(b, roleEdge)
+	mysqlDbOffset := serial.MySQLDbEnd(b)
 
-	// TODO: Extract all other table entries
+	// Finish writing
+	b.Finish(mysqlDbOffset)
+
 	// Persist data
-	err = t.dataPersistFunc(ctx, users, roles)
-
-	return err
+	return t.persistFunc(ctx, b.FinishedBytes())
 }
 
 // UserTable returns the "user" table.
