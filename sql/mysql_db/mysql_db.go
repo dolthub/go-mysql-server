@@ -23,11 +23,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
 	flatbuffers "github.com/google/flatbuffers/go"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 // PrivilegePersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
