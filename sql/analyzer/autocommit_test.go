@@ -24,7 +24,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testCases = map[string]string{
+var testCasesWithoutCurrentDb = map[string]string{
+	"CREATE PROCEDURE mydb.p1() SELECT 5": "mydb",
+}
+
+var testCasesWithCurrentDb = map[string]string{
 	"use db1":                                "db1",
 	"select 1":                               "foo",
 	"select * from t1":                       "foo",
@@ -42,10 +46,24 @@ var multiDbErrorTestCases = []string{
 
 func TestGetTransactionDatabase(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("foo")
+	ctx := sql.NewContext(context.Background())
 
-	t.Run("transaction database detected from statement", func(t *testing.T) {
-		for query, expectedDatabase := range testCases {
+	t.Run("transaction database detected with no current database", func(t *testing.T) {
+		for query, expectedDatabase := range testCasesWithoutCurrentDb {
+			t.Run(query, func(t *testing.T) {
+				parsed, err := parse.Parse(ctx, query)
+				require.NoError(err, "unable to parse test query: %s", query)
+
+				database, err := GetTransactionDatabase(ctx, parsed)
+				require.NoError(err)
+				require.Equal(expectedDatabase, database)
+			})
+		}
+	})
+
+	ctx = ctx.WithCurrentDB("foo")
+	t.Run("transaction database detected with current database", func(t *testing.T) {
+		for query, expectedDatabase := range testCasesWithCurrentDb {
 			t.Run(query, func(t *testing.T) {
 				parsed, err := parse.Parse(ctx, query)
 				require.NoError(err, "unable to parse test query: %s", query)

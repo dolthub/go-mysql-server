@@ -64,15 +64,19 @@ func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) (string, error) {
 		switch n2 := node.(type) {
 		case sql.Databaseable:
 			if n2.Database() == "" {
-				// If no database is explicitly referenced, the current db is implicit
-				dbNames[ctx.GetCurrentDatabase()] = struct{}{}
+				// If no database is explicitly referenced, any current db is implicit
+				if ctx.GetCurrentDatabase() != "" {
+					dbNames[ctx.GetCurrentDatabase()] = struct{}{}
+				}
 			} else {
 				dbNames[n2.Database()] = struct{}{}
 			}
 		case sql.Databaser:
 			if n2.Database() == nil || n2.Database().Name() == "" {
-				// If no database is explicitly referenced, the current db is implicit
-				dbNames[ctx.GetCurrentDatabase()] = struct{}{}
+				// If no database is explicitly referenced, any current db is implicit
+				if ctx.GetCurrentDatabase() != "" {
+					dbNames[ctx.GetCurrentDatabase()] = struct{}{}
+				}
 			} else {
 				dbNames[n2.Database().Name()] = struct{}{}
 			}
