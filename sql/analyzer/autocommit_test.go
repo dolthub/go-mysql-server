@@ -30,6 +30,7 @@ var testCases = map[string]string{
 	"select * from t1":                       "foo",
 	"call myFunction()":                      "foo",
 	"insert into db2.t2 values(1, 2, 3)":     "db2",
+	"insert into t2 values(42, 42)":          "foo",
 	"create table db1.t3(i int primary key)": "db1",
 }
 

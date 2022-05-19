@@ -70,7 +70,7 @@ func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) (string, error) {
 				dbNames[n2.Database()] = struct{}{}
 			}
 		case sql.Databaser:
-			if n2.Database() == nil {
+			if n2.Database() == nil || n2.Database().Name() == "" {
 				// If no database is explicitly referenced, the current db is implicit
 				dbNames[ctx.GetCurrentDatabase()] = struct{}{}
 			} else {
