@@ -32,7 +32,6 @@ import (
 
 // PrivilegePersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
-type PrivilegePersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
 type PersistCallback func(ctx *sql.Context, data []byte) error
 
 // MySQLDb are the collection of tables that are in the MySQL database
@@ -51,8 +50,7 @@ type MySQLDb struct {
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
 
-	privilegePersistFunc PrivilegePersistCallback
-	persistFunc          PersistCallback
+	persistFunc PersistCallback
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
