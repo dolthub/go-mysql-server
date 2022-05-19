@@ -2225,6 +2225,18 @@ var SpatialScriptTests = []ScriptTest{
 				Query:    "select i, ST_ASWKT(p) FROM tab2",
 				Expected: []sql.Row{{1, "POINT(2 2)"}},
 			},
+			{
+				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(p) FROM tab2",
+				Expected: []sql.Row{{1, "POINT(2 2)"}, {2, "POINT(1 6)"}},
+			},
 		},
 	},
 	{

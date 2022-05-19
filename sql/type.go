@@ -90,6 +90,8 @@ type SpatialColumnType interface {
 	GetSRID() (uint32, bool)
 	// SetSRID sets SRID value for spatial types.
 	SetSRID(uint32) Type
+	// MatchSRID returns nil if column type SRID matches given value SRID otherwise returns error.
+	MatchSRID(interface{}) error
 }
 
 type LikeMatcher interface {
