@@ -16,9 +16,10 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"log"
 	"testing"
+
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
