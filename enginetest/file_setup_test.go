@@ -41,7 +41,7 @@ func TestFileSourceScanner(t *testing.T) {
 }
 
 func TestCodegenSetups(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var buf bytes.Buffer
 
 	fmt.Fprintf(&buf, "package enginetest\n\n")
@@ -81,6 +81,7 @@ func TestCodegenSetups(t *testing.T) {
 		return nil
 	})
 
+	// if writing to a temporary directory instead:
 	//tmp, err := ioutil.TempDir("", "*")
 	//if err != nil {
 	//	return
