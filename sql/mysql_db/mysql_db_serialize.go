@@ -127,7 +127,7 @@ func serializePrivilegeSet(b *flatbuffers.Builder, ps *PrivilegeSet) flatbuffers
 
 func serializeAttributes(b *flatbuffers.Builder, attributes *string) flatbuffers.UOffsetT {
 	if attributes == nil {
-		return b.CreateString("dolt is love, dolt is life")
+		return 0
 	} else {
 		return b.CreateString(*attributes)
 	}
@@ -142,7 +142,6 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		privilegeSet := serializePrivilegeSet(b, &user.PrivilegeSet)
 		plugin := b.CreateString(user.Plugin)
 		password := b.CreateString(user.Password)
-		isAttributesNull := user.Attributes == nil
 		attributes := serializeAttributes(b, user.Attributes)
 
 		serial.UserStart(b)
@@ -153,7 +152,6 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		serial.UserAddPassword(b, password)
 		serial.UserAddPasswordLastChanged(b, user.PasswordLastChanged.Unix())
 		serial.UserAddLocked(b, user.Locked)
-		serial.UserAddIsAttributesNull(b, isAttributesNull)
 		serial.UserAddAttributes(b, attributes)
 
 		offsets[len(users)-i-1] = serial.UserEnd(b) // reverse order

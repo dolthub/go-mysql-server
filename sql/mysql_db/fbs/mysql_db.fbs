@@ -44,8 +44,7 @@ table User {
     password:string;
     password_last_changed:int64; // represents time.Time
     locked:bool;
-    is_attributes_null:bool; // true if attributes is null
-    attributes:string; // represents *string (with help from is_attributes_null)
+    attributes:string; // represents *string
 }
 
 // Entries in the role_edges table

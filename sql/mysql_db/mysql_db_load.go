@@ -106,10 +106,11 @@ func LoadUser(serialUser *serial.User) *User {
 	serialPrivilegeSet := new(serial.PrivilegeSet)
 	serialUser.PrivilegeSet(serialPrivilegeSet)
 	privilegeSet := loadPrivilegeSet(serialPrivilegeSet)
-	attributesVal := string(serialUser.Attributes())
-	attributes := &attributesVal
-	if serialUser.IsAttributesNull() {
-		attributes = nil
+	attributesBuf := serialUser.Attributes()
+	attributesVal := string(attributesBuf)
+	var attributes *string
+	if attributesBuf != nil {
+		attributes = &attributesVal
 	}
 
 	return &User{
