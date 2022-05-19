@@ -7012,6 +7012,10 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 	var roles []*mysql_db.RoleEdge
 	engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
 		func(ctx *sql.Context, buf []byte) error {
+			// erase everything from users and roles
+			users = make([]*mysql_db.User, 0)
+			roles = make([]*mysql_db.RoleEdge, 0)
+
 			// Deserialize the flatbuffer
 			serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
 
