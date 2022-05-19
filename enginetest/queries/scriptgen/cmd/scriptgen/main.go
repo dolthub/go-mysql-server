@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"go/format"
 	"io"
 	"io/fs"
@@ -13,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 )
 
 var (

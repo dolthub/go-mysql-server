@@ -17,7 +17,6 @@ package enginetest
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -34,6 +33,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -399,29 +399,16 @@ func extractQueryNode(node sql.Node) sql.Node {
 func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	db := harness.NewDatabase("db")
+	harness.Setup([]setup.SetupScript{{
+		"create database db",
+		"use db",
+		"create table members (id bigint primary key, team text)",
+		"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple')",
+	}})
+	e := mustNewEngine(t, harness)
+	defer e.Close()
 
-	wrapInTransaction(t, db, harness, func() {
-		table, err := harness.NewTable(db, "members", sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
-			{Name: "team", Type: sql.Text, Source: "members"},
-		}))
-		require.NoError(err)
-
-		InsertRows(
-			t, NewContext(harness), mustInsertableTable(t, table),
-			sql.NewRow(int64(3), "red"),
-			sql.NewRow(int64(4), "red"),
-			sql.NewRow(int64(5), "orange"),
-			sql.NewRow(int64(6), "orange"),
-			sql.NewRow(int64(7), "orange"),
-			sql.NewRow(int64(8), "purple"),
-		)
-	})
-
-	e := sqle.NewDefault(harness.NewDatabaseProvider(db))
-
-	sch, iter, err := e.Query(NewContext(harness).WithCurrentDB("db"), "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2")
+	sch, iter, err := e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2")
 	require.NoError(err)
 
 	ctx := NewContext(harness)
@@ -436,7 +423,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 
 	require.Equal(expected, rows)
 
-	sch, iter, err = e.Query(NewContext(harness).WithCurrentDB("db"), "SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2")
+	sch, iter, err = e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2")
 	require.NoError(err)
 
 	rows, err = sql.RowIterToRows(ctx, sch, iter)
@@ -449,21 +436,9 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {
-	require := require.New(t)
-
-	db := harness.NewDatabase("mydb")
-
-	wrapInTransaction(t, db, harness, func() {
-		_, err := harness.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s", Type: sql.Text, Source: "mytable"},
-		}))
-		require.NoError(err)
-	})
-
-	pro := harness.NewDatabaseProvider(db)
-	a := analyzer.NewBuilder(pro).Build()
-	e := sqle.New(a, &sqle.Config{IsReadOnly: true})
+	harness.Setup(setup.MytableData)
+	e := mustNewEngine(t, harness)
+	e.IsReadOnly = true
 	defer e.Close()
 
 	RunQuery(t, e, harness, `SELECT i FROM mytable`)
@@ -491,36 +466,21 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 }
 
 func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
-	require := require.New(t)
+	harness.Setup([]setup.SetupScript{{
+		"create table foo (a bigint primary key, b text)",
+		"create table bar (b text primary key, c bigint)",
+		"insert into foo values (1, 'foo'), (2,'bar'), (3,'baz')",
+		"insert into bar values ('qux',3), ('mux',2), ('pux',1)",
+	}})
+	e := mustNewEngine(t, harness)
+	defer e.Close()
 
-	db := harness.NewDatabase("mydb")
-
-	wrapInTransaction(t, db, harness, func() {
-		table, err := harness.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
-			{Name: "b", Type: sql.Text, Source: "foo"},
-		}))
-		require.NoError(err)
-
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
-
-		table2, err := harness.NewTable(db, "bar", sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
-			{Name: "c", Type: sql.Int64, Source: "bar"},
-		}))
-		require.NoError(err)
-
-		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
-	})
-
-	e := sqle.NewDefault(harness.NewDatabaseProvider(db))
 	ctx := NewContext(harness)
 	expected := []sql.Row{
 		{int64(1), "pux", "foo"},
 		{int64(2), "mux", "bar"},
 		{int64(3), "qux", "baz"},
 	}
-
 	TestQueryWithContext(t, ctx, e, `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c order by 1`, expected, nil, nil)
 }
 

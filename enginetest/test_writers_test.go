@@ -3,7 +3,6 @@ package enginetest
 import (
 	"bufio"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
