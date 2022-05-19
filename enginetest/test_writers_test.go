@@ -3,6 +3,7 @@ package enginetest
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -167,7 +168,7 @@ func TestWriteCreateTableQueries(t *testing.T) {
 	require.NoError(t, err)
 
 	harness := NewDefaultMemoryHarness()
-	harness.Setup(MydbData, MytableData, FooData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.FooData)
 
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var CreateTableQueries = []WriteQueryTest{\n")

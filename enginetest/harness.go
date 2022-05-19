@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"testing"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -42,7 +43,7 @@ type Harness interface {
 	NewContext() *sql.Context
 	// Setup injects a test suite's setup scripts. The harness is expected to run
 	// these scripts before returning NewEngine
-	Setup(...[]Testdata)
+	Setup(...[]setup.SetupScript)
 	// NewEngine creates a new sqle.Engine. Ready only tests may re-use an
 	// engine. Write tests call NewEngine before every test, expecting the
 	// fresh state provided by Setup.

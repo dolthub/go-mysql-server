@@ -1,4 +1,4 @@
-package enginetest
+package setup
 
 import (
 	"bufio"
@@ -6,15 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-type ScriptHarness interface {
-	Setup() []setupSource
-}
+//go:generate go run ../cmd/scriptgen/main.go -out setup_data.sg.go -pkg setup setup scripts
 
 type setupSource interface {
 	Next() (bool, error)
@@ -25,17 +22,12 @@ type setupSource interface {
 type Testdata struct {
 	pos      string // file and line number
 	cmd      string // exec, query, ...
-	sql      string
+	Sql      string
 	stmt     ast.Statement
 	expected string
 }
 
-func NewTestdataExec(sql string) Testdata {
-	return Testdata{
-		cmd: "exec",
-		sql: sql,
-	}
-}
+type SetupScript []string
 
 type fileSetup struct {
 	path    string
@@ -45,24 +37,7 @@ type fileSetup struct {
 	rewrite *bytes.Buffer
 }
 
-const setupDir = "./testdata/setup"
-
-func NewFileSetups(paths ...string) ([]setupSource, error) {
-	sources := make([]setupSource, len(paths))
-	for i := range paths {
-		d, err := filepath.Abs(setupDir)
-		if err != nil {
-			return nil, err
-		}
-		sources[i], err = newFileSetup(filepath.Join(d, paths[i]))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return sources, nil
-}
-
-func newFileSetup(path string) (*fileSetup, error) {
+func NewFileSetup(path string) (*fileSetup, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -113,11 +88,10 @@ func (f *fileSetup) Next() (bool, error) {
 				break
 			}
 			buf.WriteString(line)
-			//fmt.Fprintln(&buf, line)
 		}
 
-		f.data.sql = strings.TrimSpace(buf.String())
-		stmt, err := ast.Parse(f.data.sql)
+		f.data.Sql = strings.TrimSpace(buf.String())
+		stmt, err := ast.Parse(f.data.Sql)
 		if err != nil {
 			return false, err
 		}
@@ -201,7 +175,7 @@ func (s stringSetup) Next() (bool, error) {
 	d := Testdata{
 		pos:  fmt.Sprintf("line %d, query: '%s'", s.pos, s.setup[s.pos]),
 		cmd:  "exec",
-		sql:  s.setup[s.pos],
+		Sql:  s.setup[s.pos],
 		stmt: stmt,
 	}
 	s.data = d

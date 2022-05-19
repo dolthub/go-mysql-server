@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"strings"
 	"testing"
 
@@ -38,7 +39,7 @@ type MemoryHarness struct {
 	checkpointTables       []*memory.Table
 	dbOff                  []int
 	dbNames                []string
-	setupData              []Testdata
+	setupData              []setup.SetupScript
 }
 
 func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
@@ -103,7 +104,7 @@ func (s SkippingMemoryHarness) SkipQueryTest(query string) bool {
 	return true
 }
 
-func (m *MemoryHarness) Setup(setupData ...[]Testdata) {
+func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 	m.setupData = nil
 	for i := range setupData {
 		m.setupData = append(m.setupData, setupData[i]...)

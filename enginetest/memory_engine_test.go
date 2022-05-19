@@ -16,6 +16,7 @@ package enginetest_test
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"log"
 	"testing"
 
@@ -258,7 +259,7 @@ func TestBrokenQueries(t *testing.T) {
 
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
-	harness.Setup(enginetest.MydbData, enginetest.Pk_tablesData, enginetest.NiltableData)
+	harness.Setup(setup.MydbData, setup.Pk_tablesData, setup.NiltableData)
 	e, err := harness.NewEngine(t)
 	if err != nil {
 		log.Fatal(err)

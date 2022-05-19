@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries/scriptgen/setup"
 	"strings"
 	"testing"
 
@@ -32,7 +33,7 @@ type MySQLHarness struct {
 	skippedQueries map[string]struct{}
 }
 
-func (m *MySQLHarness) Setup(source ...[]Testdata) {
+func (m *MySQLHarness) Setup(source ...[]setup.SetupScript) {
 	//TODO implement me
 	panic("implement me")
 }
