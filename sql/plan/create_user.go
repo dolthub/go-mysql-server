@@ -120,6 +120,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			plugin = user.Auth1.Plugin()
 			password = user.Auth1.Password()
 		}
+		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
 		//TODO: validate all of the data
 		err := userTableData.Put(ctx, &mysql_db.User{
 			User:                user.UserName.Name,
