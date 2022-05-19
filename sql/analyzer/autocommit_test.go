@@ -26,6 +26,7 @@ import (
 
 var testCasesWithoutCurrentDb = map[string]string{
 	"CREATE PROCEDURE mydb.p1() SELECT 5": "mydb",
+	"create database db123":               "db123",
 }
 
 var testCasesWithCurrentDb = map[string]string{
@@ -36,6 +37,7 @@ var testCasesWithCurrentDb = map[string]string{
 	"insert into db2.t2 values(1, 2, 3)":     "db2",
 	"insert into t2 values(42, 42)":          "foo",
 	"create table db1.t3(i int primary key)": "db1",
+	"create database db123":                  "db123",
 }
 
 var multiDbErrorTestCases = []string{
