@@ -2237,6 +2237,50 @@ var SpatialScriptTests = []ScriptTest{
 				Query:    "select i, ST_ASWKT(p) FROM tab2",
 				Expected: []sql.Row{{1, "POINT(2 2)"}, {2, "POINT(1 6)"}},
 			},
+			{
+				Query:       "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "delete from tab2 where i = 1",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table tab2",
+				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL SRID 4326,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create table using SRID value for polygon type",
+		SetUpScript: []string{
+			"CREATE TABLE tab3 (i int primary key, y polygon NOT NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table tab3",
+				Expected: []sql.Row{{"tab3", "CREATE TABLE `tab3` (\n  `i` int NOT NULL,\n  `y` polygon NOT NULL,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO tab3 VALUES (1, polygon(linestring(point(0,0),point(8,0),point(12,9),point(0,9),point(0,0))))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(y) FROM tab3",
+				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+			},
+			{
+				Query:    "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 0",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:       "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 4326",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
 		},
 	},
 	{
