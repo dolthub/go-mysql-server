@@ -28,10 +28,89 @@ import (
 )
 
 // loadStoredProcedures loads stored procedures for all databases on relevant calls.
-func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if a.ProcedureCache.IsPopulating {
-		return n, transform.SameTree, nil
+func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (*Scope, error) {
+	if scope.proceduresPopulating() {
+		return scope, nil
 	}
+	referencesProcedures := hasProcedureCall(n)
+	if !referencesProcedures {
+		return scope, nil
+	}
+	scope = scope.withProcedureCache(NewProcedureCache())
+	scope.procedures.IsPopulating = true
+	defer func() {
+		scope.procedures.IsPopulating = false
+	}()
+
+	allDatabases := a.Catalog.AllDatabases(ctx)
+	for _, database := range allDatabases {
+		if epdb, ok := database.(sql.ExternalStoredProcedureDatabase); ok {
+			externalProcedures, err := epdb.GetExternalStoredProcedures(ctx)
+			if err != nil {
+				return nil, err
+			}
+			for _, externalProcedure := range externalProcedures {
+				procedure, err := resolveExternalStoredProcedure(ctx, epdb.Name(), externalProcedure)
+				if err != nil {
+					return nil, err
+				}
+				err = scope.procedures.Register(database.Name(), procedure)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	for _, database := range allDatabases {
+		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
+			procedures, err := pdb.GetStoredProcedures(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, procedure := range procedures {
+				parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+				if err != nil {
+					return nil, err
+				}
+				cp, ok := parsedProcedure.(*plan.CreateProcedure)
+				if !ok {
+					return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
+				}
+
+				paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
+				if err != nil {
+					return nil, err
+				}
+				analyzedNode, _, err := resolveDeclarations(ctx, a, cp.Procedure, scope, sel)
+				if err != nil {
+					return nil, err
+				}
+				analyzedNode, _, err = resolveProcedureParams(ctx, paramNames, analyzedNode)
+				if err != nil {
+					return nil, err
+				}
+				analyzedNode, _, err = analyzeProcedureBodies(ctx, a, analyzedNode, false, scope, sel)
+				if err != nil {
+					return nil, err
+				}
+				analyzedProc, ok := analyzedNode.(*plan.Procedure)
+				if !ok {
+					return nil, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
+				}
+
+				err = scope.procedures.Register(database.Name(), analyzedProc)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+	return scope, nil
+}
+
+func hasProcedureCall(n sql.Node) bool {
 	referencesProcedures := false
 	transform.Inspect(n, func(n sql.Node) bool {
 		if _, ok := n.(*plan.Call); ok {
@@ -46,81 +125,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 		return true
 	})
-	if !referencesProcedures {
-		return n, transform.SameTree, nil
-	}
-	a.ProcedureCache = NewProcedureCache()
-	a.ProcedureCache.IsPopulating = true
-	defer func() {
-		a.ProcedureCache.IsPopulating = false
-	}()
-
-	allDatabases := a.Catalog.AllDatabases(ctx)
-	for _, database := range allDatabases {
-		if epdb, ok := database.(sql.ExternalStoredProcedureDatabase); ok {
-			externalProcedures, err := epdb.GetExternalStoredProcedures(ctx)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			for _, externalProcedure := range externalProcedures {
-				procedure, err := resolveExternalStoredProcedure(ctx, epdb.Name(), externalProcedure)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				err = a.ProcedureCache.Register(database.Name(), procedure)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-			}
-		}
-	}
-
-	for _, database := range allDatabases {
-		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
-			procedures, err := pdb.GetStoredProcedures(ctx)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			for _, procedure := range procedures {
-				parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				cp, ok := parsedProcedure.(*plan.CreateProcedure)
-				if !ok {
-					return nil, transform.SameTree, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
-				}
-
-				paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				analyzedNode, _, err := resolveDeclarations(ctx, a, cp.Procedure, scope, sel)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				analyzedNode, _, err = resolveProcedureParams(ctx, paramNames, analyzedNode)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				analyzedNode, _, err = analyzeProcedureBodies(ctx, a, analyzedNode, false, scope, sel)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				analyzedProc, ok := analyzedNode.(*plan.Procedure)
-				if !ok {
-					return nil, transform.SameTree, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
-				}
-
-				err = a.ProcedureCache.Register(database.Name(), analyzedProc)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-			}
-		}
-	}
-	return n, transform.SameTree, nil
+	return referencesProcedures
 }
 
 // analyzeProcedureBodies analyzes each statement in a procedure's body individually, as the analyzer is designed to
@@ -338,12 +343,23 @@ func resolveProcedureParamsTransform(ctx *sql.Context, paramNames map[string]str
 
 // applyProcedures applies the relevant stored procedures to the node given (if necessary).
 func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if a.ProcedureCache.IsPopulating {
+	if scope.proceduresPopulating() {
 		return n, transform.SameTree, nil
 	}
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
 	}
+
+	hasProcedureCall := hasProcedureCall(n)
+	if !hasProcedureCall {
+		return n, transform.SameTree, nil
+	}
+
+	scope, err := loadStoredProcedures(ctx, a, n, scope, sel)
+	if err != nil {
+		return nil, false, err
+	}
+
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Call:
@@ -359,7 +375,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	pRef := expression.NewProcedureParamReference()
 	call = call.WithParamReference(pRef)
 
-	procedure := a.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
+	procedure := scope.procedures.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
 	if procedure == nil {
 		return nil, transform.SameTree, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
 	}

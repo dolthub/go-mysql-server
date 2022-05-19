@@ -3269,22 +3269,81 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e, "ALTER TABLE mytable DROP COLUMN s", []sql.Row{{sql.NewOkResult(0)}}, nil)
+	t.Run("drop last column", func(t *testing.T) {
+		TestQuery(t, harness, e, "ALTER TABLE mytable DROP COLUMN s", []sql.Row{{sql.NewOkResult(0)}}, nil)
 
-	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-	}, tbl.Schema())
+		tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+		require.NoError(err)
+		require.True(ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		}, tbl.Schema())
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist DROP COLUMN s")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
+		TestQuery(t, harness, e, "select * from mytable order by i", []sql.Row{
+			{1}, {2}, {3},
+		}, nil)
+	})
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable DROP COLUMN s")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
+	t.Run("drop first column", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t1 (a int, b varchar(10), c bigint, k bigint primary key)", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		RunQuery(t, e, harness, "insert into t1 values (1, 'abc', 2, 3), (4, 'def', 5, 6)")
+		TestQuery(t, harness, e, "ALTER TABLE t1 DROP COLUMN a", []sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(ctx, "t1")
+		require.NoError(err)
+		require.True(ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t1", Nullable: true},
+			{Name: "c", Type: sql.Int64, Source: "t1", Nullable: true},
+			{Name: "k", Type: sql.Int64, Source: "t1", PrimaryKey: true},
+		}, tbl.Schema())
+
+		TestQuery(t, harness, e, "select * from t1 order by b", []sql.Row{
+			{"abc", 2, 3},
+			{"def", 5, 6},
+		}, nil)
+	})
+
+	t.Run("drop middle column", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t2 (a int, b varchar(10), c bigint, k bigint primary key)", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		RunQuery(t, e, harness, "insert into t2 values (1, 'abc', 2, 3), (4, 'def', 5, 6)")
+		TestQuery(t, harness, e, "ALTER TABLE t2 DROP COLUMN b", []sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(ctx, "t2")
+		require.NoError(err)
+		require.True(ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "a", Type: sql.Int32, Source: "t2", Nullable: true},
+			{Name: "c", Type: sql.Int64, Source: "t2", Nullable: true},
+			{Name: "k", Type: sql.Int64, Source: "t2", PrimaryKey: true},
+		}, tbl.Schema())
+
+		TestQuery(t, harness, e, "select * from t2 order by c", []sql.Row{
+			{1, 2, 3},
+			{4, 5, 6},
+		}, nil)
+	})
+
+	t.Run("drop primary key column", func(t *testing.T) {
+		t.Skip("primary key column drops not well supported yet")
+
+		TestQuery(t, harness, e, "CREATE TABLE t3 (a int primary key, b varchar(10), c bigint)", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		RunQuery(t, e, harness, "insert into t3 values (1, 'abc', 2), (3, 'def', 4)")
+		TestQuery(t, harness, e, "ALTER TABLE t3 DROP COLUMN a", []sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(ctx, "t1")
+		require.NoError(err)
+		require.True(ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t3", Nullable: true},
+			{Name: "c", Type: sql.Int64, Source: "t3", Nullable: true},
+		}, tbl.Schema())
+
+		TestQuery(t, harness, e, "select * from t3 order by b", []sql.Row{
+			{"abc", 2, 3},
+			{"def", 4, 5},
+		}, nil)
+	})
 
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
@@ -3294,7 +3353,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "tabletest")
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "tabletest")
 		require.NoError(err)
 		require.True(ok)
 		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
@@ -3303,24 +3362,96 @@ func TestDropColumn(t *testing.T, harness Harness) {
 		}, tbl.Schema())
 	})
 
-	t.Run("drop column preserves table check constraints", func(t *testing.T) {
-		RunQuery(t, e, harness, "ALTER TABLE mytable ADD COLUMN j int, ADD COLUMN k int")
-		RunQuery(t, e, harness, "ALTER TABLE mytable ADD CONSTRAINT test_check CHECK (j < 12345)")
+	t.Run("error cases", func(t *testing.T) {
+		AssertErr(t, e, harness, "ALTER TABLE not_exist DROP COLUMN s", sql.ErrTableNotFound)
+		AssertErr(t, e, harness, "ALTER TABLE mytable DROP COLUMN s", sql.ErrTableColumnNotFound)
 
-		AssertErr(t, e, harness, "ALTER TABLE mytable DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
+		// Dropping a column referred to in another column's default
+		RunQuery(t, e, harness, "create table t3 (a int primary key, b int, c int default (b+10))")
+		AssertErr(t, e, harness, "ALTER TABLE t3 DROP COLUMN b", sql.ErrDropColumnReferencedInDefault)
+	})
+}
 
-		RunQuery(t, e, harness, "ALTER TABLE mytable DROP COLUMN k")
-		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+func TestDropColumnKeylessTables(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+	require.NoError(err)
+
+	t.Run("drop last column", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t0 (i bigint, s varchar(20))")
+
+		TestQuery(t, harness, e, "ALTER TABLE t0 DROP COLUMN s", []sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(ctx, "t0")
 		require.NoError(err)
 		require.True(ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "t0", Nullable: true},
+		}, tbl.Schema())
+	})
 
-		checkTable, ok := tbl.(sql.CheckTable)
-		require.True(ok)
-		checks, err := checkTable.GetChecks(harness.NewContext())
+	t.Run("drop first column", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t1 (a int, b varchar(10), c bigint)", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		RunQuery(t, e, harness, "insert into t1 values (1, 'abc', 2), (4, 'def', 5)")
+		TestQuery(t, harness, e, "ALTER TABLE t1 DROP COLUMN a", []sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(ctx, "t1")
 		require.NoError(err)
-		require.Equal(1, len(checks))
-		require.Equal("test_check", checks[0].Name)
-		require.Equal("(j < 12345)", checks[0].CheckExpression)
+		require.True(ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t1", Nullable: true},
+			{Name: "c", Type: sql.Int64, Source: "t1", Nullable: true},
+		}, tbl.Schema())
+
+		TestQuery(t, harness, e, "select * from t1 order by b", []sql.Row{
+			{"abc", 2},
+			{"def", 5},
+		}, nil)
+	})
+
+	t.Run("drop middle column", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t2 (a int, b varchar(10), c bigint)", []sql.Row{{sql.NewOkResult(0)}}, nil)
+		RunQuery(t, e, harness, "insert into t2 values (1, 'abc', 2), (4, 'def', 5)")
+		TestQuery(t, harness, e, "ALTER TABLE t2 DROP COLUMN b", []sql.Row{{sql.NewOkResult(0)}}, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(ctx, "t2")
+		require.NoError(err)
+		require.True(ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "a", Type: sql.Int32, Source: "t2", Nullable: true},
+			{Name: "c", Type: sql.Int64, Source: "t2", Nullable: true},
+		}, tbl.Schema())
+
+		TestQuery(t, harness, e, "select * from t2 order by c", []sql.Row{
+			{1, 2},
+			{4, 5},
+		}, nil)
+	})
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		beforeDropTbl, _, _ := db.GetTableInsensitive(NewContext(harness), "tabletest")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "tabletest")
+		require.NoError(err)
+		require.True(ok)
+		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
+		}, tbl.Schema())
+	})
+
+	t.Run("error cases", func(t *testing.T) {
+		AssertErr(t, e, harness, "ALTER TABLE not_exist DROP COLUMN s", sql.ErrTableNotFound)
+		AssertErr(t, e, harness, "ALTER TABLE t0 DROP COLUMN s", sql.ErrTableColumnNotFound)
 	})
 }
 
@@ -5880,6 +6011,49 @@ func TestAlterTable(t *testing.T, harness Harness) {
 				Enforced:        true,
 			},
 		}, checks)
+	})
+
+	t.Run("drop column preserves check constraints", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t34 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t34 ADD COLUMN j int, ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t34 ADD CONSTRAINT test_check CHECK (j < 12345)")
+
+		AssertErr(t, e, harness, "ALTER TABLE t34 DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
+
+		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN k")
+		TestQuery(t, harness, e, "show create table t34",
+			[]sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  `j` int,\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  CONSTRAINT `test_check` CHECK ((`j` < 12345))\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			nil)
+	})
+
+	t.Run("drop column preserves indexes", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t35 (i bigint primary key, s varchar(20), s2 varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t35 ADD unique key test_key (s)")
+
+		RunQuery(t, e, harness, "ALTER TABLE t35 DROP COLUMN s2")
+		TestQuery(t, harness, e, "show create table t35",
+			[]sql.Row{{"t35", "CREATE TABLE `t35` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  UNIQUE KEY `test_key` (`s`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			nil)
+	})
+
+	t.Run("drop column prevents foreign key violations", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t36 (i bigint primary key, j varchar(20))")
+		RunQuery(t, e, harness, "create table t37 (i bigint primary key, j varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t36 ADD key (j)")
+		RunQuery(t, e, harness, "ALTER TABLE t37 ADD constraint fk_36 foreign key (j) references t36(j)")
+
+		AssertErr(t, e, harness, "ALTER TABLE t37 DROP COLUMN j", sql.ErrForeignKeyDropColumn)
 	})
 
 	t.Run("disable keys / enable keys", func(t *testing.T) {
