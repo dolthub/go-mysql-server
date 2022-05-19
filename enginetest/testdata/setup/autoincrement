@@ -1,4 +1,8 @@
 exec
+drop table if exists auto_increment_tbl
+----
+
+exec
 CREATE TABLE `auto_increment_tbl` (
   `pk` bigint NOT NULL AUTO_INCREMENT,
   `c0` bigint,

@@ -4,11 +4,17 @@ var AutoincrementData = []Testdata{
 	{
 		pos:      "testdata/setup/autoincrement:1",
 		cmd:      "exec",
+		sql:      `drop table if exists auto_increment_tbl`,
+		expected: "",
+	},
+	{
+		pos:      "testdata/setup/autoincrement:5",
+		cmd:      "exec",
 		sql:      "CREATE TABLE `auto_increment_tbl` (  `pk` bigint NOT NULL AUTO_INCREMENT,  `c0` bigint,  PRIMARY KEY (`pk`))",
 		expected: "",
 	},
 	{
-		pos:      "testdata/setup/autoincrement:9",
+		pos:      "testdata/setup/autoincrement:13",
 		cmd:      "exec",
 		sql:      `INSERT INTO auto_increment_tbl values    (1, 11),    (2, 22),    (3, 33)`,
 		expected: "",
@@ -518,6 +524,21 @@ var OthertableData = []Testdata{
 		pos:      "testdata/setup/othertable:16",
 		cmd:      "exec",
 		sql:      `create index othertable_s2_i2 on othertable (s2,i2)`,
+		expected: "",
+	},
+}
+
+var Othertable_del_idxData = []Testdata{
+	{
+		pos:      "testdata/setup/othertable_del_idx:1",
+		cmd:      "exec",
+		sql:      `drop index othertable_s2 on othertable;`,
+		expected: "",
+	},
+	{
+		pos:      "testdata/setup/othertable_del_idx:5",
+		cmd:      "exec",
+		sql:      `drop index othertable_s2_i2 on othertable;`,
 		expected: "",
 	},
 }

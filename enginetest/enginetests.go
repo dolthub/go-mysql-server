@@ -543,7 +543,7 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
 }
 
 func TestInsertInto(t *testing.T, harness Harness) {
-	harness.Setup(MydbData, MytableData, Mytable_del_idxData, KeylessData, NiltableData, TypestableData, EmptytableData, AutoincrementData, OthertableData)
+	harness.Setup(MydbData, MytableData, Mytable_del_idxData, KeylessData, NiltableData, TypestableData, EmptytableData, AutoincrementData, OthertableData, Othertable_del_idxData)
 	for _, insertion := range queries.InsertQueries {
 		runWriteQueryTest(t, harness, insertion)
 	}
@@ -608,7 +608,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 }
 
 func TestReplaceInto(t *testing.T, harness Harness) {
-	harness.Setup(MydbData, MytableData, TypestableData)
+	harness.Setup(MydbData, MytableData, Mytable_del_idxData, TypestableData)
 	for _, tt := range queries.ReplaceQueries {
 		runWriteQueryTest(t, harness, tt)
 	}
@@ -746,7 +746,7 @@ func TestInsertQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 func TestReplaceQueriesPrepared(t *testing.T, harness Harness) {
-	harness.Setup(MydbData, MytableData, TypestableData)
+	harness.Setup(MydbData, MytableData, Mytable_del_idxData, TypestableData)
 	for _, tt := range queries.ReplaceQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
@@ -2540,7 +2540,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 
 //todo(max): convert to WriteQueryTest
 func TestModifyColumn(t *testing.T, harness Harness) {
-	harness.Setup(MydbData, MytableData)
+	harness.Setup(MydbData, MytableData, Mytable_del_idxData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
