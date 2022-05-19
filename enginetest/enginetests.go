@@ -400,8 +400,6 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	harness.Setup([]setup.SetupScript{{
-		"create database db",
-		"use db",
 		"create table members (id bigint primary key, team text)",
 		"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple')",
 	}})
