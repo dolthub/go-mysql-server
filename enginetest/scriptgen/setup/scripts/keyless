@@ -1,0 +1,29 @@
+
+exec
+CREATE TABLE `unique_keyless` (
+  `c0` bigint,
+  `c1` bigint
+)
+----
+
+exec
+insert into unique_keyless values
+    (0,0),
+    (1,1),
+    (2,2)
+----
+
+exec
+CREATE TABLE `keyless` (
+  `c0` bigint,
+  `c1` bigint
+)
+----
+
+exec
+insert into keyless values
+    (0,0),
+    (1,1),
+    (1,1),
+    (2,2)
+----

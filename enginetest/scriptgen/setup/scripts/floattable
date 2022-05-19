@@ -1,0 +1,22 @@
+exec
+CREATE TABLE `floattable` (
+  `i` bigint NOT NULL,
+  `f32` float NOT NULL,
+  `f64` double NOT NULL,
+  PRIMARY KEY (`i`)
+)
+----
+
+exec
+insert into floattable values
+    (1, 1.0, 1.0),
+    (2, 1.5, 1.5),
+    (3, 2.0, 2.0),
+    (4, 2.5, 2.5),
+    (-1, -1.0, -1.0),
+    (-2, -1.5, -1.5)
+----
+
+exec
+create index floattable_f on floattable (f64)
+----

@@ -176,7 +176,7 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
-		newTable, err := copyTable(pkTea.table, pkTea.table.schema)
+		newTable, err := newTable(pkTea.table, pkTea.table.schema)
 		if err != nil {
 			panic(err)
 		}
@@ -203,7 +203,7 @@ func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 		return newTable.WithIndexLookup(memoryLookup)
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
-		newTable, err := copyTable(nonPkTea.table, nonPkTea.table.schema)
+		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
 		if err != nil {
 			panic(err)
 		}
