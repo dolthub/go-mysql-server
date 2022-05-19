@@ -580,6 +580,10 @@ func TestDropColumn(t *testing.T) {
 	enginetest.TestDropColumn(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDropColumnKeylessTables(t *testing.T) {
+	enginetest.TestDropColumnKeylessTables(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestCreateDatabase(t *testing.T) {
 	enginetest.TestCreateDatabase(t, enginetest.NewDefaultMemoryHarness())
 }
