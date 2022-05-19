@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"hash/crc32"
 	"math"
 	"math/rand"
@@ -700,4 +701,19 @@ func (s *Sign) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 	return NewSign(children[0]), nil
+}
+
+// NewMod returns a new SIGN function expression
+func NewMod(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("mod", "2", len(args))
+	}
+
+	return &expression.Arithmetic{
+		BinaryExpression: expression.BinaryExpression{
+			Left:  args[0],
+			Right: args[1],
+		},
+		Op: "%",
+	}, nil
 }
