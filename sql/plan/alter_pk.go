@@ -102,6 +102,7 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type dropPkIter struct {
+	targetSchema sql.Schema
 	pkAlterable sql.PrimaryKeyAlterableTable
 	runOnce bool
 }
@@ -125,6 +126,7 @@ func (d *dropPkIter) Close(context *sql.Context) error {
 }
 
 type createPkIter struct {
+	targetSchema sql.Schema
 	columns      []sql.IndexColumn
 	pkAlterable sql.PrimaryKeyAlterableTable
 	runOnce bool
@@ -136,6 +138,15 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	c.runOnce = true
 
+	if rwt, ok := c.pkAlterable.(sql.RewritableTable); ok {
+		err := c.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+
+		return sql.NewRow(sql.NewOkResult(0)), nil
+	}
+
 	err := c.pkAlterable.CreatePrimaryKey(ctx, c.columns)
 	if err != nil {
 		return nil, err
@@ -146,6 +157,54 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (c createPkIter) Close(context *sql.Context) error {
 	return nil
+}
+
+func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
+	newSchema := addKeyToSchema(rwt.Name(), c.targetSchema, c.columns)
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
+
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil)
+	if err != nil {
+		return err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		err = inserter.Insert(ctx, r)
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addKeyToSchema(tableName string, schema sql.Schema, columns []sql.IndexColumn) sql.PrimaryKeySchema {
+	ordinals := make([]int, len(columns))
+	for i := range columns {
+		ordinals[i] = schema.IndexOf(columns[i].Name, tableName)
+	}
+	return sql.NewPrimaryKeySchema(schema, ordinals...)
 }
 
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
