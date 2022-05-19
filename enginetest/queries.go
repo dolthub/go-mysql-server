@@ -6797,6 +6797,12 @@ var QueryTests = []QueryTest{
 		Query:    `show function status where Db='mydb'`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query: `select uuid() = uuid()`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
