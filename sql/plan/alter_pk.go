@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -100,6 +101,53 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &a, nil
 }
 
+type dropPkIter struct {
+	pkAlterable sql.PrimaryKeyAlterableTable
+	runOnce bool
+}
+
+func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if d.runOnce {
+		return nil, io.EOF
+	}
+	d.runOnce = true
+
+	err := d.pkAlterable.DropPrimaryKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (d *dropPkIter) Close(context *sql.Context) error {
+	return nil
+}
+
+type createPkIter struct {
+	columns      []sql.IndexColumn
+	pkAlterable sql.PrimaryKeyAlterableTable
+	runOnce bool
+}
+
+func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if c.runOnce {
+		return nil, io.EOF
+	}
+	c.runOnce = true
+
+	err := c.pkAlterable.CreatePrimaryKey(ctx, c.columns)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (c createPkIter) Close(context *sql.Context) error {
+	return nil
+}
+
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// We grab the table from the database to ensure that state is properly refreshed, thereby preventing multiple keys
 	// being defined.
@@ -109,6 +157,7 @@ func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
+	// TODO: these validation checks belong in the analysis phase, not here
 	pkAlterable, ok := table.(sql.PrimaryKeyAlterableTable)
 	if !ok {
 		return nil, ErrNotPrimaryKeyAlterable.New(a.Table)
@@ -129,16 +178,17 @@ func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 
-		err = pkAlterable.CreatePrimaryKey(ctx, a.Columns)
+		return &createPkIter{
+			columns:     a.Columns,
+			pkAlterable: pkAlterable,
+		}, nil
 	case PrimaryKeyAction_Drop:
-		err = pkAlterable.DropPrimaryKey(ctx)
+		return &dropPkIter{
+			pkAlterable: pkAlterable,
+		}, nil
+	default:
+		panic("unreachable")
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 func hasPrimaryKeys(table sql.Table) bool {
