@@ -83,6 +83,7 @@ func (d memoryDBProvider) CreateDatabase(_ *sql.Context, name string) (err error
 	defer d.mu.Unlock()
 
 	db := NewDatabase(name)
+	db.EnablePrimaryKeyIndexes()
 	d.dbs[strings.ToLower(db.Name())] = db
 	return
 }

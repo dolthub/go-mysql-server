@@ -1,0 +1,23 @@
+exec
+CREATE TABLE `niltable` (
+  `i` bigint NOT NULL,
+  `i2` bigint,
+  `b` tinyint,
+  `f` double,
+  PRIMARY KEY (`i`)
+)
+----
+
+exec
+insert into niltable values
+    (1,null,null,null),
+    (2,2,1,null),
+    (3,null,0,null),
+    (4,4,null,4.0),
+    (5,null,1,5.0),
+    (6,6,0,6.0)
+----
+
+exec
+create index niltable_i2 on niltable (i2)
+----

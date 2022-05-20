@@ -1,0 +1,18 @@
+exec
+CREATE TABLE short_ord_pk (x int not null, y int not null, primary key (y,x))
+----
+
+exec
+CREATE TABLE long_ord_pk1 (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))
+----
+
+exec
+CREATE TABLE long_ord_pk2 (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))
+----
+
+exec
+CREATE TABLE long_ord_pk3 (u int, v int, w int, ww int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))
+----
+
+exec
+CREATE TABLE ord_kl (u int, v int, w int, x int, y int, z int)

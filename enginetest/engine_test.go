@@ -30,6 +30,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -471,7 +472,7 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 }
 
 func TestTableFunctions(t *testing.T) {
-	var tableFunctionScriptTests = []enginetest.ScriptTest{
+	var tableFunctionScriptTests = []queries.ScriptTest{
 		{
 			Name:        "undefined table function",
 			Query:       "SELECT * from does_not_exist('q', 123);",

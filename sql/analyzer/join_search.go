@@ -44,25 +44,6 @@ func buildJoinTree(
 	return found
 }
 
-// Generates all permutations of the slice given.
-func permutations(a []int) (res [][]int) {
-	var helper func(n int)
-	helper = func(n int) {
-		if n > len(a) {
-			res = append(res, append([]int(nil), a...))
-		} else {
-			helper(n + 1)
-			for i := n + 1; i < len(a); i++ {
-				a[n], a[i] = a[i], a[n]
-				helper(n + 1)
-				a[i], a[n] = a[n], a[i]
-			}
-		}
-	}
-	helper(0)
-	return res
-}
-
 // assignConditions attempts to assign the conditions in |conditions|
 // to the search tree in |root|, such that every condition is on an
 // internal node, and all of the trees referenced in the condition

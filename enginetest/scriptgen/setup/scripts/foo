@@ -1,0 +1,14 @@
+exec
+create database if not exists foo
+----
+
+exec
+create table foo.other_table (text text primary key, number mediumint)
+----
+
+exec
+insert into foo.other_table values
+    ('a', 4),
+    ('b', 2),
+    ('c', 0)
+----
