@@ -146,11 +146,11 @@ func (e *Engine) PrepareQuery(
 	if err != nil {
 		return nil, err
 	}
-	e.cachePreparedStmt(ctx, node, query)
+	e.CachePreparedStmt(ctx, node, query)
 	return node, nil
 }
 
-// Query executes a query. If parsed is non-nil, it will be used instead of parsing the query from text.
+// Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
 	return e.QueryWithBindings(ctx, query, nil)
 }
@@ -258,7 +258,7 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 	return nil
 }
 
-func (e *Engine) cachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
+func (e *Engine) CachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.PreparedData[ctx.Session.ID()] = PreparedData{

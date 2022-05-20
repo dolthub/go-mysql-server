@@ -1,0 +1,22 @@
+exec
+create table specialtable (id bigint primary key, name varchar(20))
+----
+
+exec
+insert into specialtable values
+    (1, 'first_row'),
+    (2, 'second_row'),
+    (3, 'third_row'),
+    (4, '%'),
+    (5, '\''),
+    (6, '\"'),
+    (7, '\t'),
+    (8, '\n'),
+    (9, "\v"),
+    (10, 'test%test'),
+    (11, 'test\'test'),
+    (12, 'test\"test'),
+    (13, 'test\ttest'),
+    (14, 'test\ntest'),
+    (15, 'test\vtest')
+----

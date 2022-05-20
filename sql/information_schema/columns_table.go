@@ -146,6 +146,10 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 
 				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
 				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
+				columnKey := ""
+				if c.PrimaryKey {
+					columnKey = "PRI"
+				}
 
 				rows = append(rows, sql.Row{
 					"def",                            // table_catalog
@@ -164,7 +168,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					charName,                         // character_set_name
 					collName,                         // collation_name
 					strings.ToLower(c.Type.String()), // column_type
-					"",                               // column_key
+					columnKey,                        // column_key
 					c.Extra,                          // extra
 					"select",                         // privileges
 					c.Comment,                        // column_comment
