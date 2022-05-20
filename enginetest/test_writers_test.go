@@ -23,7 +23,7 @@ func TestWriteQueryPlans(t *testing.T) {
 	t.Skip()
 
 	harness := NewDefaultMemoryHarness()
-	engine := NewEngine(t, harness)
+	engine := mustNewEngine(t, harness)
 	CreateIndexes(t, harness, engine)
 
 	tmp, err := ioutil.TempDir("", "*")
@@ -79,7 +79,7 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 	t.Skip()
 
 	harness := NewDefaultMemoryHarness()
-	engine := NewEngine(t, harness)
+	engine := mustNewEngine(t, harness)
 
 	CreateIndexes(t, harness, engine)
 
