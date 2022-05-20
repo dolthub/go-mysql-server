@@ -1,0 +1,11 @@
+exec
+drop index mytable_s on mytable;
+----
+
+exec
+drop index mytable_i_s on mytable;
+----
+
+exec
+drop index idx_si on mytable;
+----

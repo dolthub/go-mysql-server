@@ -1509,7 +1509,7 @@ func NewInformationSchemaDatabase() Database {
 				rowIter: emptyRowIter,
 			},
 			MysqlFirewallWhitelistTableName: &informationSchemaTable{
-				name:    MysqlFirewallUsersTableName,
+				name:    MysqlFirewallWhitelistTableName,
 				schema:  mysqlFirewallWhitelistSchema,
 				rowIter: emptyRowIter,
 			},
@@ -1574,7 +1574,7 @@ func NewInformationSchemaDatabase() Database {
 				rowIter: emptyRowIter,
 			},
 			TableConstraintsExtensionsTableName: &informationSchemaTable{
-				name:    RoleColumnGrantsTableName,
+				name:    TableConstraintsExtensionsTableName,
 				schema:  tableConstraintsExtensionsSchema,
 				rowIter: emptyRowIter,
 			},
@@ -1883,7 +1883,6 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 	if t.catalog == nil {
 		return nil, fmt.Errorf("nil catalog for info schema table %s", t.name)
 	}
-
 	return t.rowIter(ctx, t.catalog)
 }
 

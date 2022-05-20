@@ -1,0 +1,7 @@
+exec
+drop index othertable_s2 on othertable;
+----
+
+exec
+drop index othertable_s2_i2 on othertable;
+----

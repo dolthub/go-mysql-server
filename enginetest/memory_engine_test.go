@@ -15,22 +15,18 @@
 package enginetest_test
 
 import (
-	"bufio"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
+	"log"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -85,56 +81,15 @@ func TestQueries(t *testing.T) {
 	}
 }
 
-func TestSpatialQueries(t *testing.T) {
-	for _, numPartitions := range numPartitionsVals {
-		for _, indexBehavior := range indexBehaviors {
-			for _, parallelism := range parallelVals {
-				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
-					// This case is covered by TestQueriesSimple
-					continue
-				}
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
-
-				t.Run(testName, func(t *testing.T) {
-					enginetest.TestSpatialQueries(t, harness)
-				})
-			}
-		}
-	}
-}
-
 // TestQueriesPrepared runs the canonical test queries against the gamut of thread, index and partition options
 // with prepared statement caching enabled.
 func TestQueriesPrepared(t *testing.T) {
-	for _, numPartitions := range numPartitionsVals {
-		for _, indexBehavior := range indexBehaviors {
-			for _, parallelism := range parallelVals {
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
-
-				t.Run(testName, func(t *testing.T) {
-					enginetest.TestQueriesPrepared(t, harness)
-				})
-			}
-		}
-	}
+	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestSpatialQueriesPrepared(t *testing.T) {
-	for _, numPartitions := range numPartitionsVals {
-		for _, indexBehavior := range indexBehaviors {
-			for _, parallelism := range parallelVals {
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
-
-				t.Run(testName, func(t *testing.T) {
-					enginetest.TestSpatialQueriesPrepared(t, harness)
-				})
-			}
-		}
-	}
+	enginetest.TestSpatialQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
@@ -151,7 +106,7 @@ func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+// TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
@@ -160,8 +115,8 @@ func TestJoinQueries(t *testing.T) {
 func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
-	var test enginetest.QueryTest
-	test = enginetest.QueryTest{
+	var test queries.QueryTest
+	test = queries.QueryTest{
 		Query: `show create table two_pk`,
 		Expected: []sql.Row{
 			{1, 2},
@@ -175,15 +130,15 @@ func TestSingleQuery(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil)
+	enginetest.TestQueryWithEngine(t, harness, engine, test)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQueryPrepared(t *testing.T) {
 	t.Skip()
 
-	var test enginetest.QueryTest
-	test = enginetest.QueryTest{
+	var test queries.QueryTest
+	test = queries.QueryTest{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
 			{sql.Point{X: 1, Y: 2}},
@@ -197,20 +152,18 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//engine := enginetest.NewEngine(t, harness)
 	engine := enginetest.NewSpatialEngine(t, harness)
-	//enginetest.CreateIndexes(t, harness, engine)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestPreparedQuery(t, harness, engine, test.Query, test.Expected, nil)
+	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
 
-	var scripts = []enginetest.ScriptTest{
+	var scripts = []queries.ScriptTest{
 		{
 			Name: "non-existent procedure in trigger body",
 			SetUpScript: []string{
@@ -218,7 +171,7 @@ func TestSingleScript(t *testing.T) {
 				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
 				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
 			},
-			Assertions: []enginetest.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query:    "SELECT * FROM t0;",
 					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
@@ -272,7 +225,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 }
 
 func TestUnbuildableIndex(t *testing.T) {
-	var scripts = []enginetest.ScriptTest{
+	var scripts = []queries.ScriptTest{
 		{
 			Name: "Failing index builder still returning correct results",
 			SetUpScript: []string{
@@ -281,7 +234,7 @@ func TestUnbuildableIndex(t *testing.T) {
 				fmt.Sprintf("CREATE INDEX mytable2_i_s ON mytable2 (i, s) COMMENT '%s'", memory.CommentPreventingIndexBuilding),
 				"INSERT INTO mytable2 VALUES (1, 'first row'), (2, 'second row'), (3, 'third row')",
 			},
-			Assertions: []enginetest.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "SELECT i FROM mytable2 WHERE i IN (SELECT i FROM mytable2) ORDER BY i",
 					Expected: []sql.Row{
@@ -296,22 +249,24 @@ func TestUnbuildableIndex(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		engine := enginetest.NewEngine(t, harness)
-
-		enginetest.TestScriptWithEngine(t, engine, harness, test)
+		enginetest.TestScript(t, harness, test)
 	}
 }
 
 func TestBrokenQueries(t *testing.T) {
-	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)
+	enginetest.TestBrokenQueries(t, enginetest.NewSkippingMemoryHarness())
 }
 
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
-	engine := enginetest.NewEngine(t, harness)
-	for _, tt := range enginetest.QueryPlanTODOs {
+	harness.Setup(setup.MydbData, setup.Pk_tablesData, setup.NiltableData)
+	e, err := harness.NewEngine(t)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, tt := range queries.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, enginetest.NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
+			enginetest.TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
 		})
 	}
 }
@@ -376,171 +331,6 @@ func TestIndexQueryPlans(t *testing.T) {
 			enginetest.TestIndexQueryPlans(t, harness)
 		})
 	}
-}
-
-// This test will write a new set of query plan expected results to a file that you can copy and paste over the existing
-// query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
-// how query plans have changed without a lot of manual copying and pasting.
-func TestWriteQueryPlans(t *testing.T) {
-	//t.Skip()
-
-	harness := enginetest.NewDefaultMemoryHarness()
-	engine := enginetest.NewEngine(t, harness)
-	enginetest.CreateIndexes(t, harness, engine)
-
-	tmp, err := ioutil.TempDir("", "*")
-	if err != nil {
-		return
-	}
-
-	outputPath := filepath.Join(tmp, "queryPlans.txt")
-	f, err := os.Create(outputPath)
-	require.NoError(t, err)
-
-	w := bufio.NewWriter(f)
-	_, _ = w.WriteString("var PlanTests = []QueryPlanTest{\n")
-	for _, tt := range enginetest.PlanTests {
-		_, _ = w.WriteString("\t{\n")
-		ctx := enginetest.NewContextWithEngine(harness, engine)
-		parsed, err := parse.Parse(ctx, tt.Query)
-		require.NoError(t, err)
-
-		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
-		require.NoError(t, err)
-		planString := extractQueryNode(node).String()
-
-		if strings.Contains(tt.Query, "`") {
-			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
-		} else {
-			_, _ = w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
-		}
-		_, _ = w.WriteString("\n")
-
-		_, _ = w.WriteString(`ExpectedPlan: `)
-		for i, line := range strings.Split(planString, "\n") {
-			if i > 0 {
-				_, _ = w.WriteString(" + \n")
-			}
-			if len(line) > 0 {
-				_, _ = w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
-			} else {
-				// final line with comma
-				_, _ = w.WriteString("\"\",\n")
-			}
-		}
-		_, _ = w.WriteString("\t},\n")
-	}
-	_, _ = w.WriteString("}")
-
-	_ = w.Flush()
-
-	t.Logf("Query plans in %s", outputPath)
-}
-
-func TestWriteIndexQueryPlans(t *testing.T) {
-	t.Skip()
-
-	harness := enginetest.NewDefaultMemoryHarness()
-	engine := enginetest.NewEngine(t, harness)
-
-	enginetest.CreateIndexes(t, harness, engine)
-	for i, script := range enginetest.ComplexIndexQueries {
-		for _, statement := range script.SetUpScript {
-			statement = strings.Replace(statement, "test", fmt.Sprintf("t%d", i), -1)
-			enginetest.RunQuery(t, engine, harness, statement)
-		}
-	}
-
-	tmp, err := ioutil.TempDir("", "*")
-	if err != nil {
-		return
-	}
-
-	outputPath := filepath.Join(tmp, "indexQueryPlans.txt")
-	f, err := os.Create(outputPath)
-	require.NoError(t, err)
-
-	w := bufio.NewWriter(f)
-	_, _ = w.WriteString("var IndexPlanTests = []QueryPlanTest{\n")
-	for _, tt := range enginetest.IndexPlanTests {
-		_, _ = w.WriteString("\t{\n")
-		ctx := enginetest.NewContextWithEngine(harness, engine)
-		parsed, err := parse.Parse(ctx, tt.Query)
-		require.NoError(t, err)
-
-		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
-		require.NoError(t, err)
-		planString := extractQueryNode(node).String()
-
-		if strings.Contains(tt.Query, "`") {
-			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
-		} else {
-			_, _ = w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
-		}
-		_, _ = w.WriteString("\n")
-
-		_, _ = w.WriteString(`ExpectedPlan: `)
-		for i, line := range strings.Split(planString, "\n") {
-			if i > 0 {
-				_, _ = w.WriteString(" + \n")
-			}
-			if len(line) > 0 {
-				_, _ = w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
-			} else {
-				// final line with comma
-				_, _ = w.WriteString("\"\",\n")
-			}
-		}
-		_, _ = w.WriteString("\t},\n")
-	}
-	_, _ = w.WriteString("}")
-
-	_ = w.Flush()
-
-	t.Logf("Query plans in %s", outputPath)
-}
-
-func TestWriteComplexIndexQueries(t *testing.T) {
-	t.Skip()
-	tmp, err := ioutil.TempDir("", "*")
-	if err != nil {
-		return
-	}
-
-	outputPath := filepath.Join(tmp, "complex_index_queries.txt")
-	f, err := os.Create(outputPath)
-	require.NoError(t, err)
-
-	w := bufio.NewWriter(f)
-	_, _ = w.WriteString("var ComplexIndexQueries = []ScriptTest{\n")
-	for i, tt := range enginetest.ComplexIndexQueries {
-		w.WriteString("  {\n")
-		w.WriteString(fmt.Sprintf("    Name: \"%s\",\n", tt.Name))
-		if len(tt.SetUpScript) > 0 {
-			w.WriteString("    SetUpScript: []string{\n")
-			for _, s := range tt.SetUpScript {
-				newS := strings.Replace(s, "test", fmt.Sprintf("comp_index_t%d", i), -1)
-				w.WriteString(fmt.Sprintf("    `%s`,\n", newS))
-			}
-			w.WriteString("    },\n")
-		}
-		if len(tt.Assertions) > 0 {
-			w.WriteString("    Assertions: []ScriptTestAssertion{\n")
-			for _, s := range tt.Assertions {
-				q := strings.Replace(s.Query, "test", fmt.Sprintf("comp_index_t%d", i), -1)
-				w.WriteString("      {\n")
-				w.WriteString(fmt.Sprintf("        Query: `%s`,\n", q))
-				w.WriteString(fmt.Sprintf("        Expected: %#v,\n", s.Expected))
-				w.WriteString("      },\n")
-			}
-			w.WriteString("      },\n")
-		}
-		w.WriteString("  },\n")
-	}
-	w.WriteString("}\n")
-	w.Flush()
-	t.Logf("Query tests in:\n %s", outputPath)
-
 }
 
 func extractQueryNode(node sql.Node) sql.Node {
@@ -680,9 +470,9 @@ func TestLoadDataPrepared(t *testing.T) {
 
 func TestScriptsPrepared(t *testing.T) {
 	//TODO: when foreign keys are implemented in the memory table, we can do the following test
-	for i := len(enginetest.ScriptTests) - 1; i >= 0; i-- {
-		if enginetest.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
-			enginetest.ScriptTests = append(enginetest.ScriptTests[:i], enginetest.ScriptTests[i+1:]...)
+	for i := len(queries.ScriptTests) - 1; i >= 0; i-- {
+		if queries.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
+			queries.ScriptTests = append(queries.ScriptTests[:i], queries.ScriptTests[i+1:]...)
 		}
 	}
 	enginetest.TestScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
@@ -712,10 +502,6 @@ func TestInsertErrorScriptsPrepared(t *testing.T) {
 	enginetest.TestInsertErrorScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
-func TestScriptQueryPlan(t *testing.T) {
-	enginetest.TestScriptQueryPlan(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-}
-
 func TestUserPrivileges(t *testing.T) {
 	enginetest.TestUserPrivileges(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
@@ -743,7 +529,7 @@ func TestShowTriggers(t *testing.T) {
 
 func TestBrokenTriggers(t *testing.T) {
 	h := enginetest.NewSkippingMemoryHarness()
-	for _, script := range enginetest.BrokenTriggerQueries {
+	for _, script := range queries.BrokenTriggerQueries {
 		enginetest.TestScript(t, h, script)
 	}
 }
@@ -754,8 +540,12 @@ func TestStoredProcedures(t *testing.T) {
 
 func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewExternalStoredProcedureMemoryHarness()
-	for _, script := range enginetest.ExternalProcedureTests {
-		enginetest.TestScript(t, harness, script)
+	for _, script := range queries.ExternalProcedureTests {
+		myDb := harness.NewDatabase("mydb")
+		databases := []sql.Database{myDb}
+		e := enginetest.NewEngineWithDbs(t, harness, databases)
+		defer e.Close()
+		enginetest.TestScriptWithEngine(t, e, harness, script)
 	}
 }
 
@@ -845,14 +635,6 @@ func TestDropCheckConstraints(t *testing.T) {
 
 func TestDropConstraints(t *testing.T) {
 	enginetest.TestDropConstraints(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestExplode(t *testing.T) {
-	enginetest.TestExplode(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestExplodePrepared(t *testing.T) {
-	enginetest.TestExplodePrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestReadOnly(t *testing.T) {
