@@ -125,6 +125,8 @@ func serializePrivilegeSet(b *flatbuffers.Builder, ps *PrivilegeSet) flatbuffers
 	return serial.PrivilegeSetEnd(b)
 }
 
+// serializeAttributes will deference and write the given string pointer to the flatbuffer builder and will return the
+// offset. Will return 0 for offset if string pointer is null; this causes the accessor to also return nil when loading
 func serializeAttributes(b *flatbuffers.Builder, attributes *string) flatbuffers.UOffsetT {
 	if attributes == nil {
 		return 0

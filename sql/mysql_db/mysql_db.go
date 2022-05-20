@@ -30,7 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 )
 
-// PrivilegePersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
+// PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
 type PersistCallback func(ctx *sql.Context, data []byte) error
 
@@ -136,7 +136,7 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 	return nil
 }
 
-// SetPersistCallback sets the callback to be used when the Grant Tables have been updated and need to be persisted.
+// SetPersistCallback sets the callback to be used when the MySQL Db tables have been updated and need to be persisted.
 func (t *MySQLDb) SetPersistCallback(persistFunc PersistCallback) {
 	t.persistFunc = persistFunc
 }
@@ -333,8 +333,6 @@ func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Ge
 
 // Persist passes along all changes to the integrator.
 func (t *MySQLDb) Persist(ctx *sql.Context) error {
-	// TODO: future databases will no longer persist to privilege file, only to mysql.db; should document this
-
 	// Do nothing if persist function is nil
 	if t.persistFunc == nil {
 		return nil
