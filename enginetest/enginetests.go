@@ -17,7 +17,6 @@ package enginetest
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -35,6 +34,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	setup2 "github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -221,23 +221,14 @@ func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) (dbs []sql.Database) {
 }
 
 func TestReadOnlyDatabases(t *testing.T, harness Harness) {
-	_, ok := harness.(ReadOnlyDatabaseHarness)
+	ro, ok := harness.(ReadOnlyDatabaseHarness)
 	if !ok {
 		t.Fatal("harness is not ReadOnlyDatabaseHarness")
 	}
-	//dbs := createReadOnlyDatabases(ro)
-	//dbs = createSubsetTestData(t, harness, nil, dbs[0])
-	//engine := NewEngineWithDbs(t, harness, dbs)
-	//defer engine.Close()
-	//engine.
-	//setup := []setup2.SetupScript{setup2.MydbData[0], setup2.MytableData[0], setup2.Pk_tablesData[0]}
-	//engine, err := RunEngineScripts(NewContext(harness), engine, setup, true)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	harness.Setup(setup2.SimpleSetup...)
-	engine := mustNewEngine(t, harness)
-	engine.IsReadOnly = true
+	dbs := createReadOnlyDatabases(ro)
+	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
+	engine := NewEngineWithDbs(t, harness, dbs)
+	defer engine.Close()
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,
