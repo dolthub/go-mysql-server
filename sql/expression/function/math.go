@@ -703,7 +703,7 @@ func (s *Sign) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewSign(children[0]), nil
 }
 
-// NewMod returns a new SIGN function expression
+// NewMod returns a new MOD function expression
 func NewMod(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("mod", "2", len(args))
