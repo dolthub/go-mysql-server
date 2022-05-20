@@ -123,7 +123,7 @@ func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, fkColl *Forei
 }
 
 // Name implements the sql.Table interface.
-func (t *Table) Name() string {
+func (t Table) Name() string {
 	return t.name
 }
 
@@ -1224,7 +1224,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 	}
 
 	pkSchema := sql.NewPrimaryKeySchema(potentialSchema, pkOrdinals...)
-	newTable, err := copyTable(t, pkSchema)
+	newTable, err := newTable(t, pkSchema)
 	if err != nil {
 		return err
 	}
@@ -1323,7 +1323,7 @@ func copyschema(sch sql.Schema) sql.Schema {
 	return potentialSchema
 }
 
-func copyTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
+func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
 	newTable := NewPartitionedTable(t.name, newSch, t.fkColl, len(t.partitions))
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {

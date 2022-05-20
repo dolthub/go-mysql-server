@@ -1,0 +1,85 @@
+exec
+create table one_pk (pk smallint primary key, c1 smallint, c2 smallint, c3 smallint, c4 smallint, c5 smallint)
+----
+
+exec
+insert into one_pk values
+    (0,0,1,2,3,4),
+    (1,10,11,12,13,14),
+    (2,20,21,22,23,24),
+    (3,30,31,32,33,34)
+----
+
+exec
+create table two_pk (
+    pk1 tinyint,
+    pk2 tinyint,
+    c1 tinyint NOT NULL,
+    c2 tinyint NOT NULL,
+    c3 tinyint NOT NULL,
+    c4 tinyint NOT NULL,
+    c5 tinyint NOT NULL,
+    primary key (pk1, pk2)
+)
+----
+
+exec
+insert into two_pk values
+    (0,0,0,1,2,3,4),
+    (0,1,10,11,12,13,14),
+    (1,0,20,21,22,23,24),
+    (1,1,30,31,32,33,34)
+----
+
+exec
+create table one_pk_two_idx (
+    pk bigint primary key,
+    v1 bigint,
+    v2 bigint
+)
+----
+
+exec
+insert into one_pk_two_idx values
+    (0,0,0),
+    (1,1,1),
+    (2,2,2),
+    (3,3,3),
+    (4,4,4),
+    (5,5,5),
+    (6,6,6),
+    (7,7,7)
+----
+
+exec
+create table one_pk_three_idx (
+    pk bigint primary key,
+    v1 bigint,
+    v2 bigint,
+    v3 bigint
+)
+----
+
+exec
+insert into one_pk_three_idx values
+    (0,0,0,0),
+    (1,0,0,1),
+    (2,0,1,0),
+    (3,0,2,2),
+    (4,1,0,0),
+    (5,2,0,3),
+    (6,3,3,0),
+    (7,4,4,4)
+----
+
+exec
+create index one_pk_two_idx_1 on one_pk_two_idx (v1)
+----
+
+exec
+create index one_pk_two_idx_2 on one_pk_two_idx (v1, v2)
+----
+
+exec
+create index one_pk_three_idx_idx on one_pk_three_idx (v1, v2, v3)
+----

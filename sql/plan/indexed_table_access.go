@@ -100,6 +100,8 @@ func (i *IndexedTableAccess) Index() sql.Index {
 }
 
 func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	span, ctx := ctx.Span("plan.IndexedTableAccess")
+
 	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
@@ -116,7 +118,7 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, err
 	}
 
-	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
+	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, indexedTable, partIter)), nil
 }
 
 func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {

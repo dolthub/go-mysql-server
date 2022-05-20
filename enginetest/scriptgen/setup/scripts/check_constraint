@@ -1,0 +1,19 @@
+exec
+CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))
+----
+
+exec
+ALTER TABLE checks ADD CONSTRAINT chk1 CHECK (B > 0)
+----
+
+exec
+ALTER TABLE checks ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED
+----
+
+exec
+ALTER TABLE checks ADD CONSTRAINT chk3 CHECK (B > 1)
+----
+
+exec
+ALTER TABLE checks ADD CONSTRAINT chk4 CHECK (upper(C) = c)
+----

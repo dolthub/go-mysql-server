@@ -40,6 +40,14 @@ func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool
 	}, nil
 }
 
+func MustNewNullDefault(expr Expression, outType Type, representsLiteral bool, mayReturnNil bool) *ColumnDefaultValue {
+	d, err := NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
 // NewUnresolvedColumnDefaultValue returns a column default
 func NewUnresolvedColumnDefaultValue(expr string) *ColumnDefaultValue {
 	return &ColumnDefaultValue{
