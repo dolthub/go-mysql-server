@@ -3493,6 +3493,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT MOD(i, 2) from mytable order by i limit 1",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Query: "SELECT SIN(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
 			{0.8414709848078965},
