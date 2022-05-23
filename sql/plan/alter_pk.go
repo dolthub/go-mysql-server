@@ -104,8 +104,8 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 type dropPkIter struct {
 	targetSchema sql.Schema
-	pkAlterable sql.PrimaryKeyAlterableTable
-	runOnce bool
+	pkAlterable  sql.PrimaryKeyAlterableTable
+	runOnce      bool
 }
 
 func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -187,8 +187,8 @@ func dropKeyFromSchema(schema sql.Schema) sql.PrimaryKeySchema {
 type createPkIter struct {
 	targetSchema sql.Schema
 	columns      []sql.IndexColumn
-	pkAlterable sql.PrimaryKeyAlterableTable
-	runOnce bool
+	pkAlterable  sql.PrimaryKeyAlterableTable
+	runOnce      bool
 }
 
 func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -301,13 +301,13 @@ func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 		return &createPkIter{
 			targetSchema: a.targetSchema,
-			columns:     a.Columns,
-			pkAlterable: pkAlterable,
+			columns:      a.Columns,
+			pkAlterable:  pkAlterable,
 		}, nil
 	case PrimaryKeyAction_Drop:
 		return &dropPkIter{
 			targetSchema: a.targetSchema,
-			pkAlterable: pkAlterable,
+			pkAlterable:  pkAlterable,
 		}, nil
 	default:
 		panic("unreachable")
