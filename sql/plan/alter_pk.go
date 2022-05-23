@@ -243,6 +243,13 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 			return err
 		}
 
+		// check for null values in the primary key insert
+		for _, i := range newSchema.PkOrdinals {
+			if r[i] == nil {
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(newSchema.Schema[i].Name)
+			}
+		}
+
 		err = inserter.Insert(ctx, r)
 		if err != nil {
 			return err
