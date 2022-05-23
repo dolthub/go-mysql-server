@@ -1091,7 +1091,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 		t.Run(script.Name, func(t *testing.T) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
-			
+
 			ctx := NewContext(harness)
 			ctx.NewCtxWithClient(sql.Client{
 				User:    "root",
