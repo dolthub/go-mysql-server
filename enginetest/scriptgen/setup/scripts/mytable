@@ -1,0 +1,22 @@
+exec
+create table mytable (i bigint primary key, s varchar(20) comment 'column s' NOT NULL)
+----
+
+exec
+insert into mytable values
+    (1, 'first row'),
+    (2, 'second row'),
+    (3, 'third row')
+----
+
+exec
+create unique index mytable_s on mytable (s)
+----
+
+exec
+create index mytable_i_s on mytable (i,s)
+----
+
+exec
+create index `idx_si` on mytable (`s`,`i`)
+----

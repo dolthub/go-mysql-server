@@ -152,6 +152,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "mid", Fn: NewSubstring},
 	sql.Function1{Name: "min", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewMin(e) }},
 	sql.Function1{Name: "minute", Fn: NewMinute},
+	sql.FunctionN{Name: "mod", Fn: NewMod},
 	sql.Function1{Name: "month", Fn: NewMonth},
 	sql.Function1{Name: "monthname", Fn: NewMonthName},
 	sql.FunctionN{Name: "now", Fn: NewNow},

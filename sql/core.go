@@ -1054,6 +1054,17 @@ type ExternalStoredProcedureDetails struct {
 	Function interface{}
 }
 
+// Comment returns a comment stating that this is an external stored procedure, which is defined by the given database.
+func (espd ExternalStoredProcedureDetails) Comment(dbName string) string {
+	return fmt.Sprintf("External stored procedure defined by %s", dbName)
+}
+
+// FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some
+// tools (such as Java's JDBC connector) require a valid statement in some situations.
+func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt(dbName string) string {
+	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT '%s';", espd.Name, espd.Comment(dbName))
+}
+
 // StoredProcedureDatabase is a database that supports the creation and execution of stored procedures. The engine will
 // handle all parsing and execution logic for stored procedures. Integrators only need to store and retrieve
 // StoredProcedureDetails, while verifying that all stored procedures have a unique name without regard to
