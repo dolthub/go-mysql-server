@@ -650,9 +650,9 @@ func (d *DropColumn) String() string {
 }
 
 type dropColumnIter struct {
-	d *DropColumn
+	d         *DropColumn
 	alterable sql.AlterableTable
-	runOnce bool
+	runOnce   bool
 }
 
 func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
