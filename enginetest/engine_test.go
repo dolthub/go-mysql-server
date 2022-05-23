@@ -31,7 +31,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
-	setup2 "github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -430,7 +430,7 @@ func TestAnalyzer(t *testing.T) {
 	}
 
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.Setup(setup2.MydbData, setup2.FooData)
+	harness.Setup(setup.MydbData, setup.FooData)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			e, err := harness.NewEngine(t)

@@ -34,7 +34,6 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	setup2 "github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -5838,9 +5837,8 @@ func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
 	return engine
 }
 
-// NewEngineWithSetup creates test data and returns an engine using the harness provided.
-func NewEngineWithSetup(t *testing.T, harness Harness, setup []setup2.SetupScript) (*sqle.Engine, error) {
-	pro := memory.NewMemoryDBProvider(information_schema.NewInformationSchemaDatabase())
+// NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
+func NewEngineWithProviderSetup(t *testing.T, harness Harness, pro sql.MutableDatabaseProvider, setup []setup2.SetupScript) (*sqle.Engine, error) {
 	e := NewEngineWithProvider(t, harness, pro)
 	ctx := NewContext(harness)
 
