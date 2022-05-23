@@ -31,6 +31,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -143,7 +144,10 @@ func (m *mockSpan) Finish() {
 
 func TestRootSpanFinish(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	e := enginetest.NewEngine(t, harness)
+	e, err := harness.NewEngine(t)
+	if err != nil {
+		panic(err)
+	}
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
 	ctx := harness.NewContext()
 	sql.WithRootSpan(fakeSpan)(ctx)
@@ -425,10 +429,11 @@ func TestAnalyzer(t *testing.T) {
 		},
 	}
 
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.MydbData, setup.FooData)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			harness := enginetest.NewDefaultMemoryHarness()
-			e := enginetest.NewEngine(t, harness)
+			e, err := harness.NewEngine(t)
 
 			ctx := enginetest.NewContext(harness)
 			parsed, err := parse.Parse(ctx, tt.query)
