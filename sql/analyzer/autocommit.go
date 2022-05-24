@@ -62,24 +62,24 @@ func hasShowWarningsNode(n sql.Node) bool {
 func GetTransactionDatabase(ctx *sql.Context, node sql.Node) (string, error) {
 	dbNames := make(map[string]struct{})
 	transform.Inspect(node, func(node sql.Node) bool {
-		switch n2 := node.(type) {
+		switch node := node.(type) {
 		case sql.Databaseable:
-			if n2.Database() == "" {
+			if node.Database() == "" {
 				// If no database is explicitly referenced, any current db is implicit
 				if ctx.GetCurrentDatabase() != "" {
 					dbNames[ctx.GetCurrentDatabase()] = struct{}{}
 				}
 			} else {
-				dbNames[n2.Database()] = struct{}{}
+				dbNames[node.Database()] = struct{}{}
 			}
 		case sql.Databaser:
-			if n2.Database() == nil || n2.Database().Name() == "" {
+			if node.Database() == nil || node.Database().Name() == "" {
 				// If no database is explicitly referenced, any current db is implicit
 				if ctx.GetCurrentDatabase() != "" {
 					dbNames[ctx.GetCurrentDatabase()] = struct{}{}
 				}
 			} else {
-				dbNames[n2.Database().Name()] = struct{}{}
+				dbNames[node.Database().Name()] = struct{}{}
 			}
 		}
 		return true
