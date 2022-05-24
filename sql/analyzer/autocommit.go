@@ -55,11 +55,9 @@ func hasShowWarningsNode(n sql.Node) bool {
 	return ret
 }
 
-// GetTransactionDatabase returns the name of the database that should be considered current for the transaction about
-// to begin. The database is not guaranteed to exist.
-// For USE DATABASE statements, we consider the transaction database to be the one being USEd.
-// If any errors are encountered determining the database for the transaction, an empty string and an error are returned.
-func GetTransactionDatabase(ctx *sql.Context, node sql.Node) (string, error) {
+// GetAllDatabasesRequired walks the SQL node tree, determines every database referenced, and returns a list of
+// each database that is required to properly execute the statement.
+func GetAllDatabasesRequired(ctx *sql.Context, node sql.Node) []string {
 	dbNames := make(map[string]struct{})
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
@@ -85,16 +83,25 @@ func GetTransactionDatabase(ctx *sql.Context, node sql.Node) (string, error) {
 		return true
 	})
 
+	dbs := make([]string, 0, len(dbNames))
+	for dbName := range dbNames {
+		dbs = append(dbs, dbName)
+	}
+
+	return dbs
+}
+
+// GetTransactionDatabase returns the name of the database that should be considered current for the transaction about
+// to begin. The database is not guaranteed to exist.
+// For USE DATABASE statements, we consider the transaction database to be the one being USEd.
+// If any errors are encountered determining the database for the transaction, an empty string and an error are returned.
+func GetTransactionDatabase(ctx *sql.Context, node sql.Node) (string, error) {
+	dbNames := GetAllDatabasesRequired(ctx, node)
+
 	if len(dbNames) == 1 {
-		for dbName := range dbNames {
-			return dbName, nil
-		}
+		return dbNames[0], nil
 	} else if len(dbNames) > 1 {
-		s := make([]string, 0, len(dbNames))
-		for dbName := range dbNames {
-			s = append(s, dbName)
-		}
-		return "", sql.ErrMultipleDatabaseTransaction.New(strings.Join(s, ", "))
+		return "", sql.ErrMultipleDatabaseTransaction.New(strings.Join(dbNames, ", "))
 	}
 
 	// If no databases were explicitly referenced, then return any session selected database
