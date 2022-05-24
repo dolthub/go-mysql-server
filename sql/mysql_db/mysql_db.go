@@ -38,10 +38,11 @@ type PersistCallback func(ctx *sql.Context, data []byte) error
 type MySQLDb struct {
 	Enabled bool
 
-	user        *mysqlTable
-	role_edges  *mysqlTable
-	db          *mysqlTableShim
-	tables_priv *mysqlTableShim
+	user              *mysqlTable
+	role_edges        *mysqlTable
+	column_statistics *mysqlTable
+	db                *mysqlTableShim
+	tables_priv       *mysqlTableShim
 	//TODO: add the rest of these tables
 	//global_grants    *mysqlTable
 	//columns_priv     *mysqlTable
@@ -267,6 +268,8 @@ func (t *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Tab
 		return t.db, true, nil
 	case tablesPrivTblName:
 		return t.tables_priv, true, nil
+	case columnStatisticsTblName:
+		return t.column_statistics, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -274,7 +277,13 @@ func (t *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Tab
 
 // GetTableNames implements the interface sql.Database.
 func (t *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
-	return []string{userTblName, dbTblName, tablesPrivTblName, roleEdgesTblName}, nil
+	return []string{
+		userTblName,
+		dbTblName,
+		tablesPrivTblName,
+		roleEdgesTblName,
+		columnStatisticsTblName,
+	}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
@@ -398,6 +407,11 @@ func (t *MySQLDb) UserTable() *mysqlTable {
 // RoleEdgesTable returns the "role_edges" table.
 func (t *MySQLDb) RoleEdgesTable() *mysqlTable {
 	return t.role_edges
+}
+
+// ColumnStatisticsTable returns the "col_stats" table.
+func (t *MySQLDb) ColumnStatisticsTable() *mysqlTable {
+	return t.column_statistics
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given
