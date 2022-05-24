@@ -124,8 +124,8 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 	var rows []sql.Row
 	for _, db := range cat.AllDatabases(ctx) {
 		// Get all Tables
-		var columnKeyMap = make(map[string]string)
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+			var columnKeyMap = make(map[string]string)
 			// Get UNIQUEs, PRIMARY KEYs
 			hasPK := false
 			if indexTable, ok := t.(sql.IndexedTable); ok {
