@@ -167,14 +167,18 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					ordinalPos uint64
 					colDefault interface{}
 					charMaxLen interface{}
-					colType    string
+					columnKey  string
+					colType    = strings.ToLower(c.Type.String())
 				)
+
+				ordinalPos = uint64(i + 1)
 				if c.Nullable {
 					nullable = "YES"
 				} else {
 					nullable = "NO"
 				}
-				dataType = strings.ToLower(c.Type.String())
+
+				dataType = colType
 				if sql.IsText(c.Type) {
 					charName = sql.Collation_Default.CharacterSet().String()
 					collName = sql.Collation_Default.String()
@@ -183,16 +187,15 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					}
 					dataType = strings.TrimSuffix(dataType, fmt.Sprintf("(%v)", charMaxLen))
 				}
-				ordinalPos = uint64(i + 1)
 
-				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
-				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
-				colType = strings.ToLower(c.Type.String())
 				if c.Type == sql.Boolean {
 					colType = colType + "(1)"
 				}
-				columnKey := ""
-				// PK is checked here first because there are PKs from table implementations that don't implement sql.IndexedTable
+
+				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
+				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
+
+				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 				if c.PrimaryKey {
 					columnKey = "PRI"
 				} else if val, ok := columnKeyMap[c.Name]; ok {
