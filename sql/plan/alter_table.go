@@ -1405,6 +1405,33 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 		projections[j] = expression.NewGetField(i, oldCol.Type, oldCol.Name, oldCol.Nullable)
 	}
 
+	// If a column was renamed, we need to update any column defaults that refer to it
+	for i := range schema {
+		if schema[i].Default != nil {
+			newDefault, _, err := transform.Expr(schema[i].Default.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				gf, ok := e.(*expression.GetField)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				newSchemaIdx := oldToNewIdxMapping[gf.Index()]
+				newCol := newSch[newSchemaIdx]
+
+				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Table(), newCol.Name, gf.IsNullable()), transform.NewTree, nil
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newDefault, err = schema[i].Default.WithChildren(newDefault)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newSch[oldToNewIdxMapping[i]].Default = newDefault.(*sql.ColumnDefaultValue)
+		}
+	}
+
 	// TODO: do we need col defaults here? probably when changing a column to be non-null?
 	return newSch, projections, nil
 }
