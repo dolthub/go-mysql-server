@@ -125,54 +125,108 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 	for _, db := range cat.AllDatabases(ctx) {
 		// Get all Tables
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+			var columnKeyMap = make(map[string]string)
+			// Get UNIQUEs, PRIMARY KEYs
+			hasPK := false
+			if indexTable, ok := t.(sql.IndexedTable); ok {
+				indexes, iErr := indexTable.GetIndexes(ctx)
+				if iErr != nil {
+					return false, iErr
+				}
+
+				for _, index := range indexes {
+					idx := ""
+					if index.ID() == "PRIMARY" {
+						idx = "PRI"
+						hasPK = true
+					} else if index.IsUnique() {
+						idx = "UNI"
+					} else {
+						idx = "MUL"
+					}
+
+					colNames := getColumnNamesFromIndex(index, t)
+					// A UNIQUE index may display as MUL if several columns form a composite UNIQUE index
+					if idx == "UNI" && len(colNames) > 1 {
+						idx = "MUL"
+						columnKeyMap[colNames[0]] = idx
+					} else {
+						for _, colName := range colNames {
+							columnKeyMap[colName] = idx
+						}
+					}
+				}
+			}
+
 			for i, c := range t.Schema() {
 				var (
-					nullable   string
 					charName   interface{}
 					collName   interface{}
-					ordinalPos uint64
 					colDefault interface{}
+					charMaxLen interface{}
+					columnKey  string
+					nullable   = "NO"
+					ordinalPos = uint64(i + 1)
+					colType    = strings.ToLower(c.Type.String())
+					dataType   = colType
+					srsId      = "NULL"
 				)
+
 				if c.Nullable {
 					nullable = "YES"
-				} else {
-					nullable = "NO"
 				}
+
 				if sql.IsText(c.Type) {
 					charName = sql.Collation_Default.CharacterSet().String()
 					collName = sql.Collation_Default.String()
+					if st, ok := c.Type.(sql.StringType); ok {
+						charMaxLen = st.MaxCharacterLength()
+					}
+					dataType = strings.TrimSuffix(dataType, fmt.Sprintf("(%v)", charMaxLen))
 				}
-				ordinalPos = uint64(i + 1)
+
+				if c.Type == sql.Boolean {
+					colType = colType + "(1)"
+				}
 
 				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
 				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
-				columnKey := ""
+
+				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 				if c.PrimaryKey {
 					columnKey = "PRI"
+				} else if val, ok := columnKeyMap[c.Name]; ok {
+					columnKey = val
+					// A UNIQUE index may be displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table
+					if !c.Nullable && !hasPK && columnKey == "UNI" {
+						columnKey = "PRI"
+						hasPK = true
+					}
 				}
 
 				rows = append(rows, sql.Row{
-					"def",                            // table_catalog
-					db.Name(),                        // table_schema
-					t.Name(),                         // table_name
-					c.Name,                           // column_name
-					ordinalPos,                       // ordinal_position
-					colDefault,                       // column_default
-					nullable,                         // is_nullable
-					strings.ToLower(c.Type.String()), // data_type
-					nil,                              // character_maximum_length
-					nil,                              // character_octet_length
-					nil,                              // numeric_precision
-					nil,                              // numeric_scale
-					nil,                              // datetime_precision
-					charName,                         // character_set_name
-					collName,                         // collation_name
-					strings.ToLower(c.Type.String()), // column_type
-					columnKey,                        // column_key
-					c.Extra,                          // extra
-					"select",                         // privileges
-					c.Comment,                        // column_comment
-					"",                               // generation_expression
+					"def",      // table_catalog
+					db.Name(),  // table_schema
+					t.Name(),   // table_name
+					c.Name,     // column_name
+					ordinalPos, // ordinal_position
+					colDefault, // column_default
+					nullable,   // is_nullable
+					dataType,   // data_type
+					charMaxLen, // character_maximum_length
+					nil,        // character_octet_length
+					nil,        // numeric_precision
+					nil,        // numeric_scale
+					nil,        // datetime_precision
+					charName,   // character_set_name
+					collName,   // collation_name
+					colType,    // column_type
+					columnKey,  // column_key
+					c.Extra,    // extra
+					"select",   // privileges
+					c.Comment,  // column_comment
+					"",         // generation_expression
+					srsId,      // srs_id
 				})
 			}
 			return true, nil
@@ -209,6 +263,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				"select",  // privileges
 				"",        // column_comment
 				"",        // generation_expression
+				"NULL",    // srs_id
 			})
 		}
 		if err != nil {
