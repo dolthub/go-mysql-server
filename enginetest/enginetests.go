@@ -6314,6 +6314,8 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 				role := mysql_db.LoadRoleEdge(serialRoleEdge)
 				roles = append(roles, role)
 			}
+
+			// TODO: Fill in column statistics?
 			return nil
 		},
 	)

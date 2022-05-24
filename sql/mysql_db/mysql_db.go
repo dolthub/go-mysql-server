@@ -417,7 +417,7 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 	for i, colStatEntry := range colStatEntries {
 		colStats[i] = colStatEntry.(*ColumnStatistics)
 	}
-	sort.Slice(roles, func(i, j int) bool {
+	sort.Slice(colStats, func(i, j int) bool {
 		if colStats[i].SchemaName != colStats[j].SchemaName {
 			return colStats[i].SchemaName < colStats[j].SchemaName
 		}
