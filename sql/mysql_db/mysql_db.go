@@ -61,8 +61,28 @@ var _ mysql.AuthServer = (*MySQLDb)(nil)
 func CreateEmptyMySQLDb() *MySQLDb {
 	// original tables
 	mysqlDb := &MySQLDb{
-		user:       newMySQLTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
-		role_edges: newMySQLTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
+		user: newMySQLTable(
+			userTblName,
+			userTblSchema,
+			&User{},
+			UserPrimaryKey{},
+			UserSecondaryKey{},
+		),
+		role_edges: newMySQLTable(
+			roleEdgesTblName,
+			roleEdgesTblSchema,
+			&RoleEdge{},
+			RoleEdgesPrimaryKey{},
+			RoleEdgesFromKey{},
+			RoleEdgesToKey{},
+		),
+		column_statistics: newMySQLTable(
+			columnStatisticsTblName,
+			columnStatisticsTblSchema,
+			&ColumnStatistics{},
+			ColumnStatisticsPrimaryKey{},
+			ColumnStatisticsSecondaryKey{},
+		),
 	}
 
 	// mysqlTable shims
@@ -129,6 +149,18 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 		}
 		role := LoadRoleEdge(serialRoleEdge)
 		if err := t.role_edges.data.Put(ctx, role); err != nil {
+			return err
+		}
+	}
+
+	// Fill in Column Statistics table
+	for i := 0; i < serialMySQLDb.ColumnStatisticsLength(); i++ {
+		serialColumnStatistic := new(serial.ColumnStatistic)
+		if !serialMySQLDb.ColumnStatistics(serialColumnStatistic, i) {
+			continue
+		}
+		role := LoadColumnStatistic(serialColumnStatistic)
+		if err := t.column_statistics.data.Put(ctx, role); err != nil {
 			return err
 		}
 	}
@@ -379,17 +411,47 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 		return roles[i].FromHost < roles[j].FromHost
 	})
 
+	// Extract all column stat entries from table, and sort
+	colStatEntries := t.column_statistics.data.ToSlice(ctx)
+	colStats := make([]*ColumnStatistics, len(colStatEntries))
+	for i, colStatEntry := range colStatEntries {
+		colStats[i] = colStatEntry.(*ColumnStatistics)
+	}
+	sort.Slice(roles, func(i, j int) bool {
+		if colStats[i].SchemaName != colStats[j].SchemaName {
+			return colStats[i].SchemaName < colStats[j].SchemaName
+		}
+		if colStats[i].TableName != colStats[j].TableName {
+			return colStats[i].TableName < colStats[j].TableName
+		}
+		if colStats[i].ColumnName != colStats[j].ColumnName {
+			return colStats[i].ColumnName < colStats[j].ColumnName
+		}
+		if colStats[i].Count != colStats[j].Count {
+			return colStats[i].Count < colStats[j].Count
+		}
+		if colStats[i].Mean != colStats[j].Mean {
+			return colStats[i].Mean < colStats[j].Mean
+		}
+		if colStats[i].Min != colStats[j].Min {
+			return colStats[i].Min < colStats[j].Min
+		}
+		return colStats[i].Max < colStats[j].Max
+	})
+
 	// TODO: serialize other tables when the exist
 
 	// Create flatbuffer
 	b := flatbuffers.NewBuilder(0)
 	user := serializeUser(b, users)
 	roleEdge := serializeRoleEdge(b, roles)
+	columnStatistics := serializeColumnStatistics(b, colStats)
 
 	// Write MySQL DB
 	serial.MySQLDbStart(b)
 	serial.MySQLDbAddUser(b, user)
 	serial.MySQLDbAddRoleEdges(b, roleEdge)
+	serial.MySQLDbAddColumnStatistics(b, columnStatistics)
 	mysqlDbOffset := serial.MySQLDbEnd(b)
 
 	// Finish writing

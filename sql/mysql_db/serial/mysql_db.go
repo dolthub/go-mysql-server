@@ -646,6 +646,133 @@ func RoleEdgeEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
 }
 
+type ColumnStatistic struct {
+	_tab flatbuffers.Table
+}
+
+func GetRootAsColumnStatistic(buf []byte, offset flatbuffers.UOffsetT) *ColumnStatistic {
+	n := flatbuffers.GetUOffsetT(buf[offset:])
+	x := &ColumnStatistic{}
+	x.Init(buf, n+offset)
+	return x
+}
+
+func GetSizePrefixedRootAsColumnStatistic(buf []byte, offset flatbuffers.UOffsetT) *ColumnStatistic {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &ColumnStatistic{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
+func (rcv *ColumnStatistic) Init(buf []byte, i flatbuffers.UOffsetT) {
+	rcv._tab.Bytes = buf
+	rcv._tab.Pos = i
+}
+
+func (rcv *ColumnStatistic) Table() flatbuffers.Table {
+	return rcv._tab
+}
+
+func (rcv *ColumnStatistic) SchemaName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ColumnStatistic) TableName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ColumnStatistic) ColumnName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ColumnStatistic) Count() uint64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.GetUint64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ColumnStatistic) MutateCount(n uint64) bool {
+	return rcv._tab.MutateUint64Slot(10, n)
+}
+
+func (rcv *ColumnStatistic) Mean() float64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		return rcv._tab.GetFloat64(o + rcv._tab.Pos)
+	}
+	return 0.0
+}
+
+func (rcv *ColumnStatistic) MutateMean(n float64) bool {
+	return rcv._tab.MutateFloat64Slot(12, n)
+}
+
+func (rcv *ColumnStatistic) Min() float64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
+	if o != 0 {
+		return rcv._tab.GetFloat64(o + rcv._tab.Pos)
+	}
+	return 0.0
+}
+
+func (rcv *ColumnStatistic) MutateMin(n float64) bool {
+	return rcv._tab.MutateFloat64Slot(14, n)
+}
+
+func (rcv *ColumnStatistic) Max() float64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+	if o != 0 {
+		return rcv._tab.GetFloat64(o + rcv._tab.Pos)
+	}
+	return 0.0
+}
+
+func (rcv *ColumnStatistic) MutateMax(n float64) bool {
+	return rcv._tab.MutateFloat64Slot(16, n)
+}
+
+func ColumnStatisticStart(builder *flatbuffers.Builder) {
+	builder.StartObject(7)
+}
+func ColumnStatisticAddSchemaName(builder *flatbuffers.Builder, schemaName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(schemaName), 0)
+}
+func ColumnStatisticAddTableName(builder *flatbuffers.Builder, tableName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(tableName), 0)
+}
+func ColumnStatisticAddColumnName(builder *flatbuffers.Builder, columnName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(columnName), 0)
+}
+func ColumnStatisticAddCount(builder *flatbuffers.Builder, count uint64) {
+	builder.PrependUint64Slot(3, count, 0)
+}
+func ColumnStatisticAddMean(builder *flatbuffers.Builder, mean float64) {
+	builder.PrependFloat64Slot(4, mean, 0.0)
+}
+func ColumnStatisticAddMin(builder *flatbuffers.Builder, min float64) {
+	builder.PrependFloat64Slot(5, min, 0.0)
+}
+func ColumnStatisticAddMax(builder *flatbuffers.Builder, max float64) {
+	builder.PrependFloat64Slot(6, max, 0.0)
+}
+func ColumnStatisticEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	return builder.EndObject()
+}
+
 type MySQLDb struct {
 	_tab flatbuffers.Table
 }
@@ -713,8 +840,28 @@ func (rcv *MySQLDb) RoleEdgesLength() int {
 	return 0
 }
 
+func (rcv *MySQLDb) ColumnStatistics(obj *ColumnStatistic, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MySQLDb) ColumnStatisticsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
 func MySQLDbStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(3)
 }
 func MySQLDbAddUser(builder *flatbuffers.Builder, user flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(user), 0)
@@ -726,6 +873,12 @@ func MySQLDbAddRoleEdges(builder *flatbuffers.Builder, roleEdges flatbuffers.UOf
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(roleEdges), 0)
 }
 func MySQLDbStartRoleEdgesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func MySQLDbAddColumnStatistics(builder *flatbuffers.Builder, columnStatistics flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(columnStatistics), 0)
+}
+func MySQLDbStartColumnStatisticsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
 }
 func MySQLDbEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {

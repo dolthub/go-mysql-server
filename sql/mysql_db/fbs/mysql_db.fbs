@@ -56,10 +56,22 @@ table RoleEdge {
     with_admin_option:bool;
 }
 
+// Entries in the column_statistics table
+table ColumnStatistic {
+    schema_name:string;
+    table_name:string;
+    column_name:string;
+    count:uint64;
+    mean:float64;
+    min:float64;
+    max:float64;
+}
+
 // The MySQL Db containing all the tables
 table MySQLDb {
     user:[User];
     role_edges:[RoleEdge];
+    column_statistics:[ColumnStatistic];
 }
 
 root_type MySQLDb;
