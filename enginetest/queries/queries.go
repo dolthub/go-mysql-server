@@ -7959,6 +7959,59 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "information_schema.columns with column key check for PRI and UNI",
+		SetUpScript: []string{
+			"CREATE TABLE about (id int unsigned NOT NULL AUTO_INCREMENT, uuid char(36) NOT NULL, " +
+				"status varchar(255) NOT NULL DEFAULT 'draft', date_created timestamp DEFAULT NULL, date_updated timestamp DEFAULT NULL, " +
+				"url_key varchar(255) NOT NULL, PRIMARY KEY (uuid), UNIQUE KEY about_url_key_unique (url_key), UNIQUE KEY id (id))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, COLUMN_TYPE, COLUMN_KEY, CHARACTER_MAXIMUM_LENGTH, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'about'",
+				Expected: []sql.Row{
+					{"about", "id", nil, "NO", "int unsigned", "UNI", nil, "auto_increment"},
+					{"about", "uuid", nil, "NO", "char(36)", "PRI", 36, ""},
+					{"about", "status", "draft", "NO", "varchar(255)", "", 255, ""},
+					{"about", "date_created", nil, "YES", "timestamp", "", nil, ""},
+					{"about", "date_updated", nil, "YES", "timestamp", "", nil, ""},
+					{"about", "url_key", nil, "NO", "varchar(255)", "UNI", 255, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns with column key check for MUL",
+		SetUpScript: []string{
+			"create table new_table (id int, name varchar(30), cname varbinary(100));",
+			"alter table new_table modify column id int NOT NULL, add key(id);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, CHARACTER_MAXIMUM_LENGTH, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'new_table'",
+				Expected: []sql.Row{
+					{"new_table", "id", "NO", "int", "int", "MUL", nil, ""},
+					{"new_table", "name", "YES", "varchar", "varchar(30)", "", 30, ""},
+					{"new_table", "cname", "YES", "varbinary", "varbinary(100)", "", 100, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns with column key UNI is displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table",
+		SetUpScript: []string{
+			"create table ptable (id int not null, col1 bool, UNIQUE KEY unique_key (id));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'ptable'",
+				Expected: []sql.Row{
+					{"ptable", "id", "NO", "int", "int", "PRI"},
+					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
+				},
+			},
+		},
+	},
 }
 
 var ExplodeQueries = []QueryTest{

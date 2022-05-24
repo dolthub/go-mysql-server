@@ -1238,7 +1238,7 @@ func getColumnNamesFromIndex(idx Index, table Table) []string {
 	for _, expr := range idx.Expressions() {
 		col := plan.GetColumnFromIndexExpr(expr, table)
 		if col != nil {
-			indexCols = append(indexCols, fmt.Sprintf("`%s`", col.Name))
+			indexCols = append(indexCols, fmt.Sprintf("%s", col.Name))
 		}
 	}
 
@@ -1278,8 +1278,7 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 					// Create a Row for each column this index refers too.
 					for i, colName := range colNames {
-						colName = strings.Replace(colName, "`", "", -1) // get rid of backticks
-						ordinalPosition := i + 1                        // Ordinal Positions starts at one
+						ordinalPosition := i + 1 // Ordinal Positions starts at one
 
 						rows = append(rows, Row{"def", db.Name(), index.ID(), "def", db.Name(), tbl.Name(), colName, ordinalPosition, nil, nil, nil, nil})
 					}
