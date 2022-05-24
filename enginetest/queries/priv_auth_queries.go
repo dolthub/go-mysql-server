@@ -1035,7 +1035,7 @@ var ServerAuthTests = []ServerAuthenticationTest{
 	{
 		Name: "Adding a Super User directly",
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
-			engine.Analyzer.Catalog.GrantTables.AddSuperUser("bestuser", "the_pass")
+			engine.Analyzer.Catalog.MySQLDb.AddSuperUser("bestuser", "the_pass")
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
@@ -1281,7 +1281,9 @@ var QuickPrivTests = []QuickPrivilegeTest{
 	{
 		Queries: []string{
 			"GRANT CREATE ON *.* TO tester@localhost",
-			"CREATE DATABASE new_db;",
+			"CREATE DATABASE new_db2;",
+			"GRANT DROP ON *.* TO tester@localhost",
+			"drop database new_db2",
 		},
 	},
 	{
@@ -1293,7 +1295,9 @@ var QuickPrivTests = []QuickPrivilegeTest{
 	{
 		Queries: []string{
 			"GRANT CREATE ON mydb.* TO tester@localhost",
-			"CREATE DATABASE new_db;",
+			"CREATE DATABASE new_db3;",
+			"GRANT DROP ON *.* TO tester@localhost",
+			"drop database new_db3",
 		},
 	},
 	{
@@ -1412,8 +1416,7 @@ var QuickPrivTests = []QuickPrivilegeTest{
 	},
 	{
 		Queries: []string{
-			"CREATE DATABASE new_db;",
-			"DROP DATABASE new_db;",
+			"CREATE DATABASE new_db4;",
 		},
 		ExpectingErr: true,
 	},
@@ -1434,8 +1437,9 @@ var QuickPrivTests = []QuickPrivilegeTest{
 	{
 		Queries: []string{
 			"GRANT DROP ON *.* TO tester@localhost",
-			"CREATE DATABASE new_db;",
-			"DROP DATABASE new_db;",
+			"CREATE DATABASE new_db5;",
+			"GRANT DROP ON *.* TO tester@localhost",
+			"DROP DATABASE new_db5;",
 		},
 	},
 	{

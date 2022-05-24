@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -29,7 +29,7 @@ type Revoke struct {
 	ObjectType     ObjectType
 	PrivilegeLevel PrivilegeLevel
 	Users          []UserName
-	GrantTables    sql.Database
+	MySQLDb        sql.Database
 }
 
 var _ sql.Node = (*Revoke)(nil)
@@ -42,7 +42,7 @@ func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel,
 		ObjectType:     objType,
 		PrivilegeLevel: level,
 		Users:          users,
-		GrantTables:    sql.UnresolvedDatabase("mysql"),
+		MySQLDb:        sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -62,19 +62,19 @@ func (n *Revoke) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *Revoke) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *Revoke) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *Revoke) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -193,7 +193,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 
 // RowIter implements the interface sql.Node.
 func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -202,7 +202,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := grantTables.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -222,7 +222,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := grantTables.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -243,7 +243,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented object types")
 		}
 		for _, grantUser := range n.Users {
-			user := grantTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -252,14 +252,14 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 	}
-	if err := grantTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }
 
 // handleGlobalPrivileges handles removing global privileges from a user.
-func (n *Revoke) handleGlobalPrivileges(user *grant_tables.User) error {
+func (n *Revoke) handleGlobalPrivileges(user *mysql_db.User) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -345,7 +345,7 @@ func (n *Revoke) handleGlobalPrivileges(user *grant_tables.User) error {
 }
 
 // handleDatabasePrivileges  handles removing database privileges from a user.
-func (n *Revoke) handleDatabasePrivileges(user *grant_tables.User, dbName string) error {
+func (n *Revoke) handleDatabasePrivileges(user *mysql_db.User, dbName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -405,7 +405,7 @@ func (n *Revoke) handleDatabasePrivileges(user *grant_tables.User, dbName string
 }
 
 // handleTablePrivileges  handles removing table privileges from a user.
-func (n *Revoke) handleTablePrivileges(user *grant_tables.User, dbName string, tblName string) error {
+func (n *Revoke) handleTablePrivileges(user *mysql_db.User, dbName string, tblName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return fmt.Errorf("GRANT has not yet implemented column privileges")
@@ -517,7 +517,7 @@ func (n *RevokeAll) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 type RevokeRole struct {
 	Roles       []UserName
 	TargetUsers []UserName
-	GrantTables sql.Database
+	MySQLDb     sql.Database
 }
 
 var _ sql.Node = (*RevokeRole)(nil)
@@ -528,7 +528,7 @@ func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
 	return &RevokeRole{
 		Roles:       roles,
 		TargetUsers: users,
-		GrantTables: sql.UnresolvedDatabase("mysql"),
+		MySQLDb:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -552,19 +552,19 @@ func (n *RevokeRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *RevokeRole) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *RevokeRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *RevokeRole) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -588,24 +588,24 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		return true
 	}
 	//TODO: only active roles may be revoked if the SUPER privilege is not held
-	grantTables := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := grantTables.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return false
 	}
-	roleEntries := grantTables.RoleEdgesTable().Data().Get(grant_tables.RoleEdgesToKey{
+	roleEntries := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
 	for _, roleName := range n.Roles {
-		role := grantTables.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
 		if role == nil {
 			return false
 		}
 		foundMatch := false
 		for _, roleEntry := range roleEntries {
-			roleEdge := roleEntry.(*grant_tables.RoleEdge)
+			roleEdge := roleEntry.(*mysql_db.RoleEdge)
 			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host {
 				if roleEdge.WithAdminOption {
 					foundMatch = true
@@ -623,23 +623,23 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := grantTables.RoleEdgesTable().Data()
+	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, targetUser := range n.TargetUsers {
-		user := grantTables.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := grantTables.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
 			//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be revoked
-			err := roleEdgesData.Remove(ctx, grant_tables.RoleEdgesPrimaryKey{
+			err := roleEdgesData.Remove(ctx, mysql_db.RoleEdgesPrimaryKey{
 				FromHost: role.Host,
 				FromUser: role.User,
 				ToHost:   user.Host,
@@ -650,7 +650,7 @@ func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 		}
 	}
-	if err := grantTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

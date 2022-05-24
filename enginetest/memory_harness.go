@@ -19,11 +19,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
 type IndexDriverInitalizer func([]sql.Database) sql.IndexDriver
@@ -114,7 +114,8 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	return NewEngineWithSetup(t, m, m.setupData)
+	pro := memory.NewMemoryDBProvider(information_schema.NewInformationSchemaDatabase())
+	return NewEngineWithProviderSetup(t, m, pro, m.setupData)
 }
 
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {

@@ -125,7 +125,10 @@ func TestSingleQuery(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	engine := enginetest.NewEngine(t, harness)
+	engine, err := harness.NewEngine(t)
+	if err != nil {
+		panic(err)
+	}
 	enginetest.CreateIndexes(t, harness, engine)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
@@ -216,7 +219,10 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		engine := enginetest.NewEngine(t, harness)
+		engine, err := harness.NewEngine(t)
+		if err != nil {
+			panic(err)
+		}
 		// engine.Analyzer.Debug = true
 		// engine.Analyzer.Verbose = true
 

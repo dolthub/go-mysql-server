@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.
@@ -38,7 +38,7 @@ type DoneFunc func()
 func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
 	host := ""
 	user := ""
-	mysqlConnectionUser, ok := c.UserData.(grant_tables.MysqlConnectionUser)
+	mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
 	if ok {
 		host = mysqlConnectionUser.Host
 		user = mysqlConnectionUser.User

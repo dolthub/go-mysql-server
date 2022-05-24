@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grant_tables
+package mysql_db
 
 import (
 	"bytes"
@@ -24,61 +24,62 @@ import (
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
+	flatbuffers "github.com/google/flatbuffers/go"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 )
 
 // PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
 // persisted.
-type PersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
+type PersistCallback func(ctx *sql.Context, data []byte) error
 
-// GrantTables are the collection of tables that are used with any user or privilege-related operations.
-// https://dev.mysql.com/doc/refman/8.0/en/grant-tables.html
-type GrantTables struct {
+// MySQLDb are the collection of tables that are in the MySQL database
+type MySQLDb struct {
 	Enabled bool
 
-	user        *grantTable
-	role_edges  *grantTable
-	db          *grantTableShim
-	tables_priv *grantTableShim
+	user        *mysqlTable
+	role_edges  *mysqlTable
+	db          *mysqlTableShim
+	tables_priv *mysqlTableShim
 	//TODO: add the rest of these tables
-	//global_grants    *grantTable
-	//columns_priv     *grantTable
-	//procs_priv       *grantTable
-	//proxies_priv     *grantTable
-	//default_roles    *grantTable
-	//password_history *grantTable
+	//global_grants    *mysqlTable
+	//columns_priv     *mysqlTable
+	//procs_priv       *mysqlTable
+	//proxies_priv     *mysqlTable
+	//default_roles    *mysqlTable
+	//password_history *mysqlTable
 
 	persistFunc PersistCallback
 }
 
-var _ sql.Database = (*GrantTables)(nil)
-var _ mysql.AuthServer = (*GrantTables)(nil)
+var _ sql.Database = (*MySQLDb)(nil)
+var _ mysql.AuthServer = (*MySQLDb)(nil)
 
-// CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
-func CreateEmptyGrantTables() *GrantTables {
+// CreateEmptyMySQLDb returns a collection of MySQL Tables that do not contain any data.
+func CreateEmptyMySQLDb() *MySQLDb {
 	// original tables
-	grantTables := &GrantTables{
-		user:       newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
-		role_edges: newGrantTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
+	mysqlDb := &MySQLDb{
+		user:       newMySQLTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
+		role_edges: newMySQLTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
 	}
 
-	// shims
-	grantTables.db = newGrantTableShim(dbTblName, dbTblSchema, grantTables.user, DbConverter{})
-	grantTables.tables_priv = newGrantTableShim(tablesPrivTblName, tablesPrivTblSchema, grantTables.user, TablesPrivConverter{})
+	// mysqlTable shims
+	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
+	mysqlDb.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, mysqlDb.user, TablesPrivConverter{})
 
-	return grantTables
+	return mysqlDb
 }
 
-// LoadData adds the given data to the Grant Tables. It does not remove any current data, but will overwrite any
+// LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
-	g.Enabled = true
+func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+	t.Enabled = true
 	for _, user := range users {
 		if user == nil {
 			continue
 		}
-		if err := g.user.data.Put(ctx, user); err != nil {
+		if err := t.user.data.Put(ctx, user); err != nil {
 			return err
 		}
 	}
@@ -86,29 +87,71 @@ func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections 
 		if role == nil {
 			continue
 		}
-		if err := g.role_edges.data.Put(ctx, role); err != nil {
+		if err := t.role_edges.data.Put(ctx, role); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// SetPersistCallback sets the callback to be used when the Grant Tables have been updated and need to be persisted.
-func (g *GrantTables) SetPersistCallback(persistFunc PersistCallback) {
-	g.persistFunc = persistFunc
+// LoadData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
+// pre-existing data.
+func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
+	// Do nothing if data file doesn't exist or is empty
+	if buf == nil || len(buf) == 0 {
+		return nil
+	}
+
+	// Indicate that mysql db exists
+	t.Enabled = true
+
+	// Deserialize the flatbuffer
+	serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
+
+	// Fill in user table
+	for i := 0; i < serialMySQLDb.UserLength(); i++ {
+		serialUser := new(serial.User)
+		if !serialMySQLDb.User(serialUser, i) {
+			continue
+		}
+		user := LoadUser(serialUser)
+		if err := t.user.data.Put(ctx, user); err != nil {
+			return err
+		}
+	}
+
+	// Fill in Roles table
+	for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
+		serialRoleEdge := new(serial.RoleEdge)
+		if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
+			continue
+		}
+		role := LoadRoleEdge(serialRoleEdge)
+		if err := t.role_edges.data.Put(ctx, role); err != nil {
+			return err
+		}
+	}
+
+	// TODO: fill in other tables when they exist
+	return nil
+}
+
+// SetPersistCallback sets the callback to be used when the MySQL Db tables have been updated and need to be persisted.
+func (t *MySQLDb) SetPersistCallback(persistFunc PersistCallback) {
+	t.persistFunc = persistFunc
 }
 
 // AddRootAccount adds the root account to the list of accounts.
-func (g *GrantTables) AddRootAccount() {
-	g.Enabled = true
-	addSuperUser(g.user, "root", "localhost", "")
+func (t *MySQLDb) AddRootAccount() {
+	t.Enabled = true
+	addSuperUser(t.user, "root", "localhost", "")
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
 // meant to replace the "auth.New..." functions while the remaining functions are added.
-func (g *GrantTables) AddSuperUser(username string, password string) {
+func (t *MySQLDb) AddSuperUser(username string, password string) {
 	//TODO: remove this function and the called function
-	g.Enabled = true
+	t.Enabled = true
 	if len(password) > 0 {
 		hash := sha1.New()
 		hash.Write([]byte(password))
@@ -118,24 +161,24 @@ func (g *GrantTables) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(g.user, username, "%", password)
+	addSuperUser(t.user, username, "%", password)
 }
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
 // roles, roleSearch changes whether the search matches against user or role rules.
-func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
+func (t *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
 	// For now, this just does another check for localhost if the host is 127.0.0.1
 	//TODO: match on anonymous users, which have an empty username (different for roles)
 	var userEntry *User
-	userEntries := g.user.data.Get(UserPrimaryKey{
+	userEntries := t.user.data.Get(UserPrimaryKey{
 		Host: host,
 		User: user,
 	})
 	if len(userEntries) == 1 {
 		userEntry = userEntries[0].(*User)
 	} else {
-		userEntries = g.user.data.Get(UserSecondaryKey{
+		userEntries = t.user.data.Get(UserSecondaryKey{
 			User: user,
 		})
 		for _, readUserEntry := range userEntries {
@@ -153,14 +196,14 @@ func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
 
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
 // active roles, which are set in the context, therefore the user is also pulled from the context.
-func (g *GrantTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
+func (t *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	client := ctx.Session.Client()
-	user := g.GetUser(client.User, client.Address, false)
+	user := t.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return NewPrivilegeSet()
 	}
 	privSet := user.PrivilegeSet.Copy()
-	roleEdgeEntries := g.role_edges.data.Get(RoleEdgesToKey{
+	roleEdgeEntries := t.role_edges.data.Get(RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
@@ -168,7 +211,7 @@ func (g *GrantTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	//TODO: System variable "activate_all_roles_on_login", if set, will set all roles as active upon logging in
 	for _, roleEdgeEntry := range roleEdgeEntries {
 		roleEdge := roleEdgeEntry.(*RoleEdge)
-		role := g.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
+		role := t.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
 		if role != nil {
 			privSet.UnionWith(role.PrivilegeSet)
 		}
@@ -179,8 +222,8 @@ func (g *GrantTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 // UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.
-func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
-	privSet := g.UserActivePrivilegeSet(ctx)
+func (t *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
+	privSet := t.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
 		for _, operationPriv := range operation.Privileges {
 			if privSet.Has(operationPriv) {
@@ -209,45 +252,45 @@ func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...sql.Priv
 }
 
 // Name implements the interface sql.Database.
-func (g *GrantTables) Name() string {
+func (t *MySQLDb) Name() string {
 	return "mysql"
 }
 
 // GetTableInsensitive implements the interface sql.Database.
-func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
+func (t *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	switch strings.ToLower(tblName) {
 	case userTblName:
-		return g.user, true, nil
+		return t.user, true, nil
 	case roleEdgesTblName:
-		return g.role_edges, true, nil
+		return t.role_edges, true, nil
 	case dbTblName:
-		return g.db, true, nil
+		return t.db, true, nil
 	case tablesPrivTblName:
-		return g.tables_priv, true, nil
+		return t.tables_priv, true, nil
 	default:
 		return nil, false, nil
 	}
 }
 
 // GetTableNames implements the interface sql.Database.
-func (g *GrantTables) GetTableNames(ctx *sql.Context) ([]string, error) {
+func (t *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return []string{userTblName, dbTblName, tablesPrivTblName, roleEdgesTblName}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (g *GrantTables) AuthMethod(user string) (string, error) {
+func (t *MySQLDb) AuthMethod(user string) (string, error) {
 	//TODO: this should pass in the host as well to correctly determine which auth method to use
 	return "mysql_native_password", nil
 }
 
 // Salt implements the interface mysql.AuthServer.
-func (g *GrantTables) Salt() ([]byte, error) {
+func (t *MySQLDb) Salt() ([]byte, error) {
 	return mysql.NewSalt()
 }
 
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
-func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
-	if !g.Enabled {
+func (t *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
+	if !t.Enabled {
 		host, _, err := net.SplitHostPort(addr.String())
 		if err != nil {
 			return nil, err
@@ -260,7 +303,7 @@ func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte
 		return nil, err
 	}
 
-	userEntry := g.GetUser(user, host, false)
+	userEntry := t.GetUser(user, host, false)
 	if userEntry == nil || userEntry.Locked {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
@@ -277,8 +320,8 @@ func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte
 }
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
-func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
-	if !g.Enabled {
+func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
+	if !t.Enabled {
 		host, _, err := net.SplitHostPort(addr.String())
 		if err != nil {
 			return nil, err
@@ -289,12 +332,14 @@ func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysq
 }
 
 // Persist passes along all changes to the integrator.
-func (g *GrantTables) Persist(ctx *sql.Context) error {
-	persistFunc := g.persistFunc
-	if persistFunc == nil {
+func (t *MySQLDb) Persist(ctx *sql.Context) error {
+	// Do nothing if persist function is nil
+	if t.persistFunc == nil {
 		return nil
 	}
-	userEntries := g.user.data.ToSlice(ctx)
+
+	// Extract all user entries from table, and sort
+	userEntries := t.user.data.ToSlice(ctx)
 	users := make([]*User, len(userEntries))
 	for i, userEntry := range userEntries {
 		users[i] = userEntry.(*User)
@@ -306,7 +351,8 @@ func (g *GrantTables) Persist(ctx *sql.Context) error {
 		return users[i].Host < users[j].Host
 	})
 
-	roleEntries := g.role_edges.data.ToSlice(ctx)
+	// Extract all role entries from table, and sort
+	roleEntries := t.role_edges.data.ToSlice(ctx)
 	roles := make([]*RoleEdge, len(roleEntries))
 	for i, roleEntry := range roleEntries {
 		roles[i] = roleEntry.(*RoleEdge)
@@ -323,17 +369,35 @@ func (g *GrantTables) Persist(ctx *sql.Context) error {
 		}
 		return roles[i].FromHost < roles[j].FromHost
 	})
-	return persistFunc(ctx, users, roles)
+
+	// TODO: serialize other tables when the exist
+
+	// Create flatbuffer
+	b := flatbuffers.NewBuilder(0)
+	user := serializeUser(b, users)
+	roleEdge := serializeRoleEdge(b, roles)
+
+	// Write MySQL DB
+	serial.MySQLDbStart(b)
+	serial.MySQLDbAddUser(b, user)
+	serial.MySQLDbAddRoleEdges(b, roleEdge)
+	mysqlDbOffset := serial.MySQLDbEnd(b)
+
+	// Finish writing
+	b.Finish(mysqlDbOffset)
+
+	// Persist data
+	return t.persistFunc(ctx, b.FinishedBytes())
 }
 
 // UserTable returns the "user" table.
-func (g *GrantTables) UserTable() *grantTable {
-	return g.user
+func (t *MySQLDb) UserTable() *mysqlTable {
+	return t.user
 }
 
 // RoleEdgesTable returns the "role_edges" table.
-func (g *GrantTables) RoleEdgesTable() *grantTable {
-	return g.role_edges
+func (t *MySQLDb) RoleEdgesTable() *mysqlTable {
+	return t.role_edges
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given

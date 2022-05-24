@@ -7,6 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529
+	github.com/google/flatbuffers v2.0.6+incompatible
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/lestrrat-go/strftime v1.0.4
