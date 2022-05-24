@@ -15,14 +15,13 @@
 package queries
 
 import (
-	"time"
-
-	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 type QueryTest struct {
@@ -7953,8 +7952,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
 				Expected: []sql.Row{
-					{"def", "foo", "t", "i", uint64(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", ""},
-					{"def", "foo", "v", "", uint64(0), nil, nil, nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", ""},
+					{"def", "foo", "t", "i", uint64(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", "", "NULL"},
+					{"def", "foo", "v", "", uint64(0), nil, nil, nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", "NULL"},
 				},
 			},
 		},
@@ -8016,13 +8015,14 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns with column key UNI is displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table",
 		SetUpScript: []string{
-			"create table ptable (id int not null, col1 bool, UNIQUE KEY unique_key (id));",
+			"create table ptable (id int not null, id2 int not null, col1 bool, UNIQUE KEY unique_key (id), UNIQUE KEY unique_key2 (id2));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'ptable'",
 				Expected: []sql.Row{
 					{"ptable", "id", "NO", "int", "int", "PRI"},
+					{"ptable", "id2", "NO", "int", "int", "UNI"},
 					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
 				},
 			},

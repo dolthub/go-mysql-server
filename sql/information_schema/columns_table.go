@@ -160,25 +160,22 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 
 			for i, c := range t.Schema() {
 				var (
-					nullable   string
-					dataType   string
 					charName   interface{}
 					collName   interface{}
-					ordinalPos uint64
 					colDefault interface{}
 					charMaxLen interface{}
 					columnKey  string
+					nullable   = "NO"
+					ordinalPos = uint64(i + 1)
 					colType    = strings.ToLower(c.Type.String())
+					dataType   = colType
+					srsId      = "NULL"
 				)
 
-				ordinalPos = uint64(i + 1)
 				if c.Nullable {
 					nullable = "YES"
-				} else {
-					nullable = "NO"
 				}
 
-				dataType = colType
 				if sql.IsText(c.Type) {
 					charName = sql.Collation_Default.CharacterSet().String()
 					collName = sql.Collation_Default.String()
@@ -203,6 +200,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					// A UNIQUE index may be displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table
 					if !c.Nullable && !hasPK && columnKey == "UNI" {
 						columnKey = "PRI"
+						hasPK = true
 					}
 				}
 
@@ -228,6 +226,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					"select",   // privileges
 					c.Comment,  // column_comment
 					"",         // generation_expression
+					srsId,      // srs_id
 				})
 			}
 			return true, nil
@@ -264,6 +263,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				"select",  // privileges
 				"",        // column_comment
 				"",        // generation_expression
+				"NULL",    // srs_id
 			})
 		}
 		if err != nil {
