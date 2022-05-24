@@ -59,9 +59,9 @@ func hasShowWarningsNode(n sql.Node) bool {
 // to begin. The database is not guaranteed to exist.
 // For USE DATABASE statements, we consider the transaction database to be the one being USEd.
 // If any errors are encountered determining the database for the transaction, an empty string and an error are returned.
-func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) (string, error) {
+func GetTransactionDatabase(ctx *sql.Context, node sql.Node) (string, error) {
 	dbNames := make(map[string]struct{})
-	transform.Inspect(parsed, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch n2 := node.(type) {
 		case sql.Databaseable:
 			if n2.Database() == "" {
