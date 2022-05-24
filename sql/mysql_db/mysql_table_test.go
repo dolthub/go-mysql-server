@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grant_tables
+package mysql_db
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ import (
 
 func TestGrantTableData(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	testTable := newGrantTable(
+	testTable := newMySQLTable(
 		"test",
 		sql.Schema{
 			&sql.Column{

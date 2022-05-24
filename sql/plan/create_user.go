@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // CreateUser represents the statement CREATE USER.
@@ -33,7 +33,7 @@ type CreateUser struct {
 	PasswordOptions *PasswordOptions
 	Locked          bool
 	Attribute       string
-	GrantTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*CreateUser)(nil)
@@ -59,19 +59,19 @@ func (n *CreateUser) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *CreateUser) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *CreateUser) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *CreateUser) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -96,13 +96,13 @@ func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := grantTables.UserTable().Data()
+	userTableData := mysqlDb.UserTable().Data()
 	for _, user := range n.Users {
-		userPk := grant_tables.UserPrimaryKey{
+		userPk := mysql_db.UserPrimaryKey{
 			Host: user.UserName.Host,
 			User: user.UserName.Name,
 		}
@@ -120,11 +120,12 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			plugin = user.Auth1.Plugin()
 			password = user.Auth1.Password()
 		}
+		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
 		//TODO: validate all of the data
-		err := userTableData.Put(ctx, &grant_tables.User{
+		err := userTableData.Put(ctx, &mysql_db.User{
 			User:                user.UserName.Name,
 			Host:                user.UserName.Host,
-			PrivilegeSet:        grant_tables.NewPrivilegeSet(),
+			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
 			Plugin:              plugin,
 			Password:            password,
 			PasswordLastChanged: time.Now().UTC(),
@@ -136,7 +137,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, err
 		}
 	}
-	if err := grantTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

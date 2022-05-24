@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grant_tables
+package mysql_db
 
 import (
 	"fmt"
@@ -233,7 +233,7 @@ func init() {
 	}
 }
 
-func addSuperUser(userTable *grantTable, username string, host string, password string) {
+func addSuperUser(userTable *mysqlTable, username string, host string, password string) {
 	err := userTable.data.Put(sql.NewEmptyContext(), &User{
 		User:                username,
 		Host:                host,

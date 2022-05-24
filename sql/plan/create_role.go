@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -28,7 +28,7 @@ import (
 type CreateRole struct {
 	IfNotExists bool
 	Roles       []UserName
-	GrantTables sql.Database
+	MySQLDb     sql.Database
 }
 
 // NewCreateRole returns a new CreateRole node.
@@ -36,7 +36,7 @@ func NewCreateRole(ifNotExists bool, roles []UserName) *CreateRole {
 	return &CreateRole{
 		IfNotExists: ifNotExists,
 		Roles:       roles,
-		GrantTables: sql.UnresolvedDatabase("mysql"),
+		MySQLDb:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -62,19 +62,19 @@ func (n *CreateRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *CreateRole) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *CreateRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *CreateRole) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -102,13 +102,13 @@ func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := grantTables.UserTable().Data()
+	userTableData := mysqlDb.UserTable().Data()
 	for _, role := range n.Roles {
-		userPk := grant_tables.UserPrimaryKey{
+		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
 			User: role.Name,
 		}
@@ -124,10 +124,10 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 
 		//TODO: When password expiration is implemented, make sure that roles have an expired password on creation
-		err := userTableData.Put(ctx, &grant_tables.User{
+		err := userTableData.Put(ctx, &mysql_db.User{
 			User:                userPk.User,
 			Host:                userPk.Host,
-			PrivilegeSet:        grant_tables.NewPrivilegeSet(),
+			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
 			Plugin:              "mysql_native_password",
 			Password:            "",
 			PasswordLastChanged: time.Now().UTC(),
@@ -139,7 +139,7 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, err
 		}
 	}
-	if err := grantTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

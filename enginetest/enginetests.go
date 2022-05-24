@@ -39,8 +39,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -295,6 +296,7 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 
 	harness.Setup(setup.SimpleSetup...)
 	engine := NewEngine(t, harness)
+	defer engine.Close()
 
 	for _, tt := range queries.VersionedQueries {
 		TestQueryWithEngine(t, harness, engine, tt)
@@ -1097,7 +1099,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 				User:    "root",
 				Address: "localhost",
 			})
-			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -1156,7 +1158,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
 
-			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			rootCtx := harness.NewContextWithClient(sql.Client{
 				User:    "root",
 				Address: "localhost",
@@ -1256,7 +1258,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
-			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			if script.SetUpFunc != nil {
 				script.SetUpFunc(ctx, t, engine)
 			}
@@ -5893,7 +5895,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDa
 		a = analyzer.NewDefault(provider)
 	}
 	// All tests will run with all privileges on the built-in root account
-	a.Catalog.GrantTables.AddRootAccount()
+	a.Catalog.MySQLDb.AddRootAccount()
 
 	engine := sqle.New(a, new(sqle.Config))
 
@@ -6276,24 +6278,48 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	engine := mustNewEngine(t, harness)
 	defer engine.Close()
-	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+	engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 	ctx := NewContextWithClient(harness, sql.Client{
 		User:    "root",
 		Address: "localhost",
 	})
 
-	var users []*grant_tables.User
-	var roles []*grant_tables.RoleEdge
-	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(
-		func(ctx *sql.Context, updatedUsers []*grant_tables.User, updatedRoles []*grant_tables.RoleEdge) error {
-			users = updatedUsers
-			roles = updatedRoles
+	var users []*mysql_db.User
+	var roles []*mysql_db.RoleEdge
+	engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
+		func(ctx *sql.Context, buf []byte) error {
+			// erase everything from users and roles
+			users = make([]*mysql_db.User, 0)
+			roles = make([]*mysql_db.RoleEdge, 0)
+
+			// Deserialize the flatbuffer
+			serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
+
+			// Fill in users
+			for i := 0; i < serialMySQLDb.UserLength(); i++ {
+				serialUser := new(serial.User)
+				if !serialMySQLDb.User(serialUser, i) {
+					continue
+				}
+				user := mysql_db.LoadUser(serialUser)
+				users = append(users, user)
+			}
+
+			// Fill in roles
+			for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
+				serialRoleEdge := new(serial.RoleEdge)
+				if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
+					continue
+				}
+				role := mysql_db.LoadRoleEdge(serialRoleEdge)
+				roles = append(roles, role)
+			}
 			return nil
 		},
 	)
 
 	RunQueryWithContext(t, engine, ctx, "CREATE USER tester@localhost")
-	// If the user exists in []*grant_tables.User, then it must be NOT nil.
+	// If the user exists in []*mysql_db.User, then it must be NOT nil.
 	require.NotNil(t, findUser("tester", "localhost", users))
 
 	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester1')")
@@ -6357,9 +6383,9 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 	require.Error(t, err)
 }
 
-// findUser returns *grant_table.User corresponding to specific user and host names.
-// If not found, returns nil *grant_table.User.
-func findUser(user string, host string, users []*grant_tables.User) *grant_tables.User {
+// findUser returns *mysql_db.User corresponding to specific user and host names.
+// If not found, returns nil *mysql_db.User.
+func findUser(user string, host string, users []*mysql_db.User) *mysql_db.User {
 	for _, u := range users {
 		if u.User == user && u.Host == host {
 			return u
@@ -6368,9 +6394,9 @@ func findUser(user string, host string, users []*grant_tables.User) *grant_table
 	return nil
 }
 
-// findRole returns *grant_table.RoleEdge corresponding to specific to_user.
-// If not found, returns nil *grant_table.RoleEdge.
-func findRole(toUser string, roles []*grant_tables.RoleEdge) *grant_tables.RoleEdge {
+// findRole returns *mysql_db.RoleEdge corresponding to specific to_user.
+// If not found, returns nil *mysql_db.RoleEdge.
+func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 	for _, r := range roles {
 		if r.ToUser == toUser {
 			return r

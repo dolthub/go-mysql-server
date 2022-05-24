@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -28,7 +28,7 @@ type ShowGrants struct {
 	CurrentUser bool
 	For         *UserName
 	Using       []UserName
-	GrantTables sql.Database
+	MySQLDb     sql.Database
 }
 
 var _ sql.Node = (*ShowGrants)(nil)
@@ -40,7 +40,7 @@ func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *Sh
 		CurrentUser: currentUser,
 		For:         targetUser,
 		Using:       using,
-		GrantTables: sql.UnresolvedDatabase("mysql"),
+		MySQLDb:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -75,19 +75,19 @@ func (n *ShowGrants) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *ShowGrants) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *ShowGrants) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *ShowGrants) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -116,7 +116,7 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the interface sql.Node.
 func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -127,7 +127,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			Host: client.Address,
 		}
 	}
-	user := grantTables.GetUser(n.For.Name, n.For.Host, false)
+	user := mysqlDb.GetUser(n.For.Name, n.For.Host, false)
 	if user == nil {
 		return nil, sql.ErrShowGrantsUserDoesNotExist.New(n.For.Name, n.For.Host)
 	}
@@ -155,7 +155,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	//TODO: display the table and column privileges
 
 	sb.Reset()
-	roleEdges := grantTables.RoleEdgesTable().Data().Get(grant_tables.RoleEdgesToKey{
+	roleEdges := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
@@ -163,7 +163,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(roleEdge.(*grant_tables.RoleEdge).FromString("`"))
+		sb.WriteString(roleEdge.(*mysql_db.RoleEdge).FromString("`"))
 	}
 	if sb.Len() > 0 {
 		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})
