@@ -466,7 +466,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.a.column)
 	if err != nil {
 		return false, err
 	}
@@ -695,7 +695,7 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx])
 	if err != nil {
 		return false, err
 	}
@@ -1290,7 +1290,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, newPkSchema)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.m.column)
 	if err != nil {
 		return false, err
 	}
