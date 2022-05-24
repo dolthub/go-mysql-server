@@ -149,9 +149,11 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					// A UNIQUE index may display as MUL if several columns form a composite UNIQUE index
 					if idx == "UNI" && len(colNames) > 1 {
 						idx = "MUL"
-					}
-					for _, colName := range colNames {
-						columnKeyMap[colName] = idx
+						columnKeyMap[colNames[0]] = idx
+					} else {
+						for _, colName := range colNames {
+							columnKeyMap[colName] = idx
+						}
 					}
 				}
 			}

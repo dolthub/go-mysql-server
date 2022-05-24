@@ -7998,6 +7998,22 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "information_schema.columns with column key check for MUL for only the first column of composite unique key",
+		SetUpScript: []string{
+			"create table comp_uni (pk int not null, c0 int, c1 int, primary key (pk), unique key c0c1 (c0, c1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, COLUMN_TYPE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'comp_uni'",
+				Expected: []sql.Row{
+					{"comp_uni", "pk", "NO", "int", "PRI"},
+					{"comp_uni", "c0", "YES", "int", "MUL"},
+					{"comp_uni", "c1", "YES", "int", ""},
+				},
+			},
+		},
+	},
+	{
 		Name: "information_schema.columns with column key UNI is displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table",
 		SetUpScript: []string{
 			"create table ptable (id int not null, col1 bool, UNIQUE KEY unique_key (id));",
