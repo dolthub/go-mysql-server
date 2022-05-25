@@ -244,7 +244,12 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		return Geometry{Inner: geom}, nil
 	case string:
 		return t.Convert([]byte(inner))
-	case Point, Linestring, Polygon, Geometry:
+	case Point, Linestring, Polygon:
+		if err := t.MatchSRID(inner); err != nil {
+			return nil, err
+		}
+		return Geometry{Inner: inner}, nil
+	case Geometry:
 		if err := t.MatchSRID(inner); err != nil {
 			return nil, err
 		}
