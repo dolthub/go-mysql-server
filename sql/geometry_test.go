@@ -16,9 +16,10 @@ package sql
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
 )
 
 func TestSpatialTypeMatchSRID(t *testing.T) {
