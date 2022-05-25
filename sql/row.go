@@ -89,7 +89,7 @@ func FormatRow(row Row) string {
 type RowIter interface {
 	// Next retrieves the next row. It will return io.EOF if it's the last row.
 	// After retrieving the last row, Close will be automatically closed.
-	Next(ctx *Context) (Row, error)
+	Next(*Context) (Row, error)
 	Closer
 }
 

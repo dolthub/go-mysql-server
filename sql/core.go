@@ -683,10 +683,10 @@ type RewritableTable interface {
 	ShouldRewriteTable(ctx *Context, oldSchema PrimaryKeySchema, newSchema PrimaryKeySchema, modifiedColumn *Column) bool
 
 	// RewriteInserter returns a RowInserter for the new schema. Rows from the current table, with the old schema, will
-	// be streamed from the table and passed to this RowInserter. Implementor tables must still return rows in the
+	// be streamed from the table and passed to this RowInsertor. Implementor tables must still return rows in the
 	// current schema until the rewrite operation completes. |Close| will be called on RowInserter when all rows have
 	// been inserted.
-	RewriteInserter(ctx *Context, oldSchema PrimaryKeySchema, newSchema PrimaryKeySchema, modifiedColumn *Column) (RowInserter, error)
+	RewriteInserter(ctx *Context, newSchema PrimaryKeySchema) (RowInserter, error)
 }
 
 // DatabaseProvider is a collection of Database.
