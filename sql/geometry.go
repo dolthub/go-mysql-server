@@ -333,7 +333,7 @@ func (t GeometryType) MatchSRID(v interface{}) error {
 	case Geometry:
 		return t.MatchSRID(val.Inner)
 	default:
-		return ErrNotMatchingSRID.New(val, t.SRID)
+		return ErrNotGeometry.New(v)
 	}
 	if t.SRID == srid {
 		return nil
