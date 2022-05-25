@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -43,6 +44,7 @@ type AlterPK struct {
 }
 
 var _ sql.Databaser = (*AlterPK)(nil)
+var _ sql.SchemaTarget = (*AlterPK)(nil)
 
 func NewAlterCreatePk(db sql.Database, table sql.Node, columns []sql.IndexColumn) *AlterPK {
 	return &AlterPK{
@@ -100,6 +102,180 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &a, nil
 }
 
+type dropPkIter struct {
+	targetSchema sql.Schema
+	pkAlterable  sql.PrimaryKeyAlterableTable
+	runOnce      bool
+}
+
+func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if d.runOnce {
+		return nil, io.EOF
+	}
+	d.runOnce = true
+
+	if rwt, ok := d.pkAlterable.(sql.RewritableTable); ok {
+		err := d.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+
+		return sql.NewRow(sql.NewOkResult(0)), nil
+	}
+
+	err := d.pkAlterable.DropPrimaryKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (d *dropPkIter) Close(context *sql.Context) error {
+	return nil
+}
+
+func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
+	newSchema := dropKeyFromSchema(d.targetSchema)
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
+
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil)
+	if err != nil {
+		return err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		err = inserter.Insert(ctx, r)
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func dropKeyFromSchema(schema sql.Schema) sql.PrimaryKeySchema {
+	newSch := schema.Copy()
+	for i := range newSch {
+		newSch[i].PrimaryKey = false
+	}
+
+	return sql.NewPrimaryKeySchema(newSch)
+}
+
+type createPkIter struct {
+	targetSchema sql.Schema
+	columns      []sql.IndexColumn
+	pkAlterable  sql.PrimaryKeyAlterableTable
+	runOnce      bool
+}
+
+func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if c.runOnce {
+		return nil, io.EOF
+	}
+	c.runOnce = true
+
+	if rwt, ok := c.pkAlterable.(sql.RewritableTable); ok {
+		err := c.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+
+		return sql.NewRow(sql.NewOkResult(0)), nil
+	}
+
+	err := c.pkAlterable.CreatePrimaryKey(ctx, c.columns)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(sql.NewOkResult(0)), nil
+}
+
+func (c createPkIter) Close(context *sql.Context) error {
+	return nil
+}
+
+func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
+	newSchema := addKeyToSchema(rwt.Name(), c.targetSchema, c.columns)
+
+	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
+
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil)
+	if err != nil {
+		return err
+	}
+
+	partitions, err := rwt.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		// check for null values in the primary key insert
+		for _, i := range newSchema.PkOrdinals {
+			if r[i] == nil {
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(newSchema.Schema[i].Name)
+			}
+		}
+
+		err = inserter.Insert(ctx, r)
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addKeyToSchema(tableName string, schema sql.Schema, columns []sql.IndexColumn) sql.PrimaryKeySchema {
+	newSch := schema.Copy()
+	ordinals := make([]int, len(columns))
+	for i := range columns {
+		idx := schema.IndexOf(columns[i].Name, tableName)
+		ordinals[i] = idx
+		newSch[idx].PrimaryKey = true
+	}
+	return sql.NewPrimaryKeySchema(newSch, ordinals...)
+}
+
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// We grab the table from the database to ensure that state is properly refreshed, thereby preventing multiple keys
 	// being defined.
@@ -109,6 +285,7 @@ func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
+	// TODO: these validation checks belong in the analysis phase, not here
 	pkAlterable, ok := table.(sql.PrimaryKeyAlterableTable)
 	if !ok {
 		return nil, ErrNotPrimaryKeyAlterable.New(a.Table)
@@ -129,16 +306,19 @@ func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 
-		err = pkAlterable.CreatePrimaryKey(ctx, a.Columns)
+		return &createPkIter{
+			targetSchema: a.targetSchema,
+			columns:      a.Columns,
+			pkAlterable:  pkAlterable,
+		}, nil
 	case PrimaryKeyAction_Drop:
-		err = pkAlterable.DropPrimaryKey(ctx)
+		return &dropPkIter{
+			targetSchema: a.targetSchema,
+			pkAlterable:  pkAlterable,
+		}, nil
+	default:
+		panic("unreachable")
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
 }
 
 func hasPrimaryKeys(table sql.Table) bool {
@@ -151,19 +331,13 @@ func hasPrimaryKeys(table sql.Table) bool {
 	return false
 }
 
-func (a *AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (a AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
 
-	switch a.Action {
-	case PrimaryKeyAction_Create:
-		return NewAlterCreatePk(a.db, children[0], a.Columns), nil
-	case PrimaryKeyAction_Drop:
-		return NewAlterDropPk(a.db, children[0]), nil
-	default:
-		return nil, ErrIndexActionNotImplemented.New(a.Action)
-	}
+	a.Table = children[0]
+	return &a, nil
 }
 
 // Children implements the sql.Node interface.
@@ -172,10 +346,9 @@ func (a *AlterPK) Children() []sql.Node {
 }
 
 // WithDatabase implements the sql.Databaser interface.
-func (a *AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
-	na := *a
-	na.db = database
-	return &na, nil
+func (a AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
+	a.db = database
+	return &a, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
