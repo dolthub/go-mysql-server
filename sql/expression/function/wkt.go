@@ -382,9 +382,8 @@ func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -506,9 +505,8 @@ func (p *PointFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -619,9 +617,8 @@ func (l *LineFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xt order
@@ -732,9 +729,8 @@ func (p *PolyFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order

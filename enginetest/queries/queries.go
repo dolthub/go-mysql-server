@@ -7942,7 +7942,7 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "information_schema.columns",
+		Name: "information_schema.columns for view",
 		SetUpScript: []string{
 			"USE foo",
 			"drop table other_table",
@@ -8025,6 +8025,23 @@ var InfoSchemaScripts = []ScriptTest{
 					{"ptable", "id", "NO", "int", "int", "PRI"},
 					{"ptable", "id2", "NO", "int", "int", "UNI"},
 					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns with srs_id defined in spatial columns",
+		SetUpScript: []string{
+			"CREATE TABLE stable (geo GEOMETRY NOT NULL DEFAULT (POINT(2, 5)), line LINESTRING NOT NULL, pnt POINT SRID 4326, pol POLYGON NOT NULL SRID 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'stable'",
+				Expected: []sql.Row{
+					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", "NULL"},
+					{"stable", "line", nil, "NO", "linestring", "linestring", "", "NULL"},
+					{"stable", "pnt", nil, "YES", "point", "point", "", "4326"},
+					{"stable", "pol", nil, "NO", "polygon", "polygon", "", "0"},
 				},
 			},
 		},

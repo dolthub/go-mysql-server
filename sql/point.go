@@ -151,20 +151,23 @@ func (t PointType) Zero() interface{} {
 	return Point{X: 0.0, Y: 0.0}
 }
 
-func (t PointType) GetSRID() (uint32, bool) {
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t PointType) GetSpatialTypeSRID() (uint32, bool) {
 	return t.SRID, t.DefinedSRID
 }
 
+// SetSRID implements SpatialColumnType interface.
 func (t PointType) SetSRID(v uint32) Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
 }
 
+// MatchSRID implements SpatialColumnType interface
 func (t PointType) MatchSRID(v interface{}) error {
 	val, ok := v.(Point)
 	if !ok {
-		ErrNotPoint.New(v)
+		return ErrNotPoint.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil

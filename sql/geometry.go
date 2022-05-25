@@ -41,6 +41,11 @@ var _ SpatialColumnType = GeometryType{}
 var ErrNotGeometry = errors.NewKind("Value of type %T is not a geometry")
 
 const (
+	CartesianSRID  = uint32(0)
+	GeoSpatialSRID = uint32(4326)
+)
+
+const (
 	SRIDSize       = 4
 	EndianSize     = 1
 	TypeSize       = 4
@@ -239,23 +244,8 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		return Geometry{Inner: geom}, nil
 	case string:
 		return t.Convert([]byte(inner))
-	case Point:
+	case Point, Linestring, Polygon, Geometry:
 		if err := t.MatchSRID(inner); err != nil {
-			return nil, err
-		}
-		return Geometry{Inner: inner}, nil
-	case Linestring:
-		if err := t.MatchSRID(inner); err != nil {
-			return nil, err
-		}
-		return Geometry{Inner: inner}, nil
-	case Polygon:
-		if err := t.MatchSRID(inner); err != nil {
-			return nil, err
-		}
-		return Geometry{Inner: inner}, nil
-	case Geometry:
-		if err := t.MatchSRID(inner.Inner); err != nil {
 			return nil, err
 		}
 		return inner, nil
@@ -309,16 +299,19 @@ func (t GeometryType) Zero() interface{} {
 	return nil
 }
 
-func (t GeometryType) GetSRID() (uint32, bool) {
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t GeometryType) GetSpatialTypeSRID() (uint32, bool) {
 	return t.SRID, t.DefinedSRID
 }
 
+// SetSRID implements SpatialColumnType interface.
 func (t GeometryType) SetSRID(v uint32) Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
 }
 
+// MatchSRID implements SpatialColumnType interface
 func (t GeometryType) MatchSRID(v interface{}) error {
 	if !t.DefinedSRID {
 		return nil

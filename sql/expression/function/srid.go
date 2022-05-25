@@ -33,11 +33,6 @@ var _ sql.FunctionExpression = (*SRID)(nil)
 
 var ErrInvalidSRID = errors.NewKind("There's no spatial reference with SRID %d")
 
-const (
-	CartesianSRID  = uint32(0)
-	GeoSpatialSRID = uint32(4326)
-)
-
 // NewSRID creates a new STX expression.
 func NewSRID(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
@@ -160,9 +155,8 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Type assertion
 	_srid := srid.(uint32)
 
-	// Must be either 0 or 4326
-	if _srid != CartesianSRID && _srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(_srid)
+	if err = ValidateSRID(_srid); err != nil {
+		return nil, err
 	}
 
 	// Create new geometry object with matching SRID

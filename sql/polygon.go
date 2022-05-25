@@ -164,20 +164,23 @@ func (t PolygonType) Zero() interface{} {
 	return Polygon{Lines: []Linestring{{Points: []Point{{}, {}, {}, {}}}}}
 }
 
-func (t PolygonType) GetSRID() (uint32, bool) {
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t PolygonType) GetSpatialTypeSRID() (uint32, bool) {
 	return t.SRID, t.DefinedSRID
 }
 
+// SetSRID implements SpatialColumnType interface.
 func (t PolygonType) SetSRID(v uint32) Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
 }
 
+// MatchSRID implements SpatialColumnType interface
 func (t PolygonType) MatchSRID(v interface{}) error {
 	val, ok := v.(Polygon)
 	if !ok {
-		ErrNotPolygon.New(v)
+		return ErrNotPolygon.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil

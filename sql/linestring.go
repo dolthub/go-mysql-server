@@ -166,20 +166,23 @@ func (t LinestringType) Zero() interface{} {
 	return Linestring{Points: []Point{{}, {}}}
 }
 
-func (t LinestringType) GetSRID() (uint32, bool) {
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t LinestringType) GetSpatialTypeSRID() (uint32, bool) {
 	return t.SRID, t.DefinedSRID
 }
 
+// SetSRID implements SpatialColumnType interface.
 func (t LinestringType) SetSRID(v uint32) Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
 }
 
+// MatchSRID implements SpatialColumnType interface
 func (t LinestringType) MatchSRID(v interface{}) error {
 	val, ok := v.(Linestring)
 	if !ok {
-		ErrNotPoint.New(v)
+		return ErrNotPoint.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil

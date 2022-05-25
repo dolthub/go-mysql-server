@@ -358,7 +358,7 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("coordinate must be of type number")
 	}
-	return sql.Point{SRID: GeoSpatialSRID, X: x, Y: y}, nil
+	return sql.Point{SRID: sql.GeoSpatialSRID, X: x, Y: y}, nil
 }
 
 func SliceToLine(coords interface{}) (interface{}, error) {
@@ -378,7 +378,7 @@ func SliceToLine(coords interface{}) (interface{}, error) {
 		}
 		points[i] = p.(sql.Point)
 	}
-	return sql.Linestring{SRID: GeoSpatialSRID, Points: points}, nil
+	return sql.Linestring{SRID: sql.GeoSpatialSRID, Points: points}, nil
 }
 
 func SliceToPoly(coords interface{}) (interface{}, error) {
@@ -401,7 +401,7 @@ func SliceToPoly(coords interface{}) (interface{}, error) {
 		}
 		lines[i] = l.(sql.Linestring)
 	}
-	return sql.Polygon{SRID: GeoSpatialSRID, Lines: lines}, nil
+	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -535,12 +535,11 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	default:
 		return nil, errors.New("incorrect srid value")
 	}
-	// Check for invalid SRID
-	if _srid != CartesianSRID && _srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(g.FunctionName(), _srid)
+	if err = ValidateSRID(_srid); err != nil {
+		return nil, err
 	}
 	// If SRID is GeoSpatialSRID (4326), do nothing
-	if _srid == GeoSpatialSRID {
+	if _srid == sql.GeoSpatialSRID {
 		return res, nil
 	}
 	// Swap coordinates with SRID 0

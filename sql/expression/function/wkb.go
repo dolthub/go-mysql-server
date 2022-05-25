@@ -412,9 +412,8 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Convert this block to helper function
@@ -521,7 +520,7 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	// TODO: convert to this block to helper function
 	// Determine SRID
-	srid := CartesianSRID
+	srid := sql.CartesianSRID
 	if len(p.ChildExpressions) >= 2 {
 		s, err := p.ChildExpressions[1].Eval(ctx, row)
 		if err != nil {
@@ -537,9 +536,8 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -652,9 +650,8 @@ func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -767,9 +764,8 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != CartesianSRID && srid != GeoSpatialSRID {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -790,4 +786,11 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Read data
 	return WKBToPoly(v[WKBHeaderLength:], isBig, srid, order)
+}
+
+func ValidateSRID(srid uint32) error {
+	if srid != sql.CartesianSRID && srid != sql.GeoSpatialSRID {
+		return ErrInvalidSRID.New(srid)
+	}
+	return nil
 }

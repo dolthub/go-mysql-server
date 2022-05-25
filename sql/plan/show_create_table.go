@@ -248,7 +248,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 
 		if c, ok := col.Type.(sql.SpatialColumnType); ok {
-			if v, d := c.GetSRID(); d {
+			if v, d := c.GetSpatialTypeSRID(); d {
 				stmt = fmt.Sprintf("%s SRID %v", stmt, v)
 			}
 		}

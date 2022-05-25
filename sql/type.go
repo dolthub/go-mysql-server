@@ -86,8 +86,8 @@ type Type2 interface {
 
 // SpatialColumnType is a node that contains a reference to all spatial types.
 type SpatialColumnType interface {
-	// GetSRID returns the SRID value for spatial types.
-	GetSRID() (uint32, bool)
+	// GetSpatialTypeSRID returns the SRID value for spatial types.
+	GetSpatialTypeSRID() (uint32, bool)
 	// SetSRID sets SRID value for spatial types.
 	SetSRID(uint32) Type
 	// MatchSRID returns nil if column type SRID matches given value SRID otherwise returns error.
