@@ -1149,23 +1149,6 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
-	// TODO: replace with different node in analyzer
-	rwt, ok := i.alterable.(sql.RewritableTable)
-	if ok {
-		rewritten, err := i.rewriteTable(ctx, rwt)
-		if err != nil {
-			return nil, err
-		}
-		if rewritten {
-			return sql.NewRow(sql.NewOkResult(0)), nil
-		}
-	}
-
-	// TODO: fix me
-	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.targetSchema, i.m.columnName, i.m.column.Name); err != nil {
-		return nil, err
-	}
-
 	idx := i.m.targetSchema.IndexOf(i.m.columnName, i.alterable.Name())
 	if idx < 0 {
 		return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.columnName)
@@ -1250,6 +1233,23 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 		}
+	}
+
+	// TODO: replace with different node in analyzer
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		rewritten, err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		}
+	}
+
+	// TODO: fix me
+	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.targetSchema, i.m.columnName, i.m.column.Name); err != nil {
+		return nil, err
 	}
 
 	err := i.alterable.ModifyColumn(ctx, i.m.columnName, i.m.column, i.m.order)
