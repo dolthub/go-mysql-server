@@ -454,14 +454,35 @@ func init() {
 func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
 	// Before we begin a transaction, we need to know if the database being operated on is
 	// the current session's selected database, or an explicitly referenced database in the
-	// query. This also validates that only a single database is involved in the query.
-	transactionDatabase, err := analyzer.GetTransactionDatabase(ctx, parsed)
-	if err != nil {
-		return "", err
-	}
+	// query.
+	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
+	requiredDatabases := analyzer.GetAllDatabasesRequired(ctx, parsed)
 
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
+		for _, dbName := range requiredDatabases {
+			database, err := e.Analyzer.Catalog.Database(ctx, dbName)
+			// if the database doesn't exist, just don't sync it, let other layers complain
+			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
+				return "", nil
+			} else if err != nil {
+				return "", err
+			} else {
+				// TODO: Hacky... need to clean this up...
+				if database, ok := database.(grant_tables.PrivilegedDatabase); ok {
+					if database, ok := database.Unwrap().(sql.TransactionDatabase); ok {
+						err := database.SyncSessionState(ctx)
+						if err != nil {
+							return "", err
+						}
+					} else {
+						// TODO: Hacky... clean this up...
+						panic("database isn't a TransactionDatabase!")
+					}
+				}
+			}
+		}
+
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
 			database, err := e.Analyzer.Catalog.Database(ctx, transactionDatabase)
