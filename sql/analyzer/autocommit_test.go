@@ -40,10 +40,29 @@ var testCasesWithCurrentDb = map[string]string{
 	"create database db123":                  "db123",
 }
 
-var multiDbErrorTestCases = []string{
-	"select * from db1.t1, db2.t2 where db1.t1.id = db2.t2.id",
-	"select * from foo.t1 union select * from db1.t2",
-	"create table t1 like db3.t1",
+var multiDbTestCases = map[string][]string{
+	"select * from db1.t1, db2.t2 where db1.t1.id = db2.t2.id": []string{"db1", "db2"},
+	"select * from foo.t1 union select * from db1.t2":          []string{"foo", "db1"},
+
+	// TODO: Shouldn't foo be included, too? We need to sync foo to make sure there isn't already a table t1.
+	"create table t1 like db3.t1": []string{"db3"},
+}
+
+func TestGetAllDatabasesRequired(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewContext(context.Background())
+
+	t.Run("multi-database transactions return errors", func(t *testing.T) {
+		for multiDbQuery, expectedDbs := range multiDbTestCases {
+			t.Run(multiDbQuery, func(t *testing.T) {
+				parsed, err := parse.Parse(ctx, multiDbQuery)
+				require.NoError(err, "unable to parse test query: %s", multiDbQuery)
+
+				actualDbs := GetAllDatabasesRequired(ctx, parsed)
+				require.Equal(expectedDbs, actualDbs)
+			})
+		}
+	})
 }
 
 func TestGetTransactionDatabase(t *testing.T) {
@@ -56,8 +75,7 @@ func TestGetTransactionDatabase(t *testing.T) {
 				parsed, err := parse.Parse(ctx, query)
 				require.NoError(err, "unable to parse test query: %s", query)
 
-				database, err := GetTransactionDatabase(ctx, parsed)
-				require.NoError(err)
+				database := GetTransactionDatabase(ctx, parsed)
 				require.Equal(expectedDatabase, database)
 			})
 		}
@@ -70,22 +88,8 @@ func TestGetTransactionDatabase(t *testing.T) {
 				parsed, err := parse.Parse(ctx, query)
 				require.NoError(err, "unable to parse test query: %s", query)
 
-				database, err := GetTransactionDatabase(ctx, parsed)
-				require.NoError(err)
+				database := GetTransactionDatabase(ctx, parsed)
 				require.Equal(expectedDatabase, database)
-			})
-		}
-	})
-
-	t.Run("multi-database transactions return errors", func(t *testing.T) {
-		for _, multiDbQuery := range multiDbErrorTestCases {
-			t.Run(multiDbQuery, func(t *testing.T) {
-				parsed, err := parse.Parse(ctx, multiDbQuery)
-				require.NoError(err, "unable to parse test query: %s", multiDbQuery)
-
-				_, err = GetTransactionDatabase(ctx, parsed)
-				require.True(sql.ErrMultipleDatabaseTransaction.Is(err),
-					"expected a multiple database error, but didn't get one")
 			})
 		}
 	})
