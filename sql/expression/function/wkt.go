@@ -68,26 +68,29 @@ func (p *AsWKT) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 // PointToWKT converts a sql.Point to a string
-func PointToWKT(p sql.Point) string {
+func PointToWKT(p sql.Point, order bool) string {
 	x := strconv.FormatFloat(p.X, 'g', -1, 64)
 	y := strconv.FormatFloat(p.Y, 'g', -1, 64)
+	if order {
+		x, y = y, x
+	}
 	return fmt.Sprintf("%s %s", x, y)
 }
 
-// LineToWKT converts a sql.Linestring to a string
-func LineToWKT(l sql.Linestring) string {
+// LineToWKT converts a sql.LineString to a string
+func LineToWKT(l sql.LineString, order bool) string {
 	points := make([]string, len(l.Points))
 	for i, p := range l.Points {
-		points[i] = PointToWKT(p)
+		points[i] = PointToWKT(p, order)
 	}
 	return strings.Join(points, ",")
 }
 
 // PolygonToWKT converts a sql.Polygon to a string
-func PolygonToWKT(p sql.Polygon) string {
+func PolygonToWKT(p sql.Polygon, order bool) string {
 	lines := make([]string, len(p.Lines))
 	for i, l := range p.Lines {
-		lines[i] = "(" + LineToWKT(l) + ")"
+		lines[i] = "(" + LineToWKT(l, order) + ")"
 	}
 	return strings.Join(lines, ",")
 }
@@ -111,15 +114,15 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.Point:
 		// Mark as point type
 		geomType = "POINT"
-		data = PointToWKT(v)
-	case sql.Linestring:
+		data = PointToWKT(v, v.SRID == sql.GeoSpatialSRID)
+	case sql.LineString:
 		// Mark as linestring type
 		geomType = "LINESTRING"
-		data = LineToWKT(v)
+		data = LineToWKT(v, v.SRID == sql.GeoSpatialSRID)
 	case sql.Polygon:
 		// Mark as Polygon type
 		geomType = "POLYGON"
-		data = PolygonToWKT(v)
+		data = PolygonToWKT(v, v.SRID == sql.GeoSpatialSRID)
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_AsWKT")
 	}
@@ -238,10 +241,10 @@ func WKTToPoint(s string, srid uint32, order bool) (sql.Point, error) {
 }
 
 // WKTToLine expects a string like "1.2 3.4, 5.6 7.8, ..."
-func WKTToLine(s string, srid uint32, order bool) (sql.Linestring, error) {
+func WKTToLine(s string, srid uint32, order bool) (sql.LineString, error) {
 	// Empty string is wrong
 	if len(s) == 0 {
-		return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromText")
+		return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromText")
 	}
 
 	// Separate by comma
@@ -257,17 +260,17 @@ func WKTToLine(s string, srid uint32, order bool) (sql.Linestring, error) {
 		if p, err := WKTToPoint(ps, srid, order); err == nil {
 			points[i] = p
 		} else {
-			return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromText")
+			return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromText")
 		}
 	}
 
-	// Create Linestring object
-	return sql.Linestring{SRID: srid, Points: points}, nil
+	// Create LineString object
+	return sql.LineString{SRID: srid, Points: points}, nil
 }
 
 // WKTToPoly Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
 func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
-	var lines []sql.Linestring
+	var lines []sql.LineString
 	for {
 		// Look for closing parentheses
 		end := strings.Index(s, ")")
@@ -310,7 +313,7 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 			break
 		}
 
-		// Linestrings must be comma-separated
+		// LineStrings must be comma-separated
 		if s[0] != ',' {
 			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
 		}
@@ -372,7 +375,7 @@ func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	// Determine xy order
-	order := false
+	order := srid == sql.GeoSpatialSRID
 	if len(g.ChildExpressions) == 3 {
 		o, err := g.ChildExpressions[2].Eval(ctx, row)
 		if err != nil {
@@ -540,7 +543,7 @@ func (l *LineFromWKT) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *LineFromWKT) Type() sql.Type {
-	return sql.LinestringType{}
+	return sql.LineStringType{}
 }
 
 func (l *LineFromWKT) String() string {

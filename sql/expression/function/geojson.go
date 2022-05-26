@@ -59,7 +59,7 @@ func PointToSlice(p sql.Point) [2]float64 {
 	return [2]float64{p.X, p.Y}
 }
 
-func LineToSlice(l sql.Linestring) [][2]float64 {
+func LineToSlice(l sql.LineString) [][2]float64 {
 	arr := make([][2]float64, len(l.Points))
 	for i, p := range l.Points {
 		arr[i] = PointToSlice(p)
@@ -80,7 +80,7 @@ func FindBBox(v interface{}) [4]float64 {
 	switch v := v.(type) {
 	case sql.Point:
 		res = [4]float64{v.X, v.Y, v.X, v.Y}
-	case sql.Linestring:
+	case sql.LineString:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
 		for _, p := range v.Points {
 			tmp := FindBBox(p)
@@ -127,7 +127,7 @@ func GetSRID(val interface{}) int {
 	switch v := val.(type) {
 	case sql.Point:
 		return int(v.SRID)
-	case sql.Linestring:
+	case sql.LineString:
 		return int(v.SRID)
 	case sql.Polygon:
 		return int(v.SRID)
@@ -155,7 +155,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.Point:
 		obj["type"] = "Point"
 		obj["coordinates"] = PointToSlice(v)
-	case sql.Linestring:
+	case sql.LineString:
 		obj["type"] = "LineString"
 		obj["coordinates"] = LineToSlice(v)
 	case sql.Polygon:
@@ -362,7 +362,7 @@ func SliceToLine(coords interface{}) (interface{}, error) {
 		}
 		points[i] = p.(sql.Point)
 	}
-	return sql.Linestring{SRID: sql.GeoSpatialSRID, Points: points}, nil
+	return sql.LineString{SRID: sql.GeoSpatialSRID, Points: points}, nil
 }
 
 func SliceToPoly(coords interface{}) (interface{}, error) {
@@ -374,16 +374,16 @@ func SliceToPoly(coords interface{}) (interface{}, error) {
 	if len(cs) == 0 {
 		return nil, errors.New("not enough lines")
 	}
-	lines := make([]sql.Linestring, len(cs))
+	lines := make([]sql.LineString, len(cs))
 	for i, c := range cs {
 		l, err := SliceToLine(c)
 		if err != nil {
 			return nil, err
 		}
-		if !isLinearRing(l.(sql.Linestring)) {
+		if !isLinearRing(l.(sql.LineString)) {
 			return nil, errors.New("invalid GeoJSON data provided")
 		}
-		lines[i] = l.(sql.Linestring)
+		lines[i] = l.(sql.LineString)
 	}
 	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
 }
@@ -534,7 +534,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		_res.X, _res.Y = _res.Y, _res.X
 		return _res, nil
 	case "LineString":
-		_res := res.(sql.Linestring)
+		_res := res.(sql.LineString)
 		_res.SRID = _srid
 		for i, p := range _res.Points {
 			_res.Points[i].SRID = _srid

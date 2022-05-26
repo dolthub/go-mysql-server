@@ -113,11 +113,11 @@ func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables [
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
 					sql.NewRow(1, sql.Point{X: 1, Y: 2}),
-					sql.NewRow(2, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
-					sql.NewRow(3, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+					sql.NewRow(2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+					sql.NewRow(3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
 					sql.NewRow(4, sql.Point{SRID: 4326, X: 1, Y: 2}),
-					sql.NewRow(5, sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}),
-					sql.NewRow(6, sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}),
+					sql.NewRow(5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}),
+					sql.NewRow(6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "geometry_table", err)
@@ -146,13 +146,13 @@ func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables [
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "line_table", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "line_table", PrimaryKey: true},
-				{Name: "l", Type: sql.LinestringType{}, Source: "line_table"},
+				{Name: "l", Type: sql.LineStringType{}, Source: "line_table"},
 			}))
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
-					sql.NewRow(1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
+					sql.NewRow(0, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+					sql.NewRow(1, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "line_table", err)
@@ -169,7 +169,7 @@ func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables [
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+					sql.NewRow(0, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)

@@ -2329,7 +2329,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
-				Expected: []sql.Row{{1, "POINT(1 5)"}},
+				Expected: []sql.Row{{1, "POINT(5 1)"}},
 			},
 			{
 				Query:       "INSERT INTO table1 VALUES (2, POINT(2, 5))",
@@ -2337,7 +2337,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
-				Expected: []sql.Row{{1, "POINT(1 5)"}},
+				Expected: []sql.Row{{1, "POINT(5 1)"}},
 			},
 			{
 				Query:       "ALTER TABLE table1 CHANGE COLUMN p p linestring srid 4326",

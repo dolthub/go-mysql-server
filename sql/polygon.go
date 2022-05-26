@@ -25,7 +25,7 @@ import (
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-polygon.html
 type Polygon struct {
 	SRID  uint32
-	Lines []Linestring
+	Lines []LineString
 }
 
 type PolygonType struct {
@@ -67,7 +67,7 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 	// Compare each line until there's a difference
 	for i := 0; i < n; i++ {
-		diff, err := LinestringType{}.Compare(_a.Lines[i], _b.Lines[i])
+		diff, err := LineStringType{}.Compare(_a.Lines[i], _b.Lines[i])
 		if err != nil {
 			return 0, err
 		}
@@ -161,7 +161,7 @@ func (t PolygonType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t PolygonType) Zero() interface{} {
-	return Polygon{Lines: []Linestring{{Points: []Point{{}, {}, {}, {}}}}}
+	return Polygon{Lines: []LineString{{Points: []Point{{}, {}, {}, {}}}}}
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

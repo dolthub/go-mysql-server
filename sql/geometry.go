@@ -56,11 +56,11 @@ const (
 	WKBPolyID
 )
 
-// isLinearRing checks if a Linestring is a linear ring
-func isLinearRing(line Linestring) bool {
+// isLinearRing checks if a LineString is a linear ring
+func isLinearRing(line LineString) bool {
 	// Get number of points
 	numPoints := len(line.Points)
-	// Check length of Linestring (must be 0 or 4+) points
+	// Check length of LineString (must be 0 or 4+) points
 	if numPoints != 0 && numPoints < 4 {
 		return false
 	}
@@ -105,10 +105,10 @@ func WKBToPoint(buf []byte, isBig bool, srid uint32) (Point, error) {
 }
 
 // WKBToLine parses the data portion of a byte array in WKB format to a point object
-func WKBToLine(buf []byte, isBig bool, srid uint32) (Linestring, error) {
+func WKBToLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
 	// Must be at least 4 bytes (length of linestring)
 	if len(buf) < 4 {
-		return Linestring{}, ErrInvalidGISData.New("WKBToLine")
+		return LineString{}, ErrInvalidGISData.New("WKBToLine")
 	}
 
 	// Read length of line string
@@ -124,7 +124,7 @@ func WKBToLine(buf []byte, isBig bool, srid uint32) (Linestring, error) {
 
 	// Check length
 	if uint32(len(lineData)) < 16*numPoints {
-		return Linestring{}, ErrInvalidGISData.New("WKBToLine")
+		return LineString{}, ErrInvalidGISData.New("WKBToLine")
 	}
 
 	// Parse points
@@ -133,11 +133,11 @@ func WKBToLine(buf []byte, isBig bool, srid uint32) (Linestring, error) {
 		if point, err := WKBToPoint(lineData[16*i:16*(i+1)], isBig, srid); err == nil {
 			points[i] = point
 		} else {
-			return Linestring{}, ErrInvalidGISData.New("WKBToLine")
+			return LineString{}, ErrInvalidGISData.New("WKBToLine")
 		}
 	}
 
-	return Linestring{SRID: srid, Points: points}, nil
+	return LineString{SRID: srid, Points: points}, nil
 }
 
 // WKBToPoly parses the data portion of a byte array in WKB format to a point object
@@ -160,7 +160,7 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
 
 	// Parse lines
 	s := 0
-	lines := make([]Linestring, numLines)
+	lines := make([]LineString, numLines)
 	for i := uint32(0); i < numLines; i++ {
 		if line, err := WKBToLine(polyData[s:], isBig, srid); err == nil {
 			if isLinearRing(line) {
@@ -189,8 +189,8 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 	switch inner := a.(type) {
 	case Point:
 		return PointType{}.Compare(inner, b)
-	case Linestring:
-		return LinestringType{}.Compare(inner, b)
+	case LineString:
+		return LineStringType{}.Compare(inner, b)
 	case Polygon:
 		return PolygonType{}.Compare(inner, b)
 	default:
@@ -230,7 +230,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		return geom, nil
 	case string:
 		return t.Convert([]byte(inner))
-	case Point, Linestring, Polygon:
+	case Point, LineString, Polygon:
 		if err := t.MatchSRID(inner); err != nil {
 			return nil, err
 		}
@@ -305,7 +305,7 @@ func (t GeometryType) MatchSRID(v interface{}) error {
 	switch val := v.(type) {
 	case Point:
 		srid = val.SRID
-	case Linestring:
+	case LineString:
 		srid = val.SRID
 	case Polygon:
 		srid = val.SRID

@@ -79,17 +79,17 @@ func PointWithSRID(p sql.Point, srid uint32) sql.Point {
 }
 
 // LineWithSRID creates a deep copy of linestring object with given SRID
-func LineWithSRID(l sql.Linestring, srid uint32) sql.Linestring {
+func LineWithSRID(l sql.LineString, srid uint32) sql.LineString {
 	points := make([]sql.Point, len(l.Points))
 	for i, p := range l.Points {
 		points[i] = PointWithSRID(p, srid)
 	}
-	return sql.Linestring{SRID: srid, Points: points}
+	return sql.LineString{SRID: srid, Points: points}
 }
 
 // PolyWithSRID creates a deep copy of polygon object with given SRID
 func PolyWithSRID(p sql.Polygon, srid uint32) sql.Polygon {
-	lines := make([]sql.Linestring, len(p.Lines))
+	lines := make([]sql.LineString, len(p.Lines))
 	for i, l := range p.Lines {
 		lines[i] = LineWithSRID(l, srid)
 	}
@@ -115,7 +115,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		switch g := g.(type) {
 		case sql.Point:
 			return g.SRID, nil
-		case sql.Linestring:
+		case sql.LineString:
 			return g.SRID, nil
 		case sql.Polygon:
 			return g.SRID, nil
@@ -152,7 +152,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch g := g.(type) {
 	case sql.Point:
 		return PointWithSRID(g, _srid), nil
-	case sql.Linestring:
+	case sql.LineString:
 		return LineWithSRID(g, _srid), nil
 	case sql.Polygon:
 		return PolyWithSRID(g, _srid), nil
