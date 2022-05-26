@@ -305,9 +305,9 @@ var SpatialQueryTests = []QueryTest{
 			{"POINT(1 2)"},
 			{"LINESTRING(1 2,3 4)"},
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
-			{"POINT(1 2)"},
-			{"LINESTRING(1 2,3 4)"},
-			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POINT(2 1)"},
+			{"LINESTRING(2 1,4 3)"},
+			{"POLYGON((0 0,1 0,1 1,0 0))"},
 		},
 	},
 	{

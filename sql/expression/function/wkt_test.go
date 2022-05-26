@@ -271,7 +271,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}, v)
+		require.Equal(sql.Point{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, v)
 	})
 
 	t.Run("create valid point with invalid srid", func(t *testing.T) {
@@ -304,7 +304,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.LineString{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}, {SRID: sql.GeoSpatialSRID, X: 3, Y: 4}}}, v)
+		require.Equal(sql.LineString{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
 	})
 
 	t.Run("create valid linestring with invalid srid", func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+		require.Equal(sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid polygon with invalid srid", func(t *testing.T) {
