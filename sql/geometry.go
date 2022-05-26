@@ -23,14 +23,8 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// Represents the Geometry type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-geometry.html
-type Geometry struct {
-	Inner interface{} // Will be Point, Linestring, or Polygon
-}
-
 type GeometryType struct {
-	InnerType   Type // Will be PointType, LinestringType, or PolygonType
+	byte
 	SRID        uint32
 	DefinedSRID bool
 }
@@ -191,11 +185,6 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return res, nil
 	}
 
-	// If b is a geometry type
-	if bb, ok := b.(Geometry); ok {
-		return t.Compare(a, bb.Inner)
-	}
-
 	// TODO: probably define operations for types like []byte and string
 	// Expected to receive a geometry type
 	switch inner := a.(type) {
@@ -205,8 +194,6 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return LinestringType{}.Compare(inner, b)
 	case Polygon:
 		return PolygonType{}.Compare(inner, b)
-	case Geometry:
-		return t.Compare(inner.Inner, b)
 	default:
 		return 0, ErrNotGeometry.New(a)
 	}
@@ -241,15 +228,10 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return Geometry{Inner: geom}, nil
+		return geom, nil
 	case string:
 		return t.Convert([]byte(inner))
 	case Point, Linestring, Polygon:
-		if err := t.MatchSRID(inner); err != nil {
-			return nil, err
-		}
-		return Geometry{Inner: inner}, nil
-	case Geometry:
 		if err := t.MatchSRID(inner); err != nil {
 			return nil, err
 		}
@@ -260,11 +242,9 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 }
 
 // Equals implements the Type interface.
-func (t GeometryType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(GeometryType); ok {
-		return t.InnerType.Equals(ot.InnerType)
-	}
-	return false
+func (t GeometryType) Equals(otherType Type) (ok bool) {
+	_, ok = otherType.(GeometryType)
+	return
 }
 
 // Promote implements the Type interface.
@@ -330,8 +310,6 @@ func (t GeometryType) MatchSRID(v interface{}) error {
 		srid = val.SRID
 	case Polygon:
 		srid = val.SRID
-	case Geometry:
-		return t.MatchSRID(val.Inner)
 	default:
 		return ErrNotGeometry.New(v)
 	}

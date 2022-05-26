@@ -2301,6 +2301,18 @@ var SpatialScriptTests = []ScriptTest{
 				Query:       "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 4326",
 				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
 			},
+			{
+				Query:    "select i, ST_ASWKT(y) FROM tab3",
+				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+			},
+			{
+				Query:    "ALTER TABLE tab3 MODIFY COLUMN y GEOMETRY NULL SRID 0",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(y) FROM tab3",
+				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+			},
 		},
 	},
 	{

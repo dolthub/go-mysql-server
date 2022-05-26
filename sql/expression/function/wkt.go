@@ -108,21 +108,6 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var data string
 	// Expect one of the geometry types
 	switch v := val.(type) {
-	case sql.Geometry:
-		switch inner := v.Inner.(type) {
-		case sql.Point:
-			// Mark as point type
-			geomType = "POINT"
-			data = PointToWKT(inner)
-		case sql.Linestring:
-			// Mark as linestring type
-			geomType = "LINESTRING"
-			data = LineToWKT(inner)
-		case sql.Polygon:
-			// Mark as Polygon type
-			geomType = "POLYGON"
-			data = PolygonToWKT(inner)
-		}
 	case sql.Point:
 		// Mark as point type
 		geomType = "POINT"
