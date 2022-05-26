@@ -125,8 +125,6 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 // GetSRID returns the SRID given a Geometry type, will return -1 otherwise
 func GetSRID(val interface{}) int {
 	switch v := val.(type) {
-	case sql.Geometry:
-		return GetSRID(v.Inner)
 	case sql.Point:
 		return int(v.SRID)
 	case sql.Linestring:
@@ -154,20 +152,6 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Create map object to hold values
 	obj := make(map[string]interface{})
 	switch v := val.(type) {
-	case sql.Geometry:
-		switch inner := v.Inner.(type) {
-		case sql.Point:
-			obj["type"] = "Point"
-			obj["coordinates"] = PointToSlice(inner)
-		case sql.Linestring:
-			obj["type"] = "LineString"
-			obj["coordinates"] = LineToSlice(inner)
-		case sql.Polygon:
-			obj["type"] = "Polygon"
-			obj["coordinates"] = PolyToSlice(inner)
-		default:
-			return nil, ErrInvalidArgumentType.New(g.FunctionName())
-		}
 	case sql.Point:
 		obj["type"] = "Point"
 		obj["coordinates"] = PointToSlice(v)

@@ -23,12 +23,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// Represents the Geometry type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-geometry.html
-type Geometry struct {
-	Inner interface{} // Will be Point, Linestring, or Polygon
-}
-
 type GeometryType struct {
 	byte
 }
@@ -183,11 +177,6 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return res, nil
 	}
 
-	// If b is a geometry type
-	if bb, ok := b.(Geometry); ok {
-		return t.Compare(a, bb.Inner)
-	}
-
 	// TODO: probably define operations for types like []byte and string
 	// Expected to receive a geometry type
 	switch inner := a.(type) {
@@ -197,8 +186,6 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return LinestringType{}.Compare(inner, b)
 	case Polygon:
 		return PolygonType{}.Compare(inner, b)
-	case Geometry:
-		return t.Compare(inner.Inner, b)
 	default:
 		return 0, ErrNotGeometry.New(a)
 	}
@@ -233,16 +220,14 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return Geometry{Inner: geom}, nil
+		return geom, nil
 	case string:
 		return t.Convert([]byte(inner))
 	case Point:
-		return Geometry{Inner: inner}, nil
+		return inner, nil
 	case Linestring:
-		return Geometry{Inner: inner}, nil
+		return inner, nil
 	case Polygon:
-		return Geometry{Inner: inner}, nil
-	case Geometry:
 		return inner, nil
 	default:
 		return nil, ErrNotGeometry.New(inner)

@@ -145,21 +145,6 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch v := val.(type) {
-	case sql.Geometry:
-		switch inner := v.Inner.(type) {
-		case sql.Point:
-			// Mark as point type
-			binary.LittleEndian.PutUint32(buf[1:5], 1)
-			data = PointToBytes(inner)
-		case sql.Linestring:
-			// Mark as linestring type
-			binary.LittleEndian.PutUint32(buf[1:5], 2)
-			data = LineToBytes(inner)
-		case sql.Polygon:
-			// Mark as Polygon type
-			binary.LittleEndian.PutUint32(buf[1:5], 3)
-			data = PolyToBytes(inner)
-		}
 	case sql.Point:
 		// Mark as point type
 		binary.LittleEndian.PutUint32(buf[1:5], 1)

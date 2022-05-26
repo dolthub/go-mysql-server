@@ -82,8 +82,6 @@ func SwapGeometryXY(v interface{}) interface{} {
 			lines[i] = SwapGeometryXY(l).(sql.Linestring)
 		}
 		return sql.Polygon{SRID: v.SRID, Lines: lines}
-	case sql.Geometry:
-		return sql.Geometry{Inner: SwapGeometryXY(v.Inner)}
 	default:
 		return nil
 	}
@@ -104,7 +102,7 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch val.(type) {
-	case sql.Point, sql.Linestring, sql.Polygon, sql.Geometry:
+	case sql.Point, sql.Linestring, sql.Polygon:
 		return SwapGeometryXY(val), nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
