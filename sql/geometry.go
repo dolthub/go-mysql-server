@@ -30,7 +30,7 @@ type Geometry struct {
 }
 
 type GeometryType struct {
-	InnerType Type // Will be PointType, LinestringType, or PolygonType
+	byte
 }
 
 var _ Type = GeometryType{}
@@ -250,11 +250,9 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 }
 
 // Equals implements the Type interface.
-func (t GeometryType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(GeometryType); ok {
-		return t.InnerType.Equals(ot.InnerType)
-	}
-	return false
+func (t GeometryType) Equals(otherType Type) (ok bool) {
+	_, ok = otherType.(GeometryType)
+	return
 }
 
 // Promote implements the Type interface.
