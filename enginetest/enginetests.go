@@ -5178,14 +5178,17 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
 			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
-		now := time.Now()
+		// truncating time to microseconds for compatibility with integrators who may store more precision (go gives nanos)
+		now := time.Now().Truncate(time.Microsecond)
 		sql.RunWithNowFunc(func() time.Time {
 			return now
 		}, func() error {
 			RunQuery(t, e, harness, "insert into t10(pk) values (1)")
 			return nil
 		})
-		TestQueryWithContext(t, ctx, e, "select * from t10 order by 1", []sql.Row{{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "select * from t10 order by 1", []sql.Row{
+			{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)},
+		}, nil, nil)
 	})
 
 	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
