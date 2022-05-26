@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -28,10 +26,7 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	transactionDatabase, err := GetTransactionDatabase(ctx, n)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
+	transactionDatabase := GetTransactionDatabase(ctx, n)
 
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if hasShowWarningsNode(n) {
@@ -94,16 +89,46 @@ func GetAllDatabasesRequired(ctx *sql.Context, node sql.Node) []string {
 // GetTransactionDatabase returns the name of the database that should be considered current for the transaction about
 // to begin. The database is not guaranteed to exist.
 // For USE DATABASE statements, we consider the transaction database to be the one being USEd.
-// If any errors are encountered determining the database for the transaction, an empty string and an error are returned.
-func GetTransactionDatabase(ctx *sql.Context, node sql.Node) (string, error) {
-	dbNames := GetAllDatabasesRequired(ctx, node)
-
-	if len(dbNames) == 1 {
-		return dbNames[0], nil
-	} else if len(dbNames) > 1 {
-		return "", sql.ErrMultipleDatabaseTransaction.New(strings.Join(dbNames, ", "))
+func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
+	var dbName string
+	switch n := parsed.(type) {
+	case *plan.QueryProcess, *plan.TransactionCommittingNode, *plan.RowUpdateAccumulator:
+		return GetTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
+	case *plan.Use, *plan.CreateProcedure, *plan.DropProcedure, *plan.CreateTrigger, *plan.DropTrigger,
+		*plan.CreateTable, *plan.InsertInto, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.AlterPK,
+		*plan.DropColumn, *plan.RenameColumn, *plan.ModifyColumn:
+		database := n.(sql.Databaser).Database()
+		if database != nil {
+			dbName = database.Name()
+		}
+	case *plan.DropForeignKey, *plan.DropIndex, *plan.CreateIndex, *plan.Update, *plan.DeleteFrom,
+		*plan.CreateForeignKey:
+		dbName = n.(sql.Databaseable).Database()
+	case *plan.DropTable:
+		dbName = getDbHelper(n.Tables...)
+	case *plan.Truncate:
+		dbName = getDbHelper(n.Child)
+	default:
 	}
+	if dbName != "" {
+		return dbName
+	}
+	return ctx.GetCurrentDatabase()
+}
 
-	// If no databases were explicitly referenced, then return any session selected database
-	return ctx.GetCurrentDatabase(), nil
+// getDbHelper returns the first database name from a table-like node
+func getDbHelper(tables ...sql.Node) string {
+	if len(tables) == 0 {
+		return ""
+	}
+	switch t := tables[0].(type) {
+	case *plan.UnresolvedTable:
+		return t.Database()
+	case *plan.ResolvedTable:
+		return t.Database.Name()
+	case *plan.IndexedTableAccess:
+		return t.Database().Name()
+	default:
+	}
+	return ""
 }
