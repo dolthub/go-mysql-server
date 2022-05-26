@@ -55,17 +55,17 @@ func TestSpatialTypeMatchSRID(t *testing.T) {
 		{PolygonType{CartesianSRID, false}, Polygon{GeoSpatialSRID, []Linestring{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, nil},
 		{PolygonType{CartesianSRID, true}, Polygon{GeoSpatialSRID, []Linestring{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, ErrNotMatchingSRID},
 
-		{GeometryType{nil, CartesianSRID, false}, Cx1y2, nil},
-		{GeometryType{nil, CartesianSRID, false}, Gx1y2, nil},
-		{GeometryType{nil, GeoSpatialSRID, true}, Gx1y2, nil},
-		{GeometryType{nil, GeoSpatialSRID, true}, Cx1y2, ErrNotMatchingSRID},
-		{GeometryType{nil, GeoSpatialSRID, true}, Geometry{Linestring{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}, nil},
-		{GeometryType{nil, GeoSpatialSRID, true}, Geometry{Linestring{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}, ErrNotMatchingSRID},
-		{GeometryType{nil, GeoSpatialSRID, true}, Linestring{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, nil},
-		{GeometryType{nil, CartesianSRID, true}, Linestring{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, ErrNotMatchingSRID},
-		{GeometryType{nil, GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []Linestring{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, nil},
-		{GeometryType{nil, GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []Linestring{{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Cx0y0}}}}, nil},
-		{GeometryType{nil, CartesianSRID, true}, Polygon{GeoSpatialSRID, []Linestring{{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Cx0y0}}}}, ErrNotMatchingSRID},
+		{GeometryType{CartesianSRID, false}, Cx1y2, nil},
+		{GeometryType{CartesianSRID, false}, Gx1y2, nil},
+		{GeometryType{GeoSpatialSRID, true}, Gx1y2, nil},
+		{GeometryType{GeoSpatialSRID, true}, Cx1y2, ErrNotMatchingSRID},
+		{GeometryType{GeoSpatialSRID, true}, Linestring{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}, nil},
+		{GeometryType{GeoSpatialSRID, true}, Linestring{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}, ErrNotMatchingSRID},
+		{GeometryType{GeoSpatialSRID, true}, Linestring{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, nil},
+		{GeometryType{CartesianSRID, true}, Linestring{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, ErrNotMatchingSRID},
+		{GeometryType{GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []Linestring{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, nil},
+		{GeometryType{GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []Linestring{{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Cx0y0}}}}, nil},
+		{GeometryType{CartesianSRID, true}, Polygon{GeoSpatialSRID, []Linestring{{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Cx0y0}}}}, ErrNotMatchingSRID},
 	}
 
 	for _, test := range tests {

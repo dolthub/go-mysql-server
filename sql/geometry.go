@@ -24,7 +24,6 @@ import (
 )
 
 type GeometryType struct {
-	byte
 	SRID        uint32
 	DefinedSRID bool
 }
