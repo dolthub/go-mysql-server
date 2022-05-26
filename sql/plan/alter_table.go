@@ -1369,6 +1369,10 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 			// Should be checked in the analyzer already
 			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
 		}
+		// if we're moving left in the schema, shift everything over one
+		if newIdx < currIdx {
+			newIdx++
+		}
 	} else if order != nil && order.First {
 		newIdx = 0
 	}
