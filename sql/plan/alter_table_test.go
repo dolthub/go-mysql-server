@@ -326,6 +326,39 @@ func TestModifyColumnInSchema(t *testing.T) {
 				expression.NewGetField(1, sql.Float64, "f", false),
 			},
 		},
+		{
+			name:      "modify middle, move first with defaults",
+			schema:    sql.Schema{
+				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "two", Type: sql.Int64, Source: "mytable"},
+				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "two", false),
+					sql.Int64, false, false),
+				},
+			},
+			colName:   "two",
+			order:     &sql.ColumnOrder{First: true},
+			newColumn: &sql.Column{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "one", false),
+				sql.Int64, false, false),
+			},
+			newSchema: sql.Schema{
+				{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "one", false),
+					sql.Int64, false, false),
+				},
+				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "two", false),
+					sql.Int64, false, false),
+				},
+			},
+			projections: []sql.Expression{
+				expression.NewGetField(1, sql.Int64, "two", false),
+				expression.NewGetField(0, sql.Int64,  "one", false),
+				expression.NewGetField(2, sql.Int64,  "three", false),
+			},
+		},
 	}
 
 	for _, tc := range testCases {

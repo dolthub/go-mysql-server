@@ -1409,30 +1409,32 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 		projections[j] = expression.NewGetField(i, oldCol.Type, oldCol.Name, oldCol.Nullable)
 	}
 
-	// If a column was renamed, we need to update any column defaults that refer to it
-	for i := range schema {
-		if schema[i].Default != nil {
-			newDefault, _, err := transform.Expr(schema[i].Default.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	// If a column was renamed or moved, we need to update any column defaults that refer to it
+	for i := range newSch {
+		newCol := newSch[oldToNewIdxMapping[i]]
+
+		if newCol.Default != nil {
+			newDefault, _, err := transform.Expr(newCol.Default.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				gf, ok := e.(*expression.GetField)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
 
 				newSchemaIdx := oldToNewIdxMapping[gf.Index()]
-				newCol := newSch[newSchemaIdx]
+				newName := newSch[newSchemaIdx].Name
 
-				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Table(), newCol.Name, gf.IsNullable()), transform.NewTree, nil
+				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Table(), newName, gf.IsNullable()), transform.NewTree, nil
 			})
 			if err != nil {
 				return nil, nil, err
 			}
 
-			newDefault, err = schema[i].Default.WithChildren(newDefault)
+			newDefault, err = newCol.Default.WithChildren(newDefault)
 			if err != nil {
 				return nil, nil, err
 			}
 
-			newSch[oldToNewIdxMapping[i]].Default = newDefault.(*sql.ColumnDefaultValue)
+			newCol.Default = newDefault.(*sql.ColumnDefaultValue)
 		}
 	}
 
