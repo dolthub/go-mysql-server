@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -143,8 +144,8 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	// Unsets the current database
-	if ctx.GetCurrentDatabase() == d.dbName {
+	// Unsets the current database. Database name is case-insensitive.
+	if strings.ToLower(ctx.GetCurrentDatabase()) == strings.ToLower(d.dbName) {
 		ctx.SetCurrentDatabase("")
 	}
 

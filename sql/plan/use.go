@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -60,15 +59,13 @@ func (Use) Schema() sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	dbName := u.db.Name()
-	_, err := u.Catalog.Database(ctx, dbName)
-
+	db, err := u.Catalog.Database(ctx, u.db.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	ctx.SetCurrentDatabase(dbName)
-	ctx.SetLogger(ctx.GetLogger().WithField(sql.ConnectionDbLogField, dbName))
+	ctx.SetCurrentDatabase(db.Name())
+	ctx.SetLogger(ctx.GetLogger().WithField(sql.ConnectionDbLogField, db.Name()))
 
 	return sql.RowsToRowIter(), nil
 }
