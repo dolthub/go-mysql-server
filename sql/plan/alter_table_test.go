@@ -327,8 +327,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 			},
 		},
 		{
-			name:      "modify middle, move first with defaults",
-			schema:    sql.Schema{
+			name: "modify middle, move first with defaults",
+			schema: sql.Schema{
 				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "two", Type: sql.Int64, Source: "mytable"},
 				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
@@ -336,8 +336,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 					sql.Int64, false, false),
 				},
 			},
-			colName:   "two",
-			order:     &sql.ColumnOrder{First: true},
+			colName: "two",
+			order:   &sql.ColumnOrder{First: true},
 			newColumn: &sql.Column{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "one", false),
 				sql.Int64, false, false),
@@ -355,8 +355,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 			},
 			projections: []sql.Expression{
 				expression.NewGetField(1, sql.Int64, "two", false),
-				expression.NewGetField(0, sql.Int64,  "one", false),
-				expression.NewGetField(2, sql.Int64,  "three", false),
+				expression.NewGetField(0, sql.Int64, "one", false),
+				expression.NewGetField(2, sql.Int64, "three", false),
 			},
 		},
 	}
