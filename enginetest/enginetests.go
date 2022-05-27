@@ -5107,7 +5107,6 @@ func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLite
 }
 
 func TestColumnDefaults(t *testing.T, harness Harness) {
-	require := require.New(t)
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
@@ -5299,7 +5298,11 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t23 (pk, v1) VALUES (1, 2), (2, 3)")
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE t23 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 5) FIRST", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t23 (pk) VALUES (3)")
-		TestQueryWithContext(t, ctx, e, "SELECT * FROM t23", []sql.Row{{2, 1, 3}, {3, 2, 4}, {8, 3, 9}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t23 order by 1", []sql.Row{
+			{2, 1, 3},
+			{3, 2, 4},
+			{8, 3, 9},
+		}, nil, nil)
 	})
 
 	t.Run("Modify column move last being referenced", func(t *testing.T) {
@@ -5307,7 +5310,11 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t24 (pk, v1) VALUES (1, 2), (2, 3)")
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE t24 MODIFY COLUMN v1 BIGINT AFTER v2", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t24 (pk, v1) VALUES (3, 4)")
-		TestQueryWithContext(t, ctx, e, "SELECT * FROM t24", []sql.Row{{1, 3, 2}, {2, 4, 3}, {3, 5, 4}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t24 order by 1", []sql.Row{
+			{1, 3, 2},
+			{2, 4, 3},
+			{3, 5, 4},
+		}, nil, nil)
 	})
 
 	t.Run("Modify column move last add reference", func(t *testing.T) {
@@ -5339,11 +5346,11 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 		ctx := NewContext(harness)
 		t28, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
-		require.NoError(err)
+		require.NoError(t, err)
 		sch := t28.Schema()
-		require.Len(sch, 2)
-		require.Equal("v1", sch[1].Name)
-		require.NotContains(sch[1].Default.String(), "t28")
+		require.Len(t, sch, 2)
+		require.Equal(t, "v1", sch[1].Name)
+		require.NotContains(t, sch[1].Default.String(), "t28")
 	})
 
 	t.Run("Column referenced with name change", func(t *testing.T) {
