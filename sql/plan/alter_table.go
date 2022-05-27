@@ -1420,10 +1420,8 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 					return e, transform.SameTree, nil
 				}
 
-				newSchemaIdx := oldToNewIdxMapping[gf.Index()]
-				newName := newSch[newSchemaIdx].Name
-
-				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Table(), newName, gf.IsNullable()), transform.NewTree, nil
+				newSchemaIdx := schema.IndexOfColName(gf.Name())
+				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Table(), gf.Name(), gf.IsNullable()), transform.NewTree, nil
 			})
 			if err != nil {
 				return nil, nil, err
