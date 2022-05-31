@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.
@@ -38,7 +38,7 @@ type DoneFunc func()
 func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
 	host := ""
 	user := ""
-	mysqlConnectionUser, ok := c.UserData.(grant_tables.MysqlConnectionUser)
+	mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
 	if ok {
 		host = mysqlConnectionUser.Host
 		user = mysqlConnectionUser.User
@@ -136,6 +136,29 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 	sess.SetLogger(ctx.GetLogger().WithField(sql.ConnectionDbLogField, db))
 	sess.SetCurrentDatabase(db)
 	return nil
+}
+
+// Iter iterates over the active sessions and executes the specified callback function on each one.
+func (s *SessionManager) Iter(f func(session sql.Session) (stop bool, err error)) error {
+	// Lock the mutex guarding the sessions map while we make a copy of it to prevent errors from
+	// mutating a map while iterating over it. Making a copy of the map also allows us to guard
+	// against long running callback functions being passed in that could cause long mutex blocking.
+	s.mu.Lock()
+	sessionsCopy := make(map[uint32]*managedSession)
+	for key, value := range s.sessions {
+		sessionsCopy[key] = value
+	}
+	s.mu.Unlock()
+
+	var err error
+	for _, value := range sessionsCopy {
+		var stop bool
+		stop, err = f(value.session)
+		if stop == true || err != nil {
+			break
+		}
+	}
+	return err
 }
 
 func (s *SessionManager) session(conn *mysql.Conn) sql.Session {

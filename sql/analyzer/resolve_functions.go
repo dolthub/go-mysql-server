@@ -17,7 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -45,7 +45,7 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 			return nil, transform.SameTree, err
 		}
 
-		if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+		if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 			database = privilegedDatabase.Unwrap()
 		}
 

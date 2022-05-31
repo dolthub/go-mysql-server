@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grant_tables
+package mysql_db
 
 import (
 	"strings"
@@ -24,7 +24,7 @@ import (
 // privileges into consideration when returning a sql.Database. In addition, any returned databases are wrapped with
 // PrivilegedDatabase.
 type PrivilegedDatabaseProvider struct {
-	grantTables *GrantTables
+	grantTables *MySQLDb
 	provider    sql.DatabaseProvider
 }
 
@@ -34,7 +34,7 @@ var _ sql.DatabaseProvider = PrivilegedDatabaseProvider{}
 // analyzer when Grant Tables are disabled (and Grant Tables may be enabled or disabled at any time), a new
 // PrivilegedDatabaseProvider is returned whenever the sql.DatabaseProvider is needed (as long as Grant Tables are
 // enabled) rather than wrapping a sql.DatabaseProvider when it is provided to the analyzer.
-func NewPrivilegedDatabaseProvider(grantTables *GrantTables, p sql.DatabaseProvider) sql.DatabaseProvider {
+func NewPrivilegedDatabaseProvider(grantTables *MySQLDb, p sql.DatabaseProvider) sql.DatabaseProvider {
 	return PrivilegedDatabaseProvider{
 		grantTables: grantTables,
 		provider:    p,
@@ -93,7 +93,7 @@ func (pdp PrivilegedDatabaseProvider) usernameFromCtx(ctx *sql.Context) string {
 // PrivilegedDatabase is a wrapper around a normal sql.Database that takes a context's client's privileges into
 // consideration when returning a sql.Table.
 type PrivilegedDatabase struct {
-	grantTables *GrantTables
+	grantTables *MySQLDb
 	db          sql.Database
 	//TODO: this should also handle views as the relevant privilege exists
 }
@@ -111,7 +111,7 @@ var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
-func NewPrivilegedDatabase(grantTables *GrantTables, db sql.Database) sql.Database {
+func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database) sql.Database {
 	return PrivilegedDatabase{
 		grantTables: grantTables,
 		db:          db,

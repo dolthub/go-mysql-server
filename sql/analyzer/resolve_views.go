@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -52,7 +52,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			}
 
 			maybeVdb := db
-			if privilegedDatabase, ok := maybeVdb.(grant_tables.PrivilegedDatabase); ok {
+			if privilegedDatabase, ok := maybeVdb.(mysql_db.PrivilegedDatabase); ok {
 				maybeVdb = privilegedDatabase.Unwrap()
 			}
 			if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {

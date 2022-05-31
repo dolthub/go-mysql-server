@@ -21,7 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -435,7 +435,7 @@ func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	}
 
 	// Extract from privilegedDatabase
-	if privilegedDatabase, ok := currDb.(grant_tables.PrivilegedDatabase); ok {
+	if privilegedDatabase, ok := currDb.(mysql_db.PrivilegedDatabase); ok {
 		currDb = privilegedDatabase.Unwrap()
 	}
 

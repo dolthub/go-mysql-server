@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -31,7 +31,7 @@ type Grant struct {
 	Users           []UserName
 	WithGrantOption bool
 	As              *GrantUserAssumption
-	GrantTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*Grant)(nil)
@@ -46,7 +46,7 @@ func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level
 		Users:           users,
 		WithGrantOption: withGrant,
 		As:              as,
-		GrantTables:     db,
+		MySQLDb:         db,
 	}
 }
 
@@ -66,19 +66,19 @@ func (n *Grant) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *Grant) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *Grant) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *Grant) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -197,7 +197,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 
 // RowIter implements the interface sql.Node.
 func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -209,7 +209,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := grantTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -235,7 +235,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := grantTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -262,7 +262,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := grantTables.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -274,7 +274,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 	}
-	if err := grantTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 
@@ -283,7 +283,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 // grantAllGlobalPrivileges adds all global static privileges to the given user, except for the grant privilege (which
 // has special rules for its assignment).
-func (n *Grant) grantAllGlobalPrivileges(user *grant_tables.User) {
+func (n *Grant) grantAllGlobalPrivileges(user *mysql_db.User) {
 	user.PrivilegeSet.AddGlobalStatic(
 		sql.PrivilegeType_Select,
 		sql.PrivilegeType_Insert,
@@ -320,7 +320,7 @@ func (n *Grant) grantAllGlobalPrivileges(user *grant_tables.User) {
 
 // grantAllDatabasePrivileges adds all database privileges to the given user, except for the grant privilege (which has
 // special rules for its assignment).
-func (n *Grant) grantAllDatabasePrivileges(user *grant_tables.User, dbName string) {
+func (n *Grant) grantAllDatabasePrivileges(user *mysql_db.User, dbName string) {
 	user.PrivilegeSet.AddDatabase(
 		dbName,
 		sql.PrivilegeType_Alter,
@@ -346,7 +346,7 @@ func (n *Grant) grantAllDatabasePrivileges(user *grant_tables.User, dbName strin
 
 // grantAllTablePrivileges adds all table privileges to the given user, except for the grant privilege (which has
 // special rules for its assignment).
-func (n *Grant) grantAllTablePrivileges(user *grant_tables.User, dbName string, tblName string) {
+func (n *Grant) grantAllTablePrivileges(user *mysql_db.User, dbName string, tblName string) {
 	user.PrivilegeSet.AddTable(
 		dbName,
 		tblName,
@@ -366,7 +366,7 @@ func (n *Grant) grantAllTablePrivileges(user *grant_tables.User, dbName string, 
 }
 
 // handleGlobalPrivileges handles giving a user their global privileges.
-func (n *Grant) handleGlobalPrivileges(user *grant_tables.User) error {
+func (n *Grant) handleGlobalPrivileges(user *mysql_db.User) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -452,7 +452,7 @@ func (n *Grant) handleGlobalPrivileges(user *grant_tables.User) error {
 }
 
 // handleDatabasePrivileges handles giving a user their database privileges.
-func (n *Grant) handleDatabasePrivileges(user *grant_tables.User, dbName string) error {
+func (n *Grant) handleDatabasePrivileges(user *mysql_db.User, dbName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -512,7 +512,7 @@ func (n *Grant) handleDatabasePrivileges(user *grant_tables.User, dbName string)
 }
 
 // handleTablePrivileges handles giving a user their table privileges.
-func (n *Grant) handleTablePrivileges(user *grant_tables.User, dbName string, tblName string) error {
+func (n *Grant) handleTablePrivileges(user *mysql_db.User, dbName string, tblName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return fmt.Errorf("GRANT has not yet implemented column privileges")
@@ -564,7 +564,7 @@ type GrantRole struct {
 	Roles           []UserName
 	TargetUsers     []UserName
 	WithAdminOption bool
-	GrantTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*GrantRole)(nil)
@@ -576,7 +576,7 @@ func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole
 		Roles:           roles,
 		TargetUsers:     users,
 		WithAdminOption: withAdmin,
-		GrantTables:     sql.UnresolvedDatabase("mysql"),
+		MySQLDb:         sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -600,19 +600,19 @@ func (n *GrantRole) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *GrantRole) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *GrantRole) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *GrantRole) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -636,24 +636,24 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 		return true
 	}
 	//TODO: only active roles may be assigned if the SUPER privilege is not held
-	grantTables := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := grantTables.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return false
 	}
-	roleEntries := grantTables.RoleEdgesTable().Data().Get(grant_tables.RoleEdgesToKey{
+	roleEntries := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
 	for _, roleName := range n.Roles {
-		role := grantTables.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
 		if role == nil {
 			return false
 		}
 		foundMatch := false
 		for _, roleEntry := range roleEntries {
-			roleEdge := roleEntry.(*grant_tables.RoleEdge)
+			roleEdge := roleEntry.(*mysql_db.RoleEdge)
 			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host {
 				if roleEdge.WithAdminOption {
 					foundMatch = true
@@ -671,22 +671,22 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 
 // RowIter implements the interface sql.Node.
 func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := grantTables.RoleEdgesTable().Data()
+	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, targetUser := range n.TargetUsers {
-		user := grantTables.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := grantTables.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
-			err := roleEdgesData.Put(ctx, &grant_tables.RoleEdge{
+			err := roleEdgesData.Put(ctx, &mysql_db.RoleEdge{
 				FromHost:        role.Host,
 				FromUser:        role.User,
 				ToHost:          user.Host,
@@ -698,7 +698,7 @@ func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 			}
 		}
 	}
-	if err := grantTables.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

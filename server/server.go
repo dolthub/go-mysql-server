@@ -76,7 +76,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 
 	listenerCfg := mysql.ListenerConfig{
 		Listener:           l,
-		AuthServer:         e.Analyzer.Catalog.GrantTables,
+		AuthServer:         e.Analyzer.Catalog.MySQLDb,
 		Handler:            handler,
 		ConnReadTimeout:    cfg.ConnReadTimeout,
 		ConnWriteTimeout:   cfg.ConnWriteTimeout,
@@ -107,4 +107,9 @@ func (s *Server) Start() error {
 func (s *Server) Close() error {
 	s.Listener.Close()
 	return nil
+}
+
+// SessionManager returns the session manager for this server.
+func (s *Server) SessionManager() *SessionManager {
+	return s.h.sm
 }

@@ -12,35 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grant_tables
+package mysql_db
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 )
 
-type grantTable struct {
+type mysqlTable struct {
 	name string
 	sch  sql.Schema
 	data *in_mem_table.Data
 }
 
-var _ sql.Table = (*grantTable)(nil)
-var _ sql.InsertableTable = (*grantTable)(nil)
-var _ sql.UpdatableTable = (*grantTable)(nil)
-var _ sql.DeletableTable = (*grantTable)(nil)
-var _ sql.ReplaceableTable = (*grantTable)(nil)
-var _ sql.TruncateableTable = (*grantTable)(nil)
+var _ sql.Table = (*mysqlTable)(nil)
+var _ sql.InsertableTable = (*mysqlTable)(nil)
+var _ sql.UpdatableTable = (*mysqlTable)(nil)
+var _ sql.DeletableTable = (*mysqlTable)(nil)
+var _ sql.ReplaceableTable = (*mysqlTable)(nil)
+var _ sql.TruncateableTable = (*mysqlTable)(nil)
 
-// newGrantTable returns a new Grant Table with the given schema and keys.
-func newGrantTable(
+// newMySQLTable returns a new MySQL Table with the given schema and keys.
+func newMySQLTable(
 	name string,
 	sch sql.Schema,
 	entryRef in_mem_table.Entry,
 	primaryKey in_mem_table.Key,
 	secondaryKeys ...in_mem_table.Key,
-) *grantTable {
-	return &grantTable{
+) *mysqlTable {
+	return &mysqlTable{
 		name: name,
 		sch:  sch,
 		data: in_mem_table.NewData(entryRef, primaryKey, secondaryKeys),
@@ -48,58 +48,58 @@ func newGrantTable(
 }
 
 // Name implements the interface sql.Table.
-func (g *grantTable) Name() string {
-	return g.name
+func (t *mysqlTable) Name() string {
+	return t.name
 }
 
 // String implements the interface sql.Table.
-func (g *grantTable) String() string {
-	return g.name
+func (t *mysqlTable) String() string {
+	return t.name
 }
 
 // Schema implements the interface sql.Table.
-func (g *grantTable) Schema() sql.Schema {
-	return g.sch.Copy()
+func (t *mysqlTable) Schema() sql.Schema {
+	return t.sch.Copy()
 }
 
 // Partitions implements the interface sql.Table.
-func (g *grantTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+func (t *mysqlTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return sql.PartitionsToPartitionIter(dummyPartition{}), nil
 }
 
 // PartitionRows implements the interface sql.Table.
-func (g *grantTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return g.data.ToRowIter(ctx), nil
+func (t *mysqlTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	return t.data.ToRowIter(ctx), nil
 }
 
 // Inserter implements the interface sql.InsertableTable.
-func (g *grantTable) Inserter(ctx *sql.Context) sql.RowInserter {
-	return in_mem_table.NewDataEditor(g.data)
+func (t *mysqlTable) Inserter(ctx *sql.Context) sql.RowInserter {
+	return in_mem_table.NewDataEditor(t.data)
 }
 
 // Updater implements the interface sql.UpdatableTable.
-func (g *grantTable) Updater(ctx *sql.Context) sql.RowUpdater {
-	return in_mem_table.NewDataEditor(g.data)
+func (t *mysqlTable) Updater(ctx *sql.Context) sql.RowUpdater {
+	return in_mem_table.NewDataEditor(t.data)
 }
 
 // Deleter implements the interface sql.DeletableTable.
-func (g *grantTable) Deleter(ctx *sql.Context) sql.RowDeleter {
-	return in_mem_table.NewDataEditor(g.data)
+func (t *mysqlTable) Deleter(ctx *sql.Context) sql.RowDeleter {
+	return in_mem_table.NewDataEditor(t.data)
 }
 
 // Replacer implements the interface sql.ReplaceableTable.
-func (g *grantTable) Replacer(ctx *sql.Context) sql.RowReplacer {
-	return in_mem_table.NewDataEditor(g.data)
+func (t *mysqlTable) Replacer(ctx *sql.Context) sql.RowReplacer {
+	return in_mem_table.NewDataEditor(t.data)
 }
 
 // Truncate implements the interface sql.TruncateableTable.
-func (g *grantTable) Truncate(ctx *sql.Context) (int, error) {
-	count := g.data.Count()
-	g.data.Clear()
+func (t *mysqlTable) Truncate(ctx *sql.Context) (int, error) {
+	count := t.data.Count()
+	t.data.Clear()
 	return int(count), nil
 }
 
 // Data returns the in-memory table data for the grant table.
-func (g *grantTable) Data() *in_mem_table.Data {
-	return g.data
+func (t *mysqlTable) Data() *in_mem_table.Data {
+	return t.data
 }

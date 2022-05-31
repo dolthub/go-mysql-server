@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -86,10 +86,10 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		versionPostfix = cfg.VersionPostfix
 		isReadOnly = cfg.IsReadOnly
 		if cfg.IncludeRootAccount {
-			a.Catalog.GrantTables.AddRootAccount()
+			a.Catalog.MySQLDb.AddRootAccount()
 		}
 		for _, tempUser := range cfg.TemporaryUsers {
-			a.Catalog.GrantTables.AddSuperUser(tempUser.Username, tempUser.Password)
+			a.Catalog.MySQLDb.AddSuperUser(tempUser.Username, tempUser.Password)
 		}
 	}
 
@@ -493,7 +493,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 				return "", err
 			}
 
-			if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+			if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 				database = privilegedDatabase.Unwrap()
 			}
 			tdb, ok := database.(sql.TransactionDatabase)
