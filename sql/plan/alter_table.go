@@ -461,12 +461,12 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		rewriteRequired = true
 	}
 
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.a.column)
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, nil, i.a.column)
 	if !rewriteRequired && !rewriteRequested {
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.a.column)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, i.a.column)
 	if err != nil {
 		return false, err
 	}
@@ -690,12 +690,12 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 	droppedColIdx := oldPkSchema.IndexOf(i.d.Column, i.alterable.Name())
 
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx])
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx], nil)
 	if !rewriteRequested {
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx])
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx], nil)
 	if err != nil {
 		return false, err
 	}
@@ -1266,6 +1266,12 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+	oldColIdx := i.m.targetSchema.IndexOfColName(i.m.columnName)
+	if oldColIdx < 0 {
+		// Should be impossible, checked in analyzer
+		return false, sql.ErrTableColumnNotFound.New(rwt.Name(), i.m.columnName)
+	}
+
 	newSch, projections, err := modifyColumnInSchema(i.m.targetSchema, i.m.columnName, i.m.column, i.m.order)
 	if err != nil {
 		return false, err
@@ -1285,12 +1291,12 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
 	// TODO: codify rewrite requirements
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.column)
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.targetSchema[oldColIdx], i.m.column)
 	if !rewriteRequested {
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.m.column)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.m.targetSchema[oldColIdx], i.m.column)
 	if err != nil {
 		return false, err
 	}

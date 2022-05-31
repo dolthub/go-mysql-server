@@ -140,7 +140,7 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil)
 	if err != nil {
 		return err
 	}
