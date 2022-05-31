@@ -108,3 +108,8 @@ func (s *Server) Close() error {
 	s.Listener.Close()
 	return nil
 }
+
+// SessionManager returns the session manager for this server.
+func (s *Server) SessionManager() *SessionManager {
+	return s.h.sm
+}
