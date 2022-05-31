@@ -3142,32 +3142,6 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	})
 }
 
-func TestDropDatabaseDoltOnly(t *testing.T, harness Harness) {
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-	TestQueryWithContext(t, ctx, e, "CREATE DATABASE Test1db", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, "CREATE DATABASE TEST2db", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-
-	_, err := e.Analyzer.Catalog.Database(NewContext(harness), "test1db")
-	require.NoError(t, err)
-	_, err = e.Analyzer.Catalog.Database(NewContext(harness), "test2db")
-	require.NoError(t, err)
-
-	TestQueryWithContext(t, ctx, e, "DROP DATABASE TEST2DB", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-	AssertErr(t, e, harness, "USE test2db", sql.ErrDatabaseNotFound)
-	TestQueryWithContext(t, ctx, e, "DROP DATABASE IF EXISTS Test2DB", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, nil)
-
-	RunQuery(t, e, harness, "USE TEST1DB")
-	TestQueryWithContext(t, ctx, e, "DROP DATABASE test1db", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, "SELECT DATABASE()", []sql.Row{{nil}}, nil, nil)
-
-	_, err = e.Analyzer.Catalog.Database(NewContext(harness), "Test1db")
-	require.Error(t, err)
-	_, err = e.Analyzer.Catalog.Database(NewContext(harness), "TEST2db")
-	require.Error(t, err)
-}
-
 func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	require := require.New(t)
 
