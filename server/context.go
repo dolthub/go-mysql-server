@@ -138,6 +138,26 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 	return nil
 }
 
+// Iter iterates over the active sessions and executes the specified callback function on each one.
+func (s *SessionManager) Iter(f func(session sql.Session) (stop bool, err error)) error {
+	s.mu.Lock()
+	sessionsCopy := make(map[uint32]*managedSession)
+	for key, value := range s.sessions {
+		sessionsCopy[key] = value
+	}
+	s.mu.Unlock()
+
+	var err error
+	for _, value := range sessionsCopy {
+		var stop bool
+		stop, err = f(value.session)
+		if stop == true || err != nil {
+			break
+		}
+	}
+	return err
+}
+
 func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 	s.mu.Lock()
 	defer s.mu.Unlock()
