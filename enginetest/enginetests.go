@@ -3084,6 +3084,20 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
 
+	t.Run("DROP DATABASE works on current database and sets current database to empty.", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		RunQueryWithContext(t, e, ctx, "USE TESTdb")
+
+		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")
+		require.NoError(t, err)
+
+		TestQueryWithContext(t, ctx, e, "DROP DATABASE TESTDB", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT DATABASE()", []sql.Row{{nil}}, nil, nil)
+		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
+	})
+
 	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
@@ -4441,6 +4455,11 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Len(rows, 0)
 
 	require.Equal("foo", ctx.GetCurrentDatabase())
+
+	_, _, err = e.Query(ctx, "USE MYDB")
+	require.NoError(err)
+
+	require.Equal("mydb", ctx.GetCurrentDatabase())
 }
 
 // TestConcurrentTransactions tests that two concurrent processes/transactions can successfully execute without early
