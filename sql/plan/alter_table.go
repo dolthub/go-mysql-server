@@ -1290,9 +1290,14 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
+	rewriteRequired := false
+	if i.m.targetSchema[oldColIdx].Nullable && !i.m.column.Nullable {
+		rewriteRequired = true
+	}
+
 	// TODO: codify rewrite requirements
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.targetSchema[oldColIdx], i.m.column)
-	if !rewriteRequested {
+	if !rewriteRequired && !rewriteRequested {
 		return false, nil
 	}
 
@@ -1321,6 +1326,11 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			return false, err
 		}
 
+		err = i.validateNullability(ctx, newSch, newRow)
+		if err != nil {
+			return false, err
+		}
+
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
 			return false, err
@@ -1334,6 +1344,16 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	}
 
 	return true, nil
+}
+
+// TODO: this shares logic with insert
+func (i *modifyColumnIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
+	for count, col := range dstSchema {
+		if !col.Nullable && row[count] == nil {
+			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+		}
+	}
+	return nil
 }
 
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
