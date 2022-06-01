@@ -710,6 +710,9 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
 			newVal, err := column.Type.Convert(row[oldIdx])
 			if err != nil {
+				if sql.ErrNotMatchingSRID.Is(err) {
+					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
+				}
 				return err
 			}
 			var newRow sql.Row

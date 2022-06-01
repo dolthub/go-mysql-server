@@ -99,11 +99,11 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
+		Expected: []sql.Row{{sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_ASWKT(p) from point_table`,
@@ -130,11 +130,11 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
+		Expected: []sql.Row{{sql.LineString{Points: []sql.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_X(POINT(1,2))`,
@@ -191,14 +191,14 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SRID(l, 4326) from line_table ORDER BY l`,
 		Expected: []sql.Row{
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -206,10 +206,10 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{sql.Point{SRID: 4326, X: 2, Y: 1}},
 			{sql.Point{SRID: 4326, X: 56.789, Y: 123.45}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.345, Y: 1.23}, {SRID: 4326, X: 4.56, Y: 3.56789}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.2, Y: 1.1}, {SRID: 4326, X: 4.4, Y: 3.3}, {SRID: 4326, X: 6.6, Y: 5.5}, {SRID: 4326, X: 2.2, Y: 1.1}}}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 2}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.345, Y: 1.23}, {SRID: 4326, X: 4.56, Y: 3.56789}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.2, Y: 1.1}, {SRID: 4326, X: 4.4, Y: 3.3}, {SRID: 4326, X: 6.6, Y: 5.5}, {SRID: 4326, X: 2.2, Y: 1.1}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 2}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -251,14 +251,14 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(l)) from line_table`,
 		Expected: []sql.Row{
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 6, Y: 5}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -289,14 +289,14 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(l) from line_table`,
 		Expected: []sql.Row{
-			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
+			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -305,9 +305,9 @@ var SpatialQueryTests = []QueryTest{
 			{"POINT(1 2)"},
 			{"LINESTRING(1 2,3 4)"},
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
-			{"POINT(1 2)"},
-			{"LINESTRING(1 2,3 4)"},
-			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POINT(2 1)"},
+			{"LINESTRING(2 1,4 3)"},
+			{"POLYGON((0 0,1 0,1 1,0 0))"},
 		},
 	},
 	{
@@ -335,12 +335,12 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -357,12 +357,12 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Geometry{Inner: sql.Point{X: 2, Y: 1}}},
-			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}}},
-			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{sql.Geometry{Inner: sql.Point{SRID: 4326, X: 2, Y: 1}}},
-			{sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}}},
-			{sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{sql.Point{X: 2, Y: 1}},
+			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{SRID: 4326, X: 2, Y: 1}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 }
@@ -7942,7 +7942,7 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "information_schema.columns",
+		Name: "information_schema.columns for view",
 		SetUpScript: []string{
 			"USE foo",
 			"drop table other_table",
@@ -8025,6 +8025,23 @@ var InfoSchemaScripts = []ScriptTest{
 					{"ptable", "id", "NO", "int", "int", "PRI"},
 					{"ptable", "id2", "NO", "int", "int", "UNI"},
 					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns with srs_id defined in spatial columns",
+		SetUpScript: []string{
+			"CREATE TABLE stable (geo GEOMETRY NOT NULL DEFAULT (POINT(2, 5)), line LINESTRING NOT NULL, pnt POINT SRID 4326, pol POLYGON NOT NULL SRID 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'stable'",
+				Expected: []sql.Row{
+					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", "NULL"},
+					{"stable", "line", nil, "NO", "linestring", "linestring", "", "NULL"},
+					{"stable", "pnt", nil, "YES", "point", "point", "", "4326"},
+					{"stable", "pol", nil, "NO", "polygon", "polygon", "", "0"},
 				},
 			},
 		},

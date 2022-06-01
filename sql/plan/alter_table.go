@@ -1360,6 +1360,9 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	for i := range newRow {
 		newRow[i], err = sch[i].Type.Convert(newRow[i])
 		if err != nil {
+			if sql.ErrNotMatchingSRID.Is(err) {
+				err = sql.ErrNotMatchingSRIDWithColName.New(sch[i].Name, err)
+			}
 			return nil, err
 		}
 	}

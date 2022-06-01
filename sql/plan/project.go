@@ -162,9 +162,9 @@ func ProjectRow(
 			secondPass = append(secondPass, i)
 			continue
 		}
-		f, err := expr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
+		f, fErr := expr.Eval(ctx, row)
+		if fErr != nil {
+			return nil, fErr
 		}
 		fields = append(fields, f)
 	}
