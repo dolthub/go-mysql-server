@@ -1025,6 +1025,7 @@ func TestScripts(t *testing.T, harness Harness) {
 func TestSpatialScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SpatialScriptTests {
+
 		TestScript(t, harness, script)
 	}
 }
@@ -1704,8 +1705,10 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			} else if assertion.SkipResultsCheck {
 				RunQuery(t, e, harness, assertion.Query)
 			} else {
-				ctx := NewContext(harness)
-				TestQueryWithContext(t, ctx, e, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+				t.Run(assertion.Query, func(t *testing.T) {
+					ctx := NewContext(harness)
+					TestQueryWithContext(t, ctx, e, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+				})
 			}
 		}
 	})
