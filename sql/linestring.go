@@ -21,34 +21,38 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// Represents the Linestring type.
+// Represents the LineString type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-linestring.html
-type Linestring struct {
+type LineString struct {
 	SRID   uint32
 	Points []Point
 }
 
-type LinestringType struct{}
+type LineStringType struct {
+	SRID        uint32
+	DefinedSRID bool
+}
 
-var _ Type = LinestringType{}
+var _ Type = LineStringType{}
+var _ SpatialColumnType = LineStringType{}
 
-var ErrNotLinestring = errors.NewKind("value of type %T is not a linestring")
+var ErrNotLineString = errors.NewKind("value of type %T is not a linestring")
 
 // Compare implements Type interface.
-func (t LinestringType) Compare(a interface{}, b interface{}) (int, error) {
+func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// Expect to receive a Linestring, throw error otherwise
-	_a, ok := a.(Linestring)
+	// Expect to receive a LineString, throw error otherwise
+	_a, ok := a.(LineString)
 	if !ok {
-		return 0, ErrNotLinestring.New(a)
+		return 0, ErrNotLineString.New(a)
 	}
-	_b, ok := b.(Linestring)
+	_b, ok := b.(LineString)
 	if !ok {
-		return 0, ErrNotLinestring.New(b)
+		return 0, ErrNotLineString.New(b)
 	}
 
 	// Get shorter length
@@ -85,7 +89,7 @@ func (t LinestringType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t LinestringType) Convert(v interface{}) (interface{}, error) {
+func (t LineStringType) Convert(v interface{}) (interface{}, error) {
 	// Allow null
 	if v == nil {
 		return nil, nil
@@ -110,26 +114,29 @@ func (t LinestringType) Convert(v interface{}) (interface{}, error) {
 		return line, nil
 	case string:
 		return t.Convert([]byte(val))
-	case Linestring:
+	case LineString:
+		if err := t.MatchSRID(val); err != nil {
+			return nil, err
+		}
 		return val, nil
 	default:
-		return nil, ErrNotLinestring.New(val)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
 // Equals implements the Type interface.
-func (t LinestringType) Equals(otherType Type) bool {
-	_, ok := otherType.(LinestringType)
+func (t LineStringType) Equals(otherType Type) bool {
+	_, ok := otherType.(LineStringType)
 	return ok
 }
 
 // Promote implements the Type interface.
-func (t LinestringType) Promote() Type {
+func (t LineStringType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t LinestringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -145,16 +152,42 @@ func (t LinestringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 }
 
 // String implements Type interface.
-func (t LinestringType) String() string {
+func (t LineStringType) String() string {
 	return "LINESTRING"
 }
 
 // Type implements Type interface.
-func (t LinestringType) Type() query.Type {
+func (t LineStringType) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // Zero implements Type interface.
-func (t LinestringType) Zero() interface{} {
-	return Linestring{Points: []Point{{}, {}}}
+func (t LineStringType) Zero() interface{} {
+	return LineString{Points: []Point{{}, {}}}
+}
+
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t LineStringType) GetSpatialTypeSRID() (uint32, bool) {
+	return t.SRID, t.DefinedSRID
+}
+
+// SetSRID implements SpatialColumnType interface.
+func (t LineStringType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.DefinedSRID = true
+	return t
+}
+
+// MatchSRID implements SpatialColumnType interface
+func (t LineStringType) MatchSRID(v interface{}) error {
+	val, ok := v.(LineString)
+	if !ok {
+		return ErrNotLineString.New(v)
+	}
+	if !t.DefinedSRID {
+		return nil
+	} else if t.SRID == val.SRID {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }

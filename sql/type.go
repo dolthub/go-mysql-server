@@ -84,6 +84,16 @@ type Type2 interface {
 	SQL2(Value) (sqltypes.Value, error)
 }
 
+// SpatialColumnType is a node that contains a reference to all spatial types.
+type SpatialColumnType interface {
+	// GetSpatialTypeSRID returns the SRID value for spatial types.
+	GetSpatialTypeSRID() (uint32, bool)
+	// SetSRID sets SRID value for spatial types.
+	SetSRID(uint32) Type
+	// MatchSRID returns nil if column type SRID matches given value SRID otherwise returns error.
+	MatchSRID(interface{}) error
+}
+
 type LikeMatcher interface {
 	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }
@@ -462,7 +472,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		return GeometryType{}, nil
 	case "geometrycollection":
 	case "linestring":
-		return LinestringType{}, nil
+		return LineStringType{}, nil
 	case "multilinestring":
 	case "point":
 		return PointType{}, nil

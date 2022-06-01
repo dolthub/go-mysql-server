@@ -204,6 +204,12 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					}
 				}
 
+				if s, ok := c.Type.(sql.SpatialColumnType); ok {
+					if srid, d := s.GetSpatialTypeSRID(); d {
+						srsId = fmt.Sprintf("%v", srid)
+					}
+				}
+
 				rows = append(rows, sql.Row{
 					"def",      // table_catalog
 					db.Name(),  // table_schema

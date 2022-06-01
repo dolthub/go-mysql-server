@@ -564,6 +564,15 @@ var (
 
 	// ErrUnsupportedJoinFactorCount is returned for a query with more commutable join tables than we support
 	ErrUnsupportedJoinFactorCount = errors.NewKind("unsupported join factor count: expected fewer than %d tables, found %d")
+
+	// ErrNotMatchingSRID is returned for SRID values not matching
+	ErrNotMatchingSRID = errors.NewKind("The SRID of the geometry is %v, but the SRID of the column is %v. Consider changing the SRID of the geometry or the SRID property of the column.")
+
+	// ErrNotMatchingSRIDWithColName is returned for error of SRID values not matching with column name detail
+	ErrNotMatchingSRIDWithColName = errors.NewKind("The SRID of the geometry does not match the SRID of the column '%s'. %v")
+
+	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
+	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
