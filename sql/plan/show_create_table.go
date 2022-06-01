@@ -255,7 +255,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
-			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())
+			def := col.Default.String()
+			if col.Default.IsLiteral() {
+				def = strings.TrimPrefix(strings.TrimSuffix(def, "\""), "\"")
+				def = fmt.Sprintf("'%s'", def)
+			}
+			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, def)
 		}
 
 		if col.Comment != "" {
