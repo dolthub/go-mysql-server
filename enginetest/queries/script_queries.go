@@ -1601,7 +1601,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` varchar(10) NOT NULL DEFAULT \"abc\",\n" +
+						"  `b` varchar(10) NOT NULL DEFAULT 'abc',\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `t1b` (`b`),\n" +
 						"  CONSTRAINT `ck1` CHECK (`b` LIKE \"%abc%\")\n" +

@@ -256,6 +256,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
 			def := col.Default.String()
+			// Some literal default values are double quoted which cannot be parsed in MySQL
 			if col.Default.IsLiteral() && strings.HasPrefix(def, "\"") && strings.HasSuffix(def, "\"") {
 				def = strings.TrimPrefix(strings.TrimSuffix(def, "\""), "\"")
 				def = fmt.Sprintf("'%s'", def)
