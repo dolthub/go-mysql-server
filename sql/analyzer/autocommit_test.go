@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -42,16 +43,16 @@ var testCasesWithCurrentDb = map[string]string{
 
 var multiDbTestCases = map[string][]string{
 	"select * from db1.t1, db2.t2 where db1.t1.id = db2.t2.id": []string{"db1", "db2"},
-	"select * from foo.t1 union select * from db1.t2":          []string{"foo", "db1"},
-
-	// TODO: Shouldn't foo be included, too? We need to sync foo to make sure there isn't already a table t1.
-	"create table t1 like db3.t1": []string{"db3"},
+	"select * from foo.t1 union select * from db1.t2":          []string{"db1", "foo"},
+	"create table t1 (pk int)":                                 []string{"foo"},
+	"create table t1 like db3.t1":                              []string{"db3", "foo"},
 }
 
 func TestGetAllDatabasesRequired(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewContext(context.Background())
 
+	ctx = ctx.WithCurrentDB("foo")
 	t.Run("multi-database transactions return errors", func(t *testing.T) {
 		for multiDbQuery, expectedDbs := range multiDbTestCases {
 			t.Run(multiDbQuery, func(t *testing.T) {
@@ -59,6 +60,7 @@ func TestGetAllDatabasesRequired(t *testing.T) {
 				require.NoError(err, "unable to parse test query: %s", multiDbQuery)
 
 				actualDbs := GetAllDatabasesRequired(ctx, parsed)
+				sort.Strings(actualDbs)
 				require.Equal(expectedDbs, actualDbs)
 			})
 		}

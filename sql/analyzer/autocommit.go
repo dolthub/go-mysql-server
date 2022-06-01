@@ -108,6 +108,8 @@ func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		dbName = getDbHelper(n.Tables...)
 	case *plan.Truncate:
 		dbName = getDbHelper(n.Child)
+	case *plan.CreateDB:
+		dbName = n.Database()
 	default:
 	}
 	if dbName != "" {
