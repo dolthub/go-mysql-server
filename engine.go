@@ -461,16 +461,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
 		for _, dbName := range requiredDatabases {
-			database, err := e.Analyzer.Catalog.Database(ctx, dbName)
-			// if the database doesn't exist, just don't sync it, let other layers complain
-			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
-				continue
-			} else if err != nil {
-				return "", err
-			}
-
-			// TODO: What's the right interface here? passing a dbName or passing a *Database?
-			err = ctx.Session.SyncDatabaseState(ctx, &database)
+			err := ctx.Session.SyncDatabaseState(ctx, dbName)
 			if err != nil {
 				return "", err
 			}

@@ -126,7 +126,7 @@ type Session interface {
 	SetConnectionId(connId uint32)
 	// SyncDatabaseState syncs the state of the specified database into the current session to ensure that queries in
 	// this session can access the latest available data for that database.
-	SyncDatabaseState(ctx *Context, database *Database) error
+	SyncDatabaseState(ctx *Context, dbName string) error
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -512,7 +512,7 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 	s.tx = tx
 }
 
-func (s *BaseSession) SyncDatabaseState(_ *Context, _ *Database) error {
+func (s *BaseSession) SyncDatabaseState(_ *Context, _ string) error {
 	// no-op for BaseSession – no db state tracking needed
 	return nil
 }
