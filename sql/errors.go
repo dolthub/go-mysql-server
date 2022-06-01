@@ -455,10 +455,6 @@ var (
 	// ErrReadOnlyTransaction is returned when a write query is executed in a READ ONLY transaction.
 	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
 
-	// ErrMultipleDatabaseTransaction is returned when a query tries to execute across multiple databases
-	// in a transaction, which is not supported.
-	ErrMultipleDatabaseTransaction = errors.NewKind("cannot execute a transaction over multiple databases: %s")
-
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")
 
