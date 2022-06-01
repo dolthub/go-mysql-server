@@ -790,15 +790,8 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 // or other constraint).
 // TODO: move this check to analyzer
 func (d *DropColumn) validate(ctx *sql.Context, tbl sql.Table) error {
-	found := false
-	for _, column := range d.targetSchema {
-		if column.Name == d.Column {
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	colIdx := d.targetSchema.IndexOfColName(d.Column)
+	if colIdx < 0 {
 		return sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
 	}
 
