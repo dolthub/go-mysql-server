@@ -809,20 +809,6 @@ type TransactionDatabase interface {
 
 	// ReleaseSavepoint removes the savepoint named from the transaction given
 	ReleaseSavepoint(ctx *Context, transaction Transaction, name string) error
-
-	// TODO: go-mysql-server needs a way to trigger the Dolt-specific code that will load the
-	//       latest Dolt database state into the session state.
-	//
-	//       A method on the Session interface would be a natural choice, but caused a package import
-	//       cycle in Dolt because the sqle.dsess package would need to access the sqle package, which
-	//       already has many dependencies on the sqle.dsess package.
-	//       TransactionDatabase seems like the next most reasonable choice.
-	//       DatabaseProvider could be another option, and might get us closer to where we want more
-	//       transaction management logic to be located.
-
-	// SyncSessionState syncs the state of this database with the current session so that queries in
-	// that session can access the latest available data for this database.
-	SyncSessionState(ctx *Context) error
 }
 
 // TriggerDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,

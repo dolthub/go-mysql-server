@@ -467,19 +467,12 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 				return "", nil
 			} else if err != nil {
 				return "", err
-			} else {
-				// TODO: Hacky... need to clean this up...
-				if database, ok := database.(grant_tables.PrivilegedDatabase); ok {
-					if database, ok := database.Unwrap().(sql.TransactionDatabase); ok {
-						err := database.SyncSessionState(ctx)
-						if err != nil {
-							return "", err
-						}
-					} else {
-						// TODO: Hacky... clean this up...
-						panic("database isn't a TransactionDatabase!")
-					}
-				}
+			}
+
+			// TODO: What's the right interface here? passing a dbName or passing a *Database?
+			err = ctx.Session.SyncDatabaseState(ctx, &database)
+			if err != nil {
+				return "", err
 			}
 		}
 
