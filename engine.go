@@ -464,7 +464,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 			database, err := e.Analyzer.Catalog.Database(ctx, dbName)
 			// if the database doesn't exist, just don't sync it, let other layers complain
 			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
-				return "", nil
+				continue
 			} else if err != nil {
 				return "", err
 			}
