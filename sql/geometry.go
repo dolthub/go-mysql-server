@@ -23,19 +23,20 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// Represents the Geometry type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-geometry.html
-type Geometry struct {
-	Inner interface{} // Will be Point, Linestring, or Polygon
-}
-
 type GeometryType struct {
-	InnerType Type // Will be PointType, LinestringType, or PolygonType
+	SRID        uint32
+	DefinedSRID bool
 }
 
 var _ Type = GeometryType{}
+var _ SpatialColumnType = GeometryType{}
 
 var ErrNotGeometry = errors.NewKind("Value of type %T is not a geometry")
+
+const (
+	CartesianSRID  = uint32(0)
+	GeoSpatialSRID = uint32(4326)
+)
 
 const (
 	SRIDSize       = 4
@@ -55,11 +56,11 @@ const (
 	WKBPolyID
 )
 
-// isLinearRing checks if a Linestring is a linear ring
-func isLinearRing(line Linestring) bool {
+// isLinearRing checks if a LineString is a linear ring
+func isLinearRing(line LineString) bool {
 	// Get number of points
 	numPoints := len(line.Points)
-	// Check length of Linestring (must be 0 or 4+) points
+	// Check length of LineString (must be 0 or 4+) points
 	if numPoints != 0 && numPoints < 4 {
 		return false
 	}
@@ -104,10 +105,10 @@ func WKBToPoint(buf []byte, isBig bool, srid uint32) (Point, error) {
 }
 
 // WKBToLine parses the data portion of a byte array in WKB format to a point object
-func WKBToLine(buf []byte, isBig bool, srid uint32) (Linestring, error) {
+func WKBToLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
 	// Must be at least 4 bytes (length of linestring)
 	if len(buf) < 4 {
-		return Linestring{}, ErrInvalidGISData.New("WKBToLine")
+		return LineString{}, ErrInvalidGISData.New("WKBToLine")
 	}
 
 	// Read length of line string
@@ -123,7 +124,7 @@ func WKBToLine(buf []byte, isBig bool, srid uint32) (Linestring, error) {
 
 	// Check length
 	if uint32(len(lineData)) < 16*numPoints {
-		return Linestring{}, ErrInvalidGISData.New("WKBToLine")
+		return LineString{}, ErrInvalidGISData.New("WKBToLine")
 	}
 
 	// Parse points
@@ -132,11 +133,11 @@ func WKBToLine(buf []byte, isBig bool, srid uint32) (Linestring, error) {
 		if point, err := WKBToPoint(lineData[16*i:16*(i+1)], isBig, srid); err == nil {
 			points[i] = point
 		} else {
-			return Linestring{}, ErrInvalidGISData.New("WKBToLine")
+			return LineString{}, ErrInvalidGISData.New("WKBToLine")
 		}
 	}
 
-	return Linestring{SRID: srid, Points: points}, nil
+	return LineString{SRID: srid, Points: points}, nil
 }
 
 // WKBToPoly parses the data portion of a byte array in WKB format to a point object
@@ -159,7 +160,7 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
 
 	// Parse lines
 	s := 0
-	lines := make([]Linestring, numLines)
+	lines := make([]LineString, numLines)
 	for i := uint32(0); i < numLines; i++ {
 		if line, err := WKBToLine(polyData[s:], isBig, srid); err == nil {
 			if isLinearRing(line) {
@@ -183,22 +184,15 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return res, nil
 	}
 
-	// If b is a geometry type
-	if bb, ok := b.(Geometry); ok {
-		return t.Compare(a, bb.Inner)
-	}
-
 	// TODO: probably define operations for types like []byte and string
 	// Expected to receive a geometry type
 	switch inner := a.(type) {
 	case Point:
 		return PointType{}.Compare(inner, b)
-	case Linestring:
-		return LinestringType{}.Compare(inner, b)
+	case LineString:
+		return LineStringType{}.Compare(inner, b)
 	case Polygon:
 		return PolygonType{}.Compare(inner, b)
-	case Geometry:
-		return t.Compare(inner.Inner, b)
 	default:
 		return 0, ErrNotGeometry.New(a)
 	}
@@ -233,28 +227,23 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return Geometry{Inner: geom}, nil
+		return geom, nil
 	case string:
 		return t.Convert([]byte(inner))
-	case Point:
-		return Geometry{Inner: inner}, nil
-	case Linestring:
-		return Geometry{Inner: inner}, nil
-	case Polygon:
-		return Geometry{Inner: inner}, nil
-	case Geometry:
+	case Point, LineString, Polygon:
+		if err := t.MatchSRID(inner); err != nil {
+			return nil, err
+		}
 		return inner, nil
 	default:
-		return nil, ErrNotGeometry.New(inner)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
 // Equals implements the Type interface.
-func (t GeometryType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(GeometryType); ok {
-		return t.InnerType.Equals(ot.InnerType)
-	}
-	return false
+func (t GeometryType) Equals(otherType Type) (ok bool) {
+	_, ok = otherType.(GeometryType)
+	return
 }
 
 // Promote implements the Type interface.
@@ -292,4 +281,39 @@ func (t GeometryType) Type() query.Type {
 func (t GeometryType) Zero() interface{} {
 	// TODO: it doesn't make sense for geometry to have a zero type
 	return nil
+}
+
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t GeometryType) GetSpatialTypeSRID() (uint32, bool) {
+	return t.SRID, t.DefinedSRID
+}
+
+// SetSRID implements SpatialColumnType interface.
+func (t GeometryType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.DefinedSRID = true
+	return t
+}
+
+// MatchSRID implements SpatialColumnType interface
+func (t GeometryType) MatchSRID(v interface{}) error {
+	if !t.DefinedSRID {
+		return nil
+	}
+	// if matched with SRID value of row value
+	var srid uint32
+	switch val := v.(type) {
+	case Point:
+		srid = val.SRID
+	case LineString:
+		srid = val.SRID
+	case Polygon:
+		srid = val.SRID
+	default:
+		return ErrNotGeometry.New(v)
+	}
+	if t.SRID == srid {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(srid, t.SRID)
 }

@@ -682,16 +682,17 @@ type RewritableTable interface {
 	Table
 	AlterableTable
 
-	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old schema, new
-	// schema, and modified column (added, dropped, modified) is provided.
+	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old and new
+	// versions of the schema and modified column are provided. For some operations, one or both of |oldColumn| or
+	// |newColumn| may be nil.
 	// The engine may decide to rewrite tables regardless in some cases, such as when a new non-nullable column is added.
-	ShouldRewriteTable(ctx *Context, oldSchema PrimaryKeySchema, newSchema PrimaryKeySchema, modifiedColumn *Column) bool
+	ShouldRewriteTable(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) bool
 
 	// RewriteInserter returns a RowInserter for the new schema. Rows from the current table, with the old schema, will
 	// be streamed from the table and passed to this RowInserter. Implementor tables must still return rows in the
 	// current schema until the rewrite operation completes. |Close| will be called on RowInserter when all rows have
 	// been inserted.
-	RewriteInserter(ctx *Context, oldSchema PrimaryKeySchema, newSchema PrimaryKeySchema, modifiedColumn *Column) (RowInserter, error)
+	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) (RowInserter, error)
 }
 
 // DatabaseProvider is a collection of Database.

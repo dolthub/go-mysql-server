@@ -347,20 +347,22 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, err := col.Type.Convert(row[idx]) // allows for better error handling
-			if err != nil {
+			converted, cErr := col.Type.Convert(row[idx]) // allows for better error handling
+			if cErr != nil {
 				if i.ignore {
-					row, err = i.convertDataAndWarn(ctx, row, idx, err)
+					row, err = i.convertDataAndWarn(ctx, row, idx, cErr)
 					if err != nil {
 						return nil, err
 					}
 					continue
 				} else {
 					// Fill in error with information
-					if sql.ErrLengthBeyondLimit.Is(err) {
-						err = sql.ErrLengthBeyondLimit.New(row[idx], col.Name)
+					if sql.ErrLengthBeyondLimit.Is(cErr) {
+						cErr = sql.ErrLengthBeyondLimit.New(row[idx], col.Name)
+					} else if sql.ErrNotMatchingSRID.Is(cErr) {
+						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					}
-					return nil, sql.NewWrappedInsertError(row, err)
+					return nil, sql.NewWrappedInsertError(row, cErr)
 				}
 			}
 			row[idx] = converted

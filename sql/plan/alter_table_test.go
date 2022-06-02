@@ -276,10 +276,44 @@ func TestModifyColumnInSchema(t *testing.T) {
 			},
 		},
 		{
+			name:      "modify middle, move first",
+			schema:    myTable,
+			colName:   "f",
+			order:     &sql.ColumnOrder{First: true},
+			newColumn: &sql.Column{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newSchema: sql.Schema{
+				{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
+			},
+			projections: []sql.Expression{
+				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(2, varchar20, "s", false),
+			},
+		},
+		{
+			name:      "modify middle, move to middle",
+			schema:    myTable,
+			colName:   "f",
+			order:     &sql.ColumnOrder{AfterColumn: "I"},
+			newColumn: &sql.Column{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newSchema: sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
+			},
+			projections: []sql.Expression{
+				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(2, varchar20, "s", false),
+			},
+		},
+		{
 			name:      "modify last, move to middle",
 			schema:    myTable,
 			colName:   "s",
-			order:     &sql.ColumnOrder{AfterColumn: "F"},
+			order:     &sql.ColumnOrder{AfterColumn: "I"},
 			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
 			newSchema: sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
@@ -290,6 +324,39 @@ func TestModifyColumnInSchema(t *testing.T) {
 				expression.NewGetField(0, sql.Int64, "i", false),
 				expression.NewGetField(2, varchar20, "s", false),
 				expression.NewGetField(1, sql.Float64, "f", false),
+			},
+		},
+		{
+			name: "modify middle, move first with defaults",
+			schema: sql.Schema{
+				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "two", Type: sql.Int64, Source: "mytable"},
+				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "two", false),
+					sql.Int64, false, false),
+				},
+			},
+			colName: "two",
+			order:   &sql.ColumnOrder{First: true},
+			newColumn: &sql.Column{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "one", false),
+				sql.Int64, false, false),
+			},
+			newSchema: sql.Schema{
+				{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "one", false),
+					sql.Int64, false, false),
+				},
+				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "two", false),
+					sql.Int64, false, false),
+				},
+			},
+			projections: []sql.Expression{
+				expression.NewGetField(1, sql.Int64, "two", false),
+				expression.NewGetField(0, sql.Int64, "one", false),
+				expression.NewGetField(2, sql.Int64, "three", false),
 			},
 		},
 	}

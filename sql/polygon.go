@@ -25,12 +25,16 @@ import (
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-polygon.html
 type Polygon struct {
 	SRID  uint32
-	Lines []Linestring
+	Lines []LineString
 }
 
-type PolygonType struct{}
+type PolygonType struct {
+	SRID        uint32
+	DefinedSRID bool
+}
 
 var _ Type = PolygonType{}
+var _ SpatialColumnType = PolygonType{}
 
 var ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
 
@@ -63,7 +67,7 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 	// Compare each line until there's a difference
 	for i := 0; i < n; i++ {
-		diff, err := LinestringType{}.Compare(_a.Lines[i], _b.Lines[i])
+		diff, err := LineStringType{}.Compare(_a.Lines[i], _b.Lines[i])
 		if err != nil {
 			return 0, err
 		}
@@ -111,9 +115,12 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(val))
 	case Polygon:
+		if err := t.MatchSRID(val); err != nil {
+			return nil, err
+		}
 		return val, nil
 	default:
-		return nil, ErrNotPolygon.New(val)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -154,5 +161,31 @@ func (t PolygonType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t PolygonType) Zero() interface{} {
-	return Polygon{Lines: []Linestring{{Points: []Point{{}, {}, {}, {}}}}}
+	return Polygon{Lines: []LineString{{Points: []Point{{}, {}, {}, {}}}}}
+}
+
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t PolygonType) GetSpatialTypeSRID() (uint32, bool) {
+	return t.SRID, t.DefinedSRID
+}
+
+// SetSRID implements SpatialColumnType interface.
+func (t PolygonType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.DefinedSRID = true
+	return t
+}
+
+// MatchSRID implements SpatialColumnType interface
+func (t PolygonType) MatchSRID(v interface{}) error {
+	val, ok := v.(Polygon)
+	if !ok {
+		return ErrNotPolygon.New(v)
+	}
+	if !t.DefinedSRID {
+		return nil
+	} else if t.SRID == val.SRID {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
