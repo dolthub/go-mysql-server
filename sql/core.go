@@ -460,6 +460,11 @@ type IndexAddressableTable interface {
 	IndexAddressable
 }
 
+type ParallelizedIndexAddressableTable interface {
+	IndexAddressableTable
+	ShouldParallelizeAccess() bool
+}
+
 // IndexAlterableTable represents a table that supports index modification operations.
 type IndexAlterableTable interface {
 	Table
