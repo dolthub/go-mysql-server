@@ -456,7 +456,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	// the current session's selected database, or an explicitly referenced database in the
 	// query.
 	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
-	requiredDatabases := analyzer.GetAllDatabasesRequired(ctx, parsed)
+	requiredDatabases := analyzer.GetAllRequiredDatabases(ctx, parsed)
 
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {

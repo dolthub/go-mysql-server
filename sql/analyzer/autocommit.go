@@ -50,9 +50,9 @@ func hasShowWarningsNode(n sql.Node) bool {
 	return ret
 }
 
-// GetAllDatabasesRequired walks the SQL node tree, determines every database referenced, and returns a list of
+// GetAllRequiredDatabases walks the SQL node tree, determines every database referenced, and returns a list of
 // each database that is required to properly execute the statement.
-func GetAllDatabasesRequired(ctx *sql.Context, node sql.Node) []string {
+func GetAllRequiredDatabases(ctx *sql.Context, node sql.Node) []string {
 	dbNames := make(map[string]struct{})
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {

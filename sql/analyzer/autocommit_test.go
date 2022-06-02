@@ -59,7 +59,7 @@ func TestGetAllDatabasesRequired(t *testing.T) {
 				parsed, err := parse.Parse(ctx, multiDbQuery)
 				require.NoError(err, "unable to parse test query: %s", multiDbQuery)
 
-				actualDbs := GetAllDatabasesRequired(ctx, parsed)
+				actualDbs := GetAllRequiredDatabases(ctx, parsed)
 				sort.Strings(actualDbs)
 				require.Equal(expectedDbs, actualDbs)
 			})
