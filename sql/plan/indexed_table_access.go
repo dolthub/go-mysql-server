@@ -321,9 +321,9 @@ func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Parti
 }
 
 // ShouldParallelizeAccess implements sql.ParallelizedIndexAddressableTable
-func (i *IndexedTableAccess) ShouldParallelizeAccess() bool {
-	return false
-}
+//func (i *IndexedTableAccess) ShouldParallelizeAccess() bool {
+//	return false
+//}
 
 // GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.
 // This method is exported for use in integration tests.

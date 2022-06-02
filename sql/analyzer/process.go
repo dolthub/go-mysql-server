@@ -50,13 +50,19 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.IndexedTableAccess:
-			name := n.ResolvedTable.Name()
+			// Only add a process table if ResolvedTable implements ParallelizedIndexAddressableTable
+			parallelizedTable, ok := n.ResolvedTable.Table.(sql.ParallelizedIndexAddressableTable)
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+
+			name := parallelizedTable.Name()
 			if _, ok := seen[name]; ok {
 				return n, transform.SameTree, nil
 			}
 
-			var total int64 = -1
-			processList.AddTableProgress(ctx.Pid(), name, total)
+			// TODO: what should total be?
+			processList.AddTableProgress(ctx.Pid(), name, -1)
 
 			seen[name] = struct{}{}
 
@@ -77,18 +83,8 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 				}
 			}
 
-			// Do nothing if not IndexAddressable
-			indexedAddressableTable, ok := n.ResolvedTable.Table.(sql.IndexAddressable)
-			if !ok {
-				return n, transform.SameTree, nil
-			}
-
-			// Apply any lookups
-			lookup := plan.GetIndexLookup(n)
-			indexedTable := indexedAddressableTable.WithIndexLookup(lookup)
-
 			// Wrap with ProcessTable
-			t := plan.NewProcessTable(indexedTable, onPartitionDone, onPartitionStart, onRowNext)
+			t := plan.NewProcessTable(parallelizedTable, onPartitionDone, onPartitionStart, onRowNext)
 
 			// Replace child
 			n, err := n.WithTable(t)
