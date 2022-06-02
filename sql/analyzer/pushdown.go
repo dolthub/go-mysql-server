@@ -691,7 +691,7 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
-					
+
 					return plan.NewStaticIndexedTableAccess(newResolvedTable, indexLookup.lookup, indexLookup.indexes[0], indexLookup.fields), transform.NewTree, nil
 				}
 			}
