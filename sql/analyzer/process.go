@@ -49,6 +49,50 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	var seen = make(map[string]struct{})
 	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
+		case *plan.IndexedTableAccess:
+			name := n.ResolvedTable.Name()
+			if _, ok := seen[name]; ok {
+				return n, transform.SameTree, nil
+			}
+
+			var total int64 = -1
+			processList.AddTableProgress(ctx.Pid(), name, total)
+
+			seen[name] = struct{}{}
+
+			onPartitionDone := func(partitionName string) {
+				processList.UpdateTableProgress(ctx.Pid(), name, 1)
+				processList.RemovePartitionProgress(ctx.Pid(), name, partitionName)
+			}
+
+			onPartitionStart := func(partitionName string) {
+				processList.AddPartitionProgress(ctx.Pid(), name, partitionName, -1)
+			}
+
+			var onRowNext plan.NamedNotifyFunc
+			// TODO: coarser default for row updates (like updating every 100 rows) that doesn't kill performance
+			if updateQueryProgressEachRow {
+				onRowNext = func(partitionName string) {
+					processList.UpdatePartitionProgress(ctx.Pid(), name, partitionName, 1)
+				}
+			}
+
+			// Do nothing if not IndexAddressable
+			indexedAddressableTable, ok := n.ResolvedTable.Table.(sql.IndexAddressable)
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+
+			// Apply any lookups
+			lookup := plan.GetIndexLookup(n)
+			indexedTable := indexedAddressableTable.WithIndexLookup(lookup)
+
+			// Wrap with ProcessTable
+			t := plan.NewProcessTable(indexedTable, onPartitionDone, onPartitionStart, onRowNext)
+
+			// Replace child
+			n, err := n.WithTable(t)
+			return n, transform.NewTree, err
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
 			case *plan.ProcessTable, *plan.ProcessIndexableTable:

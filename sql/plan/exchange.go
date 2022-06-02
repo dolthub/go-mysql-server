@@ -56,6 +56,10 @@ func NewExchange(
 func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var t sql.Table
 	transform.Inspect(e.Child, func(n sql.Node) bool {
+		if table, ok := n.(*IndexedTableAccess); ok {
+			t = table.ResolvedTable
+			return false
+		}
 		if table, ok := n.(sql.Table); ok {
 			t = table
 			return false

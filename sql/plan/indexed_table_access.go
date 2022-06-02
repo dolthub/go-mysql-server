@@ -40,6 +40,7 @@ var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Node2 = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
+var _ sql.Table = (*IndexedTableAccess)(nil)
 
 // NewIndexedTableAccess returns a new IndexedTableAccess node with the index and key expressions given. An index
 // lookup will be calculated and applied for the row given in RowIter().
@@ -102,7 +103,13 @@ func (i *IndexedTableAccess) Index() sql.Index {
 func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.IndexedTableAccess")
 
-	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
+	// child is ProcessTable, so get underlying
+	t := i.ResolvedTable.Table
+	if wrapperTable, ok := i.ResolvedTable.Table.(sql.TableWrapper); ok {
+		t = wrapperTable.Underlying()
+	}
+
+	indexAddressableTable, ok := t.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
 	}
@@ -112,7 +119,7 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, err
 	}
 
-	indexedTable := resolvedTable.WithIndexLookup(lookup)
+	indexedTable := indexAddressableTable.WithIndexLookup(lookup)
 	partIter, err := indexedTable.Partitions(ctx)
 	if err != nil {
 		return nil, err
@@ -291,6 +298,17 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 	}
 	i.ResolvedTable = nrt
 	return &i, nil
+}
+
+// Partitions implements sql.Table
+func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	return i.ResolvedTable.Partitions(ctx)
+}
+
+// PartitionRows implements sql.Table
+func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	// TODO: need to give lookup to Process.DiffTable
+	return i.ResolvedTable.PartitionRows(ctx, partition)
 }
 
 // GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.
