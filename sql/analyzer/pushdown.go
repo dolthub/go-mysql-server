@@ -685,14 +685,17 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 				if ok {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
 
-					// Pass lookup into resolved table
-					indexedTable := indexAddressableTable.WithIndexLookup(indexLookup.lookup)
-					newResolvedTable, err := n.WithTable(indexedTable)
-					if err != nil {
-						return nil, transform.SameTree, err
+					// Only pass lookup into resolved table if it's Parallelizable
+					if _, ok := indexAddressableTable.(sql.ParallelizedIndexAddressableTable); ok {
+						indexedTable := indexAddressableTable.WithIndexLookup(indexLookup.lookup)
+						newResolvedTable, err := n.WithTable(indexedTable)
+						if err != nil {
+							return nil, transform.SameTree, err
+						}
+						return plan.NewStaticIndexedTableAccess(newResolvedTable, indexLookup.lookup, indexLookup.indexes[0], indexLookup.fields), transform.NewTree, nil
+
 					}
-					
-					return plan.NewStaticIndexedTableAccess(newResolvedTable, indexLookup.lookup, indexLookup.indexes[0], indexLookup.fields), transform.NewTree, nil
+					return plan.NewStaticIndexedTableAccess(n, indexLookup.lookup, indexLookup.indexes[0], indexLookup.fields), transform.NewTree, nil
 				}
 			}
 		}
