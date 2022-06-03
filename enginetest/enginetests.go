@@ -265,16 +265,6 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	}
 }
 
-// TestDoltDiffQueryPlans only works on Dolt
-func TestDoltDiffQueryPlans(t *testing.T, harness Harness) {
-	harness.Setup(setup.SimpleSetup...)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	for _, tt := range queries.DoltDiffPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
-	}
-}
-
 func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)
