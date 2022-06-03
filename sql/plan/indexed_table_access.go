@@ -41,8 +41,6 @@ var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Node2 = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 
-//var _ sql.ParallelizedIndexAddressableTable = (*IndexedTableAccess)(nil)
-
 // NewIndexedTableAccess returns a new IndexedTableAccess node with the index and key expressions given. An index
 // lookup will be calculated and applied for the row given in RowIter().
 func NewIndexedTableAccess(resolvedTable *ResolvedTable, index sql.Index, keyExprs []sql.Expression) *IndexedTableAccess {
@@ -316,14 +314,8 @@ func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, er
 
 // PartitionRows implements sql.Table
 func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	// TODO: need to give lookup to Process.DiffTable
 	return i.ResolvedTable.PartitionRows(ctx, partition)
 }
-
-// ShouldParallelizeAccess implements sql.ParallelizedIndexAddressableTable
-//func (i *IndexedTableAccess) ShouldParallelizeAccess() bool {
-//	return false
-//}
 
 // GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.
 // This method is exported for use in integration tests.
