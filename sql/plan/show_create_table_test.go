@@ -299,6 +299,8 @@ func TestShowCreateView(t *testing.T) {
 	expected := sql.NewRow(
 		"myView",
 		"CREATE VIEW `myView` AS select * from `test-table`",
+		"utf8mb4",
+		"utf8mb4_0900_bin",
 	)
 
 	require.Equal(expected, row)

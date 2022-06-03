@@ -3918,6 +3918,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+			"utf8mb4",
+			"utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -3925,6 +3927,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+			"utf8mb4",
+			"utf8mb4_0900_bin",
 		}},
 	},
 	{
