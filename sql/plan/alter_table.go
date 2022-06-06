@@ -461,12 +461,12 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		rewriteRequired = true
 	}
 
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.a.column)
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, nil, i.a.column)
 	if !rewriteRequired && !rewriteRequested {
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.a.column)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, i.a.column)
 	if err != nil {
 		return false, err
 	}
@@ -690,12 +690,12 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 	droppedColIdx := oldPkSchema.IndexOf(i.d.Column, i.alterable.Name())
 
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx])
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx], nil)
 	if !rewriteRequested {
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx])
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldPkSchema.Schema[droppedColIdx], nil)
 	if err != nil {
 		return false, err
 	}
@@ -790,15 +790,8 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 // or other constraint).
 // TODO: move this check to analyzer
 func (d *DropColumn) validate(ctx *sql.Context, tbl sql.Table) error {
-	found := false
-	for _, column := range d.targetSchema {
-		if column.Name == d.Column {
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	colIdx := d.targetSchema.IndexOfColName(d.Column)
+	if colIdx < 0 {
 		return sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
 	}
 
@@ -1149,23 +1142,6 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
-	// TODO: replace with different node in analyzer
-	rwt, ok := i.alterable.(sql.RewritableTable)
-	if ok {
-		rewritten, err := i.rewriteTable(ctx, rwt)
-		if err != nil {
-			return nil, err
-		}
-		if rewritten {
-			return sql.NewRow(sql.NewOkResult(0)), nil
-		}
-	}
-
-	// TODO: fix me
-	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.targetSchema, i.m.columnName, i.m.column.Name); err != nil {
-		return nil, err
-	}
-
 	idx := i.m.targetSchema.IndexOf(i.m.columnName, i.alterable.Name())
 	if idx < 0 {
 		return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.columnName)
@@ -1252,6 +1228,23 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	// TODO: replace with different node in analyzer
+	rwt, ok := i.alterable.(sql.RewritableTable)
+	if ok {
+		rewritten, err := i.rewriteTable(ctx, rwt)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten {
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		}
+	}
+
+	// TODO: fix me
+	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.targetSchema, i.m.columnName, i.m.column.Name); err != nil {
+		return nil, err
+	}
+
 	err := i.alterable.ModifyColumn(ctx, i.m.columnName, i.m.column, i.m.order)
 	if err != nil {
 		return nil, err
@@ -1266,6 +1259,12 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+	oldColIdx := i.m.targetSchema.IndexOfColName(i.m.columnName)
+	if oldColIdx < 0 {
+		// Should be impossible, checked in analyzer
+		return false, sql.ErrTableColumnNotFound.New(rwt.Name(), i.m.columnName)
+	}
+
 	newSch, projections, err := modifyColumnInSchema(i.m.targetSchema, i.m.columnName, i.m.column, i.m.order)
 	if err != nil {
 		return false, err
@@ -1284,13 +1283,18 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
 
+	rewriteRequired := false
+	if i.m.targetSchema[oldColIdx].Nullable && !i.m.column.Nullable {
+		rewriteRequired = true
+	}
+
 	// TODO: codify rewrite requirements
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.column)
-	if !rewriteRequested {
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.targetSchema[oldColIdx], i.m.column)
+	if !rewriteRequired && !rewriteRequested {
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.m.column)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.m.targetSchema[oldColIdx], i.m.column)
 	if err != nil {
 		return false, err
 	}
@@ -1315,6 +1319,11 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			return false, err
 		}
 
+		err = i.validateNullability(ctx, newSch, newRow)
+		if err != nil {
+			return false, err
+		}
+
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
 			return false, err
@@ -1330,6 +1339,16 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	return true, nil
 }
 
+// TODO: this shares logic with insert
+func (i *modifyColumnIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
+	for count, col := range dstSchema {
+		if !col.Nullable && row[count] == nil {
+			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+		}
+	}
+	return nil
+}
+
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
 // corresponding types found in the schema given, using the standard type conversion logic.
 func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
@@ -1341,6 +1360,9 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	for i := range newRow {
 		newRow[i], err = sch[i].Type.Convert(newRow[i])
 		if err != nil {
+			if sql.ErrNotMatchingSRID.Is(err) {
+				err = sql.ErrNotMatchingSRIDWithColName.New(sch[i].Name, err)
+			}
 			return nil, err
 		}
 	}
@@ -1351,6 +1373,7 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
 // projections to adapt the old schema to the new one.
 func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
+	schema = schema.Copy()
 	currIdx := schema.IndexOf(name, column.Source)
 	if currIdx < 0 {
 		// Should be checked in the analyzer already
@@ -1368,6 +1391,10 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 		if newIdx == -1 {
 			// Should be checked in the analyzer already
 			return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, order.AfterColumn)
+		}
+		// if we're moving left in the schema, shift everything over one
+		if newIdx < currIdx {
+			newIdx++
 		}
 	} else if order != nil && order.First {
 		newIdx = 0
@@ -1403,6 +1430,39 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 		}
 		newSch[j] = c
 		projections[j] = expression.NewGetField(i, oldCol.Type, oldCol.Name, oldCol.Nullable)
+	}
+
+	// If a column was renamed or moved, we need to update any column defaults that refer to it
+	for i := range newSch {
+		newCol := newSch[oldToNewIdxMapping[i]]
+
+		if newCol.Default != nil {
+			newDefault, _, err := transform.Expr(newCol.Default.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				gf, ok := e.(*expression.GetField)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				colName := gf.Name()
+				// handle column renames
+				if strings.ToLower(colName) == strings.ToLower(name) {
+					colName = column.Name
+				}
+
+				newSchemaIdx := newSch.IndexOfColName(colName)
+				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Table(), colName, gf.IsNullable()), transform.NewTree, nil
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newDefault, err = newCol.Default.WithChildren(newDefault)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newCol.Default = newDefault.(*sql.ColumnDefaultValue)
+		}
 	}
 
 	// TODO: do we need col defaults here? probably when changing a column to be non-null?

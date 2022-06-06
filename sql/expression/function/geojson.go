@@ -59,7 +59,7 @@ func PointToSlice(p sql.Point) [2]float64 {
 	return [2]float64{p.X, p.Y}
 }
 
-func LineToSlice(l sql.Linestring) [][2]float64 {
+func LineToSlice(l sql.LineString) [][2]float64 {
 	arr := make([][2]float64, len(l.Points))
 	for i, p := range l.Points {
 		arr[i] = PointToSlice(p)
@@ -80,7 +80,7 @@ func FindBBox(v interface{}) [4]float64 {
 	switch v := v.(type) {
 	case sql.Point:
 		res = [4]float64{v.X, v.Y, v.X, v.Y}
-	case sql.Linestring:
+	case sql.LineString:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
 		for _, p := range v.Points {
 			tmp := FindBBox(p)
@@ -125,11 +125,9 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 // GetSRID returns the SRID given a Geometry type, will return -1 otherwise
 func GetSRID(val interface{}) int {
 	switch v := val.(type) {
-	case sql.Geometry:
-		return GetSRID(v.Inner)
 	case sql.Point:
 		return int(v.SRID)
-	case sql.Linestring:
+	case sql.LineString:
 		return int(v.SRID)
 	case sql.Polygon:
 		return int(v.SRID)
@@ -154,24 +152,10 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Create map object to hold values
 	obj := make(map[string]interface{})
 	switch v := val.(type) {
-	case sql.Geometry:
-		switch inner := v.Inner.(type) {
-		case sql.Point:
-			obj["type"] = "Point"
-			obj["coordinates"] = PointToSlice(inner)
-		case sql.Linestring:
-			obj["type"] = "LineString"
-			obj["coordinates"] = LineToSlice(inner)
-		case sql.Polygon:
-			obj["type"] = "Polygon"
-			obj["coordinates"] = PolyToSlice(inner)
-		default:
-			return nil, ErrInvalidArgumentType.New(g.FunctionName())
-		}
 	case sql.Point:
 		obj["type"] = "Point"
 		obj["coordinates"] = PointToSlice(v)
-	case sql.Linestring:
+	case sql.LineString:
 		obj["type"] = "LineString"
 		obj["coordinates"] = LineToSlice(v)
 	case sql.Polygon:
@@ -358,7 +342,7 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("coordinate must be of type number")
 	}
-	return sql.Point{SRID: 4326, X: x, Y: y}, nil
+	return sql.Point{SRID: sql.GeoSpatialSRID, X: x, Y: y}, nil
 }
 
 func SliceToLine(coords interface{}) (interface{}, error) {
@@ -378,7 +362,7 @@ func SliceToLine(coords interface{}) (interface{}, error) {
 		}
 		points[i] = p.(sql.Point)
 	}
-	return sql.Linestring{SRID: 4326, Points: points}, nil
+	return sql.LineString{SRID: sql.GeoSpatialSRID, Points: points}, nil
 }
 
 func SliceToPoly(coords interface{}) (interface{}, error) {
@@ -390,18 +374,18 @@ func SliceToPoly(coords interface{}) (interface{}, error) {
 	if len(cs) == 0 {
 		return nil, errors.New("not enough lines")
 	}
-	lines := make([]sql.Linestring, len(cs))
+	lines := make([]sql.LineString, len(cs))
 	for i, c := range cs {
 		l, err := SliceToLine(c)
 		if err != nil {
 			return nil, err
 		}
-		if !isLinearRing(l.(sql.Linestring)) {
+		if !isLinearRing(l.(sql.LineString)) {
 			return nil, errors.New("invalid GeoJSON data provided")
 		}
-		lines[i] = l.(sql.Linestring)
+		lines[i] = l.(sql.LineString)
 	}
-	return sql.Polygon{SRID: 4326, Lines: lines}, nil
+	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -535,12 +519,11 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	default:
 		return nil, errors.New("incorrect srid value")
 	}
-	// Check for invalid SRID
-	if _srid != 0 && _srid != 4326 {
-		return nil, ErrInvalidSRID.New(g.FunctionName(), _srid)
+	if err = ValidateSRID(_srid); err != nil {
+		return nil, err
 	}
-	// If SRID 4326, do nothing
-	if _srid == 4326 {
+	// If SRID is GeoSpatialSRID (4326), do nothing
+	if _srid == sql.GeoSpatialSRID {
 		return res, nil
 	}
 	// Swap coordinates with SRID 0
@@ -551,7 +534,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		_res.X, _res.Y = _res.Y, _res.X
 		return _res, nil
 	case "LineString":
-		_res := res.(sql.Linestring)
+		_res := res.(sql.LineString)
 		_res.SRID = _srid
 		for i, p := range _res.Points {
 			_res.Points[i].SRID = _srid

@@ -247,6 +247,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
 		}
 
+		if c, ok := col.Type.(sql.SpatialColumnType); ok {
+			if v, d := c.GetSpatialTypeSRID(); d {
+				stmt = fmt.Sprintf("%s SRID %v", stmt, v)
+			}
+		}
+
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
 			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())

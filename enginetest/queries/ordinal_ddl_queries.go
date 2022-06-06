@@ -155,7 +155,8 @@ var OrdinalDDLWriteQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{
 			{sql.OkResult{RowsAffected: 0}},
 		},
-		SelectQuery: "SELECT column_name, ordinal_position FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'long_ord_pk1' and column_key = 'PRI'",
+		SelectQuery: `SELECT column_name, ordinal_position FROM INFORMATION_SCHEMA.COLUMNS 
+				WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'long_ord_pk1' and column_key = 'PRI' order by 2`,
 		ExpectedSelect: []sql.Row{
 			{"y", uint(2)},
 			{"v", uint(3)},

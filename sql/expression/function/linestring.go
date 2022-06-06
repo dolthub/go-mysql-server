@@ -23,37 +23,37 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Linestring is a function that returns a point type containing values Y and Y.
-type Linestring struct {
+// LineString is a function that returns a point type containing values Y and Y.
+type LineString struct {
 	expression.NaryExpression
 }
 
-var _ sql.FunctionExpression = (*Linestring)(nil)
+var _ sql.FunctionExpression = (*LineString)(nil)
 
-// NewLinestring creates a new point expression.
-func NewLinestring(args ...sql.Expression) (sql.Expression, error) {
+// NewLineString creates a new point expression.
+func NewLineString(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
-		return nil, sql.ErrInvalidArgumentNumber.New("Linestring", "2 or more", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "2 or more", len(args))
 	}
-	return &Linestring{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &LineString{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (l *Linestring) FunctionName() string {
+func (l *LineString) FunctionName() string {
 	return "linestring"
 }
 
 // Description implements sql.FunctionExpression
-func (l *Linestring) Description() string {
+func (l *LineString) Description() string {
 	return "returns a new linestring."
 }
 
 // Type implements the sql.Expression interface.
-func (l *Linestring) Type() sql.Type {
-	return sql.LinestringType{}
+func (l *LineString) Type() sql.Type {
+	return sql.LineStringType{}
 }
 
-func (l *Linestring) String() string {
+func (l *LineString) String() string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
@@ -62,12 +62,12 @@ func (l *Linestring) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Linestring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLinestring(children...)
+func (l *LineString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLineString(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (l *Linestring) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of points
 	var points = make([]sql.Point, len(l.ChildExpressions))
 
@@ -82,12 +82,12 @@ func (l *Linestring) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		switch v := val.(type) {
 		case sql.Point:
 			points[i] = v
-		case sql.Linestring, sql.Polygon: // TODO: eventually add all spatial types
+		case sql.LineString, sql.Polygon: // TODO: eventually add all spatial types
 			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.Linestring{Points: points}, nil
+	return sql.LineString{Points: points}, nil
 }

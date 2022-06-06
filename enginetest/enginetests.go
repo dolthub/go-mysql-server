@@ -1010,6 +1010,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 func TestScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ScriptTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
 		TestScript(t, harness, script)
 	}
 }
@@ -1017,6 +1025,7 @@ func TestScripts(t *testing.T, harness Harness) {
 func TestSpatialScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SpatialScriptTests {
+
 		TestScript(t, harness, script)
 	}
 }
@@ -1030,10 +1039,15 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 
 func TestScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.ScriptTests {
-		TestScriptPrepared(t, harness, script)
-	}
-	for _, script := range queries.SpatialScriptTests {
+	for _, script := range append(queries.ScriptTests, queries.SpatialScriptTests...) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -1691,8 +1705,10 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			} else if assertion.SkipResultsCheck {
 				RunQuery(t, e, harness, assertion.Query)
 			} else {
-				ctx := NewContext(harness)
-				TestQueryWithContext(t, ctx, e, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+				t.Run(assertion.Query, func(t *testing.T) {
+					ctx := NewContext(harness)
+					TestQueryWithContext(t, ctx, e, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+				})
 			}
 		}
 	})
@@ -3084,6 +3100,20 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
 
+	t.Run("DROP DATABASE works on current database and sets current database to empty.", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		RunQueryWithContext(t, e, ctx, "USE TESTdb")
+
+		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")
+		require.NoError(t, err)
+
+		TestQueryWithContext(t, ctx, e, "DROP DATABASE TESTDB", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT DATABASE()", []sql.Row{{nil}}, nil, nil)
+		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
+	})
+
 	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
@@ -4441,6 +4471,11 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Len(rows, 0)
 
 	require.Equal("foo", ctx.GetCurrentDatabase())
+
+	_, _, err = e.Query(ctx, "USE MYDB")
+	require.NoError(err)
+
+	require.Equal("mydb", ctx.GetCurrentDatabase())
 }
 
 // TestConcurrentTransactions tests that two concurrent processes/transactions can successfully execute without early
@@ -5107,7 +5142,6 @@ func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLite
 }
 
 func TestColumnDefaults(t *testing.T, harness Harness) {
-	require := require.New(t)
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
@@ -5178,14 +5212,17 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
 			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
-		now := time.Now()
+		// truncating time to microseconds for compatibility with integrators who may store more precision (go gives nanos)
+		now := time.Now().Truncate(time.Microsecond)
 		sql.RunWithNowFunc(func() time.Time {
 			return now
 		}, func() error {
 			RunQuery(t, e, harness, "insert into t10(pk) values (1)")
 			return nil
 		})
-		TestQueryWithContext(t, ctx, e, "select * from t10 order by 1", []sql.Row{{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "select * from t10 order by 1", []sql.Row{
+			{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)},
+		}, nil, nil)
 	})
 
 	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
@@ -5296,7 +5333,11 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t23 (pk, v1) VALUES (1, 2), (2, 3)")
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE t23 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 5) FIRST", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t23 (pk) VALUES (3)")
-		TestQueryWithContext(t, ctx, e, "SELECT * FROM t23", []sql.Row{{2, 1, 3}, {3, 2, 4}, {8, 3, 9}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t23 order by 1", []sql.Row{
+			{2, 1, 3},
+			{3, 2, 4},
+			{8, 3, 9},
+		}, nil, nil)
 	})
 
 	t.Run("Modify column move last being referenced", func(t *testing.T) {
@@ -5304,7 +5345,11 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t24 (pk, v1) VALUES (1, 2), (2, 3)")
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE t24 MODIFY COLUMN v1 BIGINT AFTER v2", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t24 (pk, v1) VALUES (3, 4)")
-		TestQueryWithContext(t, ctx, e, "SELECT * FROM t24", []sql.Row{{1, 3, 2}, {2, 4, 3}, {3, 5, 4}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM t24 order by 1", []sql.Row{
+			{1, 3, 2},
+			{2, 4, 3},
+			{3, 5, 4},
+		}, nil, nil)
 	})
 
 	t.Run("Modify column move last add reference", func(t *testing.T) {
@@ -5336,11 +5381,11 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 		ctx := NewContext(harness)
 		t28, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
-		require.NoError(err)
+		require.NoError(t, err)
 		sch := t28.Schema()
-		require.Len(sch, 2)
-		require.Equal("v1", sch[1].Name)
-		require.NotContains(sch[1].Default.String(), "t28")
+		require.Len(t, sch, 2)
+		require.Equal(t, "v1", sch[1].Name)
+		require.NotContains(t, sch[1].Default.String(), "t28")
 	})
 
 	t.Run("Column referenced with name change", func(t *testing.T) {

@@ -1231,4 +1231,107 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Referencing Primary Key",
+		SetUpScript: []string{
+			"CREATE table parent1 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE table child1 (pk BIGINT PRIMARY KEY, v1 BIGINT, FOREIGN KEY (v1) REFERENCES parent1(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"INSERT INTO parent1 VALUES (1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO child1 VALUES (1, 1);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM child1;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "UPDATE parent1 SET pk = 2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM child1;",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		Name: "Referencing Composite Primary Key",
+		SetUpScript: []string{
+			"CREATE table parent1 (pk1 BIGINT, pk2 BIGINT, v1 BIGINT, PRIMARY KEY(pk1, pk2));",
+			"CREATE table child1 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, FOREIGN KEY (v1, v2) REFERENCES parent1(pk1, pk2) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"INSERT INTO parent1 VALUES (1, 2, 3), (4, 5, 6);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO child1 VALUES (1, 1, 2), (2, 4, 5);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM child1;",
+				Expected: []sql.Row{{1, 1, 2}, {2, 4, 5}},
+			},
+			{
+				Query:    "UPDATE parent1 SET pk2 = pk1 + pk2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}}},
+			},
+			{
+				Query:    "SELECT * FROM child1;",
+				Expected: []sql.Row{{1, 1, 3}, {2, 4, 9}},
+			},
+		},
+	},
+	{
+		Name: "Keyless CASCADE deleting all rows",
+		SetUpScript: []string{
+			"CREATE TABLE one (v0 BIGINT, v1 BIGINT, INDEX one_v0 (v0), INDEX one_v1 (v1));",
+			"CREATE TABLE two (v1 BIGINT, CONSTRAINT fk_name_1 FOREIGN KEY (v1) REFERENCES one(v1) ON DELETE CASCADE ON UPDATE CASCADE);",
+			"INSERT INTO one VALUES (1, 2);",
+			"INSERT INTO two VALUES (2);",
+			"UPDATE one SET v1 = v0 + v1;",
+			"DELETE FROM one WHERE v0 = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM one;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM two;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "Keyless CASCADE over three tables",
+		SetUpScript: []string{
+			"CREATE TABLE one (v0 BIGINT, v1 BIGINT, v2 BIGINT, INDEX idx (v0));",
+			"ALTER TABLE one ADD INDEX v1 (v1);",
+			"CREATE TABLE two (v0 BIGINT, v1 BIGINT, v2 BIGINT, INDEX idx (v0), CONSTRAINT fk_name_1 FOREIGN KEY (v1) REFERENCES one(v1) ON DELETE CASCADE ON UPDATE CASCADE);",
+			"ALTER TABLE two ADD INDEX v1v2 (v1, v2);",
+			"CREATE TABLE three (v0 BIGINT, v1 BIGINT, v2 BIGINT, INDEX idx (v0), CONSTRAINT fk_name_2 FOREIGN KEY (v1, v2) REFERENCES two(v1, v2) ON DELETE CASCADE ON UPDATE CASCADE);",
+			"INSERT INTO one VALUES (1, 1, 4), (2, 2, 5), (3, 3, 6), (4, 4, 5);",
+			"INSERT INTO two VALUES (2, 1, 1), (3, 2, 2), (4, 3, 3), (5, 4, 4);",
+			"INSERT INTO three VALUES (3, 1, 1), (4, 2, 2), (5, 3, 3), (6, 4, 4);",
+			"UPDATE one SET v1 = v1 + v2;",
+			"DELETE FROM one WHERE v0 = 3;",
+			"UPDATE two SET v2 = v1 - 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM one;",
+				Expected: []sql.Row{{1, 5, 4}, {2, 7, 5}, {4, 9, 5}},
+			},
+			{
+				Query:    "SELECT * FROM two;",
+				Expected: []sql.Row{{2, 5, 3}, {3, 7, 5}},
+			},
+			{
+				Query:    "SELECT * FROM three;",
+				Expected: []sql.Row{{3, 5, 3}, {4, 7, 5}},
+			},
+		},
+	},
 }

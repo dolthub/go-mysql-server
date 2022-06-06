@@ -102,7 +102,13 @@ func (i *IndexedTableAccess) Index() sql.Index {
 func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.IndexedTableAccess")
 
-	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
+	// child is ProcessTable, so get underlying
+	t := i.ResolvedTable.Table
+	if wrapperTable, ok := i.ResolvedTable.Table.(sql.TableWrapper); ok {
+		t = wrapperTable.Underlying()
+	}
+
+	indexAddressableTable, ok := t.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
 	}
@@ -112,7 +118,7 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, err
 	}
 
-	indexedTable := resolvedTable.WithIndexLookup(lookup)
+	indexedTable := indexAddressableTable.WithIndexLookup(lookup)
 	partIter, err := indexedTable.Partitions(ctx)
 	if err != nil {
 		return nil, err
@@ -291,6 +297,24 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 	}
 	i.ResolvedTable = nrt
 	return &i, nil
+}
+
+// Partitions implements sql.Table
+func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	if i.lookup == nil {
+		return i.ResolvedTable.Partitions(ctx)
+	}
+
+	table := i.ResolvedTable.Table
+	if indexAddressableTable, ok := i.ResolvedTable.Table.(sql.IndexAddressable); ok {
+		table = indexAddressableTable.WithIndexLookup(i.lookup)
+	}
+	return table.Partitions(ctx)
+}
+
+// PartitionRows implements sql.Table
+func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	return i.ResolvedTable.PartitionRows(ctx, partition)
 }
 
 // GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.
