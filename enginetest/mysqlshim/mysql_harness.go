@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package enginetest
+package mysqlshim
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest"
 	"strings"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/enginetest/mysqlshim"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // MySQLHarness is a harness for a local MySQL server. This will modify databases and tables as the tests see fit, which
 // may delete pre-existing data. Ensure that the MySQL instance may freely be modified without worry.
 type MySQLHarness struct {
-	shim           *mysqlshim.MySQLShim
+	shim           *MySQLShim
 	skippedQueries map[string]struct{}
 }
 
@@ -59,15 +59,15 @@ type MySQLTable struct {
 	tableName string
 }
 
-var _ Harness = (*MySQLHarness)(nil)
-var _ SkippingHarness = (*MySQLHarness)(nil)
-var _ IndexHarness = (*MySQLHarness)(nil)
-var _ ForeignKeyHarness = (*MySQLHarness)(nil)
-var _ KeylessTableHarness = (*MySQLHarness)(nil)
+var _ enginetest.Harness = (*MySQLHarness)(nil)
+var _ enginetest.SkippingHarness = (*MySQLHarness)(nil)
+var _ enginetest.IndexHarness = (*MySQLHarness)(nil)
+var _ enginetest.ForeignKeyHarness = (*MySQLHarness)(nil)
+var _ enginetest.KeylessTableHarness = (*MySQLHarness)(nil)
 
 // NewMySQLHarness returns a new MySQLHarness.
 func NewMySQLHarness(user string, password string, host string, port int) (*MySQLHarness, error) {
-	shim, err := mysqlshim.NewMySQLShim(user, password, host, port)
+	shim, err := NewMySQLShim(user, password, host, port)
 	if err != nil {
 		return nil, err
 	}
