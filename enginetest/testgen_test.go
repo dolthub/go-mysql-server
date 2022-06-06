@@ -11,8 +11,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
@@ -189,4 +191,16 @@ func TestWriteCreateTableQueries(t *testing.T) {
 	w.Flush()
 	t.Logf("Query tests in:\n %s", outputPath)
 
+}
+
+func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
+	sch, iter, err := e.Query(ctx, q)
+	if err != nil {
+		panic(err)
+	}
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	if err != nil {
+		panic(err)
+	}
+	return rows
 }

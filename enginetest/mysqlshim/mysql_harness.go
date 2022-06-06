@@ -16,13 +16,12 @@ package mysqlshim
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest"
 	"strings"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
