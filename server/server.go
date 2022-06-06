@@ -28,7 +28,7 @@ type ServerEventListener interface {
 	ClientConnected()
 	ClientDisconnected()
 	QueryStarted()
-	QueryCompleted(success bool, duration time.Duration)
+	QueryCompleted(query string, success bool, duration time.Duration)
 }
 
 // NewDefaultServer creates a Server with the default session builder.

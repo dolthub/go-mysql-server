@@ -390,7 +390,7 @@ func (tl *TestListener) QueryStarted() {
 	tl.Queries++
 }
 
-func (tl *TestListener) QueryCompleted(success bool, duration time.Duration) {
+func (tl *TestListener) QueryCompleted(query string, success bool, duration time.Duration) {
 	if success {
 		tl.Successes++
 	} else {
