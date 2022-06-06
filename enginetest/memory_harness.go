@@ -240,11 +240,6 @@ func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Primar
 	return table, nil
 }
 
-// Validate implements ValidatingHarness.
-func (m *MemoryHarness) Validate() error {
-	return nil
-}
-
 type ExternalStoredProcedureMemoryHarness struct {
 	*MemoryHarness
 }
