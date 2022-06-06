@@ -29,8 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-var pid uint64
-
 func NewContext(harness Harness) *sql.Context {
 	return newContextSetup(harness.NewContext())
 }
@@ -38,6 +36,12 @@ func NewContext(harness Harness) *sql.Context {
 func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context {
 	return newContextSetup(harness.NewContextWithClient(client))
 }
+
+func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
+	return NewContext(harness)
+}
+
+var pid uint64
 
 func newContextSetup(ctx *sql.Context) *sql.Context {
 	// Select a current database if there isn't one yet
@@ -92,10 +96,6 @@ func NewBaseSession() *sql.BaseSession {
 	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
 }
 
-func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
-	return NewContext(harness)
-}
-
 // NewEngine creates test data and returns an engine using the harness provided.
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateTestData(t, harness)
@@ -103,60 +103,11 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	return engine
 }
 
-func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
-	e, err := h.NewEngine(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return e
-}
-
 // NewSpatialEngine creates test data and returns an engine using the harness provided.
 func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateSpatialTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness, dbs)
 	return engine
-}
-
-// NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
-func NewEngineWithProviderSetup(t *testing.T, harness Harness, pro sql.MutableDatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness, pro)
-	ctx := NewContext(harness)
-
-	var supportsIndexes bool
-	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
-		supportsIndexes = true
-
-	}
-	if len(setupData) == 0 {
-		setupData = setup.MydbData
-	}
-	return RunEngineScripts(ctx, e, setupData, supportsIndexes)
-}
-
-func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, supportsIndexes bool) (*sqle.Engine, error) {
-	for i := range scripts {
-		for _, s := range scripts[i] {
-			if !supportsIndexes {
-				if strings.Contains("create index", s) {
-					continue
-				}
-			}
-			sch, iter, err := e.Query(ctx, s)
-			if err != nil {
-				return nil, setupErrf(err, s)
-			}
-			_, err = sql.RowIterToRows(ctx, sch, iter)
-			if err != nil {
-				return nil, setupErrf(err, s)
-			}
-		}
-	}
-	return e, nil
-}
-
-func setupErrf(err error, s string) error {
-	return fmt.Errorf("failed query '%s': %w", s, err)
 }
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
@@ -187,4 +138,49 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDa
 	}
 
 	return engine
+}
+
+// NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
+func NewEngineWithProviderSetup(t *testing.T, harness Harness, pro sql.MutableDatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
+	e := NewEngineWithProvider(t, harness, pro)
+	ctx := NewContext(harness)
+
+	var supportsIndexes bool
+	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
+		supportsIndexes = true
+
+	}
+	if len(setupData) == 0 {
+		setupData = setup.MydbData
+	}
+	return RunEngineScripts(ctx, e, setupData, supportsIndexes)
+}
+
+func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, supportsIndexes bool) (*sqle.Engine, error) {
+	for i := range scripts {
+		for _, s := range scripts[i] {
+			if !supportsIndexes {
+				if strings.Contains("create index", s) {
+					continue
+				}
+			}
+			sch, iter, err := e.Query(ctx, s)
+			if err != nil {
+				return nil, fmt.Errorf("failed query '%s': %w", s, err)
+			}
+			_, err = sql.RowIterToRows(ctx, sch, iter)
+			if err != nil {
+				return nil, fmt.Errorf("failed query '%s': %w", s, err)
+			}
+		}
+	}
+	return e, nil
+}
+
+func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
+	e, err := h.NewEngine(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return e
 }

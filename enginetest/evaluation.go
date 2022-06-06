@@ -50,161 +50,6 @@ func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query s
 	require.NoError(t, err)
 }
 
-// AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
-func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
-}
-
-// AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
-// type of error.
-func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query string, bindings map[string]sql.Expression, expectedErrKind *errors.Kind, errStrs ...string) {
-	ctx := NewContext(harness)
-	sch, iter, err := e.QueryWithBindings(ctx, query, bindings)
-	if err == nil {
-		_, err = sql.RowIterToRows(ctx, sch, iter)
-	}
-	require.Error(t, err)
-	if expectedErrKind != nil {
-		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
-	} else if len(errStrs) >= 1 {
-		require.Equal(t, errStrs[0], err.Error())
-	}
-
-}
-
-// AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
-func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	ctx = ctx.WithQuery(query)
-	sch, iter, err := e.Query(ctx, query)
-	if err == nil {
-		_, err = sql.RowIterToRows(ctx, sch, iter)
-	}
-	require.Error(t, err)
-	if expectedErrKind != nil {
-		_, orig, _ := sql.CastSQLError(err)
-		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
-	}
-	// If there are multiple error strings then we only match against the first
-	if len(errStrs) >= 1 {
-		require.Equal(t, errStrs[0], err.Error())
-	}
-}
-
-// AssertWarningAndTestQuery tests the query and asserts an expected warning code. If |ctx| is provided, it will be
-// used. Otherwise the harness will be used to create a fresh context.
-func AssertWarningAndTestQuery(
-	t *testing.T,
-	e *sqle.Engine,
-	ctx *sql.Context,
-	harness Harness,
-	query string,
-	expected []sql.Row,
-	expectedCols []*sql.Column,
-	expectedCode int,
-	expectedWarningsCount int,
-	expectedWarningMessageSubstring string,
-	skipResultsCheck bool,
-) {
-	require := require.New(t)
-	if ctx == nil {
-		ctx = NewContext(harness)
-	}
-	ctx.ClearWarnings()
-	ctx = ctx.WithQuery(query)
-
-	sch, iter, err := e.Query(ctx, query)
-	require.NoError(err, "Unexpected error for query %s", query)
-
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err, "Unexpected error for query %s", query)
-
-	if expectedWarningsCount > 0 {
-		assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
-	}
-
-	if expectedCode > 0 {
-		for _, warning := range ctx.Warnings() {
-			assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
-		}
-	}
-
-	if len(expectedWarningMessageSubstring) > 0 {
-		for _, warning := range ctx.Warnings() {
-			assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
-		}
-	}
-
-	if !skipResultsCheck {
-		checkResults(t, require, expected, expectedCols, sch, rows, query)
-	}
-}
-
-func runWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
-	t.Run(tt.WriteQuery, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.WriteQuery) {
-				t.Logf("Skipping query %s", tt.WriteQuery)
-				return
-			}
-			if sh.SkipQueryTest(tt.SelectQuery) {
-				t.Logf("Skipping query %s", tt.SelectQuery)
-				return
-			}
-		}
-		e := mustNewEngine(t, harness)
-		ctx := NewContext(harness)
-		defer e.Close()
-		TestQueryWithContext(t, ctx, e, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
-		TestQueryWithContext(t, ctx, e, tt.SelectQuery, tt.ExpectedSelect, nil, nil)
-	})
-}
-
-func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
-	t.Run(tt.WriteQuery, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.WriteQuery) {
-				t.Logf("Skipping query %s", tt.WriteQuery)
-				return
-			}
-			if sh.SkipQueryTest(tt.SelectQuery) {
-				t.Logf("Skipping query %s", tt.SelectQuery)
-				return
-			}
-		}
-		e := mustNewEngine(t, harness)
-		ctx := NewContext(harness)
-		defer e.Close()
-		TestPreparedQueryWithContext(t, ctx, e, tt.WriteQuery, tt.ExpectedWriteResult, nil)
-		TestPreparedQueryWithContext(t, ctx, e, tt.SelectQuery, tt.ExpectedSelect, nil)
-	})
-}
-
-func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTest) {
-	t.Run(tt.Name, func(t *testing.T) {
-		if sh, ok := h.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.Query) {
-				t.Skipf("skipping query %s", tt.Query)
-			}
-		}
-		e := mustNewEngine(t, h)
-		defer e.Close()
-		AssertErr(t, e, h, tt.Query, nil)
-	})
-}
-
-func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
-	t.Run(tt.Query, func(t *testing.T) {
-		if sh, ok := h.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.Query) {
-				t.Skipf("skipping query %s", tt.Query)
-			}
-		}
-		e := mustNewEngine(t, h)
-		defer e.Close()
-		AssertErr(t, e, h, tt.Query, nil)
-	})
-}
-
 // TestScript runs the test script given, making any assertions given
 func TestScript(t *testing.T, harness Harness, script queries.ScriptTest) {
 	e := mustNewEngine(t, harness)
@@ -376,50 +221,6 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 	}
 }
 
-func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) bool {
-	if len(expected) != len(actual) {
-		return assert.Equal(t, expected, actual)
-	}
-
-	ec, ac := make(sql.Schema, len(expected)), make(sql.Schema, len(actual))
-	for i := range expected {
-		ecc := *expected[i]
-		acc := *actual[i]
-
-		ecc.Default = nil
-		acc.Default = nil
-
-		ac[i] = &acc
-		ec[i] = &ecc
-
-		// For the default, compare just the string representations. This makes it possible for integrators who don't reify
-		// default value expressions at schema load time (best practice) to run these tests. We also trim off any parens
-		// for the same reason.
-		eds, ads := "NULL", "NULL"
-		if expected[i].Default != nil {
-			eds = strings.Trim(expected[i].Default.String(), "()")
-		}
-		if actual[i].Default != nil {
-			ads = strings.Trim(actual[i].Default.String(), "()")
-		}
-
-		assert.Equal(t, eds, ads, "column default values differ")
-	}
-
-	return assert.Equal(t, ec, ac)
-}
-
-func extractQueryNode(node sql.Node) sql.Node {
-	switch node := node.(type) {
-	case *plan.QueryProcess:
-		return extractQueryNode(node.Child())
-	case *analyzer.Releaser:
-		return extractQueryNode(node.Child)
-	default:
-		return node
-	}
-}
-
 // TestQuery runs a query on the engine given and asserts that results are as expected.
 func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
 	t.Run(q, func(t *testing.T) {
@@ -449,6 +250,20 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queri
 	})
 }
 
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+	ctx = ctx.WithQuery(q)
+	require := require.New(t)
+	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	require.NoError(err, "Unexpected error for query %s", q)
+
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err, "Unexpected error for query %s", q)
+
+	checkResults(t, require, expected, expectedCols, sch, rows, q)
+
+	require.Equal(0, ctx.Memory.NumCaches())
+}
+
 // TestPreparedQuery runs a prepared query on the engine given and asserts that results are as expected.
 func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column) {
 	t.Run(q, func(t *testing.T) {
@@ -474,6 +289,23 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, 
 		ctx := NewContext(harness)
 		TestPreparedQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns)
 	})
+}
+
+func TestPreparedQueryWithContext(
+	t *testing.T,
+	ctx *sql.Context,
+	e *sqle.Engine,
+	q string,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+) {
+	require := require.New(t)
+	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q)
+	require.NoError(err, "Unexpected error for query %s", q)
+
+	checkResults(t, require, expected, expectedCols, sch, rows, q)
+
+	require.Equal(0, ctx.Memory.NumCaches())
 }
 
 func runQueryPreparedWithCtx(
@@ -560,37 +392,6 @@ func runQueryPreparedWithCtx(
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	return rows, sch, err
-}
-
-func TestPreparedQueryWithContext(
-	t *testing.T,
-	ctx *sql.Context,
-	e *sqle.Engine,
-	q string,
-	expected []sql.Row,
-	expectedCols []*sql.Column,
-) {
-	require := require.New(t)
-	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q)
-	require.NoError(err, "Unexpected error for query %s", q)
-
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
-
-	require.Equal(0, ctx.Memory.NumCaches())
-}
-
-func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
-	ctx = ctx.WithQuery(q)
-	require := require.New(t)
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	require.NoError(err, "Unexpected error for query %s", q)
-
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err, "Unexpected error for query %s", q)
-
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
-
-	require.Equal(0, ctx.Memory.NumCaches())
 }
 
 func checkResults(
@@ -759,4 +560,203 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 		wide[i] = widenJSON(v)
 	}
 	return
+}
+
+// AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
+func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
+}
+
+// AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
+// type of error.
+func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query string, bindings map[string]sql.Expression, expectedErrKind *errors.Kind, errStrs ...string) {
+	ctx := NewContext(harness)
+	sch, iter, err := e.QueryWithBindings(ctx, query, bindings)
+	if err == nil {
+		_, err = sql.RowIterToRows(ctx, sch, iter)
+	}
+	require.Error(t, err)
+	if expectedErrKind != nil {
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+	} else if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
+	}
+
+}
+
+// AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
+func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	ctx = ctx.WithQuery(query)
+	sch, iter, err := e.Query(ctx, query)
+	if err == nil {
+		_, err = sql.RowIterToRows(ctx, sch, iter)
+	}
+	require.Error(t, err)
+	if expectedErrKind != nil {
+		_, orig, _ := sql.CastSQLError(err)
+		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
+	}
+	// If there are multiple error strings then we only match against the first
+	if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
+	}
+}
+
+// AssertWarningAndTestQuery tests the query and asserts an expected warning code. If |ctx| is provided, it will be
+// used. Otherwise the harness will be used to create a fresh context.
+func AssertWarningAndTestQuery(
+	t *testing.T,
+	e *sqle.Engine,
+	ctx *sql.Context,
+	harness Harness,
+	query string,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+	expectedCode int,
+	expectedWarningsCount int,
+	expectedWarningMessageSubstring string,
+	skipResultsCheck bool,
+) {
+	require := require.New(t)
+	if ctx == nil {
+		ctx = NewContext(harness)
+	}
+	ctx.ClearWarnings()
+	ctx = ctx.WithQuery(query)
+
+	sch, iter, err := e.Query(ctx, query)
+	require.NoError(err, "Unexpected error for query %s", query)
+
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err, "Unexpected error for query %s", query)
+
+	if expectedWarningsCount > 0 {
+		assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
+	}
+
+	if expectedCode > 0 {
+		for _, warning := range ctx.Warnings() {
+			assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
+		}
+	}
+
+	if len(expectedWarningMessageSubstring) > 0 {
+		for _, warning := range ctx.Warnings() {
+			assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
+		}
+	}
+
+	if !skipResultsCheck {
+		checkResults(t, require, expected, expectedCols, sch, rows, query)
+	}
+}
+
+func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) bool {
+	if len(expected) != len(actual) {
+		return assert.Equal(t, expected, actual)
+	}
+
+	ec, ac := make(sql.Schema, len(expected)), make(sql.Schema, len(actual))
+	for i := range expected {
+		ecc := *expected[i]
+		acc := *actual[i]
+
+		ecc.Default = nil
+		acc.Default = nil
+
+		ac[i] = &acc
+		ec[i] = &ecc
+
+		// For the default, compare just the string representations. This makes it possible for integrators who don't reify
+		// default value expressions at schema load time (best practice) to run these tests. We also trim off any parens
+		// for the same reason.
+		eds, ads := "NULL", "NULL"
+		if expected[i].Default != nil {
+			eds = strings.Trim(expected[i].Default.String(), "()")
+		}
+		if actual[i].Default != nil {
+			ads = strings.Trim(actual[i].Default.String(), "()")
+		}
+
+		assert.Equal(t, eds, ads, "column default values differ")
+	}
+
+	return assert.Equal(t, ec, ac)
+}
+
+func extractQueryNode(node sql.Node) sql.Node {
+	switch node := node.(type) {
+	case *plan.QueryProcess:
+		return extractQueryNode(node.Child())
+	case *analyzer.Releaser:
+		return extractQueryNode(node.Child)
+	default:
+		return node
+	}
+}
+
+func runWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
+	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.WriteQuery) {
+				t.Logf("Skipping query %s", tt.WriteQuery)
+				return
+			}
+			if sh.SkipQueryTest(tt.SelectQuery) {
+				t.Logf("Skipping query %s", tt.SelectQuery)
+				return
+			}
+		}
+		e := mustNewEngine(t, harness)
+		ctx := NewContext(harness)
+		defer e.Close()
+		TestQueryWithContext(t, ctx, e, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
+		TestQueryWithContext(t, ctx, e, tt.SelectQuery, tt.ExpectedSelect, nil, nil)
+	})
+}
+
+func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
+	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.WriteQuery) {
+				t.Logf("Skipping query %s", tt.WriteQuery)
+				return
+			}
+			if sh.SkipQueryTest(tt.SelectQuery) {
+				t.Logf("Skipping query %s", tt.SelectQuery)
+				return
+			}
+		}
+		e := mustNewEngine(t, harness)
+		ctx := NewContext(harness)
+		defer e.Close()
+		TestPreparedQueryWithContext(t, ctx, e, tt.WriteQuery, tt.ExpectedWriteResult, nil)
+		TestPreparedQueryWithContext(t, ctx, e, tt.SelectQuery, tt.ExpectedSelect, nil)
+	})
+}
+
+func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTest) {
+	t.Run(tt.Name, func(t *testing.T) {
+		if sh, ok := h.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.Query) {
+				t.Skipf("skipping query %s", tt.Query)
+			}
+		}
+		e := mustNewEngine(t, h)
+		defer e.Close()
+		AssertErr(t, e, h, tt.Query, nil)
+	})
+}
+
+func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
+	t.Run(tt.Query, func(t *testing.T) {
+		if sh, ok := h.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.Query) {
+				t.Skipf("skipping query %s", tt.Query)
+			}
+		}
+		e := mustNewEngine(t, h)
+		defer e.Close()
+		AssertErr(t, e, h, tt.Query, nil)
+	})
 }
