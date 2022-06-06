@@ -194,7 +194,6 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		TestQueryWithContext(t, ctx, e, "SELECT * FROM information_schema.processlist", []sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
-		require.NoError(t, err)
 	})
 }
 
