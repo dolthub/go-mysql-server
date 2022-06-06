@@ -133,3 +133,11 @@ type ReadOnlyDatabaseHarness interface {
 	// NewReadOnlyDatabases returns a sql.ReadOnlyDatabase to use for a test.
 	NewReadOnlyDatabases(...string) []sql.ReadOnlyDatabase
 }
+
+// ValidatingHarness runs additional validation steps after an enginetest.
+type ValidatingHarness interface {
+	Harness
+
+	// Validate makes assertions about the post-test state of the harness.
+	Validate() error
+}
