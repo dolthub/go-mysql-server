@@ -97,7 +97,6 @@ func (c *ColumnStatistics) Equals(ctx *sql.Context, otherEntry in_mem_table.Entr
 
 // Copy implements the interface in_mem_table.Entry.
 func (c *ColumnStatistics) Copy(ctx *sql.Context) in_mem_table.Entry {
-	// TODO: is this a shallow copy?
 	uu := *c
 	return &uu
 }

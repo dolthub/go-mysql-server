@@ -11,7 +11,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
-// TODO: do i need additional database argument?
 type Analyze struct {
 	db   sql.Database
 	tbls []sql.Node
@@ -76,11 +75,9 @@ func (n *Analyze) Children() []sql.Node {
 
 // WithChildren implements the interface sql.Node.
 func (n *Analyze) WithChildren(children ...sql.Node) (sql.Node, error) {
-	// Deep copy kids
+	// Deep copy children
 	newChildren := make([]sql.Node, len(children))
-	for i, child := range children {
-		newChildren[i] = child
-	}
+	copy(newChildren, children)
 
 	nn := *n
 	nn.tbls = newChildren
@@ -100,16 +97,12 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, sql.ErrNoDatabaseSelected.New()
 	}
 
-	// Access mysql db, which is called GrantTables for now
 	mysql, ok := n.db.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-
-	// Get column statistics table
 	colStatsTableData := mysql.ColumnStatisticsTable().Data()
 
-	// Go through each table in node
 	for _, tbl := range n.tbls {
 		// Check if table was resolved
 		var resTbl *ResolvedTable
@@ -118,6 +111,8 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			resTbl = v
 		case *Exchange:
 			resTbl = v.Child.(*ResolvedTable)
+		case DeferredAsOfTable:
+			resTbl = v.ResolvedTable
 		default:
 			return nil, sql.ErrTableNotFound.New(tbl.String())
 		}
@@ -142,7 +137,6 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 
 		for {
-			// Get row
 			row, err := tblIter.Next(ctx)
 			if err == io.EOF {
 				break
