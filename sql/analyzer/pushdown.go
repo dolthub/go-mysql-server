@@ -940,6 +940,10 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		// Extract primary index
 		var pkIndex sql.Index
 		for _, idx := range idxs {
+			oi, ok := idx.(sql.OrderedIndex)
+			if !ok || oi.Order() != sql.IndexOrderAsc {
+				continue
+			}
 			if idx.ID() == "PRIMARY" {
 				pkIndex = idx
 				break
