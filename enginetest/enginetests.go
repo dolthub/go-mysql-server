@@ -157,9 +157,9 @@ func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
 	engine := mustNewEngine(t, harness)
 	defer engine.Close()
 	ctx := NewContext(harness)
-	RunQueryWithContext(t, engine, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE TABLE squares (i bigint primary key, square bigint);")
 	engine.PrepareQuery(ctx, "select * from squares where i = 1")
-	RunQueryWithContext(t, engine, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
+	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO squares VALUES (0, 0), (1, 1), (2, 4), (3, 9);")
 	TestQueryWithContext(t, ctx, engine, "select * from squares where i = 1",
 		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: sql.Int64}, {Name: "square", Type: sql.Int64}}, nil)
 }
@@ -1021,7 +1021,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 						t.Skip()
 					}
 				}
-				RunQueryWithContext(t, engine, ctx, statement)
+				RunQueryWithContext(t, engine, harness, ctx, statement)
 			}
 			for _, assertion := range script.Assertions {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -1045,11 +1045,11 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 
 				if assertion.ExpectedErr != nil {
 					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, ctx, assertion.Query, assertion.ExpectedErr)
+						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, assertion.ExpectedErr)
 					})
 				} else if assertion.ExpectedErrStr != "" {
 					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
+						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
 					})
 				} else {
 					t.Run(assertion.Query, func(t *testing.T) {
@@ -1089,7 +1089,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 				"INSERT INTO otherdb.test VALUES (1, 1), (2, 2);",
 				"INSERT INTO otherdb.test2 VALUES (1, 1), (2, 2);",
 			} {
-				RunQueryWithContext(t, engine, rootCtx, setupQuery)
+				RunQueryWithContext(t, engine, harness, rootCtx, setupQuery)
 			}
 
 			for i := 0; i < len(script.Queries)-1; i++ {
@@ -1098,7 +1098,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 						t.Skipf("Skipping query %s", script.Queries[i])
 					}
 				}
-				RunQueryWithContext(t, engine, rootCtx, script.Queries[i])
+				RunQueryWithContext(t, engine, harness, rootCtx, script.Queries[i])
 			}
 			lastQuery := script.Queries[len(script.Queries)-1]
 			if sh, ok := harness.(SkippingHarness); ok {
@@ -1113,7 +1113,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 			ctx.SetCurrentDatabase(rootCtx.GetCurrentDatabase())
 			if script.ExpectedErr != nil {
 				t.Run(lastQuery, func(t *testing.T) {
-					AssertErrWithCtx(t, engine, ctx, lastQuery, script.ExpectedErr)
+					AssertErrWithCtx(t, engine, harness, ctx, lastQuery, script.ExpectedErr)
 				})
 			} else if script.ExpectingErr {
 				t.Run(lastQuery, func(t *testing.T) {
@@ -1182,7 +1182,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 						t.Skip()
 					}
 				}
-				RunQueryWithContext(t, engine, ctx, statement)
+				RunQueryWithContext(t, engine, harness, ctx, statement)
 			}
 
 			s, err := server.NewDefaultServer(serverConfig, engine)
@@ -1246,13 +1246,13 @@ func TestTriggers(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		RunQueryWithContext(t, e, ctx, "create table mydb.a (i int primary key, j int)")
-		RunQueryWithContext(t, e, ctx, "create table mydb.b (x int primary key)")
+		RunQueryWithContext(t, e, harness, ctx, "create table mydb.a (i int primary key, j int)")
+		RunQueryWithContext(t, e, harness, ctx, "create table mydb.b (x int primary key)")
 
 		TestQueryWithContext(t, ctx, e, "CREATE TRIGGER mydb.trig BEFORE INSERT ON mydb.a FOR EACH ROW BEGIN SET NEW.j = (SELECT COALESCE(MAX(x),1) FROM mydb.b); UPDATE mydb.b SET x = x + 1; END", []sql.Row{{sql.OkResult{}}}, nil, nil)
 
-		RunQueryWithContext(t, e, ctx, "insert into mydb.b values (1)")
-		RunQueryWithContext(t, e, ctx, "insert into mydb.a values (1,0), (2,0), (3,0)")
+		RunQueryWithContext(t, e, harness, ctx, "insert into mydb.b values (1)")
+		RunQueryWithContext(t, e, harness, ctx, "insert into mydb.a values (1,0), (2,0), (3,0)")
 
 		TestQueryWithContext(t, ctx, e, "select * from mydb.a order by i", []sql.Row{{1, 1}, {2, 2}, {3, 3}}, nil, nil)
 
@@ -1586,7 +1586,7 @@ func TestViews(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 
 	// nested views
-	RunQueryWithContext(t, e, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
 	for _, testCase := range queries.ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, nil, nil)
@@ -1594,7 +1594,7 @@ func TestViews(t *testing.T, harness Harness) {
 	}
 
 	// Views with non-standard select statements
-	RunQueryWithContext(t, e, ctx, "create view unionView as (select * from myTable order by i limit 1) union all (select * from mytable order by i limit 1)")
+	RunQueryWithContext(t, e, harness, ctx, "create view unionView as (select * from myTable order by i limit 1) union all (select * from mytable order by i limit 1)")
 	t.Run("select * from unionview order by i", func(t *testing.T) {
 		TestQueryWithContext(t, ctx, e, "select * from unionview order by i", []sql.Row{
 			{1, "first row"},
@@ -1621,7 +1621,7 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	RunQueryWithContext(t, e, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
+	RunQueryWithContext(t, e, harness, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
 	for _, testCase := range queries.ViewTests {
 		TestPreparedQueryWithEngine(t, harness, e, testCase)
 	}
@@ -2802,7 +2802,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
 		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-		RunQueryWithContext(t, e, ctx, "USE TESTdb")
+		RunQueryWithContext(t, e, harness, ctx, "USE TESTdb")
 
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")
 		require.NoError(t, err)
@@ -4226,9 +4226,9 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 	ctx.SetCurrentDatabase("")
 
-	AssertErrWithCtx(t, e, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
-	AssertErrWithCtx(t, e, ctx, "show tables", sql.ErrNoDatabaseSelected)
-	AssertErrWithCtx(t, e, ctx, "show triggers", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "show tables", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "show triggers", sql.ErrNoDatabaseSelected)
 
 	_, _, err := e.Query(ctx, "ROLLBACK")
 	require.NoError(t, err)
@@ -5437,62 +5437,62 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 		},
 	)
 
-	RunQueryWithContext(t, engine, ctx, "CREATE USER tester@localhost")
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER tester@localhost")
 	// If the user exists in []*mysql_db.User, then it must be NOT nil.
 	require.NotNil(t, findUser("tester", "localhost", users))
 
-	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester1')")
+	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester1')")
 	require.Nil(t, findUser("tester1", "localhost", users))
 
-	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.user SET User = 'test_user' WHERE User = 'tester'")
+	RunQueryWithContext(t, engine, harness, ctx, "UPDATE mysql.user SET User = 'test_user' WHERE User = 'tester'")
 	require.NotNil(t, findUser("tester", "localhost", users))
 
-	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
 	require.NotNil(t, findUser("tester1", "localhost", users))
 	require.Nil(t, findUser("tester", "localhost", users))
 	require.NotNil(t, findUser("test_user", "localhost", users))
 
-	RunQueryWithContext(t, engine, ctx, "DELETE FROM mysql.user WHERE User = 'tester1'")
+	RunQueryWithContext(t, engine, harness, ctx, "DELETE FROM mysql.user WHERE User = 'tester1'")
 	require.NotNil(t, findUser("tester1", "localhost", users))
 
-	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON mydb.* TO test_user@localhost")
+	RunQueryWithContext(t, engine, harness, ctx, "GRANT SELECT ON mydb.* TO test_user@localhost")
 	user := findUser("test_user", "localhost", users)
 	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
 
-	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'test_user'")
+	RunQueryWithContext(t, engine, harness, ctx, "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'test_user'")
 	require.False(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
 
-	RunQueryWithContext(t, engine, ctx, "CREATE USER dolt@localhost")
-	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.db (Host, Db, User, Select_priv) VALUES ('localhost', 'mydb', 'dolt', 'Y')")
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER dolt@localhost")
+	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO mysql.db (Host, Db, User, Select_priv) VALUES ('localhost', 'mydb', 'dolt', 'Y')")
 	user1 := findUser("dolt", "localhost", users)
 	require.NotNil(t, user1)
 	require.False(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
 
-	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
 	require.Nil(t, findUser("tester1", "localhost", users))
 	user = findUser("test_user", "localhost", users)
 	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
 	user1 = findUser("dolt", "localhost", users)
 	require.True(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
 
-	RunQueryWithContext(t, engine, ctx, "CREATE ROLE test_role")
-	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON *.* TO test_role")
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE ROLE test_role")
+	RunQueryWithContext(t, engine, harness, ctx, "GRANT SELECT ON *.* TO test_role")
 	require.Zero(t, len(roles))
-	RunQueryWithContext(t, engine, ctx, "GRANT test_role TO test_user@localhost")
+	RunQueryWithContext(t, engine, harness, ctx, "GRANT test_role TO test_user@localhost")
 	require.NotZero(t, len(roles))
 
-	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.role_edges SET to_user = 'tester2' WHERE to_user = 'test_user'")
+	RunQueryWithContext(t, engine, harness, ctx, "UPDATE mysql.role_edges SET to_user = 'tester2' WHERE to_user = 'test_user'")
 	require.NotNil(t, findRole("test_user", roles))
 	require.Nil(t, findRole("tester2", roles))
 
-	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
 	require.Nil(t, findRole("test_user", roles))
 	require.NotNil(t, findRole("tester2", roles))
 
-	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.role_edges VALUES ('%', 'test_role', 'localhost', 'test_user', 'N')")
+	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO mysql.role_edges VALUES ('%', 'test_role', 'localhost', 'test_user', 'N')")
 	require.Nil(t, findRole("test_user", roles))
 
-	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
 	require.NotNil(t, findRole("test_user", roles))
 
 	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
