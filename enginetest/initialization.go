@@ -177,6 +177,18 @@ func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScr
 	return e, nil
 }
 
+func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
+	sch, iter, err := e.Query(ctx, q)
+	if err != nil {
+		panic(err)
+	}
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	if err != nil {
+		panic(err)
+	}
+	return rows
+}
+
 func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
 	e, err := h.NewEngine(t)
 	if err != nil {
