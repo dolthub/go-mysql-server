@@ -50,9 +50,9 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.IndexedTableAccess:
-			// Only add a process table if ResolvedTable implements ParallelizedIndexAddressableTable
+			// Only parallelize indexed table accesses if the underlying table supports it
 			parallelizedTable, ok := n.ResolvedTable.Table.(sql.ParallelizedIndexAddressableTable)
-			if !ok {
+			if !ok || !parallelizedTable.ShouldParallelizeAccess() {
 				return n, transform.SameTree, nil
 			}
 
@@ -83,11 +83,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 				}
 			}
 
-			// Wrap with ProcessTable
-			t := plan.NewProcessTable(parallelizedTable, onPartitionDone, onPartitionStart, onRowNext)
-
-			// Replace child
-			n, err := n.WithTable(t)
+			n, err := n.WithTable(plan.NewProcessTable(parallelizedTable, onPartitionDone, onPartitionStart, onRowNext))
 			return n, transform.NewTree, err
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
