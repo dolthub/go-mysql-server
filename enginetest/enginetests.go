@@ -1014,6 +1014,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 				Address: "localhost",
 			})
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
