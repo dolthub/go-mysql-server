@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -240,6 +241,10 @@ func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Primar
 	return table, nil
 }
 
+func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {
+	return sanityCheckEngine(ctx, e)
+}
+
 type ExternalStoredProcedureMemoryHarness struct {
 	*MemoryHarness
 }
@@ -264,4 +269,33 @@ func (h ExternalStoredProcedureMemoryHarness) NewDatabases(names ...string) []sq
 		dbs = append(dbs, h.NewDatabase(name))
 	}
 	return dbs
+}
+
+func sanityCheckEngine(ctx *sql.Context, e *sqle.Engine) (err error) {
+	for _, db := range e.Analyzer.Catalog.AllDatabases(ctx) {
+		if err = sanityCheckDatabase(ctx, db); err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func sanityCheckDatabase(ctx *sql.Context, db sql.Database) error {
+	names, err := db.GetTableNames(ctx)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		t, ok, err := db.GetTableInsensitive(ctx, name)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("expected to find table %s", name)
+		}
+		if t.Name() != name {
+			return fmt.Errorf("unexpected table name (%s !=  %s)", name, t.Name())
+		}
+	}
+	return nil
 }

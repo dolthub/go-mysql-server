@@ -158,8 +158,14 @@ func isParallelizable(node sql.Node) bool {
 		// IndexedTablesAccess already uses an index for lookups, so parallelizing it won't help in most cases (and can
 		// blow up the query execution graph)
 		case *plan.IndexedTableAccess:
-			parallelizable = false
-			return false
+			// If this IndexedTableAccess received a process node, it is parallelizable
+			if _, ok := node.ResolvedTable.Table.(*plan.ProcessTable); !ok {
+				parallelizable = false
+				return false
+			}
+			parallelizable = true
+			lastWasTable = true
+			tableSeen = true
 		// Foreign keys expect specific nodes as children and face issues when they're swapped with Exchange nodes
 		case *plan.ForeignKeyHandler:
 			parallelizable = false

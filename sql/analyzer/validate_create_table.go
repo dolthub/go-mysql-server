@@ -224,18 +224,24 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// Make sure columns named in After clause exist
+	idx := -1
 	if ac.Order() != nil && ac.Order().AfterColumn != "" {
 		afterColumn := ac.Order().AfterColumn
-		idx := schema.IndexOf(afterColumn, nameable.Name())
+		idx = schema.IndexOf(afterColumn, nameable.Name())
 		if idx < 0 {
 			return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), afterColumn)
 		}
 	}
 
-	// None of the checks we do concern ordering, so we don't need to worry about it here
-	newCol := ac.Column().Copy()
-	newCol.Source = nameable.Name()
-	newSch := append(schema, newCol)
+	newSch := make(sql.Schema, 0, len(schema)+1)
+	if idx >= 0 {
+		newSch = append(newSch, schema[:idx+1]...)
+		newSch = append(newSch, ac.Column().Copy())
+		newSch = append(newSch, schema[idx+1:]...)
+	} else { // new column at end
+		newSch = append(newSch, schema...)
+		newSch = append(newSch, ac.Column().Copy())
+	}
 
 	// TODO: more validation possible to do here
 	err := validateAutoIncrement(newSch, nil)

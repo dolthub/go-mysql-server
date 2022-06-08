@@ -21,12 +21,12 @@ import (
 // NodeFunc is a function that given a node will return that node
 // as is or transformed, a TreeIdentity to indicate whether the
 // node was modified, and an error or nil.
-type NodeFunc func(sql.Node) (sql.Node, TreeIdentity, error)
+type NodeFunc func(n sql.Node) (sql.Node, TreeIdentity, error)
 
 // ExprFunc is a function that given an expression will return that
 // expression as is or transformed, a a TreeIdentity to indicate
 // whether the expression was modified, and an error or nil.
-type ExprFunc func(sql.Expression) (sql.Expression, TreeIdentity, error)
+type ExprFunc func(e sql.Expression) (sql.Expression, TreeIdentity, error)
 
 // Context provides additional metadata to a SelectorFunc about the
 // active node in a traversal, including the parent node, and a

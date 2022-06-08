@@ -7226,240 +7226,240 @@ var DateParseQueries = []QueryTest{
 }
 
 var InfoSchemaQueries = []QueryTest{
-	//{
-	//	Query: "SHOW TABLES",
-	//	Expected: []sql.Row{
-	//		{"myview"},
-	//		{"fk_tbl"},
-	//		{"mytable"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW FULL TABLES",
-	//	Expected: []sql.Row{
-	//		{"fk_tbl", "BASE TABLE"},
-	//		{"myview", "VIEW"},
-	//		{"mytable", "BASE TABLE"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW TABLES FROM foo",
-	//	Expected: []sql.Row{
-	//		{"other_table"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW TABLES LIKE '%table'",
-	//	Expected: []sql.Row{
-	//		{"mytable"},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW COLUMNS FROM mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//		{"s", "varchar(20)", "NO", "UNI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `DESCRIBE mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//		{"s", "varchar(20)", "NO", "UNI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `DESC mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//		{"s", "varchar(20)", "NO", "UNI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW FULL COLUMNS FROM mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", nil, "NO", "PRI", "", "", "", ""},
-	//		{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "", "", "", "column s"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
-	//	Expected: []sql.Row{
-	//		{"mytable"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT
-	//		LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
-	//	FROM INFORMATION_SCHEMA.FILES
-	//	WHERE FILE_TYPE = 'UNDO LOG'
-	//		AND FILE_NAME IS NOT NULL
-	//		AND LOGFILE_GROUP_NAME IS NOT NULL
-	//	GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
-	//	ORDER BY LOGFILE_GROUP_NAME
-	//	`,
-	//	Expected: nil,
-	//},
-	//{
-	//	Query: `
-	//	SELECT DISTINCT
-	//		TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
-	//	FROM INFORMATION_SCHEMA.FILES
-	//	WHERE FILE_TYPE = 'DATAFILE'
-	//	ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
-	//	`,
-	//	Expected: nil,
-	//},
-	//{
-	//	Query: `
-	//	SELECT
-	//		COLUMN_NAME,
-	//		JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-	//	FROM information_schema.COLUMN_STATISTICS
-	//	WHERE SCHEMA_NAME = 'mydb'
-	//	AND TABLE_NAME = 'mytable'
-	//	`,
-	//	Expected: nil,
-	//},
-	//{
-	//	Query: `
-	//	SELECT TABLE_NAME FROM information_schema.TABLES
-	//	WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
-	//	ORDER BY 1
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"fk_tbl"},
-	//		{"mytable"},
-	//		{"myview"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s", "varchar(20)"},
-	//		{"i", "bigint"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY COLUMN_NAME
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s"},
-	//		{"i"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY 1
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s"},
-	//		{"i"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY 1
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s"},
-	//		{"i"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
-	//	`,
-	//	Expected: []sql.Row{{"s"}},
-	//},
-	//{
-	//	Query: `SHOW INDEXES FROM mytaBLE`,
-	//	Expected: []sql.Row{
-	//		{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW KEYS FROM mytaBLE`,
-	//	Expected: []sql.Row{
-	//		{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW CREATE TABLE mytaBLE`,
-	//	Expected: []sql.Row{
-	//		{"mytable", "CREATE TABLE `mytable` (\n" +
-	//			"  `i` bigint NOT NULL,\n" +
-	//			"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
-	//			"  PRIMARY KEY (`i`),\n" +
-	//			"  KEY `idx_si` (`s`,`i`),\n" +
-	//			"  KEY `mytable_i_s` (`i`,`s`),\n" +
-	//			"  UNIQUE KEY `mytable_s` (`s`)\n" +
-	//			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW CREATE TABLE fk_TBL`,
-	//	Expected: []sql.Row{
-	//		{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
-	//			"  `pk` bigint NOT NULL,\n" +
-	//			"  `a` bigint,\n" +
-	//			"  `b` varchar(20),\n" +
-	//			"  PRIMARY KEY (`pk`),\n" +
-	//			"  KEY `ab` (`a`,`b`),\n" +
-	//			"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
-	//			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-	//	},
-	//},
-	//{
-	//
-	//	Query: "SELECT table_name, `auto_increment` FROM information_schema.tables " +
-	//		"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
-	//	Expected: []sql.Row{
-	//		{"fk_tbl", nil},
-	//		{"mytable", nil},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW ENGINES",
-	//	Expected: []sql.Row{
-	//		{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
-	//	},
-	//},
+	{
+		Query: "SHOW TABLES",
+		Expected: []sql.Row{
+			{"myview"},
+			{"fk_tbl"},
+			{"mytable"},
+		},
+	},
+	{
+		Query: "SHOW FULL TABLES",
+		Expected: []sql.Row{
+			{"fk_tbl", "BASE TABLE"},
+			{"myview", "VIEW"},
+			{"mytable", "BASE TABLE"},
+		},
+	},
+	{
+		Query: "SHOW TABLES FROM foo",
+		Expected: []sql.Row{
+			{"other_table"},
+		},
+	},
+	{
+		Query: "SHOW TABLES LIKE '%table'",
+		Expected: []sql.Row{
+			{"mytable"},
+		},
+	},
+	{
+		Query: `SHOW COLUMNS FROM mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "", ""},
+			{"s", "varchar(20)", "NO", "UNI", "", ""},
+		},
+	},
+	{
+		Query: `DESCRIBE mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "", ""},
+			{"s", "varchar(20)", "NO", "UNI", "", ""},
+		},
+	},
+	{
+		Query: `DESC mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "", ""},
+			{"s", "varchar(20)", "NO", "UNI", "", ""},
+		},
+	},
+	{
+		Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "", ""},
+		},
+	},
+	{
+		Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "", ""},
+		},
+	},
+	{
+		Query: `SHOW FULL COLUMNS FROM mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", "", "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "", "", "", "column s"},
+		},
+	},
+	{
+		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
+		Expected: []sql.Row{
+			{"mytable"},
+		},
+	},
+	{
+		Query: `
+		SELECT
+			LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'UNDO LOG'
+			AND FILE_NAME IS NOT NULL
+			AND LOGFILE_GROUP_NAME IS NOT NULL
+		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
+		ORDER BY LOGFILE_GROUP_NAME
+		`,
+		Expected: nil,
+	},
+	{
+		Query: `
+		SELECT DISTINCT
+			TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'DATAFILE'
+		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
+		`,
+		Expected: nil,
+	},
+	{
+		Query: `
+		SELECT
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
+		`,
+		Expected: nil,
+	},
+	{
+		Query: `
+		SELECT TABLE_NAME FROM information_schema.TABLES
+		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
+		ORDER BY 1
+		`,
+		Expected: []sql.Row{
+			{"fk_tbl"},
+			{"mytable"},
+			{"myview"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
+		`,
+		Expected: []sql.Row{
+			{"s", "varchar"},
+			{"i", "bigint"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY COLUMN_NAME
+		`,
+		Expected: []sql.Row{
+			{"s"},
+			{"i"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
+		`,
+		Expected: []sql.Row{
+			{"s"},
+			{"i"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
+		`,
+		Expected: []sql.Row{
+			{"s"},
+			{"i"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
+		`,
+		Expected: []sql.Row{{"s"}},
+	},
+	{
+		Query: `SHOW INDEXES FROM mytaBLE`,
+		Expected: []sql.Row{
+			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW KEYS FROM mytaBLE`,
+		Expected: []sql.Row{
+			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW CREATE TABLE mytaBLE`,
+		Expected: []sql.Row{
+			{"mytable", "CREATE TABLE `mytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  KEY `idx_si` (`s`,`i`),\n" +
+				"  KEY `mytable_i_s` (`i`,`s`),\n" +
+				"  UNIQUE KEY `mytable_s` (`s`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+		},
+	},
+	{
+		Query: `SHOW CREATE TABLE fk_TBL`,
+		Expected: []sql.Row{
+			{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
+				"  `pk` bigint NOT NULL,\n" +
+				"  `a` bigint,\n" +
+				"  `b` varchar(20),\n" +
+				"  PRIMARY KEY (`pk`),\n" +
+				"  KEY `ab` (`a`,`b`),\n" +
+				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+		},
+	},
+	{
+
+		Query: "SELECT table_name, `auto_increment` FROM information_schema.tables " +
+			"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
+		Expected: []sql.Row{
+			{"fk_tbl", nil},
+			{"mytable", nil},
+		},
+	},
+	{
+		Query: "SHOW ENGINES",
+		Expected: []sql.Row{
+			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
+		},
+	},
 	{
 		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
 		Expected: []sql.Row{
