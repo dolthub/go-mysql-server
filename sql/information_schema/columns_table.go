@@ -17,9 +17,10 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
