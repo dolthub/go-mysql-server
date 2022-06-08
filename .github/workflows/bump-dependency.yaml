@@ -4,10 +4,6 @@ on:
   repository_dispatch:
     types: [ bump-dependency ]
 
-concurrency:
-  group: bump-dependency
-  cancel-in-progress: true
-
 jobs:
   get-label:
     name: Get Label
