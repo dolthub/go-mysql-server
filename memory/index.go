@@ -38,6 +38,7 @@ type Index struct {
 
 var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
+var _ sql.OrderedIndex = (*Index)(nil)
 
 func (idx *Index) Database() string                    { return idx.DB }
 func (idx *Index) Driver() string                      { return idx.DriverName }
@@ -230,6 +231,10 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	default:
 		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
 	}
+}
+
+func (idx *Index) Order() sql.IndexOrder {
+	return sql.IndexOrderAsc
 }
 
 func or(expressions ...sql.Expression) sql.Expression {
