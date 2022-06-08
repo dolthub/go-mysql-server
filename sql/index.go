@@ -51,11 +51,29 @@ type Index interface {
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
+// FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
+// allowing them to be removed from the overall plan for greater execution efficiency
 type FilteredIndex interface {
 	Index
 	// HandledFilters returns a subset of |filters| that are satisfied
 	// by index lookups to this index.
 	HandledFilters(filters []Expression) (handled []Expression)
+}
+
+type IndexOrder byte
+
+const (
+	IndexOrderNone IndexOrder = iota
+	IndexOrderAsc
+	IndexOrderDesc
+)
+
+// OrderedIndex is an extension of |Index| that allows indexes to declare their return order. The query engine can
+// optimize certain queries if the order of an index is guaranteed, e.g. removing a sort operation.
+type OrderedIndex interface {
+	Index
+	// Order returns the order of results for reads from this index
+	Order() IndexOrder
 }
 
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
