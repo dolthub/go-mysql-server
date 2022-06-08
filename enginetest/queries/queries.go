@@ -7872,11 +7872,7 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value with more types",
 		SetUpScript: []string{
-			"CREATE TABLE test_table (pk int primary key, fname varchar(20), lname varchar(20), height int)",
-			"ALTER TABLE test_table CHANGE fname col2 float NOT NULL DEFAULT 4.5",
-			"ALTER TABLE test_table CHANGE lname col3 double NOT NULL DEFAULT 3.14159",
-			"ALTER TABLE test_table CHANGE height col4 datetime NULL DEFAULT '2008-04-22 16:16:16'",
-			"ALTER TABLE test_table ADD COLUMN col5 boolean NULL DEFAULT FALSE",
+			"CREATE TABLE test_table (pk int primary key, col2 float NOT NULL DEFAULT 4.5, col3 double NOT NULL DEFAULT 3.14159, col4 datetime NULL DEFAULT '2008-04-22 16:16:16', col5 boolean NULL DEFAULT FALSE)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7886,7 +7882,7 @@ var InfoSchemaScripts = []ScriptTest{
 					{"test_table", "col2", "4.5", "NO"},
 					{"test_table", "col3", "3.14159", "NO"},
 					{"test_table", "col4", "2008-04-22 16:16:16", "YES"},
-					{"test_table", "col5", "false", "YES"},
+					{"test_table", "col5", "0", "YES"},
 				},
 			},
 		},
@@ -7894,17 +7890,14 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value with more types",
 		SetUpScript: []string{
-			"CREATE TABLE test_table (pk int primary key)",
-			"ALTER TABLE test_table ADD COLUMN col2 float DEFAULT length('hello')",
-			"ALTER TABLE test_table ADD COLUMN col3 int DEFAULT greatest(`pk`, 2)",
-			"ALTER TABLE test_table ADD COLUMN col4 int DEFAULT (5 + 5)",
+			"CREATE TABLE test_table (pk int primary key, col2 float DEFAULT (length('he`Llo')), col3 int DEFAULT (greatest(`pk`, 2)), col4 int DEFAULT (5 + 5));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
 				Expected: []sql.Row{
 					{"test_table", "pk", nil, "NO"},
-					{"test_table", "col2", "LENGTH(\"hello\")", "YES"},
+					{"test_table", "col2", "LENGTH('he`Llo')", "YES"},
 					{"test_table", "col3", "GREATEST(pk, 2)", "YES"},
 					{"test_table", "col4", "(5 + 5)", "YES"},
 				},
@@ -7957,8 +7950,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
 				Expected: []sql.Row{
-					{"def", "foo", "t", "i", uint64(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", "", "NULL"},
-					{"def", "foo", "v", "", uint64(0), nil, nil, nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", "NULL"},
+					{"def", "foo", "t", "i", uint32(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", "", nil},
+					{"def", "foo", "v", "", uint32(0), nil, "", nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", nil},
 				},
 			},
 		},
@@ -8042,10 +8035,10 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'stable'",
 				Expected: []sql.Row{
-					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", "NULL"},
-					{"stable", "line", nil, "NO", "linestring", "linestring", "", "NULL"},
-					{"stable", "pnt", nil, "YES", "point", "point", "", "4326"},
-					{"stable", "pol", nil, "NO", "polygon", "polygon", "", "0"},
+					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", nil},
+					{"stable", "line", nil, "NO", "linestring", "linestring", "", nil},
+					{"stable", "pnt", nil, "YES", "point", "point", "", uint32(4326)},
+					{"stable", "pol", nil, "NO", "polygon", "polygon", "", uint32(0)},
 				},
 			},
 		},

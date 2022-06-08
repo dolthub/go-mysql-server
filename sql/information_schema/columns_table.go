@@ -17,9 +17,9 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
+	"time"
 )
 
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
@@ -166,10 +166,10 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					charMaxLen interface{}
 					columnKey  string
 					nullable   = "NO"
-					ordinalPos = uint64(i + 1)
+					ordinalPos = uint32(i + 1)
 					colType    = strings.ToLower(c.Type.String())
 					dataType   = colType
-					srsId      = "NULL"
+					srsId      interface{}
 				)
 
 				if c.Nullable {
@@ -190,7 +190,10 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				}
 
 				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
-				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
+				colDefault = getColumnDefaultValue(ctx, columnNameToDefault[fullColumnName])
+				if colDefault != nil {
+					colDefault = fmt.Sprint(colDefault)
+				}
 
 				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 				if c.PrimaryKey {
@@ -206,7 +209,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 
 				if s, ok := c.Type.(sql.SpatialColumnType); ok {
 					if srid, d := s.GetSpatialTypeSRID(); d {
-						srsId = fmt.Sprintf("%v", srid)
+						srsId = srid
 					}
 				}
 
@@ -252,9 +255,9 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				db.Name(), // table_schema
 				view.Name, // table_name
 				"",        // column_name
-				uint64(0), // ordinal_position
+				uint32(0), // ordinal_position
 				nil,       // column_default
-				nil,       // is_nullable
+				"",        // is_nullable
 				nil,       // data_type
 				nil,       // character_maximum_length
 				nil,       // character_octet_length
@@ -269,7 +272,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				"select",  // privileges
 				"",        // column_comment
 				"",        // generation_expression
-				"NULL",    // srs_id
+				nil,       // srs_id
 			})
 		}
 		if err != nil {
@@ -279,26 +282,30 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 	return sql.RowsToRowIter(rows...), nil
 }
 
-// trimColumnDefaultOutput takes in a column default value and 1. Removes Double Quotes for literals 2. Ensures that the
-// string NULL becomes nil.
-func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
+// getColumnDefaultValue returns the column default value for given sql.ColumnDefaultValue
+func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
 	if cd == nil {
 		return nil
 	}
 
-	colStr := cd.String()
-	// TODO: We need to fix the ColumnDefault String() to prevent double quoting.
-	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
-		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
+	// Evaluate the literal values instead of using .String() method on it
+	if cd.IsLiteral() {
+		v, err := cd.Eval(ctx, nil)
+		if err != nil {
+			return nil
+		}
+		switch l := v.(type) {
+		case time.Time:
+			v = l.Format("2006-01-02 15:04:05")
+		}
+		return v
 	}
 
+	// TODO: The columns that are rendered in defaults should be backticked
+	colStr := cd.String()
+	// Unwrap the outermost layer of parentheses for non-literal expression default values
 	if strings.HasPrefix(colStr, "(") && strings.HasSuffix(colStr, ")") {
 		return strings.TrimSuffix(strings.TrimPrefix(colStr, "("), ")")
 	}
-
-	if colStr == "NULL" {
-		return nil
-	}
-
 	return colStr
 }
