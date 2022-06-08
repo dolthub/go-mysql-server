@@ -1171,6 +1171,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 
 			engine := mustNewEngine(t, harness)
+			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			if script.SetUpFunc != nil {
@@ -5402,6 +5403,7 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 		User:    "root",
 		Address: "localhost",
 	})
+	engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 
 	var users []*mysql_db.User
 	var roles []*mysql_db.RoleEdge
