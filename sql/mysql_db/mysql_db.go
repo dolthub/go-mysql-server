@@ -36,7 +36,8 @@ type PersistCallback func(ctx *sql.Context, data []byte) error
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
-	Enabled bool
+	Enabled    bool
+	CanPersist bool
 
 	user        *mysqlTable
 	role_edges  *mysqlTable
