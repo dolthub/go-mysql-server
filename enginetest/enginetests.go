@@ -1074,6 +1074,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 			defer engine.Close()
 
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 			rootCtx := harness.NewContextWithClient(sql.Client{
 				User:    "root",
 				Address: "localhost",
@@ -1172,9 +1173,9 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 
 			engine := mustNewEngine(t, harness)
-			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
+			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 			if script.SetUpFunc != nil {
 				script.SetUpFunc(ctx, t, engine)
 			}
@@ -5439,6 +5440,8 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 			return nil
 		},
 	)
+
+	engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 
 	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER tester@localhost")
 	// If the user exists in []*mysql_db.User, then it must be NOT nil.
