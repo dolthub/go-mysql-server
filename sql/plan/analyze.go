@@ -104,14 +104,15 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	colStatsTableData := mysql.ColumnStatisticsTable().Data()
 
 	for _, tbl := range n.tbls {
-		// Check if table was resolved
 		var resTbl *ResolvedTable
 		switch v := tbl.(type) {
 		case *ResolvedTable:
 			resTbl = v
 		case *Exchange:
 			resTbl = v.Child.(*ResolvedTable)
-		case DeferredAsOfTable:
+		case *IndexedTableAccess:
+			resTbl = v.ResolvedTable
+		case *DeferredAsOfTable:
 			resTbl = v.ResolvedTable
 		default:
 			return nil, sql.ErrTableNotFound.New(tbl.String())
@@ -120,7 +121,7 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		// Calculate stats
 		tblIter, err := resTbl.RowIter(ctx, row)
 		if err != nil {
-			return nil, sql.ErrTableNotFound.New("couldn't read from table")
+			return nil, err
 		}
 		defer func() {
 			tblIter.Close(ctx)
@@ -146,8 +147,7 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 
 			// accumulate sum of every column
-			// TODO: watch out for types
-			// TODO: watch out for precision/overflow issues
+			// TODO: deal with non-numeric types, precision, and overflow
 			for i := 0; i < len(resTbl.Schema()); i++ {
 				num, err := sql.Float64.Convert(row[i])
 				if err != nil {
@@ -178,7 +178,7 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				colStatsTableData.Remove(ctx, colStatsPk, row)
 			}
 
-			// Insert new
+			// Insert row entry
 			colStatsTableData.Put(ctx, &mysql_db.ColumnStatistics{
 				SchemaName: database,
 				TableName:  resTbl.Name(),
