@@ -4860,7 +4860,7 @@ func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string) {
 	ctx = ctx.WithQuery(query)
 	sch, iter, err := e.Query(ctx, query)
-	require.NoError(t, err)
+	require.NoError(t, err, "error running query %s: %v", query, err)
 	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(t, err)
 }

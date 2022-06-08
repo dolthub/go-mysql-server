@@ -51,6 +51,8 @@ type Index interface {
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
+// FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
+// allowing them to be removed from the overall plan for greater execution efficiency
 type FilteredIndex interface {
 	Index
 	// HandledFilters returns a subset of |filters| that are satisfied
