@@ -72,6 +72,13 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 }
 
+// TestAnalyzeQueries tests the statistics from ANALYZE TABLE
+func TestStatistics(t *testing.T, harness Harness) {
+	for _, script := range queries.StatisticsQueries {
+		TestScript(t, harness, script)
+	}
+}
+
 // Tests a variety of geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.SpatialSetup...)

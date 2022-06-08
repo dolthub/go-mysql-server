@@ -8785,3 +8785,55 @@ var ShowTableStatusQueries = []QueryTest{
 		},
 	},
 }
+
+var StatisticsQueries = []ScriptTest{
+	{
+		Name: "analyze single int column",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int primary key)",
+			"INSERT INTO t VALUES (1), (2), (3)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM mysql.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", uint64(3), float64(2), float64(1), float64(3)},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze two int columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int, j int)",
+			"INSERT INTO t VALUES (1, 4), (2, 5), (3, 6)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM mysql.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", uint64(3), float64(2), float64(1), float64(3)},
+					{"mydb", "t", "j", uint64(3), float64(5), float64(4), float64(6)},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze float columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (i float)",
+			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM mysql.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", uint64(4), float64(16.125), float64(1.25), float64(45.25)},
+				},
+			},
+		},
+	},
+}
