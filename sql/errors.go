@@ -573,6 +573,12 @@ var (
 
 	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
 	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
+
+	// ErrUnknownEntry is returned when a table gets a key that can't be converted to an Entry
+	ErrUnknownEntry = errors.NewKind("The %s key for the `%s` table was given an unknown entry")
+
+	// ErrUnknownSchema is returned when a table receives a row that doesn't match the schemas
+	ErrUnknownSchema = errors.NewKind("The %s key for the `%s` table was given a row belonging to an unknown schema")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

@@ -15,8 +15,6 @@
 package mysql_db
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
@@ -27,12 +25,6 @@ import (
 const columnStatisticsTblName = "column_statistics"
 
 var columnStatisticsTblSchema sql.Schema
-
-// TODO: should just make generic errors with fmt strings
-var errColStatsPkEntry = fmt.Errorf("the primary key for the `colStats` table was given an unknown entry")
-var errColStatsPkRow = fmt.Errorf("the primary key for the `colStats` table was given a row belonging to an unknown schema")
-var errColStatsSkRow = fmt.Errorf("the secondary key for the `colStats` table was given a row belonging to an unknown schema")
-var errColStatsSkEntry = fmt.Errorf("the secondary key for the `colStats` table was given an unknown entry")
 
 // ColumnStatisticsPrimaryKey is a key that represents the primary key for the "column_statistics" table
 type ColumnStatisticsPrimaryKey struct {
@@ -57,7 +49,7 @@ var _ in_mem_table.Key = ColumnStatisticsSecondaryKey{}
 func (c ColumnStatisticsPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
 	col, ok := entry.(*ColumnStatistics)
 	if !ok {
-		return nil, errColStatsPkEntry
+		return nil, sql.ErrUnknownEntry.New("primary", "column_statistics")
 	}
 	return ColumnStatisticsPrimaryKey{
 		SchemaName: col.SchemaName,
@@ -69,19 +61,19 @@ func (c ColumnStatisticsPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_
 // KeyFromRow implements the interface in_mem_table.Key.
 func (c ColumnStatisticsPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
 	if len(row) != len(columnStatisticsTblSchema) {
-		return c, errColStatsPkEntry
+		return c, sql.ErrUnknownEntry.New("primary", "column_statistics")
 	}
 	schema, ok := row[columnStatisticsTblColIndex_Schema].(string)
 	if !ok {
-		return c, errColStatsPkRow
+		return c, sql.ErrUnknownSchema.New("primary", "column_statistics")
 	}
 	table, ok := row[columnStatisticsTblColIndex_Table].(string)
 	if !ok {
-		return c, errColStatsPkRow
+		return c, sql.ErrUnknownSchema.New("primary", "column_statistics")
 	}
 	col, ok := row[columnStatisticsTblColIndex_Column].(string)
 	if !ok {
-		return c, errColStatsPkRow
+		return c, sql.ErrUnknownSchema.New("primary", "column_statistics")
 	}
 
 	return ColumnStatisticsPrimaryKey{
@@ -95,7 +87,7 @@ func (c ColumnStatisticsPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (i
 func (u ColumnStatisticsSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
 	colStats, ok := entry.(*ColumnStatistics)
 	if !ok {
-		return nil, errColStatsSkEntry
+		return nil, sql.ErrUnknownEntry.New("secondary", "column_statistics")
 	}
 	return ColumnStatisticsSecondaryKey{
 		Count: colStats.Count,
@@ -108,23 +100,23 @@ func (u ColumnStatisticsSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_me
 // KeyFromRow implements the interface in_mem_table.Key.
 func (u ColumnStatisticsSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
 	if len(row) != len(columnStatisticsTblSchema) {
-		return u, errColStatsSkRow
+		return u, sql.ErrUnknownEntry.New("secondary", "column_statistics")
 	}
 	count, ok := row[columnStatisticsTblColIndex_Count].(uint64)
 	if !ok {
-		return u, errColStatsSkRow
+		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
 	}
 	mean, ok := row[columnStatisticsTblColIndex_Mean].(float64)
 	if !ok {
-		return u, errColStatsSkRow
+		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
 	}
 	min, ok := row[columnStatisticsTblColIndex_Min].(float64)
 	if !ok {
-		return u, errColStatsSkRow
+		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
 	}
 	max, ok := row[columnStatisticsTblColIndex_Max].(float64)
 	if !ok {
-		return u, errColStatsSkRow
+		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
 	}
 
 	return ColumnStatisticsSecondaryKey{
