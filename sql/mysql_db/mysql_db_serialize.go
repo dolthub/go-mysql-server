@@ -212,5 +212,6 @@ func serializeColumnStatistics(b *flatbuffers.Builder, columnStatistics []*Colum
 		offsets[len(columnStatistics)-i-1] = serial.ColumnStatisticEnd(b) // reverse order
 	}
 
-	return serializeVectorOffsets(b, serial.MySQLDbStartColumnStatisticsVector, offsets)
+	return 0
+	//return serializeVectorOffsets(b, serial.MySQLDbStartColumnStatisticsVector, offsets)
 }

@@ -153,18 +153,6 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 		}
 	}
 
-	// Fill in Column Statistics table
-	for i := 0; i < serialMySQLDb.ColumnStatisticsLength(); i++ {
-		serialColumnStatistic := new(serial.ColumnStatistic)
-		if !serialMySQLDb.ColumnStatistics(serialColumnStatistic, i) {
-			continue
-		}
-		role := LoadColumnStatistic(serialColumnStatistic)
-		if err := t.column_statistics.data.Put(ctx, role); err != nil {
-			return err
-		}
-	}
-
 	// TODO: fill in other tables when they exist
 	return nil
 }
@@ -445,13 +433,11 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 	b := flatbuffers.NewBuilder(0)
 	user := serializeUser(b, users)
 	roleEdge := serializeRoleEdge(b, roles)
-	columnStatistics := serializeColumnStatistics(b, colStats)
 
 	// Write MySQL DB
 	serial.MySQLDbStart(b)
 	serial.MySQLDbAddUser(b, user)
 	serial.MySQLDbAddRoleEdges(b, roleEdge)
-	serial.MySQLDbAddColumnStatistics(b, columnStatistics)
 	mysqlDbOffset := serial.MySQLDbEnd(b)
 
 	// Finish writing

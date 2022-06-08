@@ -71,7 +71,6 @@ table ColumnStatistic {
 table MySQLDb {
     user:[User];
     role_edges:[RoleEdge];
-    column_statistics:[ColumnStatistic];
 }
 
 root_type MySQLDb;
