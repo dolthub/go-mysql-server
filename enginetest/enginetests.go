@@ -5450,7 +5450,6 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 		Address: "localhost",
 	})
 
-	// TODO: need to clear user table after every RunQueryWithContext
 	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER tester@localhost")
 	// If the user exists in []*mysql_db.User, then it must be NOT nil.
 	require.NotNil(t, findUser("tester", "localhost", persister.users))
