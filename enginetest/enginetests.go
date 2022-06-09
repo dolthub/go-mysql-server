@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 	"net"
 	"strings"
 	"testing"
@@ -1073,7 +1074,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 			defer engine.Close()
 
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			engine.Analyzer.Catalog.MySQLDb.SetPersister(mysql_db.NoopPersister{})
+			engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 			rootCtx := harness.NewContextWithClient(sql.Client{
 				User:    "root",
 				Address: "localhost",
@@ -5391,6 +5392,47 @@ func TestPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+type memoryPersister struct {
+	users []*mysql_db.User
+	roles []*mysql_db.RoleEdge
+}
+
+var _ mysql_db.MySQLDbPersistence = &memoryPersister{}
+
+func (p *memoryPersister) CanPersist() bool {
+	return true
+}
+
+func (p *memoryPersister) Persist(ctx *sql.Context, data []byte) error {
+	//erase everything from users and roles
+	p.users = make([]*mysql_db.User, 0)
+	p.roles = make([]*mysql_db.RoleEdge, 0)
+
+	// Deserialize the flatbuffer
+	serialMySQLDb := serial.GetRootAsMySQLDb(data, 0)
+
+	// Fill in users
+	for i := 0; i < serialMySQLDb.UserLength(); i++ {
+		serialUser := new(serial.User)
+		if !serialMySQLDb.User(serialUser, i) {
+			continue
+		}
+		user := mysql_db.LoadUser(serialUser)
+		p.users = append(p.users, user)
+	}
+
+	// Fill in roles
+	for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
+		serialRoleEdge := new(serial.RoleEdge)
+		if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
+			continue
+		}
+		role := mysql_db.LoadRoleEdge(serialRoleEdge)
+		p.roles = append(p.roles, role)
+	}
+	return nil
+}
+
 func TestPrivilegePersistence(t *testing.T, h Harness) {
 	harness, ok := h.(ClientHarness)
 	if !ok {
@@ -5399,69 +5441,36 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	engine := mustNewEngine(t, harness)
 	defer engine.Close()
+
+	persister := &memoryPersister{}
 	engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-	engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
+	engine.Analyzer.Catalog.MySQLDb.SetPersister(persister)
 	ctx := NewContextWithClient(harness, sql.Client{
 		User:    "root",
 		Address: "localhost",
 	})
 
-	var users []*mysql_db.User
-	var roles []*mysql_db.RoleEdge
-
-	// TODO: do I need this?
-	//engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
-	//	func(ctx *sql.Context, buf []byte) error {
-	//		// erase everything from users and roles
-	//		users = make([]*mysql_db.User, 0)
-	//		roles = make([]*mysql_db.RoleEdge, 0)
-	//
-	//		// Deserialize the flatbuffer
-	//		serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
-	//
-	//		// Fill in users
-	//		for i := 0; i < serialMySQLDb.UserLength(); i++ {
-	//			serialUser := new(serial.User)
-	//			if !serialMySQLDb.User(serialUser, i) {
-	//				continue
-	//			}
-	//			user := mysql_db.LoadUser(serialUser)
-	//			users = append(users, user)
-	//		}
-	//
-	//		// Fill in roles
-	//		for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
-	//			serialRoleEdge := new(serial.RoleEdge)
-	//			if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
-	//				continue
-	//			}
-	//			role := mysql_db.LoadRoleEdge(serialRoleEdge)
-	//			roles = append(roles, role)
-	//		}
-	//		return nil
-	//	},
-	//)
-
+	// TODO: need to clear user table after every RunQueryWithContext
 	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER tester@localhost")
 	// If the user exists in []*mysql_db.User, then it must be NOT nil.
-	require.NotNil(t, findUser("tester", "localhost", users))
+	require.NotNil(t, findUser("tester", "localhost", persister.users))
 
 	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester1')")
-	require.Nil(t, findUser("tester1", "localhost", users))
+	require.Nil(t, findUser("tester1", "localhost", persister.users))
 
 	RunQueryWithContext(t, engine, harness, ctx, "UPDATE mysql.user SET User = 'test_user' WHERE User = 'tester'")
-	require.NotNil(t, findUser("tester", "localhost", users))
+	require.NotNil(t, findUser("tester", "localhost", persister.users))
 
 	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
-	require.NotNil(t, findUser("tester1", "localhost", users))
-	require.Nil(t, findUser("tester", "localhost", users))
-	require.NotNil(t, findUser("test_user", "localhost", users))
+	require.NotNil(t, findUser("tester1", "localhost", persister.users))
+	require.Nil(t, findUser("tester", "localhost", persister.users))
+	require.NotNil(t, findUser("test_user", "localhost", persister.users))
 
 	RunQueryWithContext(t, engine, harness, ctx, "DELETE FROM mysql.user WHERE User = 'tester1'")
-	require.NotNil(t, findUser("tester1", "localhost", users))
+	require.NotNil(t, findUser("tester1", "localhost", persister.users))
 
 	RunQueryWithContext(t, engine, harness, ctx, "GRANT SELECT ON mydb.* TO test_user@localhost")
-	user := findUser("test_user", "localhost", users)
+	user := findUser("test_user", "localhost", persister.users)
 	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
 
 	RunQueryWithContext(t, engine, harness, ctx, "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'test_user'")
@@ -5469,36 +5478,36 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER dolt@localhost")
 	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO mysql.db (Host, Db, User, Select_priv) VALUES ('localhost', 'mydb', 'dolt', 'Y')")
-	user1 := findUser("dolt", "localhost", users)
+	user1 := findUser("dolt", "localhost", persister.users)
 	require.NotNil(t, user1)
 	require.False(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
 
 	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
-	require.Nil(t, findUser("tester1", "localhost", users))
-	user = findUser("test_user", "localhost", users)
+	require.Nil(t, findUser("tester1", "localhost", persister.users))
+	user = findUser("test_user", "localhost", persister.users)
 	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
-	user1 = findUser("dolt", "localhost", users)
+	user1 = findUser("dolt", "localhost", persister.users)
 	require.True(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
 
 	RunQueryWithContext(t, engine, harness, ctx, "CREATE ROLE test_role")
 	RunQueryWithContext(t, engine, harness, ctx, "GRANT SELECT ON *.* TO test_role")
-	require.Zero(t, len(roles))
+	require.Zero(t, len(persister.roles))
 	RunQueryWithContext(t, engine, harness, ctx, "GRANT test_role TO test_user@localhost")
-	require.NotZero(t, len(roles))
+	require.NotZero(t, len(persister.roles))
 
 	RunQueryWithContext(t, engine, harness, ctx, "UPDATE mysql.role_edges SET to_user = 'tester2' WHERE to_user = 'test_user'")
-	require.NotNil(t, findRole("test_user", roles))
-	require.Nil(t, findRole("tester2", roles))
+	require.NotNil(t, findRole("test_user", persister.roles))
+	require.Nil(t, findRole("tester2", persister.roles))
 
 	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
-	require.Nil(t, findRole("test_user", roles))
-	require.NotNil(t, findRole("tester2", roles))
+	require.Nil(t, findRole("test_user", persister.roles))
+	require.NotNil(t, findRole("tester2", persister.roles))
 
 	RunQueryWithContext(t, engine, harness, ctx, "INSERT INTO mysql.role_edges VALUES ('%', 'test_role', 'localhost', 'test_user', 'N')")
-	require.Nil(t, findRole("test_user", roles))
+	require.Nil(t, findRole("test_user", persister.roles))
 
 	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
-	require.NotNil(t, findRole("test_user", roles))
+	require.NotNil(t, findRole("test_user", persister.roles))
 
 	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
 	require.Error(t, err)

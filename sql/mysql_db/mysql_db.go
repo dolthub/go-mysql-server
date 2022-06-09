@@ -39,15 +39,15 @@ type MySQLDbPersistence interface {
 // NoopPersister is used when nothing in mysql db should be persisted
 type NoopPersister struct{}
 
-var _ MySQLDbPersistence = NoopPersister{}
+var _ MySQLDbPersistence = &NoopPersister{}
 
 // CanPersist implements the MySQLDbPersistence interface
-func (p NoopPersister) CanPersist() bool {
+func (p *NoopPersister) CanPersist() bool {
 	return true
 }
 
 // Persist implements the MySQLDbPersistence interface
-func (p NoopPersister) Persist(ctx *sql.Context, data []byte) error {
+func (p *NoopPersister) Persist(ctx *sql.Context, data []byte) error {
 	return nil
 }
 
