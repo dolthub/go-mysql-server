@@ -39,7 +39,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -1014,7 +1013,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 				Address: "localhost",
 			})
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
+			engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -1074,7 +1073,7 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 			defer engine.Close()
 
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
+			engine.Analyzer.Catalog.MySQLDb.SetPersister(mysql_db.NoopPersister{})
 			rootCtx := harness.NewContextWithClient(sql.Client{
 				User:    "root",
 				Address: "localhost",
@@ -1175,7 +1174,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			engine.Analyzer.Catalog.MySQLDb.CanPersist = true
+			engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 			if script.SetUpFunc != nil {
 				script.SetUpFunc(ctx, t, engine)
 			}
@@ -5401,47 +5400,47 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 	engine := mustNewEngine(t, harness)
 	defer engine.Close()
 	engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
+	engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 	ctx := NewContextWithClient(harness, sql.Client{
 		User:    "root",
 		Address: "localhost",
 	})
-	engine.Analyzer.Catalog.MySQLDb.CanPersist = true
 
 	var users []*mysql_db.User
 	var roles []*mysql_db.RoleEdge
-	engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
-		func(ctx *sql.Context, buf []byte) error {
-			// erase everything from users and roles
-			users = make([]*mysql_db.User, 0)
-			roles = make([]*mysql_db.RoleEdge, 0)
 
-			// Deserialize the flatbuffer
-			serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
-
-			// Fill in users
-			for i := 0; i < serialMySQLDb.UserLength(); i++ {
-				serialUser := new(serial.User)
-				if !serialMySQLDb.User(serialUser, i) {
-					continue
-				}
-				user := mysql_db.LoadUser(serialUser)
-				users = append(users, user)
-			}
-
-			// Fill in roles
-			for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
-				serialRoleEdge := new(serial.RoleEdge)
-				if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
-					continue
-				}
-				role := mysql_db.LoadRoleEdge(serialRoleEdge)
-				roles = append(roles, role)
-			}
-			return nil
-		},
-	)
-
-	engine.Analyzer.Catalog.MySQLDb.CanPersist = true
+	// TODO: do I need this?
+	//engine.Analyzer.Catalog.MySQLDb.SetPersistCallback(
+	//	func(ctx *sql.Context, buf []byte) error {
+	//		// erase everything from users and roles
+	//		users = make([]*mysql_db.User, 0)
+	//		roles = make([]*mysql_db.RoleEdge, 0)
+	//
+	//		// Deserialize the flatbuffer
+	//		serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
+	//
+	//		// Fill in users
+	//		for i := 0; i < serialMySQLDb.UserLength(); i++ {
+	//			serialUser := new(serial.User)
+	//			if !serialMySQLDb.User(serialUser, i) {
+	//				continue
+	//			}
+	//			user := mysql_db.LoadUser(serialUser)
+	//			users = append(users, user)
+	//		}
+	//
+	//		// Fill in roles
+	//		for i := 0; i < serialMySQLDb.RoleEdgesLength(); i++ {
+	//			serialRoleEdge := new(serial.RoleEdge)
+	//			if !serialMySQLDb.RoleEdges(serialRoleEdge, i) {
+	//				continue
+	//			}
+	//			role := mysql_db.LoadRoleEdge(serialRoleEdge)
+	//			roles = append(roles, role)
+	//		}
+	//		return nil
+	//	},
+	//)
 
 	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER tester@localhost")
 	// If the user exists in []*mysql_db.User, then it must be NOT nil.
