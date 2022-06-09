@@ -8494,26 +8494,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query: `SELECT t1.*
 					  FROM
-						mytable as t1,
-						mytable as t2,
-						mytable as t3,
-						mytable as t4,
-						mytable as t5,
-						mytable as t6,
-						mytable as t7,
-						mytable as t8,
-						mytable as t9,
-						mytable as t10,
-						mytable as t11,
-						mytable as t12,
-						mytable as t13,
-						mytable as t14,
-						mytable as t15`,
-		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
-	},
-	{
-		Query: `SELECT t1.*
-					  FROM
 						mytable as t1
 						LEFT JOIN mytable as t2 ON t1.i = t2.i
 						LEFT JOIN mytable as t3 ON t2.i = t3.i
