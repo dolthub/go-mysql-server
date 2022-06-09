@@ -245,11 +245,11 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
-func TestQueryPlans(t *testing.T, harness Harness) {
+func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
 	harness.Setup(setup.SimpleSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	for _, tt := range queries.PlanTests {
+	for _, tt := range planTests {
 		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
 	}
 }
@@ -351,7 +351,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, 
 			}
 		}
 
-		assert.Equal(t, expectedPlan, extractQueryNode(node).String(), "Unexpected result for query: "+query)
+		assert.Equal(t, expectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+query)
 	})
 
 }
@@ -371,7 +371,7 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt q
 			}
 		}
 
-		assert.Equal(t, tt.ExpectedPlan, extractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
+		assert.Equal(t, tt.ExpectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
 	})
 
 }

@@ -320,7 +320,7 @@ func TestQueryPlans(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
 			// The IN expression requires mergeable indexes meaning that an unmergeable index returns a different result, so we skip this test
 			harness.QueriesToSkip("SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)")
-			enginetest.TestQueryPlans(t, harness)
+			enginetest.TestQueryPlans(t, harness, queries.PlanTests)
 		})
 	}
 }

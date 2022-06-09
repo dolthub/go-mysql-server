@@ -45,7 +45,7 @@ func TestWriteQueryPlans(t *testing.T) {
 
 		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
-		planString := extractQueryNode(node).String()
+		planString := ExtractQueryNode(node).String()
 
 		if strings.Contains(tt.Query, "`") {
 			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
@@ -102,7 +102,7 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 
 		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
-		planString := extractQueryNode(node).String()
+		planString := ExtractQueryNode(node).String()
 
 		if strings.Contains(tt.Query, "`") {
 			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
