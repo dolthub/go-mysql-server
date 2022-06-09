@@ -32,7 +32,7 @@ import (
 
 // MySQLDbPersistence is used to determine the behavior of how certain tables in MySQLDb will be persisted.
 type MySQLDbPersistence interface {
-	CanPersist() bool
+	ValidateCanPersist() error
 	Persist(ctx *sql.Context, data []byte) error
 }
 
@@ -42,8 +42,8 @@ type NoopPersister struct{}
 var _ MySQLDbPersistence = &NoopPersister{}
 
 // CanPersist implements the MySQLDbPersistence interface
-func (p *NoopPersister) CanPersist() bool {
-	return true
+func (p *NoopPersister) ValidateCanPersist() error {
+	return nil
 }
 
 // Persist implements the MySQLDbPersistence interface
@@ -349,8 +349,8 @@ func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Ge
 }
 
 // CanPersist calls the persister's CanPersist method
-func (t *MySQLDb) CanPersist() bool {
-	return t.persister.CanPersist()
+func (t *MySQLDb) ValidateCanPersist() error {
+	return t.persister.ValidateCanPersist()
 }
 
 // Persist passes along all changes to the integrator.

@@ -5399,8 +5399,8 @@ type memoryPersister struct {
 
 var _ mysql_db.MySQLDbPersistence = &memoryPersister{}
 
-func (p *memoryPersister) CanPersist() bool {
-	return true
+func (p *memoryPersister) ValidateCanPersist() error {
+	return nil
 }
 
 func (p *memoryPersister) Persist(ctx *sql.Context, data []byte) error {

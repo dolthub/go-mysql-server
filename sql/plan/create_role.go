@@ -108,8 +108,8 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	// Check if you can even persist in the first place
-	if !mysqlDb.CanPersist() {
-		return nil, fmt.Errorf("no privilege file specified, to persist users/grants run with --privilege-file=<file_path>")
+	if err := mysqlDb.ValidateCanPersist(); err != nil {
+		return nil, err
 	}
 
 	userTableData := mysqlDb.UserTable().Data()
