@@ -267,6 +267,15 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
 			def := col.Default.String()
+			if col.Default.IsLiteral() && !sql.IsText(col.Default.Type()) {
+				// use .Eval() method to get the actual value for default
+				// non-string type default values can be stored either with or without single quotes
+				val, err := col.Default.Eval(ctx, nil)
+				if err != nil {
+					return "", err
+				}
+				def = fmt.Sprintf("'%v'", val)
+			}
 			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, def)
 		}
 

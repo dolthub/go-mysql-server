@@ -710,15 +710,9 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		return nil, transform.SameTree, err
 	}
 
-	// validate type of default literal expression and update literal value to be in outType
-	if newDefault.Type() != nil && newDefault.IsLiteral() {
-		val, err := newDefault.Eval(ctx, nil)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if !newDefault.Type().Equals(newDefault.Expression.Type()) {
-			newDefault.Expression = expression.NewLiteral(val, newDefault.Type())
-		}
+	// validate type of default expression
+	if err = newDefault.CheckType(ctx); err != nil {
+		return nil, transform.SameTree, err
 	}
 
 	return expression.WrapExpression(newDefault), transform.NewTree, nil

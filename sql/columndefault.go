@@ -172,6 +172,24 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 	}
 }
 
+// CheckType validates that the ColumnDefaultValue has the correct type.
+func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
+	if e.outType != nil && e.literal {
+		val, err := e.Expression.Eval(ctx, nil)
+		if err != nil {
+			return err
+		}
+		if val == nil && !e.returnNil {
+			return ErrIncompatibleDefaultType.New()
+		}
+		_, err = e.outType.Convert(val)
+		if err != nil {
+			return ErrIncompatibleDefaultType.New()
+		}
+	}
+	return nil
+}
+
 type UnresolvedColumnDefault struct {
 	exprString string
 }
