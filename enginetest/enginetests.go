@@ -5436,11 +5436,11 @@ func (p *memoryPersister) Persist(ctx *sql.Context, data []byte) error {
 		}
 		role := mysql_db.LoadRoleEdge(serialRoleEdge)
 		p.roles = append(p.roles, role)
-			}
+	}
 
-			// TODO: Fill in column statistics?
-			return nil
-		}
+	// TODO: Fill in column statistics?
+	return nil
+}
 
 func TestPrivilegePersistence(t *testing.T, h Harness) {
 	harness, ok := h.(ClientHarness)
