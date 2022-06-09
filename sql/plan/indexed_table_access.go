@@ -305,16 +305,27 @@ func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, er
 		return i.ResolvedTable.Partitions(ctx)
 	}
 
+	table := i.baseTable()
+	return table.Partitions(ctx)
+}
+
+// baseTable returns the underlying sql.Table with any static index lookup applied
+func (i *IndexedTableAccess) baseTable() sql.Table {
 	table := i.ResolvedTable.Table
-	if indexAddressableTable, ok := i.ResolvedTable.Table.(sql.IndexAddressable); ok {
+	// This won't work if we add another layer of wrapping on top
+	if tw, ok := table.(sql.TableWrapper); ok {
+		table = tw.Underlying()
+	}
+
+	if indexAddressableTable, ok := table.(sql.IndexAddressable); ok {
 		table = indexAddressableTable.WithIndexLookup(i.lookup)
 	}
-	return table.Partitions(ctx)
+	return table
 }
 
 // PartitionRows implements sql.Table
 func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return i.ResolvedTable.PartitionRows(ctx, partition)
+	return i.baseTable().PartitionRows(ctx, partition)
 }
 
 // GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.

@@ -173,7 +173,7 @@ func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, er
 
 func (e *Exchange) String() string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Exchange(parallelism=%d)", e.Parallelism)
+	_ = p.WriteNode("Exchange")
 	_ = p.WriteChildren(e.Child.String())
 	return p.String()
 }
