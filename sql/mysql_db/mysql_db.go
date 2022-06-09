@@ -30,9 +30,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 )
 
-// PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
-// persisted.
-type PersistCallback func(ctx *sql.Context, data []byte) error
+// MySQLDbPersistence is used to determine the behavior of how certain tables in MySQLDb will be persisted.
+type MySQLDbPersistence interface {
+	ValidateCanPersist() error
+	Persist(ctx *sql.Context, data []byte) error
+}
+
+// NoopPersister is used when nothing in mysql db should be persisted
+type NoopPersister struct{}
+
+var _ MySQLDbPersistence = &NoopPersister{}
+
+// CanPersist implements the MySQLDbPersistence interface
+func (p *NoopPersister) ValidateCanPersist() error {
+	return nil
+}
+
+// Persist implements the MySQLDbPersistence interface
+func (p *NoopPersister) Persist(ctx *sql.Context, data []byte) error {
+	return nil
+}
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
@@ -51,7 +68,7 @@ type MySQLDb struct {
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
 
-	persistFunc PersistCallback
+	persister MySQLDbPersistence
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -157,9 +174,9 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 	return nil
 }
 
-// SetPersistCallback sets the callback to be used when the MySQL Db tables have been updated and need to be persisted.
-func (t *MySQLDb) SetPersistCallback(persistFunc PersistCallback) {
-	t.persistFunc = persistFunc
+// SetPersister sets the custom persister to be used when the MySQL Db tables have been updated and need to be persisted.
+func (t *MySQLDb) SetPersister(persister MySQLDbPersistence) {
+	t.persister = persister
 }
 
 // AddRootAccount adds the root account to the list of accounts.
@@ -360,13 +377,13 @@ func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Ge
 	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }
 
+// CanPersist calls the persister's CanPersist method
+func (t *MySQLDb) ValidateCanPersist() error {
+	return t.persister.ValidateCanPersist()
+}
+
 // Persist passes along all changes to the integrator.
 func (t *MySQLDb) Persist(ctx *sql.Context) error {
-	// Do nothing if persist function is nil
-	if t.persistFunc == nil {
-		return nil
-	}
-
 	// Extract all user entries from table, and sort
 	userEntries := t.user.data.ToSlice(ctx)
 	users := make([]*User, len(userEntries))
@@ -444,7 +461,7 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 	b.Finish(mysqlDbOffset)
 
 	// Persist data
-	return t.persistFunc(ctx, b.FinishedBytes())
+	return t.persister.Persist(ctx, b.FinishedBytes())
 }
 
 // UserTable returns the "user" table.

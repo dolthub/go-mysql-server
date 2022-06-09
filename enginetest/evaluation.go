@@ -691,12 +691,12 @@ func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) b
 	return assert.Equal(t, ec, ac)
 }
 
-func extractQueryNode(node sql.Node) sql.Node {
+func ExtractQueryNode(node sql.Node) sql.Node {
 	switch node := node.(type) {
 	case *plan.QueryProcess:
-		return extractQueryNode(node.Child())
+		return ExtractQueryNode(node.Child())
 	case *analyzer.Releaser:
-		return extractQueryNode(node.Child)
+		return ExtractQueryNode(node.Child)
 	default:
 		return node
 	}

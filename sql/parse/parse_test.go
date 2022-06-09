@@ -4121,10 +4121,18 @@ func TestParseColumnTypeString(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.columnType, func(t *testing.T) {
-			res, err := ParseColumnTypeString(sql.NewEmptyContext(), test.columnType)
+		ctx := sql.NewEmptyContext()
+		t.Run("parse "+test.columnType, func(t *testing.T) {
+			res, err := ParseColumnTypeString(ctx, test.columnType)
 			require.NoError(t, err)
 			require.Equal(t, test.expectedSqlType, res)
+		})
+		t.Run("round trip "+test.columnType, func(t *testing.T) {
+			str := test.expectedSqlType.String()
+			typ, err := ParseColumnTypeString(ctx, str)
+			require.NoError(t, err)
+			require.Equal(t, test.expectedSqlType, typ)
+			require.Equal(t, typ.String(), str)
 		})
 	}
 }

@@ -413,22 +413,22 @@ func visitCommutableJoinSearchNodes(indexes []int, nodes []joinOrderNode, cb fun
 // table, table alias or subquery alias gets a leaf node, a sequence
 // of commutable joins get coalesced into a single node with children
 // set in `commutes`, and a left or right join gets a node with a
-// `left` and a `right` child.  original on the left and the new table
-// being joined on the right.
-func newJoinOrderNode(node sql.Node) *joinOrderNode {
+// `left` and a `right` child original on the left and the new table
+// being joined on the right. Returns a tree's root and node count.
+func newJoinOrderNode(node sql.Node) (*joinOrderNode, int) {
 	switch node := node.(type) {
 	case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable:
 		n := node.(NameableNode)
-		return &joinOrderNode{node: n, name: strings.ToLower(n.Name())}
+		return &joinOrderNode{node: n, name: strings.ToLower(n.Name())}, 1
 	case *plan.CrossJoin:
-		return &joinOrderNode{node: node}
+		return &joinOrderNode{node: node}, 1
 	case plan.JoinNode:
-		ljo := newJoinOrderNode(node.Left())
-		rjo := newJoinOrderNode(node.Right())
+		ljo, lcnt := newJoinOrderNode(node.Left())
+		rjo, rcnt := newJoinOrderNode(node.Right())
 		if node.JoinType() == plan.JoinTypeLeft {
-			return &joinOrderNode{left: ljo, right: rjo}
+			return &joinOrderNode{left: ljo, right: rjo}, lcnt + rcnt
 		} else if node.JoinType() == plan.JoinTypeRight {
-			return &joinOrderNode{left: rjo, right: ljo}
+			return &joinOrderNode{left: rjo, right: ljo}, lcnt + rcnt
 		} else {
 			commutes := append(ljo.commutes, rjo.commutes...)
 			if ljo.left != nil || ljo.node != nil {
@@ -437,7 +437,7 @@ func newJoinOrderNode(node sql.Node) *joinOrderNode {
 			if rjo.left != nil || rjo.node != nil {
 				commutes = append(commutes, *rjo)
 			}
-			return &joinOrderNode{commutes: commutes}
+			return &joinOrderNode{commutes: commutes}, lcnt + rcnt
 		}
 	default:
 		panic(fmt.Sprintf("unexpected node type: %t", node))
