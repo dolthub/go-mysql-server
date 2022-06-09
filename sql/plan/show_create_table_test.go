@@ -147,10 +147,10 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `bza` bigint unsigned DEFAULT '0' COMMENT 'hello',\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
-			"  `zab` int DEFAULT 0,\n"+
+			"  `zab` int DEFAULT '0',\n"+
 			"  PRIMARY KEY (`zab`,`baz`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
@@ -254,8 +254,8 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `zab` int DEFAULT 0,\n"+
-			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `zab` int DEFAULT '0',\n"+
+			"  `bza` bigint unsigned DEFAULT '0' COMMENT 'hello',\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`),\n"+
