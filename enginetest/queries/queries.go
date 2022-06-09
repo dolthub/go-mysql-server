@@ -7890,7 +7890,7 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value with more types",
 		SetUpScript: []string{
-			"CREATE TABLE test_table (pk int primary key, col2 float DEFAULT (length('he`Llo')), col3 int DEFAULT (greatest(`pk`, 2)), col4 int DEFAULT (5 + 5));",
+			"CREATE TABLE test_table (pk int primary key, col2 float DEFAULT (length('he`Llo')), col3 int DEFAULT (greatest(`pk`, 2)), col4 int DEFAULT (5 + 5), col5 datetime default NOW(), create_time timestamp(6) NOT NULL DEFAULT NOW(6));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7900,6 +7900,8 @@ var InfoSchemaScripts = []ScriptTest{
 					{"test_table", "col2", "LENGTH('he`Llo')", "YES"},
 					{"test_table", "col3", "GREATEST(pk, 2)", "YES"},
 					{"test_table", "col4", "(5 + 5)", "YES"},
+					{"test_table", "col5", "NOW()", "YES"},
+					{"test_table", "create_time", "NOW(6)", "NO"},
 				},
 			},
 		},

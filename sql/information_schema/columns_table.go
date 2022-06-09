@@ -288,25 +288,30 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 	if cd == nil {
 		return nil
 	}
-
-	// Evaluate the literal values instead of using .String() method on it
-	if cd.IsLiteral() {
-		v, err := cd.Eval(ctx, nil)
-		if err != nil {
-			return nil
-		}
-		switch l := v.(type) {
-		case time.Time:
-			v = l.Format("2006-01-02 15:04:05")
-		}
-		return v
+	defStr := cd.String()
+	if defStr == "NULL" {
+		return nil
 	}
 
-	// TODO: The columns that are rendered in defaults should be backticked
-	colStr := cd.String()
-	// Unwrap the outermost layer of parentheses for non-literal expression default values
-	if strings.HasPrefix(colStr, "(") && strings.HasSuffix(colStr, ")") {
-		return strings.TrimSuffix(strings.TrimPrefix(colStr, "("), ")")
+	if !cd.IsLiteral() {
+		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
+			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
+		}
+		return defStr
 	}
-	return colStr
+
+	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		return defStr
+	}
+
+	v, err := cd.Eval(ctx, nil)
+	if err != nil {
+		return nil
+	}
+	switch l := v.(type) {
+	case time.Time:
+		v = l.Format("2006-01-02 15:04:05")
+	}
+
+	return v
 }
