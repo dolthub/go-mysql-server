@@ -266,9 +266,9 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
+			// TODO : string literals should have character set introducer
 			defStr := col.Default.String()
-			if defStr == "NULL" || !col.Default.IsLiteral() || sql.IsTime(col.Default.Type()) || sql.IsText(col.Default.Type()) {
-			} else {
+			if defStr != "NULL" && col.Default.IsLiteral() && !sql.IsTime(col.Default.Type()) && !sql.IsText(col.Default.Type()) {
 				v, err := col.Default.Eval(ctx, nil)
 				if err != nil {
 					return "", err
