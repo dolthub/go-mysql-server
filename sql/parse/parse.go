@@ -2048,7 +2048,11 @@ func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sq
 	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
 	_, isExpr := defaultExpr.(*sqlparser.ParenExpr)
 	// A literal will never have children, thus we can also check for that.
-	isExpr = isExpr || len(parsedExpr.Children()) != 0
+	if !isExpr && len(parsedExpr.Children()) != 0 {
+		// default function values must be wrapped in parentheses
+		return nil, sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
+	}
+
 	return ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
 }
 

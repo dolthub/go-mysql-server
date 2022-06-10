@@ -8531,6 +8531,14 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, b int DEFAULT '2', c int DEFAULT `b`)",
 		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 POINT DEFAULT POINT(1,2));",
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 JSON DEFAULT JSON_ARRAY(1,2));",
+		ExpectedErr: sql.ErrSyntaxError,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
