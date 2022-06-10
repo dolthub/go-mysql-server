@@ -403,7 +403,10 @@ func replanJoin(
 	joinHint := extractJoinHint(node)
 
 	// Collect all tables
-	tableJoinOrder := newJoinOrderNode(node)
+	tableJoinOrder, cnt := newJoinOrderNode(node)
+	if cnt > joinComplexityLimit {
+		return nil, transform.SameTree, sql.ErrUnsupportedJoinFactorCount.New(joinComplexityLimit, cnt)
+	}
 
 	// Find a hinted or cost optimized access order for them
 	ordered := false

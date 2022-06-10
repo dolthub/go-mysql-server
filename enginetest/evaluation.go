@@ -256,6 +256,10 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queri
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
+	if len(bindings) > 0 {
+		_, err := e.PrepareQuery(ctx, q)
+		require.NoError(err)
+	}
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)
 
@@ -691,12 +695,12 @@ func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) b
 	return assert.Equal(t, ec, ac)
 }
 
-func extractQueryNode(node sql.Node) sql.Node {
+func ExtractQueryNode(node sql.Node) sql.Node {
 	switch node := node.(type) {
 	case *plan.QueryProcess:
-		return extractQueryNode(node.Child())
+		return ExtractQueryNode(node.Child())
 	case *analyzer.Releaser:
-		return extractQueryNode(node.Child)
+		return ExtractQueryNode(node.Child)
 	default:
 		return node
 	}
