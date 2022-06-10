@@ -8816,4 +8816,33 @@ var StatisticsQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "stats tables are mutable",
+		SetUpScript: []string{
+			"CREATE TABLE t (i float)",
+			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM mysql.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", uint64(4), float64(16.125), float64(1.25), float64(45.25)},
+				},
+			},
+			{
+				Query: `INSERT INTO mysql.column_statistics values ("fake_db", "fake_table", "fake_col", 1,2,3,4)`,
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM mysql.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", uint64(4), float64(16.125), float64(1.25), float64(45.25)},
+					{"fake_db", "fake_table", "fake_col", uint64(1), float64(2), float64(3), float64(4)},
+				},
+			},
+		},
+	},
 }

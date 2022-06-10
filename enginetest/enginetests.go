@@ -70,10 +70,17 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 }
 
-// TestAnalyzeQueries tests the statistics from ANALYZE TABLE
+// TestStatistics tests the statistics from ANALYZE TABLE
 func TestStatistics(t *testing.T, harness Harness) {
 	for _, script := range queries.StatisticsQueries {
 		TestScript(t, harness, script)
+	}
+}
+
+// TestStatisticsPrepared tests the statistics from ANALYZE TABLE
+func TestStatisticsPrepared(t *testing.T, harness Harness) {
+	for _, script := range queries.StatisticsQueries {
+		TestScriptPrepared(t, harness, script)
 	}
 }
 
@@ -5436,11 +5443,11 @@ func (p *memoryPersister) Persist(ctx *sql.Context, data []byte) error {
 		}
 		role := mysql_db.LoadRoleEdge(serialRoleEdge)
 		p.roles = append(p.roles, role)
-			}
+	}
 
-			// TODO: Fill in column statistics?
-			return nil
-		}
+	// TODO: Fill in column statistics?
+	return nil
+}
 
 func TestPrivilegePersistence(t *testing.T, h Harness) {
 	harness, ok := h.(ClientHarness)
