@@ -321,16 +321,16 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		return nil, err
 	}
 
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(bindings) > 0 {
-		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		parsed, err = plan.ApplyBindings(parsed, bindings)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return analyzed, nil

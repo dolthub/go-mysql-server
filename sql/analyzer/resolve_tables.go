@@ -268,7 +268,11 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if n.Database != nil {
 				db = n.Database.Name()
 			}
-			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.Name(), db), a)
+			var asof sql.Expression
+			if n.AsOf != nil {
+				asof = expression.NewLiteral(n.AsOf, nil)
+			}
+			to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOf(n.Name(), db, asof), a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
