@@ -1646,7 +1646,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	qualifier := c.Table.Qualifier.String()
 
-	schema, err := TableSpecToSchema(nil, c.TableSpec)
+	schema, err := TableSpecToSchema(ctx, c.TableSpec)
 	if err != nil {
 		return nil, err
 	}

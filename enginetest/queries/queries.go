@@ -8515,6 +8515,22 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
 		ExpectedErr: sql.ErrFunctionNotFound,
 	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
+		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
+		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
+		ExpectedErr: sql.ErrColumnDefaultSubquery,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, b int DEFAULT '2', c int DEFAULT `b`)",
+		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
