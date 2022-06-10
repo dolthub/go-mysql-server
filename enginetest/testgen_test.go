@@ -175,8 +175,8 @@ func TestWriteCreateTableQueries(t *testing.T) {
 	for _, tt := range queries.CreateTableQueries {
 		ctx := NewContext(harness)
 		engine := mustNewEngine(t, harness)
-		_ = MustQuery(ctx, engine, tt.WriteQuery)
-		res := MustQuery(ctx, engine, tt.SelectQuery)
+		_, _ = MustQuery(ctx, engine, tt.WriteQuery)
+		_, res := MustQuery(ctx, engine, tt.SelectQuery)
 
 		w.WriteString("  {\n")
 		w.WriteString(fmt.Sprintf("    WriteQuery:`%s`,\n", tt.WriteQuery))

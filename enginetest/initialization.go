@@ -177,7 +177,7 @@ func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScr
 	return e, nil
 }
 
-func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
+func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Row) {
 	sch, iter, err := e.Query(ctx, q)
 	if err != nil {
 		panic(err)
@@ -186,7 +186,42 @@ func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) []sql.Row {
 	if err != nil {
 		panic(err)
 	}
-	return rows
+	return sch, rows
+}
+
+func MustQueryWithBindings(ctx *sql.Context, e *sqle.Engine, q string, bindings map[string]sql.Expression) (sql.Schema, []sql.Row) {
+	ctx = ctx.WithQuery(q)
+	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	if err != nil {
+		panic(err)
+	}
+
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	if err != nil {
+		panic(err)
+	}
+
+	return sch, rows
+}
+
+func MustQueryWithPreBindings(ctx *sql.Context, e *sqle.Engine, q string, bindings map[string]sql.Expression) (sql.Node, sql.Schema, []sql.Row) {
+	ctx = ctx.WithQuery(q)
+	pre, err := e.PrepareQuery(ctx, q)
+	if err != nil {
+		panic(err)
+	}
+
+	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	if err != nil {
+		panic(err)
+	}
+
+	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	if err != nil {
+		panic(err)
+	}
+
+	return pre, sch, rows
 }
 
 func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
