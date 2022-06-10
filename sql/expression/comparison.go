@@ -392,7 +392,7 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 
 // Eval implements the Expression interface.
 func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if sql.IsText(re.Left().Type()) && sql.IsText(re.Right().Type()) {
+	if sql.IsText(re.Right().Type()) {
 		return re.compareRegexp(ctx, row)
 	}
 
