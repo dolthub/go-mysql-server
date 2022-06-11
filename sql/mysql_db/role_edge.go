@@ -44,7 +44,7 @@ func (r *RoleEdge) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry
 		FromUser:        row[roleEdgesTblColIndex_FROM_USER].(string),
 		ToHost:          row[roleEdgesTblColIndex_TO_HOST].(string),
 		ToUser:          row[roleEdgesTblColIndex_TO_USER].(string),
-		WithAdminOption: row[roleEdgesTblColIndex_WITH_ADMIN_OPTION].(string) == "Y",
+		WithAdminOption: row[roleEdgesTblColIndex_WITH_ADMIN_OPTION].(uint16) == 2,
 	}, nil
 }
 
@@ -61,9 +61,9 @@ func (r *RoleEdge) ToRow(ctx *sql.Context) sql.Row {
 	row[roleEdgesTblColIndex_TO_HOST] = r.ToHost
 	row[roleEdgesTblColIndex_TO_USER] = r.ToUser
 	if r.WithAdminOption {
-		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = "Y"
+		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(2)
 	} else {
-		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = "N"
+		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(1)
 	}
 	return row
 }

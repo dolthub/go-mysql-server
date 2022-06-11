@@ -15,28 +15,37 @@
 package sql
 
 import (
+	"reflect"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// Represents the LineString type.
+// LineStringType represents the LINESTRING type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-linestring.html
-type LineString struct {
-	SRID   uint32
-	Points []Point
-}
-
+// The type of the returned value is LineString.
 type LineStringType struct {
 	SRID        uint32
 	DefinedSRID bool
 }
 
+// LineString is the value type returned from LineStringType. Implements GeometryValue.
+type LineString struct {
+	SRID   uint32
+	Points []Point
+}
+
 var _ Type = LineStringType{}
 var _ SpatialColumnType = LineStringType{}
+var _ GeometryValue = LineString{}
 
-var ErrNotLineString = errors.NewKind("value of type %T is not a linestring")
+var (
+	ErrNotLineString = errors.NewKind("value of type %T is not a linestring")
+
+	lineStringValueType = reflect.TypeOf(LineString{})
+)
 
 // Compare implements Type interface.
 func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
@@ -146,7 +155,8 @@ func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 		return sqltypes.Value{}, nil
 	}
 
-	val := appendAndSlice(dest, []byte(pv.(string)))
+	//TODO: pretty sure this is wrong, pv is not a string type
+	val := appendAndSliceString(dest, pv.(string))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
@@ -159,6 +169,11 @@ func (t LineStringType) String() string {
 // Type implements Type interface.
 func (t LineStringType) Type() query.Type {
 	return sqltypes.Geometry
+}
+
+// ValueType implements Type interface.
+func (t LineStringType) ValueType() reflect.Type {
+	return lineStringValueType
 }
 
 // Zero implements Type interface.
@@ -191,3 +206,6 @@ func (t LineStringType) MatchSRID(v interface{}) error {
 	}
 	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
+
+// implementsGeometryValue implements GeometryValue interface.
+func (p LineString) implementsGeometryValue() {}

@@ -15,11 +15,16 @@
 package sql
 
 import (
+	"reflect"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemUintValueType = reflect.TypeOf(uint64(0))
 
 // systemUintType is an internal unsigned integer type ONLY for system variables.
 type systemUintType struct {
@@ -91,6 +96,14 @@ func (t systemUintType) Convert(v interface{}) (interface{}, error) {
 		if value == float64(uint64(value)) {
 			return t.Convert(uint64(value))
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	}
 
 	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
@@ -144,6 +157,11 @@ func (t systemUintType) String() string {
 // Type implements Type interface.
 func (t systemUintType) Type() query.Type {
 	return sqltypes.Uint64
+}
+
+// ValueType implements Type interface.
+func (t systemUintType) ValueType() reflect.Type {
+	return systemUintValueType
 }
 
 // Zero implements Type interface.

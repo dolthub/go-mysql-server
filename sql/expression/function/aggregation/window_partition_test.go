@@ -96,15 +96,15 @@ func mustNewRowIter(t *testing.T, ctx *sql.Context) sql.RowIter {
 	table := memory.NewTable("test", childSchema, nil)
 
 	rows := []sql.Row{
-		{int64(1), "forest", "leaf", 4},
-		{int64(2), "forest", "bark", 4},
-		{int64(3), "forest", "canopy", 6},
-		{int64(4), "forest", "bug", 3},
-		{int64(5), "forest", "wildflower", 10},
-		{int64(6), "desert", "sand", 4},
-		{int64(7), "desert", "cactus", 6},
-		{int64(8), "desert", "scorpion", 8},
-		{int64(9), "desert", "mummy", 5},
+		{int64(1), "forest", "leaf", int32(4)},
+		{int64(2), "forest", "bark", int32(4)},
+		{int64(3), "forest", "canopy", int32(6)},
+		{int64(4), "forest", "bug", int32(3)},
+		{int64(5), "forest", "wildflower", int32(10)},
+		{int64(6), "desert", "sand", int32(4)},
+		{int64(7), "desert", "cactus", int32(6)},
+		{int64(8), "desert", "scorpion", int32(8)},
+		{int64(9), "desert", "mummy", int32(5)},
 	}
 
 	for _, r := range rows {
@@ -135,15 +135,15 @@ func TestWindowPartition_MaterializeInput(t *testing.T) {
 	buf, ordering, err := i.materializeInput(ctx)
 	require.NoError(t, err)
 	expBuf := []sql.Row{
-		{int64(1), "forest", "leaf", 4},
-		{int64(2), "forest", "bark", 4},
-		{int64(3), "forest", "canopy", 6},
-		{int64(4), "forest", "bug", 3},
-		{int64(5), "forest", "wildflower", 10},
-		{int64(6), "desert", "sand", 4},
-		{int64(7), "desert", "cactus", 6},
-		{int64(8), "desert", "scorpion", 8},
-		{int64(9), "desert", "mummy", 5},
+		{int64(1), "forest", "leaf", int32(4)},
+		{int64(2), "forest", "bark", int32(4)},
+		{int64(3), "forest", "canopy", int32(6)},
+		{int64(4), "forest", "bug", int32(3)},
+		{int64(5), "forest", "wildflower", int32(10)},
+		{int64(6), "desert", "sand", int32(4)},
+		{int64(7), "desert", "cactus", int32(6)},
+		{int64(8), "desert", "scorpion", int32(8)},
+		{int64(9), "desert", "mummy", int32(5)},
 	}
 	require.ElementsMatch(t, expBuf, buf)
 	expOrd := []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
@@ -157,15 +157,15 @@ func TestWindowPartition_InitializePartitions(t *testing.T) {
 			PartitionBy: partitionByX,
 		})
 	i.input = []sql.Row{
-		{int64(1), "forest", "leaf", 4},
-		{int64(2), "forest", "bark", 4},
-		{int64(3), "forest", "canopy", 6},
-		{int64(4), "forest", "bug", 3},
-		{int64(5), "forest", "wildflower", 10},
-		{int64(6), "desert", "sand", 4},
-		{int64(7), "desert", "cactus", 6},
-		{int64(8), "desert", "scorpion", 8},
-		{int64(9), "desert", "mummy", 5},
+		{int64(1), "forest", "leaf", int32(4)},
+		{int64(2), "forest", "bark", int32(4)},
+		{int64(3), "forest", "canopy", int32(6)},
+		{int64(4), "forest", "bug", int32(3)},
+		{int64(5), "forest", "wildflower", int32(10)},
+		{int64(6), "desert", "sand", int32(4)},
+		{int64(7), "desert", "cactus", int32(6)},
+		{int64(8), "desert", "scorpion", int32(8)},
+		{int64(9), "desert", "mummy", int32(5)},
 	}
 	partitions, err := i.initializePartitions(ctx)
 	require.NoError(t, err)

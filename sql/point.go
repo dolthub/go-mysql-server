@@ -15,28 +15,37 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// Represents the Point type.
+// PointType represents the POINT type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
+// The type of the returned value is Point.
+type PointType struct {
+	SRID        uint32
+	DefinedSRID bool
+}
+
+// Point is the value type returned from PointType. Implements GeometryValue.
 type Point struct {
 	SRID uint32
 	X    float64
 	Y    float64
 }
 
-type PointType struct {
-	SRID        uint32
-	DefinedSRID bool
-}
-
 var _ Type = PointType{}
 var _ SpatialColumnType = PointType{}
+var _ GeometryValue = Point{}
 
-var ErrNotPoint = errors.NewKind("value of type %T is not a point")
+var (
+	ErrNotPoint = errors.NewKind("value of type %T is not a point")
+
+	pointValueType = reflect.TypeOf(Point{})
+)
 
 // Compare implements Type interface.
 func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
@@ -133,7 +142,10 @@ func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(pv.(string))), nil
+	//TODO: pretty sure this is wrong, pv is not a string type
+	val := appendAndSliceString(dest, pv.(string))
+
+	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
 
 // String implements Type interface.
@@ -149,6 +161,11 @@ func (t PointType) Type() query.Type {
 // Zero implements Type interface.
 func (t PointType) Zero() interface{} {
 	return Point{X: 0.0, Y: 0.0}
+}
+
+// ValueType implements Type interface.
+func (t PointType) ValueType() reflect.Type {
+	return pointValueType
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.
@@ -176,3 +193,6 @@ func (t PointType) MatchSRID(v interface{}) error {
 	}
 	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
+
+// implementsGeometryValue implements GeometryValue interface.
+func (p Point) implementsGeometryValue() {}

@@ -475,12 +475,6 @@ func TestLoadDataPrepared(t *testing.T) {
 }
 
 func TestScriptsPrepared(t *testing.T) {
-	//TODO: when foreign keys are implemented in the memory table, we can do the following test
-	for i := len(queries.ScriptTests) - 1; i >= 0; i-- {
-		if queries.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
-			queries.ScriptTests = append(queries.ScriptTests[:i], queries.ScriptTests[i+1:]...)
-		}
-	}
 	enginetest.TestScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 

@@ -17,21 +17,35 @@ package sql
 import (
 	"encoding/binary"
 	"math"
+	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
+// GeometryType represents the GEOMETRY type.
+// https://dev.mysql.com/doc/refman/8.0/en/gis-class-geometry.html
+// The type of the returned value is one of the following (each implements GeometryValue): Point, Polygon, LineString.
 type GeometryType struct {
 	SRID        uint32
 	DefinedSRID bool
 }
 
+// GeometryValue is the value type returned from GeometryType, which is an interface over the following types:
+// Point, Polygon, LineString.
+type GeometryValue interface {
+	implementsGeometryValue()
+}
+
 var _ Type = GeometryType{}
 var _ SpatialColumnType = GeometryType{}
 
-var ErrNotGeometry = errors.NewKind("Value of type %T is not a geometry")
+var (
+	ErrNotGeometry = errors.NewKind("Value of type %T is not a geometry")
+
+	geometryValueType = reflect.TypeOf((*GeometryValue)(nil)).Elem()
+)
 
 const (
 	CartesianSRID  = uint32(0)
@@ -262,7 +276,8 @@ func (t GeometryType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, nil
 	}
 
-	val := appendAndSlice(dest, []byte(pv.(string)))
+	//TODO: pretty sure this is wrong, pv is not a string type
+	val := appendAndSliceString(dest, pv.(string))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
@@ -275,6 +290,11 @@ func (t GeometryType) String() string {
 // Type implements Type interface.
 func (t GeometryType) Type() query.Type {
 	return sqltypes.Geometry
+}
+
+// ValueType implements Type interface.
+func (t GeometryType) ValueType() reflect.Type {
+	return geometryValueType
 }
 
 // Zero implements Type interface.

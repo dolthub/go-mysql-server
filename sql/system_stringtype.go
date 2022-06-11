@@ -15,9 +15,13 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemStringValueType = reflect.TypeOf(string(""))
 
 // systemStringType is an internal string type ONLY for system variables.
 type systemStringType struct {
@@ -98,7 +102,7 @@ func (t systemStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSlice(dest, []byte(v.(string)))
+	val := appendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
@@ -111,6 +115,11 @@ func (t systemStringType) String() string {
 // Type implements Type interface.
 func (t systemStringType) Type() query.Type {
 	return sqltypes.VarChar
+}
+
+// ValueType implements Type interface.
+func (t systemStringType) ValueType() reflect.Type {
+	return systemStringValueType
 }
 
 // Zero implements Type interface.
