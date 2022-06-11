@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -144,15 +145,15 @@ func TestEnumConvert(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, test.expectedVal, val)
 				if test.val != nil {
-					mar, err := typ.Marshal(test.val)
-					require.NoError(t, err)
-					umar, err := typ.Unmarshal(mar)
-					require.NoError(t, err)
+					umar, ok := typ.At(int(val.(uint16)))
+					require.True(t, ok)
 					cmp, err := typ.Compare(test.val, umar)
 					require.NoError(t, err)
 					assert.Equal(t, 0, cmp)
+					assert.Equal(t, typ.ValueType(), reflect.TypeOf(val))
+				} else {
+					assert.Equal(t, test.expectedVal, val)
 				}
 			}
 		})

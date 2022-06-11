@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -53,12 +54,15 @@ var (
 	Blob       = MustCreateBinary(sqltypes.Blob, textBlobMax)
 	MediumBlob = MustCreateBinary(sqltypes.Blob, mediumTextBlobMax)
 	LongBlob   = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
+
+	stringValueType = reflect.TypeOf(string(""))
 )
 
 // StringType represents all string types, including VARCHAR and BLOB.
 // https://dev.mysql.com/doc/refman/8.0/en/char.html
 // https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html
 // https://dev.mysql.com/doc/refman/8.0/en/blob.html
+// The type of the returned value is string.
 type StringType interface {
 	Type
 	CharacterSet() CharacterSet
@@ -349,7 +353,7 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSlice(dest, []byte(v.(string)))
+	val := appendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
@@ -407,6 +411,11 @@ func (t stringType) Type() query.Type {
 	return t.baseType
 }
 
+// ValueType implements Type interface.
+func (t stringType) ValueType() reflect.Type {
+	return stringValueType
+}
+
 // Zero implements Type interface.
 func (t stringType) Zero() interface{} {
 	return ""
@@ -442,7 +451,14 @@ func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, erro
 	}
 }
 
-func appendAndSlice(buffer, addition []byte) (slice []byte) {
+func appendAndSliceString(buffer []byte, addition string) (slice []byte) {
+	stop := len(buffer)
+	buffer = append(buffer, addition...)
+	slice = buffer[stop:]
+	return
+}
+
+func appendAndSliceBytes(buffer, addition []byte) (slice []byte) {
 	stop := len(buffer)
 	buffer = append(buffer, addition...)
 	slice = buffer[stop:]

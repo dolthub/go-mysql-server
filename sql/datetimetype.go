@@ -16,7 +16,10 @@ package sql
 
 import (
 	"math"
+	"reflect"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -87,10 +90,13 @@ var (
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime)
 	// Timestamp is an UNIX timestamp.
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp)
+
+	datetimeValueType = reflect.TypeOf(time.Time{})
 )
 
-// Represents DATE, DATETIME, and TIMESTAMP.
+// DatetimeType represents DATE, DATETIME, and TIMESTAMP.
 // https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+// The type of the returned value is time.Time.
 type DatetimeType interface {
 	Type
 	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
@@ -275,6 +281,16 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 			return zeroTime, nil
 		}
 		return zeroTime, ErrConvertingToTime.New(v)
+	case decimal.Decimal:
+		if value.IsZero() {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case decimal.NullDecimal:
+		if value.Valid && value.Decimal.IsZero() {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
 	default:
 		return zeroTime, ErrConvertToSQL.New(t)
 	}
@@ -317,37 +333,37 @@ func (t datetimeType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	vt := v.(time.Time)
 
 	var typ query.Type
-	var val []byte
+	var val string
 
 	switch t.baseType {
 	case sqltypes.Date:
 		typ = sqltypes.Date
 		if vt.Equal(zeroTime) {
-			val = []byte(vt.Format(zeroDateStr))
+			val = vt.Format(zeroDateStr)
 		} else {
-			val = []byte(vt.Format(DateLayout))
+			val = vt.Format(DateLayout)
 		}
 	case sqltypes.Datetime:
 		typ = sqltypes.Datetime
 		if vt.Equal(zeroTime) {
-			val = []byte(vt.Format(zeroTimestampDatetimeStr))
+			val = vt.Format(zeroTimestampDatetimeStr)
 		} else {
-			val = []byte(vt.Format(TimestampDatetimeLayout))
+			val = vt.Format(TimestampDatetimeLayout)
 		}
 	case sqltypes.Timestamp:
 		typ = sqltypes.Timestamp
 		if vt.Equal(zeroTime) {
-			val = []byte(vt.Format(zeroTimestampDatetimeStr))
+			val = vt.Format(zeroTimestampDatetimeStr)
 		} else {
-			val = []byte(vt.Format(TimestampDatetimeLayout))
+			val = vt.Format(TimestampDatetimeLayout)
 		}
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
 
-	val = appendAndSlice(dest, val)
+	valBytes := appendAndSliceString(dest, val)
 
-	return sqltypes.MakeTrusted(typ, val), nil
+	return sqltypes.MakeTrusted(typ, valBytes), nil
 }
 
 func (t datetimeType) String() string {
@@ -366,6 +382,11 @@ func (t datetimeType) String() string {
 // Type implements Type interface.
 func (t datetimeType) Type() query.Type {
 	return t.baseType
+}
+
+// ValueType implements Type interface.
+func (t datetimeType) ValueType() reflect.Type {
+	return datetimeValueType
 }
 
 func (t datetimeType) Zero() interface{} {

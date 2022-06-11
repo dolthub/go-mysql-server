@@ -16,16 +16,24 @@ package sql
 
 import (
 	"encoding/json"
+	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-var ErrConvertingToJSON = errors.NewKind("value %v is not valid JSON")
+var (
+	ErrConvertingToJSON = errors.NewKind("value %v is not valid JSON")
+
+	jsonValueType = reflect.TypeOf((*JSONValue)(nil)).Elem()
+)
 
 var JSON JsonType = jsonType{}
 
+// JsonType represents the JSON type.
+// https://dev.mysql.com/doc/refman/8.0/en/json.html
+// The type of the returned value is JSONValue.
 type JsonType interface {
 	Type
 }
@@ -97,7 +105,7 @@ func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, err
 	}
 
-	val := appendAndSlice(dest, []byte(s))
+	val := appendAndSliceString(dest, s)
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
@@ -110,6 +118,11 @@ func (t jsonType) String() string {
 // Type implements Type interface.
 func (t jsonType) Type() query.Type {
 	return sqltypes.TypeJSON
+}
+
+// ValueType implements Type interface.
+func (t jsonType) ValueType() reflect.Type {
+	return jsonValueType
 }
 
 // Zero implements Type interface.

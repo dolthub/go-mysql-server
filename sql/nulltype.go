@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -81,6 +83,11 @@ func (t nullType) String() string {
 // Type implements Type interface.
 func (t nullType) Type() query.Type {
 	return sqltypes.Null
+}
+
+// ValueType implements Type interface.
+func (t nullType) ValueType() reflect.Type {
+	return nil
 }
 
 // Zero implements Type interface.

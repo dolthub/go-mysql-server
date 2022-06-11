@@ -15,28 +15,37 @@
 package sql
 
 import (
+	"reflect"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// Represents the Polygon type.
+// PolygonType represents the POLYGON type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-polygon.html
-type Polygon struct {
-	SRID  uint32
-	Lines []LineString
-}
-
+// The type of the returned value is Polygon.
 type PolygonType struct {
 	SRID        uint32
 	DefinedSRID bool
 }
 
+// Polygon is the value type returned from PolygonType. Implements GeometryValue.
+type Polygon struct {
+	SRID  uint32
+	Lines []LineString
+}
+
 var _ Type = PolygonType{}
 var _ SpatialColumnType = PolygonType{}
+var _ GeometryValue = Polygon{}
 
-var ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
+var (
+	ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
+
+	polygonValueType = reflect.TypeOf(Polygon{})
+)
 
 // Compare implements Type interface.
 func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
@@ -146,7 +155,10 @@ func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(lv.(string))), nil
+	//TODO: pretty sure this is wrong, lv is not a string type
+	val := appendAndSliceString(dest, lv.(string))
+
+	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
 
 // String implements Type interface.
@@ -157,6 +169,11 @@ func (t PolygonType) String() string {
 // Type implements Type interface.
 func (t PolygonType) Type() query.Type {
 	return sqltypes.Geometry
+}
+
+// ValueType implements Type interface.
+func (t PolygonType) ValueType() reflect.Type {
+	return polygonValueType
 }
 
 // Zero implements Type interface.
@@ -189,3 +206,6 @@ func (t PolygonType) MatchSRID(v interface{}) error {
 	}
 	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
+
+// implementsGeometryValue implements GeometryValue interface.
+func (p Polygon) implementsGeometryValue() {}

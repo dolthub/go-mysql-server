@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -95,6 +96,9 @@ func TestYearConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if val != nil {
+					assert.Equal(t, Year.ValueType(), reflect.TypeOf(val))
+				}
 			}
 		})
 	}

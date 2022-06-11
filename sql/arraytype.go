@@ -18,10 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var arrayValueType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 
 type arrayType struct {
 	underlying Type
@@ -153,7 +156,7 @@ func (t arrayType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		}
 	}
 
-	val = appendAndSlice(dest, val)
+	val = appendAndSliceBytes(dest, val)
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
@@ -164,6 +167,10 @@ func (t arrayType) String() string {
 
 func (t arrayType) Type() query.Type {
 	return sqltypes.TypeJSON
+}
+
+func (t arrayType) ValueType() reflect.Type {
+	return arrayValueType
 }
 
 func (t arrayType) Zero() interface{} {

@@ -16,8 +16,11 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -35,23 +38,26 @@ const (
 var (
 	ErrConvertingToEnum  = errors.NewKind("value %v is not valid for this Enum")
 	ErrUnmarshallingEnum = errors.NewKind("value %v is not a marshalled value for this Enum")
+
+	enumValueType = reflect.TypeOf(uint16(0))
 )
 
 // Comments with three slashes were taken directly from the linked documentation.
 
-// Represents the ENUM type.
+// EnumType represents the ENUM type.
 // https://dev.mysql.com/doc/refman/8.0/en/enum.html
+// The type of the returned value is uint16.
 type EnumType interface {
 	Type
+	// At returns the string at the given index, as well if the string was found.
 	At(index int) (string, bool)
 	CharacterSet() CharacterSet
 	Collation() Collation
-	ConvertToIndex(v interface{}) (int, error)
+	// IndexOf returns the index of the given string. If the string was not found, then this returns -1.
 	IndexOf(v string) int
-	//TODO: move this out of go-mysql-server and into the Dolt layer
-	Marshal(v interface{}) (int64, error)
+	// NumberOfElements returns the number of enumerations.
 	NumberOfElements() uint16
-	Unmarshal(v int64) (string, error)
+	// Values returns the elements, in order, of every enumeration.
 	Values() []string
 }
 
@@ -104,18 +110,20 @@ func (t enumType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	ai, err := t.ConvertToIndex(a)
+	ai, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bi, err := t.ConvertToIndex(b)
+	bi, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
+	au := ai.(uint16)
+	bu := bi.(uint16)
 
-	if ai < bi {
+	if au < bu {
 		return -1, nil
-	} else if ai > bi {
+	} else if au > bu {
 		return 1, nil
 	}
 	return 0, nil
@@ -129,8 +137,8 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 
 	switch value := v.(type) {
 	case int:
-		if str, ok := t.At(value); ok {
-			return str, nil
+		if _, ok := t.At(value); ok {
+			return uint16(value), nil
 		}
 	case uint:
 		return t.Convert(int(value))
@@ -154,12 +162,17 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(int(value))
 	case float64:
 		return t.Convert(int(value))
+	case decimal.Decimal:
+		return t.Convert(value.IntPart())
+	case decimal.NullDecimal:
+		if !value.Valid {
+			return nil, nil
+		}
+		return t.Convert(value.Decimal.IntPart())
 	case string:
 		if index := t.IndexOf(value); index != -1 {
-			realStr, _ := t.At(index)
-			return realStr, nil
+			return uint16(index), nil
 		}
-		return nil, ErrConvertingToEnum.New(`"` + value + `"`)
 	case []byte:
 		return t.Convert(string(value))
 	}
@@ -189,47 +202,6 @@ func (t enumType) Equals(otherType Type) bool {
 	return false
 }
 
-// ConvertToIndex is similar to Convert, except that it converts to the index rather than the value.
-// Returns an error on nil.
-func (t enumType) ConvertToIndex(v interface{}) (int, error) {
-	switch value := v.(type) {
-	case int:
-		if _, ok := t.At(value); ok {
-			return value, nil
-		}
-	case uint:
-		return t.ConvertToIndex(int(value))
-	case int8:
-		return t.ConvertToIndex(int(value))
-	case uint8:
-		return t.ConvertToIndex(int(value))
-	case int16:
-		return t.ConvertToIndex(int(value))
-	case uint16:
-		return t.ConvertToIndex(int(value))
-	case int32:
-		return t.ConvertToIndex(int(value))
-	case uint32:
-		return t.ConvertToIndex(int(value))
-	case int64:
-		return t.ConvertToIndex(int(value))
-	case uint64:
-		return t.ConvertToIndex(int(value))
-	case float32:
-		return t.ConvertToIndex(int(value))
-	case float64:
-		return t.ConvertToIndex(int(value))
-	case string:
-		if index := t.IndexOf(value); index != -1 {
-			return index, nil
-		}
-	case []byte:
-		return t.ConvertToIndex(string(value))
-	}
-
-	return -1, ErrConvertingToEnum.New(v)
-}
-
 // Promote implements the Type interface.
 func (t enumType) Promote() Type {
 	return t
@@ -240,12 +212,13 @@ func (t enumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	value, err := t.Convert(v)
+	convertedValue, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
+	value, _ := t.At(int(convertedValue.(uint16)))
 
-	val := appendAndSlice(dest, []byte(value.(string)))
+	val := appendAndSliceString(dest, value)
 
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }
@@ -267,13 +240,18 @@ func (t enumType) Type() query.Type {
 	return sqltypes.Enum
 }
 
+// ValueType implements Type interface.
+func (t enumType) ValueType() reflect.Type {
+	return enumValueType
+}
+
 // Zero implements Type interface.
 func (t enumType) Zero() interface{} {
 	/// If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
 	return t.indexToVal[0]
 }
 
-// At returns the string at the given index, as well if the string was found.
+// At implements EnumType interface.
 func (t enumType) At(index int) (string, bool) {
 	/// The elements listed in the column specification are assigned index numbers, beginning with 1.
 	index -= 1
@@ -283,15 +261,17 @@ func (t enumType) At(index int) (string, bool) {
 	return t.indexToVal[index], true
 }
 
+// CharacterSet implements EnumType interface.
 func (t enumType) CharacterSet() CharacterSet {
 	return t.collation.CharacterSet()
 }
 
+// Collation implements EnumType interface.
 func (t enumType) Collation() Collation {
 	return t.collation
 }
 
-// IndexOf returns the index of the given string. If the string was not found, then this returns -1.
+// IndexOf implements EnumType interface.
 func (t enumType) IndexOf(v string) int {
 	if index, ok := t.valToIndex[v]; ok {
 		return index
@@ -308,27 +288,12 @@ func (t enumType) IndexOf(v string) int {
 	return -1
 }
 
-// Marshal takes a valid Enum value and returns it as an int64.
-func (t enumType) Marshal(v interface{}) (int64, error) {
-	i, err := t.ConvertToIndex(v)
-	return int64(i), err
-}
-
-// NumberOfElements returns the number of enumerations.
+// NumberOfElements implements EnumType interface.
 func (t enumType) NumberOfElements() uint16 {
 	return uint16(len(t.indexToVal))
 }
 
-// Unmarshal takes a previously-marshalled value and returns it as a string.
-func (t enumType) Unmarshal(v int64) (string, error) {
-	str, found := t.At(int(v))
-	if !found {
-		return "", ErrUnmarshallingEnum.New(v)
-	}
-	return str, nil
-}
-
-// Values returns the elements, in order, of every enumeration.
+// Values implements EnumType interface.
 func (t enumType) Values() []string {
 	vals := make([]string, len(t.indexToVal))
 	copy(vals, t.indexToVal)

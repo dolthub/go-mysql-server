@@ -15,8 +15,11 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 )
 
 // systemSetType is an internal set type ONLY for system variables.
@@ -37,19 +40,21 @@ func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
 	if a == nil || b == nil {
 		return 0, ErrInvalidSystemVariableValue.New(t.varName, nil)
 	}
-	ai, err := t.Marshal(a)
+	ai, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bi, err := t.Marshal(b)
+	bi, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
+	au := ai.(uint64)
+	bu := bi.(uint64)
 
-	if ai == bi {
+	if au == bu {
 		return 0, nil
 	}
-	if ai < bi {
+	if au < bu {
 		return -1, nil
 	}
 	return 1, nil
@@ -87,6 +92,14 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 		if value == float64(int64(value)) {
 			return t.SetType.Convert(int64(value))
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	case string:
 		return t.SetType.Convert(value)
 	}
@@ -121,13 +134,16 @@ func (t systemSetType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-
-	v, err := t.Convert(v)
+	convertedValue, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+	value, err := t.BitsToString(convertedValue.(uint64))
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSlice(dest, []byte(v.(string)))
+	val := appendAndSliceString(dest, value)
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
@@ -142,6 +158,11 @@ func (t systemSetType) Type() query.Type {
 	return sqltypes.VarChar
 }
 
+// ValueType implements Type interface.
+func (t systemSetType) ValueType() reflect.Type {
+	return t.SetType.ValueType()
+}
+
 // Zero implements Type interface.
 func (t systemSetType) Zero() interface{} {
 	return ""
@@ -149,11 +170,11 @@ func (t systemSetType) Zero() interface{} {
 
 // EncodeValue implements SystemVariableType interface.
 func (t systemSetType) EncodeValue(val interface{}) (string, error) {
-	expectedVal, ok := val.(string)
+	expectedVal, ok := val.(uint64)
 	if !ok {
 		return "", ErrSystemVariableCodeFail.New(val, t.String())
 	}
-	return expectedVal, nil
+	return t.BitsToString(expectedVal)
 }
 
 // DecodeValue implements SystemVariableType interface.
