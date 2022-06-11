@@ -62,11 +62,12 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(left, right)
 	}
 
-	// ENUM and SET must be considered when doing comparisons, as they can match arbitrary strings to numbers based on
-	// their elements. For other types it seems there are other considerations, therefore we only take the type for
-	// ENUM and SET, and default to direct literal comparisons for all other types. Eventually we will need to make our
-	// comparisons context-sensitive, as all comparisons should probably be based on the column/variable if present.
-	// Until then, this is a workaround specifically for ENUM and SET.
+	// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
+	// base.
+	//
+	// The best overall method would be to assign type priority. For example, INT would have a higher priority than
+	// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
+	// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
 	var compareType sql.Type
 	switch c.Left().(type) {
 	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
@@ -80,7 +81,8 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	if compareType != nil {
 		_, isEnum := compareType.(sql.EnumType)
 		_, isSet := compareType.(sql.SetType)
-		if !isEnum && !isSet {
+		_, isTime := compareType.(sql.TimeType)
+		if !isEnum && !isSet && !isTime {
 			compareType = nil
 		}
 	}
@@ -115,11 +117,12 @@ func (c *comparison) NullSafeCompare(ctx *sql.Context, row sql.Row) (int, error)
 		return c.Left().Type().Compare(left, right)
 	}
 
-	// ENUM and SET must be considered when doing comparisons, as they can match arbitrary strings to numbers based on
-	// their elements. For other types it seems there are other considerations, therefore we only take the type for
-	// ENUM and SET, and default to direct literal comparisons for all other types. Eventually we will need to make our
-	// comparisons context-sensitive, as all comparisons should probably be based on the column/variable if present.
-	// Until then, this is a workaround specifically for ENUM and SET.
+	// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
+	// base.
+	//
+	// The best overall method would be to assign type priority. For example, INT would have a higher priority than
+	// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
+	// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
 	var compareType sql.Type
 	switch c.Left().(type) {
 	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
@@ -133,7 +136,8 @@ func (c *comparison) NullSafeCompare(ctx *sql.Context, row sql.Row) (int, error)
 	if compareType != nil {
 		_, isEnum := compareType.(sql.EnumType)
 		_, isSet := compareType.(sql.SetType)
-		if !isEnum && !isSet {
+		_, isTime := compareType.(sql.TimeType)
+		if !isEnum && !isSet && !isTime {
 			compareType = nil
 		}
 	}

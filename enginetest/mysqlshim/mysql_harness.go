@@ -15,6 +15,7 @@
 package mysqlshim
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -30,16 +31,36 @@ import (
 type MySQLHarness struct {
 	shim           *MySQLShim
 	skippedQueries map[string]struct{}
+	setupData      []setup.SetupScript
+	session        sql.Session
 }
 
-func (m *MySQLHarness) Setup(source ...[]setup.SetupScript) {
-	//TODO implement me
-	panic("implement me")
+//TODO: refactor to remove enginetest cycle
+var _ enginetest.Harness = (*MySQLHarness)(nil)
+var _ enginetest.IndexHarness = (*MySQLHarness)(nil)
+var _ enginetest.ForeignKeyHarness = (*MySQLHarness)(nil)
+var _ enginetest.KeylessTableHarness = (*MySQLHarness)(nil)
+var _ enginetest.ClientHarness = (*MySQLHarness)(nil)
+var _ enginetest.SkippingHarness = (*MySQLHarness)(nil)
+
+func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
+	m.setupData = nil
+	for i := range setupData {
+		m.setupData = append(m.setupData, setupData[i]...)
+	}
+	return
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	//TODO implement me
-	panic("implement me")
+	return enginetest.NewEngineWithProviderSetup(t, m, m.shim, m.setupData)
+}
+
+func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
+	session := sql.NewBaseSessionWithClientServer("address", client, 1)
+	return sql.NewContext(
+		context.Background(),
+		sql.WithSession(session),
+	)
 }
 
 func (m *MySQLHarness) Cleanup() error {
@@ -58,19 +79,13 @@ type MySQLTable struct {
 	tableName string
 }
 
-var _ enginetest.Harness = (*MySQLHarness)(nil)
-var _ enginetest.SkippingHarness = (*MySQLHarness)(nil)
-var _ enginetest.IndexHarness = (*MySQLHarness)(nil)
-var _ enginetest.ForeignKeyHarness = (*MySQLHarness)(nil)
-var _ enginetest.KeylessTableHarness = (*MySQLHarness)(nil)
-
 // NewMySQLHarness returns a new MySQLHarness.
 func NewMySQLHarness(user string, password string, host string, port int) (*MySQLHarness, error) {
 	shim, err := NewMySQLShim(user, password, host, port)
 	if err != nil {
 		return nil, err
 	}
-	return &MySQLHarness{shim, make(map[string]struct{})}, nil
+	return &MySQLHarness{shim, make(map[string]struct{}), nil, nil}, nil
 }
 
 // Parallelism implements the interface Harness.
@@ -126,7 +141,14 @@ func (m *MySQLHarness) NewTable(db sql.Database, name string, schema sql.Primary
 
 // NewContext implements the interface Harness.
 func (m *MySQLHarness) NewContext() *sql.Context {
-	return sql.NewEmptyContext()
+	if m.session == nil {
+		m.session = enginetest.NewBaseSession()
+	}
+
+	return sql.NewContext(
+		context.Background(),
+		sql.WithSession(m.session),
+	)
 }
 
 // SkipQueryTest implements the interface SkippingHarness.

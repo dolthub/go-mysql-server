@@ -45,12 +45,12 @@ func newMySQLIter(rows *dsql.Rows) mysqlIter {
 			scanType = reflect.TypeOf("")
 		case reflect.TypeOf(dsql.NullBool{}):
 			scanType = reflect.TypeOf(true)
-		//case reflect.TypeOf(dsql.NullByte{}): // Not supported in go 1.15, need to upgrade to 1.17
-		//	scanType = reflect.TypeOf(byte(0))
+		case reflect.TypeOf(dsql.NullByte{}):
+			scanType = reflect.TypeOf(byte(0))
 		case reflect.TypeOf(dsql.NullFloat64{}):
 			scanType = reflect.TypeOf(float64(0))
-		//case reflect.TypeOf(dsql.NullInt16{}): // Not supported in go 1.15, need to upgrade to 1.17
-		//	scanType = reflect.TypeOf(int16(0))
+		case reflect.TypeOf(dsql.NullInt16{}):
+			scanType = reflect.TypeOf(int16(0))
 		case reflect.TypeOf(dsql.NullInt32{}):
 			scanType = reflect.TypeOf(int32(0))
 		case reflect.TypeOf(dsql.NullInt64{}):
