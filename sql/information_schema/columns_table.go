@@ -192,9 +192,6 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 
 				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
 				colDefault = getColumnDefaultValue(ctx, columnNameToDefault[fullColumnName])
-				if colDefault != nil {
-					colDefault = fmt.Sprint(colDefault)
-				}
 
 				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 				if c.PrimaryKey {
@@ -297,11 +294,11 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
 			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
 		}
-		return defStr
+		fmt.Sprint(defStr)
 	}
 
 	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
-		return defStr
+		fmt.Sprint(defStr)
 	}
 
 	v, err := cd.Eval(ctx, nil)
@@ -313,5 +310,5 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 		v = l.Format("2006-01-02 15:04:05")
 	}
 
-	return v
+	return fmt.Sprint(v)
 }

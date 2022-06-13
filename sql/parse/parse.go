@@ -2872,7 +2872,7 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	case *expression.UnaryMinus:
 		_, isLiteral = e.Child.(*expression.Literal)
 	case *expression.UnresolvedFunction:
-		if !strings.HasPrefix(exprStr, "(") && !strings.HasPrefix(exprStr, ")") && (e.Name() == "now" || e.Name() == "current_timestamp") {
+		if !strings.HasPrefix(exprStr, "(") && !strings.HasSuffix(exprStr, ")") && (e.Name() == "now" || e.Name() == "current_timestamp") {
 			isLiteral = true
 		}
 	default:
