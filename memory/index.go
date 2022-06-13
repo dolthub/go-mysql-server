@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -39,6 +40,7 @@ type Index struct {
 var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
 var _ sql.OrderedIndex = (*Index)(nil)
+var _ sql.StatisticsIndex = (*Index)(nil)
 
 func (idx *Index) Database() string                    { return idx.DB }
 func (idx *Index) Driver() string                      { return idx.DriverName }
@@ -187,6 +189,43 @@ func (idx *Index) Table() string { return idx.TableName }
 
 func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
 	return filters
+}
+
+func (idx *Index) NumFilteredRows(ctx *sql.Context) (uint64, error) {
+	partitionIter, err := idx.Tbl.Partitions(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer partitionIter.Close(ctx)
+	// TODO: async?
+	// TODO: shouldn't calculate these at runtime and instead should be retrieved from some statistics struct (stored in memory)
+	count := uint64(0)
+	for {
+		part, err := partitionIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return 0, err
+		}
+
+		partRowIter, err := idx.Tbl.PartitionRows(ctx, part)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return 0, err
+		}
+
+		_, err = partRowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return 0, err
+		}
+
+		count++
+	}
+
+	return count, nil
 }
 
 // ExpressionsIndex is an index made out of one or more expressions (usually field expressions), linked to a Table.

@@ -92,3 +92,16 @@ type ColumnExpressionType struct {
 	Expression string
 	Type       Type
 }
+
+// TODO: this should be / contain the histogram
+type Statistics struct {
+}
+
+// StatisticsIndex is an extension of Index that provides information about the number of indexed rows, and other
+// information that can help with query planning.
+// TODO: this needs to ensure that everything that implements this has a way of calculating, storing, and retrieving this information
+type StatisticsIndex interface {
+	// NumFilteredRows returns the filtered count of rows contained in the table
+	// TODO: should be the same as sql.StatisticsTable.NumRows(), but using an index lookup?
+	NumFilteredRows(*Context) (uint64, error)
+}
