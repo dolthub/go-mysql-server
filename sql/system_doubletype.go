@@ -15,11 +15,16 @@
 package sql
 
 import (
+	"reflect"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemDoubleValueType = reflect.TypeOf(float64(0))
 
 // systemDoubleType is an internal double type ONLY for system variables.
 type systemDoubleType struct {
@@ -87,6 +92,14 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, error) {
 		if value >= t.lowerbound && value <= t.upperbound {
 			return value, nil
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	}
 
 	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
@@ -140,6 +153,11 @@ func (t systemDoubleType) String() string {
 // Type implements Type interface.
 func (t systemDoubleType) Type() query.Type {
 	return sqltypes.Float64
+}
+
+// ValueType implements Type interface.
+func (t systemDoubleType) ValueType() reflect.Type {
+	return systemDoubleValueType
 }
 
 // Zero implements Type interface.

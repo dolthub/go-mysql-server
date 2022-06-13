@@ -4879,7 +4879,14 @@ var QueryTests = []QueryTest{
 			{"XXXXX XXX"},
 		},
 	},
-
+	{
+		Query:    `SELECT 20 REGEXP '^[-]?2[0-9]+$'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT 30 REGEXP '^[-]?2[0-9]+$'`,
+		Expected: []sql.Row{{false}},
+	},
 	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",
 		Expected: []sql.Row{

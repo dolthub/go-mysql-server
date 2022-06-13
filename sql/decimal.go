@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -37,14 +38,29 @@ var (
 	ErrConvertingToDecimal   = errors.NewKind("value %v is not a valid Decimal")
 	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
 	ErrMarshalNullDecimal    = errors.NewKind("Decimal cannot marshal a null value")
+
+	decimalValueType = reflect.TypeOf(decimal.Decimal{})
 )
 
+// DecimalType represents the DECIMAL type.
+// https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
+// The type of the returned value is decimal.Decimal.
 type DecimalType interface {
 	Type
-	ConvertToDecimal(v interface{}) (decimal.NullDecimal, error)
+	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
+	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
+	// decimal.NullDecimal.
+	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
+	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
+	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
 	ExclusiveUpperBound() decimal.Decimal
+	// MaximumScale returns the maximum scale allowed for the current precision.
 	MaximumScale() uint8
+	// Precision returns the base-10 precision of the type, which is the total number of digits. For example, a
+	// precision of 3 means that 999, 99.9, 9.99, and .999 are all valid maximums (depending on the scale).
 	Precision() uint8
+	// Scale returns the scale, or number of digits after the decimal, that may be held.
+	// This will always be less than or equal to the precision.
 	Scale() uint8
 }
 
@@ -103,11 +119,11 @@ func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	af, err := t.ConvertToDecimal(a)
+	af, err := t.ConvertToNullDecimal(a)
 	if err != nil {
 		return 0, err
 	}
-	bf, err := t.ConvertToDecimal(b)
+	bf, err := t.ConvertToNullDecimal(b)
 	if err != nil {
 		return 0, err
 	}
@@ -117,18 +133,18 @@ func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t decimalType) Convert(v interface{}) (interface{}, error) {
-	dec, err := t.ConvertToDecimal(v)
+	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
 		return nil, err
 	}
 	if !dec.Valid {
 		return nil, nil
 	}
-	return dec.Decimal.StringFixed(int32(t.scale)), nil
+	return dec.Decimal, nil
 }
 
-// Precision returns the precision, or total number of digits, that may be held.
-func (t decimalType) ConvertToDecimal(v interface{}) (decimal.NullDecimal, error) {
+// ConvertToNullDecimal implements DecimalType interface.
+func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error) {
 	if v == nil {
 		return decimal.NullDecimal{}, nil
 	}
@@ -137,21 +153,21 @@ func (t decimalType) ConvertToDecimal(v interface{}) (decimal.NullDecimal, error
 
 	switch value := v.(type) {
 	case int:
-		return t.ConvertToDecimal(int64(value))
+		return t.ConvertToNullDecimal(int64(value))
 	case uint:
-		return t.ConvertToDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(value))
 	case int8:
-		return t.ConvertToDecimal(int64(value))
+		return t.ConvertToNullDecimal(int64(value))
 	case uint8:
-		return t.ConvertToDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(value))
 	case int16:
-		return t.ConvertToDecimal(int64(value))
+		return t.ConvertToNullDecimal(int64(value))
 	case uint16:
-		return t.ConvertToDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(value))
 	case int32:
 		res = decimal.NewFromInt32(value)
 	case uint32:
-		return t.ConvertToDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(value))
 	case int64:
 		res = decimal.NewFromInt(value)
 	case uint64:
@@ -175,11 +191,11 @@ func (t decimalType) ConvertToDecimal(v interface{}) (decimal.NullDecimal, error
 			}
 		}
 	case *big.Float:
-		return t.ConvertToDecimal(value.Text('f', -1))
+		return t.ConvertToNullDecimal(value.Text('f', -1))
 	case *big.Int:
-		return t.ConvertToDecimal(value.Text(10))
+		return t.ConvertToNullDecimal(value.Text(10))
 	case *big.Rat:
-		return t.ConvertToDecimal(new(big.Float).SetRat(value))
+		return t.ConvertToNullDecimal(new(big.Float).SetRat(value))
 	case decimal.Decimal:
 		res = value
 	case decimal.NullDecimal:
@@ -232,7 +248,7 @@ func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSlice(dest, []byte(value.(string)))
+	val := appendAndSliceString(dest, value.(decimal.Decimal).StringFixed(int32(t.scale)))
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
@@ -242,18 +258,22 @@ func (t decimalType) String() string {
 	return fmt.Sprintf("DECIMAL(%v,%v)", t.precision, t.scale)
 }
 
-// Zero implements Type interface. Returns a uint64 value.
+// ValueType implements Type interface.
+func (t decimalType) ValueType() reflect.Type {
+	return decimalValueType
+}
+
+// Zero implements Type interface.
 func (t decimalType) Zero() interface{} {
 	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
 }
 
-// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
-// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
+// ExclusiveUpperBound implements DecimalType interface.
 func (t decimalType) ExclusiveUpperBound() decimal.Decimal {
 	return t.exclusiveUpperBound
 }
 
-// MaximumScale returns the maximum scale allowed for the current precision.
+// MaximumScale implements DecimalType interface.
 func (t decimalType) MaximumScale() uint8 {
 	if t.precision >= DecimalTypeMaxScale {
 		return DecimalTypeMaxScale
@@ -261,14 +281,12 @@ func (t decimalType) MaximumScale() uint8 {
 	return t.precision
 }
 
-// Precision returns the base-10 precision of the type, which is the total number of digits.
-// For example, a precision of 3 means that 999, 99.9, 9.99, and .999 are all valid maximums (depending on the scale).
+// Precision implements DecimalType interface.
 func (t decimalType) Precision() uint8 {
 	return t.precision
 }
 
-// Scale returns the scale, or number of digits after the decimal, that may be held.
-// This will always be less than or equal to the precision.
+// Scale implements DecimalType interface.
 func (t decimalType) Scale() uint8 {
 	return t.scale
 }

@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -83,6 +85,11 @@ func (t deferredType) String() string {
 // Type implements Type interface.
 func (t deferredType) Type() query.Type {
 	return sqltypes.Expression
+}
+
+// ValueType implements Type interface.
+func (t deferredType) ValueType() reflect.Type {
+	return nil
 }
 
 // Zero implements Type interface.

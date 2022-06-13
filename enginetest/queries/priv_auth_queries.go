@@ -311,36 +311,36 @@ var UserPrivTests = []UserPrivilegeTest{
 					{
 						"localhost",             // Host
 						"root",                  // User
-						"Y",                     // Select_priv
-						"Y",                     // Insert_priv
-						"Y",                     // Update_priv
-						"Y",                     // Delete_priv
-						"Y",                     // Create_priv
-						"Y",                     // Drop_priv
-						"Y",                     // Reload_priv
-						"Y",                     // Shutdown_priv
-						"Y",                     // Process_priv
-						"Y",                     // File_priv
-						"Y",                     // Grant_priv
-						"Y",                     // References_priv
-						"Y",                     // Index_priv
-						"Y",                     // Alter_priv
-						"Y",                     // Show_db_priv
-						"Y",                     // Super_priv
-						"Y",                     // Create_tmp_table_priv
-						"Y",                     // Lock_tables_priv
-						"Y",                     // Execute_priv
-						"Y",                     // Repl_slave_priv
-						"Y",                     // Repl_client_priv
-						"Y",                     // Create_view_priv
-						"Y",                     // Show_view_priv
-						"Y",                     // Create_routine_priv
-						"Y",                     // Alter_routine_priv
-						"Y",                     // Create_user_priv
-						"Y",                     // Event_priv
-						"Y",                     // Trigger_priv
-						"Y",                     // Create_tablespace_priv
-						"",                      // ssl_type
+						uint16(2),               // Select_priv
+						uint16(2),               // Insert_priv
+						uint16(2),               // Update_priv
+						uint16(2),               // Delete_priv
+						uint16(2),               // Create_priv
+						uint16(2),               // Drop_priv
+						uint16(2),               // Reload_priv
+						uint16(2),               // Shutdown_priv
+						uint16(2),               // Process_priv
+						uint16(2),               // File_priv
+						uint16(2),               // Grant_priv
+						uint16(2),               // References_priv
+						uint16(2),               // Index_priv
+						uint16(2),               // Alter_priv
+						uint16(2),               // Show_db_priv
+						uint16(2),               // Super_priv
+						uint16(2),               // Create_tmp_table_priv
+						uint16(2),               // Lock_tables_priv
+						uint16(2),               // Execute_priv
+						uint16(2),               // Repl_slave_priv
+						uint16(2),               // Repl_client_priv
+						uint16(2),               // Create_view_priv
+						uint16(2),               // Show_view_priv
+						uint16(2),               // Create_routine_priv
+						uint16(2),               // Alter_routine_priv
+						uint16(2),               // Create_user_priv
+						uint16(2),               // Event_priv
+						uint16(2),               // Trigger_priv
+						uint16(2),               // Create_tablespace_priv
+						uint16(1),               // ssl_type
 						"",                      // ssl_cipher
 						"",                      // x509_issuer
 						"",                      // x509_subject
@@ -350,12 +350,12 @@ var UserPrivTests = []UserPrivilegeTest{
 						uint32(0),               // max_user_connections
 						"mysql_native_password", // plugin
 						"",                      // authentication_string
-						"N",                     // password_expired
+						uint16(1),               // password_expired
 						time.Unix(1, 0).UTC(),   // password_last_changed
 						nil,                     // password_lifetime
-						"N",                     // account_locked
-						"Y",                     // Create_role_priv
-						"Y",                     // Drop_role_priv
+						uint16(1),               // account_locked
+						uint16(2),               // Create_role_priv
+						uint16(2),               // Drop_role_priv
 						nil,                     // Password_reuse_history
 						nil,                     // Password_reuse_time
 						nil,                     // Password_require_current
@@ -461,7 +461,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", uint16(2), uint16(1), uint16(2), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(2), uint16(1), uint16(1)}},
 			},
 			{
 				User:     "root",
@@ -473,7 +473,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", uint16(2), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(2), uint16(1), uint16(1)}},
 			},
 			{
 				User:  "root",
@@ -493,7 +493,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", uint16(2), uint16(2), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(2), uint16(1), uint16(1)}},
 			},
 		},
 	},
@@ -514,7 +514,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Delete,Drop", ""}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), uint64(0b101001), uint64(0)}},
 			},
 			{
 				User:     "root",
@@ -526,7 +526,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Drop", ""}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), uint64(0b100001), uint64(0)}},
 			},
 			{
 				User:  "root",
@@ -546,7 +546,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "References,Index", ""}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), uint64(0b110000000), uint64(0)}},
 			},
 		},
 	},
@@ -569,7 +569,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "Y"}},
+				Expected: []sql.Row{{"tester", "localhost", uint16(2)}},
 			},
 			{
 				User:     "root",
@@ -587,7 +587,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "N"}},
+				Expected: []sql.Row{{"tester", "localhost", uint16(1)}},
 			},
 		},
 	},
@@ -616,7 +616,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv, Insert_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "Y", "Y"}},
+				Expected: []sql.Row{{"tester", "localhost", uint16(2), uint16(2)}},
 			},
 			{
 				User:     "root",
@@ -640,7 +640,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv, Insert_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "N", "N"}},
+				Expected: []sql.Row{{"tester", "localhost", uint16(1), uint16(1)}},
 			},
 		},
 	},
@@ -654,7 +654,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, account_locked FROM mysql.user WHERE User = 'test_role';",
-				Expected: []sql.Row{{"test_role", "%", "Y"}},
+				Expected: []sql.Row{{"test_role", "%", uint16(2)}},
 			},
 		},
 	},
@@ -691,7 +691,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
 			},
 			{
 				User:     "tester",
@@ -703,7 +703,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "N"}},
+				Expected: []sql.Row{{"tester", "localhost", uint16(1)}},
 			},
 		},
 	},
@@ -729,7 +729,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
 			},
 			{
 				User:     "root",
@@ -785,7 +785,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
 			},
 			{
 				User:     "root",
@@ -847,7 +847,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
 			},
 			{
 				User:     "root",

@@ -19,11 +19,11 @@ import (
 	"log"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -483,12 +483,6 @@ func TestLoadDataPrepared(t *testing.T) {
 }
 
 func TestScriptsPrepared(t *testing.T) {
-	//TODO: when foreign keys are implemented in the memory table, we can do the following test
-	for i := len(queries.ScriptTests) - 1; i >= 0; i-- {
-		if queries.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
-			queries.ScriptTests = append(queries.ScriptTests[:i], queries.ScriptTests[i+1:]...)
-		}
-	}
 	enginetest.TestScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
@@ -763,6 +757,10 @@ func TestKeylessUniqueIndex(t *testing.T) {
 	// TODO: GMS does not support unique indexes for keyless tables.
 	t.Skip()
 	enginetest.TestKeylessUniqueIndex(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestTypesOverWire(t *testing.T) {
+	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

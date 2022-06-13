@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -304,6 +305,9 @@ func TestDatetimeConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if val != nil {
+					assert.Equal(t, test.typ.ValueType(), reflect.TypeOf(val))
+				}
 			}
 		})
 	}

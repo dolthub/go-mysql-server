@@ -70,6 +70,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.table.schema.Schema, row); err != nil {
 		return err
 	}
+	t.table.verifyRowTypes(row)
 
 	partitionRow, added, err := t.ea.Get(row)
 	if err != nil {
@@ -119,6 +120,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.table.schema.Schema, row); err != nil {
 		return err
 	}
+	t.table.verifyRowTypes(row)
 
 	err := t.ea.Delete(row)
 	if err != nil {
@@ -136,6 +138,8 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	if err := checkRow(t.table.schema.Schema, newRow); err != nil {
 		return err
 	}
+	t.table.verifyRowTypes(oldRow)
+	t.table.verifyRowTypes(newRow)
 
 	err := t.ea.Delete(oldRow)
 	if err != nil {

@@ -1039,7 +1039,7 @@ type ExternalStoredProcedureDetails struct {
 	Schema Schema
 	// Function is the implementation of the external stored procedure. All functions should have the following definition:
 	// `func(*Context, <PARAMETERS>) (RowIter, error)`. The <PARAMETERS> may be any of the following types: `bool`,
-	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `decimal`
+	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `Decimal`
 	// (shopspring/decimal). The architecture-dependent types `int` and `uint` (without a number) are also supported.
 	// It is valid to return a nil RowIter if there are no rows to be returned.
 	//
@@ -1048,7 +1048,7 @@ type ExternalStoredProcedureDetails struct {
 	//
 	// Values are converted to their nearest type before being passed in, following the conversion rules of their
 	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with
-	// the default collation) and decimal (treated with a larger precision and scale). Take extra care when using decimal
+	// the default collation) and Decimal (treated with a larger precision and scale). Take extra care when using decimal
 	// for an INOUT parameter, to ensure that the returned value fits the original's precision and scale, else an error
 	// will occur.
 	//

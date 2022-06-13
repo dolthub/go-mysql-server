@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"testing"
@@ -5402,6 +5403,115 @@ func TestPrepared(t *testing.T, harness Harness) {
 	for _, tt := range repeatTests {
 		t.Run(fmt.Sprintf("%s", tt.Query), func(t *testing.T) {
 			TestQueryWithContext(t, ctx, e, repeatQ, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+		})
+	}
+}
+
+func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestTypesOverWire as the harness must implement ClientHarness")
+	}
+	harness.Setup(setup.MydbData)
+
+	port := getEmptyPort(t)
+	for _, script := range queries.TypeWireTests {
+		t.Run(script.Name, func(t *testing.T) {
+			ctx := NewContextWithClient(harness, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			serverConfig := server.Config{
+				Protocol:       "tcp",
+				Address:        fmt.Sprintf("localhost:%d", port),
+				MaxConnections: 1000,
+			}
+
+			engine := mustNewEngine(t, harness)
+			defer engine.Close()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, harness, ctx, statement)
+			}
+
+			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
+			require.NoError(t, err)
+			go func() {
+				err := s.Start()
+				require.NoError(t, err)
+			}()
+			defer func() {
+				require.NoError(t, s.Close())
+			}()
+
+			conn, err := dbr.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/", port), nil)
+			require.NoError(t, err)
+			_, err = conn.Exec("USE mydb;")
+			require.NoError(t, err)
+			for queryIdx, query := range script.Queries {
+				r, err := conn.Query(query)
+				if assert.NoError(t, err) {
+					sch, engineIter, err := engine.Query(ctx, query)
+					require.NoError(t, err)
+					expectedRowSet := script.Results[queryIdx]
+					expectedRowIdx := 0
+					var engineRow sql.Row
+					for engineRow, err = engineIter.Next(ctx); err == nil; engineRow, err = engineIter.Next(ctx) {
+						if !assert.True(t, r.Next()) {
+							break
+						}
+						expectedRow := expectedRowSet[expectedRowIdx]
+						expectedRowIdx++
+						connRow := make([]*string, len(engineRow))
+						interfaceRow := make([]any, len(connRow))
+						for i := range connRow {
+							interfaceRow[i] = &connRow[i]
+						}
+						err = r.Scan(interfaceRow...)
+						if !assert.NoError(t, err) {
+							break
+						}
+						expectedEngineRow := make([]*string, len(engineRow))
+						for i := range engineRow {
+							sqlVal, err := sch[i].Type.SQL(nil, engineRow[i])
+							if !assert.NoError(t, err) {
+								break
+							}
+							if !sqlVal.IsNull() {
+								str := sqlVal.ToString()
+								expectedEngineRow[i] = &str
+							}
+						}
+
+						for i := range expectedEngineRow {
+							expectedVal := expectedEngineRow[i]
+							connVal := connRow[i]
+							if !assert.Equal(t, expectedVal == nil, connVal == nil) {
+								continue
+							}
+							if expectedVal != nil {
+								assert.Equal(t, *expectedVal, *connVal)
+								if script.Name == "JSON" {
+									// Different integrators may return their JSON strings with different spacing, so we
+									// special case the test since the spacing is not significant
+									*connVal = strings.Replace(*connVal, `, `, `,`, -1)
+									*connVal = strings.Replace(*connVal, `: "`, `:"`, -1)
+								}
+								assert.Equal(t, expectedRow[i], *connVal)
+							}
+						}
+					}
+					assert.True(t, err == io.EOF)
+					assert.False(t, r.Next())
+					require.NoError(t, r.Close())
+				}
+			}
+			require.NoError(t, conn.Close())
 		})
 	}
 }
