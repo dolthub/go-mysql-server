@@ -105,7 +105,6 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	for _, tbl := range n.tbls {
 		var resTbl sql.StatisticsTable
-		// TODO: find statistics table
 		transform.Inspect(tbl, func(n sql.Node) bool {
 			if statsTbl, ok := n.(sql.StatisticsTable); ok {
 				resTbl = statsTbl
