@@ -350,6 +350,11 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return rowCount.(uint64), nil
 }
 
+// TODO
+func (t Table) CalculateStatitics(ctx *sql.Context) error {
+	return nil
+}
+
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.
 func (t Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
 	pkNames := make([]string, len(columns))

@@ -59,6 +59,13 @@ type Table struct {
 	// AUTO_INCREMENT bookkeeping
 	autoIncVal uint64
 	autoColIdx int
+
+	// TODO: convert into stats object
+	// TODO: histogram
+	count uint64
+	means map[string]float64
+	mins  map[string]float64
+	maxs  map[string]float64
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -230,6 +237,17 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	}
 
 	return numBytesPerRow * numRows, nil
+}
+
+func (t *Table) CalculateStatistics(ctx *sql.Context) error {
+	var count uint64 = 0
+	for _, rows := range t.partitions {
+		count += uint64(len(rows))
+	}
+
+	t.count = count
+
+	return nil
 }
 
 func NewPartition(key []byte) *Partition {

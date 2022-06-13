@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"math"
 	"strings"
 
@@ -104,19 +105,25 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	colStatsTableData := mysql.ColumnStatisticsTable().Data()
 
 	for _, tbl := range n.tbls {
-		var resTbl *ResolvedTable
-		switch v := tbl.(type) {
-		case *ResolvedTable:
-			resTbl = v
-		case *Exchange:
-			resTbl = v.Child.(*ResolvedTable)
-		case *IndexedTableAccess:
-			resTbl = v.ResolvedTable
-		case *DeferredAsOfTable:
-			resTbl = v.ResolvedTable
-		default:
-			return nil, sql.ErrTableNotFound.New(tbl.String())
+		var resTbl sql.StatisticsTable
+		// TODO: find statistics table
+		transform.Inspect(tbl, func(n sql.Node) bool {
+			if statsTbl, ok := n.(sql.StatisticsTable); ok {
+				resTbl = statsTbl
+				return false
+			}
+			return true
+		})
+
+		// skip if you couldn't find statistics table (shouldn't be possible)
+		if resTbl == nil {
+			continue
 		}
+
+		resTbl.CalculateStatistics(ctx)
+
+		resTbl.Partitions(ctx)
+		resTbl.PartitionRows()
 
 		// Calculate stats
 		tblIter, err := resTbl.RowIter(ctx, row)

@@ -407,6 +407,8 @@ type StatisticsTable interface {
 	NumRows(*Context) (uint64, error)
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (uint64, error)
+	// CalculateStatistics fills in the histogram object inside the statistics table
+	CalculateStatistics(*Context) error
 }
 
 // IndexUsing is the desired storage type.
