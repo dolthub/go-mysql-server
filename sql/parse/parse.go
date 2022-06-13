@@ -2055,8 +2055,7 @@ func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sq
 	} else if !isExpr && len(parsedExpr.Children()) != 0 {
 		if f, ok := parsedExpr.(*expression.UnresolvedFunction); ok {
 			// This will be resolved accordingly in analyzer for column type of Datetime or Timestamp
-			fname := strings.ToLower(f.Name())
-			if fname != "now" && fname != "timestamp" {
+			if f.Name() != "now" && f.Name() != "timestamp" {
 				return nil, sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
 			}
 		}
@@ -2867,10 +2866,17 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	}
 	// The literal and function expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
 	// 2+2 would evaluate to a literal under the parentheses check, but will have children due to being an Arithmetic expression, thus we check for children.
-	isLiteral := len(parsedExpr.Children()) == 0 && !strings.HasPrefix(exprStr, "(")
+
+	var isLiteral bool
 	switch e := parsedExpr.(type) {
 	case *expression.UnaryMinus:
 		_, isLiteral = e.Child.(*expression.Literal)
+	case *expression.UnresolvedFunction:
+		if !strings.HasPrefix(exprStr, "(") && !strings.HasPrefix(exprStr, ")") && (e.Name() == "now" || e.Name() == "current_timestamp") {
+			isLiteral = true
+		}
+	default:
+		isLiteral = len(parsedExpr.Children()) == 0 && !strings.HasPrefix(exprStr, "(")
 	}
 	return ExpressionToColumnDefaultValue(ctx, parsedExpr, isLiteral)
 }

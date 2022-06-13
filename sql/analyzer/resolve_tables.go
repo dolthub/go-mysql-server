@@ -133,11 +133,10 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 	}
 
 	a.Log("table resolved: %s", t.Name())
-	res := plan.NewResolvedTable(rt, database, nil)
 	if asofBindVar {
-		return plan.NewDeferredAsOfTable(res, t.AsOf()), nil
+		return plan.NewDeferredAsOfTable(resolvedTableNode, t.AsOf()), nil
 	}
-	return res, nil
+	return resolvedTableNode, nil
 }
 
 // handleInfoSchemaColumnsTable modifies the detected information_schema.columns table and adds a large set of colums
