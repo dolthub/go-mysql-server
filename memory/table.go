@@ -251,6 +251,10 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 	return nil
 }
 
+func (t *Table) GetStatistics(ctx *sql.Context) (sql.Statistics, error) {
+	return nil, nil
+}
+
 func NewPartition(key []byte) *Partition {
 	return &Partition{key: key}
 }

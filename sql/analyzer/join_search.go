@@ -273,42 +273,21 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		}
 
 		rt := getResolvedTable(jo.node)
-		// how do i get the index look up from here?
-		// if this table supports index access...then it'll have a statistics index?
-
 		availableSchemaForKeys := make(map[tableCol]struct{})
 		for _, col := range jo.schema() {
 			availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
 		}
 
 		// TODO: also consider indexes which could be pushed down to this table, if it's the first one
-
 		// can give better estimates only for filters on things from this table
-		ji := joinIndexes[rt.Name()].getUsableIndex(availableSchemaForKeys)
-		if ji != nil && ji.index != nil {
-			if si, ok := ji.index.(sql.StatisticsIndex); ok {
-				if numFilteredRows, err := si.NumFilteredRows(ctx); err != nil {
-					return err
-				} else {
-					jo.cost = numFilteredRows
-				}
-			}
-		}
-
-		// TODO: cost for filtered index should always be lower (?), just do both for now
-		// replace cost iff it's lower than filtered row costs
 		if st, ok := rt.Table.(sql.StatisticsTable); ok {
-			numRows, err := st.NumRows(ctx)
+			count, err := st.NumRows(ctx)
 			if err != nil {
 				return err
 			}
-			if numRows < jo.cost {
-				jo.cost = numRows
-			}
+			jo.cost = count
 		} else {
-			if 1000 < jo.cost {
-				jo.cost = uint64(1000)
-			}
+			jo.cost = uint64(1000)
 		}
 	} else if jo.left != nil {
 		err := jo.left.estimateCost(ctx, joinIndexes)

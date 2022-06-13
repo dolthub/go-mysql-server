@@ -399,6 +399,34 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
+// TODO: lots of stuff
+type Bucket interface {
+	SetValue(float64)
+	SetFrequency(float64)
+
+	GetValue() float64
+	GetFrequency() float64
+}
+
+type ColumnStatistics interface {
+	SetBucket(float64, Bucket)
+	SetMean(float64)
+	SetMin(float64)
+	SetMax(float64)
+	SetNullCount(uint64)
+
+	GetBucket(value float64) Bucket
+	GetBucketMap() map[float64]Bucket
+	GetMean() float64
+	GetMin() float64
+	GetMax() float64
+	GetNullCount() uint64
+}
+
+type Statistics interface {
+	GetColumnStatistics(colName string) (ColumnStatistics, error)
+}
+
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
 // planning performance.
 type StatisticsTable interface {
@@ -408,7 +436,9 @@ type StatisticsTable interface {
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (uint64, error)
 	// CalculateStatistics fills in the histogram object inside the statistics table
-	CalculateStatistics(*Context) error
+	CalculateStatistics(ctx *Context) error
+	// GetStatistics returns the statistics object inside the statistics table
+	GetStatistics(ctx *Context) (Statistics, error)
 }
 
 // IndexUsing is the desired storage type.

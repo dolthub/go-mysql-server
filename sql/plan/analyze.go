@@ -2,13 +2,10 @@ package plan
 
 import (
 	"fmt"
-	"io"
-	"math"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type Analyze struct {
@@ -104,76 +101,36 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	colStatsTableData := mysql.ColumnStatisticsTable().Data()
 
 	for _, tbl := range n.tbls {
-		var resTbl sql.StatisticsTable
-		transform.Inspect(tbl, func(n sql.Node) bool {
-			if statsTbl, ok := n.(sql.StatisticsTable); ok {
-				resTbl = statsTbl
-				return false
-			}
-			return true
-		})
-
-		// skip if you couldn't find statistics table (shouldn't be possible)
-		if resTbl == nil {
-			continue
+		var resTbl *ResolvedTable
+		switch t := tbl.(type) {
+		case *ResolvedTable:
+			resTbl = t
+		case *Exchange:
+			resTbl = t.Child.(*ResolvedTable)
+		case DeferredAsOfTable:
+			resTbl = t.ResolvedTable
+		default:
+			return nil, sql.ErrTableNotFound.New(tbl.String())
 		}
 
-		resTbl.CalculateStatistics(ctx)
-
-		resTbl.Partitions(ctx)
-		resTbl.PartitionRows()
-
-		// Calculate stats
-		tblIter, err := resTbl.RowIter(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			tblIter.Close(ctx)
-		}()
-
-		// TODO: helper method probably
-		count := 0
-		means := make([]float64, len(resTbl.Schema()))
-		mins := make([]float64, len(resTbl.Schema()))
-		maxs := make([]float64, len(resTbl.Schema()))
-		for i := 0; i < len(resTbl.Schema()); i++ {
-			mins[i] = math.MaxFloat64
-			maxs[i] = -math.MaxFloat64 // not sure if this is right
+		var statsTbl sql.StatisticsTable
+		if wrappedTbl, ok := resTbl.Table.(sql.TableWrapper); ok {
+			statsTbl = wrappedTbl.Underlying().(sql.StatisticsTable)
+		} else {
+			statsTbl = resTbl.Table.(sql.StatisticsTable)
 		}
 
-		for {
-			row, err := tblIter.Next(ctx)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return nil, err
-			}
+		statsTbl.CalculateStatistics(ctx)
 
-			// accumulate sum of every column
-			// TODO: deal with non-numeric types, precision, and overflow
-			for i := 0; i < len(resTbl.Schema()); i++ {
-				num, err := sql.Float64.Convert(row[i])
-				if err != nil {
-					return nil, err
-				}
-				numFloat := num.(float64)
-				means[i] += numFloat
-				mins[i] = math.Min(numFloat, mins[i])
-				maxs[i] = math.Max(numFloat, maxs[i])
-			}
-
-			// TODO: means, median, not null
-			count++
-		}
+		// TODO: pushdown filters on indexed access to get better cost estimates
+		// TODO: still need to get this information from table and put it in Column Statistics Table
 
 		// Go through each column of table we want to analyze
-		for i, col := range resTbl.Schema() {
+		for _, col := range statsTbl.Schema() {
 			// Create Primary Key for lookup
 			colStatsPk := mysql_db.ColumnStatisticsPrimaryKey{
 				SchemaName: database,
-				TableName:  resTbl.Name(),
+				TableName:  statsTbl.Name(),
 				ColumnName: col.Name,
 			}
 
@@ -183,15 +140,25 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				colStatsTableData.Remove(ctx, colStatsPk, row)
 			}
 
+			stats, err := statsTbl.GetStatistics(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			colStats, err := stats.GetColumnStatistics(col.Name)
+			if err != nil {
+				return nil, err
+			}
+
 			// Insert row entry
 			colStatsTableData.Put(ctx, &mysql_db.ColumnStatistics{
 				SchemaName: database,
-				TableName:  resTbl.Name(),
+				TableName:  statsTbl.Name(),
 				ColumnName: col.Name,
-				Count:      uint64(count),
-				Mean:       means[i] / float64(count),
-				Min:        mins[i],
-				Max:        maxs[i],
+				Count:      colStats.GetNullCount(),
+				Mean:       colStats.GetMean(),
+				Min:        colStats.GetMin(),
+				Max:        colStats.GetMax(),
 			})
 		}
 	}
