@@ -18,8 +18,11 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -36,20 +39,24 @@ var (
 	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
 	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")
 	ErrTooLargeForSet    = errors.NewKind(`value "%v" is too large for this set`)
+
+	setValueType = reflect.TypeOf(uint64(0))
 )
 
 // Comments with three slashes were taken directly from the linked documentation.
 
-// Represents the SET type.
+// SetType represents the SET type.
 // https://dev.mysql.com/doc/refman/8.0/en/set.html
+// The type of the returned value is uint64.
 type SetType interface {
 	Type
 	CharacterSet() CharacterSet
 	Collation() Collation
-	//TODO: move this out of go-mysql-server and into the Dolt layer
-	Marshal(v interface{}) (uint64, error)
+	// NumberOfElements returns the number of elements in this set.
 	NumberOfElements() uint16
-	Unmarshal(bits uint64) (string, error)
+	// BitsToString takes a previously-converted value and returns it as a string.
+	BitsToString(bits uint64) (string, error)
+	// Values returns all of the set's values in ascending order according to their corresponding bit value.
 	Values() []string
 }
 
@@ -121,18 +128,20 @@ func (t setType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	ai, err := t.Marshal(a)
+	ai, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bi, err := t.Marshal(b)
+	bi, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
+	au := ai.(uint64)
+	bu := bi.(uint64)
 
-	if ai < bi {
+	if au < bu {
 		return -1, nil
-	} else if ai > bi {
+	} else if au > bu {
 		return 1, nil
 	}
 	return 0, nil
@@ -166,26 +175,26 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(uint64(value))
 	case uint64:
 		if value <= t.allValuesBitField() {
-			return t.convertBitFieldToString(value)
+			return value, nil
 		}
-		return nil, ErrConvertingToSet.New(v)
 	case float32:
 		return t.Convert(uint64(value))
 	case float64:
 		return t.Convert(uint64(value))
-	case string:
-		// For SET('a','b') and given a string 'b,a,a', we would return 'a,b', so we can't return the input.
-		bitField, err := t.convertStringToBitField(value)
-		if err != nil {
-			return nil, err
+	case decimal.Decimal:
+		return t.Convert(value.BigInt().Uint64())
+	case decimal.NullDecimal:
+		if !value.Valid {
+			return nil, nil
 		}
-		setStr, _ := t.convertBitFieldToString(bitField)
-		return setStr, nil
+		return t.Convert(value.Decimal.BigInt().Uint64())
+	case string:
+		return t.convertStringToBitField(value)
 	case []byte:
 		return t.Convert(string(value))
 	}
 
-	return nil, ErrConvertingToSet.New(v)
+	return uint64(0), ErrConvertingToSet.New(v)
 }
 
 // MustConvert implements the Type interface.
@@ -220,12 +229,16 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	value, err := t.Convert(v)
+	convertedValue, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+	value, err := t.BitsToString(convertedValue.(uint64))
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSlice(dest, []byte(value.(string)))
+	val := appendAndSliceString(dest, value)
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
@@ -247,68 +260,37 @@ func (t setType) Type() query.Type {
 	return sqltypes.Set
 }
 
+// ValueType implements Type interface.
+func (t setType) ValueType() reflect.Type {
+	return setValueType
+}
+
 // Zero implements Type interface.
 func (t setType) Zero() interface{} {
 	return ""
 }
 
+// CharacterSet implements EnumType interface.
 func (t setType) CharacterSet() CharacterSet {
 	return t.collation.CharacterSet()
 }
 
+// Collation implements EnumType interface.
 func (t setType) Collation() Collation {
 	return t.collation
 }
 
-// Marshal takes a valid Set value and returns it as an uint64.
-func (t setType) Marshal(v interface{}) (uint64, error) {
-	switch value := v.(type) {
-	case int:
-		return t.Marshal(uint64(value))
-	case uint:
-		return t.Marshal(uint64(value))
-	case int8:
-		return t.Marshal(uint64(value))
-	case uint8:
-		return t.Marshal(uint64(value))
-	case int16:
-		return t.Marshal(uint64(value))
-	case uint16:
-		return t.Marshal(uint64(value))
-	case int32:
-		return t.Marshal(uint64(value))
-	case uint32:
-		return t.Marshal(uint64(value))
-	case int64:
-		return t.Marshal(uint64(value))
-	case uint64:
-		if value <= t.allValuesBitField() {
-			return value, nil
-		}
-	case float32:
-		return t.Marshal(uint64(value))
-	case float64:
-		return t.Marshal(uint64(value))
-	case string:
-		return t.convertStringToBitField(value)
-	case []byte:
-		return t.Marshal(string(value))
-	}
-
-	return uint64(0), ErrConvertingToSet.New(v)
-}
-
-// NumberOfElements returns the number of elements in this set.
+// NumberOfElements implements EnumType interface.
 func (t setType) NumberOfElements() uint16 {
 	return uint16(len(t.valToBit))
 }
 
-// Unmarshal takes a previously-marshalled value and returns it as a string.
-func (t setType) Unmarshal(v uint64) (string, error) {
+// BitsToString implements EnumType interface.
+func (t setType) BitsToString(v uint64) (string, error) {
 	return t.convertBitFieldToString(v)
 }
 
-// Values returns all of the set's values in ascending order according to their corresponding bit value.
+// Values implements EnumType interface.
 func (t setType) Values() []string {
 	bitEdge := 64 - bits.LeadingZeros64(t.allValuesBitField())
 	valArray := make([]string, bitEdge)

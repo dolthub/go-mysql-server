@@ -19,6 +19,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -1450,4 +1451,19 @@ func (t *Table) PartitionRows2(ctx *sql.Context, partition sql.Partition) (sql.R
 	}
 
 	return iter.(*tableIter), nil
+}
+
+func (t *Table) verifyRowTypes(row sql.Row) {
+	//TODO: only run this when in testing mode
+	if len(row) == len(t.schema.Schema) {
+		for i := range t.schema.Schema {
+			col := t.schema.Schema[i]
+			rowVal := row[i]
+			valType := reflect.TypeOf(rowVal)
+			expectedType := col.Type.ValueType()
+			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
+				panic(fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String()))
+			}
+		}
+	}
 }

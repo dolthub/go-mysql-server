@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -66,6 +67,8 @@ type Type interface {
 	SQL(dest []byte, v interface{}) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
+	// ValueType returns the Go type of the value returned by Convert().
+	ValueType() reflect.Type
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
@@ -140,7 +143,7 @@ func ApproximateTypeFromValue(val interface{}) Type {
 		return Uint16
 	case uint8:
 		return Uint8
-	case time.Duration:
+	case Timespan, time.Duration:
 		return Time
 	case time.Time:
 		return Datetime

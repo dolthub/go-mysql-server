@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -122,6 +123,9 @@ func TestJsonConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if val != nil {
+					assert.True(t, reflect.TypeOf(val).Implements(JSON.ValueType()))
+				}
 			}
 		})
 	}

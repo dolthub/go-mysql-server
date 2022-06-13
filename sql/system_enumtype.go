@@ -15,11 +15,16 @@
 package sql
 
 import (
+	"reflect"
 	"strings"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemEnumValueType = reflect.TypeOf(string(""))
 
 // systemEnumType is an internal enum type ONLY for system variables.
 type systemEnumType struct {
@@ -98,6 +103,14 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 		if value == float64(int(value)) {
 			return t.Convert(int(value))
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	case string:
 		if idx, ok := t.valToIndex[strings.ToLower(value)]; ok {
 			return t.indexToVal[idx], nil
@@ -145,7 +158,7 @@ func (t systemEnumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSlice(dest, []byte(v.(string)))
+	val := appendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
@@ -158,6 +171,11 @@ func (t systemEnumType) String() string {
 // Type implements Type interface.
 func (t systemEnumType) Type() query.Type {
 	return sqltypes.VarChar
+}
+
+// ValueType implements Type interface.
+func (t systemEnumType) ValueType() reflect.Type {
+	return systemEnumValueType
 }
 
 // Zero implements Type interface.

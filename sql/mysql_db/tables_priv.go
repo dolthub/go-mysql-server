@@ -78,12 +78,16 @@ func (conv TablesPrivConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, ent
 	if !ok {
 		return nil, errTablesPrivRow
 	}
-	tablePrivs, ok := row[tablesPrivTblColIndex_Table_priv].(string)
+	tablePrivs, ok := row[tablesPrivTblColIndex_Table_priv].(uint64)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
+	tablePrivStrs, err := tablesPrivTblSchema[tablesPrivTblColIndex_Table_priv].Type.(sql.SetType).BitsToString(tablePrivs)
+	if err != nil {
+		return nil, err
+	}
 	var privs []sql.PrivilegeType
-	for _, val := range strings.Split(tablePrivs, ",") {
+	for _, val := range strings.Split(tablePrivStrs, ",") {
 		switch val {
 		case "Select":
 			privs = append(privs, sql.PrivilegeType_Select)
@@ -204,7 +208,7 @@ func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table
 			if err != nil {
 				return nil, err
 			}
-			row[tablesPrivTblColIndex_Table_priv] = formattedSet.(string)
+			row[tablesPrivTblColIndex_Table_priv] = formattedSet.(uint64)
 			rows = append(rows, row)
 		}
 	}

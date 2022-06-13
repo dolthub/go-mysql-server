@@ -17,7 +17,7 @@ package sql
 import (
 	"encoding/binary"
 	"fmt"
-	"strconv"
+	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -35,10 +35,12 @@ const (
 var (
 	promotedBitType = MustCreateBitType(BitTypeMaxBits)
 	errBeyondMaxBit = errors.NewKind("%v is beyond the maximum value that can be held by %v bits")
+	bitValueType    = reflect.TypeOf(uint64(0))
 )
 
-// Represents the BIT type.
+// BitType represents the BIT type.
 // https://dev.mysql.com/doc/refman/8.0/en/bit-type.html
+// The type of the returned value is uint64.
 type BitType interface {
 	Type
 	NumberOfBits() uint8
@@ -133,6 +135,11 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 			return nil, fmt.Errorf(`negative floats cannot become bit values`)
 		}
 		value = uint64(val)
+	case decimal.NullDecimal:
+		if !val.Valid {
+			return nil, nil
+		}
+		return t.Convert(val.Decimal)
 	case decimal.Decimal:
 		val = val.Round(0)
 		if val.GreaterThan(dec_uint64_max) {
@@ -190,10 +197,16 @@ func (t bitType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
+	bitVal := value.(uint64)
 
-	stop := len(dest)
-	dest = strconv.AppendUint(dest, value.(uint64), 10)
-	val := dest[stop:]
+	var data []byte
+	for i := uint64(0); i < uint64(t.numOfBits); i += 8 {
+		data = append(data, byte(bitVal>>i))
+	}
+	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
+		data[i], data[j] = data[j], data[i]
+	}
+	val := appendAndSliceBytes(dest, data)
 
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
 }
@@ -206,6 +219,11 @@ func (t bitType) String() string {
 // Type implements Type interface.
 func (t bitType) Type() query.Type {
 	return sqltypes.Bit
+}
+
+// ValueType implements Type interface.
+func (t bitType) ValueType() reflect.Type {
+	return bitValueType
 }
 
 // Zero implements Type interface. Returns a uint64 value.

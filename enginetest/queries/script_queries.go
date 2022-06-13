@@ -1359,7 +1359,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+				Expected: []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
@@ -1367,7 +1367,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+				Expected: []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
@@ -1375,7 +1375,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+				Expected: []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
 			},
 		},
 	},

@@ -74,7 +74,7 @@ func (conv DbConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_me
 	}
 	var privs []sql.PrivilegeType
 	for i, val := range row {
-		if strVal, ok := val.(string); ok && strVal == "Y" {
+		if uintVal, ok := val.(uint16); ok && uintVal == 2 {
 			switch i {
 			case dbTblColIndex_Select_priv:
 				privs = append(privs, sql.PrivilegeType_Select)
@@ -167,43 +167,43 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 		for _, priv := range dbSet.ToSlice() {
 			switch priv {
 			case sql.PrivilegeType_Select:
-				row[dbTblColIndex_Select_priv] = "Y"
+				row[dbTblColIndex_Select_priv] = uint16(2)
 			case sql.PrivilegeType_Insert:
-				row[dbTblColIndex_Insert_priv] = "Y"
+				row[dbTblColIndex_Insert_priv] = uint16(2)
 			case sql.PrivilegeType_Update:
-				row[dbTblColIndex_Update_priv] = "Y"
+				row[dbTblColIndex_Update_priv] = uint16(2)
 			case sql.PrivilegeType_Delete:
-				row[dbTblColIndex_Delete_priv] = "Y"
+				row[dbTblColIndex_Delete_priv] = uint16(2)
 			case sql.PrivilegeType_Create:
-				row[dbTblColIndex_Create_priv] = "Y"
+				row[dbTblColIndex_Create_priv] = uint16(2)
 			case sql.PrivilegeType_Drop:
-				row[dbTblColIndex_Drop_priv] = "Y"
+				row[dbTblColIndex_Drop_priv] = uint16(2)
 			case sql.PrivilegeType_Grant:
-				row[dbTblColIndex_Grant_priv] = "Y"
+				row[dbTblColIndex_Grant_priv] = uint16(2)
 			case sql.PrivilegeType_References:
-				row[dbTblColIndex_References_priv] = "Y"
+				row[dbTblColIndex_References_priv] = uint16(2)
 			case sql.PrivilegeType_Index:
-				row[dbTblColIndex_Index_priv] = "Y"
+				row[dbTblColIndex_Index_priv] = uint16(2)
 			case sql.PrivilegeType_Alter:
-				row[dbTblColIndex_Alter_priv] = "Y"
+				row[dbTblColIndex_Alter_priv] = uint16(2)
 			case sql.PrivilegeType_CreateTempTable:
-				row[dbTblColIndex_Create_tmp_table_priv] = "Y"
+				row[dbTblColIndex_Create_tmp_table_priv] = uint16(2)
 			case sql.PrivilegeType_LockTables:
-				row[dbTblColIndex_Lock_tables_priv] = "Y"
+				row[dbTblColIndex_Lock_tables_priv] = uint16(2)
 			case sql.PrivilegeType_CreateView:
-				row[dbTblColIndex_Create_view_priv] = "Y"
+				row[dbTblColIndex_Create_view_priv] = uint16(2)
 			case sql.PrivilegeType_ShowView:
-				row[dbTblColIndex_Show_view_priv] = "Y"
+				row[dbTblColIndex_Show_view_priv] = uint16(2)
 			case sql.PrivilegeType_CreateRoutine:
-				row[dbTblColIndex_Create_routine_priv] = "Y"
+				row[dbTblColIndex_Create_routine_priv] = uint16(2)
 			case sql.PrivilegeType_AlterRoutine:
-				row[dbTblColIndex_Alter_routine_priv] = "Y"
+				row[dbTblColIndex_Alter_routine_priv] = uint16(2)
 			case sql.PrivilegeType_Execute:
-				row[dbTblColIndex_Execute_priv] = "Y"
+				row[dbTblColIndex_Execute_priv] = uint16(2)
 			case sql.PrivilegeType_Event:
-				row[dbTblColIndex_Event_priv] = "Y"
+				row[dbTblColIndex_Event_priv] = uint16(2)
 			case sql.PrivilegeType_Trigger:
-				row[dbTblColIndex_Trigger_priv] = "Y"
+				row[dbTblColIndex_Trigger_priv] = uint16(2)
 			}
 		}
 		rows = append(rows, row)
