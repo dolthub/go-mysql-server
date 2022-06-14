@@ -251,7 +251,7 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 	return nil
 }
 
-func (t *Table) GetStatistics(ctx *sql.Context) (sql.Statistics, error) {
+func (t *Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
 	return nil, nil
 }
 

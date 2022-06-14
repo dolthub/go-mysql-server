@@ -399,33 +399,55 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
-// TODO: lots of stuff
-type Bucket interface {
-	SetValue(float64)
-	SetFrequency(float64)
-
-	IsSingleton() bool
-	GetValue() float64
-	GetFrequency() float64
+// This implementation is a mixture of MySQL and Cockroach DB
+// TODO: need to some how sort these
+type HistogramBucket struct {
+	LowerBound float64 // inclusive
+	UpperBound float64 // inclusive
+	Frequency  float64
 }
 
-type Histogram map[float64]Bucket
+// Histogram is all statistics we care about for each column
+type Histogram struct {
+	Buckets []*HistogramBucket
+	// TODO: might not want all of these variables could just retrieve from HistogramBuckets or they're just not importable; easier to delete later
+	Mean          float64
+	Min           float64
+	Max           float64
+	Count         float64
+	NullCount     float64
+	DistinctCount float64 // Specific to CockroachDB
 
-type ColumnStatistic interface {
-	GetMean() float64
-	GetMin() float64
-	GetMax() float64
-	GetCount() uint64
-	GetNullCount() uint64
-	GetBucket(value float64) Bucket
-	GetHistogram() Histogram
+	// TODO: These are specific to MySQL, do we want them all?
+	LastUpdated              time.Time
+	SamplingRate             float64 // a number in [0.0,1.0] indicating the fraction of data sampled to generate histogram (1.0 = all rows read)
+	HistogramType            string  // MySQL support either singleton or equi-height, we might just want equi-height
+	NumberOfBucketsSpecified uint64  // Number of buckets specified when running ANALYZE TABLE
+	DataType                 string  // apparently needed for persistence
+	CollationId              uint64  // useful when data are strings
 }
 
-type ColumnStatisticsMap map[string]ColumnStatistic
+// HistogramMap is a map from column name to associated histogram
+type HistogramMap map[string]*Histogram
 
-type Statistics interface {
-	GetColumnStatistic(colName string) (ColumnStatistic, error)
-	GetColumnStatistics() ColumnStatisticsMap
+// TODO: this should be table statistics
+type TableStatistics interface {
+
+	// TODO: from cockroach db; uint64 != tuple?
+	// DistinctCount returns the estimated number of distinct values on the
+	// columns of the statistic. If there are multiple columns, each "value" is a
+	// tuple with the values on each column.
+	//DistinctCount() uint64
+
+	// TODO: from cockroach db; this is probably specific to their stuff
+	//ColumnOrdinal(i int) int
+
+	CreatedAt() time.Time
+	ColumnCount() uint64
+	RowCount() uint64
+	NullCount() uint64
+	Histogram(colName string) (*Histogram, error)
+	HistogramMap() HistogramMap
 }
 
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
@@ -439,7 +461,7 @@ type StatisticsTable interface {
 	// CalculateStatistics fills in the histogram object inside the statistics table
 	CalculateStatistics(ctx *Context) error
 	// GetStatistics returns the statistics object inside the statistics table
-	GetStatistics(ctx *Context) (Statistics, error)
+	GetStatistics(ctx *Context) (TableStatistics, error)
 }
 
 // IndexUsing is the desired storage type.

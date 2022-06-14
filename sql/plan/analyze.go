@@ -125,7 +125,7 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		statsTbl.CalculateStatistics(ctx)
 
 		// TODO: pushdown filters on indexed access to get better cost estimates
-		// TODO: still need to get this information from table and put it in Column Statistics Table
+		// TODO: still need to get this information from table and put it in Column TableStatistics Table
 
 		// Go through each column of table we want to analyze
 		for _, col := range statsTbl.Schema() {
