@@ -169,7 +169,15 @@ func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables [
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+					sql.NewRow(0, sql.Polygon{
+						Lines: []sql.LineString{
+							{Points: []sql.Point{
+								{X: 0, Y: 0},
+								{X: 0, Y: 1},
+								{X: 1, Y: 1},
+								{X: 0, Y: 0},
+							}},
+						}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)

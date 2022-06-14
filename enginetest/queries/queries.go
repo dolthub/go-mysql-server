@@ -90,8 +90,11 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
-		Expected: []sql.Row{{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"}},
+		Query: `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
+		Expected: []sql.Row{
+			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+			{"01030000000200000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
@@ -117,12 +120,18 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT ST_ASWKT(p) from polygon_table`,
-		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+		Query: `SELECT ST_ASWKT(p) from polygon_table`,
+		Expected: []sql.Row{
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
+		},
 	},
 	{
-		Query:    `SELECT ST_ASTEXT(p) from polygon_table`,
-		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+		Query: `SELECT ST_ASTEXT(p) from polygon_table`,
+		Expected: []sql.Row{
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
+		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)))`,
@@ -181,8 +190,11 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{{uint32(0)}, {uint32(0)}},
 	},
 	{
-		Query:    `SELECT ST_SRID(p) from polygon_table`,
-		Expected: []sql.Row{{uint32(0)}},
+		Query: `SELECT ST_SRID(p) from polygon_table`,
+		Expected: []sql.Row{
+			{uint32(0)},
+			{uint32(0)},
+		},
 	},
 	{
 		Query:    `SELECT ST_SRID(p, 4326) from point_table`,
@@ -199,6 +211,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -229,6 +242,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_ASGEOJSON(p) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
 		},
 	},
 	{
@@ -259,6 +273,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -277,6 +292,7 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_DIMENSION(p) from polygon_table`,
 		Expected: []sql.Row{
+			{2},
 			{2},
 		},
 	},
@@ -297,6 +313,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
