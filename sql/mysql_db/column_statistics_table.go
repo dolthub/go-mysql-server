@@ -164,7 +164,7 @@ func init() {
 		columnTemplate("Mean", columnStatisticsTblName, true, float64_default_nil),
 		columnTemplate("Min", columnStatisticsTblName, true, float64_default_nil),
 		columnTemplate("Max", columnStatisticsTblName, true, float64_default_nil),
-		//columnTemplate("Histogram", columnStatisticsTblName, true, json_nullable_default_nil),
+		columnTemplate("Histogram", columnStatisticsTblName, true, json_nullable_default_nil),
 	}
 }
 
@@ -174,8 +174,9 @@ const (
 	columnStatisticsTblColIndex_Table
 	columnStatisticsTblColIndex_Column
 	columnStatisticsTblColIndex_Count
+	columnStatisticsTblColIndex_NullCount
 	columnStatisticsTblColIndex_Mean
 	columnStatisticsTblColIndex_Min
 	columnStatisticsTblColIndex_Max
-	// colStatsTblColIndex_Histogram
+	columnStatisticsTblColIndex_Histogram
 )

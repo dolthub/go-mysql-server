@@ -27,9 +27,11 @@ type ColumnStatistics struct {
 	TableName  string
 	ColumnName string
 	Count      uint64
+	NullCount  uint64
 	Mean       float64
 	Min        float64
 	Max        float64
+	Histogram  string
 }
 
 var _ in_mem_table.Entry = (*ColumnStatistics)(nil)
@@ -39,14 +41,20 @@ func (c *ColumnStatistics) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_tab
 	if err := columnStatisticsTblSchema.CheckRow(row); err != nil {
 		return nil, err
 	}
+	histogram, err := json.Marshal(row[columnStatisticsTblColIndex_Histogram])
+	if err != nil {
+		return nil, err
+	}
 	return &ColumnStatistics{
 		SchemaName: row[columnStatisticsTblColIndex_Schema].(string),
 		TableName:  row[columnStatisticsTblColIndex_Table].(string),
 		ColumnName: row[columnStatisticsTblColIndex_Column].(string),
 		Count:      row[columnStatisticsTblColIndex_Count].(uint64),
+		NullCount:  row[columnStatisticsTblColIndex_NullCount].(uint64),
 		Mean:       row[columnStatisticsTblColIndex_Mean].(float64),
 		Min:        row[columnStatisticsTblColIndex_Min].(float64),
 		Max:        row[columnStatisticsTblColIndex_Max].(float64),
+		Histogram:  string(histogram),
 	}, nil
 }
 
@@ -74,9 +82,11 @@ func (c *ColumnStatistics) ToRow(ctx *sql.Context) sql.Row {
 	row[columnStatisticsTblColIndex_Table] = c.TableName
 	row[columnStatisticsTblColIndex_Column] = c.ColumnName
 	row[columnStatisticsTblColIndex_Count] = c.Count
+	row[columnStatisticsTblColIndex_NullCount] = c.NullCount
 	row[columnStatisticsTblColIndex_Mean] = c.Mean
 	row[columnStatisticsTblColIndex_Min] = c.Min
 	row[columnStatisticsTblColIndex_Max] = c.Max
+	row[columnStatisticsTblColIndex_Histogram] = c.Max
 	return row
 }
 
@@ -90,6 +100,7 @@ func (c *ColumnStatistics) Equals(ctx *sql.Context, otherEntry in_mem_table.Entr
 		c.TableName == other.TableName &&
 		c.ColumnName == other.ColumnName &&
 		c.Count == other.Count &&
+		c.NullCount == other.NullCount &&
 		c.Mean == other.Mean &&
 		c.Min == other.Min &&
 		c.Max == other.Max

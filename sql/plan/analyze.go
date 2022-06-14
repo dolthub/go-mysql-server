@@ -145,7 +145,7 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				return nil, err
 			}
 
-			colStats, err := stats.GetColumnStatistics(col.Name)
+			colStats, err := stats.GetColumnStatistic(col.Name)
 			if err != nil {
 				return nil, err
 			}

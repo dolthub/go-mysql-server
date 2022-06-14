@@ -404,27 +404,27 @@ type Bucket interface {
 	SetValue(float64)
 	SetFrequency(float64)
 
+	IsSingleton() bool
 	GetValue() float64
 	GetFrequency() float64
 }
 
-type ColumnStatistics interface {
-	SetBucket(float64, Bucket)
-	SetMean(float64)
-	SetMin(float64)
-	SetMax(float64)
-	SetNullCount(uint64)
+type Histogram map[float64]Bucket
 
+type ColumnStatistic interface {
 	GetBucket(value float64) Bucket
-	GetBucketMap() map[float64]Bucket
+	GetHistogram() Histogram
 	GetMean() float64
 	GetMin() float64
 	GetMax() float64
 	GetNullCount() uint64
 }
 
+type ColumnStatisticsMap map[string]ColumnStatistic
+
 type Statistics interface {
-	GetColumnStatistics(colName string) (ColumnStatistics, error)
+	GetColumnStatistic(colName string) (ColumnStatistic, error)
+	GetColumnStatistics() ColumnStatisticsMap
 }
 
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
