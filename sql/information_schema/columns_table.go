@@ -294,11 +294,11 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
 			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
 		}
-		fmt.Sprint(defStr)
+		return fmt.Sprint(defStr)
 	}
 
 	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
-		fmt.Sprint(defStr)
+		return fmt.Sprint(defStr)
 	}
 
 	v, err := cd.Eval(ctx, nil)
