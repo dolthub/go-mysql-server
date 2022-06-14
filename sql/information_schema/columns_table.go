@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -166,10 +167,10 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					charMaxLen interface{}
 					columnKey  string
 					nullable   = "NO"
-					ordinalPos = uint64(i + 1)
+					ordinalPos = uint32(i + 1)
 					colType    = strings.ToLower(c.Type.String())
 					dataType   = colType
-					srsId      = "NULL"
+					srsId      interface{}
 				)
 
 				if c.Nullable {
@@ -190,7 +191,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				}
 
 				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
-				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
+				colDefault = getColumnDefaultValue(ctx, columnNameToDefault[fullColumnName])
 
 				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 				if c.PrimaryKey {
@@ -206,7 +207,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 
 				if s, ok := c.Type.(sql.SpatialColumnType); ok {
 					if srid, d := s.GetSpatialTypeSRID(); d {
-						srsId = fmt.Sprintf("%v", srid)
+						srsId = srid
 					}
 				}
 
@@ -252,9 +253,9 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				db.Name(), // table_schema
 				view.Name, // table_name
 				"",        // column_name
-				uint64(0), // ordinal_position
+				uint32(0), // ordinal_position
 				nil,       // column_default
-				nil,       // is_nullable
+				"",        // is_nullable
 				nil,       // data_type
 				nil,       // character_maximum_length
 				nil,       // character_octet_length
@@ -269,7 +270,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				"select",  // privileges
 				"",        // column_comment
 				"",        // generation_expression
-				"NULL",    // srs_id
+				nil,       // srs_id
 			})
 		}
 		if err != nil {
@@ -279,26 +280,35 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 	return sql.RowsToRowIter(rows...), nil
 }
 
-// trimColumnDefaultOutput takes in a column default value and 1. Removes Double Quotes for literals 2. Ensures that the
-// string NULL becomes nil.
-func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
+// getColumnDefaultValue returns the column default value for given sql.ColumnDefaultValue
+func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
 	if cd == nil {
 		return nil
 	}
-
-	colStr := cd.String()
-	// TODO: We need to fix the ColumnDefault String() to prevent double quoting.
-	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
-		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
-	}
-
-	if strings.HasPrefix(colStr, "(") && strings.HasSuffix(colStr, ")") {
-		return strings.TrimSuffix(strings.TrimPrefix(colStr, "("), ")")
-	}
-
-	if colStr == "NULL" {
+	defStr := cd.String()
+	if defStr == "NULL" {
 		return nil
 	}
 
-	return colStr
+	if !cd.IsLiteral() {
+		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
+			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
+		}
+		return fmt.Sprint(defStr)
+	}
+
+	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		return fmt.Sprint(defStr)
+	}
+
+	v, err := cd.Eval(ctx, nil)
+	if err != nil {
+		return nil
+	}
+	switch l := v.(type) {
+	case time.Time:
+		v = l.Format("2006-01-02 15:04:05")
+	}
+
+	return fmt.Sprint(v)
 }

@@ -1646,7 +1646,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	qualifier := c.Table.Qualifier.String()
 
-	schema, err := TableSpecToSchema(nil, c.TableSpec)
+	schema, err := TableSpecToSchema(ctx, c.TableSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -2045,10 +2045,22 @@ func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sq
 	if err != nil {
 		return nil, err
 	}
-	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
+	// The literal and function expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
 	_, isExpr := defaultExpr.(*sqlparser.ParenExpr)
 	// A literal will never have children, thus we can also check for that.
-	isExpr = isExpr || len(parsedExpr.Children()) != 0
+	if unaryExpr, is := defaultExpr.(*sqlparser.UnaryExpr); is {
+		if _, lit := unaryExpr.Expr.(*sqlparser.SQLVal); lit {
+			isExpr = false
+		}
+	} else if !isExpr && len(parsedExpr.Children()) != 0 {
+		if f, ok := parsedExpr.(*expression.UnresolvedFunction); ok {
+			// This will be resolved accordingly in analyzer for column type of Datetime or Timestamp
+			if f.Name() != "now" && f.Name() != "timestamp" {
+				return nil, sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
+			}
+		}
+	}
+
 	return ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
 }
 
@@ -2852,9 +2864,21 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	if err != nil {
 		return nil, err
 	}
-	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
+	// The literal and function expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
 	// 2+2 would evaluate to a literal under the parentheses check, but will have children due to being an Arithmetic expression, thus we check for children.
-	return ExpressionToColumnDefaultValue(ctx, parsedExpr, len(parsedExpr.Children()) == 0 && !strings.HasPrefix(exprStr, "("))
+
+	var isLiteral bool
+	switch e := parsedExpr.(type) {
+	case *expression.UnaryMinus:
+		_, isLiteral = e.Child.(*expression.Literal)
+	case *expression.UnresolvedFunction:
+		if !strings.HasPrefix(exprStr, "(") && !strings.HasSuffix(exprStr, ")") && (e.Name() == "now" || e.Name() == "current_timestamp") {
+			isLiteral = true
+		}
+	default:
+		isLiteral = len(parsedExpr.Children()) == 0 && !strings.HasPrefix(exprStr, "(")
+	}
+	return ExpressionToColumnDefaultValue(ctx, parsedExpr, isLiteral)
 }
 
 // ExpressionToColumnDefaultValue takes in an Expression and returns the equivalent ColumnDefaultValue if the expression

@@ -5047,7 +5047,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "alter table t33 drop column name2")
 
 		TestQueryWithContext(t, ctx, e, "desc t33", []sql.Row{
-			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), \"-\", \"\"))", ""},
+			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
 			{"v1_new", "timestamp", "YES", "", "NOW()", ""},
 			{"v2", "varchar(100)", "YES", "", "", ""},
 		}, nil, nil)
