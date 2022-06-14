@@ -416,34 +416,6 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 		return roles[i].FromHost < roles[j].FromHost
 	})
 
-	// Extract all column stat entries from table, and sort
-	colStatEntries := t.column_statistics.data.ToSlice(ctx)
-	colStats := make([]*ColumnStatistics, len(colStatEntries))
-	for i, colStatEntry := range colStatEntries {
-		colStats[i] = colStatEntry.(*ColumnStatistics)
-	}
-	sort.Slice(colStats, func(i, j int) bool {
-		if colStats[i].SchemaName != colStats[j].SchemaName {
-			return colStats[i].SchemaName < colStats[j].SchemaName
-		}
-		if colStats[i].TableName != colStats[j].TableName {
-			return colStats[i].TableName < colStats[j].TableName
-		}
-		if colStats[i].ColumnName != colStats[j].ColumnName {
-			return colStats[i].ColumnName < colStats[j].ColumnName
-		}
-		if colStats[i].Count != colStats[j].Count {
-			return colStats[i].Count < colStats[j].Count
-		}
-		if colStats[i].Mean != colStats[j].Mean {
-			return colStats[i].Mean < colStats[j].Mean
-		}
-		if colStats[i].Min != colStats[j].Min {
-			return colStats[i].Min < colStats[j].Min
-		}
-		return colStats[i].Max < colStats[j].Max
-	})
-
 	// TODO: serialize other tables when the exist
 
 	// Create flatbuffer

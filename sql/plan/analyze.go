@@ -3,6 +3,7 @@ package plan
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -150,15 +151,29 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				return nil, err
 			}
 
+			// TODO: sort buckets?
+			hist := colStats.GetHistogram()
+			keys := make([]float64, 0)
+			for k, _ := range hist {
+				keys = append(keys, k)
+			}
+			sort.Float64s(keys)
+			histString := ""
+			for _, k := range keys {
+				histString += fmt.Sprintf("[v: %g, f: %g] ", hist[k].GetValue(), hist[k].GetFrequency())
+			}
+
 			// Insert row entry
 			colStatsTableData.Put(ctx, &mysql_db.ColumnStatistics{
 				SchemaName: database,
 				TableName:  statsTbl.Name(),
 				ColumnName: col.Name,
-				Count:      colStats.GetNullCount(),
+				Count:      colStats.GetCount(),
+				NullCount:  colStats.GetNullCount(),
 				Mean:       colStats.GetMean(),
 				Min:        colStats.GetMin(),
 				Max:        colStats.GetMax(),
+				Histogram:  histString,
 			})
 		}
 	}

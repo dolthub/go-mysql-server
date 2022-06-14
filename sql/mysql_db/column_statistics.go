@@ -41,10 +41,6 @@ func (c *ColumnStatistics) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_tab
 	if err := columnStatisticsTblSchema.CheckRow(row); err != nil {
 		return nil, err
 	}
-	histogram, err := json.Marshal(row[columnStatisticsTblColIndex_Histogram])
-	if err != nil {
-		return nil, err
-	}
 	return &ColumnStatistics{
 		SchemaName: row[columnStatisticsTblColIndex_Schema].(string),
 		TableName:  row[columnStatisticsTblColIndex_Table].(string),
@@ -54,7 +50,7 @@ func (c *ColumnStatistics) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_tab
 		Mean:       row[columnStatisticsTblColIndex_Mean].(float64),
 		Min:        row[columnStatisticsTblColIndex_Min].(float64),
 		Max:        row[columnStatisticsTblColIndex_Max].(float64),
-		Histogram:  string(histogram),
+		Histogram:  row[columnStatisticsTblColIndex_Histogram].(string),
 	}, nil
 }
 
@@ -86,7 +82,7 @@ func (c *ColumnStatistics) ToRow(ctx *sql.Context) sql.Row {
 	row[columnStatisticsTblColIndex_Mean] = c.Mean
 	row[columnStatisticsTblColIndex_Min] = c.Min
 	row[columnStatisticsTblColIndex_Max] = c.Max
-	row[columnStatisticsTblColIndex_Histogram] = c.Max
+	row[columnStatisticsTblColIndex_Histogram] = c.Histogram
 	return row
 }
 

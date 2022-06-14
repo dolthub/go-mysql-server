@@ -412,12 +412,13 @@ type Bucket interface {
 type Histogram map[float64]Bucket
 
 type ColumnStatistic interface {
-	GetBucket(value float64) Bucket
-	GetHistogram() Histogram
 	GetMean() float64
 	GetMin() float64
 	GetMax() float64
+	GetCount() uint64
 	GetNullCount() uint64
+	GetBucket(value float64) Bucket
+	GetHistogram() Histogram
 }
 
 type ColumnStatisticsMap map[string]ColumnStatistic

@@ -35,11 +35,12 @@ type ColumnStatisticsPrimaryKey struct {
 
 // ColumnStatisticsSecondaryKey is a key that represents the secondary key for the "user" Grant Tables, which contains stats data.
 type ColumnStatisticsSecondaryKey struct {
-	//TODO: eventually condense into histogram with json(?) type
-	Count uint64
-	Mean  float64
-	Min   float64
-	Max   float64
+	Count     uint64
+	NullCount uint64
+	Mean      float64
+	Min       float64
+	Max       float64
+	Histogram string
 }
 
 var _ in_mem_table.Key = ColumnStatisticsPrimaryKey{}
@@ -90,10 +91,12 @@ func (u ColumnStatisticsSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_me
 		return nil, sql.ErrUnknownEntry.New("secondary", "column_statistics")
 	}
 	return ColumnStatisticsSecondaryKey{
-		Count: colStats.Count,
-		Mean:  colStats.Mean,
-		Min:   colStats.Min,
-		Max:   colStats.Max,
+		Count:     colStats.Count,
+		NullCount: colStats.NullCount,
+		Mean:      colStats.Mean,
+		Min:       colStats.Min,
+		Max:       colStats.Max,
+		Histogram: colStats.Histogram,
 	}, nil
 }
 
@@ -103,6 +106,10 @@ func (u ColumnStatisticsSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) 
 		return u, sql.ErrUnknownEntry.New("secondary", "column_statistics")
 	}
 	count, ok := row[columnStatisticsTblColIndex_Count].(uint64)
+	if !ok {
+		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+	}
+	nullCount, ok := row[columnStatisticsTblColIndex_NullCount].(uint64)
 	if !ok {
 		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
 	}
@@ -118,12 +125,18 @@ func (u ColumnStatisticsSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) 
 	if !ok {
 		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
 	}
+	histogram, ok := row[columnStatisticsTblColIndex_Histogram].(string)
+	if !ok {
+		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+	}
 
 	return ColumnStatisticsSecondaryKey{
-		Count: count,
-		Mean:  mean,
-		Min:   min,
-		Max:   max,
+		Count:     count,
+		NullCount: nullCount,
+		Mean:      mean,
+		Min:       min,
+		Max:       max,
+		Histogram: histogram,
 	}, nil
 }
 
@@ -131,11 +144,17 @@ func (u ColumnStatisticsSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) 
 func init() {
 	// Types
 	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
+	char255_utf8_bin := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_utf8_bin)
 
 	// Column Templates
 	char64_utf8_bin_not_null_default_empty := &sql.Column{
 		Type:     char64_utf8_bin,
 		Default:  mustDefault(expression.NewLiteral("", char64_utf8_bin), char64_utf8_bin, true, false),
+		Nullable: false,
+	}
+	char255_utf8_bin_not_null_default_empty := &sql.Column{
+		Type:     char255_utf8_bin,
+		Default:  mustDefault(expression.NewLiteral("", char255_utf8_bin), char255_utf8_bin, true, false),
 		Nullable: false,
 	}
 	uint64_default_nil := &sql.Column{
@@ -161,10 +180,11 @@ func init() {
 		columnTemplate("Tables", columnStatisticsTblName, true, char64_utf8_bin_not_null_default_empty),
 		columnTemplate("Column", columnStatisticsTblName, true, char64_utf8_bin_not_null_default_empty),
 		columnTemplate("Count", columnStatisticsTblName, true, uint64_default_nil),
+		columnTemplate("NullCount", columnStatisticsTblName, true, uint64_default_nil),
 		columnTemplate("Mean", columnStatisticsTblName, true, float64_default_nil),
 		columnTemplate("Min", columnStatisticsTblName, true, float64_default_nil),
 		columnTemplate("Max", columnStatisticsTblName, true, float64_default_nil),
-		columnTemplate("Histogram", columnStatisticsTblName, true, json_nullable_default_nil),
+		columnTemplate("Histogram", columnStatisticsTblName, true, char255_utf8_bin_not_null_default_empty),
 	}
 }
 
