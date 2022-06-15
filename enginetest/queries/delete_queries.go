@@ -144,7 +144,7 @@ var SpatialDeleteTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "DELETE FROM polygon_table;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
 		ExpectedSelect:      nil,
 	},

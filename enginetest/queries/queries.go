@@ -90,8 +90,11 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
-		Expected: []sql.Row{{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"}},
+		Query: `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
+		Expected: []sql.Row{
+			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+			{"01030000000200000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
@@ -117,12 +120,18 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT ST_ASWKT(p) from polygon_table`,
-		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+		Query: `SELECT ST_ASWKT(p) from polygon_table`,
+		Expected: []sql.Row{
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
+		},
 	},
 	{
-		Query:    `SELECT ST_ASTEXT(p) from polygon_table`,
-		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+		Query: `SELECT ST_ASTEXT(p) from polygon_table`,
+		Expected: []sql.Row{
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
+		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)))`,
@@ -181,8 +190,11 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{{uint32(0)}, {uint32(0)}},
 	},
 	{
-		Query:    `SELECT ST_SRID(p) from polygon_table`,
-		Expected: []sql.Row{{uint32(0)}},
+		Query: `SELECT ST_SRID(p) from polygon_table`,
+		Expected: []sql.Row{
+			{uint32(0)},
+			{uint32(0)},
+		},
 	},
 	{
 		Query:    `SELECT ST_SRID(p, 4326) from point_table`,
@@ -199,6 +211,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -229,6 +242,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_ASGEOJSON(p) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
 		},
 	},
 	{
@@ -259,6 +273,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -277,6 +292,7 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_DIMENSION(p) from polygon_table`,
 		Expected: []sql.Row{
+			{2},
 			{2},
 		},
 	},
@@ -297,6 +313,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -3918,6 +3935,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+			"utf8mb4",
+			"utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -3925,6 +3944,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+			"utf8mb4",
+			"utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -7875,11 +7896,7 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value with more types",
 		SetUpScript: []string{
-			"CREATE TABLE test_table (pk int primary key, fname varchar(20), lname varchar(20), height int)",
-			"ALTER TABLE test_table CHANGE fname col2 float NOT NULL DEFAULT 4.5",
-			"ALTER TABLE test_table CHANGE lname col3 double NOT NULL DEFAULT 3.14159",
-			"ALTER TABLE test_table CHANGE height col4 datetime NULL DEFAULT '2008-04-22 16:16:16'",
-			"ALTER TABLE test_table ADD COLUMN col5 boolean NULL DEFAULT FALSE",
+			"CREATE TABLE test_table (pk int primary key, col2 float NOT NULL DEFAULT 4.5, col3 double NOT NULL DEFAULT 3.14159, col4 datetime NULL DEFAULT '2008-04-22 16:16:16', col5 boolean NULL DEFAULT FALSE)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7889,7 +7906,7 @@ var InfoSchemaScripts = []ScriptTest{
 					{"test_table", "col2", "4.5", "NO"},
 					{"test_table", "col3", "3.14159", "NO"},
 					{"test_table", "col4", "2008-04-22 16:16:16", "YES"},
-					{"test_table", "col5", "false", "YES"},
+					{"test_table", "col5", "0", "YES"},
 				},
 			},
 		},
@@ -7897,19 +7914,18 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value with more types",
 		SetUpScript: []string{
-			"CREATE TABLE test_table (pk int primary key)",
-			"ALTER TABLE test_table ADD COLUMN col2 float DEFAULT length('hello')",
-			"ALTER TABLE test_table ADD COLUMN col3 int DEFAULT greatest(`pk`, 2)",
-			"ALTER TABLE test_table ADD COLUMN col4 int DEFAULT (5 + 5)",
+			"CREATE TABLE test_table (pk int primary key, col2 float DEFAULT (length('he`Llo')), col3 int DEFAULT (greatest(`pk`, 2)), col4 int DEFAULT (5 + 5), col5 datetime default NOW(), create_time timestamp(6) NOT NULL DEFAULT NOW(6));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
 				Expected: []sql.Row{
 					{"test_table", "pk", nil, "NO"},
-					{"test_table", "col2", "LENGTH(\"hello\")", "YES"},
+					{"test_table", "col2", "LENGTH('he`Llo')", "YES"},
 					{"test_table", "col3", "GREATEST(pk, 2)", "YES"},
 					{"test_table", "col4", "(5 + 5)", "YES"},
+					{"test_table", "col5", "NOW()", "YES"},
+					{"test_table", "create_time", "NOW(6)", "NO"},
 				},
 			},
 		},
@@ -7960,8 +7976,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
 				Expected: []sql.Row{
-					{"def", "foo", "t", "i", uint64(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", "", "NULL"},
-					{"def", "foo", "v", "", uint64(0), nil, nil, nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", "NULL"},
+					{"def", "foo", "t", "i", uint32(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", "", nil},
+					{"def", "foo", "v", "", uint32(0), nil, "", nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", nil},
 				},
 			},
 		},
@@ -8045,10 +8061,10 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'stable'",
 				Expected: []sql.Row{
-					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", "NULL"},
-					{"stable", "line", nil, "NO", "linestring", "linestring", "", "NULL"},
-					{"stable", "pnt", nil, "YES", "point", "point", "", "4326"},
-					{"stable", "pol", nil, "NO", "polygon", "polygon", "", "0"},
+					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", nil},
+					{"stable", "line", nil, "NO", "linestring", "linestring", "", nil},
+					{"stable", "pnt", nil, "YES", "point", "point", "", uint32(4326)},
+					{"stable", "pol", nil, "NO", "polygon", "polygon", "", uint32(0)},
 				},
 			},
 		},
@@ -8522,6 +8538,30 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
 		ExpectedErr: sql.ErrFunctionNotFound,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
+		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
+		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
+		ExpectedErr: sql.ErrColumnDefaultSubquery,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, b int DEFAULT '2', c int DEFAULT `b`)",
+		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 POINT DEFAULT POINT(1,2));",
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 JSON DEFAULT JSON_ARRAY(1,2));",
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 }
 

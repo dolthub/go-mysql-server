@@ -69,7 +69,7 @@ func TestRandWithSeed(t *testing.T) {
 	assert.Equal(t, f64, f642)
 
 	r, _ = NewRand(expression.NewLiteral("not a number", sql.LongText))
-	assert.Equal(t, `RAND("not a number")`, r.String())
+	assert.Equal(t, `RAND('not a number')`, r.String())
 
 	f, err = r.Eval(nil, nil)
 	require.NoError(t, err)

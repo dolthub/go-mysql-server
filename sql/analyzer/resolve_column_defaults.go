@@ -17,6 +17,8 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
@@ -672,16 +674,33 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 				err = sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)
 				return false
 			}
-			if (funcName == "now" || funcName == "current_timestamp") &&
-				newDefault.IsLiteral() &&
-				(!sql.IsTime(col.Type) || sql.Date == col.Type) {
-				err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+			if newDefault.IsLiteral() {
+				if funcName == "now" || funcName == "current_timestamp" {
+					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
+						return true
+					} else {
+						err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+						return false
+					}
+				}
+				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 				return false
 			}
+
 			return true
 		case *plan.Subquery:
 			err = sql.ErrColumnDefaultSubquery.New(col.Name)
 			return false
+		case *deferredColumn:
+			err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
+			return false
+		case *expression.GetField:
+			if newDefault.IsLiteral() {
+				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
+				return false
+			} else {
+				return true
+			}
 		default:
 			return true
 		}

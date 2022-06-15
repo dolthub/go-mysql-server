@@ -126,6 +126,8 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 		return sql.Schema{
 			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
 			&sql.Column{Name: "Create View", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
 		}
 	case *ResolvedTable, sql.UnresolvedTable:
 		return sql.Schema{
@@ -191,9 +193,7 @@ func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	i.didIteration = true
 
-	var composedCreateTableStatement string
-	var tableName string
-
+	var row sql.Row
 	switch table := i.table.(type) {
 	case *ResolvedTable:
 		// MySQL behavior is to allow show create table for views, but not show create view for tables.
@@ -201,23 +201,34 @@ func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, ErrNotView.New(table.Name())
 		}
 
-		tableName = table.Name()
-		var err error
-		composedCreateTableStatement, err = i.produceCreateTableStatement(ctx, table.Table, i.schema, i.pkSchema)
+		composedCreateTableStatement, err := i.produceCreateTableStatement(ctx, table.Table, i.schema, i.pkSchema)
 		if err != nil {
 			return nil, err
 		}
+		row = sql.NewRow(
+			table.Name(),                 // "Table" string
+			composedCreateTableStatement, // "Create Table" string
+		)
 	case *SubqueryAlias:
-		tableName = table.Name()
-		composedCreateTableStatement = produceCreateViewStatement(table)
+		characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+		if err != nil {
+			return nil, err
+		}
+		collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+		if err != nil {
+			return nil, err
+		}
+		row = sql.NewRow(
+			table.Name(),                      // "View" string
+			produceCreateViewStatement(table), // "Create View" string
+			characterSetClient,
+			collationConnection,
+		)
 	default:
 		panic(fmt.Sprintf("unexpected type %T", i.table))
 	}
 
-	return sql.NewRow(
-		tableName,                    // "Table" string
-		composedCreateTableStatement, // "Create Table" string
-	), nil
+	return row, nil
 }
 
 type NameAndSchema interface {
@@ -255,7 +266,16 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
-			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())
+			// TODO : string literals should have character set introducer
+			defStr := col.Default.String()
+			if defStr != "NULL" && col.Default.IsLiteral() && !sql.IsTime(col.Default.Type()) && !sql.IsText(col.Default.Type()) {
+				v, err := col.Default.Eval(ctx, nil)
+				if err != nil {
+					return "", err
+				}
+				defStr = fmt.Sprintf("'%v'", v)
+			}
+			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, defStr)
 		}
 
 		if col.Comment != "" {

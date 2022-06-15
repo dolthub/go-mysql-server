@@ -1039,14 +1039,14 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "-42.0", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
-	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT ((2+2)/2) COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
 			Comment:  "hello",
-			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "(2+2)/2", nil, true),
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "((2+2)/2)", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
