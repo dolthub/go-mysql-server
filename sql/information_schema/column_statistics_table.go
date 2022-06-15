@@ -16,6 +16,7 @@ package information_schema
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -55,7 +56,7 @@ func (c *ColumnStatisticsTable) String() string {
 
 // Schema implements the sql.Node interface.
 func (c *ColumnStatisticsTable) Schema() sql.Schema {
-	return columnsSchema
+	return columnStatisticsSchema
 }
 
 // RowIter implements the sql.Node interface.
@@ -120,170 +121,54 @@ func (c *ColumnStatisticsTable) WithAllColumns(cols []*sql.Column) sql.Node {
 }
 
 // columnStatisticsRowIter implements the custom sql.RowIter for the information_schema.columns table.
-func columnStatisticsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {
+func columnStatisticsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, db := range cat.AllDatabases(ctx) {
 		// Get all Tables
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
-
 			// skip non-stats tables
 			statsTbl, ok := t.(sql.StatisticsTable)
 			if !ok {
 				return true, nil
 			}
 
+			// TODO: nothing i do is cached???
+			err = statsTbl.CalculateStatistics(ctx)
+			if err != nil {
+				return false, err
+			}
+			// Skip unanalyzed tables
+			if !statsTbl.IsAnalyzed() {
+				return true, nil
+			}
+
+			// Get statistics
 			stats, err := statsTbl.GetStatistics(ctx)
 			if err != nil {
 				return false, err
 			}
 
-			var columnKeyMap = make(map[string]string)
-			// Get UNIQUEs, PRIMARY KEYs
-			hasPK := false
-			if indexTable, ok := t.(sql.IndexedTable); ok {
-				indexes, iErr := indexTable.GetIndexes(ctx)
-				if iErr != nil {
-					return false, iErr
+			for _, col := range t.Schema() {
+				hist, err := stats.Histogram(col.Name)
+				if err != nil {
+					return false, err
 				}
 
-				for _, index := range indexes {
-					idx := ""
-					if index.ID() == "PRIMARY" {
-						idx = "PRI"
-						hasPK = true
-					} else if index.IsUnique() {
-						idx = "UNI"
-					} else {
-						idx = "MUL"
-					}
-
-					colNames := getColumnNamesFromIndex(index, t)
-					// A UNIQUE index may display as MUL if several columns form a composite UNIQUE index
-					if idx == "UNI" && len(colNames) > 1 {
-						idx = "MUL"
-						columnKeyMap[colNames[0]] = idx
-					} else {
-						for _, colName := range colNames {
-							columnKeyMap[colName] = idx
-						}
-					}
-				}
-			}
-
-			for i, c := range t.Schema() {
-				var (
-					charName   interface{}
-					collName   interface{}
-					colDefault interface{}
-					charMaxLen interface{}
-					columnKey  string
-					nullable   = "NO"
-					ordinalPos = uint64(i + 1)
-					colType    = strings.ToLower(c.Type.String())
-					dataType   = colType
-					srsId      = "NULL"
-				)
-
-				if c.Nullable {
-					nullable = "YES"
-				}
-
-				if sql.IsText(c.Type) {
-					charName = sql.Collation_Default.CharacterSet().String()
-					collName = sql.Collation_Default.String()
-					if st, ok := c.Type.(sql.StringType); ok {
-						charMaxLen = st.MaxCharacterLength()
-					}
-					dataType = strings.TrimSuffix(dataType, fmt.Sprintf("(%v)", charMaxLen))
-				}
-
-				if c.Type == sql.Boolean {
-					colType = colType + "(1)"
-				}
-
-				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
-				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
-
-				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
-				if c.PrimaryKey {
-					columnKey = "PRI"
-				} else if val, ok := columnKeyMap[c.Name]; ok {
-					columnKey = val
-					// A UNIQUE index may be displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table
-					if !c.Nullable && !hasPK && columnKey == "UNI" {
-						columnKey = "PRI"
-						hasPK = true
-					}
-				}
-
-				if s, ok := c.Type.(sql.SpatialColumnType); ok {
-					if srid, d := s.GetSpatialTypeSRID(); d {
-						srsId = fmt.Sprintf("%v", srid)
-					}
+				jsonHist, err := json.Marshal(hist)
+				if err != nil {
+					return false, err
 				}
 
 				rows = append(rows, sql.Row{
-					"def",      // table_catalog
-					db.Name(),  // table_schema
-					t.Name(),   // table_name
-					c.Name,     // column_name
-					ordinalPos, // ordinal_position
-					colDefault, // column_default
-					nullable,   // is_nullable
-					dataType,   // data_type
-					charMaxLen, // character_maximum_length
-					nil,        // character_octet_length
-					nil,        // numeric_precision
-					nil,        // numeric_scale
-					nil,        // datetime_precision
-					charName,   // character_set_name
-					collName,   // collation_name
-					colType,    // column_type
-					columnKey,  // column_key
-					c.Extra,    // extra
-					"select",   // privileges
-					c.Comment,  // column_comment
-					"",         // generation_expression
-					srsId,      // srs_id
+					db.Name(),       // table_schema
+					statsTbl.Name(), // table_name
+					col.Name,        // column_name
+					jsonHist,        // histogram
 				})
 			}
 			return true, nil
 		})
 
-		// TODO: View Definition is lacking information to properly fill out these table
-		// TODO: Should somehow get reference to table(s) view is referencing
-		// TODO: Each column that view references should also show up as unique entries as well
-		views, err := viewsInDatabase(ctx, db)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, view := range views {
-			rows = append(rows, sql.Row{
-				"def",     // table_catalog
-				db.Name(), // table_schema
-				view.Name, // table_name
-				"",        // column_name
-				uint64(0), // ordinal_position
-				nil,       // column_default
-				nil,       // is_nullable
-				nil,       // data_type
-				nil,       // character_maximum_length
-				nil,       // character_octet_length
-				nil,       // numeric_precision
-				nil,       // numeric_scale
-				nil,       // datetime_precision
-				"",        // character_set_name
-				"",        // collation_name
-				"",        // column_type
-				"",        // column_key
-				"",        // extra
-				"select",  // privileges
-				"",        // column_comment
-				"",        // generation_expression
-				"NULL",    // srs_id
-			})
-		}
 		if err != nil {
 			return nil, err
 		}

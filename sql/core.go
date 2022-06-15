@@ -462,6 +462,8 @@ type StatisticsTable interface {
 	CalculateStatistics(ctx *Context) error
 	// GetStatistics returns the statistics object inside the statistics table
 	GetStatistics(ctx *Context) (TableStatistics, error)
+	// IsAnalyzed returns if this table has been analyzed
+	IsAnalyzed() bool
 }
 
 // IndexUsing is the desired storage type.

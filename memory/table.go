@@ -19,10 +19,12 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -31,6 +33,44 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
+
+// TableStatistics holds the table statistics for in-memory tables
+type TableStatistics struct {
+	rowCount     uint64
+	colCount     uint64
+	nullCount    uint64
+	createdAt    time.Time
+	histogramMap sql.HistogramMap
+}
+
+var _ sql.TableStatistics = &TableStatistics{}
+
+func (ts *TableStatistics) CreatedAt() time.Time {
+	return ts.createdAt
+}
+
+func (ts *TableStatistics) ColumnCount() uint64 {
+	return ts.colCount
+}
+
+func (ts *TableStatistics) RowCount() uint64 {
+	return ts.rowCount
+}
+
+func (ts *TableStatistics) NullCount() uint64 {
+	return ts.nullCount
+}
+
+func (ts *TableStatistics) Histogram(colName string) (*sql.Histogram, error) {
+	if res, ok := ts.histogramMap[colName]; ok {
+		return res, nil
+	}
+	return &sql.Histogram{}, fmt.Errorf("column %s not found", colName)
+}
+
+func (ts *TableStatistics) HistogramMap() sql.HistogramMap {
+	return ts.histogramMap
+}
 
 // Table represents an in-memory database table.
 type Table struct {
@@ -61,12 +101,8 @@ type Table struct {
 	autoIncVal uint64
 	autoColIdx int
 
-	// TODO: convert into stats object
-	// TODO: histogram
-	count uint64
-	means map[string]float64
-	mins  map[string]float64
-	maxs  map[string]float64
+	analyzed   bool
+	tableStats *TableStatistics
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -246,9 +282,121 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 		count += uint64(len(rows))
 	}
 
-	t.count = count
+	// skip empty tables
+	if count == 0 {
+		return nil
+	}
+
+	// initialize histogram map
+	t.tableStats = &TableStatistics{
+		rowCount:     count,
+		colCount:     uint64(len(t.Schema())),
+		nullCount:    0,
+		createdAt:    time.Now(),
+		histogramMap: make(sql.HistogramMap),
+	}
+	for _, col := range t.Schema() {
+		t.tableStats.histogramMap[col.Name] = new(sql.Histogram)
+	}
+
+	// this can be adapted to a histogram with any number of buckets
+	freqMap := make(map[string]map[float64]uint64)
+	for _, col := range t.Schema() {
+		freqMap[col.Name] = make(map[float64]uint64)
+	}
+
+	// perform table scan
+	partIter, err := t.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		part, err := partIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		iter, err := t.PartitionRows(ctx, part)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		for {
+			row, err := iter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+
+			for i, col := range t.Schema() {
+				hist, ok := t.tableStats.histogramMap[col.Name]
+				if !ok {
+					panic("histogram was not initialiize for this column; shouldn't be possible")
+				}
+
+				if row[i] == nil {
+					hist.NullCount++
+					continue
+				}
+
+				val, err := sql.Float64.Convert(row[i])
+				if err != nil {
+					return err
+				}
+				v := val.(float64)
+
+				// place into frequency map
+				if bucket, ok := freqMap[col.Name][v]; ok {
+					bucket++
+				} else {
+					freqMap[col.Name][v] = 1
+					hist.DistinctCount++
+				}
+
+				hist.Mean += v / float64(count)
+				hist.Min = math.Min(hist.Min, v)
+				hist.Max = math.Max(hist.Max, v)
+				hist.Count++
+			}
+		}
+	}
+
+	// TODO: logic to determine ranges for buckets
+	// add buckets to histogram in sorted order
+	for colName, freqs := range freqMap {
+		keys := make([]float64, 0)
+		for k, _ := range freqs {
+			keys = append(keys, k)
+		}
+		sort.Float64s(keys)
+
+		hist := t.tableStats.histogramMap[colName]
+		for _, k := range keys {
+			bucket := &sql.HistogramBucket{
+				LowerBound: k,
+				UpperBound: k,
+				Frequency:  float64(freqs[k]) / float64(count),
+			}
+			hist.Buckets = append(hist.Buckets, bucket)
+		}
+	}
+
+	t.analyzed = true
 
 	return nil
+}
+
+func (t *Table) IsAnalyzed() bool {
+	return t.analyzed
 }
 
 func (t *Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {

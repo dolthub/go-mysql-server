@@ -1372,8 +1372,9 @@ func NewInformationSchemaDatabase() Database {
 				schema: filesSchema,
 			},
 			ColumnStatisticsTableName: &informationSchemaTable{
-				name:   ColumnStatisticsTableName,
-				schema: columnStatisticsSchema,
+				name:    ColumnStatisticsTableName,
+				schema:  columnStatisticsSchema,
+				rowIter: columnStatisticsRowIter,
 			},
 			TablesTableName: &informationSchemaTable{
 				name:    TablesTableName,
