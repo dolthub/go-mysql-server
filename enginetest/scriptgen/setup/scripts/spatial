@@ -51,5 +51,5 @@ create table polygon_table (i bigint primary key, p polygon NOT NULL);
 exec
 insert into polygon_table values
     (0, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0))')),
-    (1, ST_GeomFromText('Polygon((1 200,0 1,1 1,1 200),(0 0,0 1,1 1,0 0))'))
+    (1, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))'))
 ----
