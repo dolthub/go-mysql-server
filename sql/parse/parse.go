@@ -294,7 +294,7 @@ func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.N
 	for i, table := range n.Tables {
 		tables[i] = tableNameToUnresolvedTable(table)
 	}
-	return plan.NewAnalyze(sql.UnresolvedDatabase("mysql"), tables), nil
+	return plan.NewAnalyze(tables), nil
 }
 
 func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {

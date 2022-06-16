@@ -8,13 +8,11 @@ import (
 )
 
 type Analyze struct {
-	db   sql.Database // TODO: delete this
 	tbls []sql.Node
 }
 
-func NewAnalyze(db sql.Database, tbls []sql.Node) *Analyze {
+func NewAnalyze(tbls []sql.Node) *Analyze {
 	return &Analyze{
-		db:   db,
 		tbls: tbls,
 	}
 }
@@ -41,27 +39,14 @@ func (n *Analyze) String() string {
 	return fmt.Sprintf("Analyze table %s", strings.Join(tblNames, ", "))
 }
 
-// Database implements the interface sql.Databaser.
-func (n *Analyze) Database() sql.Database {
-	return n.db
-}
-
-// WithDatabase implements the interface sql.Databaser.
-func (n *Analyze) WithDatabase(db sql.Database) (sql.Node, error) {
-	nn := *n
-	nn.db = db
-	return &nn, nil
-}
-
 // Resolved implements the Resolvable interface.
 func (n *Analyze) Resolved() bool {
-	_, ok := n.db.(sql.UnresolvedDatabase)
 	for _, tbl := range n.tbls {
 		if !tbl.Resolved() {
 			return false
 		}
 	}
-	return !ok
+	return true
 }
 
 // Children implements the interface sql.Node.
