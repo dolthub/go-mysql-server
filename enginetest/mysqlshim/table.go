@@ -350,9 +350,22 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return rowCount.(uint64), nil
 }
 
-// TODO
-func (t Table) CalculateStatitics(ctx *sql.Context) error {
+// CalculateStatistics implements the interface sql.StatisticsTable.
+func (t Table) CalculateStatistics(ctx *sql.Context) error {
+	// TODO: this
 	return nil
+}
+
+// GetStatistics implements the interface sql.StatisticsTable.
+func (t Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
+	// TODO: this
+	return nil, nil
+}
+
+// GetStatistics implements the interface sql.StatisticsTable.
+func (t Table) IsAnalyzed() bool {
+	// TODO: this
+	return false
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.
