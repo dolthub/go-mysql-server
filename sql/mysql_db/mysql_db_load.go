@@ -133,15 +133,3 @@ func LoadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
 		ToUser:   string(serialRoleEdge.ToUser()),
 	}
 }
-
-func LoadColumnStatistic(serialColumnStatistic *serial.ColumnStatistic) *ColumnStatistics {
-	return &ColumnStatistics{
-		SchemaName: string(serialColumnStatistic.SchemaName()),
-		TableName:  string(serialColumnStatistic.TableName()),
-		ColumnName: string(serialColumnStatistic.ColumnName()),
-		Count:      serialColumnStatistic.Count(),
-		Mean:       serialColumnStatistic.Mean(),
-		Min:        serialColumnStatistic.Min(),
-		Max:        serialColumnStatistic.Max(),
-	}
-}

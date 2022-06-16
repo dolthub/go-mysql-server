@@ -191,27 +191,3 @@ func serializeRoleEdge(b *flatbuffers.Builder, roleEdges []*RoleEdge) flatbuffer
 	// Write role_edges vector (already in reversed order)
 	return serializeVectorOffsets(b, serial.MySQLDbStartRoleEdgesVector, offsets)
 }
-
-func serializeColumnStatistics(b *flatbuffers.Builder, columnStatistics []*ColumnStatistics) flatbuffers.UOffsetT {
-	// Write column statistics variables and save offsets
-	offsets := make([]flatbuffers.UOffsetT, len(columnStatistics))
-	for i, columnStatistic := range columnStatistics {
-		schemaName := b.CreateString(columnStatistic.SchemaName)
-		tableName := b.CreateString(columnStatistic.TableName)
-		columnName := b.CreateString(columnStatistic.ColumnName)
-
-		serial.ColumnStatisticStart(b)
-		serial.ColumnStatisticAddSchemaName(b, schemaName)
-		serial.ColumnStatisticAddTableName(b, tableName)
-		serial.ColumnStatisticAddColumnName(b, columnName)
-		serial.ColumnStatisticAddCount(b, columnStatistic.Count)
-		serial.ColumnStatisticAddMean(b, columnStatistic.Mean)
-		serial.ColumnStatisticAddMin(b, columnStatistic.Min)
-		serial.ColumnStatisticAddMax(b, columnStatistic.Max)
-
-		offsets[len(columnStatistics)-i-1] = serial.ColumnStatisticEnd(b) // reverse order
-	}
-
-	return 0
-	//return serializeVectorOffsets(b, serial.MySQLDbStartColumnStatisticsVector, offsets)
-}
