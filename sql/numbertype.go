@@ -1025,8 +1025,18 @@ func mustInt64(v interface{}) int64 {
 			return int64(1)
 		}
 		return int64(0)
+	case uint:
+		return int64(tv)
+	case uint8:
+		return int64(tv)
+	case uint16:
+		return int64(tv)
+	case uint32:
+		return int64(tv)
+	case uint64:
+		return int64(tv)
 	default:
-		panic("unexpected type")
+		panic(fmt.Sprintf("unexpected type %v", v))
 	}
 }
 
@@ -1049,7 +1059,15 @@ func mustUint64(v interface{}) uint64 {
 		return uint64(0)
 	case int:
 		return uint64(tv)
+	case int8:
+		return uint64(tv)
+	case int16:
+		return uint64(tv)
+	case int32:
+		return uint64(tv)
+	case int64:
+		return uint64(tv)
 	default:
-		panic("unexpected type")
+		panic(fmt.Sprintf("unexpected type %v", v))
 	}
 }
