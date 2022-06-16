@@ -7347,17 +7347,17 @@ var InfoSchemaQueries = []QueryTest{
 		`,
 		Expected: nil,
 	},
-	{
-		Query: `
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
-		`,
-		Expected: nil,
-	},
+	//{
+	//	Query: `
+	//	SELECT
+	//		COLUMN_NAME,
+	//		JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+	//	FROM information_schema.COLUMN_STATISTICS
+	//	WHERE SCHEMA_NAME = 'mydb'
+	//	AND TABLE_NAME = 'mytable'
+	//	`,
+	//	Expected: nil,
+	//},
 	{
 		Query: `
 		SELECT TABLE_NAME FROM information_schema.TABLES
