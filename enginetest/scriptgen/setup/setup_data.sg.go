@@ -13,6 +13,11 @@ var BigtableData = []SetupScript{{
 	`insert into bigtable values	('a', 1),	('s', 2),	('f', 3),	('g', 1),	('h', 2),	('j', 3),	('k', 1),	('l', 2),	('ñ', 4),	('z', 5),	('x', 6),	('c', 7),	('v', 8),	('b', 9)`,
 }}
 
+var BlobData = []SetupScript{{
+	`create table blobt (i bigint primary key, b longblob)`,
+	`insert into blobt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+}}
+
 var Check_constraintData = []SetupScript{{
 	`CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))`,
 	`ALTER TABLE checks ADD CONSTRAINT chk1 CHECK (B > 0)`,

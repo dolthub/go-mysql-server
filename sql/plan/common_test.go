@@ -51,7 +51,7 @@ var benchtable = func() *memory.Table {
 				boolVal,
 				int32(i),
 				int64(i),
-				repeatStr(n, 100+(i%100)),
+				repeatBytes(n, 100+(i%100)),
 			),
 		)
 		if err != nil {
@@ -67,7 +67,7 @@ var benchtable = func() *memory.Table {
 					boolVal,
 					int32(i),
 					int64(i),
-					repeatStr(n, 100+(i%100)),
+					repeatBytes(n, 100+(i%100)),
 				),
 			)
 			if err != nil {
@@ -85,6 +85,14 @@ func repeatStr(str string, n int) string {
 		buf.WriteString(str)
 	}
 	return buf.String()
+}
+
+func repeatBytes(str string, n int) []byte {
+	var buf bytes.Buffer
+	for i := 0; i < n; i++ {
+		buf.WriteString(str)
+	}
+	return buf.Bytes()
 }
 
 func assertRows(t *testing.T, ctx *sql.Context, iter sql.RowIter, expected int64) {

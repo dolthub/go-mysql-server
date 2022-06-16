@@ -289,11 +289,11 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateBinary(sqltypes.VarBinary, 3), nil, nil, false},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 7), nil, nil, false},
 
-		{MustCreateBinary(sqltypes.Binary, 4), []byte{'1'}, string([]byte{'1', 0, 0, 0}), false},
-		{MustCreateBinary(sqltypes.Blob, 4), []byte{'1'}, string([]byte{'1'}), false},
+		{MustCreateBinary(sqltypes.Binary, 4), []byte{'1'}, []byte{'1', 0, 0, 0}, false},
+		{MustCreateBinary(sqltypes.Blob, 4), []byte{'1'}, []byte{'1'}, false},
 		{MustCreateStringWithDefaults(sqltypes.Char, 7), "abcde", "abcde", false},
 		{MustCreateStringWithDefaults(sqltypes.Text, 7), "abcde", "abcde", false},
-		{MustCreateBinary(sqltypes.VarBinary, 7), "abcde", "abcde", false},
+		{MustCreateBinary(sqltypes.VarBinary, 7), "abcde", []byte("abcde"), false},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 7), "abcde", "abcde", false},
 
 		{MustCreateStringWithDefaults(sqltypes.Char, 4), int(1), "1", false},

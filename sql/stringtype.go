@@ -56,6 +56,7 @@ var (
 	LongBlob   = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
 
 	stringValueType = reflect.TypeOf(string(""))
+	blobValueType   = reflect.TypeOf(([]byte)(nil))
 )
 
 // StringType represents all string types, including VARCHAR and BLOB.
@@ -69,6 +70,7 @@ type StringType interface {
 	Collation() Collation
 	MaxCharacterLength() int64
 	MaxByteLength() int64
+	Length() int64
 }
 
 type stringType struct {
@@ -193,6 +195,10 @@ func CreateLongText(collation Collation) StringType {
 	return MustCreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
+func (t stringType) Length() int64 {
+	return t.charLength
+}
+
 // Compare implements Type interface.
 func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := compareNulls(a, b); hasNulls {
@@ -207,14 +213,22 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		as = ai.(string)
+		if IsBlob(t) {
+			as = string(ai.([]byte))
+		} else {
+			as = ai.(string)
+		}
 	}
 	if bs, ok = b.(string); !ok {
 		bi, err := t.Convert(b)
 		if err != nil {
 			return 0, err
 		}
-		bs = bi.(string)
+		if IsBlob(t) {
+			bs = string(bi.([]byte))
+		} else {
+			bs = bi.(string)
+		}
 	}
 
 	// TODO: should be comparing based on the collation for many cases, but the way this function is used throughout the
@@ -310,6 +324,10 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		val += strings.Repeat(string([]byte{0}), int(t.charLength)-len(val))
 	}
 
+	if IsBlob(t) {
+		return []byte(val), nil
+	}
+
 	return val, nil
 }
 
@@ -353,7 +371,12 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, v.(string))
+	var val []byte
+	if IsBlob(t) {
+		val = appendAndSliceBytes(dest, v.([]byte))
+	} else {
+		val = appendAndSliceString(dest, v.(string))
+	}
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
@@ -413,6 +436,9 @@ func (t stringType) Type() query.Type {
 
 // ValueType implements Type interface.
 func (t stringType) ValueType() reflect.Type {
+	if IsBlob(t) {
+		return blobValueType
+	}
 	return stringValueType
 }
 

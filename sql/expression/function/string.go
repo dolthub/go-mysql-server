@@ -253,7 +253,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongBlob.Convert(arg)
+	val, err := sql.LongText.Convert(arg)
 
 	if err != nil {
 		return nil, err

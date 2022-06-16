@@ -576,6 +576,12 @@ var (
 
 	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
 	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
+
+	// ErrInvalidBinaryPrimaryKey is returned when attempting to create a primary key with a binary column
+	ErrInvalidBinaryPrimaryKey = errors.NewKind("invalid primary key on binary column '%s'")
+
+	// ErrInvalidBinaryIndex is returned for an index on a binary oclumn with no prefix or an invalid prefix
+	ErrInvalidBinaryIndex = errors.NewKind("index on binary column '%s' requires a valid index prefix")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

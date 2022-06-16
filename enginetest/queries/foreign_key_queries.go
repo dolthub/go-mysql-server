@@ -101,7 +101,8 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				Query:    "CREATE TABLE child3 (pk BIGINT PRIMARY KEY, v1 BINARY(30), CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3 (v1));",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			}, {
+			},
+			{
 				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(30), CONSTRAINT fk_child4 FOREIGN KEY (v1) REFERENCES parent4 (v1));",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},

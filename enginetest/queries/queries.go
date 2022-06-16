@@ -6303,13 +6303,13 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT BINARY 'hi'",
 		Expected: []sql.Row{
-			{"hi"},
+			{[]uint8("hi")},
 		},
 	},
 	{
 		Query: "SELECT BINARY 1",
 		Expected: []sql.Row{
-			{"1"},
+			{[]byte("1")},
 		},
 	},
 	{
