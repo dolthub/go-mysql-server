@@ -1081,9 +1081,18 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 	}
 
 	exprs := make([]sql.Expression, len(columns))
+	colNames := make([]string, len(columns))
 	for i, column := range columns {
 		idx, field := t.getField(column.Name)
 		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
+		colNames[i] = column.Name
+	}
+
+	if constraint == sql.IndexConstraint_Unique {
+		err := t.errIfDuplicateAnyRowsExist(colNames, name)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Index{
@@ -1096,6 +1105,41 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Unique:     constraint == sql.IndexConstraint_Unique,
 		CommentStr: comment,
 	}, nil
+}
+
+// throws an error if any two or more rows share the same |cols| values.
+func (t *Table) errIfDuplicateAnyRowsExist(cols []string, idxName string) error {
+	columnMapping, err := t.columnIndexes(cols)
+	if err != nil {
+		return err
+	}
+	unique := make(map[uint64]struct{})
+	for _, partition := range t.partitions {
+		for _, row := range partition {
+			idxPrefixKey := projectOnRow(columnMapping, row)
+			if hasNulls(idxPrefixKey) {
+				continue
+			}
+			h, err := sql.HashOf(idxPrefixKey)
+			if err != nil {
+				return err
+			}
+			if _, ok := unique[h]; ok {
+				return sql.ErrDuplicateEntry.New(idxName)
+			}
+			unique[h] = struct{}{}
+		}
+	}
+	return nil
+}
+
+func hasNulls(row sql.Row) bool {
+	for _, v := range row {
+		if v == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // getField returns the index and column index with the name given, if it exists, or -1, nil otherwise.

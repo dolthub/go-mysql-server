@@ -4741,6 +4741,38 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			[]sql.Row{{sql.NewOkResult(0)}}, nil, mysql.ERNotSupportedYet, 1,
 			"", false)
 	})
+
+	t.Run("adding a unique constraint errors if violations exist", func(t *testing.T) {
+		// single column unique constraint (success)
+		RunQuery(t, e, harness, "CREATE TABLE t38 (pk int PRIMARY KEY, col1 int)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (1, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (2, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (3, NULL)")
+		RunQuery(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)")
+
+		// multi column unique constraint (success)
+		RunQuery(t, e, harness, "CREATE TABLE t39 (pk int PRIMARY KEY, col1 int, col2 int)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (1, 1, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (2, 1, 2)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (3, 2, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (5, 1, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (6, 1, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (7, NULL, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (8, NULL, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (9, NULL, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (10, NULL, NULL)")
+		RunQuery(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)")
+
+		// single column unique constraint (failure)
+		RunQuery(t, e, harness, "ALTER TABLE t38 DROP INDEX u_col1;")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (4, 1);")
+		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrDuplicateEntry)
+
+		// multi column unique constraint (failure)
+		RunQuery(t, e, harness, "ALTER TABLE t39 DROP INDEX u_col1_col2;")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (11, 1, 1);")
+		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrDuplicateEntry)
+	})
 }
 
 func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
