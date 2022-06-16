@@ -50,7 +50,7 @@ var _ in_mem_table.Key = ColumnStatisticsSecondaryKey{}
 func (c ColumnStatisticsPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
 	col, ok := entry.(*ColumnStatistics)
 	if !ok {
-		return nil, sql.ErrUnknownEntry.New("primary", "column_statistics")
+		return nil, sql.ErrInvalidTableEntry.New("primary", "column_statistics")
 	}
 	return ColumnStatisticsPrimaryKey{
 		SchemaName: col.SchemaName,
@@ -62,19 +62,19 @@ func (c ColumnStatisticsPrimaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_
 // KeyFromRow implements the interface in_mem_table.Key.
 func (c ColumnStatisticsPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
 	if len(row) != len(columnStatisticsTblSchema) {
-		return c, sql.ErrUnknownEntry.New("primary", "column_statistics")
+		return c, sql.ErrInvalidTableEntry.New("primary", "column_statistics")
 	}
 	schema, ok := row[columnStatisticsTblColIndex_Schema].(string)
 	if !ok {
-		return c, sql.ErrUnknownSchema.New("primary", "column_statistics")
+		return c, sql.ErrInvalidSchema.New("primary", "column_statistics")
 	}
 	table, ok := row[columnStatisticsTblColIndex_Table].(string)
 	if !ok {
-		return c, sql.ErrUnknownSchema.New("primary", "column_statistics")
+		return c, sql.ErrInvalidSchema.New("primary", "column_statistics")
 	}
 	col, ok := row[columnStatisticsTblColIndex_Column].(string)
 	if !ok {
-		return c, sql.ErrUnknownSchema.New("primary", "column_statistics")
+		return c, sql.ErrInvalidSchema.New("primary", "column_statistics")
 	}
 
 	return ColumnStatisticsPrimaryKey{
@@ -88,7 +88,7 @@ func (c ColumnStatisticsPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (i
 func (u ColumnStatisticsSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
 	colStats, ok := entry.(*ColumnStatistics)
 	if !ok {
-		return nil, sql.ErrUnknownEntry.New("secondary", "column_statistics")
+		return nil, sql.ErrInvalidTableEntry.New("secondary", "column_statistics")
 	}
 	return ColumnStatisticsSecondaryKey{
 		Count:     colStats.Count,
@@ -103,31 +103,31 @@ func (u ColumnStatisticsSecondaryKey) KeyFromEntry(ctx *sql.Context, entry in_me
 // KeyFromRow implements the interface in_mem_table.Key.
 func (u ColumnStatisticsSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
 	if len(row) != len(columnStatisticsTblSchema) {
-		return u, sql.ErrUnknownEntry.New("secondary", "column_statistics")
+		return u, sql.ErrInvalidTableEntry.New("secondary", "column_statistics")
 	}
 	count, ok := row[columnStatisticsTblColIndex_Count].(uint64)
 	if !ok {
-		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+		return u, sql.ErrInvalidSchema.New("secondary", "column_statistics")
 	}
 	nullCount, ok := row[columnStatisticsTblColIndex_NullCount].(uint64)
 	if !ok {
-		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+		return u, sql.ErrInvalidSchema.New("secondary", "column_statistics")
 	}
 	mean, ok := row[columnStatisticsTblColIndex_Mean].(float64)
 	if !ok {
-		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+		return u, sql.ErrInvalidSchema.New("secondary", "column_statistics")
 	}
 	min, ok := row[columnStatisticsTblColIndex_Min].(float64)
 	if !ok {
-		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+		return u, sql.ErrInvalidSchema.New("secondary", "column_statistics")
 	}
 	max, ok := row[columnStatisticsTblColIndex_Max].(float64)
 	if !ok {
-		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+		return u, sql.ErrInvalidSchema.New("secondary", "column_statistics")
 	}
 	histogram, ok := row[columnStatisticsTblColIndex_Histogram].(string)
 	if !ok {
-		return u, sql.ErrUnknownSchema.New("secondary", "column_statistics")
+		return u, sql.ErrInvalidSchema.New("secondary", "column_statistics")
 	}
 
 	return ColumnStatisticsSecondaryKey{
