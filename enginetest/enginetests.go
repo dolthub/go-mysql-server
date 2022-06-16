@@ -251,7 +251,7 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, tt.ExpectedCost)
 	}
 }
 
@@ -337,7 +337,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, expectedPlan string) {
+func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, expectedPlan string, expectedCost float64) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, query)
@@ -352,7 +352,10 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, 
 			}
 		}
 
+		planCost, err := plan.EstimatePlanCost(ctx, node)
+		require.NoError(t, err)
 		assert.Equal(t, expectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+query)
+		assert.Equal(t, expectedCost, planCost, "Unexpected result for query: "+query)
 	})
 
 }

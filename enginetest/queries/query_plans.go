@@ -17,6 +17,7 @@ package queries
 type QueryPlanTest struct {
 	Query        string
 	ExpectedPlan string
+	ExpectedCost float64
 }
 
 // PlanTests is a test of generating the right query plans for different queries in the presence of indexes and
@@ -28,6 +29,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Projected table access on [pk c1 c2 c3 c4 c5]\n" +
 			" └─ IndexedTableAccess(one_pk on [one_pk.pk] with ranges: [{(-∞, ∞)}])\n" +
 			"",
+		ExpectedCost: 100,
 	},
 	{
 		Query: `SELECT * FROM two_pk ORDER BY pk1, pk2`,

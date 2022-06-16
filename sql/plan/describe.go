@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -128,6 +129,57 @@ func (d *DescribeQuery) Schema() sql.Schema {
 	return DescribeSchema
 }
 
+// TODO: where do I put this so that Describe and TestQueryPlan can both see it?
+// TODO: this function might already exist somewhere
+func FindTable(table sql.Table) sql.Table {
+	switch tbl := table.(type) {
+	case *ResolvedTable:
+		return FindTable(tbl.Table)
+	case *ProcessTable:
+		return FindTable(tbl.Underlying())
+	default:
+		return table
+	}
+}
+
+// TODO: where do I put this so that Describe and TestQueryPlan can both see it?
+func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
+	switch n := node.(type) {
+	case *TransactionCommittingNode:
+		return EstimatePlanCost(ctx, n.Child())
+	case *QueryProcess:
+		return EstimatePlanCost(ctx, n.Child())
+	case *Project:
+		return EstimatePlanCost(ctx, n.Child)
+	case *DecoratedNode:
+		return EstimatePlanCost(ctx, n.Child)
+	case *Exchange:
+		return EstimatePlanCost(ctx, n.Child)
+	case *Sort:
+		return EstimatePlanCost(ctx, n.Child)
+	case *IndexedJoin:
+		lcost, err := EstimatePlanCost(ctx, n.left)
+		if err != nil {
+			return 0, err
+		}
+		rcost, err := EstimatePlanCost(ctx, n.right)
+		if err != nil {
+			return 0, err
+		}
+		return lcost + rcost, nil
+	case sql.Table:
+		table := FindTable(n)
+		if statsTbl, ok := table.(sql.StatisticsTable); ok {
+			numRows, _ := statsTbl.NumRows(ctx)
+			return float64(numRows), nil
+		}
+		return 100, nil
+
+	default:
+		return 0, fmt.Errorf("EstimatePlanCost unhandled node: %T", n)
+	}
+}
+
 // RowIter implements the Node interface.
 func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
@@ -143,6 +195,14 @@ func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 			rows = append(rows, sql.NewRow(l))
 		}
 	}
+
+	// TODO: add additional row that is the cost of the entire plan
+	planCost, err := EstimatePlanCost(ctx, d.child)
+	if err != nil {
+		return nil, err
+	}
+	rows = append(rows, sql.NewRow(planCost))
+
 	return sql.RowsToRowIter(rows...), nil
 }
 
