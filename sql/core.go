@@ -399,8 +399,8 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
-// This implementation is a mixture of MySQL and Cockroach DB
-// TODO: need to some how sort these
+// HistogramBucket represents a bucket in a histogram
+// inspiration pulled from MySQL and Cockroach DB
 type HistogramBucket struct {
 	LowerBound float64 // inclusive
 	UpperBound float64 // inclusive
@@ -430,7 +430,7 @@ type Histogram struct {
 // HistogramMap is a map from column name to associated histogram
 type HistogramMap map[string]*Histogram
 
-// TODO: this should be table statistics
+// TableStatistics will hold all the statistics on a table we care about
 type TableStatistics interface {
 
 	// TODO: from cockroach db; uint64 != tuple?
