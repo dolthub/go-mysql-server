@@ -1089,7 +1089,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 	}
 
 	if constraint == sql.IndexConstraint_Unique {
-		err := t.errIfDuplicateAnyRowsExist(colNames, name)
+		err := t.errIfDuplicateEntryExist(colNames, name)
 		if err != nil {
 			return nil, err
 		}
@@ -1108,7 +1108,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 }
 
 // throws an error if any two or more rows share the same |cols| values.
-func (t *Table) errIfDuplicateAnyRowsExist(cols []string, idxName string) error {
+func (t *Table) errIfDuplicateEntryExist(cols []string, idxName string) error {
 	columnMapping, err := t.columnIndexes(cols)
 	if err != nil {
 		return err

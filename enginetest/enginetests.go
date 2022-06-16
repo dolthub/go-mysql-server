@@ -4746,8 +4746,9 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		// single column unique constraint (success)
 		RunQuery(t, e, harness, "CREATE TABLE t38 (pk int PRIMARY KEY, col1 int)")
 		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (1, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (2, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (2, 2)")
 		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (3, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (4, NULL)")
 		RunQuery(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)")
 
 		// multi column unique constraint (success)
