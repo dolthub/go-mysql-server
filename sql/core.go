@@ -414,9 +414,9 @@ type Histogram struct {
 	Mean          float64
 	Min           float64
 	Max           float64
-	Count         float64
-	NullCount     float64
-	DistinctCount float64 // Specific to CockroachDB
+	Count         uint64
+	NullCount     uint64
+	DistinctCount uint64 // Specific to CockroachDB
 
 	// TODO: These are specific to MySQL, do we want them all?
 	LastUpdated              time.Time

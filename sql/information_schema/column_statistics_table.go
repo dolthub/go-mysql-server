@@ -16,7 +16,6 @@ package information_schema
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -132,12 +131,12 @@ func columnStatisticsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, er
 				return true, nil
 			}
 
-			// TODO: nothing i do is cached???
-			err = statsTbl.CalculateStatistics(ctx)
-			if err != nil {
-				return false, err
-			}
-			// Skip unanalyzed tables
+			// TODO: nothing i do is cached on dolt side???
+			//err = statsTbl.CalculateStatistics(ctx)
+			//if err != nil {
+			//	return false, err
+			//}
+			//Skip unanalyzed tables
 			if !statsTbl.IsAnalyzed() {
 				return true, nil
 			}
@@ -154,16 +153,25 @@ func columnStatisticsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, er
 					return false, err
 				}
 
-				jsonHist, err := json.Marshal(hist)
-				if err != nil {
-					return false, err
+				buckets := make([]string, len(hist.Buckets))
+				for i, b := range hist.Buckets {
+					buckets[i] = fmt.Sprintf("[%.2f, %.2f, %.2f]", b.LowerBound, b.UpperBound, b.Frequency)
 				}
 
+				bucketStrings := strings.Join(buckets, ",")
+
 				rows = append(rows, sql.Row{
-					db.Name(),       // table_schema
-					statsTbl.Name(), // table_name
-					col.Name,        // column_name
-					jsonHist,        // histogram
+					db.Name(),          // table_schema
+					statsTbl.Name(),    // table_name
+					col.Name,           // column_name
+					hist.Mean,          // mean
+					hist.Min,           // min
+					hist.Max,           // max
+					hist.Count,         // count
+					hist.NullCount,     // null_count
+					hist.DistinctCount, // distinct_count
+					bucketStrings,      // buckets
+					//sql.JSONDocument{Val: jsonHist}, // histogram
 				})
 			}
 			return true, nil

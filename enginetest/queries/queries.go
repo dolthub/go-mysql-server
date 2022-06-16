@@ -8823,9 +8823,9 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM mysql.column_statistics",
+				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", uint64(3), float64(2), float64(1), float64(3)},
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]"},
 				},
 			},
 		},
@@ -8839,10 +8839,10 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM mysql.column_statistics",
+				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", uint64(3), float64(2), float64(1), float64(3)},
-					{"mydb", "t", "j", uint64(3), float64(5), float64(4), float64(6)},
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]"},
+					{"mydb", "t", "j", float64(5), float64(4), float64(6), uint64(3), uint64(0), uint64(3), "[4.00, 4.00, 0.33],[5.00, 5.00, 0.33],[6.00, 6.00, 0.33]"},
 				},
 			},
 		},
@@ -8856,38 +8856,9 @@ var StatisticsQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM mysql.column_statistics",
+				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", uint64(4), float64(16.125), float64(1.25), float64(45.25)},
-				},
-			},
-		},
-	},
-	{
-		Name: "stats tables are mutable",
-		SetUpScript: []string{
-			"CREATE TABLE t (i float)",
-			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM mysql.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", uint64(4), float64(16.125), float64(1.25), float64(45.25)},
-				},
-			},
-			{
-				Query: `INSERT INTO mysql.column_statistics values ("fake_db", "fake_table", "fake_col", 1,2,3,4)`,
-				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
-				},
-			},
-			{
-				Query: "SELECT * FROM mysql.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", uint64(4), float64(16.125), float64(1.25), float64(45.25)},
-					{"fake_db", "fake_table", "fake_col", uint64(1), float64(2), float64(3), float64(4)},
+					{"mydb", "t", "i", float64(16.125), float64(1.25), float64(45.25), uint64(4), uint64(0), uint64(4), "[1.25, 1.25, 0.25],[7.50, 7.50, 0.25],[10.50, 10.50, 0.25],[45.25, 45.25, 0.25]"},
 				},
 			},
 		},

@@ -296,7 +296,10 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 		histogramMap: make(sql.HistogramMap),
 	}
 	for _, col := range t.Schema() {
-		t.tableStats.histogramMap[col.Name] = new(sql.Histogram)
+		hist := new(sql.Histogram)
+		hist.Min = math.MaxFloat64
+		hist.Max = -math.MaxFloat64
+		t.tableStats.histogramMap[col.Name] = hist
 	}
 
 	// this can be adapted to a histogram with any number of buckets
@@ -400,7 +403,7 @@ func (t *Table) IsAnalyzed() bool {
 }
 
 func (t *Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
-	return nil, nil
+	return t.tableStats, nil
 }
 
 func NewPartition(key []byte) *Partition {

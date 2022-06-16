@@ -210,7 +210,16 @@ var columnStatisticsSchema = Schema{
 	{Name: "schema_name", Type: LongText, Source: ColumnStatisticsTableName},
 	{Name: "table_name", Type: LongText, Source: ColumnStatisticsTableName},
 	{Name: "column_name", Type: LongText, Source: ColumnStatisticsTableName},
-	{Name: "histogram", Type: JSON, Source: ColumnStatisticsTableName},
+	{Name: "mean", Type: Float64, Source: ColumnStatisticsTableName},
+	{Name: "min", Type: Float64, Source: ColumnStatisticsTableName},
+	{Name: "max", Type: Float64, Source: ColumnStatisticsTableName},
+	{Name: "count", Type: Uint64, Source: ColumnStatisticsTableName},
+	{Name: "null_count", Type: Uint64, Source: ColumnStatisticsTableName},
+	{Name: "distinct_count", Type: Uint64, Source: ColumnStatisticsTableName},
+	{Name: "buckets", Type: LongText, Source: ColumnStatisticsTableName},
+	// TODO: mysql just has histogram
+	//{Name: "histogram", Type: JSON, Source: ColumnStatisticsTableName},
+
 }
 
 var tablesSchema = Schema{
