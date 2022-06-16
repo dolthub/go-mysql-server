@@ -116,6 +116,22 @@ var BlobErrors = []QueryErrorTest{
 		Query:       "create table b (i int primary key, b blob, index bidx(b))",
 		ExpectedErr: sql.ErrInvalidBinaryIndex,
 	},
+	{
+		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 BINARY(20), INDEX (v1));",
+		ExpectedErr: sql.ErrInvalidBinaryIndex,
+	},
+	{
+		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), INDEX (v1));",
+		ExpectedErr: sql.ErrInvalidBinaryIndex,
+	},
+	{
+		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 VARBINARY, INDEX (v1));",
+		ExpectedErr: sql.ErrInvalidBinaryIndex,
+	},
+	{
+		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TEXT, INDEX (v1));",
+		ExpectedErr: sql.ErrInvalidBinaryIndex,
+	},
 }
 
 var BlobUnsupported = []QueryTest{

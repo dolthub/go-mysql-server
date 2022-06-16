@@ -492,14 +492,10 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 			}
 
 			if sql.IsBlob(col.Type) {
-				if idxCol.Length < 1 {
-					idxCol.Length = col.Type.(sql.StringType).Length()
-				}
-				if idxCol.Length < 1 || idxCol.Length > textIndexPrefix {
-					return sql.ErrInvalidBinaryIndex.New(col.Name)
-				}
+				return sql.ErrInvalidBinaryIndex.New(col.Name)
+			} else if sql.IsTextBlob(col.Type) {
+				return sql.ErrInvalidTextIndex.New(col.Name)
 			}
-
 		}
 	}
 

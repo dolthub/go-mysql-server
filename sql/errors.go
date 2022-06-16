@@ -581,7 +581,10 @@ var (
 	ErrInvalidBinaryPrimaryKey = errors.NewKind("invalid primary key on binary column '%s'")
 
 	// ErrInvalidBinaryIndex is returned for an index on a binary oclumn with no prefix or an invalid prefix
-	ErrInvalidBinaryIndex = errors.NewKind("index on binary column '%s' requires a valid index prefix")
+	ErrInvalidBinaryIndex = errors.NewKind("index on binary column '%s' unsupported")
+
+	// ErrInvalidTextIndex is returned for an index on a binary oclumn with no prefix or an invalid prefix
+	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

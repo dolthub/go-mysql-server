@@ -1,7 +1,7 @@
 exec
 CREATE TABLE `bus_routes` (
-  `origin` text NOT NULL,
-  `dst` text NOT NULL,
+  `origin` varchar(20) NOT NULL,
+  `dst` varchar(20) NOT NULL,
   PRIMARY KEY (`origin`,`dst`)
 )
 ----
@@ -17,8 +17,8 @@ insert into bus_routes values
 
 exec
 CREATE TABLE `parts` (
-  `part` text NOT NULL,
-  `sub_part` text NOT NULL,
+  `part` varchar(20) NOT NULL,
+  `sub_part` varchar(20) NOT NULL,
   `quantity` bigint NOT NULL,
   PRIMARY KEY (`part`,`sub_part`)
 )

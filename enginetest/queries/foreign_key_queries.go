@@ -86,8 +86,6 @@ var ForeignKeyTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE parent1 (pk BIGINT PRIMARY KEY, v1 CHAR(20), INDEX (v1));",
 			"CREATE TABLE parent2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(20), INDEX (v1));",
-			"CREATE TABLE parent3 (pk BIGINT PRIMARY KEY, v1 BINARY(20), INDEX (v1));",
-			"CREATE TABLE parent4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), INDEX (v1));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -96,14 +94,6 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(30), CONSTRAINT fk_child2 FOREIGN KEY (v1) REFERENCES parent2 (v1));",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query:    "CREATE TABLE child3 (pk BIGINT PRIMARY KEY, v1 BINARY(30), CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3 (v1));",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(30), CONSTRAINT fk_child4 FOREIGN KEY (v1) REFERENCES parent4 (v1));",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
@@ -375,12 +365,8 @@ var ForeignKeyTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE parent1 (pk BIGINT PRIMARY KEY, v1 CHAR(20), INDEX (v1));",
 			"CREATE TABLE parent2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(20), INDEX (v1));",
-			"CREATE TABLE parent3 (pk BIGINT PRIMARY KEY, v1 BINARY(20), INDEX (v1));",
-			"CREATE TABLE parent4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), INDEX (v1));",
 			"CREATE TABLE child1 (pk BIGINT PRIMARY KEY, v1 CHAR(20), CONSTRAINT fk_child1 FOREIGN KEY (v1) REFERENCES parent1 (v1));",
 			"CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(20), CONSTRAINT fk_child2 FOREIGN KEY (v1) REFERENCES parent2 (v1));",
-			"CREATE TABLE child3 (pk BIGINT PRIMARY KEY, v1 BINARY(20), CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3 (v1));",
-			"CREATE TABLE child4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), CONSTRAINT fk_child4 FOREIGN KEY (v1) REFERENCES parent4 (v1));",
 			"INSERT INTO parent2 VALUES (1, 'aa'), (2, 'bb');",
 			"INSERT INTO child2 VALUES (1, 'aa');",
 		},
@@ -402,22 +388,6 @@ var ForeignKeyTests = []ScriptTest{
 				ExpectedErr: sql.ErrForeignKeyTypeChange,
 			},
 			{
-				Query:       "ALTER TABLE parent3 MODIFY v1 BINARY(10);",
-				ExpectedErr: sql.ErrForeignKeyTypeChange,
-			},
-			{
-				Query:       "ALTER TABLE child3 MODIFY v1 BINARY(10);",
-				ExpectedErr: sql.ErrForeignKeyTypeChange,
-			},
-			{
-				Query:       "ALTER TABLE parent4 MODIFY v1 VARBINARY(10);",
-				ExpectedErr: sql.ErrForeignKeyTypeChange,
-			},
-			{
-				Query:       "ALTER TABLE child4 MODIFY v1 VARBINARY(10);",
-				ExpectedErr: sql.ErrForeignKeyTypeChange,
-			},
-			{
 				Query:    "ALTER TABLE parent1 MODIFY v1 CHAR(30);",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
@@ -431,22 +401,6 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child2 MODIFY v1 VARCHAR(30);",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE parent3 MODIFY v1 BINARY(30);",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE child3 MODIFY v1 BINARY(30);",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE parent4 MODIFY v1 VARBINARY(30);",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE child4 MODIFY v1 VARBINARY(30);",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{ // Make sure the type change didn't cause INSERTs to break or some other strange behavior
