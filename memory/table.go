@@ -398,7 +398,7 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 	return nil
 }
 
-func (t *Table) IsAnalyzed() bool {
+func (t *Table) IsAnalyzed(ctx *sql.Context) bool {
 	return t.analyzed
 }
 

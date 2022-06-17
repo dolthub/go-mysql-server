@@ -363,7 +363,7 @@ func (t Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
 }
 
 // GetStatistics implements the interface sql.StatisticsTable.
-func (t Table) IsAnalyzed() bool {
+func (t Table) IsAnalyzed(ctx *sql.Context) bool {
 	// TODO: this
 	return false
 }

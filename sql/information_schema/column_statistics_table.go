@@ -131,13 +131,8 @@ func columnStatisticsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, er
 				return true, nil
 			}
 
-			// TODO: nothing i do is cached on dolt side???
-			//err = statsTbl.CalculateStatistics(ctx)
-			//if err != nil {
-			//	return false, err
-			//}
 			//Skip unanalyzed tables
-			if !statsTbl.IsAnalyzed() {
+			if !statsTbl.IsAnalyzed(ctx) {
 				return true, nil
 			}
 
