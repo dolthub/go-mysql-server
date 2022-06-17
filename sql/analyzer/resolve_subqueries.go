@@ -317,6 +317,8 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	})
 }
 
+// setViewTargetSchema is used to set the target schema for views. It is run after resolve_subqueries in order for
+// SubqueryAlias resolution to happen.
 func setViewTargetSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("set_view_target_schema")
 	defer span.Finish()
@@ -342,8 +344,7 @@ func setViewTargetSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 func getSubqueryAlias(node sql.Node) *plan.SubqueryAlias {
 	var sq *plan.SubqueryAlias
 	transform.Inspect(node, func(node sql.Node) bool {
-		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
+		// Only want to the first match
 		if sq != nil {
 			return false
 		}
