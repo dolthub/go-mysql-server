@@ -316,3 +316,44 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	})
 }
+
+func setViewTargetSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("set_view_target_schema")
+	defer span.Finish()
+
+	t, ok := n.(sql.SchemaTarget)
+	if !ok {
+		return n, transform.SameTree, nil
+	}
+
+	sq := getSubqueryAlias(n)
+	if sq == nil {
+		return n, transform.SameTree, nil
+	}
+
+	n, err := t.WithTargetSchema(sq.Schema())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return n, transform.NewTree, nil
+}
+
+func getSubqueryAlias(node sql.Node) *plan.SubqueryAlias {
+	var sq *plan.SubqueryAlias
+	transform.Inspect(node, func(node sql.Node) bool {
+		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
+		// only want the first ResolvedTable match.
+		if sq != nil {
+			return false
+		}
+
+		switch n := node.(type) {
+		case *plan.SubqueryAlias:
+			sq = n
+			return false
+		}
+		return true
+	})
+	return sq
+}

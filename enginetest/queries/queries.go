@@ -3949,6 +3949,13 @@ var QueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `describe myview`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "", "", ""},
+			{"s", "varchar(20)", "NO", "", "", ""},
+		},
+	},
+	{
 		Query:    `SELECT -1`,
 		Expected: []sql.Row{{int8(-1)}},
 	},

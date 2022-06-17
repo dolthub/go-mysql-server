@@ -1,6 +1,6 @@
 package analyzer
 
-//go:generate stringer -type=RuleId -linecomment
+//go:generate go run golang.org/x/tools/cmd/stringer -type=RuleId -linecomment
 
 type RuleId int
 
@@ -28,6 +28,7 @@ const (
 	loadCheckConstraintsId                      // loadCheckConstraints
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
+	setViewTargetSchemaId                       //
 	resolveUnionsId                             // resolveUnions
 	resolveDescribeQueryId                      // resolveDescribeQuery
 	checkUniqueTableNamesId                     // checkUniqueTableNames
