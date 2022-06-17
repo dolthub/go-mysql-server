@@ -239,7 +239,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		return node, transform.SameTree, nil
 	}
 
-	eval := func (e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	eval := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if !isEvaluable(e) {
 			return e, transform.SameTree, nil
 		}
