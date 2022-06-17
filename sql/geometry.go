@@ -16,6 +16,7 @@ package sql
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"math"
 	"reflect"
 
@@ -240,13 +241,13 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		case WKBPolyID:
 			geom, err = WKBToPoly(inner[EWKBHeaderSize:], isBig, srid)
 		case WKBMultiPointID:
-			return nil, ErrUnsupportedFeature.New("MultiPoint geospatial type")
+			return nil, ErrUnsupportedGISType.New("MultiPoint", hex.EncodeToString(inner))
 		case WKBMultiLineID:
-			return nil, ErrUnsupportedFeature.New("MultiLineString geospatial type")
+			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(inner))
 		case WKBMultiPolyID:
-			return nil, ErrUnsupportedFeature.New("MultiPolygon geospatial type")
+			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(inner))
 		case WKBGeoCollectionID:
-			return nil, ErrUnsupportedFeature.New("GeometryCollection geospatial type")
+			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(inner))
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
 		}

@@ -119,8 +119,8 @@ func TestUnsupportedSpatialTypeByteArrayConversion(t *testing.T) {
 			convert, err := GeometryType{}.Convert(data)
 			require.Nil(t, convert)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "unsupported feature: ")
-			require.Contains(t, err.Error(), test.typeName)
+			require.Contains(t, err.Error(), "unsupported geospatial type: "+test.typeName)
+			require.Contains(t, err.Error(), "from value: 0x0")
 		})
 	}
 }
