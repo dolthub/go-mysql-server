@@ -68,6 +68,10 @@ const (
 	WKBPointID
 	WKBLineID
 	WKBPolyID
+	WKBMultiPointID
+	WKBMultiLineID
+	WKBMultiPolyID
+	WKBGeoCollectionID
 )
 
 // isLinearRing checks if a LineString is a linear ring
@@ -235,6 +239,14 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 			geom, err = WKBToLine(inner[EWKBHeaderSize:], isBig, srid)
 		case WKBPolyID:
 			geom, err = WKBToPoly(inner[EWKBHeaderSize:], isBig, srid)
+		case WKBMultiPointID:
+			return nil, ErrUnsupportedFeature.New("MultiPoint geospatial type")
+		case WKBMultiLineID:
+			return nil, ErrUnsupportedFeature.New("MultiLineString geospatial type")
+		case WKBMultiPolyID:
+			return nil, ErrUnsupportedFeature.New("MultiPolygon geospatial type")
+		case WKBGeoCollectionID:
+			return nil, ErrUnsupportedFeature.New("GeometryCollection geospatial type")
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
 		}
