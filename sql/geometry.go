@@ -16,6 +16,7 @@ package sql
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"math"
 	"reflect"
 
@@ -68,6 +69,10 @@ const (
 	WKBPointID
 	WKBLineID
 	WKBPolyID
+	WKBMultiPointID
+	WKBMultiLineID
+	WKBMultiPolyID
+	WKBGeoCollectionID
 )
 
 // isLinearRing checks if a LineString is a linear ring
@@ -235,6 +240,14 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 			geom, err = WKBToLine(inner[EWKBHeaderSize:], isBig, srid)
 		case WKBPolyID:
 			geom, err = WKBToPoly(inner[EWKBHeaderSize:], isBig, srid)
+		case WKBMultiPointID:
+			return nil, ErrUnsupportedGISType.New("MultiPoint", hex.EncodeToString(inner))
+		case WKBMultiLineID:
+			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(inner))
+		case WKBMultiPolyID:
+			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(inner))
+		case WKBGeoCollectionID:
+			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(inner))
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
 		}

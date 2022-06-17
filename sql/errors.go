@@ -473,6 +473,9 @@ var (
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
 
+	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
+	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
+
 	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
 	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
 
