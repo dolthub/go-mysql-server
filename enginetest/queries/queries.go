@@ -3951,8 +3951,8 @@ var QueryTests = []QueryTest{
 	{
 		Query: `describe myview`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "", "", ""},
-			{"s", "varchar(20)", "NO", "", "", ""},
+			{"i", "bigint", "NO", "", "NULL", ""},
+			{"s", "varchar(20)", "NO", "", "NULL", ""},
 		},
 	},
 	{
@@ -6794,22 +6794,22 @@ var KeylessQueries = []QueryTest{
 	{
 		Query: "DESCRIBE keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "", ""},
-			{"c1", "bigint", "YES", "", "", ""},
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
 		},
 	},
 	{
 		Query: "SHOW COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "", ""},
-			{"c1", "bigint", "YES", "", "", ""},
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
 		},
 	},
 	{
 		Query: "SHOW FULL COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", nil, "YES", "", "", "", "", ""},
-			{"c1", "bigint", nil, "YES", "", "", "", "", ""},
+			{"c0", "bigint", nil, "YES", "", "NULL", "", "", ""},
+			{"c1", "bigint", nil, "YES", "", "NULL", "", "", ""},
 		},
 	},
 	{
@@ -7217,16 +7217,16 @@ var VersionedScripts = []ScriptTest{
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "", ""},
-					{"s", "text", "NO", "", "", ""},
+					{"i", "bigint", "NO", "PRI", "NULL", ""},
+					{"s", "text", "NO", "", "NULL", ""},
 				},
 			},
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "", ""},
-					{"s", "text", "NO", "", "", ""},
-					{"c", "text", "NO", "", "", ""},
+					{"i", "bigint", "NO", "PRI", "NULL", ""},
+					{"s", "text", "NO", "", "NULL", ""},
+					{"c", "text", "NO", "", "NULL", ""},
 				},
 			},
 		},
@@ -7288,41 +7288,41 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: `SHOW COLUMNS FROM mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "", ""},
-			{"s", "varchar(20)", "NO", "UNI", "", ""},
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
 		},
 	},
 	{
 		Query: `DESCRIBE mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "", ""},
-			{"s", "varchar(20)", "NO", "UNI", "", ""},
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
 		},
 	},
 	{
 		Query: `DESC mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "", ""},
-			{"s", "varchar(20)", "NO", "UNI", "", ""},
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "", ""},
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "", ""},
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
 		},
 	},
 	{
 		Query: `SHOW FULL COLUMNS FROM mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", nil, "NO", "PRI", "", "", "", ""},
-			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "", "", "", "column s"},
+			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
 		},
 	},
 	{

@@ -1039,7 +1039,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", ""},
 					{"v1", "bigint", "NO", "", "200", ""},
 				},
 			},
@@ -1093,8 +1093,8 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"uk", "int", "YES", "UNI", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"uk", "int", "YES", "UNI", "NULL", "auto_increment"},
 				},
 			},
 		},
@@ -1109,8 +1109,8 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"mk", "int", "YES", "MUL", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"mk", "int", "YES", "MUL", "NULL", "auto_increment"},
 				},
 			},
 		},
@@ -1741,9 +1741,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
 			{
@@ -1753,9 +1753,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
 		},
@@ -1773,8 +1773,8 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""}, // should not be dropped
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""}, // should not be dropped
 				},
 			},
 			{
@@ -1784,9 +1784,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1796,9 +1796,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1808,9 +1808,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1820,9 +1820,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1832,10 +1832,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
-					{"v4", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
+					{"v4", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1849,11 +1849,11 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "", "", ""},
-					{"v4", "int", "YES", "MUL", "", ""},
-					{"v5", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "", "NULL", ""},
+					{"v4", "int", "YES", "MUL", "NULL", ""},
+					{"v5", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 		},
@@ -1875,7 +1875,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", ""},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1898,7 +1898,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1909,7 +1909,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1920,7 +1920,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1931,10 +1931,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v3", "int", "NO", "", "", ""},
-					{"v4", "int", "YES", "", "", ""},
-					{"v5", "int", "NO", "", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
+					{"v3", "int", "NO", "", "NULL", ""},
+					{"v4", "int", "YES", "", "NULL", ""},
+					{"v5", "int", "NO", "", "NULL", ""},
 				},
 			},
 			{
@@ -1944,11 +1944,11 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v3", "int", "NO", "", "", ""},
-					{"mycol", "int", "NO", "", "", ""},
-					{"v6", "int", "NO", "", "", ""},
-					{"v7", "int", "YES", "", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
+					{"v3", "int", "NO", "", "NULL", ""},
+					{"mycol", "int", "NO", "", "NULL", ""},
+					{"v6", "int", "NO", "", "NULL", ""},
+					{"v7", "int", "YES", "", "NULL", ""},
 				},
 			},
 			// TODO: Does not include tests with column renames and defaults.
@@ -2033,7 +2033,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
 			},
 		},
 	},
@@ -2054,7 +2054,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
 			},
 		},
 	},
@@ -2075,7 +2075,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
 			},
 		},
 	},
@@ -2096,7 +2096,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
 			},
 		},
 	},
@@ -2117,7 +2117,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
 			},
 		},
 	},
@@ -2138,7 +2138,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
 			},
 		},
 	},

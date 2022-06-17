@@ -151,6 +151,11 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		var defaultVal string
 		if col.Default != nil {
 			defaultVal = col.Default.String()
+		} else {
+			// From: https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
+			// The default value for the column. This is NULL if the column has an explicit default of NULL,
+			// or if the column definition includes no DEFAULT clause.
+			defaultVal = "NULL"
 		}
 
 		// TODO: rather than lower-casing here, we should lower-case the String() method of types
