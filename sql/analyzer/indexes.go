@@ -310,19 +310,41 @@ func getComparisonIndexLookup(
 
 	var lookup sql.IndexLookup
 	switch e.(type) {
-	case *expression.Equals, *expression.NullSafeEquals:
+	case *expression.NullSafeEquals:
 		if e.Right().Type() == sql.Null {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).IsNull(ctx, normalizedExpressions[0].String()).Build(ctx)
 		} else {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 		}
+	case *expression.Equals:
+		if e.Right().Type() == sql.Null {
+			// Never true...
+			return nil, nil
+		}
+		lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.GreaterThan:
+		if e.Right().Type() == sql.Null {
+			// Never true...
+			return nil, nil
+		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.GreaterThanOrEqual:
+		if e.Right().Type() == sql.Null {
+			// Never true...
+			return nil, nil
+		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.LessThan:
+		if e.Right().Type() == sql.Null {
+			// Never true...
+			return nil, nil
+		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).LessThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.LessThanOrEqual:
+		if e.Right().Type() == sql.Null {
+			// Never true...
+			return nil, nil
+		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).LessOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	default:
 		return nil, nil

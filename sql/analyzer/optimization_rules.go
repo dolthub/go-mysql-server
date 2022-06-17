@@ -239,6 +239,37 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		return node, transform.SameTree, nil
 	}
 
+	eval := func (e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if !isEvaluable(e) {
+			return e, transform.SameTree, nil
+		}
+
+		// All other expressions types can be evaluated once and turned into literals for the rest of query execution
+		val, err := e.Eval(ctx, nil)
+		if err != nil {
+			return e, transform.SameTree, nil
+		}
+		return expression.NewLiteral(val, e.Type()), transform.NewTree, nil
+	}
+
+	evalCompare := func(orig sql.Expression, left sql.Expression, right sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		v, t, err := eval(left)
+		if err != nil {
+			return orig, transform.SameTree, nil
+		}
+		if t == transform.NewTree && v.(*expression.Literal).Value() == nil {
+			return expression.NewLiteral(nil, orig.Type()), transform.NewTree, nil
+		}
+		v, t, err = eval(right)
+		if err != nil {
+			return orig, transform.SameTree, nil
+		}
+		if t == transform.NewTree && v.(*expression.Literal).Value() == nil {
+			return expression.NewLiteral(nil, orig.Type()), transform.NewTree, nil
+		}
+		return eval(orig)
+	}
+
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
@@ -285,17 +316,18 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				return e, transform.SameTree, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval:
 				return e, transform.SameTree, nil
+			case *expression.Equals:
+				return evalCompare(e, e.Left(), e.Right())
+			case *expression.GreaterThan:
+				return evalCompare(e, e.Left(), e.Right())
+			case *expression.GreaterThanOrEqual:
+				return evalCompare(e, e.Left(), e.Right())
+			case *expression.LessThan:
+				return evalCompare(e, e.Left(), e.Right())
+			case *expression.LessThanOrEqual:
+				return evalCompare(e, e.Left(), e.Right())
 			default:
-				if !isEvaluable(e) {
-					return e, transform.SameTree, nil
-				}
-
-				// All other expressions types can be evaluated once and turned into literals for the rest of query execution
-				val, err := e.Eval(ctx, nil)
-				if err != nil {
-					return e, transform.SameTree, nil
-				}
-				return expression.NewLiteral(val, e.Type()), transform.NewTree, nil
+				return eval(e)
 			}
 		})
 		if err != nil {
