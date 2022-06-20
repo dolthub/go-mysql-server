@@ -409,14 +409,13 @@ type HistogramBucket struct {
 
 // Histogram is all statistics we care about for each column
 type Histogram struct {
-	Buckets []*HistogramBucket
-	// TODO: might not want all of these variables could just retrieve from HistogramBuckets or they're just not importable; easier to delete later
+	Buckets       []*HistogramBucket
 	Mean          float64
 	Min           float64
 	Max           float64
 	Count         uint64
 	NullCount     uint64
-	DistinctCount uint64 // Specific to CockroachDB
+	DistinctCount uint64
 
 	// TODO: These are specific to MySQL, do we want them all?
 	LastUpdated              time.Time
@@ -458,9 +457,9 @@ type StatisticsTable interface {
 	NumRows(*Context) (uint64, error)
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (uint64, error)
-	// CalculateStatistics fills in the histogram object inside the statistics table
+	// CalculateStatistics fills in the histogram object for the associate table.
 	CalculateStatistics(ctx *Context) error
-	// GetStatistics returns the statistics object inside the statistics table
+	// GetStatistics returns the statistics object for the associated table,
 	GetStatistics(ctx *Context) (TableStatistics, error)
 	// IsAnalyzed returns if this table has been analyzed
 	IsAnalyzed(ctx *Context) bool

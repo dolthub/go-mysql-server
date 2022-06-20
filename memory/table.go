@@ -276,22 +276,11 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return numBytesPerRow * numRows, nil
 }
 
+// CalculateStatistics implements the sql.StatisticsTable interface.
 func (t *Table) CalculateStatistics(ctx *sql.Context) error {
-	var count uint64 = 0
-	for _, rows := range t.partitions {
-		count += uint64(len(rows))
-	}
-
-	// skip empty tables
-	if count == 0 {
-		return nil
-	}
-
 	// initialize histogram map
 	t.tableStats = &TableStatistics{
-		rowCount:     count,
 		colCount:     uint64(len(t.Schema())),
-		nullCount:    0,
 		createdAt:    time.Now(),
 		histogramMap: make(sql.HistogramMap),
 	}
@@ -340,10 +329,12 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 				return err
 			}
 
+			t.tableStats.rowCount++
+
 			for i, col := range t.Schema() {
 				hist, ok := t.tableStats.histogramMap[col.Name]
 				if !ok {
-					panic("histogram was not initialiize for this column; shouldn't be possible")
+					panic("histogram was not initialized for this column; shouldn't be possible")
 				}
 
 				if row[i] == nil {
@@ -365,7 +356,7 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 					hist.DistinctCount++
 				}
 
-				hist.Mean += v / float64(count)
+				hist.Mean += v
 				hist.Min = math.Min(hist.Min, v)
 				hist.Max = math.Max(hist.Max, v)
 				hist.Count++
@@ -383,11 +374,18 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 		sort.Float64s(keys)
 
 		hist := t.tableStats.histogramMap[colName]
+		if hist.Count == 0 {
+			hist.Max = 0
+			hist.Min = 0
+			continue
+		}
+
+		hist.Mean /= float64(hist.Count)
 		for _, k := range keys {
 			bucket := &sql.HistogramBucket{
 				LowerBound: k,
 				UpperBound: k,
-				Frequency:  float64(freqs[k]) / float64(count),
+				Frequency:  float64(freqs[k]) / float64(hist.Count),
 			}
 			hist.Buckets = append(hist.Buckets, bucket)
 		}
