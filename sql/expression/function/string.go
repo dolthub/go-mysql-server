@@ -174,7 +174,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return hexForString(string(sql.SerializePolygon(val))), nil
 
 	default:
-		return nil, sql.ErrInvalidArgumentDetails.New("crc32", fmt.Sprint(arg))
+		return nil, sql.ErrInvalidArgumentDetails.New("hex", fmt.Sprint(arg))
 	}
 }
 
