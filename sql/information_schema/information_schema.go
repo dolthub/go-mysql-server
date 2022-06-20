@@ -1022,6 +1022,62 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// columnStatisticsRowIter implements the custom sql.RowIter for the information_schema.columns table.
+func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases(ctx) {
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			statsTbl, ok := t.(StatisticsTable)
+			if !ok {
+				return true, nil
+			}
+
+			if !statsTbl.IsAnalyzed(ctx) {
+				return true, nil
+			}
+
+			stats, err := statsTbl.GetStatistics(ctx)
+			if err != nil {
+				return false, err
+			}
+
+			for _, col := range t.Schema() {
+				hist, err := stats.Histogram(col.Name)
+				if err != nil {
+					return false, err
+				}
+
+				buckets := make([]string, len(hist.Buckets))
+				for i, b := range hist.Buckets {
+					buckets[i] = fmt.Sprintf("[%.2f, %.2f, %.2f]", b.LowerBound, b.UpperBound, b.Frequency)
+				}
+
+				bucketStrings := strings.Join(buckets, ",")
+
+				rows = append(rows, Row{
+					db.Name(),          // table_schema
+					statsTbl.Name(),    // table_name
+					col.Name,           // column_name
+					hist.Mean,          // mean
+					hist.Min,           // min
+					hist.Max,           // max
+					hist.Count,         // count
+					hist.NullCount,     // null_count
+					hist.DistinctCount, // distinct_count
+					bucketStrings,      // buckets
+					//sql.JSONDocument{Val: jsonHist}, // histogram
+				})
+			}
+			return true, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+	return RowsToRowIter(rows...), nil
+}
+
 func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
