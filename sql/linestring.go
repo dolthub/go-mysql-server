@@ -150,13 +150,13 @@ func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 		return sqltypes.NULL, nil
 	}
 
-	pv, err := t.Convert(v)
+	v, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
 
-	//TODO: pretty sure this is wrong, pv is not a string type
-	val := appendAndSliceString(dest, pv.(string))
+	buf := SerializeLineString(v.(LineString))
+	val := appendAndSliceBytes(dest, buf)
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

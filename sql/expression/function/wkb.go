@@ -68,63 +68,6 @@ func (a *AsWKB) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewAsWKB(children[0]), nil
 }
 
-// serializePoint fills in buf with the values from point
-func serializePoint(p sql.Point, buf []byte) {
-	// Assumes buf is correct size
-	binary.LittleEndian.PutUint64(buf[0:8], math.Float64bits(p.X))
-	binary.LittleEndian.PutUint64(buf[8:16], math.Float64bits(p.Y))
-}
-
-// PointToBytes converts a sql.Point to a byte array
-func PointToBytes(p sql.Point) []byte {
-	// Initialize point buffer
-	buf := make([]byte, 16)
-	serializePoint(p, buf)
-	return buf
-}
-
-// serializeLine fills in buf with values from linestring
-func serializeLine(l sql.LineString, buf []byte) {
-	// Write number of points
-	binary.LittleEndian.PutUint32(buf[0:4], uint32(len(l.Points)))
-	// Append each point
-	for i, p := range l.Points {
-		start, stop := 4+16*i, 4+16*(i+1)
-		serializePoint(p, buf[start:stop])
-	}
-}
-
-// LineToBytes converts a sql.LineString to a byte array
-func LineToBytes(l sql.LineString) []byte {
-	// Initialize line buffer
-	buf := make([]byte, 4+16*len(l.Points))
-	serializeLine(l, buf)
-	return buf
-}
-
-func serializePoly(p sql.Polygon, buf []byte) {
-	// Write number of lines
-	binary.LittleEndian.PutUint32(buf[0:4], uint32(len(p.Lines)))
-	// Append each line
-	start, stop := 0, 4
-	for _, l := range p.Lines {
-		start, stop = stop, stop+4+16*len(l.Points)
-		serializeLine(l, buf[start:stop])
-	}
-}
-
-// PolyToBytes converts a sql.Polygon to a byte array
-func PolyToBytes(p sql.Polygon) []byte {
-	// Initialize polygon buffer
-	size := 0
-	for _, l := range p.Lines {
-		size += 4 + 16*len(l.Points)
-	}
-	buf := make([]byte, 4+size)
-	serializePoly(p, buf)
-	return buf
-}
-
 // Eval implements the sql.Expression interface.
 func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -133,38 +76,23 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Return nil when null
 	if val == nil {
 		return nil, nil
 	}
 
-	// Initialize buf with space for endianness (1 byte) and type (4 bytes)
-	buf := make([]byte, 5)
-	// MySQL seems to always use Little Endian
-	buf[0] = 1
-	var data []byte
-
 	// Expect one of the geometry types
+	// remove the SRID
 	switch v := val.(type) {
 	case sql.Point:
-		// Mark as point type
-		binary.LittleEndian.PutUint32(buf[1:5], 1)
-		data = PointToBytes(v)
+		return sql.SerializePoint(v)[sql.SRIDSize:], nil
 	case sql.LineString:
-		// Mark as linestring type
-		binary.LittleEndian.PutUint32(buf[1:5], 2)
-		data = LineToBytes(v)
+		return sql.SerializeLineString(v)[sql.SRIDSize:], nil
 	case sql.Polygon:
-		// Mark as Polygon type
-		binary.LittleEndian.PutUint32(buf[1:5], 3)
-		data = PolyToBytes(v)
+		return sql.SerializePolygon(v)[sql.SRIDSize:], nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_AsWKB")
 	}
-
-	// Append to header
-	buf = append(buf, data...)
-
-	return buf, nil
 }
 
 // Header contains endianness (1 byte) and geometry type (4 bytes)

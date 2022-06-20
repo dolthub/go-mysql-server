@@ -61,6 +61,10 @@ const (
 
 	PointSize = 16
 	CountSize = 4
+
+	PointTypeID      = 1
+	LineStringTypeID = 2
+	PolygonTypeID    = 3
 )
 
 // Type IDs
@@ -194,6 +198,73 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
 	}
 
 	return Polygon{SRID: srid, Lines: lines}, nil
+}
+
+func allocateBuffer(numPoints, numCounts int) []byte {
+	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts)
+}
+
+// SerializeEWKBHeader will write EWKB header to the given buffer
+func SerializeEWKBHeader(buf []byte, srid, typ uint32) {
+	binary.LittleEndian.PutUint32(buf[:4], srid)
+	buf[4] = 1
+	binary.LittleEndian.PutUint32(buf[5:9], typ)
+}
+
+func SerializePointData(buf []byte, x, y float64) {
+	binary.LittleEndian.PutUint64(buf[:PointSize/2], math.Float64bits(x))
+	binary.LittleEndian.PutUint64(buf[PointSize/2:], math.Float64bits(y))
+}
+
+func SerializePoint(p Point) (buf []byte) {
+	buf = allocateBuffer(1, 0)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, PointTypeID)
+	SerializePointData(buf[EWKBHeaderSize:], p.X, p.Y)
+	return
+}
+
+func writeCount(buf []byte, count uint32) {
+	binary.LittleEndian.PutUint32(buf, count)
+}
+
+func writePointSlice(buf []byte, points []Point) {
+	writeCount(buf, uint32(len(points)))
+	buf = buf[CountSize:]
+	for _, p := range points {
+		SerializePointData(buf, p.X, p.Y)
+		buf = buf[PointSize:]
+	}
+}
+
+func SerializeLineString(l LineString) (buf []byte) {
+	buf = allocateBuffer(len(l.Points), 1)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], l.SRID, LineStringTypeID)
+	writePointSlice(buf[EWKBHeaderSize:], l.Points)
+	return
+}
+
+func writeLineSlice(buf []byte, lines []LineString) {
+	writeCount(buf, uint32(len(lines)))
+	buf = buf[CountSize:]
+	for _, l := range lines {
+		writePointSlice(buf, l.Points)
+		sz := CountSize + len(l.Points)*PointSize
+		buf = buf[sz:]
+	}
+}
+
+func countPoints(p Polygon) (cnt int) {
+	for _, line := range p.Lines {
+		cnt += len(line.Points)
+	}
+	return
+}
+
+func SerializePolygon(p Polygon) (buf []byte) {
+	buf = allocateBuffer(countPoints(p), len(p.Lines)+1)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, PolygonTypeID)
+	writeLineSlice(buf[EWKBHeaderSize:], p.Lines)
+	return
 }
 
 // Compare implements Type interface.
