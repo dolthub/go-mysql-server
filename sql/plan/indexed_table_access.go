@@ -164,11 +164,7 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 
 	idxBuilder := sql.NewIndexBuilder(ctx, i.index)
 	for keyIndex := 0; keyIndex < len(key); keyIndex++ {
-		if key[keyIndex] == nil {
-			idxBuilder = idxBuilder.IsNull(ctx, i.keyExprs[keyIndex].String())
-		} else {
-			idxBuilder = idxBuilder.Equals(ctx, i.keyExprs[keyIndex].String(), key[keyIndex])
-		}
+		idxBuilder = idxBuilder.Equals(ctx, i.keyExprs[keyIndex].String(), key[keyIndex])
 	}
 	lookup, err := idxBuilder.Build(ctx)
 	if err != nil {
@@ -197,11 +193,7 @@ func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	idxExpressions := i.index.Expressions()
 	idxBuilder := sql.NewIndexBuilder(ctx, i.index)
 	for keyIndex := 0; keyIndex < len(key); keyIndex++ {
-		if key[keyIndex] == nil {
-			idxBuilder = idxBuilder.IsNull(ctx, idxExpressions[keyIndex])
-		} else {
-			idxBuilder = idxBuilder.Equals(ctx, idxExpressions[keyIndex], key[keyIndex])
-		}
+		idxBuilder = idxBuilder.Equals(ctx, idxExpressions[keyIndex], key[keyIndex])
 	}
 	lookup, err := idxBuilder.Build(ctx)
 	if err != nil {
