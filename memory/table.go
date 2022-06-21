@@ -344,8 +344,7 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 				// TODO: using sql.Float64.Convert can convert strings like "123.45" to a valid float
 				val, err := sql.Float64.Convert(row[i])
 				if err != nil {
-					t.tableStats = nil
-					return err
+					continue // skip unsupported column types for now
 				}
 				v := val.(float64)
 

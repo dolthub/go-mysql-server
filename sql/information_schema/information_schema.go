@@ -1041,6 +1041,10 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			}
 
 			for _, col := range t.Schema() {
+				if _, ok := col.Type.(StringType); ok {
+					continue
+				}
+
 				hist, err := stats.Histogram(col.Name)
 				if err != nil {
 					return false, err

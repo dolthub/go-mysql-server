@@ -8883,12 +8883,9 @@ var StatisticsQueries = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE t (t longtext)",
 			"INSERT INTO t VALUES ('not a number')",
+			"ANALYZE TABLE t",
 		},
 		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "ANALYZE TABLE t",
-				ExpectedErrStr: "error: 'not a number' is not a valid value for 'DOUBLE'",
-			},
 			{
 				Query:    "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{},
