@@ -2181,26 +2181,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
 	},
 	{
-		Query:    "SELECT * FROM niltable WHERE i2 = NULL",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT i2 FROM niltable WHERE i2 <=> NULL",
-		Expected: []sql.Row{{nil}, {nil}, {nil}},
-	},
-	{
-		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 = r.i2 WHERE r.i2 IS NULL",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 != r.i2 WHERE r.i2 IS NULL",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 <=> r.i2 WHERE r.i2 IS NULL ORDER BY 1 ASC",
-		Expected: []sql.Row{{1, nil}, {1, nil}, {1, nil}, {3, nil}, {3, nil}, {3, nil}, {5, nil}, {5, nil}, {5, nil}},
-	},
-	{
 		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
 		Expected: []sql.Row{{1}},
 	},
@@ -6000,7 +5980,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT NULL <=> NULL FROM dual",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT POW(2,3) FROM dual",

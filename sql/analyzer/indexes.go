@@ -183,7 +183,7 @@ func getIndexes(
 
 		result[getField.Table()] = lookup
 	case *expression.IsNull:
-		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, sql.Null)), tableAliases)
+		return getIndexes(ctx, ia, expression.NewEquals(e.Child, expression.NewLiteral(nil, sql.Null)), tableAliases)
 	case *expression.Not:
 		r, err := getNegatedIndexes(ctx, ia, e, tableAliases)
 		if err != nil {
@@ -310,41 +310,19 @@ func getComparisonIndexLookup(
 
 	var lookup sql.IndexLookup
 	switch e.(type) {
-	case *expression.NullSafeEquals:
+	case *expression.Equals, *expression.NullSafeEquals:
 		if e.Right().Type() == sql.Null {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).IsNull(ctx, normalizedExpressions[0].String()).Build(ctx)
 		} else {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 		}
-	case *expression.Equals:
-		if e.Right().Type() == sql.Null {
-			// Never true...
-			return nil, nil
-		}
-		lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.GreaterThan:
-		if e.Right().Type() == sql.Null {
-			// Never true...
-			return nil, nil
-		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.GreaterThanOrEqual:
-		if e.Right().Type() == sql.Null {
-			// Never true...
-			return nil, nil
-		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.LessThan:
-		if e.Right().Type() == sql.Null {
-			// Never true...
-			return nil, nil
-		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).LessThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.LessThanOrEqual:
-		if e.Right().Type() == sql.Null {
-			// Never true...
-			return nil, nil
-		}
 		lookup, err = sql.NewIndexBuilder(ctx, idx).LessOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	default:
 		return nil, nil
@@ -690,9 +668,7 @@ func getMultiColumnIndexForExpressions(
 				expressions = append(expressions, expr.colExpr)
 
 				switch expr.comparison.(type) {
-				case *expression.Equals:
-					indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), val)
-				case *expression.NullSafeEquals:
+				case *expression.Equals, *expression.NullSafeEquals:
 					if expr.comparand.Type() == sql.Null {
 						indexBuilder = indexBuilder.IsNull(ctx, expr.col.String())
 					} else {
@@ -751,15 +727,8 @@ func getMultiColumnIndexForExpressions(
 						return nil, err
 					}
 					expressions = append(expressions, selectedExpr)
-					indexBuilder = indexBuilder.NotEquals(ctx, expr.col.String(), val)
-				case *expression.NullSafeEquals:
-					val, err := expr.comparand.Eval(ctx, nil)
-					if err != nil {
-						return nil, err
-					}
-					expressions = append(expressions, selectedExpr)
 					if expr.comparand.Type() == sql.Null {
-						indexBuilder = indexBuilder.IsNotNull(ctx, expr.col.String())
+						indexBuilder.IsNotNull(ctx, expr.col.String())
 					} else {
 						indexBuilder = indexBuilder.NotEquals(ctx, expr.col.String(), val)
 					}
@@ -1085,7 +1054,7 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 		if !ok {
 			return e, transform.SameTree, nil
 		}
-		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
+		return expression.NewEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
 	})
 	return expr
 }
