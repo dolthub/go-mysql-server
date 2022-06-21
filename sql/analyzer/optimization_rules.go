@@ -252,6 +252,12 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		return expression.NewLiteral(val, e.Type()), transform.NewTree, nil
 	}
 
+	// Non-null-safe compares evaluate to |NULL| when one of their operands
+	// is |NULL|. |evalCompare| is used in the |transform| below for
+	// |Equals|, |{Greater,Less}Than{,OrEqual}| expressions. If |left| or
+	// |right| statically evaluates to |NULL|, then we replace the
+	// comparison itself with |NULL|. Otherwise, we do what the default
+	// branch of the transform does, |eval(orig)|.
 	evalCompare := func(orig sql.Expression, left sql.Expression, right sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		v, t, err := eval(left)
 		if err != nil {
