@@ -156,7 +156,7 @@ func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 	}
 
 	buf := SerializeLineString(v.(LineString))
-	val := appendAndSliceBytes(dest, buf)
+	val := appendAndSliceString(dest, HexForString(string(buf)))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

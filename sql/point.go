@@ -143,7 +143,7 @@ func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 
 	buf := SerializePoint(v.(Point))
-	val := appendAndSliceBytes(dest, buf)
+	val := appendAndSliceString(dest, HexForString(string(buf)))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

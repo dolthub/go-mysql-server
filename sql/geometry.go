@@ -349,19 +349,50 @@ func (t GeometryType) Promote() Type {
 	return t
 }
 
+func hexChar(b byte) byte {
+	if b > 9 {
+		return b - 10 + byte('A')
+	}
+
+	return b + byte('0')
+}
+
+func HexForString(val string) string {
+	buf := make([]byte, 0, 2*len(val))
+	// Do not change this to range, as range iterates over runes and not bytes
+	for i := 0; i < len(val); i++ {
+		c := val[i]
+		high := c / 16
+		low := c % 16
+
+		buf = append(buf, hexChar(high))
+		buf = append(buf, hexChar(low))
+	}
+	return "0x" + string(buf)
+}
+
 // SQL implements Type interface.
 func (t GeometryType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	pv, err := t.Convert(v)
+	v, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
 
-	//TODO: pretty sure this is wrong, pv is not a string type
-	val := appendAndSliceString(dest, pv.(string))
+	var buf []byte
+	switch val := v.(type) {
+	case Point:
+		buf = SerializePoint(val)
+	case LineString:
+		buf = SerializeLineString(val)
+	case Polygon:
+		buf = SerializePolygon(val)
+	}
+
+	val := appendAndSliceString(dest, HexForString(string(buf)))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

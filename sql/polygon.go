@@ -156,7 +156,7 @@ func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 
 	buf := SerializePolygon(v.(Polygon))
-	val := appendAndSliceBytes(dest, buf)
+	val := appendAndSliceString(dest, HexForString(string(buf)))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
