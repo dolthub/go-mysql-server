@@ -108,16 +108,16 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 	switch val := v.(type) {
 	case []byte:
 		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
 			return nil, err
 		}
 		// Throw error if not marked as linestring
-		if geomType != WKBPolyID {
+		if geomType != PolyID {
 			return nil, err
 		}
 		// Parse data section
-		poly, err := WKBToPoly(val[EWKBHeaderSize:], isBig, srid)
+		poly, err := DeserializePolygon(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
 			return nil, err
 		}

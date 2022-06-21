@@ -95,16 +95,16 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	switch val := v.(type) {
 	case []byte:
 		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
 			return nil, err
 		}
 		// Throw error if not marked as point
-		if geomType != WKBPointID {
+		if geomType != PointID {
 			return nil, ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
-		point, err := WKBToPoint(val[EWKBHeaderSize:], isBig, srid)
+		point, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
 			return nil, err
 		}
