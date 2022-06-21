@@ -273,19 +273,13 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		}
 
 		rt := getResolvedTable(jo.node)
-		availableSchemaForKeys := make(map[tableCol]struct{})
-		for _, col := range jo.schema() {
-			availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
-		}
-
 		// TODO: also consider indexes which could be pushed down to this table, if it's the first one
-		// can give better estimates only for filters on things from this table
 		if st, ok := rt.Table.(sql.StatisticsTable); ok {
-			count, err := st.NumRows(ctx)
+			numRows, err := st.NumRows(ctx)
 			if err != nil {
 				return err
 			}
-			jo.cost = count
+			jo.cost = numRows
 		} else {
 			jo.cost = uint64(1000)
 		}
@@ -319,7 +313,6 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 				availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
 			}
 		}
-		// Try all permutations of table access
 		for accessOrder, err := perm.Next(); err == nil; accessOrder, err = perm.Next() {
 			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost, availableSchemaForKeys)
 			if err != nil {
@@ -333,8 +326,6 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		jo.order = lowestOrder
 		jo.cost = lowestCost
 	}
-
-	// TODO: print final costs for debugging purposes
 
 	return nil
 }
