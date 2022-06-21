@@ -142,22 +142,22 @@ func TestNullSafeEquals(t *testing.T) {
 		require.NotNil(get1)
 		seq := expression.NewNullSafeEquals(get0, get1)
 		require.NotNil(seq)
-		require.Equal(sql.Int8, seq.Type())
+		require.Equal(sql.Boolean, seq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)
 				cmp := eval(t, seq, row)
 				if cmpResult == testEqual {
-					require.Equal(1, cmp)
+					require.Equal(true, cmp)
 				} else if cmpResult == testNil {
 					if pair[0] == nil && pair[1] == nil {
-						require.Equal(1, cmp)
+						require.Equal(true, cmp)
 					} else {
-						require.Equal(0, cmp)
+						require.Equal(false, cmp)
 					}
 				} else {
-					require.Equal(0, cmp)
+					require.Equal(false, cmp)
 				}
 			}
 		}
