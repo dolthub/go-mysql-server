@@ -8825,7 +8825,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]"},
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
 				},
 			},
 		},
@@ -8841,8 +8841,8 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]"},
-					{"mydb", "t", "j", float64(5), float64(4), float64(6), uint64(3), uint64(0), uint64(3), "[4.00, 4.00, 0.33],[5.00, 5.00, 0.33],[6.00, 6.00, 0.33]"},
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
+					{"mydb", "t", "j", float64(5), float64(4), float64(6), uint64(3), uint64(0), uint64(3), "[[4.00, 4.00, 0.33],[5.00, 5.00, 0.33],[6.00, 6.00, 0.33]]"},
 				},
 			},
 		},
@@ -8858,8 +8858,40 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", float64(16.125), float64(1.25), float64(45.25), uint64(4), uint64(0), uint64(4), "[1.25, 1.25, 0.25],[7.50, 7.50, 0.25],[10.50, 10.50, 0.25],[45.25, 45.25, 0.25]"},
+					{"mydb", "t", "i", float64(16.125), float64(1.25), float64(45.25), uint64(4), uint64(0), uint64(4), "[[1.25, 1.25, 0.25],[7.50, 7.50, 0.25],[10.50, 10.50, 0.25],[45.25, 45.25, 0.25]]"},
 				},
+			},
+		},
+	},
+	{
+		Name: "analyze empty table creates stats with 0s",
+		SetUpScript: []string{
+			"CREATE TABLE t (i float)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(0), float64(0), float64(0), uint64(0), uint64(0), uint64(0), "[]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze columns that can't be converted to float throws error",
+		SetUpScript: []string{
+			"CREATE TABLE t (t longtext)",
+			"INSERT INTO t VALUES ('not a number')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "ANALYZE TABLE t",
+				ExpectedErrStr: "error: 'not a number' is not a valid value for 'DOUBLE'",
+			},
+			{
+				Query:    "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{},
 			},
 		},
 	},

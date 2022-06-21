@@ -99,7 +99,9 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			statsTbl = resTbl.Table.(sql.StatisticsTable)
 		}
 
-		statsTbl.CalculateStatistics(ctx)
+		if err := statsTbl.CalculateStatistics(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
