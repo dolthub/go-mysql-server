@@ -101,7 +101,6 @@ type Table struct {
 	autoIncVal uint64
 	autoColIdx int
 
-	analyzed   bool
 	tableStats *TableStatistics
 }
 
@@ -390,8 +389,6 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 			hist.Buckets = append(hist.Buckets, bucket)
 		}
 	}
-
-	t.analyzed = true
 
 	return nil
 }
