@@ -49,27 +49,16 @@ func TestConcat(t *testing.T) {
 		require.NoError(err)
 		require.Equal(nil, v)
 	})
-
-	t.Run("concat array", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewConcat(expression.NewLiteral([]interface{}{5, "bar", true}, sql.CreateArray(sql.LongText)))
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal("5bartrue", v)
-	})
 }
 
 func TestNewConcat(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)))
+	_, err := NewConcat(expression.NewLiteral(nil, sql.LongText))
 	require.NoError(err)
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)), expression.NewLiteral(nil, sql.Int64))
-	require.Error(err)
-	require.True(ErrConcatArrayWithOthers.Is(err))
+	_, err = NewConcat(expression.NewLiteral(nil, sql.LongText), expression.NewLiteral(nil, sql.Int64))
+	require.NoError(err)
 
 	_, err = NewConcat(
 		expression.NewLiteral(nil, sql.LongText),
