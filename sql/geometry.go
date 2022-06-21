@@ -17,6 +17,7 @@ package sql
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"reflect"
 
@@ -61,10 +62,6 @@ const (
 
 	PointSize = 16
 	CountSize = 4
-
-	PointTypeID      = 1
-	LineStringTypeID = 2
-	PolygonTypeID    = 3
 )
 
 // Type IDs
@@ -218,7 +215,7 @@ func SerializePointData(buf []byte, x, y float64) {
 
 func SerializePoint(p Point) (buf []byte) {
 	buf = allocateBuffer(1, 0)
-	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, PointTypeID)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, WKBPointID)
 	SerializePointData(buf[EWKBHeaderSize:], p.X, p.Y)
 	return
 }
@@ -238,7 +235,7 @@ func writePointSlice(buf []byte, points []Point) {
 
 func SerializeLineString(l LineString) (buf []byte) {
 	buf = allocateBuffer(len(l.Points), 1)
-	SerializeEWKBHeader(buf[:EWKBHeaderSize], l.SRID, LineStringTypeID)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], l.SRID, WKBLineID)
 	writePointSlice(buf[EWKBHeaderSize:], l.Points)
 	return
 }
@@ -262,7 +259,7 @@ func countPoints(p Polygon) (cnt int) {
 
 func SerializePolygon(p Polygon) (buf []byte) {
 	buf = allocateBuffer(countPoints(p), len(p.Lines)+1)
-	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, PolygonTypeID)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, WKBPolyID)
 	writeLineSlice(buf[EWKBHeaderSize:], p.Lines)
 	return
 }
@@ -349,28 +346,6 @@ func (t GeometryType) Promote() Type {
 	return t
 }
 
-func hexChar(b byte) byte {
-	if b > 9 {
-		return b - 10 + byte('A')
-	}
-
-	return b + byte('0')
-}
-
-func HexForString(val string) string {
-	buf := make([]byte, 0, 2*len(val))
-	// Do not change this to range, as range iterates over runes and not bytes
-	for i := 0; i < len(val); i++ {
-		c := val[i]
-		high := c / 16
-		low := c % 16
-
-		buf = append(buf, hexChar(high))
-		buf = append(buf, hexChar(low))
-	}
-	return "0x" + string(buf)
-}
-
 // SQL implements Type interface.
 func (t GeometryType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
@@ -392,7 +367,7 @@ func (t GeometryType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		buf = SerializePolygon(val)
 	}
 
-	val := appendAndSliceString(dest, HexForString(string(buf)))
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

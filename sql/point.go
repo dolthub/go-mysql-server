@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -143,7 +144,7 @@ func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 
 	buf := SerializePoint(v.(Point))
-	val := appendAndSliceString(dest, HexForString(string(buf)))
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

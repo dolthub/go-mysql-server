@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"reflect"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -156,7 +157,7 @@ func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 
 	buf := SerializePolygon(v.(Polygon))
-	val := appendAndSliceString(dest, HexForString(string(buf)))
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

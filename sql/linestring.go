@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"reflect"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -156,7 +157,7 @@ func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 	}
 
 	buf := SerializeLineString(v.(LineString))
-	val := appendAndSliceString(dest, HexForString(string(buf)))
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
