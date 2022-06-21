@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -553,12 +552,6 @@ func ConvertToBool(v interface{}) (bool, error) {
 	}
 }
 
-// IsArray returns whether the given type is an array.
-func IsArray(t Type) bool {
-	_, ok := t.(arrayType)
-	return ok
-}
-
 // IsBlob checks if t is BINARY, VARBINARY, or BLOB
 func IsBlob(t Type) bool {
 	switch t.Type() {
@@ -697,71 +690,6 @@ func ErrIfMismatchedColumnsInTuple(t1, t2 Type) error {
 		}
 	}
 	return nil
-}
-
-// UnderlyingType returns the underlying type of an array if the type is an
-// array, or the type itself in any other case.
-func UnderlyingType(t Type) Type {
-	a, ok := t.(arrayType)
-	if !ok {
-		return t
-	}
-
-	return a.underlying
-}
-
-func convertForJSON(t Type, v interface{}) (interface{}, error) {
-	switch t := t.(type) {
-	case jsonType:
-		return t.Convert(v)
-	case arrayType:
-		return convertArrayForJSON(t, v)
-	default:
-		return t.Convert(v)
-	}
-}
-
-func convertArrayForJSON(t arrayType, v interface{}) (interface{}, error) {
-	switch v := v.(type) {
-	case JSONValue:
-		return v, nil
-	case []interface{}:
-		var result = make([]interface{}, len(v))
-		for i, v := range v {
-			var err error
-			result[i], err = convertForJSON(t.underlying, v)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return result, nil
-	case Generator:
-		var values []interface{}
-		for {
-			val, err := v.Next()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, err
-			}
-
-			val, err = convertForJSON(t.underlying, val)
-			if err != nil {
-				return nil, err
-			}
-
-			values = append(values, val)
-		}
-
-		if err := v.Close(); err != nil {
-			return nil, err
-		}
-
-		return values, nil
-	default:
-		return nil, ErrNotArray.New(v)
-	}
 }
 
 // compareNulls compares two values, and returns true if either is null.
