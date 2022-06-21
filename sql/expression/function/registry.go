@@ -33,7 +33,6 @@ var BuiltIns = []sql.Function{
 	// elt, find_in_set, insert, load_file, locate
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
 	sql.Function1{Name: "acos", Fn: NewAcos},
-	sql.Function1{Name: "array_length", Fn: NewArrayLength},
 	sql.Function1{Name: "ascii", Fn: NewAscii},
 	sql.Function1{Name: "asin", Fn: NewAsin},
 	sql.Function1{Name: "atan", Fn: NewAtan},
@@ -73,7 +72,6 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "dayofweek", Fn: NewDayOfWeek},
 	sql.Function1{Name: "dayofyear", Fn: NewDayOfYear},
 	sql.Function1{Name: "degrees", Fn: NewDegrees},
-	sql.Function1{Name: "explode", Fn: NewExplode},
 	sql.Function1{Name: "first", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewFirst(e) }},
 	sql.Function1{Name: "floor", Fn: NewFloor},
 	sql.Function0{Name: "found_rows", Fn: NewFoundRows},
@@ -185,7 +183,6 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "sin", Fn: NewSin},
 	sql.Function1{Name: "sleep", Fn: NewSleep},
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
-	sql.Function2{Name: "split", Fn: NewSplit},
 	sql.Function1{Name: "sqrt", Fn: NewSqrt},
 	sql.FunctionN{Name: "str_to_date", Fn: NewStrToDate},
 	sql.Function1{Name: "st_asbinary", Fn: NewAsWKB},

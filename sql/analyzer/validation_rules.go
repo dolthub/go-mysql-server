@@ -425,31 +425,6 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	return n, transform.SameTree, nil
 }
 
-func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var invalid bool
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		// If it's already invalid just skip everything else.
-		if invalid {
-			return false
-		}
-
-		// All usage of Explode will be incorrect because the ones in projects
-		// would have already been converted to Generate, so we only have to
-		// look for those.
-		if _, ok := e.(*function.Explode); ok {
-			invalid = true
-		}
-
-		return true
-	})
-
-	if invalid {
-		return nil, transform.SameTree, ErrExplodeInvalidUse.New()
-	}
-
-	return n, transform.SameTree, nil
-}
-
 func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Validate that the number of columns in an operand or a top level
 	// expression are as expected. The current rules are:

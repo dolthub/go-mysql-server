@@ -3368,22 +3368,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT split(s," ") FROM mytable`,
-		Expected: []sql.Row{
-			sql.NewRow([]interface{}{"first", "row"}),
-			sql.NewRow([]interface{}{"second", "row"}),
-			sql.NewRow([]interface{}{"third", "row"}),
-		},
-	},
-	{
-		Query: `SELECT split(s,"s") FROM mytable`,
-		Expected: []sql.Row{
-			sql.NewRow([]interface{}{"fir", "t row"}),
-			sql.NewRow([]interface{}{"", "econd row"}),
-			sql.NewRow([]interface{}{"third row"}),
-		},
-	},
-	{
 		Query:    `SELECT SUM(i) FROM mytable`,
 		Expected: []sql.Row{{float64(6)}},
 	},
@@ -4467,14 +4451,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{sql.MustJSON(`1`)}},
 	},
 	// TODO(andy)
-	{
-		Query:    `SELECT ARRAY_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
-		Expected: []sql.Row{{int32(3)}},
-	},
-	{
-		Query:    `SELECT ARRAY_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
-		Expected: []sql.Row{{int32(3)}},
-	},
+	//{
+	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
+	//	Expected: []sql.Row{{int32(3)}},
+	//},
+	//{
+	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
+	//	Expected: []sql.Row{{int32(3)}},
+	//},
 	{
 		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
 		Expected: []sql.Row{{int64(4)}},
@@ -4763,14 +4747,6 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT (NULL+1)`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT ARRAY_LENGTH(null)`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT ARRAY_LENGTH("foo")`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
