@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -80,17 +81,15 @@ func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	for _, tbl := range n.tbls {
+		// find resolved table
 		var resTbl *ResolvedTable
-		switch t := tbl.(type) {
-		case *ResolvedTable:
-			resTbl = t
-		case *Exchange:
-			resTbl = t.Child.(*ResolvedTable)
-		case DeferredAsOfTable:
-			resTbl = t.ResolvedTable
-		default:
-			return nil, sql.ErrTableNotFound.New(tbl.String())
-		}
+		transform.Inspect(tbl, func(n sql.Node) bool {
+			if t, ok := n.(*ResolvedTable); ok {
+				resTbl = t
+				return false
+			}
+			return true
+		})
 
 		var statsTbl sql.StatisticsTable
 		if wrappedTbl, ok := resTbl.Table.(sql.TableWrapper); ok {
