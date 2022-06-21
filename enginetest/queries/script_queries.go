@@ -2013,6 +2013,21 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Describe with expression correctly works",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, val int DEFAULT (pk * 2))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"val", "int", "YES", "", "((pk * 2))", ""},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
