@@ -416,14 +416,6 @@ type Histogram struct {
 	Count         uint64
 	NullCount     uint64
 	DistinctCount uint64
-
-	// TODO: These are specific to MySQL, do we want them all?
-	LastUpdated              time.Time
-	SamplingRate             float64 // a number in [0.0,1.0] indicating the fraction of data sampled to generate histogram (1.0 = all rows read)
-	HistogramType            string  // MySQL support either singleton or equi-height, we might just want equi-height
-	NumberOfBucketsSpecified uint64  // Number of buckets specified when running ANALYZE TABLE
-	DataType                 string  // apparently needed for persistence
-	CollationId              uint64  // useful when data are strings
 }
 
 // HistogramMap is a map from column name to associated histogram
