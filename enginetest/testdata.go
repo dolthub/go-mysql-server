@@ -1002,7 +1002,6 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 		"create index one_pk_two_idx_1 on one_pk_two_idx (v1)",
 		"create index one_pk_two_idx_2 on one_pk_two_idx (v1, v2)",
 		"create index one_pk_three_idx_idx on one_pk_three_idx (v1, v2, v3)",
-		"create index niltable_i2 on niltable (i2)",
 	}
 
 	for _, q := range createIndexes {
