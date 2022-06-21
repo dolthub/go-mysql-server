@@ -362,12 +362,6 @@ func (t Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
 	return nil, nil
 }
 
-// GetStatistics implements the interface sql.StatisticsTable.
-func (t Table) IsAnalyzed(ctx *sql.Context) bool {
-	// TODO: this
-	return false
-}
-
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.
 func (t Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
 	pkNames := make([]string, len(columns))

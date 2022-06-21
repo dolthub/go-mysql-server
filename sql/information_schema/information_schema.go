@@ -1032,13 +1032,12 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return true, nil
 			}
 
-			if !statsTbl.IsAnalyzed(ctx) {
-				return true, nil
-			}
-
 			stats, err := statsTbl.GetStatistics(ctx)
 			if err != nil {
 				return false, err
+			}
+			if stats == nil {
+				return true, err
 			}
 
 			for _, col := range t.Schema() {

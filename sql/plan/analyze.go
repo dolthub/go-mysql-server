@@ -71,6 +71,7 @@ func (n *Analyze) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOper
 }
 
 // RowIter implements the interface sql.Node.
+// TODO: support cross / multi db analyze
 func (n *Analyze) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Assume table is in current database
 	database := ctx.GetCurrentDatabase()

@@ -396,10 +396,6 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 	return nil
 }
 
-func (t *Table) IsAnalyzed(ctx *sql.Context) bool {
-	return t.analyzed
-}
-
 func (t *Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
 	return t.tableStats, nil
 }
