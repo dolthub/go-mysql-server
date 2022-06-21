@@ -431,16 +431,6 @@ type HistogramMap map[string]*Histogram
 
 // TableStatistics will hold all the statistics on a table we care about
 type TableStatistics interface {
-
-	// TODO: from cockroach db; uint64 != tuple?
-	// DistinctCount returns the estimated number of distinct values on the
-	// columns of the statistic. If there are multiple columns, each "value" is a
-	// tuple with the values on each column.
-	//DistinctCount() uint64
-
-	// TODO: from cockroach db; this is probably specific to their stuff
-	//ColumnOrdinal(i int) int
-
 	CreatedAt() time.Time
 	ColumnCount() uint64
 	RowCount() uint64

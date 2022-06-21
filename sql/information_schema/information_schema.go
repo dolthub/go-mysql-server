@@ -1051,7 +1051,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					buckets[i] = fmt.Sprintf("[%.2f, %.2f, %.2f]", b.LowerBound, b.UpperBound, b.Frequency)
 				}
 
-				bucketStrings := strings.Join(buckets, ",")
+				bucketStrings := fmt.Sprintf("[%s]", strings.Join(buckets, ","))
 
 				rows = append(rows, Row{
 					db.Name(),          // table_schema
