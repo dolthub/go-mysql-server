@@ -63,7 +63,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		source := insert.Source
 		// TriggerExecutor has already been analyzed
 		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
-			// AnalyzeTable the source of the insert independently
+			// Analyze the source of the insert independently
 			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, sel)
 			if err != nil {
 				return nil, transform.SameTree, err

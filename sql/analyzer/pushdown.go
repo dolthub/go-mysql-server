@@ -323,7 +323,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			}
 			return node, sameA && sameB, nil
 		case *plan.Window:
-			// AnalyzeTable below the Window in isolation to push down
+			// Analyze below the Window in isolation to push down
 			// any relevant indexes, for example.
 			child, same, err := pushdownFiltersAtNode(ctx, a, n.Child, scope, sel)
 			if err != nil {
