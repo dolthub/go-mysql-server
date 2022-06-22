@@ -588,12 +588,6 @@ var (
 
 	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
 	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
-
-	// ErrInvalidTableEntry is returned when a table gets a key that can't be converted to an Entry
-	ErrInvalidTableEntry = errors.NewKind("The %s key for the `%s` table was given an unknown entry")
-
-	// ErrInvalidSchema is returned when a table receives a row that doesn't match the schemas
-	ErrInvalidSchema = errors.NewKind("The %s key for the `%s` table was given a row belonging to an unknown schema")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
