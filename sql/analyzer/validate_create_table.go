@@ -36,6 +36,11 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return nil, transform.SameTree, err
 	}
 
+	err = validatePkTypes(ct.TableSpec())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	// passed validateIndexes, so they all must be valid indexes
 	// extract map of columns that have indexes defined over them
 	keyedColumns := make(map[string]bool)
@@ -332,6 +337,11 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
 
+		err := validateIndexType(ai.Columns, sch)
+		if err != nil {
+			return nil, err
+		}
+
 		return append(indexes, ai.IndexName), nil
 	case plan.IndexAction_Drop:
 		savedIdx := -1
@@ -365,6 +375,17 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	}
 
 	return indexes, nil
+}
+
+// validateIndexType prevents indexing blob columns
+func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
+	for _, c := range cols {
+		i := sch.IndexOfColName(c.Name)
+		if sql.IsByteType(sch[i].Type) {
+			return sql.ErrInvalidByteIndex.New()
+		}
+	}
+	return nil
 }
 
 // missingIdxColumn takes in a set of IndexColumns and returns false, along with the offending column name, if
@@ -455,17 +476,37 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 	return nil
 }
 
+const textIndexPrefix = 1000
+
 func validateIndexes(tableSpec *plan.TableSpec) error {
-	lwrNames := make(map[string]bool)
+	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
-		lwrNames[strings.ToLower(col.Name)] = true
+		lwrNames[strings.ToLower(col.Name)] = col
 	}
 
 	for _, idx := range tableSpec.IdxDefs {
-		for _, col := range idx.Columns {
-			if !lwrNames[strings.ToLower(col.Name)] {
-				return sql.ErrUnknownIndexColumn.New(col.Name, idx.IndexName)
+		for _, idxCol := range idx.Columns {
+			col, ok := lwrNames[strings.ToLower(idxCol.Name)]
+			if !ok {
+				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
+
+			if sql.IsByteType(col.Type) {
+				return sql.ErrInvalidByteIndex.New(col.Name)
+			} else if sql.IsTextBlob(col.Type) {
+				return sql.ErrInvalidTextIndex.New(col.Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+// validatePkTypes prevents creating tables with blob primary keys
+func validatePkTypes(tableSpec *plan.TableSpec) error {
+	for _, col := range tableSpec.Schema.Schema {
+		if col.PrimaryKey && sql.IsByteType(col.Type) {
+			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
 		}
 	}
 

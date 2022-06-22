@@ -92,18 +92,20 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 	return wrappedColumnDefaults(s.targetSchema)
 }
 
-func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.targetSchema))
 	}
 
-	s.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
-	return &s, nil
+	ss := *s
+	ss.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
+	return &ss, nil
 }
 
-func (s ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
-	s.targetSchema = schema
-	return &s, nil
+func (s *ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	ss := *s
+	ss.targetSchema = schema
+	return &ss, nil
 }
 
 func (s *ShowColumns) TargetSchema() sql.Schema {
@@ -189,13 +191,14 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 }
 
 // WithChildren implements the Node interface.
-func (s ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
-	s.Child = children[0]
-	return &s, nil
+	ss := *s
+	ss.Child = children[0]
+	return &ss, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

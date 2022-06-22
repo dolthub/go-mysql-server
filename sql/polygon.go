@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"reflect"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -150,13 +151,13 @@ func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	lv, err := t.Convert(v)
+	v, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
 
-	//TODO: pretty sure this is wrong, lv is not a string type
-	val := appendAndSliceString(dest, lv.(string))
+	buf := SerializePolygon(v.(Polygon))
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
