@@ -3955,7 +3955,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT nullif(NULL, NULL)`,
 		Expected: []sql.Row{
-			{sql.Null},
+			{nil},
 		},
 	},
 	{
@@ -3967,7 +3967,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT nullif(123, 123)`,
 		Expected: []sql.Row{
-			{sql.Null},
+			{nil},
 		},
 	},
 	{
@@ -5948,35 +5948,35 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT 1/0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0/0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 1.0/0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0.0/0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 1 div 0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 1.0 div 0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0 div 0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0.0 div 0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT NULL <=> NULL FROM dual",
@@ -7221,7 +7221,7 @@ var DateParseQueries = []QueryTest{
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 }
 
