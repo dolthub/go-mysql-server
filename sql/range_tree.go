@@ -76,7 +76,7 @@ func GetColExprTypes(ranges []Range) []Type {
 	var colTypesSet int
 	for _, rang := range ranges {
 		for i, e := range rang {
-			if e.Type() != RangeType_Null && colExprTypes[i] == nil {
+			if colExprTypes[i] == nil {
 				colExprTypes[i] = e.Typ
 				colTypesSet++
 			}

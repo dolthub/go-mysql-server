@@ -1004,3 +1004,16 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		return newNode, transform.NewTree, nil
 	})
 }
+
+// convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
+// equivalent as far as the index interfaces are concerned.
+func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
+	expr, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		isNull, ok := e.(*expression.IsNull)
+		if !ok {
+			return e, transform.SameTree, nil
+		}
+		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
+	})
+	return expr
+}

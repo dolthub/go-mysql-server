@@ -17,8 +17,6 @@ package analyzer
 import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -183,7 +181,7 @@ func getIndexes(
 
 		result[getField.Table()] = lookup
 	case *expression.IsNull:
-		return getIndexes(ctx, ia, expression.NewEquals(e.Child, expression.NewLiteral(nil, sql.Null)), tableAliases)
+		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, sql.Null)), tableAliases)
 	case *expression.Not:
 		r, err := getNegatedIndexes(ctx, ia, e, tableAliases)
 		if err != nil {
@@ -311,7 +309,7 @@ func getComparisonIndexLookup(
 	var lookup sql.IndexLookup
 	switch e.(type) {
 	case *expression.Equals, *expression.NullSafeEquals:
-		if e.Right().Type() == sql.Null {
+		if value == nil {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).IsNull(ctx, normalizedExpressions[0].String()).Build(ctx)
 		} else {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
@@ -404,7 +402,14 @@ func getNegatedIndexes(
 			return nil, err
 		}
 
-		lookup, err := sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+		_, nullsafe := not.Child.(*expression.NullSafeEquals)
+		var lookup sql.IndexLookup
+
+		if nullsafe && value == nil {
+			lookup, err = sql.NewIndexBuilder(ctx, idx).IsNotNull(ctx, normalizedExpressions[0].String()).Build(ctx)
+		} else {
+			lookup, err = sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+		}
 		if err != nil || lookup == nil {
 			return nil, err
 		}
@@ -475,7 +480,7 @@ func getNegatedIndexes(
 	case *expression.IsNull:
 		return getNegatedIndexes(ctx, ia,
 			expression.NewNot(
-				expression.NewEquals(
+				expression.NewNullSafeEquals(
 					e.Child,
 					expression.NewLiteral(nil, sql.Null),
 				),
@@ -1044,17 +1049,4 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 		}
 	}
 	return true
-}
-
-// convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
-// equivalent as far as the index interfaces are concerned.
-func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
-	expr, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		isNull, ok := e.(*expression.IsNull)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-		return expression.NewEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
-	})
-	return expr
 }

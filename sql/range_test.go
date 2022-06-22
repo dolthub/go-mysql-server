@@ -444,7 +444,7 @@ func evalRange(t *testing.T, rang sql.Range, row []interface{}) bool {
 	rowRange := make(sql.Range, len(rang))
 	for i, val := range row {
 		if val == nil {
-			rowRange[i] = sql.NullRangeColumnExpr()
+			rowRange[i] = sql.NullRangeColumnExpr(rangeType)
 		} else {
 			rowRange[i] = sql.ClosedRangeColumnExpr(val, val, rangeType)
 		}
@@ -569,7 +569,7 @@ func rgte(val byte) sql.RangeColumnExpr {
 }
 
 func null() sql.RangeColumnExpr {
-	return sql.NullRangeColumnExpr()
+	return sql.NullRangeColumnExpr(rangeType)
 }
 
 func notNull() sql.RangeColumnExpr {
