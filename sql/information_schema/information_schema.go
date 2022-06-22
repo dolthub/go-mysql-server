@@ -1032,7 +1032,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return true, nil
 			}
 
-			stats, err := statsTbl.GetStatistics(ctx)
+			stats, err := statsTbl.Statistics(ctx)
 			if err != nil {
 				return false, err
 			}
@@ -1999,10 +1999,11 @@ func partitionKey(tableName string) []byte {
 }
 
 func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
-	c, cErr := st.NumRows(ctx)
-	if cErr != nil {
-		return 0, cErr
+	stats, err := st.Statistics(ctx)
+	if err != nil {
+		return 0, err
 	}
+	c := stats.RowCount()
 	// cardinality is int64 type, but NumRows return uint64
 	// so casting it to int64 with a check for negative number
 	cardinality := int64(c)

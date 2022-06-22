@@ -37,7 +37,6 @@ import (
 // TableStatistics holds the table statistics for in-memory tables
 type TableStatistics struct {
 	rowCount     uint64
-	colCount     uint64
 	nullCount    uint64
 	createdAt    time.Time
 	histogramMap sql.HistogramMap
@@ -47,10 +46,6 @@ var _ sql.TableStatistics = &TableStatistics{}
 
 func (ts *TableStatistics) CreatedAt() time.Time {
 	return ts.createdAt
-}
-
-func (ts *TableStatistics) ColumnCount() uint64 {
-	return ts.colCount
 }
 
 func (ts *TableStatistics) RowCount() uint64 {
@@ -229,15 +224,6 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}, nil
 }
 
-func (t *Table) NumRows(ctx *sql.Context) (uint64, error) {
-	var count uint64 = 0
-	for _, rows := range t.partitions {
-		count += uint64(len(rows))
-	}
-
-	return count, nil
-}
-
 func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	var numBytesPerRow uint64 = 0
 	for _, col := range t.schema.Schema {
@@ -267,19 +253,18 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 		}
 	}
 
-	numRows, err := t.NumRows(ctx)
-	if err != nil {
-		return 0, err
+	var numRows uint64
+	if t.tableStats != nil {
+		numRows = t.tableStats.rowCount
 	}
 
 	return numBytesPerRow * numRows, nil
 }
 
 // CalculateStatistics implements the sql.StatisticsTable interface.
-func (t *Table) CalculateStatistics(ctx *sql.Context) error {
+func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 	// initialize histogram map
 	t.tableStats = &TableStatistics{
-		colCount:     uint64(len(t.Schema())),
 		createdAt:    time.Now(),
 		histogramMap: make(sql.HistogramMap),
 	}
@@ -394,7 +379,7 @@ func (t *Table) CalculateStatistics(ctx *sql.Context) error {
 	return nil
 }
 
-func (t *Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
+func (t *Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
 	if t.tableStats == nil {
 		return nil, nil
 	}

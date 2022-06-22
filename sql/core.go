@@ -421,13 +421,17 @@ type Histogram struct {
 // HistogramMap is a map from column name to associated histogram
 type HistogramMap map[string]*Histogram
 
-// TableStatistics will hold all the statistics on a table we care about
+// TableStatistics provides access to statistical information about the values stored in a table
 type TableStatistics interface {
+	// CreatedAt returns the time at which the current statistics for this table were generated.
 	CreatedAt() time.Time
-	ColumnCount() uint64
+	// RowCount returns the number of rows in this table.
 	RowCount() uint64
+	// NullCount returns the number of null elements in this table.
 	NullCount() uint64
+	// Histogram returns the histogram for the column (case-sensitive) in this table.
 	Histogram(colName string) (*Histogram, error)
+	// HistogramMap returns a map from all column names to their associated histograms.
 	HistogramMap() HistogramMap
 }
 
@@ -435,14 +439,15 @@ type TableStatistics interface {
 // planning performance.
 type StatisticsTable interface {
 	Table
-	// NumRows returns the unfiltered count of rows contained in the table
-	NumRows(*Context) (uint64, error)
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (uint64, error)
-	// CalculateStatistics fills in the histogram object for the associate table.
-	CalculateStatistics(ctx *Context) error
-	// GetStatistics returns the statistics object for the associated table,
-	GetStatistics(ctx *Context) (TableStatistics, error)
+	// AnalyzeTable is a hook to update any cached or persisted statistics for this table.
+	// It may be triggered by an analyze table statement, or automatically when the engine decides it is necessary.
+	// Integrators can ignore this hook and implement their own method of keeping statistics up to date, at the
+	// cost of potentially stale statistics.
+	AnalyzeTable(ctx *Context) error
+	// GetStatistics returns the statistics for this table
+	Statistics(ctx *Context) (TableStatistics, error)
 }
 
 // IndexUsing is the desired storage type.
