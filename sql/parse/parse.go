@@ -180,6 +180,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	switch n := stmt.(type) {
 	default:
 		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(n))
+	case *sqlparser.Analyze:
+		return convertAnalyze(ctx, n, query)
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -285,6 +287,14 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
 	}
+}
+
+func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.Node, error) {
+	tables := make([]sql.Node, len(n.Tables))
+	for i, table := range n.Tables {
+		tables[i] = tableNameToUnresolvedTable(table)
+	}
+	return plan.NewAnalyze(tables), nil
 }
 
 func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {

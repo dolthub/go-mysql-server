@@ -7083,6 +7083,18 @@ var BrokenQueries = []QueryTest{
 		Query:    "select i, date_col from datetime_table",
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
+	// Currently, not matching MySQL's information schema for this table
+	{
+		Query: `
+		SELECT
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
+		`,
+		Expected: nil,
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -7320,17 +7332,6 @@ var InfoSchemaQueries = []QueryTest{
 		FROM INFORMATION_SCHEMA.FILES
 		WHERE FILE_TYPE = 'DATAFILE'
 		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
-		`,
-		Expected: nil,
-	},
-	{
-		Query: `
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
 		`,
 		Expected: nil,
 	},
@@ -8785,6 +8786,87 @@ var ShowTableStatusQueries = []QueryTest{
 		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
 		Expected: []sql.Row{
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+		},
+	},
+}
+
+var StatisticsQueries = []ScriptTest{
+	{
+		Name: "analyze single int column",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int primary key)",
+			"INSERT INTO t VALUES (1), (2), (3)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze two int columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int, j int)",
+			"INSERT INTO t VALUES (1, 4), (2, 5), (3, 6)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
+					{"mydb", "t", "j", float64(5), float64(4), float64(6), uint64(3), uint64(0), uint64(3), "[[4.00, 4.00, 0.33],[5.00, 5.00, 0.33],[6.00, 6.00, 0.33]]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze float columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (i float)",
+			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(16.125), float64(1.25), float64(45.25), uint64(4), uint64(0), uint64(4), "[[1.25, 1.25, 0.25],[7.50, 7.50, 0.25],[10.50, 10.50, 0.25],[45.25, 45.25, 0.25]]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze empty table creates stats with 0s",
+		SetUpScript: []string{
+			"CREATE TABLE t (i float)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(0), float64(0), float64(0), uint64(0), uint64(0), uint64(0), "[]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze columns that can't be converted to float throws error",
+		SetUpScript: []string{
+			"CREATE TABLE t (t longtext)",
+			"INSERT INTO t VALUES ('not a number')",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{},
+			},
 		},
 	},
 }

@@ -71,6 +71,20 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 }
 
+// TestStatistics tests the statistics from ANALYZE TABLE
+func TestStatistics(t *testing.T, harness Harness) {
+	for _, script := range queries.StatisticsQueries {
+		TestScript(t, harness, script)
+	}
+}
+
+// TestStatisticsPrepared tests the statistics from ANALYZE TABLE
+func TestStatisticsPrepared(t *testing.T, harness Harness) {
+	for _, script := range queries.StatisticsQueries {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
 // TestSpatialQueries tests a variety of geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.SpatialSetup...)
@@ -5588,6 +5602,7 @@ func (p *memoryPersister) Persist(ctx *sql.Context, data []byte) error {
 		role := mysql_db.LoadRoleEdge(serialRoleEdge)
 		p.roles = append(p.roles, role)
 	}
+
 	return nil
 }
 

@@ -185,8 +185,7 @@ func serializeRoleEdge(b *flatbuffers.Builder, roleEdges []*RoleEdge) flatbuffer
 		serial.RoleEdgeAddWithAdminOption(b, roleEdge.WithAdminOption)
 
 		// End RoleEdge
-		offset := serial.RoleEdgeEnd(b)
-		offsets[len(roleEdges)-i-1] = offset // reverse order
+		offsets[len(roleEdges)-i-1] = serial.RoleEdgeEnd(b) // reverse order
 	}
 
 	// Write role_edges vector (already in reversed order)

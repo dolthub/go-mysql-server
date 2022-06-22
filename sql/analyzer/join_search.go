@@ -275,11 +275,11 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		rt := getResolvedTable(jo.node)
 		// TODO: also consider indexes which could be pushed down to this table, if it's the first one
 		if st, ok := rt.Table.(sql.StatisticsTable); ok {
-			numRows, err := st.NumRows(ctx)
+			stats, err := st.Statistics(ctx)
 			if err != nil {
 				return err
 			}
-			jo.cost = numRows
+			jo.cost = stats.RowCount()
 		} else {
 			jo.cost = uint64(1000)
 		}

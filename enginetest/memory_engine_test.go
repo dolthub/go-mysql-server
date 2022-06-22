@@ -395,6 +395,14 @@ func TestBrokenInsertScripts(t *testing.T) {
 	enginetest.TestBrokenInsertScripts(t, enginetest.NewSkippingMemoryHarness())
 }
 
+func TestStatistics(t *testing.T) {
+	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestPreparedStatistics(t *testing.T) {
+	enginetest.TestStatisticsPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestSpatialInsertInto(t *testing.T) {
 	enginetest.TestSpatialInsertInto(t, enginetest.NewDefaultMemoryHarness())
 }

@@ -210,7 +210,16 @@ var columnStatisticsSchema = Schema{
 	{Name: "schema_name", Type: LongText, Source: ColumnStatisticsTableName},
 	{Name: "table_name", Type: LongText, Source: ColumnStatisticsTableName},
 	{Name: "column_name", Type: LongText, Source: ColumnStatisticsTableName},
-	{Name: "histogram", Type: JSON, Source: ColumnStatisticsTableName},
+	{Name: "mean", Type: Float64, Source: ColumnStatisticsTableName},
+	{Name: "min", Type: Float64, Source: ColumnStatisticsTableName},
+	{Name: "max", Type: Float64, Source: ColumnStatisticsTableName},
+	{Name: "count", Type: Uint64, Source: ColumnStatisticsTableName},
+	{Name: "null_count", Type: Uint64, Source: ColumnStatisticsTableName},
+	{Name: "distinct_count", Type: Uint64, Source: ColumnStatisticsTableName},
+	{Name: "buckets", Type: LongText, Source: ColumnStatisticsTableName},
+	// TODO: mysql just has histogram
+	//{Name: "histogram", Type: JSON, Source: ColumnStatisticsTableName},
+
 }
 
 var tablesSchema = Schema{
@@ -1013,6 +1022,66 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// columnStatisticsRowIter implements the custom sql.RowIter for the information_schema.columns table.
+func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases(ctx) {
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			statsTbl, ok := t.(StatisticsTable)
+			if !ok {
+				return true, nil
+			}
+
+			stats, err := statsTbl.Statistics(ctx)
+			if err != nil {
+				return false, err
+			}
+
+			if stats.HistogramMap() == nil {
+				return true, nil
+			}
+
+			for _, col := range t.Schema() {
+				if _, ok := col.Type.(StringType); ok {
+					continue
+				}
+
+				hist, err := stats.Histogram(col.Name)
+				if err != nil {
+					return false, err
+				}
+
+				buckets := make([]string, len(hist.Buckets))
+				for i, b := range hist.Buckets {
+					buckets[i] = fmt.Sprintf("[%.2f, %.2f, %.2f]", b.LowerBound, b.UpperBound, b.Frequency)
+				}
+
+				bucketStrings := fmt.Sprintf("[%s]", strings.Join(buckets, ","))
+
+				rows = append(rows, Row{
+					db.Name(),          // table_schema
+					statsTbl.Name(),    // table_name
+					col.Name,           // column_name
+					hist.Mean,          // mean
+					hist.Min,           // min
+					hist.Max,           // max
+					hist.Count,         // count
+					hist.NullCount,     // null_count
+					hist.DistinctCount, // distinct_count
+					bucketStrings,      // buckets
+					//sql.JSONDocument{Val: jsonHist}, // histogram
+				})
+			}
+			return true, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+	return RowsToRowIter(rows...), nil
+}
+
 func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
@@ -1372,8 +1441,9 @@ func NewInformationSchemaDatabase() Database {
 				schema: filesSchema,
 			},
 			ColumnStatisticsTableName: &informationSchemaTable{
-				name:   ColumnStatisticsTableName,
-				schema: columnStatisticsSchema,
+				name:    ColumnStatisticsTableName,
+				schema:  columnStatisticsSchema,
+				rowIter: columnStatisticsRowIter,
 			},
 			TablesTableName: &informationSchemaTable{
 				name:    TablesTableName,
@@ -1930,10 +2000,19 @@ func partitionKey(tableName string) []byte {
 }
 
 func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
-	c, cErr := st.NumRows(ctx)
-	if cErr != nil {
-		return 0, cErr
+	err := st.AnalyzeTable(ctx)
+	if err != nil {
+		return 0, err
 	}
+	stats, err := st.Statistics(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var c uint64
+	if stats != nil {
+		c = stats.RowCount()
+	}
+
 	// cardinality is int64 type, but NumRows return uint64
 	// so casting it to int64 with a check for negative number
 	cardinality := int64(c)
