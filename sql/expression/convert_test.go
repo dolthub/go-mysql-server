@@ -125,7 +125,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToBinary,
 			expression:  NewLiteral(float64(-2.3), sql.Float64),
-			expected:    "-2.3",
+			expected:    []byte("-2.3"),
 			expectedErr: false,
 		},
 		{

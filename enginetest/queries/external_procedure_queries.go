@@ -93,7 +93,7 @@ var ExternalProcedureTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT @outparam1, @outparam2, @outparam3, @outparam4;",
-				Expected: []sql.Row{{1, 1, "A", "C"}},
+				Expected: []sql.Row{{1, 1, "A", []byte("C")}},
 			},
 			{
 				Query:    "CALL memory_inout_bool_byte(@outparam1, @outparam2, @outparam3, @outparam4);",
@@ -101,7 +101,7 @@ var ExternalProcedureTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT @outparam1, @outparam2, @outparam3, @outparam4;",
-				Expected: []sql.Row{{1, 0, "A", "D"}},
+				Expected: []sql.Row{{1, 0, "A", []byte("D")}},
 			},
 		},
 	},
