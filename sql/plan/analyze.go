@@ -2,15 +2,22 @@ package plan
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"io"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type AnalyzeTable struct {
 	tbls []sql.Node
+}
+
+var analyzeSchema = sql.Schema{
+	{Name: "Table", Type: sql.LongText},
+	{Name: "Op", Type: sql.LongText},
+	{Name: "Msg_type", Type: sql.LongText},
+	{Name: "Msg_text", Type: sql.LongText},
 }
 
 func NewAnalyze(tbls []sql.Node) *AnalyzeTable {
@@ -22,7 +29,7 @@ func NewAnalyze(tbls []sql.Node) *AnalyzeTable {
 // Schema implements the interface sql.Node.
 // TODO: should be |Tables|Op|Msg_type|Msg_text|
 func (n *AnalyzeTable) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return analyzeSchema
 }
 
 // String implements the interface sql.Node.
@@ -72,6 +79,49 @@ func (n *AnalyzeTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return true
 }
 
+type analyzeTableIter struct {
+	idx  int
+	tbls []sql.Node
+}
+
+var _ sql.RowIter = &analyzeTableIter{}
+
+func (itr *analyzeTableIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if itr.idx >= len(itr.tbls) {
+		return nil, io.EOF
+	}
+
+	// find resolved table
+	var resTbl *ResolvedTable
+	transform.Inspect(itr.tbls[itr.idx], func(n sql.Node) bool {
+		if t, ok := n.(*ResolvedTable); ok {
+			resTbl = t
+			return false
+		}
+		return true
+	})
+
+	var statsTbl sql.StatisticsTable
+	if wrappedTbl, ok := resTbl.Table.(sql.TableWrapper); ok {
+		statsTbl = wrappedTbl.Underlying().(sql.StatisticsTable)
+	} else {
+		statsTbl = resTbl.Table.(sql.StatisticsTable)
+	}
+
+	msgType := "status"
+	msgText := "OK"
+	if err := statsTbl.AnalyzeTable(ctx); err != nil {
+		msgType = "Error"
+		msgText = err.Error()
+	}
+	itr.idx++
+	return sql.Row{statsTbl.Name(), "analyze", msgType, msgText}, nil
+}
+
+func (itr *analyzeTableIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
 // RowIter implements the interface sql.Node.
 // TODO: support cross / multi db analyze
 func (n *AnalyzeTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -81,28 +131,8 @@ func (n *AnalyzeTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, sql.ErrNoDatabaseSelected.New()
 	}
 
-	for _, tbl := range n.tbls {
-		// find resolved table
-		var resTbl *ResolvedTable
-		transform.Inspect(tbl, func(n sql.Node) bool {
-			if t, ok := n.(*ResolvedTable); ok {
-				resTbl = t
-				return false
-			}
-			return true
-		})
-
-		var statsTbl sql.StatisticsTable
-		if wrappedTbl, ok := resTbl.Table.(sql.TableWrapper); ok {
-			statsTbl = wrappedTbl.Underlying().(sql.StatisticsTable)
-		} else {
-			statsTbl = resTbl.Table.(sql.StatisticsTable)
-		}
-
-		if err := statsTbl.AnalyzeTable(ctx); err != nil {
-			return nil, err
-		}
-	}
-
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return &analyzeTableIter{
+		idx:  0,
+		tbls: n.tbls,
+	}, nil
 }
