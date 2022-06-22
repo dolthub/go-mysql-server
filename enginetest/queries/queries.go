@@ -7083,7 +7083,7 @@ var BrokenQueries = []QueryTest{
 		Query:    "select i, date_col from datetime_table",
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
-	// Currently not matching MySQL's information schema for this table
+	// Currently, not matching MySQL's information schema for this table
 	{
 		Query: `
 		SELECT

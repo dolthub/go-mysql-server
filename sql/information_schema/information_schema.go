@@ -1999,11 +1999,19 @@ func partitionKey(tableName string) []byte {
 }
 
 func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
+	err := st.AnalyzeTable(ctx)
+	if err != nil {
+		return 0, err
+	}
 	stats, err := st.Statistics(ctx)
 	if err != nil {
 		return 0, err
 	}
-	c := stats.RowCount()
+	var c uint64
+	if stats != nil {
+		c = stats.RowCount()
+	}
+
 	// cardinality is int64 type, but NumRows return uint64
 	// so casting it to int64 with a check for negative number
 	cardinality := int64(c)
