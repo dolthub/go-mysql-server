@@ -323,6 +323,10 @@ func setViewTargetSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	span, ctx := ctx.Span("set_view_target_schema")
 	defer span.Finish()
 
+	if _, ok := n.(*plan.ShowColumns); !ok {
+		return n, transform.SameTree, nil
+	}
+
 	t, ok := n.(sql.SchemaTarget)
 	if !ok {
 		return n, transform.SameTree, nil

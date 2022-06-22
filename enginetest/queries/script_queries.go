@@ -2014,16 +2014,32 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Describe with expression correctly works",
+		Name: "Describe with expressions and views work correctly",
 		SetUpScript: []string{
 			"CREATE TABLE t(pk int primary key, val int DEFAULT (pk * 2))",
+			"CREATE TABLE t2(pk int primary key, val int DEFAULT 100)",
+			"CREATE VIEW view1 as SELECT val FROM t",
+			"create view view2 as SELECT t.val as v1, t2.val as v2 from t INNER JOIN t2 on t.val=t2.val",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"val", "int", "YES", "", "((pk * 2))", ""},
+					{"val", "int", "YES", "", "((pk * 2))", ""}, // TODO: MySQL would return (`pk` * 2)
+				},
+			},
+			{
+				Query: "describe view1",
+				Expected: []sql.Row{
+					{"val", "int", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query: "describe view2",
+				Expected: []sql.Row{
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "", "NULL", ""},
 				},
 			},
 		},
