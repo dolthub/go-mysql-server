@@ -93,6 +93,7 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			if err != nil {
 				return nil, err
 			}
+
 			if stats != nil {
 				numRows = stats.RowCount()
 			}

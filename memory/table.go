@@ -224,6 +224,15 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}, nil
 }
 
+func (t *Table) numRows(ctx *sql.Context) (uint64, error) {
+	var count uint64 = 0
+	for _, rows := range t.partitions {
+		count += uint64(len(rows))
+	}
+
+	return count, nil
+}
+
 func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	var numBytesPerRow uint64 = 0
 	for _, col := range t.schema.Schema {
@@ -253,15 +262,15 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 		}
 	}
 
-	var numRows uint64
-	if t.tableStats != nil {
-		numRows = t.tableStats.rowCount
+	numRows, err := t.numRows(ctx)
+	if err != nil {
+		return 0, err
 	}
 
 	return numBytesPerRow * numRows, nil
 }
 
-// CalculateStatistics implements the sql.StatisticsTable interface.
+// AnalyzeTable implements the sql.StatisticsTable interface.
 func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 	// initialize histogram map
 	t.tableStats = &TableStatistics{
@@ -381,7 +390,13 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 
 func (t *Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
 	if t.tableStats == nil {
-		return nil, nil
+		numRows, err := t.numRows(ctx)
+		if err != nil {
+			return nil, err
+		}
+		t.tableStats = &TableStatistics{
+			rowCount: numRows,
+		}
 	}
 	return t.tableStats, nil
 }

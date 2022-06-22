@@ -428,7 +428,7 @@ type TableStatistics interface {
 	// RowCount returns the number of rows in this table.
 	RowCount() uint64
 	// NullCount returns the number of null elements in this table.
-	NullCount() uint64
+	// TODO: delete NullCount() uint64
 	// Histogram returns the histogram for the column (case-sensitive) in this table.
 	Histogram(colName string) (*Histogram, error)
 	// HistogramMap returns a map from all column names to their associated histograms.
