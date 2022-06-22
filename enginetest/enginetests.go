@@ -4501,6 +4501,11 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// Assert that a duplicate row causes an alter table error
 	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
 
+	// Assert that the schema of t1 is unchanged
+	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
+		{"pk", "varchar(20)", "NO", "", "NULL", ""},
+		{"v", "varchar(20)", "NO", "MUL", "NULL", ""},
+	}, nil, nil)
 	// Assert that adding a primary key with an unknown column causes an error
 	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
 
@@ -4513,8 +4518,8 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// Execute a MultiDDL Alter Statement
 	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
-		{"pk", "varchar(20)", "NO", "", "", ""},
-		{"v", "varchar(20)", "NO", "PRI", "", ""},
+		{"pk", "varchar(20)", "NO", "", "NULL", ""},
+		{"v", "varchar(20)", "NO", "PRI", "NULL", ""},
 	}, nil, nil)
 	AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
@@ -4529,8 +4534,8 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// https://stackoverflow.com/questions/8301744/mysql-reports-a-primary-key-but-can-not-drop-it-from-the-table
 	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
-		{"pk", "varchar(20)", "NO", "", "", ""},
-		{"v", "varchar(20)", "NO", "", "", ""},
+		{"pk", "varchar(20)", "NO", "", "NULL", ""},
+		{"v", "varchar(20)", "NO", "", "NULL", ""},
 	}, nil, nil)
 	TestQueryWithContext(t, ctx, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 		{"a1", "a2"},
@@ -5042,7 +5047,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	t.Run("Negative float literal", func(t *testing.T) {
 		TestQueryWithContext(t, ctx, e, "CREATE TABLE t27(pk BIGINT PRIMARY KEY, v1 DOUBLE DEFAULT -1.1)", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
-		TestQueryWithContext(t, ctx, e, "DESCRIBE t27", []sql.Row{{"pk", "bigint", "NO", "PRI", "", ""}, {"v1", "double", "YES", "", "-1.1", ""}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "DESCRIBE t27", []sql.Row{{"pk", "bigint", "NO", "PRI", "NULL", ""}, {"v1", "double", "YES", "", "-1.1", ""}}, nil, nil)
 	})
 
 	t.Run("Table referenced with column", func(t *testing.T) {
@@ -5111,7 +5116,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, "desc t33", []sql.Row{
 			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
 			{"v1_new", "timestamp", "YES", "", "NOW()", ""},
-			{"v2", "varchar(100)", "YES", "", "", ""},
+			{"v2", "varchar(100)", "YES", "", "NULL", ""},
 		}, nil, nil)
 	})
 
