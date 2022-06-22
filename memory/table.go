@@ -19,10 +19,12 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -31,6 +33,42 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
+
+// TableStatistics holds the table statistics for in-memory tables
+type TableStatistics struct {
+	rowCount     uint64
+	nullCount    uint64
+	createdAt    time.Time
+	histogramMap sql.HistogramMap
+}
+
+var _ sql.TableStatistics = &TableStatistics{}
+
+func (ts *TableStatistics) CreatedAt() time.Time {
+	return ts.createdAt
+}
+
+func (ts *TableStatistics) RowCount() uint64 {
+	return ts.rowCount
+}
+
+func (ts *TableStatistics) NullCount() uint64 {
+	return ts.nullCount
+}
+
+func (ts *TableStatistics) Histogram(colName string) (*sql.Histogram, error) {
+	if res, ok := ts.histogramMap[colName]; ok {
+		return res, nil
+	}
+	return &sql.Histogram{}, fmt.Errorf("column %s not found", colName)
+}
+
+func (ts *TableStatistics) HistogramMap() sql.HistogramMap {
+	if len(ts.histogramMap) == 0 {
+		return nil
+	}
+	return ts.histogramMap
+}
 
 // Table represents an in-memory database table.
 type Table struct {
@@ -60,6 +98,8 @@ type Table struct {
 	// AUTO_INCREMENT bookkeeping
 	autoIncVal uint64
 	autoColIdx int
+
+	tableStats *TableStatistics
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -187,7 +227,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}, nil
 }
 
-func (t *Table) NumRows(ctx *sql.Context) (uint64, error) {
+func (t *Table) numRows(ctx *sql.Context) (uint64, error) {
 	var count uint64 = 0
 	for _, rows := range t.partitions {
 		count += uint64(len(rows))
@@ -225,12 +265,143 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 		}
 	}
 
-	numRows, err := t.NumRows(ctx)
+	numRows, err := t.numRows(ctx)
 	if err != nil {
 		return 0, err
 	}
 
 	return numBytesPerRow * numRows, nil
+}
+
+// AnalyzeTable implements the sql.StatisticsTable interface.
+func (t *Table) AnalyzeTable(ctx *sql.Context) error {
+	// initialize histogram map
+	t.tableStats = &TableStatistics{
+		createdAt:    time.Now(),
+		histogramMap: make(sql.HistogramMap),
+	}
+	for _, col := range t.Schema() {
+		hist := new(sql.Histogram)
+		hist.Min = math.MaxFloat64
+		hist.Max = -math.MaxFloat64
+		t.tableStats.histogramMap[col.Name] = hist
+	}
+
+	// this can be adapted to a histogram with any number of buckets
+	freqMap := make(map[string]map[float64]uint64)
+	for _, col := range t.Schema() {
+		freqMap[col.Name] = make(map[float64]uint64)
+	}
+
+	// perform table scan
+	partIter, err := t.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		part, err := partIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		iter, err := t.PartitionRows(ctx, part)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		for {
+			row, err := iter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+
+			t.tableStats.rowCount++
+
+			for i, col := range t.Schema() {
+				hist, ok := t.tableStats.histogramMap[col.Name]
+				if !ok {
+					panic("histogram was not initialized for this column; shouldn't be possible")
+				}
+
+				if row[i] == nil {
+					hist.NullCount++
+					continue
+				}
+
+				// TODO: using sql.Float64.Convert can convert strings like "123.45" to a valid float
+				val, err := sql.Float64.Convert(row[i])
+				if err != nil {
+					continue // skip unsupported column types for now
+				}
+				v := val.(float64)
+
+				// place into frequency map
+				if bucket, ok := freqMap[col.Name][v]; ok {
+					bucket++
+				} else {
+					freqMap[col.Name][v] = 1
+					hist.DistinctCount++
+				}
+
+				hist.Mean += v
+				hist.Min = math.Min(hist.Min, v)
+				hist.Max = math.Max(hist.Max, v)
+				hist.Count++
+			}
+		}
+	}
+
+	// TODO: logic to determine ranges for buckets
+	// add buckets to histogram in sorted order
+	for colName, freqs := range freqMap {
+		keys := make([]float64, 0)
+		for k, _ := range freqs {
+			keys = append(keys, k)
+		}
+		sort.Float64s(keys)
+
+		hist := t.tableStats.histogramMap[colName]
+		if hist.Count == 0 {
+			hist.Max = 0
+			hist.Min = 0
+			continue
+		}
+
+		hist.Mean /= float64(hist.Count)
+		for _, k := range keys {
+			bucket := &sql.HistogramBucket{
+				LowerBound: k,
+				UpperBound: k,
+				Frequency:  float64(freqs[k]) / float64(hist.Count),
+			}
+			hist.Buckets = append(hist.Buckets, bucket)
+		}
+	}
+
+	return nil
+}
+
+func (t *Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
+	if t.tableStats == nil {
+		numRows, err := t.numRows(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &TableStatistics{
+			rowCount: numRows,
+		}, nil
+	}
+	return t.tableStats, nil
 }
 
 func NewPartition(key []byte) *Partition {

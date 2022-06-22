@@ -473,6 +473,9 @@ var (
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
 
+	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
+	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
+
 	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
 	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
 
@@ -576,6 +579,15 @@ var (
 
 	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
 	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
+
+	// ErrInvalidBytePrimaryKey is returned when attempting to create a primary key with a byte column
+	ErrInvalidBytePrimaryKey = errors.NewKind("invalid primary key on byte column '%s'")
+
+	// ErrInvalidByteIndex is returned for an index on a byte column with no prefix or an invalid prefix
+	ErrInvalidByteIndex = errors.NewKind("index on byte column '%s' unsupported")
+
+	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
+	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

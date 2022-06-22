@@ -74,7 +74,7 @@ func (s StringToDatetime) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	}
 	goTime, err := dateparse.ParseDateWithFormat(dateStr, formatStr)
 	if err != nil {
-		return sql.Null, nil
+		return nil, nil
 	}
 	return goTime, nil
 }

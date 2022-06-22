@@ -16,6 +16,8 @@ package sql
 
 import (
 	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"math"
 	"reflect"
 
@@ -68,6 +70,10 @@ const (
 	WKBPointID
 	WKBLineID
 	WKBPolyID
+	WKBMultiPointID
+	WKBMultiLineID
+	WKBMultiPolyID
+	WKBGeoCollectionID
 )
 
 // isLinearRing checks if a LineString is a linear ring
@@ -191,6 +197,73 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
 	return Polygon{SRID: srid, Lines: lines}, nil
 }
 
+func allocateBuffer(numPoints, numCounts int) []byte {
+	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts)
+}
+
+// SerializeEWKBHeader will write EWKB header to the given buffer
+func SerializeEWKBHeader(buf []byte, srid, typ uint32) {
+	binary.LittleEndian.PutUint32(buf[:4], srid)
+	buf[4] = 1
+	binary.LittleEndian.PutUint32(buf[5:9], typ)
+}
+
+func SerializePointData(buf []byte, x, y float64) {
+	binary.LittleEndian.PutUint64(buf[:PointSize/2], math.Float64bits(x))
+	binary.LittleEndian.PutUint64(buf[PointSize/2:], math.Float64bits(y))
+}
+
+func SerializePoint(p Point) (buf []byte) {
+	buf = allocateBuffer(1, 0)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, WKBPointID)
+	SerializePointData(buf[EWKBHeaderSize:], p.X, p.Y)
+	return
+}
+
+func writeCount(buf []byte, count uint32) {
+	binary.LittleEndian.PutUint32(buf, count)
+}
+
+func writePointSlice(buf []byte, points []Point) {
+	writeCount(buf, uint32(len(points)))
+	buf = buf[CountSize:]
+	for _, p := range points {
+		SerializePointData(buf, p.X, p.Y)
+		buf = buf[PointSize:]
+	}
+}
+
+func SerializeLineString(l LineString) (buf []byte) {
+	buf = allocateBuffer(len(l.Points), 1)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], l.SRID, WKBLineID)
+	writePointSlice(buf[EWKBHeaderSize:], l.Points)
+	return
+}
+
+func writeLineSlice(buf []byte, lines []LineString) {
+	writeCount(buf, uint32(len(lines)))
+	buf = buf[CountSize:]
+	for _, l := range lines {
+		writePointSlice(buf, l.Points)
+		sz := CountSize + len(l.Points)*PointSize
+		buf = buf[sz:]
+	}
+}
+
+func countPoints(p Polygon) (cnt int) {
+	for _, line := range p.Lines {
+		cnt += len(line.Points)
+	}
+	return
+}
+
+func SerializePolygon(p Polygon) (buf []byte) {
+	buf = allocateBuffer(countPoints(p), len(p.Lines)+1)
+	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, WKBPolyID)
+	writeLineSlice(buf[EWKBHeaderSize:], p.Lines)
+	return
+}
+
 // Compare implements Type interface.
 func (t GeometryType) Compare(a any, b any) (int, error) {
 	// Compare nulls
@@ -235,6 +308,14 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 			geom, err = WKBToLine(inner[EWKBHeaderSize:], isBig, srid)
 		case WKBPolyID:
 			geom, err = WKBToPoly(inner[EWKBHeaderSize:], isBig, srid)
+		case WKBMultiPointID:
+			return nil, ErrUnsupportedGISType.New("MultiPoint", hex.EncodeToString(inner))
+		case WKBMultiLineID:
+			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(inner))
+		case WKBMultiPolyID:
+			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(inner))
+		case WKBGeoCollectionID:
+			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(inner))
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
 		}
@@ -271,13 +352,22 @@ func (t GeometryType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	pv, err := t.Convert(v)
+	v, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
 
-	//TODO: pretty sure this is wrong, pv is not a string type
-	val := appendAndSliceString(dest, pv.(string))
+	var buf []byte
+	switch val := v.(type) {
+	case Point:
+		buf = SerializePoint(val)
+	case LineString:
+		buf = SerializeLineString(val)
+	case Polygon:
+		buf = SerializePolygon(val)
+	}
+
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }

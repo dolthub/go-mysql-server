@@ -178,7 +178,7 @@ func TestDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
@@ -205,7 +205,7 @@ func TestDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
@@ -231,7 +231,7 @@ func TestDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
@@ -392,7 +392,7 @@ func TestIntDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}

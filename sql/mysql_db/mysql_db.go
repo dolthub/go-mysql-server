@@ -77,8 +77,21 @@ var _ mysql.AuthServer = (*MySQLDb)(nil)
 func CreateEmptyMySQLDb() *MySQLDb {
 	// original tables
 	mysqlDb := &MySQLDb{
-		user:       newMySQLTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
-		role_edges: newMySQLTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
+		user: newMySQLTable(
+			userTblName,
+			userTblSchema,
+			&User{},
+			UserPrimaryKey{},
+			UserSecondaryKey{},
+		),
+		role_edges: newMySQLTable(
+			roleEdgesTblName,
+			roleEdgesTblSchema,
+			&RoleEdge{},
+			RoleEdgesPrimaryKey{},
+			RoleEdgesFromKey{},
+			RoleEdgesToKey{},
+		),
 	}
 
 	// mysqlTable shims
@@ -291,7 +304,12 @@ func (t *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Tab
 
 // GetTableNames implements the interface sql.Database.
 func (t *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
-	return []string{userTblName, dbTblName, tablesPrivTblName, roleEdgesTblName}, nil
+	return []string{
+		userTblName,
+		dbTblName,
+		tablesPrivTblName,
+		roleEdgesTblName,
+	}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.

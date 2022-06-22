@@ -261,10 +261,10 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 		require.NoError(err)
 	}
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	require.NoError(err, "Unexpected error for query %s", q)
+	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err, "Unexpected error for query %s", q)
+	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	checkResults(t, require, expected, expectedCols, sch, rows, q)
 
@@ -706,7 +706,7 @@ func ExtractQueryNode(node sql.Node) sql.Node {
 	}
 }
 
-func runWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
+func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
