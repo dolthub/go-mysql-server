@@ -56,7 +56,7 @@ var (
 	LongBlob   = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
 
 	stringValueType = reflect.TypeOf(string(""))
-	blobValueType   = reflect.TypeOf(([]byte)(nil))
+	byteValueType   = reflect.TypeOf(([]byte)(nil))
 )
 
 // StringType represents all string types, including VARCHAR and BLOB.
@@ -213,7 +213,7 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if IsBlob(t) {
+		if IsBinaryType(t) {
 			as = string(ai.([]byte))
 		} else {
 			as = ai.(string)
@@ -224,7 +224,7 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if IsBlob(t) {
+		if IsBinaryType(t) {
 			bs = string(bi.([]byte))
 		} else {
 			bs = bi.(string)
@@ -324,7 +324,7 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		val += strings.Repeat(string([]byte{0}), int(t.charLength)-len(val))
 	}
 
-	if IsBlob(t) {
+	if IsBinaryType(t) {
 		return []byte(val), nil
 	}
 
@@ -372,7 +372,7 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 
 	var val []byte
-	if IsBlob(t) {
+	if IsBinaryType(t) {
 		val = appendAndSliceBytes(dest, v.([]byte))
 	} else {
 		val = appendAndSliceString(dest, v.(string))
@@ -436,8 +436,8 @@ func (t stringType) Type() query.Type {
 
 // ValueType implements Type interface.
 func (t stringType) ValueType() reflect.Type {
-	if IsBlob(t) {
-		return blobValueType
+	if IsBinaryType(t) {
+		return byteValueType
 	}
 	return stringValueType
 }

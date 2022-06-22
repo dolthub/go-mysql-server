@@ -28,15 +28,15 @@ var BlobQueries = []QueryTest{
 	{
 		Query: "select * from blobt where i = 1",
 		Expected: []sql.Row{
-			{1, []uint8("first row")},
+			{1, []byte("first row")},
 		},
 	},
 	{
 		Query: "select * from blobt order by b desc",
 		Expected: []sql.Row{
-			{3, []uint8("third row")},
-			{2, []uint8("second row")},
-			{1, []uint8("first row")},
+			{3, []byte("third row")},
+			{2, []byte("second row")},
+			{1, []byte("first row")},
 		},
 	},
 }
@@ -46,21 +46,21 @@ var BlobWriteQueries = []WriteQueryTest{
 		WriteQuery:          "insert into blobt values (4, '100000000')",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "select * from blobt where i = 4",
-		ExpectedSelect:      []sql.Row{{4, []uint8("100000000")}},
+		ExpectedSelect:      []sql.Row{{4, []byte("100000000")}},
 	},
 	{
 		WriteQuery:          "update blobt set b = '100000000' where i = 1",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "select * from blobt where i = 1",
-		ExpectedSelect:      []sql.Row{{1, []uint8("100000000")}},
+		ExpectedSelect:      []sql.Row{{1, []byte("100000000")}},
 	},
 	{
 		WriteQuery:          "delete from blobt where i = 1",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "select * from blobt",
 		ExpectedSelect: []sql.Row{
-			{2, []uint8("second row")},
-			{3, []uint8("third row")},
+			{2, []byte("second row")},
+			{3, []byte("third row")},
 		},
 	},
 	{
@@ -68,9 +68,9 @@ var BlobWriteQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "select * from blobt",
 		ExpectedSelect: []sql.Row{
-			{1, []uint8("first row")},
-			{2, []uint8("second row")},
-			{3, []uint8("third row")},
+			{1, []byte("first row")},
+			{2, []byte("second row")},
+			{3, []byte("third row")},
 		},
 	},
 	{
@@ -78,9 +78,9 @@ var BlobWriteQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "select * from blobt",
 		ExpectedSelect: []sql.Row{
-			{1, []uint8("first row"), nil},
-			{2, []uint8("second row"), nil},
-			{3, []uint8("third row"), nil},
+			{1, []byte("first row"), nil},
+			{2, []byte("second row"), nil},
+			{3, []byte("third row"), nil},
 		},
 	},
 	{
@@ -88,9 +88,9 @@ var BlobWriteQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "select * from blobt",
 		ExpectedSelect: []sql.Row{
-			{1, []uint8("first row"), 3},
-			{2, []uint8("second row"), 4},
-			{3, []uint8("third row"), 5},
+			{1, []byte("first row"), 3},
+			{2, []byte("second row"), 4},
+			{3, []byte("third row"), 5},
 		},
 	},
 }
@@ -98,7 +98,7 @@ var BlobWriteQueries = []WriteQueryTest{
 var BlobErrors = []QueryErrorTest{
 	{
 		Query:       "alter table blobt add index bidx (b)",
-		ExpectedErr: sql.ErrInvalidBinaryIndex,
+		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 	{
 		Query:       "alter table blobt add column b2 blob default '1'",
@@ -106,31 +106,19 @@ var BlobErrors = []QueryErrorTest{
 	},
 	{
 		Query:       "create table b (b blob primary key)",
-		ExpectedErr: sql.ErrInvalidBinaryPrimaryKey,
+		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
 	},
 	{
 		Query:       "create table b (b smallblob primary key)",
-		ExpectedErr: sql.ErrInvalidBinaryPrimaryKey,
+		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
 	},
 	{
 		Query:       "create table b (i int primary key, b blob, index bidx(b))",
-		ExpectedErr: sql.ErrInvalidBinaryIndex,
-	},
-	{
-		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 BINARY(20), INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidBinaryIndex,
-	},
-	{
-		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 VARBINARY(20), INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidBinaryIndex,
-	},
-	{
-		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 VARBINARY, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidBinaryIndex,
+		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TEXT, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidBinaryIndex,
+		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 }
 

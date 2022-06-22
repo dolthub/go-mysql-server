@@ -580,13 +580,13 @@ var (
 	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
 	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
 
-	// ErrInvalidBinaryPrimaryKey is returned when attempting to create a primary key with a binary column
-	ErrInvalidBinaryPrimaryKey = errors.NewKind("invalid primary key on binary column '%s'")
+	// ErrInvalidBytePrimaryKey is returned when attempting to create a primary key with a byte column
+	ErrInvalidBytePrimaryKey = errors.NewKind("invalid primary key on byte column '%s'")
 
-	// ErrInvalidBinaryIndex is returned for an index on a binary oclumn with no prefix or an invalid prefix
-	ErrInvalidBinaryIndex = errors.NewKind("index on binary column '%s' unsupported")
+	// ErrInvalidByteIndex is returned for an index on a byte column with no prefix or an invalid prefix
+	ErrInvalidByteIndex = errors.NewKind("index on byte column '%s' unsupported")
 
-	// ErrInvalidTextIndex is returned for an index on a binary oclumn with no prefix or an invalid prefix
+	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
 	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
 )
 

@@ -205,7 +205,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	var v interface{}
 	var vs string
-	if sql.IsBlob(retType) {
+	if sql.IsByteType(retType) {
 		v, err = sql.Blob.Convert(evalRow[0])
 		if err != nil {
 			return err

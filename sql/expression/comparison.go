@@ -172,7 +172,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return left, right, c.Left().Type(), nil
 	}
 
-	if sql.IsBlob(leftType) || sql.IsBlob(rightType) {
+	if sql.IsBinaryType(leftType) || sql.IsBinaryType(rightType) {
 		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
 		if err != nil {
 			return nil, nil, nil, err

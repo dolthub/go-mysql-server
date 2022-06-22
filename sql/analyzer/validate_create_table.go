@@ -381,8 +381,8 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
 	for _, c := range cols {
 		i := sch.IndexOfColName(c.Name)
-		if sql.IsBlob(sch[i].Type) {
-			return sql.ErrInvalidBinaryIndex.New()
+		if sql.IsByteType(sch[i].Type) {
+			return sql.ErrInvalidByteIndex.New()
 		}
 	}
 	return nil
@@ -491,8 +491,8 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
 
-			if sql.IsBlob(col.Type) {
-				return sql.ErrInvalidBinaryIndex.New(col.Name)
+			if sql.IsByteType(col.Type) {
+				return sql.ErrInvalidByteIndex.New(col.Name)
 			} else if sql.IsTextBlob(col.Type) {
 				return sql.ErrInvalidTextIndex.New(col.Name)
 			}
@@ -505,8 +505,8 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 // validatePkTypes prevents creating tables with blob primary keys
 func validatePkTypes(tableSpec *plan.TableSpec) error {
 	for _, col := range tableSpec.Schema.Schema {
-		if col.PrimaryKey && sql.IsBlob(col.Type) {
-			return sql.ErrInvalidBinaryPrimaryKey.New(col.Name)
+		if col.PrimaryKey && sql.IsByteType(col.Type) {
+			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
 		}
 	}
 

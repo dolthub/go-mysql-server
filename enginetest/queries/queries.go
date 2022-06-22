@@ -6279,7 +6279,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT BINARY 'hi'",
 		Expected: []sql.Row{
-			{[]uint8("hi")},
+			{[]byte("hi")},
 		},
 	},
 	{
