@@ -31,7 +31,7 @@ func TestNullIf(t *testing.T) {
 		expected interface{}
 	}{
 		{"foo", "bar", "foo"},
-		{"foo", "foo", sql.Null},
+		{"foo", "foo", nil},
 		{nil, "foo", nil},
 		{"foo", nil, "foo"},
 		{nil, nil, nil},
