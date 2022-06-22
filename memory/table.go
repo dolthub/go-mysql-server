@@ -397,9 +397,9 @@ func (t *Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
 		if err != nil {
 			return nil, err
 		}
-		t.tableStats = &TableStatistics{
+		return &TableStatistics{
 			rowCount: numRows,
-		}
+		}, nil
 	}
 	return t.tableStats, nil
 }
