@@ -172,6 +172,14 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return left, right, c.Left().Type(), nil
 	}
 
+	if sql.IsBinaryType(leftType) || sql.IsBinaryType(rightType) {
+		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return l, r, sql.LongBlob, nil
+	}
+
 	if sql.IsNumber(leftType) || sql.IsNumber(rightType) {
 		if sql.IsDecimal(leftType) || sql.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type

@@ -1,9 +1,9 @@
 exec
 CREATE TABLE `people` (
   `dob` date NOT NULL,
-  `first_name` text NOT NULL,
-  `last_name` text NOT NULL,
-  `middle_name` text NOT NULL,
+  `first_name` varchar(20) NOT NULL,
+  `last_name` varchar(20) NOT NULL,
+  `middle_name` varchar(20) NOT NULL,
   `height_inches` bigint NOT NULL,
   `gender` bigint NOT NULL,
   PRIMARY KEY (`dob`,`first_name`,`last_name`,`middle_name`)

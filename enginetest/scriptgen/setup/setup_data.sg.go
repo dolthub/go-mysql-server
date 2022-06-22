@@ -13,6 +13,11 @@ var BigtableData = []SetupScript{{
 	`insert into bigtable values	('a', 1),	('s', 2),	('f', 3),	('g', 1),	('h', 2),	('j', 3),	('k', 1),	('l', 2),	('ñ', 4),	('z', 5),	('x', 6),	('c', 7),	('v', 8),	('b', 9)`,
 }}
 
+var BlobData = []SetupScript{{
+	`create table blobt (i bigint primary key, b longblob)`,
+	`insert into blobt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+}}
+
 var Check_constraintData = []SetupScript{{
 	`CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))`,
 	`ALTER TABLE checks ADD CONSTRAINT chk1 CHECK (B > 0)`,
@@ -68,9 +73,9 @@ var FooData = []SetupScript{{
 }}
 
 var Graph_tablesData = []SetupScript{{
-	"CREATE TABLE `bus_routes` (  `origin` text NOT NULL,  `dst` text NOT NULL,  PRIMARY KEY (`origin`,`dst`))",
+	"CREATE TABLE `bus_routes` (  `origin` varchar(20) NOT NULL,  `dst` varchar(20) NOT NULL,  PRIMARY KEY (`origin`,`dst`))",
 	`insert into bus_routes values    ('New York', 'Boston'),    ('Boston', 'New York'),    ('New York', 'Washington'),    ('Washington', 'Boston'),    ('Washington', 'Raleigh')`,
-	"CREATE TABLE `parts` (  `part` text NOT NULL,  `sub_part` text NOT NULL,  `quantity` bigint NOT NULL,  PRIMARY KEY (`part`,`sub_part`))",
+	"CREATE TABLE `parts` (  `part` varchar(20) NOT NULL,  `sub_part` varchar(20) NOT NULL,  `quantity` bigint NOT NULL,  PRIMARY KEY (`part`,`sub_part`))",
 	`insert into parts values	('pie', 'crust', 1),	('pie', 'filling', 2),	('crust', 'flour', 20),	('crust', 'sugar', 2),	('crust', 'butter', 15),	('crust', 'salt', 15),	('filling', 'sugar', 5),	('filling', 'fruit', 9),	('filling', 'salt', 3),	('filling', 'butter', 3)`,
 }}
 
@@ -163,7 +168,7 @@ var Parent_childData = []SetupScript{{
 }}
 
 var PeopleData = []SetupScript{{
-	"CREATE TABLE `people` (  `dob` date NOT NULL,  `first_name` text NOT NULL,  `last_name` text NOT NULL,  `middle_name` text NOT NULL,  `height_inches` bigint NOT NULL,  `gender` bigint NOT NULL,  PRIMARY KEY (`dob`,`first_name`,`last_name`,`middle_name`))",
+	"CREATE TABLE `people` (  `dob` date NOT NULL,  `first_name` varchar(20) NOT NULL,  `last_name` varchar(20) NOT NULL,  `middle_name` varchar(20) NOT NULL,  `height_inches` bigint NOT NULL,  `gender` bigint NOT NULL,  PRIMARY KEY (`dob`,`first_name`,`last_name`,`middle_name`))",
 	`insert into people values    ('1970-12-1', 'jon', 'smith', '', 72, 0),    ('1980-1-11', 'jon', 'smith', '', 67, 0),    ('1990-2-21', 'jane', 'doe', '', 68, 1),    ('2000-12-31', 'frank', 'franklin', '', 70, 2),    ('2010-3-15', 'jane', 'doe', '', 69, 1)`,
 	`create index people_l_f on people (last_name,first_name)`,
 }}
@@ -183,7 +188,7 @@ var Pk_tablesData = []SetupScript{{
 }}
 
 var Reserved_keywordsData = []SetupScript{{
-	"CREATE TABLE `reservedWordsTable` (  `Timestamp` text NOT NULL,  `and` text,  `or` text,  `select` text,  PRIMARY KEY (`Timestamp`))",
+	"CREATE TABLE `reservedWordsTable` (  `Timestamp` varchar(20) NOT NULL,  `and` text,  `or` text,  `select` text,  PRIMARY KEY (`Timestamp`))",
 	`insert into reservedWordsTable values    ('1', '1.1', 'aaa', 'create')`,
 }}
 
@@ -197,8 +202,7 @@ var SpatialData = []SetupScript{{
 	`create table line_table (i bigint primary key, l linestring NOT NULL);`,
 	`insert into line_table values    (0, ST_GeomFromText('Linestring(1 2,3 4)')),    (1, ST_GeomFromText('Linestring(1 2,3 4,5 6)'))`,
 	`create table polygon_table (i bigint primary key, p polygon NOT NULL);`,
-	`insert into polygon_table values (0, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0))'))`,
-	`insert into polygon_table values (1, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))'))`,
+	`insert into polygon_table values    (0, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0))')),    (1, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))'))`,
 }}
 
 var SpecialtableData = []SetupScript{{

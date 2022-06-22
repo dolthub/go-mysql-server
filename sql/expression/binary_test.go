@@ -34,12 +34,12 @@ func TestBinary(t *testing.T) {
 	testCases := []struct {
 		val      interface{}
 		valType  sql.Type
-		expected string
+		expected []byte
 	}{
-		{"hi", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), "hi"},
-		{int8(1), sql.Int8, "1"},
-		{true, sql.Boolean, "true"},
-		{"hello", sql.LongText, "hello"},
+		{"hi", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("hi")},
+		{int8(1), sql.Int8, []byte("1")},
+		{true, sql.Boolean, []byte("true")},
+		{"hello", sql.LongText, []byte("hello")},
 	}
 
 	for _, tt := range testCases {

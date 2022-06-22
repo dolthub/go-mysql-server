@@ -491,7 +491,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 func TestInsertInto(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.KeylessData, setup.NiltableData, setup.TypestableData, setup.EmptytableData, setup.AutoincrementData, setup.OthertableData, setup.Othertable_del_idxData)
 	for _, insertion := range queries.InsertQueries {
-		runWriteQueryTest(t, harness, insertion)
+		RunWriteQueryTest(t, harness, insertion)
 	}
 
 	harness.Setup(setup.MydbData)
@@ -529,7 +529,7 @@ func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 func TestSpatialInsertInto(t *testing.T, harness Harness) {
 	harness.Setup(setup.SpatialSetup...)
 	for _, tt := range queries.SpatialInsertQueries {
-		runWriteQueryTest(t, harness, tt)
+		RunWriteQueryTest(t, harness, tt)
 	}
 }
 
@@ -556,7 +556,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 func TestReplaceInto(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.TypestableData)
 	for _, tt := range queries.ReplaceQueries {
-		runWriteQueryTest(t, harness, tt)
+		RunWriteQueryTest(t, harness, tt)
 	}
 }
 
@@ -570,7 +570,7 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 func TestUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
 	for _, tt := range queries.UpdateTests {
-		runWriteQueryTest(t, harness, tt)
+		RunWriteQueryTest(t, harness, tt)
 	}
 }
 
@@ -593,14 +593,14 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 func TestSpatialUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.SpatialSetup...)
 	for _, update := range queries.SpatialUpdateTests {
-		runWriteQueryTest(t, harness, update)
+		RunWriteQueryTest(t, harness, update)
 	}
 }
 
 func TestDelete(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData)
 	for _, tt := range queries.DeleteTests {
-		runWriteQueryTest(t, harness, tt)
+		RunWriteQueryTest(t, harness, tt)
 	}
 }
 
@@ -642,7 +642,7 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 func TestSpatialDelete(t *testing.T, harness Harness) {
 	harness.Setup(setup.SpatialSetup...)
 	for _, delete := range queries.SpatialDeleteTests {
-		runWriteQueryTest(t, harness, delete)
+		RunWriteQueryTest(t, harness, delete)
 	}
 }
 
@@ -1697,7 +1697,7 @@ func TestVersionedViewsPrepared(t *testing.T, harness Harness) {
 func TestCreateTable(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.FooData)
 	for _, tt := range queries.CreateTableQueries {
-		runWriteQueryTest(t, harness, tt)
+		RunWriteQueryTest(t, harness, tt)
 	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
@@ -2626,7 +2626,7 @@ func TestPkOrdinalsDDL(t *testing.T, harness Harness) {
 	}
 
 	for _, tt := range queries.OrdinalDDLWriteQueries {
-		runWriteQueryTest(t, harness, tt)
+		RunWriteQueryTest(t, harness, tt)
 	}
 }
 
@@ -4415,7 +4415,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",
 		"use mydb",
-		"create table t1 (pk text, v text, primary key (pk, v))",
+		"create table t1 (pk varchar(20), v varchar(20), primary key (pk, v))",
 		"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
 	}})
 	e := mustNewEngine(t, harness)
@@ -4501,12 +4501,6 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// Assert that a duplicate row causes an alter table error
 	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
 
-	// Assert that the schema of t1 is unchanged
-	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
-		{"pk", "text", "NO", "", "", ""},
-		{"v", "text", "NO", "MUL", "", ""},
-	}, nil, nil)
-
 	// Assert that adding a primary key with an unknown column causes an error
 	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
 
@@ -4519,8 +4513,8 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// Execute a MultiDDL Alter Statement
 	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
-		{"pk", "text", "NO", "", "", ""},
-		{"v", "text", "NO", "PRI", "", ""},
+		{"pk", "varchar(20)", "NO", "", "", ""},
+		{"v", "varchar(20)", "NO", "PRI", "", ""},
 	}, nil, nil)
 	AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
@@ -4535,8 +4529,8 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// https://stackoverflow.com/questions/8301744/mysql-reports-a-primary-key-but-can-not-drop-it-from-the-table
 	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
-		{"pk", "text", "NO", "", "", ""},
-		{"v", "text", "NO", "", "", ""},
+		{"pk", "varchar(20)", "NO", "", "", ""},
+		{"v", "varchar(20)", "NO", "", "", ""},
 	}, nil, nil)
 	TestQueryWithContext(t, ctx, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 		{"a1", "a2"},
@@ -4599,29 +4593,31 @@ func (c customFunc) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 func TestAlterTable(t *testing.T, harness Harness) {
+	errorTests := []queries.QueryErrorTest{
+		{
+			Query:       "ALTER TABLE one_pk_two_idx MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v4 BIGINT DEFAULT (pk) AFTER v3",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, modify column v3 bigint default null",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+	}
+
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-
-	t.Run("Modify column invalid after", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t1008(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)")
-		AssertErr(t, e, harness, "ALTER TABLE t1008 MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
-	})
-
-	t.Run("Add column invalid after", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t1009(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)")
-		AssertErr(t, e, harness, "ALTER TABLE t1009 ADD COLUMN v4 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
-	})
-
-	t.Run("rename column added in same statement", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t30(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')")
-		AssertErr(t, e, harness, "ALTER TABLE t30 ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2", sql.ErrTableColumnNotFound)
-	})
-
-	t.Run("modify column added in same statement", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t31(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')")
-		AssertErr(t, e, harness, "ALTER TABLE t31 ADD COLUMN v3 BIGINT DEFAULT 5, modify column v3 bigint default null", sql.ErrTableColumnNotFound)
-	})
+	for _, tt := range errorTests {
+		runQueryErrorTest(t, harness, tt)
+	}
 
 	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
@@ -4754,6 +4750,58 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 ENABLE KEYS",
 			[]sql.Row{{sql.NewOkResult(0)}}, nil, mysql.ERNotSupportedYet, 1,
 			"", false)
+	})
+
+	t.Run("adding a unique constraint errors if violations exist", func(t *testing.T) {
+		// single column unique constraint (success)
+		RunQuery(t, e, harness, "CREATE TABLE t38 (pk int PRIMARY KEY, col1 int)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (1, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (2, 2)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (3, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (4, NULL)")
+		RunQuery(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)")
+
+		// multi column unique constraint (success)
+		RunQuery(t, e, harness, "CREATE TABLE t39 (pk int PRIMARY KEY, col1 int, col2 int)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (1, 1, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (2, 1, 2)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (3, 2, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (4, 1, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (5, 1, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (6, NULL, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (7, NULL, 1)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (8, NULL, NULL)")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (9, NULL, NULL)")
+		RunQuery(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)")
+
+		// single column unique constraint (failure)
+		RunQuery(t, e, harness, "ALTER TABLE t38 DROP INDEX u_col1;")
+		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (5, 1);")
+		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrDuplicateEntry)
+		tt := queries.QueryTest{
+			Query: "show create table t38;",
+			Expected: []sql.Row{{"t38", "CREATE TABLE `t38` (\n" +
+				"  `pk` int NOT NULL,\n" +
+				"  `col1` int,\n" +
+				"  PRIMARY KEY (`pk`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+
+		// multi column unique constraint (failure)
+		RunQuery(t, e, harness, "ALTER TABLE t39 DROP INDEX u_col1_col2;")
+		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (10, 1, 1);")
+		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrDuplicateEntry)
+		tt = queries.QueryTest{
+			Query: "show create table t39;",
+			Expected: []sql.Row{{"t39", "CREATE TABLE `t39` (\n" +
+				"  `pk` int NOT NULL,\n" +
+				"  `col1` int,\n" +
+				"  `col2` int,\n" +
+				"  PRIMARY KEY (`pk`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
 	})
 }
 
@@ -5205,7 +5253,7 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
 	harness.Setup(setup.KeylessSetup...)
 	for _, tt := range queries.InsertIntoKeylessUnique {
-		runWriteQueryTest(t, harness, tt)
+		RunWriteQueryTest(t, harness, tt)
 	}
 
 	for _, tt := range queries.InsertIntoKeylessUniqueError {
@@ -5660,4 +5708,22 @@ func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 		}
 	}
 	return nil
+}
+
+func TestBlobs(t *testing.T, h Harness) {
+	h.Setup(setup.MydbData, setup.BlobData, setup.MytableData)
+	e := mustNewEngine(t, h)
+	defer e.Close()
+
+	for _, tt := range queries.BlobErrors {
+		runQueryErrorTest(t, h, tt)
+	}
+
+	for _, tt := range queries.BlobQueries {
+		TestQueryWithEngine(t, h, e, tt)
+	}
+
+	for _, tt := range queries.BlobWriteQueries {
+		RunWriteQueryTest(t, h, tt)
+	}
 }

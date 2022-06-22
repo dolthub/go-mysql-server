@@ -1400,23 +1400,9 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			constraint = sql.IndexConstraint_None
 		}
 
-		columns := make([]sql.IndexColumn, len(ddl.IndexSpec.Columns))
-		for i, col := range ddl.IndexSpec.Columns {
-			if col.Length != nil {
-				if col.Length.Type == sqlparser.IntVal {
-					length, err := strconv.ParseInt(string(col.Length.Val), 10, 64)
-					if err != nil {
-						return nil, err
-					}
-					if length < 1 {
-						return nil, sql.ErrInvalidIndexPrefix.New(length)
-					}
-				}
-			}
-			columns[i] = sql.IndexColumn{
-				Name:   col.Column.String(),
-				Length: 0,
-			}
+		columns, err := gatherIndexColumns(ddl.IndexSpec.Columns)
+		if err != nil {
+			return nil, err
 		}
 
 		var comment string
@@ -1445,6 +1431,30 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
+}
+
+func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error) {
+	out := make([]sql.IndexColumn, len(cols))
+	var length int64
+	var err error
+	for i, col := range cols {
+		if col.Length != nil {
+			if col.Length.Type == sqlparser.IntVal {
+				length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				if length < 1 {
+					return nil, sql.ErrInvalidIndexPrefix.New(length)
+				}
+			}
+		}
+		out[i] = sql.IndexColumn{
+			Name:   col.Column.String(),
+			Length: length,
+		}
+	}
+	return out, nil
 }
 
 func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
@@ -1602,23 +1612,9 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
 
-		columns := make([]sql.IndexColumn, len(idxDef.Columns))
-		for i, col := range idxDef.Columns {
-			if col.Length != nil {
-				if col.Length.Type == sqlparser.IntVal {
-					length, err := strconv.ParseInt(string(col.Length.Val), 10, 64)
-					if err != nil {
-						return nil, err
-					}
-					if length < 1 {
-						return nil, sql.ErrInvalidIndexPrefix.New(length)
-					}
-				}
-			}
-			columns[i] = sql.IndexColumn{
-				Name:   col.Column.String(),
-				Length: 0,
-			}
+		columns, err := gatherIndexColumns(idxDef.Columns)
+		if err != nil {
+			return nil, err
 		}
 
 		var comment string

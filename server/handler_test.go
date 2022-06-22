@@ -755,7 +755,7 @@ func TestBindingsToExprs(t *testing.T) {
 			map[string]sql.Expression{
 				"i8":        expression.NewLiteral(int64(12), sql.Int64),
 				"u64":       expression.NewLiteral(uint64(4096), sql.Uint64),
-				"bin":       expression.NewLiteral(string([]byte{byte(0xC0), byte(0x00), byte(0x10)}), sql.MustCreateBinary(query.Type_VARBINARY, int64(3))),
+				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, sql.MustCreateBinary(query.Type_VARBINARY, int64(3))),
 				"text":      expression.NewLiteral("four score and seven years ago...", sql.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
 				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
 				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), sql.Date),
