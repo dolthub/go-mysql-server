@@ -164,8 +164,17 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case []byte:
 		return hexForString(string(val)), nil
 
+	case sql.Point:
+		return hexForString(string(sql.SerializePoint(val))), nil
+
+	case sql.LineString:
+		return hexForString(string(sql.SerializeLineString(val))), nil
+
+	case sql.Polygon:
+		return hexForString(string(sql.SerializePolygon(val))), nil
+
 	default:
-		return nil, sql.ErrInvalidArgumentDetails.New("crc32", fmt.Sprint(arg))
+		return nil, sql.ErrInvalidArgumentDetails.New("hex", fmt.Sprint(arg))
 	}
 }
 
