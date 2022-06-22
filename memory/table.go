@@ -64,6 +64,9 @@ func (ts *TableStatistics) Histogram(colName string) (*sql.Histogram, error) {
 }
 
 func (ts *TableStatistics) HistogramMap() sql.HistogramMap {
+	if len(ts.histogramMap) == 0 {
+		return nil
+	}
 	return ts.histogramMap
 }
 

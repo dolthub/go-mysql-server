@@ -1036,8 +1036,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			if err != nil {
 				return false, err
 			}
-			if stats == nil {
-				return true, err
+
+			if stats.HistogramMap() == nil {
+				return true, nil
 			}
 
 			for _, col := range t.Schema() {
