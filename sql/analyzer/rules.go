@@ -44,6 +44,7 @@ var OnceBeforeDefault = []Rule{
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
 	{resolveSubqueriesId, resolveSubqueries},
+	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},
 	{checkUniqueTableNamesId, validateUniqueTableNames},

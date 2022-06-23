@@ -28,6 +28,7 @@ const (
 	loadCheckConstraintsId                      // loadCheckConstraints
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
+	setViewTargetSchemaId                       // setViewTargetSchema
 	resolveUnionsId                             // resolveUnions
 	resolveDescribeQueryId                      // resolveDescribeQuery
 	checkUniqueTableNamesId                     // checkUniqueTableNames
