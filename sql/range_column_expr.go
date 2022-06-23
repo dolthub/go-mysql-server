@@ -205,7 +205,7 @@ func (r RangeColumnExpr) HasUpperBound() bool {
 // IsEmpty returns whether this RangeColumnExpr is empty.
 func (r RangeColumnExpr) IsEmpty() (bool, error) {
 	cmp, err := r.LowerBound.Compare(r.UpperBound, r.Typ)
-	return cmp == 0, err
+	return cmp >= 0, err
 }
 
 // IsConnected evaluates whether the given RangeColumnExpr overlaps or is adjacent to the calling RangeColumnExpr.
@@ -343,8 +343,7 @@ func (r RangeColumnExpr) DebugString() string {
 	case Below:
 		sb.WriteString("[" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
 	case AboveAll:
-		// TODO: sb.WriteString("(INVALID_ABOVE_ALL")
-		sb.WriteString("(NULL")
+		sb.WriteString("(∞")
 	case AboveNull:
 		sb.WriteString("(NULL")
 	case BelowNull:
