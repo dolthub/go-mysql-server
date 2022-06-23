@@ -101,7 +101,7 @@ func LessThanRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 		return EmptyRangeColumnExpr(typ)
 	}
 	return RangeColumnExpr{
-		BelowAll{},
+		AboveNull{},
 		Below{key: upper},
 		typ,
 	}
@@ -113,7 +113,7 @@ func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 		return EmptyRangeColumnExpr(typ)
 	}
 	return RangeColumnExpr{
-		BelowAll{},
+		AboveNull{},
 		Above{key: upper},
 		typ,
 	}
@@ -165,7 +165,7 @@ func EmptyRangeColumnExpr(typ Type) RangeColumnExpr {
 func NullRangeColumnExpr(typ Type) RangeColumnExpr {
 	return RangeColumnExpr{
 		LowerBound: BelowNull{},
-		UpperBound: BelowAll{},
+		UpperBound: AboveNull{},
 		Typ:        typ,
 	}
 }
@@ -173,7 +173,7 @@ func NullRangeColumnExpr(typ Type) RangeColumnExpr {
 // NotNullRangeColumnExpr returns the not null RangeColumnExpr for the given type.
 func NotNullRangeColumnExpr(typ Type) RangeColumnExpr {
 	return RangeColumnExpr{
-		BelowAll{},
+		AboveNull{},
 		AboveAll{},
 		typ,
 	}
@@ -342,15 +342,13 @@ func (r RangeColumnExpr) DebugString() string {
 		sb.WriteString("(" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
 	case Below:
 		sb.WriteString("[" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
-	case AboveAll, BelowAll:
-		sb.WriteString("(-∞")
+	case AboveAll:
+		// TODO: sb.WriteString("(INVALID_ABOVE_ALL")
+		sb.WriteString("(NULL")
+	case AboveNull:
+		sb.WriteString("(NULL")
 	case BelowNull:
-		empty, _ := r.IsEmpty()
-		if !empty {
-			sb.WriteString("[NULL")
-		} else {
-			sb.WriteString("(NULL")
-		}
+		sb.WriteString("[NULL")
 	}
 	sb.WriteString(", ")
 	switch r.UpperBound.(type) {
@@ -360,7 +358,9 @@ func (r RangeColumnExpr) DebugString() string {
 		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + ")")
 	case AboveAll:
 		sb.WriteString("∞)")
-	case BelowNull, BelowAll:
+	case AboveNull:
+		sb.WriteString("NULL]")
+	case BelowNull:
 		sb.WriteString("NULL)")
 	}
 	return sb.String()
@@ -445,15 +445,16 @@ func (r RangeColumnExpr) Type() RangeType {
 		case Below:
 			return RangeType_ClosedOpen
 		}
-	case BelowAll:
+	case AboveNull:
 		switch r.UpperBound.(type) {
 		case Above:
 			return RangeType_OpenClosed
 		case AboveAll:
+			// TODO: NotNull?
 			return RangeType_GreaterThan
 		case Below:
 			return RangeType_OpenOpen
-		case BelowAll:
+		case AboveNull:
 			return RangeType_Empty
 		}
 	case BelowNull:
@@ -464,7 +465,7 @@ func (r RangeColumnExpr) Type() RangeType {
 			return RangeType_All
 		case Below:
 			return RangeType_LessThan
-		case BelowAll:
+		case AboveNull:
 			return RangeType_Null
 		case BelowNull:
 			return RangeType_Empty

@@ -82,13 +82,13 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM one_pk_two_idx WHERE v1 < 2 AND v2 IS NOT NULL`,
 		ExpectedPlan: "Filter(NOT(one_pk_two_idx.v2 IS NULL))\n" +
 			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1] with ranges: [{(-∞, 2)}])\n" +
+			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1] with ranges: [{(NULL, 2)}])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM one_pk_two_idx WHERE v1 IN (1, 2) AND v2 <= 2`,
 		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
-			" └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2] with ranges: [{[2, 2], (-∞, 2]}, {[1, 1], (-∞, 2]}])\n" +
+			" └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2] with ranges: [{[2, 2], (NULL, 2]}, {[1, 1], (NULL, 2]}])\n" +
 			"",
 	},
 	{
@@ -473,7 +473,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(NOT(a.s IS NULL))\n" +
 			" └─ Projected table access on [i s]\n" +
 			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(-∞, ∞)}])\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(NULL, ∞)}])\n" +
 			"",
 	},
 	{
@@ -482,7 +482,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ Filter(NOT(a.s IS NULL))\n" +
 			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(-∞, ∞)}])\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(NULL, ∞)}])\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
@@ -504,7 +504,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ Filter(NOT((a.s HASH IN ('1', '2', '3', '4'))))\n" +
 			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}, {(-∞, 1)}])\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}, {(NULL, 1)}])\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
@@ -1910,7 +1910,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Window(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC), othertable.i2, othertable.s2)\n" +
 			"         └─ Filter(NOT((othertable.s2 = 'second')))\n" +
 			"             └─ Projected table access on [i2 s2]\n" +
-			"                 └─ IndexedTableAccess(othertable on [othertable.s2] with ranges: [{(second, ∞)}, {(-∞, second)}])\n" +
+			"                 └─ IndexedTableAccess(othertable on [othertable.s2] with ranges: [{(second, ∞)}, {(NULL, second)}])\n" +
 			"",
 	},
 	{
@@ -1930,7 +1930,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC) as idx, othertable.i2, othertable.s2)\n" +
 			"     └─ Window(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC), othertable.i2, othertable.s2)\n" +
 			"         └─ Projected table access on [i2 s2]\n" +
-			"             └─ IndexedTableAccess(othertable on [othertable.i2] with ranges: [{(-∞, 2)}, {(2, ∞)}])\n" +
+			"             └─ IndexedTableAccess(othertable on [othertable.i2] with ranges: [{(NULL, 2)}, {(2, ∞)}])\n" +
 			"",
 	},
 	{
@@ -2056,7 +2056,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
 		ExpectedPlan: "Projected table access on [x y z]\n" +
-			" └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x] with ranges: [{[0, ∞), (-∞, 1), [NULL, ∞)}])\n" +
+			" └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x] with ranges: [{[0, ∞), (NULL, 1), [NULL, ∞)}])\n" +
 			"",
 	},
 	{

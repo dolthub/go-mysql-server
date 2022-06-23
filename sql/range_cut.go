@@ -61,7 +61,7 @@ func RangeCutIsBinding(c RangeCut) bool {
 	switch c.(type) {
 	case Below, Above:
 		return true
-	case AboveAll, BelowAll, BelowNull:
+	case AboveAll, AboveNull, BelowNull:
 		return false
 	default:
 		panic(fmt.Errorf("unknown range cut %v", c))
@@ -132,7 +132,7 @@ func (a Above) Compare(c RangeCut, typ Type) (int, error) {
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
-	case BelowAll:
+	case AboveNull:
 		return 1, nil
 	case Above:
 		return typ.Compare(a.key, c.key)
@@ -207,7 +207,7 @@ func (b Below) Compare(c RangeCut, typ Type) (int, error) {
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
-	case BelowAll:
+	case AboveNull:
 		return 1, nil
 	case Below:
 		return typ.Compare(b.key, c.key)
@@ -242,14 +242,14 @@ func (Below) TypeAsUpperBound() RangeBoundType {
 	return Open
 }
 
-// BelowAll represents the position beyond the minimum possible value in the domain, excluding NULL.
-type BelowAll struct{}
+// AboveNull represents the position just above NULL, lower than every possible value in the domain.
+type AboveNull struct{}
 
-var _ RangeCut = BelowAll{}
+var _ RangeCut = AboveNull{}
 
 // Compare implements RangeCut.
-func (BelowAll) Compare(c RangeCut, typ Type) (int, error) {
-	if _, ok := c.(BelowAll); ok {
+func (AboveNull) Compare(c RangeCut, typ Type) (int, error) {
+	if _, ok := c.(AboveNull); ok {
 		return 0, nil
 	}
 	if _, ok := c.(BelowNull); ok {
@@ -259,21 +259,21 @@ func (BelowAll) Compare(c RangeCut, typ Type) (int, error) {
 }
 
 // String implements RangeCut.
-func (BelowAll) String() string {
-	return "BelowAll"
+func (AboveNull) String() string {
+	return "AboveNull"
 }
 
 // TypeAsLowerBound implements RangeCut.
-func (BelowAll) TypeAsLowerBound() RangeBoundType {
+func (AboveNull) TypeAsLowerBound() RangeBoundType {
 	return Open
 }
 
 // TypeAsUpperBound implements RangeCut.
-func (BelowAll) TypeAsUpperBound() RangeBoundType {
-	return Open
+func (AboveNull) TypeAsUpperBound() RangeBoundType {
+	return Closed
 }
 
-// BelowNull represents the position below NULL, which sorts before |BelowAll|
+// BelowNull represents the position below NULL, which sorts before |AboveNull|
 // and every non-NULL value in the domain.
 type BelowNull struct{}
 

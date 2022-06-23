@@ -1536,7 +1536,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[5, 5], [1, ∞), (-∞, 10]}])"}},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[5, 5], [1, ∞), (NULL, 10]}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
