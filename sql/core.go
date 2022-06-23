@@ -445,7 +445,7 @@ type StatisticsTable interface {
 	// Integrators can ignore this hook and implement their own method of keeping statistics up to date, at the
 	// cost of potentially stale statistics.
 	AnalyzeTable(ctx *Context) error
-	// GetStatistics returns the statistics for this table
+	// Statistics returns the statistics for this table
 	Statistics(ctx *Context) (TableStatistics, error)
 }
 
