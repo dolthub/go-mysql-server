@@ -31,9 +31,8 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 	var re, le *expression.GetField
 	switch e := expr.(type) {
 	case *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
-		*expression.GreaterThanOrEqual, *expression.NullSafeGreaterThanOrEqual,
-		*expression.NullSafeGreaterThan, *expression.LessThan, *expression.LessThanOrEqual,
-		*expression.NullSafeLessThanOrEqual, *expression.NullSafeLessThan:
+		*expression.LessThan, *expression.LessThanOrEqual, *expression.GreaterThanOrEqual:
+
 		ce, ok := e.(expression.Comparer)
 		if !ok {
 			return false

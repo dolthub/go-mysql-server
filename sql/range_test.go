@@ -489,19 +489,19 @@ func eq(field sql.Expression, val uint8) sql.Expression {
 }
 
 func lt(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeLessThan(field, expression.NewLiteral(val, rangeType))
+	return expression.NewLessThan(field, expression.NewLiteral(val, rangeType))
 }
 
 func lte(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(val, rangeType))
+	return expression.NewLessThanOrEqual(field, expression.NewLiteral(val, rangeType))
 }
 
 func gt(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeGreaterThan(field, expression.NewLiteral(val, rangeType))
+	return expression.NewGreaterThan(field, expression.NewLiteral(val, rangeType))
 }
 
 func gte(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(val, rangeType))
+	return expression.NewGreaterThanOrEqual(field, expression.NewLiteral(val, rangeType))
 }
 
 func isNull(field sql.Expression) sql.Expression {
@@ -514,29 +514,29 @@ func isNotNull(field sql.Expression) sql.Expression {
 
 func cc(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
 func co(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThan(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThan(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
 func oc(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
 func oo(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThan(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThan(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
