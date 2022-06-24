@@ -279,7 +279,7 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 		createdAt: time.Now(),
 	}
 
-	histMap, err := sql.NewHistogramMapBuilder(t).Build(ctx)
+	histMap, err := sql.NewHistogramMapFromTable(ctx, t)
 	if err != nil {
 		return err
 	}
