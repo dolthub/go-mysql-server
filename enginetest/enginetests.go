@@ -2063,7 +2063,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
 		assert.Equal(t, sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
-			{Name: "i1", Type: sql.Text, Source: "tabletest"},
+			{Name: "i1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "tabletest"},
 		}, tbl.Schema())
 	})
 }

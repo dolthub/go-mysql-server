@@ -1,3 +1,3 @@
 exec
-create table emptytable (i mediumint primary key, s text)
+create table emptytable (i mediumint primary key, s varchar(20))
 ----

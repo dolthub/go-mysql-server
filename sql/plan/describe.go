@@ -18,6 +18,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -35,10 +37,10 @@ func NewDescribe(child sql.Node) *Describe {
 func (d *Describe) Schema() sql.Schema {
 	return sql.Schema{{
 		Name: "name",
-		Type: sql.LongText,
+		Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1000),
 	}, {
 		Name: "type",
-		Type: sql.LongText,
+		Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64),
 	}}
 }
 
@@ -115,7 +117,7 @@ func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 
 // DescribeSchema is the schema returned by a DescribeQuery node.
 var DescribeSchema = sql.Schema{
-	{Name: "plan", Type: sql.LongText},
+	{Name: "plan", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128)},
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.
