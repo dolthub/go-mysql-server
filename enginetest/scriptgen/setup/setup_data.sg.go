@@ -9,7 +9,7 @@ var AutoincrementData = []SetupScript{{
 }}
 
 var BigtableData = []SetupScript{{
-	`create table bigtable (t varchar(1) primary key, n bigint)`,
+	`create table bigtable (t text primary key, n bigint)`,
 	`insert into bigtable values	('a', 1),	('s', 2),	('f', 3),	('g', 1),	('h', 2),	('j', 3),	('k', 1),	('l', 2),	('ñ', 4),	('z', 5),	('x', 6),	('c', 7),	('v', 8),	('b', 9)`,
 }}
 

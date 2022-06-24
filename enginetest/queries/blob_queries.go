@@ -216,7 +216,11 @@ var BlobErrors = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
 	},
 	{
-		Query:       "create table t (t text, primary key (b))",
+		Query:       "create table t (t text primary key)",
+		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+	},
+	{
+		Query:       "create table t (t text, primary key (t))",
 		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
 	},
 	{

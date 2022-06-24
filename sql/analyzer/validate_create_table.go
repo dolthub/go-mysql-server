@@ -509,6 +509,8 @@ func validatePkTypes(tableSpec *plan.TableSpec) error {
 	for _, col := range tableSpec.Schema.Schema {
 		if col.PrimaryKey && sql.IsByteType(col.Type) {
 			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
+		} else if col.PrimaryKey && sql.IsTextBlob(col.Type) {
+			return sql.ErrInvalidTextIndex.New(col.Name)
 		}
 	}
 
