@@ -202,7 +202,7 @@ func (i testIndex) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {
 	es := i.Expressions()
 	res := make([]ColumnExpressionType, len(es))
 	for i := range es {
-		res[i] = ColumnExpressionType{ Expression: es[i], Type: Int8 }
+		res[i] = ColumnExpressionType{Expression: es[i], Type: Int8}
 	}
 	return res
 }

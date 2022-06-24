@@ -27,26 +27,26 @@ func TestRangeCutCompare(t *testing.T) {
 		res         int
 	}
 	for _, testcase := range []tc{
-		{ AboveAll{}, AboveNull{}, 1 },
-		{ AboveAll{}, BelowNull{}, 1 },
-		{ AboveAll{}, Above{1}, 1 },
-		{ AboveAll{}, Below{1}, 1 },
-		{ AboveAll{}, AboveAll{}, 0 },
+		{AboveAll{}, AboveNull{}, 1},
+		{AboveAll{}, BelowNull{}, 1},
+		{AboveAll{}, Above{1}, 1},
+		{AboveAll{}, Below{1}, 1},
+		{AboveAll{}, AboveAll{}, 0},
 
-		{ Above{1}, AboveNull{}, 1 },
-		{ Above{1}, BelowNull{}, 1 },
-		{ Above{1}, Above{1}, 0 },
-		{ Above{1}, Below{1}, 1 },
-		{ Above{2}, Above{1}, 1 },
+		{Above{1}, AboveNull{}, 1},
+		{Above{1}, BelowNull{}, 1},
+		{Above{1}, Above{1}, 0},
+		{Above{1}, Below{1}, 1},
+		{Above{2}, Above{1}, 1},
 
-		{ Below{1}, AboveNull{}, 1 },
-		{ Below{1}, BelowNull{}, 1 },
-		{ Below{1}, Below{1}, 0 },
-		{ Below{2}, Below{1}, 1 },
+		{Below{1}, AboveNull{}, 1},
+		{Below{1}, BelowNull{}, 1},
+		{Below{1}, Below{1}, 0},
+		{Below{2}, Below{1}, 1},
 
-		{ AboveNull{}, BelowNull{}, 1 },
+		{AboveNull{}, BelowNull{}, 1},
 
-		{ BelowNull{}, BelowNull{}, 0 },
+		{BelowNull{}, BelowNull{}, 0},
 	} {
 		t.Run(fmt.Sprintf("%s/%s = %d", testcase.left.String(), testcase.right.String(), testcase.res), func(t *testing.T) {
 			res, err := testcase.left.Compare(testcase.right, Int8)
