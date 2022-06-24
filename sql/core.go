@@ -426,7 +426,7 @@ type HistogramMap map[string]*Histogram
 // HistogramMapBuilder will construct a HistogramMap given a PartitionIterator and Schema
 // TODO: have option for number of buckets (and logic to convert freqMap into those buckets)
 // TODO: could iterate over Partitions asynchronously (after exchange is rewritten)
-func HistogramMapBuilder(ctx *Context, t Table) (HistogramMap, error) {
+func NewHistogramMapFromTable(ctx *Context, t Table) (HistogramMap, error) {
 	// initialize histogram map
 	histMap := make(HistogramMap)
 	cols := t.Schema()
