@@ -794,6 +794,8 @@ type joinColExpr struct {
 	comparandCol *expression.GetField
 	// The comparison expression in which this joinColExpr is one term
 	comparison sql.Expression
+	// Whether the comparison expression will match null or not.
+	matchnull bool
 }
 
 type joinColExprs []*joinColExpr
@@ -853,6 +855,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 				colExpr:    colExpr.colExpr,
 				comparand:  colExpr.comparand,
 				comparison: expression.NewNot(colExpr.comparison),
+				matchnull:  colExpr.matchnull,
 			}
 		}
 
@@ -874,6 +877,8 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			return "", nil
 		}
 
+		_, matchnull := e.(*expression.NullSafeEquals)
+
 		leftCol, rightCol := expression.ExtractGetField(left), expression.ExtractGetField(right)
 		if leftCol == nil {
 			return "", nil
@@ -885,6 +890,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			comparand:    right,
 			comparandCol: rightCol,
 			comparison:   e,
+			matchnull:    matchnull,
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
@@ -902,6 +908,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			comparand:    nil,
 			comparandCol: nil,
 			comparison:   e,
+			matchnull:    false,
 		}
 	case *expression.InTuple:
 		col := expression.ExtractGetField(e.Left())
@@ -914,6 +921,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			comparand:    e.Right(),
 			comparandCol: nil,
 			comparison:   e,
+			matchnull:    false,
 		}
 	default:
 		return "", nil
@@ -954,12 +962,15 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 			return nil, nil
 		}
 
+		_, matchnull := e.(*expression.NullSafeEquals)
+
 		leftCol = &joinColExpr{
 			col:          leftField,
 			colExpr:      left,
 			comparand:    right,
 			comparandCol: rightField,
 			comparison:   cmp,
+			matchnull:    matchnull,
 		}
 		rightCol = &joinColExpr{
 			col:          rightField,
@@ -967,6 +978,7 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 			comparand:    left,
 			comparandCol: leftField,
 			comparison:   cmp,
+			matchnull:    matchnull,
 		}
 		return leftCol, rightCol
 	default:

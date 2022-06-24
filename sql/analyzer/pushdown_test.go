@@ -1220,6 +1220,7 @@ func TestPushdownIndex(t *testing.T) {
 								plan.NewLookupBuilder(
 									idxTable2I2,
 									[]sql.Expression{gf(0, "t1", "i")},
+									[]bool{false},
 								),
 							),
 						),
@@ -1263,6 +1264,7 @@ func TestPushdownIndex(t *testing.T) {
 								plan.NewLookupBuilder(
 									idxTable2I2,
 									[]sql.Expression{gf(0, "t1", "i")},
+									[]bool{false},
 								),
 							),
 						),

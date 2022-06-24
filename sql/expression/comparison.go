@@ -254,7 +254,7 @@ func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEqual
 
 // Type implements the Expression interface.
 func (e *NullSafeEquals) Type() sql.Type {
-	return sql.Int8
+	return sql.Boolean
 }
 
 func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
@@ -291,10 +291,7 @@ func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, err
 	}
 
-	if result == 0 {
-		return 1, nil
-	}
-	return 0, nil
+	return result == 0, nil
 }
 
 // WithChildren implements the Expression interface.

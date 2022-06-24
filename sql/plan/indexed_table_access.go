@@ -127,15 +127,17 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 }
 
 type LookupBuilder struct {
-	keyExprs      []sql.Expression
-	keyExprs2     []sql.Expression2
-	index         sql.Index
+	keyExprs        []sql.Expression
+	keyExprs2       []sql.Expression2
+	matchesNullMask []bool
+	index           sql.Index
 }
 
-func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression) LookupBuilder {
+func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
 	return LookupBuilder{
 		index: index,
 		keyExprs: keyExprs,
+		matchesNullMask: matchesNullMask,
 	}
 }
 
@@ -143,9 +145,14 @@ func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.I
 	ib := sql.NewIndexBuilder(ctx, lb.index)
 	iexprs := lb.index.Expressions()
 	for i := range key {
-		ib = ib.Equals(ctx, iexprs[i], key[i])
+		if key[i] == nil && lb.matchesNullMask[i] {
+			ib = ib.IsNull(ctx, iexprs[i])
+		} else {
+			ib = ib.Equals(ctx, iexprs[i], key[i])
+		}
 	}
-	return ib.Build(ctx)
+	lookup, err := ib.Build(ctx)
+	return lookup, err
 }
 
 type LookupBuilderKey []interface{}
@@ -195,7 +202,7 @@ func (lb LookupBuilder) DebugString() string {
 	for i := range lb.keyExprs {
 		keyExprs[i] = sql.DebugString(lb.keyExprs[i])
 	}
-	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
+	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "), lb.matchesNullMask)
 }
 
 
@@ -206,6 +213,7 @@ func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) 
 	return LookupBuilder{
 		keyExprs: exprs,
 		index: lb.index,
+		matchesNullMask: lb.matchesNullMask,
 	}, nil
 }
 
