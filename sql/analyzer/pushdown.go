@@ -684,7 +684,7 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 				indexLookup, ok := indexes[tableNode.Name()]
 				if ok {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
-					return plan.NewStaticIndexedTableAccess(n, indexLookup.lookup, indexLookup.indexes[0], indexLookup.fields), transform.NewTree, nil
+					return plan.NewStaticIndexedTableAccess(n, indexLookup.lookup), transform.NewTree, nil
 				}
 			}
 		}
@@ -990,7 +990,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newNode := plan.NewStaticIndexedTableAccess(rs, lookup, pkIndex, nil)
+		newNode := plan.NewStaticIndexedTableAccess(rs, lookup)
 
 		// Don't forget aliases
 		if pj != nil {
