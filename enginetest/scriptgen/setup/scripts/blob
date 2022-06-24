@@ -1,0 +1,10 @@
+exec
+create table blobt (i bigint primary key, b longblob)
+----
+
+exec
+insert into blobt values
+    (1, 'first row'),
+    (2, 'second row'),
+    (3, 'third row')
+----

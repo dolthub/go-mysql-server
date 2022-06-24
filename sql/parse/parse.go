@@ -180,6 +180,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	switch n := stmt.(type) {
 	default:
 		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(n))
+	case *sqlparser.Analyze:
+		return convertAnalyze(ctx, n, query)
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -285,6 +287,14 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
 	}
+}
+
+func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.Node, error) {
+	tables := make([]sql.Node, len(n.Tables))
+	for i, table := range n.Tables {
+		tables[i] = tableNameToUnresolvedTable(table)
+	}
+	return plan.NewAnalyze(tables), nil
 }
 
 func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {
@@ -1390,23 +1400,9 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			constraint = sql.IndexConstraint_None
 		}
 
-		columns := make([]sql.IndexColumn, len(ddl.IndexSpec.Columns))
-		for i, col := range ddl.IndexSpec.Columns {
-			if col.Length != nil {
-				if col.Length.Type == sqlparser.IntVal {
-					length, err := strconv.ParseInt(string(col.Length.Val), 10, 64)
-					if err != nil {
-						return nil, err
-					}
-					if length < 1 {
-						return nil, sql.ErrInvalidIndexPrefix.New(length)
-					}
-				}
-			}
-			columns[i] = sql.IndexColumn{
-				Name:   col.Column.String(),
-				Length: 0,
-			}
+		columns, err := gatherIndexColumns(ddl.IndexSpec.Columns)
+		if err != nil {
+			return nil, err
 		}
 
 		var comment string
@@ -1435,6 +1431,30 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
+}
+
+func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error) {
+	out := make([]sql.IndexColumn, len(cols))
+	var length int64
+	var err error
+	for i, col := range cols {
+		if col.Length != nil {
+			if col.Length.Type == sqlparser.IntVal {
+				length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				if length < 1 {
+					return nil, sql.ErrInvalidIndexPrefix.New(length)
+				}
+			}
+		}
+		out[i] = sql.IndexColumn{
+			Name:   col.Column.String(),
+			Length: length,
+		}
+	}
+	return out, nil
 }
 
 func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
@@ -1592,23 +1612,9 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
 
-		columns := make([]sql.IndexColumn, len(idxDef.Columns))
-		for i, col := range idxDef.Columns {
-			if col.Length != nil {
-				if col.Length.Type == sqlparser.IntVal {
-					length, err := strconv.ParseInt(string(col.Length.Val), 10, 64)
-					if err != nil {
-						return nil, err
-					}
-					if length < 1 {
-						return nil, sql.ErrInvalidIndexPrefix.New(length)
-					}
-				}
-			}
-			columns[i] = sql.IndexColumn{
-				Name:   col.Column.String(),
-				Length: 0,
-			}
+		columns, err := gatherIndexColumns(idxDef.Columns)
+		if err != nil {
+			return nil, err
 		}
 
 		var comment string

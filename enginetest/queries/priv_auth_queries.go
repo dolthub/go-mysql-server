@@ -341,9 +341,9 @@ var UserPrivTests = []UserPrivilegeTest{
 						uint16(2),               // Trigger_priv
 						uint16(2),               // Create_tablespace_priv
 						uint16(1),               // ssl_type
-						"",                      // ssl_cipher
-						"",                      // x509_issuer
-						"",                      // x509_subject
+						[]byte(""),              // ssl_cipher
+						[]byte(""),              // x509_issuer
+						[]byte(""),              // x509_subject
 						uint32(0),               // max_questions
 						uint32(0),               // max_updates
 						uint32(0),               // max_connections

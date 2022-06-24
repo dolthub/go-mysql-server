@@ -157,7 +157,7 @@ func TestWriteComplexIndexQueries(t *testing.T) {
 }
 
 func TestWriteCreateTableQueries(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {
 		return

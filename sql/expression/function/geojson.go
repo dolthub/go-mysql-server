@@ -404,9 +404,15 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil {
 		return nil, err
 	}
+	switch s := val.(type) {
+	case string:
+		val = []byte(s)
+	case []byte:
+		val = s
+	}
 	// Parse string as JSON
 	var obj map[string]interface{}
-	err = json.Unmarshal([]byte(val.(string)), &obj)
+	err = json.Unmarshal(val.([]byte), &obj)
 	if err != nil {
 		return nil, err
 	}

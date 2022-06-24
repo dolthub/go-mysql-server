@@ -169,7 +169,6 @@ func (n *ExternalProcedure) processParam(ctx *sql.Context, funcParamType reflect
 		}
 		exprParamVal = val
 	case byteSliceType:
-		exprParamVal = []byte(exprParamVal.(string))
 	case intType:
 		if strconv.IntSize == 32 {
 			exprParamVal = int(exprParamVal.(int32))

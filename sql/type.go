@@ -552,8 +552,18 @@ func ConvertToBool(v interface{}) (bool, error) {
 	}
 }
 
-// IsBlob checks if t is BINARY, VARBINARY, or BLOB
-func IsBlob(t Type) bool {
+// IsByteType checks if t is BINARY, VARBINARY, or BLOB
+func IsByteType(t Type) bool {
+	switch t.Type() {
+	case sqltypes.Blob:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsBinaryType checks if t is BINARY, VARBINARY, or BLOB
+func IsBinaryType(t Type) bool {
 	switch t.Type() {
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
 		return true

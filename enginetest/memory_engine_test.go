@@ -117,7 +117,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `show create table two_pk`,
+		Query: `CREATE TABLE test (blob_col BLOB, INDEX(blob_col(10)));`,
 		Expected: []sql.Row{
 			{1, 2},
 		},
@@ -125,11 +125,12 @@ func TestSingleQuery(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness.Setup(setup.Mytable...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
 	}
-	enginetest.CreateIndexes(t, harness, engine)
+
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
@@ -392,6 +393,14 @@ func TestInsertIntoErrors(t *testing.T) {
 
 func TestBrokenInsertScripts(t *testing.T) {
 	enginetest.TestBrokenInsertScripts(t, enginetest.NewSkippingMemoryHarness())
+}
+
+func TestStatistics(t *testing.T) {
+	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestPreparedStatistics(t *testing.T) {
+	enginetest.TestStatisticsPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestSpatialInsertInto(t *testing.T) {
@@ -726,6 +735,10 @@ func TestAddDropPks(t *testing.T) {
 
 func TestNullRanges(t *testing.T) {
 	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestBlobs(t *testing.T) {
+	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestPersist(t *testing.T) {

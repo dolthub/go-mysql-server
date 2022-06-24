@@ -60,7 +60,7 @@ func TestStrToDateFailure(t *testing.T) {
 		}
 		t.Run(tt.name, func(t *testing.T) {
 			dtime := eval(t, f, sql.NewRow(tt.dateStr, tt.fmtStr))
-			require.Equal(t, sql.Null, dtime)
+			require.Equal(t, nil, dtime)
 		})
 		req := require.New(t)
 		req.True(f.IsNullable())
