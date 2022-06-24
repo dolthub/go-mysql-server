@@ -135,8 +135,8 @@ type LookupBuilder struct {
 
 func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
 	return LookupBuilder{
-		index: index,
-		keyExprs: keyExprs,
+		index:           index,
+		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
 	}
 }
@@ -205,14 +205,13 @@ func (lb LookupBuilder) DebugString() string {
 	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "), lb.matchesNullMask)
 }
 
-
 func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (LookupBuilder, error) {
 	if len(exprs) != len(lb.keyExprs) {
 		return LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
 	}
 	return LookupBuilder{
-		keyExprs: exprs,
-		index: lb.index,
+		keyExprs:        exprs,
+		index:           lb.index,
 		matchesNullMask: lb.matchesNullMask,
 	}, nil
 }

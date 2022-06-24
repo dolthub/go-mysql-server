@@ -1658,7 +1658,7 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM niltable WHERE i2 <> NULL`,
-		ExpectedPlan: "Filter(NOT((niltable.i2 = NULL)))\n"+
+		ExpectedPlan: "Filter(NOT((niltable.i2 = NULL)))\n" +
 			" └─ Projected table access on [i i2 b f]\n" +
 			"     └─ IndexedTableAccess(niltable on [niltable.i2] with ranges: [{(∞, ∞)}])\n" +
 			"",
