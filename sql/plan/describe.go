@@ -170,7 +170,11 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 	case sql.Table:
 		table := FindTable(n)
 		if statsTbl, ok := table.(sql.StatisticsTable); ok {
-			numRows, _ := statsTbl.NumRows(ctx)
+			stats, err := statsTbl.Statistics(ctx)
+			if err != nil {
+				return 0, err
+			}
+			numRows := stats.RowCount()
 			return float64(numRows), nil
 		}
 		return 100, nil
@@ -190,18 +194,18 @@ func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		formatString = d.child.String()
 	}
 
+	// TODO: come up with some way to have costs next to each node
+	planCost, err := EstimatePlanCost(ctx, d.child)
+	if err != nil {
+		return nil, err
+	}
+	rows = append(rows, sql.NewRow(fmt.Sprintf("Estimated Cost: %.2f", planCost)))
+
 	for _, l := range strings.Split(formatString, "\n") {
 		if strings.TrimSpace(l) != "" {
 			rows = append(rows, sql.NewRow(l))
 		}
 	}
-
-	// TODO: add additional row that is the cost of the entire plan
-	planCost, err := EstimatePlanCost(ctx, d.child)
-	if err != nil {
-		return nil, err
-	}
-	rows = append(rows, sql.NewRow(planCost))
 
 	return sql.RowsToRowIter(rows...), nil
 }
