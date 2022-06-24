@@ -14,8 +14,10 @@ var BigtableData = []SetupScript{{
 }}
 
 var BlobData = []SetupScript{{
-	`create table blobt (i bigint primary key, b longblob)`,
+	`create table blobt (i bigint primary key, b longblob);`,
+	`create table textt (i bigint primary key, t text);`,
 	`insert into blobt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+	`insert into textt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
 }}
 
 var Check_constraintData = []SetupScript{{
