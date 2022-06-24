@@ -188,8 +188,24 @@ var BlobErrors = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 	{
+		Query:       "alter table textt add index tidx (i, b)",
+		ExpectedErr: sql.ErrInvalidByteIndex,
+	},
+	{
 		Query:       "alter table blobt add column b2 blob default '1'",
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "alter table text add index tidx (t)",
+		ExpectedErr: sql.ErrInvalidByteIndex,
+	},
+	{
+		Query:       "alter table textt add column t2 text default '1'",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "alter table text add index tidx (i, t)",
+		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 	{
 		Query:       "create table b (b blob primary key)",
