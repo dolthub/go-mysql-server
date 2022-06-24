@@ -1,9 +1,20 @@
 exec
-create table blobt (i bigint primary key, b longblob)
+create table blobt (i bigint primary key, b longblob);
+----
+
+exec
+create table textt (i bigint primary key, t text);
 ----
 
 exec
 insert into blobt values
+    (1, 'first row'),
+    (2, 'second row'),
+    (3, 'third row')
+----
+
+exec
+insert into textt values
     (1, 'first row'),
     (2, 'second row'),
     (3, 'third row')

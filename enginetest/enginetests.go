@@ -465,7 +465,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 		"create database mydb",
 		"use mydb",
 		"create table foo (a bigint primary key, b text)",
-		"create table bar (b text primary key, c bigint)",
+		"create table bar (b varchar(20) primary key, c bigint)",
 		"insert into foo values (1, 'foo'), (2,'bar'), (3,'baz')",
 		"insert into bar values ('qux',3), ('mux',2), ('pux',1)",
 	}})
@@ -2063,7 +2063,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
 		assert.Equal(t, sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
-			{Name: "i1", Type: sql.Text, Source: "tabletest"},
+			{Name: "i1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "tabletest"},
 		}, tbl.Schema())
 	})
 }
@@ -3795,8 +3795,8 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",
 		"use mydb",
-		"create table t1 (a text primary key, b text, c text)",
-		"create table t2 (a text primary key, b text, d text)",
+		"create table t1 (a varchar(20) primary key, b text, c text)",
+		"create table t2 (a varchar(20) primary key, b text, d text)",
 		"insert into t1 values ('a_1', 'b_1', 'c_1'), ('a_2', 'b_2', 'c_2'), ('a_3', 'b_3', 'c_3')",
 		"insert into t2 values ('a_1', 'b_1', 'd_1'), ('a_2', 'b_2', 'd_2'), ('a_3', 'b_3', 'd_3')",
 	}})
@@ -3814,8 +3814,8 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",
 		"use mydb",
-		"create table t1 (a text primary key, b text, c text)",
-		"create table t2 (a text primary key, b text, c text)",
+		"create table t1 (a varchar(20) primary key, b text, c text)",
+		"create table t2 (a varchar(20) primary key, b text, c text)",
 		"insert into t1 values ('a_1', 'b_1', 'c_1'), ('a_2', 'b_2', 'c_2'), ('a_3', 'b_3', 'c_3')",
 		"insert into t2 values ('a_1', 'b_1', 'c_1'), ('a_2', 'b_2', 'c_2'), ('a_3', 'b_3', 'c_3')",
 	}})
@@ -3832,8 +3832,8 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",
 		"use mydb",
-		"create table t1 (a text primary key)",
-		"create table t2 (b text primary key)",
+		"create table t1 (a varchar(20) primary key)",
+		"create table t2 (b varchar(20) primary key)",
 		"insert into t1 values ('a1'), ('a2'), ('a3')",
 		"insert into t2 values ('b1'), ('b2'), ('b3')",
 	}})

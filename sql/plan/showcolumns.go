@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -29,26 +31,27 @@ type ShowColumns struct {
 	targetSchema sql.Schema
 }
 
+var VarChar1000 = sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1000)
 var (
 	showColumnsSchema = sql.Schema{
-		{Name: "Field", Type: sql.LongText},
-		{Name: "Type", Type: sql.LongText},
-		{Name: "Null", Type: sql.LongText},
-		{Name: "Key", Type: sql.LongText},
-		{Name: "Default", Type: sql.LongText, Nullable: true},
-		{Name: "Extra", Type: sql.LongText},
+		{Name: "Field", Type: VarChar1000},
+		{Name: "Type", Type: VarChar1000},
+		{Name: "Null", Type: VarChar1000},
+		{Name: "Key", Type: VarChar1000},
+		{Name: "Default", Type: VarChar1000, Nullable: true},
+		{Name: "Extra", Type: VarChar1000},
 	}
 
 	showColumnsFullSchema = sql.Schema{
-		{Name: "Field", Type: sql.LongText},
-		{Name: "Type", Type: sql.LongText},
-		{Name: "Collation", Type: sql.LongText, Nullable: true},
-		{Name: "Null", Type: sql.LongText},
-		{Name: "Key", Type: sql.LongText},
-		{Name: "Default", Type: sql.LongText, Nullable: true},
-		{Name: "Extra", Type: sql.LongText},
-		{Name: "Privileges", Type: sql.LongText},
-		{Name: "Comment", Type: sql.LongText},
+		{Name: "Field", Type: VarChar1000},
+		{Name: "Type", Type: VarChar1000},
+		{Name: "Collation", Type: VarChar1000, Nullable: true},
+		{Name: "Null", Type: VarChar1000},
+		{Name: "Key", Type: VarChar1000},
+		{Name: "Default", Type: VarChar1000, Nullable: true},
+		{Name: "Extra", Type: VarChar1000},
+		{Name: "Privileges", Type: VarChar1000},
+		{Name: "Comment", Type: VarChar1000},
 	}
 )
 

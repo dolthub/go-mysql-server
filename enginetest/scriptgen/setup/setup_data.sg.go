@@ -9,13 +9,15 @@ var AutoincrementData = []SetupScript{{
 }}
 
 var BigtableData = []SetupScript{{
-	`create table bigtable (t text primary key, n bigint)`,
+	`create table bigtable (t varchar(1) primary key, n bigint)`,
 	`insert into bigtable values	('a', 1),	('s', 2),	('f', 3),	('g', 1),	('h', 2),	('j', 3),	('k', 1),	('l', 2),	('ñ', 4),	('z', 5),	('x', 6),	('c', 7),	('v', 8),	('b', 9)`,
 }}
 
 var BlobData = []SetupScript{{
-	`create table blobt (i bigint primary key, b longblob)`,
+	`create table blobt (i bigint primary key, b longblob);`,
+	`create table textt (i bigint primary key, t text);`,
 	`insert into blobt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+	`insert into textt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
 }}
 
 var Check_constraintData = []SetupScript{{
@@ -47,11 +49,11 @@ var DatetimetableData = []SetupScript{{
 }}
 
 var EmptytableData = []SetupScript{{
-	`create table emptytable (i mediumint primary key, s text)`,
+	`create table emptytable (i mediumint primary key, s varchar(20))`,
 }}
 
 var ExplodeData = []SetupScript{{
-	`create table explode (a bigint, b JSON, c text)`,
+	`create table explode (a bigint, b JSON, c varchar(20))`,
 	`insert into explode values    (1, '["a", "b"]', 'first'),    (2, '["c", "d"]', 'second'),    (3, '["e", "f"]', 'third')`,
 }}
 
@@ -68,7 +70,7 @@ var FloattableData = []SetupScript{{
 
 var FooData = []SetupScript{{
 	`create database if not exists foo`,
-	`create table foo.other_table (text text primary key, number mediumint)`,
+	`create table foo.other_table (text varchar(20) primary key, number mediumint)`,
 	`insert into foo.other_table values    ('a', 4),    ('b', 2),    ('c', 0)`,
 }}
 
@@ -85,7 +87,7 @@ var Invert_pkData = []SetupScript{{
 }}
 
 var JsontableData = []SetupScript{{
-	`create table jsontable (pk smallint primary key, c1 text, c2 JSON, c3 JSON)`,
+	`create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)`,
 	`insert into jsontable values    (1, 'row one', '[1,2]', '{"a": 2}'),    (2, 'row two', '[3,4]', '{"b": 2}'),    (3, 'row three', '[5,6]', '{"c": 2}'),    (4, 'row four', '[7,8]', '{"d": 2}')`,
 }}
 
@@ -106,7 +108,7 @@ var MydbData = []SetupScript{{
 }}
 
 var MyhistorytableData = []SetupScript{{
-	"CREATE TABLE `myhistorytable` (  `i` bigint NOT NULL,  `s` text NOT NULL,  `c` text NOT NULL,  PRIMARY KEY (`i`))",
+	"CREATE TABLE `myhistorytable` (  `i` bigint NOT NULL,  `s` varchar(20) NOT NULL,  `c` varchar(20) NOT NULL,  PRIMARY KEY (`i`))",
 }}
 
 var MytableData = []SetupScript{{
@@ -124,7 +126,7 @@ var Mytable_del_idxData = []SetupScript{{
 }}
 
 var NewlinetableData = []SetupScript{{
-	"CREATE TABLE `newlinetable` (  `i` bigint NOT NULL,  `s` text NOT NULL,  PRIMARY KEY (`i`))",
+	"CREATE TABLE `newlinetable` (  `i` bigint NOT NULL,  `s` varchar(32) NOT NULL,  PRIMARY KEY (`i`))",
 	`insert into newlinetable values    (1, '\nthere is some text in here'),	(2, 'there is some\ntext in here'),	(3, 'there is some text\nin here'),	(4, 'there is some text in here\n'),	(5, 'there is some text in here')`,
 }}
 
@@ -149,7 +151,7 @@ var Ordinals_ddlData = []SetupScript{{
 }}
 
 var OthertableData = []SetupScript{{
-	`create table othertable (s2 text not null, i2 bigint primary key)`,
+	`create table othertable (s2 varchar(20) not null, i2 bigint primary key)`,
 	`insert into othertable values    ('first', 3),    ('second', 2),    ('third', 1)`,
 	`create index othertable_s2 on othertable (s2)`,
 	`create index othertable_s2_i2 on othertable (s2,i2)`,
@@ -188,7 +190,7 @@ var Pk_tablesData = []SetupScript{{
 }}
 
 var Reserved_keywordsData = []SetupScript{{
-	"CREATE TABLE `reservedWordsTable` (  `Timestamp` varchar(20) NOT NULL,  `and` text,  `or` text,  `select` text,  PRIMARY KEY (`Timestamp`))",
+	"CREATE TABLE `reservedWordsTable` (  `Timestamp` varchar(20) NOT NULL,  `and` varchar(20),  `or` varchar(20),  `select` varchar(20),  PRIMARY KEY (`Timestamp`))",
 	`insert into reservedWordsTable values    ('1', '1.1', 'aaa', 'create')`,
 }}
 
@@ -211,12 +213,12 @@ var SpecialtableData = []SetupScript{{
 }}
 
 var StringandtableData = []SetupScript{{
-	"CREATE TABLE `stringandtable` (   `k` bigint NOT NULL,   `i` bigint,   `v` text,   PRIMARY KEY (`k`));",
+	"CREATE TABLE `stringandtable` (   `k` bigint NOT NULL,   `i` bigint,   `v` varchar(20),   PRIMARY KEY (`k`));",
 	`insert into stringandtable values    (0, 0, '0'),    (1, 1, '1'),    (2, 2, ''),    (3, 3, 'true'),    (4, 4, 'false'),    (5, 5, null),    (6, null, '2');`,
 }}
 
 var TabletestData = []SetupScript{{
-	`create table tabletest (    i int primary key,    s text not null)`,
+	`create table tabletest (    i int primary key,    s varchar(20) not null)`,
 	`insert into tabletest values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
 }}
 
@@ -225,7 +227,7 @@ var TestdbData = []SetupScript{{
 }}
 
 var TypestableData = []SetupScript{{
-	"CREATE TABLE `typestable` (  `id` bigint NOT NULL,  `i8` tinyint,  `i16` smallint,  `i32` int,  `i64` bigint,  `u8` tinyint unsigned,  `u16` smallint unsigned,  `u32` int unsigned,  `u64` bigint unsigned,  `f32` float,  `f64` double,  `ti` timestamp,  `da` date,  `te` text,  `bo` tinyint,  `js` json,  `bl` blob,  PRIMARY KEY (`id`))",
+	"CREATE TABLE `typestable` (  `id` bigint NOT NULL,  `i8` tinyint,  `i16` smallint,  `i32` int,  `i64` bigint,  `u8` tinyint unsigned,  `u16` smallint unsigned,  `u32` int unsigned,  `u64` bigint unsigned,  `f32` float,  `f64` double,  `ti` timestamp,  `da` date,  `te` varchar(20),  `bo` tinyint,  `js` json,  `bl` blob,  PRIMARY KEY (`id`))",
 	`insert into typestable values    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null)`,
 }}
 

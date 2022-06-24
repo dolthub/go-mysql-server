@@ -382,7 +382,9 @@ func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
 	for _, c := range cols {
 		i := sch.IndexOfColName(c.Name)
 		if sql.IsByteType(sch[i].Type) {
-			return sql.ErrInvalidByteIndex.New()
+			return sql.ErrInvalidByteIndex.New(sch[i].Name)
+		} else if sql.IsTextBlob(sch[i].Type) {
+			return sql.ErrInvalidTextIndex.New(sch[i].Name)
 		}
 	}
 	return nil
@@ -507,6 +509,8 @@ func validatePkTypes(tableSpec *plan.TableSpec) error {
 	for _, col := range tableSpec.Schema.Schema {
 		if col.PrimaryKey && sql.IsByteType(col.Type) {
 			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
+		} else if col.PrimaryKey && sql.IsTextBlob(col.Type) {
+			return sql.ErrInvalidTextIndex.New(col.Name)
 		}
 	}
 

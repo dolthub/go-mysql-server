@@ -1,5 +1,5 @@
 exec
-create table othertable (s2 text not null, i2 bigint primary key)
+create table othertable (s2 varchar(20) not null, i2 bigint primary key)
 ----
 
 exec
