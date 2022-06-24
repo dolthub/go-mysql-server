@@ -123,7 +123,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		assert.Len(t, clause_one, 1)
 		assert.Len(t, clause_two, 1)
 		assert.Len(t, clause_three, 2)
-		all := make(RangeCollection, 0, len(clause_one) + len(clause_two) + len(clause_three))
+		all := make(RangeCollection, 0, len(clause_one)+len(clause_two)+len(clause_three))
 		all = append(all, clause_one...)
 		all = append(all, clause_two...)
 		all = append(all, clause_three...)
@@ -137,7 +137,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 			Range{GreaterOrEqualRangeColumnExpr(99, Int8), LessThanRangeColumnExpr(66, Int8), AllRangeColumnExpr(Int8)},
 		}, combined)
 
-		all = make(RangeCollection, 0, len(clause_one) + len(clause_two) + len(clause_three))
+		all = make(RangeCollection, 0, len(clause_one)+len(clause_two)+len(clause_three))
 		all = append(all, clause_two...)
 		all = append(all, clause_one...)
 		all = append(all, clause_three[1], clause_three[0])
@@ -151,7 +151,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 			Range{GreaterOrEqualRangeColumnExpr(99, Int8), LessThanRangeColumnExpr(66, Int8), AllRangeColumnExpr(Int8)},
 		}, combined)
 
-		all = make(RangeCollection, 0, len(clause_one) + len(clause_two) + len(clause_three))
+		all = make(RangeCollection, 0, len(clause_one)+len(clause_two)+len(clause_three))
 		all = append(all, clause_two...)
 		all = append(all, clause_three...)
 		all = append(all, clause_one...)
@@ -215,7 +215,7 @@ func (i testIndex) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {
 	es := i.Expressions()
 	res := make([]ColumnExpressionType, len(es))
 	for i := range es {
-		res[i] = ColumnExpressionType{ Expression: es[i], Type: Int8 }
+		res[i] = ColumnExpressionType{Expression: es[i], Type: Int8}
 	}
 	return res
 }

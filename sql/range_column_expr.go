@@ -37,7 +37,7 @@ const (
 	RangeType_OpenClosed            // This range covers a finite set of values with the lowerbound exclusive and upperbound inclusive.
 	RangeType_ClosedOpen            // This range covers a finite set of values with the lowerbound inclusive and upperbound exclusive.
 
-	RangeType_Null                  // A range matching only NULL. TODO: These types seem suspect, especially this one.
+	RangeType_Null // A range matching only NULL. TODO: These types seem suspect, especially this one.
 )
 
 // RangeColumnExpr represents the contiguous set of values on a specific column.
