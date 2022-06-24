@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 	"strings"
 
@@ -133,6 +134,8 @@ func (d *DescribeQuery) Schema() sql.Schema {
 // TODO: this function might already exist somewhere
 func FindTable(table sql.Table) sql.Table {
 	switch tbl := table.(type) {
+	case *IndexedTableAccess:
+		return FindTable(tbl.ResolvedTable)
 	case *ResolvedTable:
 		return FindTable(tbl.Table)
 	case *ProcessTable:
@@ -166,7 +169,73 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 		if err != nil {
 			return 0, err
 		}
-		return lcost + rcost, nil
+		return lcost * rcost, nil
+	case *CrossJoin:
+		lcost, err := EstimatePlanCost(ctx, n.left)
+		if err != nil {
+			return 0, err
+		}
+		rcost, err := EstimatePlanCost(ctx, n.right)
+		if err != nil {
+			return 0, err
+		}
+		return lcost * rcost, nil
+	case *IndexedTableAccess:
+		// TODO: extract filter and apply it to histograms
+		// TODO: or figure out a way to get cost out of joinOrderNode
+		// get column name
+		gf, ok := n.keyExprs[0].(*expression.GetField)
+		if !ok {
+			return 0, nil
+		}
+		colName := gf.Name()
+
+		ranges := n.lookup.Ranges()
+		l := ranges[0][0].LowerBound
+		u := ranges[0][0].UpperBound
+
+		lk, err := sql.Float64.Convert(sql.GetRangeCutKey(l))
+		uk, err := sql.Float64.Convert(sql.GetRangeCutKey(u))
+		if err != nil {
+			return 0, err
+		}
+
+		table := FindTable(n)
+		statsTbl, ok := table.(sql.StatisticsTable)
+		if !ok {
+			return 0, nil
+		}
+
+		stats, err := statsTbl.Statistics(ctx)
+		if err != nil {
+			return 0, err
+		}
+
+		histMap := stats.HistogramMap()
+		if len(histMap) == 0 {
+			return float64(stats.RowCount()), nil
+		}
+		hist, err := stats.Histogram(colName)
+		if err != nil {
+			return 0, err
+		}
+
+		var freq float64
+		for _, bucket := range hist.Buckets {
+			// values are in larger bucket, move on
+			if lk.(float64) > bucket.LowerBound {
+				continue
+			}
+
+			// passed all buckets that should've contained the value
+			if uk.(float64) < bucket.LowerBound {
+				break
+			}
+
+			freq += bucket.Frequency
+		}
+
+		return freq * float64(hist.Count), nil
 	case sql.Table:
 		table := FindTable(n)
 		if statsTbl, ok := table.(sql.StatisticsTable); ok {
