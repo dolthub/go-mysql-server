@@ -202,7 +202,7 @@ func (lb LookupBuilder) DebugString() string {
 	for i := range lb.keyExprs {
 		keyExprs[i] = sql.DebugString(lb.keyExprs[i])
 	}
-	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "), lb.matchesNullMask)
+	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
 }
 
 func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (LookupBuilder, error) {
