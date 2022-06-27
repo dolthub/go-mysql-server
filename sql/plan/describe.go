@@ -148,6 +148,7 @@ func FindTable(table sql.Table) sql.Table {
 
 // TODO: where do I put this so that Describe and TestQueryPlan can both see it?
 func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
+	// TODo: default could just recurse on n.Child
 	switch n := node.(type) {
 	case *TransactionCommittingNode:
 		return EstimatePlanCost(ctx, n.Child())
@@ -160,6 +161,8 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 	case *Exchange:
 		return EstimatePlanCost(ctx, n.Child)
 	case *Sort:
+		return EstimatePlanCost(ctx, n.Child)
+	case *Distinct:
 		return EstimatePlanCost(ctx, n.Child)
 	case *IndexedJoin:
 		lcost, err := EstimatePlanCost(ctx, n.left)
@@ -184,22 +187,6 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 	case *IndexedTableAccess:
 		// TODO: extract filter and apply it to histograms
 		// TODO: or figure out a way to get cost out of joinOrderNode
-		// get column name
-		gf, ok := n.keyExprs[0].(*expression.GetField)
-		if !ok {
-			return 0, nil
-		}
-		colName := gf.Name()
-
-		ranges := n.lookup.Ranges()
-		l := ranges[0][0].LowerBound
-		u := ranges[0][0].UpperBound
-
-		lk, err := sql.Float64.Convert(sql.GetRangeCutKey(l))
-		uk, err := sql.Float64.Convert(sql.GetRangeCutKey(u))
-		if err != nil {
-			return 0, err
-		}
 
 		table := FindTable(n)
 		statsTbl, ok := table.(sql.StatisticsTable)
@@ -216,7 +203,30 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 		if len(histMap) == 0 {
 			return float64(stats.RowCount()), nil
 		}
+
+		// get column name
+		gf, ok := n.keyExprs[0].(*expression.GetField)
+		if !ok {
+			return 0, nil
+		}
+		colName := gf.Name()
+
 		hist, err := stats.Histogram(colName)
+		if err != nil {
+			return 0, err
+		}
+
+		// no look up, just row count as cost
+		if n.lookup == nil {
+			return float64(hist.Count), nil
+		}
+
+		ranges := n.lookup.Ranges()
+		l := ranges[0][0].LowerBound
+		u := ranges[0][0].UpperBound
+
+		lk, err := sql.Float64.Convert(sql.GetRangeCutKey(l))
+		uk, err := sql.Float64.Convert(sql.GetRangeCutKey(u))
 		if err != nil {
 			return 0, err
 		}
@@ -247,10 +257,22 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 			numRows := stats.RowCount()
 			return float64(numRows), nil
 		}
-		return 100, nil
+		return 0, nil
 
 	default:
-		return 0, fmt.Errorf("EstimatePlanCost unhandled node: %T", n)
+		var cost float64
+		for _, child := range n.Children() {
+			childCost, err := EstimatePlanCost(ctx, child)
+			if err != nil {
+				return 0, err
+			}
+			cost += childCost
+		}
+		if cost == 0 {
+			cost = 1
+		}
+		return cost, nil
+		//return 0, fmt.Errorf("EstimatePlanCost unhandled node: %T", n)
 	}
 }
 
