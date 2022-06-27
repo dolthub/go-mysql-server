@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -146,22 +147,30 @@ func FindTable(table sql.Table) sql.Table {
 	}
 }
 
-// TODO: where do I put this so that Describe and TestQueryPlan can both see it?
 func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 	// TODo: default could just recurse on n.Child
 	switch n := node.(type) {
-	case *TransactionCommittingNode:
-		return EstimatePlanCost(ctx, n.Child())
-	case *QueryProcess:
-		return EstimatePlanCost(ctx, n.Child())
-	case *Project:
-		return EstimatePlanCost(ctx, n.Child)
-	case *DecoratedNode:
-		return EstimatePlanCost(ctx, n.Child)
 	case *Exchange:
-		return EstimatePlanCost(ctx, n.Child)
+		cost, err := EstimatePlanCost(ctx, n.Child)
+		if err != nil {
+			return 0, err
+		}
+		return cost / float64(n.Parallelism), nil
 	case *Sort:
-		return EstimatePlanCost(ctx, n.Child)
+		cost, err := EstimatePlanCost(ctx, n.Child)
+		if err != nil {
+			return 0, err
+		}
+		if cost <= 1.0 {
+			return cost, nil
+		}
+		return cost * math.Log2(cost), nil
+	case *Filter:
+		cost, err := EstimatePlanCost(ctx, n.Child)
+		if err != nil {
+			return 0, err
+		}
+		return 2 * cost, nil
 	case *Distinct:
 		return EstimatePlanCost(ctx, n.Child)
 	case *IndexedJoin:
@@ -183,11 +192,10 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 		if err != nil {
 			return 0, err
 		}
-		return lcost * rcost, nil
+		return 1.5 * lcost * rcost, nil
 	case *IndexedTableAccess:
 		// TODO: extract filter and apply it to histograms
 		// TODO: or figure out a way to get cost out of joinOrderNode
-
 		table := FindTable(n)
 		statsTbl, ok := table.(sql.StatisticsTable)
 		if !ok {
@@ -204,6 +212,11 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 			return float64(stats.RowCount()), nil
 		}
 
+		// no look up, just row count as cost
+		if n.lookup == nil {
+			return float64(stats.RowCount()), nil
+		}
+
 		// get column name
 		gf, ok := n.keyExprs[0].(*expression.GetField)
 		if !ok {
@@ -216,30 +229,38 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 			return 0, err
 		}
 
-		// no look up, just row count as cost
-		if n.lookup == nil {
-			return float64(hist.Count), nil
-		}
-
 		ranges := n.lookup.Ranges()
 		l := ranges[0][0].LowerBound
 		u := ranges[0][0].UpperBound
 
-		lk, err := sql.Float64.Convert(sql.GetRangeCutKey(l))
-		uk, err := sql.Float64.Convert(sql.GetRangeCutKey(u))
-		if err != nil {
-			return 0, err
+		_, lInf := l.(sql.BelowAll)
+		_, uInf := u.(sql.AboveAll)
+
+		var lk, uk float64
+		if !lInf {
+			if k, err := sql.Float64.Convert(sql.GetRangeCutKey(l)); err != nil {
+				return 0, err
+			} else {
+				lk = k.(float64)
+			}
+		}
+		if !uInf {
+			if k, err := sql.Float64.Convert(sql.GetRangeCutKey(u)); err != nil {
+				return 0, err
+			} else {
+				uk = k.(float64)
+			}
 		}
 
 		var freq float64
 		for _, bucket := range hist.Buckets {
 			// values are in larger bucket, move on
-			if lk.(float64) > bucket.LowerBound {
+			if !lInf && lk > bucket.UpperBound {
 				continue
 			}
 
 			// passed all buckets that should've contained the value
-			if uk.(float64) < bucket.LowerBound {
+			if !uInf && uk < bucket.LowerBound {
 				break
 			}
 
@@ -267,9 +288,6 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 				return 0, err
 			}
 			cost += childCost
-		}
-		if cost == 0 {
-			cost = 1
 		}
 		return cost, nil
 		//return 0, fmt.Errorf("EstimatePlanCost unhandled node: %T", n)
