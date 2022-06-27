@@ -399,56 +399,6 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
-// HistogramBucket represents a bucket in a histogram
-// inspiration pulled from MySQL and Cockroach DB
-type HistogramBucket struct {
-	LowerBound float64 // inclusive
-	UpperBound float64 // inclusive
-	Frequency  float64
-}
-
-// Histogram is all statistics we care about for each column
-type Histogram struct {
-	Buckets       []*HistogramBucket
-	Mean          float64
-	Min           float64
-	Max           float64
-	Count         uint64
-	NullCount     uint64
-	DistinctCount uint64
-}
-
-// HistogramMap is a map from column name to associated histogram
-type HistogramMap map[string]*Histogram
-
-// TableStatistics provides access to statistical information about the values stored in a table
-type TableStatistics interface {
-	// CreatedAt returns the time at which the current statistics for this table were generated.
-	CreatedAt() time.Time
-	// RowCount returns the number of rows in this table.
-	RowCount() uint64
-	// Histogram returns the histogram for the column in this table
-	Histogram(colName string) (*Histogram, error)
-	// HistogramMap returns a map from all column names to their associated histograms.
-	// A nil HistogramMap indicates that this table hasn't been analyzed.
-	HistogramMap() HistogramMap
-}
-
-// StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
-// planning performance.
-type StatisticsTable interface {
-	Table
-	// DataLength returns the length of the data file (varies by engine).
-	DataLength(ctx *Context) (uint64, error)
-	// AnalyzeTable is a hook to update any cached or persisted statistics for this table.
-	// It may be triggered by an analyze table statement, or automatically when the engine decides it is necessary.
-	// Integrators can ignore this hook and implement their own method of keeping statistics up to date, at the
-	// cost of potentially stale statistics.
-	AnalyzeTable(ctx *Context) error
-	// GetStatistics returns the statistics for this table
-	Statistics(ctx *Context) (TableStatistics, error)
-}
-
 // IndexUsing is the desired storage type.
 type IndexUsing byte
 

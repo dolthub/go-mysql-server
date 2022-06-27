@@ -19,7 +19,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"math"
 	"reflect"
 	"sort"
 	"strconv"
@@ -277,115 +276,18 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 	// initialize histogram map
 	t.tableStats = &TableStatistics{
-		createdAt:    time.Now(),
-		histogramMap: make(sql.HistogramMap),
-	}
-	for _, col := range t.Schema() {
-		hist := new(sql.Histogram)
-		hist.Min = math.MaxFloat64
-		hist.Max = -math.MaxFloat64
-		t.tableStats.histogramMap[col.Name] = hist
+		createdAt: time.Now(),
 	}
 
-	// this can be adapted to a histogram with any number of buckets
-	freqMap := make(map[string]map[float64]uint64)
-	for _, col := range t.Schema() {
-		freqMap[col.Name] = make(map[float64]uint64)
-	}
-
-	// perform table scan
-	partIter, err := t.Partitions(ctx)
+	histMap, err := sql.NewHistogramMapFromTable(ctx, t)
 	if err != nil {
 		return err
 	}
 
-	for {
-		part, err := partIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		iter, err := t.PartitionRows(ctx, part)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		for {
-			row, err := iter.Next(ctx)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return err
-			}
-
-			t.tableStats.rowCount++
-
-			for i, col := range t.Schema() {
-				hist, ok := t.tableStats.histogramMap[col.Name]
-				if !ok {
-					panic("histogram was not initialized for this column; shouldn't be possible")
-				}
-
-				if row[i] == nil {
-					hist.NullCount++
-					continue
-				}
-
-				// TODO: using sql.Float64.Convert can convert strings like "123.45" to a valid float
-				val, err := sql.Float64.Convert(row[i])
-				if err != nil {
-					continue // skip unsupported column types for now
-				}
-				v := val.(float64)
-
-				// place into frequency map
-				if bucket, ok := freqMap[col.Name][v]; ok {
-					bucket++
-				} else {
-					freqMap[col.Name][v] = 1
-					hist.DistinctCount++
-				}
-
-				hist.Mean += v
-				hist.Min = math.Min(hist.Min, v)
-				hist.Max = math.Max(hist.Max, v)
-				hist.Count++
-			}
-		}
-	}
-
-	// TODO: logic to determine ranges for buckets
-	// add buckets to histogram in sorted order
-	for colName, freqs := range freqMap {
-		keys := make([]float64, 0)
-		for k, _ := range freqs {
-			keys = append(keys, k)
-		}
-		sort.Float64s(keys)
-
-		hist := t.tableStats.histogramMap[colName]
-		if hist.Count == 0 {
-			hist.Max = 0
-			hist.Min = 0
-			continue
-		}
-
-		hist.Mean /= float64(hist.Count)
-		for _, k := range keys {
-			bucket := &sql.HistogramBucket{
-				LowerBound: k,
-				UpperBound: k,
-				Frequency:  float64(freqs[k]) / float64(hist.Count),
-			}
-			hist.Buckets = append(hist.Buckets, bucket)
-		}
+	t.tableStats.histogramMap = histMap
+	for _, v := range histMap {
+		t.tableStats.rowCount = v.Count + v.NullCount
+		break
 	}
 
 	return nil

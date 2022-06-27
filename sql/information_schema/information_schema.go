@@ -2000,10 +2000,6 @@ func partitionKey(tableName string) []byte {
 }
 
 func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
-	err := st.AnalyzeTable(ctx)
-	if err != nil {
-		return 0, err
-	}
 	stats, err := st.Statistics(ctx)
 	if err != nil {
 		return 0, err
