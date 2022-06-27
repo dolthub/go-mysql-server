@@ -423,7 +423,7 @@ type Histogram struct {
 // HistogramMap is a map from column name to associated histogram
 type HistogramMap map[string]*Histogram
 
-// HistogramMapBuilder will construct a HistogramMap given a PartitionIterator and Schema
+// HistogramMapBuilder will construct a HistogramMap given a Table
 // TODO: have option for number of buckets (and logic to convert freqMap into those buckets)
 // TODO: could iterate over Partitions asynchronously (after exchange is rewritten)
 func NewHistogramMapFromTable(ctx *Context, t Table) (HistogramMap, error) {
