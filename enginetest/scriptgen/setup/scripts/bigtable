@@ -1,5 +1,5 @@
 exec
-create table bigtable (t text primary key, n bigint)
+create table bigtable (t varchar(1) primary key, n bigint)
 ----
 
 exec

@@ -3,7 +3,7 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20220623210115-fa8f68c416b9
+	github.com/dolthub/vitess v0.0.0-20220627170411-8552f3eddb5d
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2

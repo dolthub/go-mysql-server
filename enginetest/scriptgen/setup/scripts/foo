@@ -3,7 +3,7 @@ create database if not exists foo
 ----
 
 exec
-create table foo.other_table (text text primary key, number mediumint)
+create table foo.other_table (text varchar(20) primary key, number mediumint)
 ----
 
 exec

@@ -1,5 +1,5 @@
 exec
-create table jsontable (pk smallint primary key, c1 text, c2 JSON, c3 JSON)
+create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)
 ----
 
 exec
