@@ -1498,6 +1498,17 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 <=> r.i2 ORDER BY 1 ASC`,
+		ExpectedPlan: "Sort(l.i ASC)\n" +
+			" └─ Project(l.i, r.i2)\n" +
+			"     └─ IndexedJoin(l.i2 <=> r.i2)\n" +
+			"         ├─ TableAlias(l)\n" +
+			"         │   └─ Table(niltable)\n" +
+			"         └─ TableAlias(r)\n" +
+			"             └─ IndexedTableAccess(niltable on [niltable.i2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0`,
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			" └─ Filter(one_pk.pk > 0)\n" +
@@ -1637,6 +1648,31 @@ var PlanTests = []QueryPlanTest{
 			"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM niltable WHERE i2 = NULL`,
+		ExpectedPlan: "Projected table access on [i i2 b f]\n" +
+			" └─ IndexedTableAccess(niltable on [niltable.i2] with ranges: [{(∞, ∞)}])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM niltable WHERE i2 <> NULL`,
+		ExpectedPlan: "Filter(NOT((niltable.i2 = NULL)))\n" +
+			" └─ Projected table access on [i i2 b f]\n" +
+			"     └─ IndexedTableAccess(niltable on [niltable.i2] with ranges: [{(∞, ∞)}])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM niltable WHERE i2 > NULL`,
+		ExpectedPlan: "Projected table access on [i i2 b f]\n" +
+			" └─ IndexedTableAccess(niltable on [niltable.i2] with ranges: [{(∞, ∞)}])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM niltable WHERE i2 <=> NULL`,
+		ExpectedPlan: "Projected table access on [i i2 b f]\n" +
+			" └─ IndexedTableAccess(niltable on [niltable.i2] with ranges: [{[NULL, NULL]}])\n" +
 			"",
 	},
 	{

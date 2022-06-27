@@ -73,9 +73,6 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 
 // NotEquals represents colExpr <> key.
 func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
-	if key == nil {
-		panic("nil key")
-	}
 	if b.isInvalid {
 		return b
 	}

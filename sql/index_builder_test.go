@@ -76,6 +76,14 @@ func TestIndexBuilderRanges(t *testing.T) {
 		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(Int8)}}, ranges)
 	})
 
+	t.Run("LT4=(NULL,4)", func(t *testing.T) {
+		builder := NewIndexBuilder(ctx, testIndex{1})
+		builder = builder.LessThan(ctx, "column_0", 4)
+		ranges := builder.Ranges(ctx)
+		assert.NotNil(t, ranges)
+		assert.Equal(t, RangeCollection{Range{LessThanRangeColumnExpr(4, Int8)}}, ranges)
+	})
+
 	t.Run("GT2,LT4=(2,4)", func(t *testing.T) {
 		builder := NewIndexBuilder(ctx, testIndex{1})
 		builder = builder.GreaterThan(ctx, "column_0", 2)
@@ -114,56 +122,35 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("ThreeColumnCombine", func(t *testing.T) {
-		clause_one := NewIndexBuilder(ctx, testIndex{3}).GreaterOrEqual(ctx, "column_0", 99).LessThan(ctx, "column_1", 66).Ranges(ctx)
-		clause_two := NewIndexBuilder(ctx, testIndex{3}).GreaterOrEqual(ctx, "column_0", 1).LessOrEqual(ctx, "column_0", 47).Ranges(ctx)
-		clause_three := NewIndexBuilder(ctx, testIndex{3}).NotEquals(ctx, "column_0", 2).LessThan(ctx, "column_1", 30).Ranges(ctx)
-		assert.NotNil(t, clause_one)
-		assert.NotNil(t, clause_two)
-		assert.NotNil(t, clause_three)
-		assert.Len(t, clause_one, 1)
-		assert.Len(t, clause_two, 1)
-		assert.Len(t, clause_three, 2)
-		all := make(RangeCollection, 0, len(clause_one)+len(clause_two)+len(clause_three))
-		all = append(all, clause_one...)
-		all = append(all, clause_two...)
-		all = append(all, clause_three...)
-		combined, err := RemoveOverlappingRanges(all...)
-		assert.NoError(t, err)
-		assert.NotNil(t, combined)
-		assert.Equal(t, RangeCollection{
-			Range{LessThanRangeColumnExpr(1, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-			Range{ClosedRangeColumnExpr(1, 47, Int8), AllRangeColumnExpr(Int8), AllRangeColumnExpr(Int8)},
-			Range{OpenRangeColumnExpr(47, 99, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-			Range{GreaterOrEqualRangeColumnExpr(99, Int8), LessThanRangeColumnExpr(66, Int8), AllRangeColumnExpr(Int8)},
-		}, combined)
-
-		all = make(RangeCollection, 0, len(clause_one)+len(clause_two)+len(clause_three))
-		all = append(all, clause_two...)
-		all = append(all, clause_one...)
-		all = append(all, clause_three[1], clause_three[0])
-		combined, err = RemoveOverlappingRanges(all...)
-		assert.NoError(t, err)
-		assert.NotNil(t, combined)
-		assert.Equal(t, RangeCollection{
-			Range{LessThanRangeColumnExpr(1, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-			Range{ClosedRangeColumnExpr(1, 47, Int8), AllRangeColumnExpr(Int8), AllRangeColumnExpr(Int8)},
-			Range{OpenRangeColumnExpr(47, 99, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-			Range{GreaterOrEqualRangeColumnExpr(99, Int8), LessThanRangeColumnExpr(66, Int8), AllRangeColumnExpr(Int8)},
-		}, combined)
-
-		all = make(RangeCollection, 0, len(clause_one)+len(clause_two)+len(clause_three))
-		all = append(all, clause_two...)
-		all = append(all, clause_three...)
-		all = append(all, clause_one...)
-		combined, err = RemoveOverlappingRanges(all...)
-		assert.NoError(t, err)
-		assert.NotNil(t, combined)
-		assert.Equal(t, RangeCollection{
-			Range{LessThanRangeColumnExpr(1, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-			Range{ClosedRangeColumnExpr(1, 47, Int8), AllRangeColumnExpr(Int8), AllRangeColumnExpr(Int8)},
-			Range{OpenRangeColumnExpr(47, 99, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-			Range{GreaterOrEqualRangeColumnExpr(99, Int8), LessThanRangeColumnExpr(66, Int8), AllRangeColumnExpr(Int8)},
-		}, combined)
+		clauses := make([]RangeCollection, 3)
+		clauses[0] = NewIndexBuilder(ctx, testIndex{3}).GreaterOrEqual(ctx, "column_0", 99).LessThan(ctx, "column_1", 66).Ranges(ctx)
+		clauses[1] = NewIndexBuilder(ctx, testIndex{3}).GreaterOrEqual(ctx, "column_0", 1).LessOrEqual(ctx, "column_0", 47).Ranges(ctx)
+		clauses[2] = NewIndexBuilder(ctx, testIndex{3}).NotEquals(ctx, "column_0", 2).LessThan(ctx, "column_1", 30).Ranges(ctx)
+		assert.Len(t, clauses[0], 1)
+		assert.Len(t, clauses[1], 1)
+		assert.Len(t, clauses[2], 2)
+		for _, perm := range [][]int{
+			{0, 1, 2},
+			{0, 2, 1},
+			{1, 2, 0},
+			{1, 0, 2},
+			{2, 0, 1},
+			{2, 1, 0},
+		} {
+			var all RangeCollection
+			all = append(all, clauses[perm[0]]...)
+			all = append(all, clauses[perm[1]]...)
+			all = append(all, clauses[perm[2]]...)
+			combined, err := RemoveOverlappingRanges(all...)
+			assert.NoError(t, err)
+			assert.NotNil(t, combined)
+			assert.Equal(t, RangeCollection{
+				Range{LessThanRangeColumnExpr(1, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
+				Range{ClosedRangeColumnExpr(1, 47, Int8), AllRangeColumnExpr(Int8), AllRangeColumnExpr(Int8)},
+				Range{OpenRangeColumnExpr(47, 99, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
+				Range{GreaterOrEqualRangeColumnExpr(99, Int8), LessThanRangeColumnExpr(66, Int8), AllRangeColumnExpr(Int8)},
+			}, combined)
+		}
 	})
 }
 

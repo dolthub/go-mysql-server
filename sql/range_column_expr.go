@@ -25,19 +25,18 @@ import (
 type RangeType int
 
 const (
-	RangeType_Invalid        = iota // This range is invalid, which should not be possible. Please create a GitHub issue if this is ever returned.
-	RangeType_Empty                 // This range represents the empty set of values.
-	RangeType_All                   // This range represents every possible value.
-	RangeType_GreaterThan           // This range is equivalent to checking for all values greater than the lowerbound.
-	RangeType_GreaterOrEqual        // This range is equivalent to checking for all values greater than or equal to the lowerbound.
-	RangeType_LessThan              // This range is equivalent to checking for all values less than the upperbound.
-	RangeType_LessOrEqual           // This range is equivalent to checking for all values less than or equal to the upperbound.
-	RangeType_ClosedClosed          // This range covers a finite set of values with the lower and upperbounds inclusive.
-	RangeType_OpenOpen              // This range covers a finite set of values with the lower and upperbounds exclusive.
-	RangeType_OpenClosed            // This range covers a finite set of values with the lowerbound exclusive and upperbound inclusive.
-	RangeType_ClosedOpen            // This range covers a finite set of values with the lowerbound inclusive and upperbound exclusive.
-
-	RangeType_Null // A range matching only NULL. TODO: These types seem suspect, especially this one.
+	RangeType_Invalid           RangeType = iota // This range is invalid, which should not be possible. Please create a GitHub issue if this is ever returned.
+	RangeType_Empty                              // This range represents the empty set of values.
+	RangeType_All                                // This range represents every possible value.
+	RangeType_GreaterThan                        // This range is equivalent to checking for all values greater than the lowerbound.
+	RangeType_GreaterOrEqual                     // This range is equivalent to checking for all values greater than or equal to the lowerbound.
+	RangeType_LessThanOrNull                     // This range is equivalent to checking for all values less than the upperbound.
+	RangeType_LessOrEqualOrNull                  // This range is equivalent to checking for all values less than or equal to the upperbound.
+	RangeType_ClosedClosed                       // This range covers a finite set of values with the lower and upperbounds inclusive.
+	RangeType_OpenOpen                           // This range covers a finite set of values with the lower and upperbounds exclusive.
+	RangeType_OpenClosed                         // This range covers a finite set of values with the lowerbound exclusive and upperbound inclusive.
+	RangeType_ClosedOpen                         // This range covers a finite set of values with the lowerbound inclusive and upperbound exclusive.
+	RangeType_EqualNull                          // A range matching only NULL.
 )
 
 // RangeColumnExpr represents the contiguous set of values on a specific column.
@@ -459,13 +458,13 @@ func (r RangeColumnExpr) Type() RangeType {
 	case BelowNull:
 		switch r.UpperBound.(type) {
 		case Above:
-			return RangeType_LessOrEqual
+			return RangeType_LessOrEqualOrNull
 		case AboveAll:
 			return RangeType_All
 		case Below:
-			return RangeType_LessThan
+			return RangeType_LessThanOrNull
 		case AboveNull:
-			return RangeType_Null
+			return RangeType_EqualNull
 		case BelowNull:
 			return RangeType_Empty
 		}

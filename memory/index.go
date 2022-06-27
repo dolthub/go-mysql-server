@@ -93,7 +93,7 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(2, sql.Int8))
 			case sql.RangeType_All:
 				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(1, sql.Int8))
-			case sql.RangeType_Null:
+			case sql.RangeType_EqualNull:
 				rangeColumnExpr = expression.NewIsNull(idx.Exprs[i])
 			case sql.RangeType_GreaterThan:
 				if sql.RangeCutIsBinding(rce.LowerBound) {
@@ -105,13 +105,13 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 			case sql.RangeType_GreaterOrEqual:
 				lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
 				rangeColumnExpr = expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(lit, typ))
-			case sql.RangeType_LessThan:
+			case sql.RangeType_LessThanOrNull:
 				lit, typ := getType(sql.GetRangeCutKey(rce.UpperBound))
 				rangeColumnExpr = or(
 					expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(lit, typ)),
 					expression.NewIsNull(idx.Exprs[i]),
 				)
-			case sql.RangeType_LessOrEqual:
+			case sql.RangeType_LessOrEqualOrNull:
 				lit, typ := getType(sql.GetRangeCutKey(rce.UpperBound))
 				rangeColumnExpr = or(
 					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(lit, typ)),

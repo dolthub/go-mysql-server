@@ -24,12 +24,12 @@ func TestTryIntersect(t *testing.T) {
 	res, ok, err := LessThanRangeColumnExpr(6, Int8).TryIntersect(GreaterThanRangeColumnExpr(-1, Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType(RangeType_OpenOpen), res.Type())
+	assert.Equal(t, RangeType_OpenOpen, res.Type())
 
 	res, ok, err = NotNullRangeColumnExpr(Int8).TryIntersect(AllRangeColumnExpr(Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType(RangeType_GreaterThan), res.Type())
+	assert.Equal(t, RangeType_GreaterThan, res.Type())
 	assert.False(t, RangeCutIsBinding(res.LowerBound))
 
 	_, ok, err = NotNullRangeColumnExpr(Int8).TryIntersect(NullRangeColumnExpr(Int8))
@@ -44,9 +44,9 @@ func TestTryUnion(t *testing.T) {
 	res, ok, err := NotNullRangeColumnExpr(Int8).TryUnion(NullRangeColumnExpr(Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType(RangeType_All), res.Type())
+	assert.Equal(t, RangeType_All, res.Type())
 	res, ok, err = NullRangeColumnExpr(Int8).TryUnion(NotNullRangeColumnExpr(Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType(RangeType_All), res.Type())
+	assert.Equal(t, RangeType_All, res.Type())
 }
