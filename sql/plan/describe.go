@@ -279,7 +279,6 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 			return float64(numRows), nil
 		}
 		return 0, nil
-
 	default:
 		var cost float64
 		for _, child := range n.Children() {
