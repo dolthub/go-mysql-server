@@ -126,96 +126,6 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, indexedTable, partIter)), nil
 }
 
-type LookupBuilder struct {
-	keyExprs        []sql.Expression
-	keyExprs2       []sql.Expression2
-	matchesNullMask []bool
-	index           sql.Index
-}
-
-func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
-	return LookupBuilder{
-		index:           index,
-		keyExprs:        keyExprs,
-		matchesNullMask: matchesNullMask,
-	}
-}
-
-func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.IndexLookup, error) {
-	ib := sql.NewIndexBuilder(ctx, lb.index)
-	iexprs := lb.index.Expressions()
-	for i := range key {
-		if key[i] == nil && lb.matchesNullMask[i] {
-			ib = ib.IsNull(ctx, iexprs[i])
-		} else {
-			ib = ib.Equals(ctx, iexprs[i], key[i])
-		}
-	}
-	lookup, err := ib.Build(ctx)
-	return lookup, err
-}
-
-type LookupBuilderKey []interface{}
-
-func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (LookupBuilderKey, error) {
-	key := make([]interface{}, len(lb.keyExprs))
-	for i := range lb.keyExprs {
-		var err error
-		key[i], err = lb.keyExprs[i].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return key, nil
-}
-
-func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (LookupBuilderKey, error) {
-	key := make([]interface{}, len(lb.keyExprs))
-	for i := range lb.keyExprs {
-		var err error
-		key[i], err = lb.keyExprs2[i].Eval2(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return key, nil
-}
-
-func (lb LookupBuilder) GetZeroKey() LookupBuilderKey {
-	key := make(LookupBuilderKey, len(lb.keyExprs))
-	for i, keyExpr := range lb.keyExprs {
-		key[i] = keyExpr.Type().Zero()
-	}
-	return key
-}
-
-func (lb LookupBuilder) Index() sql.Index {
-	return lb.index
-}
-
-func (lb LookupBuilder) Expressions() []sql.Expression {
-	return lb.keyExprs
-}
-
-func (lb LookupBuilder) DebugString() string {
-	keyExprs := make([]string, len(lb.keyExprs))
-	for i := range lb.keyExprs {
-		keyExprs[i] = sql.DebugString(lb.keyExprs[i])
-	}
-	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
-}
-
-func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (LookupBuilder, error) {
-	if len(exprs) != len(lb.keyExprs) {
-		return LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
-	}
-	return LookupBuilder{
-		keyExprs:        exprs,
-		index:           lb.index,
-		matchesNullMask: lb.matchesNullMask,
-	}, nil
-}
-
 func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
 	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
 	if !ok {
@@ -370,4 +280,111 @@ func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Parti
 // This method is exported for use in integration tests.
 func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 	return ita.lookup
+}
+
+// LookupBuilder abstracts getting equality index lookups for something like an
+// indexed join, where a Row that has been sourced from somewhere is turned
+// into an IndexLookup against a particular index based on some expressions
+// that extract values out of the Row.
+//
+// Currently the analyzer constructs one of these and uses it for the
+// IndexedTableAccess nodes below an indexed join, for example. This struct is
+// also used to implement Expressioner on the IndexedTableAccess node.
+type LookupBuilder struct {
+	keyExprs  []sql.Expression
+	keyExprs2 []sql.Expression2
+
+	// When building the lookup, we will use an IndexBuilder. If the
+	// extracted lookup value is NULL, but we have a non-NULL safe
+	// comparison, then the lookup should return no values. But if the
+	// comparison is NULL-safe, then the lookup should returns indexed
+	// values having that value <=> NULL. For each |keyExpr|, this field
+	// contains |true| if the lookup should also match NULLs, and |false|
+	// otherwise.
+	matchesNullMask []bool
+
+	index sql.Index
+}
+
+func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
+	return LookupBuilder{
+		index:           index,
+		keyExprs:        keyExprs,
+		matchesNullMask: matchesNullMask,
+	}
+}
+
+func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.IndexLookup, error) {
+	ib := sql.NewIndexBuilder(ctx, lb.index)
+	iexprs := lb.index.Expressions()
+	for i := range key {
+		if key[i] == nil && lb.matchesNullMask[i] {
+			ib = ib.IsNull(ctx, iexprs[i])
+		} else {
+			ib = ib.Equals(ctx, iexprs[i], key[i])
+		}
+	}
+	lookup, err := ib.Build(ctx)
+	return lookup, err
+}
+
+type LookupBuilderKey []interface{}
+
+func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (LookupBuilderKey, error) {
+	key := make([]interface{}, len(lb.keyExprs))
+	for i := range lb.keyExprs {
+		var err error
+		key[i], err = lb.keyExprs[i].Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return key, nil
+}
+
+func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (LookupBuilderKey, error) {
+	key := make([]interface{}, len(lb.keyExprs))
+	for i := range lb.keyExprs {
+		var err error
+		key[i], err = lb.keyExprs2[i].Eval2(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return key, nil
+}
+
+func (lb LookupBuilder) GetZeroKey() LookupBuilderKey {
+	key := make(LookupBuilderKey, len(lb.keyExprs))
+	for i, keyExpr := range lb.keyExprs {
+		key[i] = keyExpr.Type().Zero()
+	}
+	return key
+}
+
+func (lb LookupBuilder) Index() sql.Index {
+	return lb.index
+}
+
+func (lb LookupBuilder) Expressions() []sql.Expression {
+	return lb.keyExprs
+}
+
+func (lb LookupBuilder) DebugString() string {
+	keyExprs := make([]string, len(lb.keyExprs))
+	for i := range lb.keyExprs {
+		keyExprs[i] = sql.DebugString(lb.keyExprs[i])
+	}
+	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
+}
+
+func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (LookupBuilder, error) {
+	if len(exprs) != len(lb.keyExprs) {
+		return LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
+	}
+	return LookupBuilder{
+		keyExprs:        exprs,
+		index:           lb.index,
+		matchesNullMask: lb.matchesNullMask,
+	}, nil
 }
