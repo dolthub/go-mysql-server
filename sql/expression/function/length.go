@@ -118,7 +118,7 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		content = val.(string)
+		content = string(val.([]byte))
 	default:
 		val, err = sql.LongText.Convert(val)
 		if err != nil {

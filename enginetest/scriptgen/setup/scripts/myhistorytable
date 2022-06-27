@@ -1,8 +1,8 @@
 exec
 CREATE TABLE `myhistorytable` (
   `i` bigint NOT NULL,
-  `s` text NOT NULL,
-  `c` text NOT NULL,
+  `s` varchar(20) NOT NULL,
+  `c` varchar(20) NOT NULL,
   PRIMARY KEY (`i`)
 )
 ----

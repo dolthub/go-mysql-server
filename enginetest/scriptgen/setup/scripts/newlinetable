@@ -1,7 +1,7 @@
 exec
 CREATE TABLE `newlinetable` (
   `i` bigint NOT NULL,
-  `s` text NOT NULL,
+  `s` varchar(32) NOT NULL,
   PRIMARY KEY (`i`)
 )
 ----

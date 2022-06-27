@@ -323,19 +323,6 @@ func (t Table) Close(ctx *sql.Context) error {
 	return nil
 }
 
-// NumRows implements the interface sql.StatisticsTable.
-func (t Table) NumRows(ctx *sql.Context) (uint64, error) {
-	rows, err := t.db.shim.QueryRows(t.db.name, fmt.Sprintf("SELECT COUNT(*) FROM `%s`;", t.name))
-	if err != nil {
-		return 0, err
-	}
-	rowCount, err := sql.Uint64.Convert(rows[0][0])
-	if err != nil {
-		return 0, err
-	}
-	return rowCount.(uint64), nil
-}
-
 // DataLength implements the interface sql.StatisticsTable.
 func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	// SELECT * FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'sys') AND (TABLE_NAME = 'test');
@@ -348,6 +335,16 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 		return 0, err
 	}
 	return rowCount.(uint64), nil
+}
+
+// CalculateStatistics implements the interface sql.StatisticsTable.
+func (t Table) AnalyzeTable(ctx *sql.Context) error {
+	return nil
+}
+
+// GetStatistics implements the interface sql.StatisticsTable.
+func (t Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
+	return nil, nil
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.

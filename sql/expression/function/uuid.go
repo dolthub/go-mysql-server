@@ -428,15 +428,14 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	uuidAsByteString, ok := converted.(string)
+	asBytes, ok := converted.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("invalid data format passed to BIN_TO_UUID")
 	}
 
-	asBytes := []byte(uuidAsByteString)
 	parsed, err := uuid.FromBytes(asBytes)
 	if err != nil {
-		return nil, sql.ErrUuidUnableToParse.New(uuidAsByteString, err.Error())
+		return nil, sql.ErrUuidUnableToParse.New(asBytes, err.Error())
 		return nil, err
 	}
 
