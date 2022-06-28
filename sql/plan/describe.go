@@ -155,7 +155,7 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 		if err != nil {
 			return 0, err
 		}
-		return cost / float64(n.Parallelism), nil
+		return cost, nil
 	case *Sort:
 		cost, err := EstimatePlanCost(ctx, n.Child)
 		if err != nil {
