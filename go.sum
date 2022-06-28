@@ -55,8 +55,8 @@ github.com/dolthub/jsonpath v0.0.0-20210609232853-d49537a30474 h1:xTrR+l5l+1Lfq0
 github.com/dolthub/jsonpath v0.0.0-20210609232853-d49537a30474/go.mod h1:kMz7uXOXq4qRriCEyZ/LUeTqraLJCjf0WVZcUi6TxUY=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81 h1:7/v8q9XGFa6q5Ap4Z/OhNkAMBaK5YeuEzwJt+NZdhiE=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
-github.com/dolthub/vitess v0.0.0-20220627193344-b0333b35184b h1:yDyDL6yTyR1kOJHhQAu2YrU6WYe4Vj3k5gHKZ4fQ7zE=
-github.com/dolthub/vitess v0.0.0-20220627193344-b0333b35184b/go.mod h1:5xfuFfpljoMYespuUmyl5zrHoK0Rl7Bm6yAsnJJJzuY=
+github.com/dolthub/vitess v0.0.0-20220628181817-dae896d89d02 h1:Z0bwRtgl3Z/D+ReaAUM+OeSthpAIbGeeXj/pl5xeVxk=
+github.com/dolthub/vitess v0.0.0-20220628181817-dae896d89d02/go.mod h1:5xfuFfpljoMYespuUmyl5zrHoK0Rl7Bm6yAsnJJJzuY=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
