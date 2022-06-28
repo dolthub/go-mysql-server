@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -55,32 +54,31 @@ var (
 	MediumBlob = MustCreateBinary(sqltypes.Blob, mediumTextBlobMax)
 	LongBlob   = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
 
-	stringValueType = reflect.TypeOf(string(""))
-	byteValueType   = reflect.TypeOf(([]byte)(nil))
+	stringValueType = reflect.TypeOf(CollatedString{})
 )
 
 // StringType represents all string types, including VARCHAR and BLOB.
 // https://dev.mysql.com/doc/refman/8.0/en/char.html
 // https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html
 // https://dev.mysql.com/doc/refman/8.0/en/blob.html
-// The type of the returned value is string.
+// The type of the returned value is CollatedString.
 type StringType interface {
 	Type
-	CharacterSet() CharacterSet
-	Collation() Collation
+	CharacterSet() CharacterSetID
+	Collation() CollationID
 	MaxCharacterLength() int64
 	MaxByteLength() int64
 	Length() int64
 }
 
 type stringType struct {
-	baseType      query.Type
-	charLength    int64
-	collationName string
+	baseType   query.Type
+	charLength int64
+	collation  CollationID
 }
 
 // CreateString creates a StringType.
-func CreateString(baseType query.Type, length int64, collation Collation) (StringType, error) {
+func CreateString(baseType query.Type, length int64, collation CollationID) (StringType, error) {
 	// Check the base type first and fail immediately if it's unknown
 	switch baseType {
 	case sqltypes.Char, sqltypes.Binary, sqltypes.VarChar, sqltypes.VarBinary, sqltypes.Text, sqltypes.Blob:
@@ -95,7 +93,7 @@ func CreateString(baseType query.Type, length int64, collation Collation) (Strin
 
 	switch baseType {
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
-		if !collation.Equals(Collation_binary) {
+		if collation != Collation_binary {
 			return nil, ErrBinaryCollation.New(collation.Name, Collation_binary)
 		}
 	}
@@ -143,11 +141,11 @@ func CreateString(baseType query.Type, length int64, collation Collation) (Strin
 		}
 	}
 
-	return stringType{baseType, length, collation.Name}, nil
+	return stringType{baseType, length, collation}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
-func MustCreateString(baseType query.Type, length int64, collation Collation) StringType {
+func MustCreateString(baseType query.Type, length int64, collation CollationID) StringType {
 	st, err := CreateString(baseType, length, collation)
 	if err != nil {
 		panic(err)
@@ -176,22 +174,22 @@ func MustCreateBinary(baseType query.Type, lengthHint int64) StringType {
 }
 
 // CreateTinyText creates a TINYTEXT with the given collation.
-func CreateTinyText(collation Collation) StringType {
+func CreateTinyText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, tinyTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
 // CreateText creates a TEXT with the given collation.
-func CreateText(collation Collation) StringType {
+func CreateText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, textBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
 // CreateMediumText creates a MEDIUMTEXT with the given collation.
-func CreateMediumText(collation Collation) StringType {
+func CreateMediumText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, mediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
 // CreateLongText creates a LONGTEXT with the given collation.
-func CreateLongText(collation Collation) StringType {
+func CreateLongText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
@@ -205,30 +203,22 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	var as string
-	var bs string
+	var as CollatedString
+	var bs CollatedString
 	var ok bool
-	if as, ok = a.(string); !ok {
+	if as, ok = a.(CollatedString); !ok {
 		ai, err := t.Convert(a)
 		if err != nil {
 			return 0, err
 		}
-		if IsBinaryType(t) {
-			as = string(ai.([]byte))
-		} else {
-			as = ai.(string)
-		}
+		as = ai.(CollatedString)
 	}
-	if bs, ok = b.(string); !ok {
+	if bs, ok = b.(CollatedString); !ok {
 		bi, err := t.Convert(b)
 		if err != nil {
 			return 0, err
 		}
-		if IsBinaryType(t) {
-			bs = string(bi.([]byte))
-		} else {
-			bs = bi.(string)
-		}
+		bs = bi.(CollatedString)
 	}
 
 	// TODO: should be comparing based on the collation for many cases, but the way this function is used throughout the
@@ -236,7 +226,7 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 	//
 	// return Collations[t.collationName].Compare(as, bs), nil
 
-	return strings.Compare(as, bs), nil
+	return as.Compare(bs), nil
 }
 
 // Convert implements Type interface.
@@ -245,54 +235,69 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		return nil, nil
 	}
 
-	var val string
+	// ReinterpretData is used as we can guarantee that all numeric conversions will produce an ASCII string.
+	// ChangeCollation is used when we cannot guarantee that the input string is all ASCII.
+	var val CollatedString
 	switch s := v.(type) {
 	case bool:
-		val = strconv.FormatBool(s)
+		val = ToCollatedString(strconv.FormatBool(s)).ReinterpretData(t.collation)
 	case float64:
-		val = strconv.FormatFloat(s, 'f', -1, 64)
+		val = ToCollatedString(strconv.FormatFloat(s, 'f', -1, 64)).ReinterpretData(t.collation)
 	case float32:
-		val = strconv.FormatFloat(float64(s), 'f', -1, 32)
+		val = ToCollatedString(strconv.FormatFloat(float64(s), 'f', -1, 32)).ReinterpretData(t.collation)
 	case int:
-		val = strconv.FormatInt(int64(s), 10)
+		val = ToCollatedString(strconv.FormatInt(int64(s), 10)).ReinterpretData(t.collation)
 	case int8:
-		val = strconv.FormatInt(int64(s), 10)
+		val = ToCollatedString(strconv.FormatInt(int64(s), 10)).ReinterpretData(t.collation)
 	case int16:
-		val = strconv.FormatInt(int64(s), 10)
+		val = ToCollatedString(strconv.FormatInt(int64(s), 10)).ReinterpretData(t.collation)
 	case int32:
-		val = strconv.FormatInt(int64(s), 10)
+		val = ToCollatedString(strconv.FormatInt(int64(s), 10)).ReinterpretData(t.collation)
 	case int64:
-		val = strconv.FormatInt(s, 10)
+		val = ToCollatedString(strconv.FormatInt(s, 10)).ReinterpretData(t.collation)
 	case uint:
-		val = strconv.FormatUint(uint64(s), 10)
+		val = ToCollatedString(strconv.FormatUint(uint64(s), 10)).ReinterpretData(t.collation)
 	case uint8:
-		val = strconv.FormatUint(uint64(s), 10)
+		val = ToCollatedString(strconv.FormatUint(uint64(s), 10)).ReinterpretData(t.collation)
 	case uint16:
-		val = strconv.FormatUint(uint64(s), 10)
+		val = ToCollatedString(strconv.FormatUint(uint64(s), 10)).ReinterpretData(t.collation)
 	case uint32:
-		val = strconv.FormatUint(uint64(s), 10)
+		val = ToCollatedString(strconv.FormatUint(uint64(s), 10)).ReinterpretData(t.collation)
 	case uint64:
-		val = strconv.FormatUint(s, 10)
-	case string:
-		val = s
-	case []byte:
-		val = string(s)
+		val = ToCollatedString(strconv.FormatUint(s, 10)).ReinterpretData(t.collation)
+	case CollatedString:
+		var err error
+		val, err = s.ChangeCollation(t.collation)
+		if err != nil {
+			return nil, err
+		}
+	case string: //TODO: perhaps remove this to ensure it's not being passed in anywhere by anything
+		var err error
+		val, err = ToCollatedString(s).ChangeCollation(t.collation)
+		if err != nil {
+			return nil, err
+		}
+	case []byte: //TODO: perhaps remove this to ensure it's not being passed in anywhere by anything
+		val = LoadCollatedString(t.collation, s)
 	case time.Time:
-		val = s.Format(TimestampDatetimeLayout)
+		val = ToCollatedString(s.Format(TimestampDatetimeLayout)).ReinterpretData(t.collation)
 	case decimal.Decimal:
-		val = s.String()
+		val = ToCollatedString(s.String()).ReinterpretData(t.collation)
 	case decimal.NullDecimal:
 		if !s.Valid {
 			return nil, nil
 		}
-		val = s.Decimal.String()
+		val = ToCollatedString(s.Decimal.String()).ReinterpretData(t.collation)
 	case JSONValue:
 		str, err := s.ToString(nil)
 		if err != nil {
 			return nil, err
 		}
-
-		val, err = istrings.Unquote(str)
+		unquotedStr, err := istrings.Unquote(str)
+		if err != nil {
+			return nil, err
+		}
+		val, err = ToCollatedString(unquotedStr).ChangeCollation(t.collation)
 		if err != nil {
 			return nil, err
 		}
@@ -302,30 +307,15 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 
 	if t.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
-		if int64(len(val)) > t.MaxByteLength() {
+		if int64(val.ByteLength()) > t.MaxByteLength() {
 			return nil, ErrLengthBeyondLimit.New(val, t.String())
 		}
-	} else {
-		if t.CharacterSet().MaxLength() == 1 {
-			// if the character set only has a max size of 1, we can just count the bytes
-			if int64(len(val)) > t.charLength {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
-			}
-		} else {
-			//TODO: this should count the string's length properly according to the character set
-			//convert 'val' string to rune to count the character length, not byte length
-			if int64(len([]rune(val))) > t.charLength {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
-			}
-		}
+	} else if int64(val.Length()) > t.charLength {
+		return nil, ErrLengthBeyondLimit.New(val, t.String())
 	}
 
 	if t.baseType == sqltypes.Binary {
-		val += strings.Repeat(string([]byte{0}), int(t.charLength)-len(val))
-	}
-
-	if IsBinaryType(t) {
-		return []byte(val), nil
+		val = val.PadRight(0, int(t.charLength)-val.ByteLength())
 	}
 
 	return val, nil
@@ -343,7 +333,7 @@ func (t stringType) MustConvert(v interface{}) interface{} {
 // Equals implements the Type interface.
 func (t stringType) Equals(otherType Type) bool {
 	if ot, ok := otherType.(stringType); ok {
-		return t.baseType == ot.baseType && t.collationName == ot.collationName && t.charLength == ot.charLength
+		return t.baseType == ot.baseType && t.collation == ot.collation && t.charLength == ot.charLength
 	}
 	return false
 }
@@ -352,7 +342,7 @@ func (t stringType) Equals(otherType Type) bool {
 func (t stringType) Promote() Type {
 	switch t.baseType {
 	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
-		return MustCreateString(sqltypes.Text, longTextBlobMax, Collations[t.collationName])
+		return MustCreateString(sqltypes.Text, longTextBlobMax, t.collation)
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
 		return LongBlob
 	default:
@@ -371,12 +361,8 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	var val []byte
-	if IsBinaryType(t) {
-		val = appendAndSliceBytes(dest, v.([]byte))
-	} else {
-		val = appendAndSliceString(dest, v.(string))
-	}
+	//TODO: should this be converted to a specific collation before being sent? Perhaps the connection collation?
+	val := appendAndSliceBytes(dest, v.(CollatedString).Data())
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
@@ -421,8 +407,8 @@ func (t stringType) String() string {
 		if t.CharacterSet() != Collation_Default.CharacterSet() {
 			s += " CHARACTER SET " + t.CharacterSet().String()
 		}
-		if t.collationName != Collation_Default.Name {
-			s += " COLLATE " + t.collationName
+		if t.collation != Collation_Default {
+			s += " COLLATE " + t.collation.Name()
 		}
 	}
 
@@ -436,23 +422,20 @@ func (t stringType) Type() query.Type {
 
 // ValueType implements Type interface.
 func (t stringType) ValueType() reflect.Type {
-	if IsBinaryType(t) {
-		return byteValueType
-	}
 	return stringValueType
 }
 
 // Zero implements Type interface.
 func (t stringType) Zero() interface{} {
-	return ""
+	return LoadCollatedString(t.collation, nil)
 }
 
-func (t stringType) CharacterSet() CharacterSet {
-	return Collations[t.collationName].CharacterSet()
+func (t stringType) CharacterSet() CharacterSetID {
+	return t.collation.CharacterSet()
 }
 
-func (t stringType) Collation() Collation {
-	return Collations[t.collationName]
+func (t stringType) Collation() CollationID {
+	return t.collation
 }
 
 // MaxCharacterLength is the maximum character length for this type.
@@ -466,7 +449,7 @@ func (t stringType) MaxByteLength() int64 {
 }
 
 func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	c := t.Collation()
+	c := t.Collation().Collation()
 	switch c.like {
 	case collationLikeSensitive:
 		return sensitiveLikeMatcher(likeStr)
