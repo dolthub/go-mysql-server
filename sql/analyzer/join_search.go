@@ -279,16 +279,7 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 			if err != nil {
 				return err
 			}
-			if stats.HistogramMap() == nil {
-				jo.cost = stats.RowCount()
-			} else {
-				//hist, err := stats.Histogram("asdasd")
-				//if err != nil {
-				//	return err
-				//}
-				//hist.Count
-
-			}
+			jo.cost = stats.RowCount()
 		} else {
 			jo.cost = uint64(1000)
 		}

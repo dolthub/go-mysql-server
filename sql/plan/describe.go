@@ -147,8 +147,10 @@ func FindTable(table sql.Table) sql.Table {
 	}
 }
 
+// EstimatePlanCost estimates the cost of a given query plan
+// TODO: come up with a way to individually test nodes
 func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
-	// TODo: default could just recurse on n.Child
+	// TODO: constants used come from very simple benchmarks
 	switch n := node.(type) {
 	case *Exchange:
 		cost, err := EstimatePlanCost(ctx, n.Child)
@@ -170,9 +172,7 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 		if err != nil {
 			return 0, err
 		}
-		return 2 * cost, nil
-	case *Distinct:
-		return EstimatePlanCost(ctx, n.Child)
+		return 1.125 * cost, nil
 	case *IndexedJoin:
 		lcost, err := EstimatePlanCost(ctx, n.left)
 		if err != nil {
@@ -192,7 +192,11 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 		if err != nil {
 			return 0, err
 		}
-		return 1.5 * lcost * rcost, nil
+		// if lcost > 0, even if rcost is 0, this loop will still do something
+		if rcost == 0 {
+			rcost = 1
+		}
+		return lcost * rcost, nil
 	case *IndexedTableAccess:
 		// TODO: extract filter and apply it to histograms
 		// TODO: or figure out a way to get cost out of joinOrderNode
