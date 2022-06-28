@@ -7960,7 +7960,7 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
 				Expected: []sql.Row{
-					{"def", "foo", "t", "i", uint32(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", "", nil},
+					{"def", "foo", "t", "i", uint32(1), nil, "YES", "int", nil, nil, int64(10), int64(0), nil, nil, nil, "int", "", "", "select", "", "", nil},
 					{"def", "foo", "v", "", uint32(0), nil, "", nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", nil},
 				},
 			},
