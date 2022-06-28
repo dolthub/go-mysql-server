@@ -216,12 +216,12 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		if indexToApply.index != nil {
-			keyExprs := createIndexLookupKeyExpression(ctx, indexToApply, tableAliases)
+			keyExprs, matchesNullMask := createIndexLookupKeyExpression(ctx, indexToApply, tableAliases)
 			keyExprs, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, schema, keyExprs...)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return plan.NewIndexedTableAccess(node, indexToApply.index, keyExprs), transform.NewTree, nil
+			return plan.NewIndexedTableAccess(node, plan.NewLookupBuilder(indexToApply.index, keyExprs, matchesNullMask)), transform.NewTree, nil
 		} else {
 			ln, sameL, lerr := toIndexedTableAccess(node, indexToApply.disjunction[0])
 			if lerr != nil {
@@ -510,29 +510,31 @@ func joinTreeToNodes(tree *joinSearchNode, scope *Scope, ordered bool) sql.Node 
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
 // RowIter method of an IndexedTableAccess node. Column expressions must match the declared column order of the index.
-func createIndexLookupKeyExpression(ctx *sql.Context, ji *joinIndex, tableAliases TableAliases) []sql.Expression {
+func createIndexLookupKeyExpression(ctx *sql.Context, ji *joinIndex, tableAliases TableAliases) ([]sql.Expression, []bool) {
 	idxExprs := ji.index.Expressions()
 	count := len(idxExprs)
 	if count > len(ji.cols) {
 		count = len(ji.cols)
 	}
 	keyExprs := make([]sql.Expression, count)
+	nullmask := make([]bool, count)
 
 IndexExpressions:
 	for i := 0; i < count; i++ {
 		for j, col := range ji.cols {
 			if idxExprs[i] == normalizeExpression(ctx, tableAliases, col).String() {
 				keyExprs[i] = ji.comparandExprs[j]
+				nullmask[i] = ji.nullmask[j]
 				continue IndexExpressions
 			}
 		}
 
 		// If we finished this loop, we didn't find a column of the index in the join expression.
 		// This should be impossible.
-		return nil
+		return nil, nil
 	}
 
-	return keyExprs
+	return keyExprs, nullmask
 }
 
 // A joinIndex captures an index to use in a join between two or more tables.
@@ -561,6 +563,12 @@ type joinIndex struct {
 	comparandCols []*expression.GetField
 	// The expressions of other tables, in the same order as cols
 	comparandExprs []sql.Expression
+	// Has a bool for each comparandExprs; the bool is true if this
+	// index lookup should return entries that are NULL when the
+	// lookup is NULL. The entry is false otherwise.
+	// Distinguishes between child.parent_id <=> parent.id VS
+	// child.parent_id = parent.id.
+	nullmask []bool
 }
 
 func (ji *joinIndex) hasIndex() bool {
@@ -783,6 +791,9 @@ func getJoinIndexes(
 						comparandExprs := make([]sql.Expression, 0, len(left.comparandExprs)+len(right.comparandExprs))
 						comparandExprs = append(comparandExprs, left.comparandExprs...)
 						comparandExprs = append(comparandExprs, right.comparandExprs...)
+						nullmask := make([]bool, 0, len(left.nullmask)+len(right.nullmask))
+						nullmask = append(nullmask, left.nullmask...)
+						nullmask = append(nullmask, right.nullmask...)
 						v = append(v, &joinIndex{
 							table:          table,
 							index:          nil,
@@ -794,6 +805,7 @@ func getJoinIndexes(
 							colExprs:       colExprs,
 							comparandCols:  comparandCols,
 							comparandExprs: comparandExprs,
+							nullmask:       nullmask,
 						})
 					}
 				}
@@ -816,8 +828,11 @@ func getEqualityIndexes(
 	tableAliases TableAliases,
 ) (leftJoinIndex *joinIndex, rightJoinIndex *joinIndex) {
 
+	var matchnull bool
 	switch joinCond.cond.(type) {
-	case *expression.Equals, *expression.NullSafeEquals:
+	case *expression.Equals:
+	case *expression.NullSafeEquals:
+		matchnull = true
 	default:
 		return nil, nil
 	}
@@ -856,6 +871,7 @@ func getEqualityIndexes(
 		colExprs:       []sql.Expression{leftCol.colExpr},
 		comparandCols:  []*expression.GetField{leftCol.comparandCol},
 		comparandExprs: []sql.Expression{leftCol.comparand},
+		nullmask:       []bool{matchnull},
 	}
 
 	rightJoinIndex = &joinIndex{
@@ -868,6 +884,7 @@ func getEqualityIndexes(
 		colExprs:       []sql.Expression{rightCol.colExpr},
 		comparandCols:  []*expression.GetField{rightCol.comparandCol},
 		comparandExprs: []sql.Expression{rightCol.comparand},
+		nullmask:       []bool{matchnull},
 	}
 
 	return leftJoinIndex, rightJoinIndex
@@ -919,11 +936,13 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 		joinPosition = plan.JoinTypeRight
 	}
 
+	nullmask := make([]bool, len(colExprs))
 	for i, col := range colExprs {
 		cols[i] = col.col
 		cmpCols[i] = col.comparandCol
 		exprs[i] = col.colExpr
 		cmpExprs[i] = col.comparand
+		nullmask[i] = col.matchnull
 	}
 
 	return &joinIndex{
@@ -936,6 +955,7 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 		colExprs:       exprs,
 		comparandCols:  cmpCols,
 		comparandExprs: cmpExprs,
+		nullmask:       nullmask,
 	}
 }
 
