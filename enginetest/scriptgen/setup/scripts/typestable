@@ -13,7 +13,7 @@ CREATE TABLE `typestable` (
   `f64` double,
   `ti` timestamp,
   `da` date,
-  `te` text,
+  `te` varchar(20),
   `bo` tinyint,
   `js` json,
   `bl` blob,

@@ -303,19 +303,19 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 	if t.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
 		if int64(len(val)) > t.MaxByteLength() {
-			return nil, ErrLengthBeyondLimit.New()
+			return nil, ErrLengthBeyondLimit.New(val, t.String())
 		}
 	} else {
 		if t.CharacterSet().MaxLength() == 1 {
 			// if the character set only has a max size of 1, we can just count the bytes
 			if int64(len(val)) > t.charLength {
-				return nil, ErrLengthBeyondLimit.New()
+				return nil, ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
 			//TODO: this should count the string's length properly according to the character set
 			//convert 'val' string to rune to count the character length, not byte length
 			if int64(len([]rune(val))) > t.charLength {
-				return nil, ErrLengthBeyondLimit.New()
+				return nil, ErrLengthBeyondLimit.New(val, t.String())
 			}
 		}
 	}

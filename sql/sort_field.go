@@ -62,7 +62,7 @@ func (sf SortFields) FromExpressions(exprs ...Expression) SortFields {
 }
 
 func (s SortField) String() string {
-	return fmt.Sprintf("%s %s", DebugString(s.Column), s.Order)
+	return fmt.Sprintf("%s %s", s.Column, s.Order)
 }
 
 func (s SortField) DebugString() string {

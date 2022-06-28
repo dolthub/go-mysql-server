@@ -1,9 +1,9 @@
 exec
 CREATE TABLE `reservedWordsTable` (
   `Timestamp` varchar(20) NOT NULL,
-  `and` text,
-  `or` text,
-  `select` text,
+  `and` varchar(20),
+  `or` varchar(20),
+  `select` varchar(20),
   PRIMARY KEY (`Timestamp`)
 )
 ----

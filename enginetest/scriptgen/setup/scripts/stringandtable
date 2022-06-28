@@ -2,7 +2,7 @@ exec
 CREATE TABLE `stringandtable` (
    `k` bigint NOT NULL,
    `i` bigint,
-   `v` text,
+   `v` varchar(20),
    PRIMARY KEY (`k`)
 );
 ----
