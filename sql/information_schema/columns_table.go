@@ -340,7 +340,14 @@ func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())
 	case sql.NumberType:
-		return typeToNumericPrecision[col.Type.Type()], 0
+		var numericScale interface{}
+		switch col.Type.Type() {
+		case sqltypes.Float32, sqltypes.Float64:
+			numericScale = nil
+		default:
+			numericScale = 0
+		}
+		return typeToNumericPrecision[col.Type.Type()], numericScale
 	default:
 		return nil, nil
 	}

@@ -7915,6 +7915,32 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "information_schema.columns correctly shows numeric precision and scale for a wide variety of types",
+		SetUpScript: []string{
+			"CREATE TABLE `digits` (`c0` tinyint,`c1` tinyint unsigned,`c2` smallint,`c3` smallint unsigned,`c4` mediumint,`c5` mediumint unsigned,`c6` int,`c7` int unsigned,`c8` bigint,`c9` bigint unsigned,`c10` float,`c11` dec(5,2),`st` varchar(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select column_name, numeric_precision, numeric_scale from information_schema.columns where table_name='digits' order by column_name;",
+				Expected: []sql.Row{
+					{"c0", 3, 0},
+					{"c1", 3, 0},
+					{"c10", 12, nil},
+					{"c11", 5, 2},
+					{"c2", 5, 0},
+					{"c3", 5, 0},
+					{"c4", 7, 0},
+					{"c5", 7, 0},
+					{"c6", 10, 0},
+					{"c7", 10, 0},
+					{"c8", 19, 0},
+					{"c9", 20, 0},
+					{"st", nil, nil},
+				},
+			},
+		},
+	},
+	{
 		Name: "information_schema.routines",
 		SetUpScript: []string{
 			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
