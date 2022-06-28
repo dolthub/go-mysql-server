@@ -50,6 +50,19 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Load data with csv but use IGNORE ROWS syntax",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 longtext)",
+			"LOAD DATA INFILE './testdata/test2.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 ROWS",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from loadtable",
+				Expected: []sql.Row{{int8(1), "hi"}, {int8(2), "hello"}},
+			},
+		},
+	},
+	{
 		Name: "Load data with csv with prefix.",
 		SetUpScript: []string{
 			"create table loadtable(pk longtext, c1 int)",
