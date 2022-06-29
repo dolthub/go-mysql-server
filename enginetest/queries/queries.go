@@ -7921,12 +7921,10 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select column_name, numeric_precision, numeric_scale from information_schema.columns where table_name='digits' order by column_name;",
+				Query: "select column_name, numeric_precision, numeric_scale from information_schema.columns where table_name='digits' order by ordinal_position;",
 				Expected: []sql.Row{
 					{"c0", 3, 0},
 					{"c1", 3, 0},
-					{"c10", 12, nil},
-					{"c11", 5, 2},
 					{"c2", 5, 0},
 					{"c3", 5, 0},
 					{"c4", 7, 0},
@@ -7935,6 +7933,8 @@ var InfoSchemaScripts = []ScriptTest{
 					{"c7", 10, 0},
 					{"c8", 19, 0},
 					{"c9", 20, 0},
+					{"c10", 12, nil},
+					{"c11", 5, 2},
 					{"st", nil, nil},
 				},
 			},
