@@ -20,8 +20,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+var typeToNumericPrecision = map[query.Type]int{
+	sqltypes.Int8:    3,
+	sqltypes.Uint8:   3,
+	sqltypes.Int16:   5,
+	sqltypes.Uint16:  5,
+	sqltypes.Int24:   7,
+	sqltypes.Uint24:  7,
+	sqltypes.Int32:   10,
+	sqltypes.Uint32:  10,
+	sqltypes.Int64:   19,
+	sqltypes.Uint64:  20,
+	sqltypes.Float32: 12,
+	sqltypes.Float64: 22,
+}
 
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
@@ -211,29 +229,31 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					}
 				}
 
+				numericPrecision, numericScale := getColumnPrecisionAndScale(c)
+
 				rows = append(rows, sql.Row{
-					"def",      // table_catalog
-					db.Name(),  // table_schema
-					t.Name(),   // table_name
-					c.Name,     // column_name
-					ordinalPos, // ordinal_position
-					colDefault, // column_default
-					nullable,   // is_nullable
-					dataType,   // data_type
-					charMaxLen, // character_maximum_length
-					nil,        // character_octet_length
-					nil,        // numeric_precision
-					nil,        // numeric_scale
-					nil,        // datetime_precision
-					charName,   // character_set_name
-					collName,   // collation_name
-					colType,    // column_type
-					columnKey,  // column_key
-					c.Extra,    // extra
-					"select",   // privileges
-					c.Comment,  // column_comment
-					"",         // generation_expression
-					srsId,      // srs_id
+					"def",            // table_catalog
+					db.Name(),        // table_schema
+					t.Name(),         // table_name
+					c.Name,           // column_name
+					ordinalPos,       // ordinal_position
+					colDefault,       // column_default
+					nullable,         // is_nullable
+					dataType,         // data_type
+					charMaxLen,       // character_maximum_length
+					nil,              // character_octet_length
+					numericPrecision, // numeric_precision
+					numericScale,     // numeric_scale
+					nil,              // datetime_precision
+					charName,         // character_set_name
+					collName,         // collation_name
+					colType,          // column_type
+					columnKey,        // column_key
+					c.Extra,          // extra
+					"select",         // privileges
+					c.Comment,        // column_comment
+					"",               // generation_expression
+					srsId,            // srs_id
 				})
 			}
 			return true, nil
@@ -311,4 +331,24 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 	}
 
 	return fmt.Sprint(v)
+}
+
+// getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
+// function should return nil,nil.
+func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
+	switch t := col.Type.(type) {
+	case sql.DecimalType:
+		return int(t.Precision()), int(t.Scale())
+	case sql.NumberType:
+		var numericScale interface{}
+		switch col.Type.Type() {
+		case sqltypes.Float32, sqltypes.Float64:
+			numericScale = nil
+		default:
+			numericScale = 0
+		}
+		return typeToNumericPrecision[col.Type.Type()], numericScale
+	default:
+		return nil, nil
+	}
 }
