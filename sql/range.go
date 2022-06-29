@@ -104,6 +104,22 @@ func (rang Range) AsEmpty() Range {
 	return emptyRange
 }
 
+func (rang Range) IsEmpty() (bool, error) {
+	if len(rang) == 0 {
+		return true, nil
+	}
+	for i := range rang {
+		res, err := rang[i].IsEmpty()
+		if err != nil {
+			return false, err
+		}
+		if res {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // Copy returns a duplicate of this Range.
 func (rang Range) Copy() Range {
 	newRange := make(Range, len(rang))

@@ -25,18 +25,18 @@ import (
 type RangeType int
 
 const (
-	RangeType_Invalid        = iota // This range is invalid, which should not be possible. Please create a GitHub issue if this is ever returned.
-	RangeType_Empty                 // This range represents the empty set of values.
-	RangeType_All                   // This range represents every possible value.
-	RangeType_GreaterThan           // This range is equivalent to checking for all values greater than the lowerbound.
-	RangeType_GreaterOrEqual        // This range is equivalent to checking for all values greater than or equal to the lowerbound.
-	RangeType_LessThan              // This range is equivalent to checking for all values less than the upperbound.
-	RangeType_LessOrEqual           // This range is equivalent to checking for all values less than or equal to the upperbound.
-	RangeType_ClosedClosed          // This range covers a finite set of values with the lower and upperbounds inclusive.
-	RangeType_OpenOpen              // This range covers a finite set of values with the lower and upperbounds exclusive.
-	RangeType_OpenClosed            // This range covers a finite set of values with the lowerbound exclusive and upperbound inclusive.
-	RangeType_ClosedOpen            // This range covers a finite set of values with the lowerbound inclusive and upperbound exclusive.
-	RangeType_Null                  // This range covers the set of NULL values.
+	RangeType_Invalid           RangeType = iota // This range is invalid, which should not be possible. Please create a GitHub issue if this is ever returned.
+	RangeType_Empty                              // This range represents the empty set of values.
+	RangeType_All                                // This range represents every possible value.
+	RangeType_GreaterThan                        // This range is equivalent to checking for all values greater than the lowerbound.
+	RangeType_GreaterOrEqual                     // This range is equivalent to checking for all values greater than or equal to the lowerbound.
+	RangeType_LessThanOrNull                     // This range is equivalent to checking for all values less than the upperbound.
+	RangeType_LessOrEqualOrNull                  // This range is equivalent to checking for all values less than or equal to the upperbound.
+	RangeType_ClosedClosed                       // This range covers a finite set of values with the lower and upperbounds inclusive.
+	RangeType_OpenOpen                           // This range covers a finite set of values with the lower and upperbounds exclusive.
+	RangeType_OpenClosed                         // This range covers a finite set of values with the lowerbound exclusive and upperbound inclusive.
+	RangeType_ClosedOpen                         // This range covers a finite set of values with the lowerbound inclusive and upperbound exclusive.
+	RangeType_EqualNull                          // A range matching only NULL.
 )
 
 // RangeColumnExpr represents the contiguous set of values on a specific column.
@@ -48,6 +48,9 @@ type RangeColumnExpr struct {
 
 // OpenRangeColumnExpr returns a RangeColumnExpr representing {l < x < u}.
 func OpenRangeColumnExpr(lower, upper interface{}, typ Type) RangeColumnExpr {
+	if lower == nil || upper == nil {
+		return EmptyRangeColumnExpr(typ)
+	}
 	return RangeColumnExpr{
 		Above{key: lower},
 		Below{key: upper},
@@ -57,6 +60,9 @@ func OpenRangeColumnExpr(lower, upper interface{}, typ Type) RangeColumnExpr {
 
 // ClosedRangeColumnExpr returns a RangeColumnExpr representing {l <= x <= u}.
 func ClosedRangeColumnExpr(lower, upper interface{}, typ Type) RangeColumnExpr {
+	if lower == nil || upper == nil {
+		return EmptyRangeColumnExpr(typ)
+	}
 	return RangeColumnExpr{
 		Below{key: lower},
 		Above{key: upper},
@@ -66,6 +72,9 @@ func ClosedRangeColumnExpr(lower, upper interface{}, typ Type) RangeColumnExpr {
 
 // CustomRangeColumnExpr returns a RangeColumnExpr defined by the bounds given.
 func CustomRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound RangeBoundType, typ Type) RangeColumnExpr {
+	if lower == nil || upper == nil {
+		return EmptyRangeColumnExpr(typ)
+	}
 	var lCut RangeCut
 	var uCut RangeCut
 	if lowerBound == Open {
@@ -87,8 +96,11 @@ func CustomRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound Rang
 
 // LessThanRangeColumnExpr returns a RangeColumnExpr representing {x < u}.
 func LessThanRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
+	if upper == nil {
+		return EmptyRangeColumnExpr(typ)
+	}
 	return RangeColumnExpr{
-		BelowAll{},
+		AboveNull{},
 		Below{key: upper},
 		typ,
 	}
@@ -96,8 +108,11 @@ func LessThanRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 
 // LessOrEqualRangeColumnExpr returns a RangeColumnExpr representing  {x <= u}.
 func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
+	if upper == nil {
+		return EmptyRangeColumnExpr(typ)
+	}
 	return RangeColumnExpr{
-		BelowAll{},
+		AboveNull{},
 		Above{key: upper},
 		typ,
 	}
@@ -105,6 +120,9 @@ func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 
 // GreaterThanRangeColumnExpr returns a RangeColumnExpr representing {x > l}.
 func GreaterThanRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr {
+	if lower == nil {
+		return EmptyRangeColumnExpr(typ)
+	}
 	return RangeColumnExpr{
 		Above{key: lower},
 		AboveAll{},
@@ -114,6 +132,9 @@ func GreaterThanRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr {
 
 // GreaterOrEqualRangeColumnExpr returns a RangeColumnExpr representing {x >= l}.
 func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr {
+	if lower == nil {
+		return EmptyRangeColumnExpr(typ)
+	}
 	return RangeColumnExpr{
 		Below{key: lower},
 		AboveAll{},
@@ -124,7 +145,7 @@ func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr 
 // AllRangeColumnExpr returns a RangeColumnExpr representing all values.
 func AllRangeColumnExpr(typ Type) RangeColumnExpr {
 	return RangeColumnExpr{
-		BelowAll{},
+		BelowNull{},
 		AboveAll{},
 		typ,
 	}
@@ -140,18 +161,18 @@ func EmptyRangeColumnExpr(typ Type) RangeColumnExpr {
 }
 
 // NullRangeColumnExpr returns the null RangeColumnExpr for the given type.
-func NullRangeColumnExpr() RangeColumnExpr {
+func NullRangeColumnExpr(typ Type) RangeColumnExpr {
 	return RangeColumnExpr{
-		LowerBound: NullBound{},
-		UpperBound: NullBound{},
-		Typ:        Null,
+		LowerBound: BelowNull{},
+		UpperBound: AboveNull{},
+		Typ:        typ,
 	}
 }
 
 // NotNullRangeColumnExpr returns the not null RangeColumnExpr for the given type.
 func NotNullRangeColumnExpr(typ Type) RangeColumnExpr {
 	return RangeColumnExpr{
-		BelowAll{},
+		AboveNull{},
 		AboveAll{},
 		typ,
 	}
@@ -172,21 +193,18 @@ func (r RangeColumnExpr) Equals(other RangeColumnExpr) (bool, error) {
 
 // HasLowerBound returns whether this RangeColumnExpr has a value for the lower bound.
 func (r RangeColumnExpr) HasLowerBound() bool {
-	return r.LowerBound != BelowAll{} && r.LowerBound != AboveAll{} && r.LowerBound != NullBound{}
+	return RangeCutIsBinding(r.LowerBound)
 }
 
 // HasUpperBound returns whether this RangeColumnExpr has a value for the upper bound.
 func (r RangeColumnExpr) HasUpperBound() bool {
-	return r.UpperBound != BelowAll{} && r.UpperBound != AboveAll{} && r.UpperBound != NullBound{}
+	return RangeCutIsBinding(r.UpperBound)
 }
 
 // IsEmpty returns whether this RangeColumnExpr is empty.
 func (r RangeColumnExpr) IsEmpty() (bool, error) {
-	if r.Type() == RangeType_Null {
-		return false, nil
-	}
 	cmp, err := r.LowerBound.Compare(r.UpperBound, r.Typ)
-	return cmp == 0, err
+	return cmp >= 0, err
 }
 
 // IsConnected evaluates whether the given RangeColumnExpr overlaps or is adjacent to the calling RangeColumnExpr.
@@ -323,10 +341,12 @@ func (r RangeColumnExpr) DebugString() string {
 		sb.WriteString("(" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
 	case Below:
 		sb.WriteString("[" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
-	case AboveAll, BelowAll:
-		sb.WriteString("(-∞")
-	case NullBound:
+	case AboveAll:
+		sb.WriteString("(∞")
+	case AboveNull:
 		sb.WriteString("(NULL")
+	case BelowNull:
+		sb.WriteString("[NULL")
 	}
 	sb.WriteString(", ")
 	switch r.UpperBound.(type) {
@@ -334,9 +354,11 @@ func (r RangeColumnExpr) DebugString() string {
 		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + "]")
 	case Below:
 		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + ")")
-	case AboveAll, BelowAll:
+	case AboveAll:
 		sb.WriteString("∞)")
-	case NullBound:
+	case AboveNull:
+		sb.WriteString("NULL]")
+	case BelowNull:
 		sb.WriteString("NULL)")
 	}
 	return sb.String()
@@ -398,8 +420,6 @@ func (r RangeColumnExpr) TryUnion(other RangeColumnExpr) (RangeColumnExpr, bool,
 // Type returns this RangeColumnExpr's RangeType.
 func (r RangeColumnExpr) Type() RangeType {
 	switch r.LowerBound.(type) {
-	case NullBound:
-		return RangeType_Null
 	case Above:
 		switch r.UpperBound.(type) {
 		case Above:
@@ -423,15 +443,29 @@ func (r RangeColumnExpr) Type() RangeType {
 		case Below:
 			return RangeType_ClosedOpen
 		}
-	case BelowAll:
+	case AboveNull:
 		switch r.UpperBound.(type) {
 		case Above:
-			return RangeType_LessOrEqual
+			return RangeType_OpenClosed
+		case AboveAll:
+			// TODO: NotNull?
+			return RangeType_GreaterThan
+		case Below:
+			return RangeType_OpenOpen
+		case AboveNull:
+			return RangeType_Empty
+		}
+	case BelowNull:
+		switch r.UpperBound.(type) {
+		case Above:
+			return RangeType_LessOrEqualOrNull
 		case AboveAll:
 			return RangeType_All
 		case Below:
-			return RangeType_LessThan
-		case BelowAll:
+			return RangeType_LessThanOrNull
+		case AboveNull:
+			return RangeType_EqualNull
+		case BelowNull:
 			return RangeType_Empty
 		}
 	}

@@ -656,8 +656,6 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewStaticIndexedTableAccess(
 					plan.NewResolvedTable(table, nil, nil),
 					mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-					idxTable1F,
-					[]sql.Expression{gfCol(1, myTableF)},
 				),
 			),
 		},
@@ -693,8 +691,6 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-						idxTable1F,
-						[]sql.Expression{gfCol(1, myTableF)},
 					),
 				),
 			),
@@ -743,8 +739,6 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-						idxTable1F,
-						[]sql.Expression{gfCol(1, myTableF)},
 					),
 				),
 			),
@@ -780,14 +774,10 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-						idxTable1F,
-						[]sql.Expression{gfCol(1, myTableF)},
 					),
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table2, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-						idxTable2I2,
-						[]sql.Expression{gfCol(3, mytable2I)},
 					),
 				),
 			),
@@ -824,14 +814,10 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-						idxTable1F,
-						[]sql.Expression{gfCol(1, myTableF)},
 					),
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table2, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-						idxTable2I2,
-						[]sql.Expression{gfCol(0, mytable2I)},
 					),
 				),
 			),
@@ -846,14 +832,10 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-						idxTable1F,
-						[]sql.Expression{eq(gfCol(1, myTableF), litT(3.14, sql.Float64))},
 					),
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table2, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-						idxTable2I2,
-						[]sql.Expression{eq(gfCol(0, mytable2I), litT(21, sql.Int32))},
 					),
 				),
 			),
@@ -895,8 +877,6 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewStaticIndexedTableAccess(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-						idxTable1F,
-						[]sql.Expression{gfCol(1, myTableF)},
 					),
 					plan.NewFilter(
 						expression.NewEquals(
@@ -906,8 +886,6 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewStaticIndexedTableAccess(
 							plan.NewResolvedTable(table2, nil, nil),
 							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-							idxTable2I2,
-							[]sql.Expression{gfCol(3, mytable2I)},
 						),
 					),
 				),
@@ -942,8 +920,6 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewStaticIndexedTableAccess(
 							plan.NewResolvedTable(table, nil, nil),
 							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-							idxTable1F,
-							[]sql.Expression{gfColAlias(1, myTableF, "t1")},
 						),
 					),
 				),
@@ -990,8 +966,6 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewStaticIndexedTableAccess(
 							plan.NewResolvedTable(table, nil, nil),
 							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-							idxTable1F,
-							[]sql.Expression{gfColAlias(1, myTableF, "t1")},
 						),
 					),
 				),
@@ -1038,8 +1012,6 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewStaticIndexedTableAccess(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-								idxTable1F,
-								[]sql.Expression{gfColAlias(1, myTableF, "t1")},
 							),
 						),
 					),
@@ -1052,8 +1024,6 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewStaticIndexedTableAccess(
 								plan.NewResolvedTable(table2, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-								idxTable2I2,
-								[]sql.Expression{gfColAlias(3, mytable2I, "t2")},
 							),
 						),
 					),
@@ -1119,8 +1089,6 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewStaticIndexedTableAccess(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
-								idxTable1F,
-								[]sql.Expression{gfColAlias(1, myTableF, "t1")},
 							),
 						),
 					),
@@ -1139,8 +1107,6 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewStaticIndexedTableAccess(
 								plan.NewResolvedTable(table2, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-								idxTable2I2,
-								[]sql.Expression{gfColAlias(3, mytable2I, "t2")},
 							),
 						),
 					),
@@ -1197,8 +1163,6 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewStaticIndexedTableAccess(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
-								idxtable1I,
-								[]sql.Expression{gfColAlias(0, myTableI, "t1")},
 							),
 						),
 					),
@@ -1253,8 +1217,11 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewTableAlias("t2",
 							plan.NewIndexedTableAccess(
 								plan.NewResolvedTable(table2, nil, nil),
-								idxTable2I2,
-								[]sql.Expression{gf(0, "t1", "i")},
+								plan.NewLookupBuilder(
+									idxTable2I2,
+									[]sql.Expression{gf(0, "t1", "i")},
+									[]bool{false},
+								),
 							),
 						),
 						plan.JoinTypeInner,
@@ -1277,8 +1244,6 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewStaticIndexedTableAccess(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
-								idxtable1I,
-								[]sql.Expression{gfColAlias(0, myTableI, "t1")},
 							),
 						),
 					),
@@ -1296,8 +1261,11 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewTableAlias("t2",
 							plan.NewIndexedTableAccess(
 								plan.NewResolvedTable(table2, nil, nil),
-								idxTable2I2,
-								[]sql.Expression{gf(0, "t1", "i")},
+								plan.NewLookupBuilder(
+									idxTable2I2,
+									[]sql.Expression{gf(0, "t1", "i")},
+									[]bool{false},
+								),
 							),
 						),
 					),
@@ -1368,8 +1336,6 @@ func TestPushdownIndex(t *testing.T) {
 								plan.NewStaticIndexedTableAccess(
 									plan.NewResolvedTable(table, nil, nil),
 									mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
-									idxtable1I,
-									[]sql.Expression{gfColAlias(0, myTableI, "t1")},
 								),
 							),
 						),
@@ -1444,8 +1410,6 @@ func TestPushdownIndex(t *testing.T) {
 								plan.NewStaticIndexedTableAccess(
 									plan.NewResolvedTable(table2, nil, nil),
 									mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-									idxTable2I2,
-									[]sql.Expression{gfColAlias(3, mytable2I, "t2")},
 								),
 							),
 						),

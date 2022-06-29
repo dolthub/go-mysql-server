@@ -45,12 +45,8 @@ func TestConvertCrossJoin(t *testing.T) {
 		expression.NewNullSafeEquals(fieldAx, fieldBy),
 		expression.NewGreaterThan(fieldAx, fieldBy),
 		expression.NewGreaterThanOrEqual(fieldAx, fieldBy),
-		expression.NewNullSafeGreaterThan(fieldAx, fieldBy),
-		expression.NewNullSafeGreaterThanOrEqual(fieldAx, fieldBy),
 		expression.NewLessThan(fieldAx, fieldBy),
-		expression.NewNullSafeLessThan(fieldAx, fieldBy),
 		expression.NewLessThanOrEqual(fieldAx, fieldBy),
-		expression.NewNullSafeLessThanOrEqual(fieldAx, fieldBy),
 		expression.NewOr(
 			expression.NewEquals(fieldAx, fieldBy),
 			expression.NewEquals(litOne, litOne),

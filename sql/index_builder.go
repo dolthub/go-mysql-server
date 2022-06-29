@@ -92,7 +92,6 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 		}
 		if len(ranges) == 0 {
 			b.isInvalid = true
-			b.err = ErrRangeSimplification.New()
 			return b
 		}
 		b.ranges[colExpr] = ranges
@@ -165,13 +164,13 @@ func (b *IndexBuilder) IsNull(ctx *Context, colExpr string) *IndexBuilder {
 	if b.isInvalid {
 		return b
 	}
-	_, ok := b.colExprTypes[colExpr]
+	typ, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	b.updateNullCol(ctx, colExpr)
+	b.updateCol(ctx, colExpr, NullRangeColumnExpr(typ))
 
 	return b
 }
@@ -239,7 +238,22 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		for colIdx, exprIdx := range permutation {
 			currentRange[colIdx] = allColumns[colIdx][exprIdx]
 		}
-		ranges = append(ranges, currentRange)
+		isempty, err := currentRange.IsEmpty()
+		if err != nil {
+			b.err = err
+			return nil
+		}
+		if !isempty {
+			ranges = append(ranges, currentRange)
+		}
+	}
+	if len(ranges) == 0 {
+		cets := b.idx.ColumnExpressionTypes(ctx)
+		emptyRange := make(Range, len(cets))
+		for i, cet := range cets {
+			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+		}
+		return RangeCollection{emptyRange}
 	}
 	return ranges
 }
@@ -283,7 +297,15 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 				return
 			}
 			if ok {
-				newRanges = append(newRanges, newRange)
+				isempty, err := newRange.IsEmpty()
+				if err != nil {
+					b.isInvalid = true
+					b.err = err
+					return
+				}
+				if !isempty {
+					newRanges = append(newRanges, newRange)
+				}
 			}
 		}
 	}
@@ -294,28 +316,4 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 		return
 	}
 	b.ranges[colExpr] = newRanges
-}
-
-// updateNullCol is an escape hatch for manually merging an isNull expression
-// with the base RangeType_All, because their intrinsics do not intersect.
-// The "ALL" base range should include Null and handle intersection.
-func (b *IndexBuilder) updateNullCol(ctx *Context, colExpr string) {
-	currentRanges, ok := b.ranges[colExpr]
-	if !ok {
-		b.ranges[colExpr] = []RangeColumnExpr{NullRangeColumnExpr()}
-		return
-	}
-
-	var newRanges []RangeColumnExpr
-	for _, currentRange := range currentRanges {
-		switch currentRange.Type() {
-		case RangeType_All, RangeType_Null:
-		default:
-			b.isInvalid = true
-			b.ranges[colExpr] = newRanges
-			return
-		}
-	}
-	b.ranges[colExpr] = []RangeColumnExpr{NullRangeColumnExpr()}
-	return
 }

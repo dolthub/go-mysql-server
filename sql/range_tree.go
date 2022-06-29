@@ -76,7 +76,7 @@ func GetColExprTypes(ranges []Range) []Type {
 	var colTypesSet int
 	for _, rang := range ranges {
 		for i, e := range rang {
-			if e.Type() != RangeType_Null && colExprTypes[i] == nil {
+			if colExprTypes[i] == nil {
 				colExprTypes[i] = e.Typ
 				colTypesSet++
 			}
@@ -370,6 +370,7 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 // GetRangeCollection returns every Range that this tree contains.
 func (tree *RangeColumnExprTree) GetRangeCollection() (RangeCollection, error) {
 	var rangeCollection RangeCollection
+	var emptyRange Range
 	iterStack := []*rangeTreeIter{tree.Iterator()}
 	rangeStack := Range{RangeColumnExpr{}}
 	for len(iterStack) > 0 {
@@ -390,12 +391,35 @@ func (tree *RangeColumnExprTree) GetRangeCollection() (RangeCollection, error) {
 			} else {
 				rang := make(Range, len(rangeStack))
 				copy(rang, rangeStack)
-				rangeCollection = append(rangeCollection, rang)
+				isempty, err := rang.IsEmpty()
+				if err != nil {
+					return nil, err
+				}
+				if !isempty {
+					if len(rangeCollection) > 0 {
+						merged, ok, err := rangeCollection[len(rangeCollection)-1].TryMerge(rang)
+						if err != nil {
+							return nil, err
+						}
+						if ok {
+							rangeCollection[len(rangeCollection)-1] = merged
+						} else {
+							rangeCollection = append(rangeCollection, rang)
+						}
+					} else {
+						rangeCollection = append(rangeCollection, rang)
+					}
+				} else {
+					emptyRange = rang
+				}
 			}
 		} else {
 			iterStack = iterStack[:len(iterStack)-1]
 			rangeStack = rangeStack[:len(rangeStack)-1]
 		}
+	}
+	if len(rangeCollection) == 0 {
+		return RangeCollection{emptyRange}, nil
 	}
 	return rangeCollection, nil
 }

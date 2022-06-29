@@ -68,12 +68,12 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				return n, transform.SameTree, nil
 			case *plan.TableAlias:
 				if strings.ToLower(n.Name()) == idxLookup.table {
-					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
+					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
 			case *plan.ResolvedTable:
 				if strings.ToLower(n.Name()) == idxLookup.table {
-					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
+					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
 			default:
@@ -91,7 +91,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
-func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
@@ -101,7 +101,7 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				return plan.NewIndexedTableAccess(n, index, keyExpr), transform.NewTree, nil
+				return plan.NewIndexedTableAccess(n, plan.NewLookupBuilder(index, keyExpr, nullmask)), transform.NewTree, nil
 			}
 		}
 		return n, transform.SameTree, nil
@@ -109,9 +109,10 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 }
 
 type subqueryIndexLookup struct {
-	table   string
-	keyExpr []sql.Expression
-	index   sql.Index
+	table    string
+	keyExpr  []sql.Expression
+	nullmask []bool
+	index    sql.Index
 }
 
 func getOuterScopeIndexes(
@@ -160,7 +161,7 @@ func getOuterScopeIndexes(
 	for table, idx := range indexes {
 		if exprsByTable[table] != nil {
 			// creating a key expression can fail in some cases, just skip this table
-			keyExpr, err := createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases)
+			keyExpr, nullmask, err := createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases)
 			if err != nil {
 				return nil, err
 			}
@@ -169,9 +170,10 @@ func getOuterScopeIndexes(
 			}
 
 			lookups = append(lookups, subqueryIndexLookup{
-				table:   table,
-				keyExpr: keyExpr,
-				index:   idx,
+				table:    table,
+				keyExpr:  keyExpr,
+				nullmask: nullmask,
+				index:    idx,
 			})
 		}
 	}
@@ -180,7 +182,7 @@ func getOuterScopeIndexes(
 }
 
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
-func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, error) {
+func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, []bool, error) {
 	// To allow partial matching, we need to see if the expressions are a prefix of the index
 	idxExpressions := idx.Expressions()
 	normalizedJoinExprStrs := make([]string, len(joinExprs))
@@ -188,26 +190,28 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 		normalizedJoinExprStrs[i] = normalizeExpression(ctx, tableAliases, joinExprs[i].colExpr).String()
 	}
 	if ok, prefixCount := exprsAreIndexSubset(normalizedJoinExprStrs, idxExpressions); !ok || prefixCount != len(normalizedJoinExprStrs) {
-		return nil, nil
+		return nil, nil, nil
 	}
 	// Since the expressions are a prefix, we cut the index expressions we are using to just those involved
 	idxPrefixExpressions := idxExpressions[:len(normalizedJoinExprStrs)]
 
 	keyExprs := make([]sql.Expression, len(idxPrefixExpressions))
+	nullmask := make([]bool, len(idxPrefixExpressions))
 IndexExpressions:
 	for i, idxExpr := range idxPrefixExpressions {
 		for j := range joinExprs {
 			if idxExpr == normalizedJoinExprStrs[j] {
 				keyExprs[i] = joinExprs[j].comparand
+				nullmask[i] = joinExprs[j].matchnull
 				continue IndexExpressions
 			}
 		}
 
-		return nil, fmt.Errorf("index `%s` reported having prefix of `%v` but has expressions `%v`",
+		return nil, nil, fmt.Errorf("index `%s` reported having prefix of `%v` but has expressions `%v`",
 			idx.ID(), normalizedJoinExprStrs, idxExpressions)
 	}
 
-	return keyExprs, nil
+	return keyExprs, nullmask, nil
 }
 
 func getSubqueryIndexes(
