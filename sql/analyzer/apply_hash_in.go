@@ -32,7 +32,7 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 			if e, ok := expr.(*expression.InTuple); ok &&
 				hasSingleOutput(e.Left()) &&
 				isStatic(e.Right()) {
-				newe, err := expression.NewHashInTuple(e.Left(), e.Right())
+				newe, err := expression.NewHashInTuple(ctx, e.Left(), e.Right())
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
