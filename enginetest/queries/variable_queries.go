@@ -32,6 +32,23 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name:  "select join_complexity_limit",
+		Query: "SELECT @@join_complexity_limit",
+		Expected: []sql.Row{
+			{uint64(12)},
+		},
+	},
+	{
+		Name: "set join_complexity_limit",
+		SetUpScript: []string{
+			"set @@join_complexity_limit = 2",
+		},
+		Query: "SELECT @@join_complexity_limit",
+		Expected: []sql.Row{
+			{uint64(2)},
+		},
+	},
+	{
 		Name: "set system variables and user variables",
 		SetUpScript: []string{
 			"SET @myvar = @@autocommit",
