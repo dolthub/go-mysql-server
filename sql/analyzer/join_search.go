@@ -24,8 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-const joinComplexityLimit = 12
-
 func buildJoinTree(
 	jo *joinOrderNode,
 	joinConds []*joinCond,
