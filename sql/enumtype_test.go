@@ -28,7 +28,7 @@ import (
 func TestEnumCompare(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		val1        interface{}
 		val2        interface{}
 		expectedCmp int
@@ -59,7 +59,7 @@ func TestEnumCompare(t *testing.T) {
 func TestEnumCreate(t *testing.T) {
 	tests := []struct {
 		vals               []string
-		collation          Collation
+		collation          CollationID
 		expectedValToIndex map[string]int
 		expectedErr        bool
 	}{
@@ -108,7 +108,7 @@ func TestEnumCreateTooLarge(t *testing.T) {
 func TestEnumConvert(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
@@ -163,7 +163,7 @@ func TestEnumConvert(t *testing.T) {
 func TestEnumString(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		expectedStr string
 	}{
 		{[]string{"one"}, Collation_Default, "ENUM('one')"},

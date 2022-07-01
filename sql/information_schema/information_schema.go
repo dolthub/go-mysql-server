@@ -888,16 +888,16 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	for cName := range CollationToMySQLVals {
-		c := Collations[cName]
+	collIter := NewCollationsIterator()
+	for c, ok := collIter.Next(); ok; c, ok = collIter.Next() {
 		rows = append(rows, Row{
-			c.String(),
-			c.CharacterSet().String(),
-			c.ID(),
-			c.IsDefault(),
-			c.IsCompiled(),
-			c.SortLen(),
-			c.PadSpace(),
+			c.Name,
+			c.CharacterSet.Name(),
+			int64(c.ID),
+			c.ID.IsDefault(),
+			c.ID.IsCompiled(),
+			c.ID.SortLength(),
+			c.ID.PadAttribute(),
 		})
 	}
 	return RowsToRowIter(rows...), nil
@@ -908,7 +908,7 @@ func charsetRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	for _, c := range SupportedCharsets {
 		rows = append(rows, Row{
 			c.String(),
-			c.DefaultCollation().String(),
+			c.DefaultCollation().Name(),
 			c.Description(),
 			uint64(c.MaxLength()),
 		})
@@ -1417,11 +1417,11 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 func collationCharSetApplicabilityRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	for cName := range CollationToMySQLVals {
-		c := Collations[cName]
+	collIter := NewCollationsIterator()
+	for c, ok := collIter.Next(); ok; c, ok = collIter.Next() {
 		rows = append(rows, Row{
-			c.String(),
-			c.CharacterSet().String(),
+			c.Name,
+			c.CharacterSet.String(),
 		})
 	}
 	return RowsToRowIter(rows...), nil

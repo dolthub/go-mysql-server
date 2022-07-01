@@ -27,7 +27,7 @@ func TestParseCollation(t *testing.T) {
 		charset           string
 		collation         string
 		binaryAttribute   bool
-		expectedCollation Collation
+		expectedCollation CollationID
 		expectedErr       bool
 	}{
 		{"", "", false, Collation_Default, false},
@@ -58,7 +58,7 @@ func TestParseCollation(t *testing.T) {
 	}
 }
 
-func testParseCollation(t *testing.T, charset *string, collation *string, binaryAttribute bool, expectedCollation Collation, expectedErr bool) {
+func testParseCollation(t *testing.T, charset *string, collation *string, binaryAttribute bool, expectedCollation CollationID, expectedErr bool) {
 	t.Run(fmt.Sprintf("%v %v %v", charset, collation, binaryAttribute), func(t *testing.T) {
 		col, err := ParseCollation(charset, collation, binaryAttribute)
 		if expectedErr {
