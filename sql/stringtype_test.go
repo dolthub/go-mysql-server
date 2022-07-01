@@ -94,17 +94,17 @@ func TestStringCreateBlob(t *testing.T) {
 		expectedErr  bool
 	}{
 		{sqltypes.Binary, 10,
-			stringType{sqltypes.Binary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.Binary, 10, Collation_binary}, false},
 		{sqltypes.Blob, 10,
-			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary.Name}, false},
+			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.Char, 10,
-			stringType{sqltypes.Binary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.Binary, 10, Collation_binary}, false},
 		{sqltypes.Text, 10,
-			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary.Name}, false},
+			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.VarBinary, 10,
-			stringType{sqltypes.VarBinary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.VarBinary, 10, Collation_binary}, false},
 		{sqltypes.VarChar, 10,
-			stringType{sqltypes.VarBinary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.VarBinary, 10, Collation_binary}, false},
 	}
 
 	for _, test := range tests {
@@ -171,35 +171,35 @@ func TestStringCreateString(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
 		length       int64
-		collation    Collation
+		collation    CollationID
 		expectedType stringType
 		expectedErr  bool
 	}{
 		{sqltypes.Binary, 10, Collation_binary,
-			stringType{sqltypes.Binary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.Binary, 10, Collation_binary}, false},
 		{sqltypes.Blob, 10, Collation_binary,
-			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary.Name}, false},
+			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.Char, 10, Collation_Default,
-			stringType{sqltypes.Char, 10, Collation_Default.Name}, false},
+			stringType{sqltypes.Char, 10, Collation_Default}, false},
 		{sqltypes.Text, 10, Collation_Default,
-			stringType{sqltypes.Text, tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default.Name}, false},
+			stringType{sqltypes.Text, tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default}, false},
 		{sqltypes.Text, 1000, Collation_Default,
-			stringType{sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default.Name}, false},
+			stringType{sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default}, false},
 		{sqltypes.Text, 1000000, Collation_Default,
-			stringType{sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default.Name}, false},
+			stringType{sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength(), Collation_Default}, false},
 		{sqltypes.Text, longTextBlobMax, Collation_Default,
-			stringType{sqltypes.Text, longTextBlobMax, Collation_Default.Name}, false},
+			stringType{sqltypes.Text, longTextBlobMax, Collation_Default}, false},
 		{sqltypes.VarBinary, 10, Collation_binary,
-			stringType{sqltypes.VarBinary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.VarBinary, 10, Collation_binary}, false},
 		{sqltypes.VarChar, 10, Collation_Default,
-			stringType{sqltypes.VarChar, 10, Collation_Default.Name}, false},
+			stringType{sqltypes.VarChar, 10, Collation_Default}, false},
 
 		{sqltypes.Char, 10, Collation_binary,
-			stringType{sqltypes.Binary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.Binary, 10, Collation_binary}, false},
 		{sqltypes.Text, 10, Collation_binary,
-			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary.Name}, false},
+			stringType{sqltypes.Blob, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.VarChar, 10, Collation_binary,
-			stringType{sqltypes.VarBinary, 10, Collation_binary.Name}, false},
+			stringType{sqltypes.VarBinary, 10, Collation_binary}, false},
 
 		{sqltypes.Binary, charBinaryMax + 1, Collation_binary, stringType{}, true},
 		{sqltypes.Blob, longTextBlobMax + 1, Collation_binary, stringType{}, true},
@@ -231,7 +231,7 @@ func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
 		length       int64
-		collation    Collation
+		collation    CollationID
 		expectedType stringType
 		expectedErr  bool
 	}{

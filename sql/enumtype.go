@@ -51,8 +51,8 @@ type EnumType interface {
 	Type
 	// At returns the string at the given index, as well if the string was found.
 	At(index int) (string, bool)
-	CharacterSet() CharacterSet
-	Collation() Collation
+	CharacterSet() CharacterSetID
+	Collation() CollationID
 	// IndexOf returns the index of the given string. If the string was not found, then this returns -1.
 	IndexOf(v string) int
 	// NumberOfElements returns the number of enumerations.
@@ -62,13 +62,13 @@ type EnumType interface {
 }
 
 type enumType struct {
-	collation  Collation
+	collation  CollationID
 	valToIndex map[string]int
 	indexToVal []string
 }
 
 // CreateEnumType creates a EnumType.
-func CreateEnumType(values []string, collation Collation) (EnumType, error) {
+func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 	if len(values) < EnumTypeMinElements {
 		return nil, fmt.Errorf("number of values may not be zero")
 	}
@@ -96,7 +96,7 @@ func CreateEnumType(values []string, collation Collation) (EnumType, error) {
 }
 
 // MustCreateEnumType is the same as CreateEnumType except it panics on errors.
-func MustCreateEnumType(values []string, collation Collation) EnumType {
+func MustCreateEnumType(values []string, collation CollationID) EnumType {
 	et, err := CreateEnumType(values, collation)
 	if err != nil {
 		panic(err)
@@ -262,12 +262,12 @@ func (t enumType) At(index int) (string, bool) {
 }
 
 // CharacterSet implements EnumType interface.
-func (t enumType) CharacterSet() CharacterSet {
+func (t enumType) CharacterSet() CharacterSetID {
 	return t.collation.CharacterSet()
 }
 
 // Collation implements EnumType interface.
-func (t enumType) Collation() Collation {
+func (t enumType) Collation() CollationID {
 	return t.collation
 }
 
