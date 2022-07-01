@@ -1031,7 +1031,7 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: true,
-		Type:              NewSystemUintType("join_complexity_limit", 2, 20),
+		Type:              NewSystemUintType("join_complexity_limit", 2, 12),
 		Default:           uint64(12),
 	},
 	"keep_files_on_create": {
