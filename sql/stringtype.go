@@ -121,10 +121,16 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		if length > charBinaryMax {
 			return nil, ErrLengthTooLarge.New(length, charBinaryMax)
 		}
-	case sqltypes.VarChar, sqltypes.VarBinary:
-		// We limit on byte length, so acceptable character lengths are variable
+	case sqltypes.VarChar:
 		if byteLength > varcharVarbinaryMax {
 			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax/charsetMaxLength)
+		}
+	case sqltypes.VarBinary:
+		// VarBinary fields transmitted over the wire could be for a VarBinary field,
+		// or a JSON field, so we validate against JSON's larger limit (1GB)
+		// instead of VarBinary's smaller limit (65k).
+		if byteLength > MaxJsonFieldByteLength {
+			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength/charsetMaxLength)
 		}
 	case sqltypes.Text, sqltypes.Blob:
 		// We overall limit on character length, but determine tiny, medium, etc. based on byte length.
