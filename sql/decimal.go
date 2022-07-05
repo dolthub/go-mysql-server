@@ -51,8 +51,10 @@ type DecimalType interface {
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
 	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
-	//
+	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
 	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
+	// BoundsCheck rounds and validates a decimal
+	BoundsCheck(v decimal.Decimal) (decimal.Decimal, error)
 	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
 	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
 	ExclusiveUpperBound() decimal.Decimal
