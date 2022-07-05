@@ -18,6 +18,18 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 var JsonScripts = []ScriptTest{
 	{
+		Name: "JSON max length limit",
+		SetUpScript: []string{
+			"create table t (j JSON)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `insert into t set j= concat('[', repeat('"word",', 50000000), '"word"]')`,
+				ExpectedErr: sql.ErrLengthTooLarge,
+			},
+		},
+	},
+	{
 		Name: "JSON_ARRAYAGG on one column",
 		SetUpScript: []string{
 			"create table t (o_id int primary key)",
