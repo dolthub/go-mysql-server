@@ -127,7 +127,7 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		}
 	case sqltypes.VarBinary:
 		// VarBinary fields transmitted over the wire could be for a VarBinary field,
-		// or a JSON field, so we validate against JSON's larger upper limit (1GB)
+		// or a JSON field, so we validate against JSON's larger limit (1GB)
 		// instead of VarBinary's smaller limit (65k).
 		if byteLength > MaxJsonFieldByteLength {
 			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength/charsetMaxLength)
