@@ -1138,41 +1138,66 @@ var InsertScripts = []ScriptTest{
 	{
 		Name: "explicit DEFAULT",
 		SetUpScript: []string{
-			"CREATE TABLE mytable(id int PRIMARY KEY, v2 int NOT NULL DEFAULT '2')",
+			"CREATE TABLE t1(id int DEFAULT '2', vc varchar(255) DEFAULT '2');",
+			"CREATE TABLE t2(id varchar(100) DEFAULT (uuid()));",
+			"CREATE TABLE t3(a int DEFAULT '1', b int default (2 * a));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "INSERT INTO mytable (id, v2)values (1, DEFAULT)",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
-				},
+				Query:    "INSERT INTO T1 values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query: "SELECT * FROM mytable",
-				Expected: []sql.Row{
-					{1, 2},
-				},
-			},
-		},
-	},
-	{
-		Name: "explicit DEFAULT with multiple values",
-		SetUpScript: []string{
-			"CREATE TABLE mytable(id int PRIMARY KEY, v2 int NOT NULL DEFAULT '2')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "INSERT INTO mytable (id, v2)values (1, DEFAULT), (2, DEFAULT)",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
-				},
+				Query:    "INSERT INTO t1 (id, VC) values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query: "SELECT * FROM mytable",
-				Expected: []sql.Row{
-					{1, 2},
-					{2, 2},
-				},
+				Query:    "INSERT INTO t1 (vc, ID) values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (ID) values (DEFAULT), (3)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (vc) values (DEFAULT), ('3')",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 values (100, '100'), (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (id, vc) values (100, '100'), (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (id) values (10), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (VC) values ('10'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t2 values ('10'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t2 (id) values (DEFAULT), ('11'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "select count(distinct id) from t2",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "INSERT INTO t3 (a) values (DEFAULT), ('2'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "SELECT b from t3 order by b asc",
+				Expected: []sql.Row{{2}, {2}, {4}},
 			},
 		},
 	},
