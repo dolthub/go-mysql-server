@@ -20,13 +20,12 @@ import (
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
-	ErrConvertingToJSON = errors.NewKind("value %v is not valid JSON")
-
 	jsonValueType = reflect.TypeOf((*JSONValue)(nil)).Elem()
+
+	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
 )
 
 var JSON JsonType = jsonType{}
@@ -59,13 +58,24 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	case JSONValue:
 		return v, nil
 	case []byte:
+		if int64(len(v)) > MaxJsonFieldByteLength {
+			return nil, ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
+		}
 		err = json.Unmarshal(v, &doc)
 	case string:
+		charsetMaxLength := Collation_Default.CharacterSet().MaxLength()
+		length := int64(len(v)) * charsetMaxLength
+		if length > MaxJsonFieldByteLength {
+			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
+		}
 		err = json.Unmarshal([]byte(v), &doc)
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
 		if b, berr := json.Marshal(v); berr == nil {
+			if int64(len(b)) > MaxJsonFieldByteLength {
+				return nil, ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
+			}
 			err = json.Unmarshal(b, &doc)
 		}
 	}
