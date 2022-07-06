@@ -22,6 +22,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
 	flatbuffers "github.com/google/flatbuffers/go"
@@ -68,6 +69,8 @@ type MySQLDb struct {
 	//password_history *mysqlTable
 
 	persister MySQLDbPersistence
+
+	cache *privilegeCache
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -97,6 +100,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	// mysqlTable shims
 	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
 	mysqlDb.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, mysqlDb.user, TablesPrivConverter{})
+	mysqlDb.cache = newPrivilegeCache()
 
 	return mysqlDb
 }
@@ -121,6 +125,9 @@ func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnect
 			return err
 		}
 	}
+
+	t.cache.clear()
+
 	return nil
 }
 
@@ -161,6 +168,8 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 			return err
 		}
 	}
+
+	t.cache.clear()
 
 	// TODO: fill in other tables when they exist
 	return nil
@@ -232,6 +241,11 @@ func (t *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	if user == nil {
 		return NewPrivilegeSet()
 	}
+
+	if priv, ok := t.cache.userPrivileges(user); ok {
+		return priv
+	}
+
 	privSet := user.PrivilegeSet.Copy()
 	roleEdgeEntries := t.role_edges.data.Get(RoleEdgesToKey{
 		ToHost: user.Host,
@@ -246,6 +260,8 @@ func (t *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 			privSet.UnionWith(role.PrivilegeSet)
 		}
 	}
+
+	t.cache.cacheUserPrivileges(user, privSet)
 	return privSet
 }
 
@@ -500,4 +516,41 @@ var _ sql.Partition = dummyPartition{}
 // Key implements the interface sql.Partition.
 func (d dummyPartition) Key() []byte {
 	return nil
+}
+
+type privilegeCache struct {
+	mu sync.Mutex
+	userPriv map[string]PrivilegeSet
+}
+
+func newPrivilegeCache() *privilegeCache {
+	return &privilegeCache{
+		userPriv: make(map[string]PrivilegeSet),
+	}
+}
+
+func userKey(user *User) string {
+	return fmt.Sprintf("%s@%s", user.User, user.Host)
+}
+
+func (pc *privilegeCache) userPrivileges(user *User) (PrivilegeSet, bool) {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
+	privs, ok := pc.userPriv[userKey(user)]
+	return privs, ok
+}
+
+func (pc *privilegeCache) cacheUserPrivileges(user *User, privs PrivilegeSet) {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
+	pc.userPriv[userKey(user)] = privs
+}
+
+func (pc *privilegeCache) clear() {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
+	pc.userPriv = make(map[string]PrivilegeSet)
 }
