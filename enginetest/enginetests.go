@@ -4290,7 +4290,6 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 }
 
 func TestTracing(t *testing.T, harness Harness) {
-	require := require.New(t)
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
@@ -4305,11 +4304,11 @@ func TestTracing(t *testing.T, harness Harness) {
 		WHERE s = 'first row'
 		ORDER BY i DESC
 		LIMIT 1`)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.Len(rows, 1)
-	require.NoError(err)
+	require.Len(t, rows, 1)
+	require.NoError(t, err)
 
 	spans := tracer.Spans
 	var expectedSpans = []string{
@@ -4317,6 +4316,7 @@ func TestTracing(t *testing.T, harness Harness) {
 		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",
+		"plan.Filter",
 		"plan.IndexedTableAccess",
 	}
 
@@ -4331,7 +4331,7 @@ func TestTracing(t *testing.T, harness Harness) {
 		}
 	}
 
-	require.Equal(expectedSpans, spanOperations)
+	require.Equal(t, expectedSpans, spanOperations)
 }
 
 func TestCurrentTimestamp(t *testing.T, harness Harness) {

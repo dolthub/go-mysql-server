@@ -51,6 +51,10 @@ type DecimalType interface {
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
 	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
+	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
+	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
+	// BoundsCheck rounds and validates a decimal
+	BoundsCheck(v decimal.Decimal) (decimal.Decimal, error)
 	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
 	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
 	ExclusiveUpperBound() decimal.Decimal
@@ -123,12 +127,20 @@ func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	ad, err := t.BoundsCheck(af.Decimal)
+	if err != nil {
+		return 0, err
+	}
 	bf, err := t.ConvertToNullDecimal(b)
 	if err != nil {
 		return 0, err
 	}
+	bd, err := t.BoundsCheck(bf.Decimal)
+	if err != nil {
+		return 0, err
+	}
 
-	return af.Decimal.Cmp(bf.Decimal), nil
+	return ad.Cmp(bd), nil
 }
 
 // Convert implements Type interface.
@@ -139,6 +151,17 @@ func (t decimalType) Convert(v interface{}) (interface{}, error) {
 	}
 	if !dec.Valid {
 		return nil, nil
+	}
+	return t.BoundsCheck(dec.Decimal)
+}
+
+func (t decimalType) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error) {
+	dec, err := t.ConvertToNullDecimal(v)
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+	if !dec.Valid {
+		return decimal.Decimal{}, nil
 	}
 	return dec.Decimal, nil
 }
@@ -208,12 +231,19 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}
 
-	res = res.Round(int32(t.scale))
-	if !res.Abs().LessThan(t.exclusiveUpperBound) {
-		return decimal.NullDecimal{}, ErrConvertToDecimalLimit.New()
-	}
-
 	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
+}
+
+func (t decimalType) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
+	if -v.Exponent() > int32(t.scale) {
+		v = v.Round(int32(t.scale))
+	}
+	// TODO add shortcut for common case
+	// ex: certain num of bits fast tracks OK
+	if !v.Abs().LessThan(t.exclusiveUpperBound) {
+		return decimal.Decimal{}, ErrConvertToDecimalLimit.New()
+	}
+	return v, nil
 }
 
 // MustConvert implements the Type interface.
@@ -243,12 +273,12 @@ func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	value, err := t.Convert(v)
+	value, err := t.ConvertToNullDecimal(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, value.(decimal.Decimal).StringFixed(int32(t.scale)))
+	val := appendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
