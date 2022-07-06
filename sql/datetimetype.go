@@ -137,21 +137,21 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 	var at time.Time
 	var bt time.Time
 	var ok bool
+	var err error
 	if at, ok = a.(time.Time); !ok {
-		ai, err := t.Convert(a)
+		at, err = ConvertToTime(a, t)
 		if err != nil {
 			return 0, err
 		}
-		at = ai.(time.Time)
 	} else if t.baseType == sqltypes.Date {
 		at = at.Truncate(24 * time.Hour)
 	}
 	if bt, ok = b.(time.Time); !ok {
-		bi, err := t.Convert(b)
+		bt, err = ConvertToTime(b, t)
 		if err != nil {
 			return 0, err
 		}
-		bt = bi.(time.Time)
+
 	} else if t.baseType == sqltypes.Date {
 		bt = bt.Truncate(24 * time.Hour)
 	}
@@ -166,13 +166,24 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t datetimeType) Convert(v interface{}) (interface{}, error) {
-	if v == nil {
+	res, err := ConvertToTime(v, t)
+	if err != nil {
+		return nil, err
+	}
+	if res.IsZero() {
 		return nil, nil
+	}
+	return res, nil
+}
+
+func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
+	if v == nil {
+		return time.Time{}, nil
 	}
 
 	res, err := t.ConvertWithoutRangeCheck(v)
 	if err != nil {
-		return nil, err
+		return time.Time{}, err
 	}
 
 	if res.Equal(zeroTime) {
@@ -182,15 +193,15 @@ func (t datetimeType) Convert(v interface{}) (interface{}, error) {
 	switch t.baseType {
 	case sqltypes.Date:
 		if res.Year() < 1000 || res.Year() > 9999 {
-			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(DateLayout), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(DateLayout), t.String())
 		}
 	case sqltypes.Datetime:
 		if res.Year() < 1000 || res.Year() > 9999 {
-			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
 		if res.Before(datetimeTypeMinTimestamp) || res.After(datetimeTypeMaxTimestamp) {
-			return nil, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
 		}
 	}
 	return res, nil
