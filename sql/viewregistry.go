@@ -106,17 +106,14 @@ func (r *ViewRegistry) Delete(databaseName, viewName string) error {
 
 // View returns a pointer to the view specified by the pair {databaseName,
 // viewName}, returning an error if it does not exist.
-func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
+func (r *ViewRegistry) View(databaseName, viewName string) (*View, bool) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
 	key := NewViewKey(databaseName, viewName)
 
-	if view, ok := r.views[key]; ok {
-		return view, nil
-	}
-
-	return nil, ErrViewDoesNotExist.New(databaseName, viewName)
+	view, ok := r.views[key]
+	return view, ok
 }
 
 // ViewsInDatabase returns an array of all the views registered under the
