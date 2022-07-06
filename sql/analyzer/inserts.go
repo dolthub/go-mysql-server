@@ -212,9 +212,6 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 	switch node := values.(type) {
 	case *plan.Values:
 		for _, exprTuple := range node.ExpressionTuples {
-			// TODO: How does this work when there are two columns, but only one default value?
-			//       Are the columnNames being passed in different?
-			//       Need to debug through other cases to see how they act.
 			if len(exprTuple) != len(columnNames) {
 				return plan.ErrInsertIntoMismatchValueCount.New()
 			}
