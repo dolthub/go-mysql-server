@@ -165,34 +165,54 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "non-existent procedure in trigger body",
 			SetUpScript: []string{
-				"create table test(id int default 1, name varchar(128));",
+				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					// Works!
-					Query:    "insert into `test`(`id`) values (3), (2);",
-					Expected: []sql.Row{{sql.OkResult{2, 0, nil}}},
+					Query:    "SELECT * FROM t0;",
+					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
 				},
 				{
-					// Works!
-					Query:    "insert into `test`(`id`) values (DEFAULT), (DEFAULT);",
-					Expected: []sql.Row{{sql.OkResult{2, 0, nil}}},
+					Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
+INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
+					Expected: []sql.Row{{sql.OkResult{}}},
 				},
 				{
-					// Unexpected Error: plan is not resolved because of node '*plan.Values'
-					Query:    "insert into `test`(`id`) values (3), (DEFAULT);",
-					Expected: []sql.Row{{sql.OkResult{2, 0, nil}}},
+					Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
+					Expected: []sql.Row{{sql.OkResult{}}},
 				},
 				{
-					// Unexpected Error: number of values does not match number of columns provided
-					Query:    "insert into `test`(`id`) values (DEFAULT), (3);",
-					Expected: []sql.Row{{sql.OkResult{2, 0, nil}}},
+					Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
+					ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+				},
+				{
+					Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
+					Expected: []sql.Row{{sql.OkResult{}}},
+				},
+				{
+					Query:    "CALL add_entry(4, 'aaa');",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+				},
+				{
+					Query:    "SELECT * FROM t0;",
+					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
+				},
+				{
+					Query:    "SELECT * FROM t1;",
+					Expected: []sql.Row{{1, 8, "aaa"}},
+				},
+				{
+					Query:          "CALL add_entry(54, 'bbb');",
+					ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
 				},
 			},
 		},
