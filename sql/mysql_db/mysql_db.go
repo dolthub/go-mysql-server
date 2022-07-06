@@ -519,7 +519,7 @@ func (d dummyPartition) Key() []byte {
 }
 
 type privilegeCache struct {
-	mu sync.Mutex
+	mu       sync.Mutex
 	userPriv map[string]PrivilegeSet
 }
 
