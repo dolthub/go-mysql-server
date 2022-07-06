@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -128,6 +129,27 @@ func (d *DescribeQuery) Schema() sql.Schema {
 	return DescribeSchema
 }
 
+func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
+	if node == nil {
+		return 0, nil
+	}
+
+	if n, ok := node.(sql.Costable); ok {
+		return n.Cost(), nil
+	}
+
+	var cost float64
+	for _, c := range node.Children() {
+		c, err := EstimatePlanCost(ctx, c)
+		if err != nil {
+			return 0, err
+		}
+		cost += c
+	}
+
+	return cost, nil
+}
+
 // RowIter implements the Node interface.
 func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
@@ -137,6 +159,12 @@ func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	} else {
 		formatString = d.child.String()
 	}
+
+	planCost, err := EstimatePlanCost(ctx, d.child)
+	if err != nil {
+		return nil, err
+	}
+	rows = append(rows, sql.NewRow(fmt.Sprintf("Estimated Cost: %.2f", planCost)))
 
 	for _, l := range strings.Split(formatString, "\n") {
 		if strings.TrimSpace(l) != "" {

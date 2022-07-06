@@ -22,6 +22,11 @@ import (
 	"time"
 )
 
+// Costable is something that has cost.
+type Costable interface {
+	Cost() float64
+}
+
 // Nameable is something that has a name.
 type Nameable interface {
 	// Name returns the name.
