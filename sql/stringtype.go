@@ -121,10 +121,16 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		if length > charBinaryMax {
 			return nil, ErrLengthTooLarge.New(length, charBinaryMax)
 		}
-	case sqltypes.VarChar, sqltypes.VarBinary:
-		// We limit on byte length, so acceptable character lengths are variable
+	case sqltypes.VarChar:
 		if byteLength > varcharVarbinaryMax {
 			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax/charsetMaxLength)
+		}
+	case sqltypes.VarBinary:
+		// VarBinary fields transmitted over the wire could be for a VarBinary field,
+		// or a JSON field, so we validate against JSON's larger limit (1GB)
+		// instead of VarBinary's smaller limit (65k).
+		if byteLength > MaxJsonFieldByteLength {
+			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength/charsetMaxLength)
 		}
 	case sqltypes.Text, sqltypes.Blob:
 		// We overall limit on character length, but determine tiny, medium, etc. based on byte length.
@@ -245,6 +251,18 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		return nil, nil
 	}
 
+	val, err := ConvertToString(v, t)
+	if err != nil {
+		return nil, err
+	}
+
+	if IsBinaryType(t) {
+		return []byte(val), nil
+	}
+	return val, nil
+}
+
+func ConvertToString(v interface{}, t stringType) (string, error) {
 	var val string
 	switch s := v.(type) {
 	case bool:
@@ -283,49 +301,45 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		val = s.String()
 	case decimal.NullDecimal:
 		if !s.Valid {
-			return nil, nil
+			return "", nil
 		}
 		val = s.Decimal.String()
 	case JSONValue:
 		str, err := s.ToString(nil)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 
 		val, err = istrings.Unquote(str)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	default:
-		return nil, ErrConvertToSQL.New(t)
+		return "", ErrConvertToSQL.New(t)
 	}
 
 	if t.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
 		if int64(len(val)) > t.MaxByteLength() {
-			return nil, ErrLengthBeyondLimit.New(val, t.String())
+			return "", ErrLengthBeyondLimit.New(val, t.String())
 		}
 	} else {
 		if t.CharacterSet().MaxLength() == 1 {
 			// if the character set only has a max size of 1, we can just count the bytes
 			if int64(len(val)) > t.charLength {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
+				return "", ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
 			//TODO: this should count the string's length properly according to the character set
 			//convert 'val' string to rune to count the character length, not byte length
 			if int64(len([]rune(val))) > t.charLength {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
+				return "", ErrLengthBeyondLimit.New(val, t.String())
 			}
 		}
 	}
 
 	if t.baseType == sqltypes.Binary {
 		val += strings.Repeat(string([]byte{0}), int(t.charLength)-len(val))
-	}
-
-	if IsBinaryType(t) {
-		return []byte(val), nil
 	}
 
 	return val, nil
@@ -366,16 +380,19 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.Value{}, err
-	}
-
 	var val []byte
 	if IsBinaryType(t) {
+		v, err := t.Convert(v)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
 		val = appendAndSliceBytes(dest, v.([]byte))
 	} else {
-		val = appendAndSliceString(dest, v.(string))
+		v, err := ConvertToString(v, t)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
+		val = appendAndSliceString(dest, v)
 	}
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
