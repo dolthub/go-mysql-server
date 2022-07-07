@@ -688,6 +688,19 @@ func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 		}
 	}
 
+	// If the source values are not specified, fill in column default placeholders
+	if values, ok := insertInto.Source.(*plan.Values); ok {
+		for i, tuple := range values.ExpressionTuples {
+			if len(tuple) == 0 {
+				tuple = make([]sql.Expression, len(insertInto.ColumnNames))
+				for j, _ := range tuple {
+					tuple[j] = expression.NewDefaultColumn(insertInto.ColumnNames[j])
+				}
+				values.ExpressionTuples[i] = tuple
+			}
+		}
+	}
+
 	// Pull the column default values out into the same order the columns were specified
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(insertInto.ColumnNames))
 	for i, columnName := range insertInto.ColumnNames {
