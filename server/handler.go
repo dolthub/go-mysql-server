@@ -307,9 +307,6 @@ func (h *Handler) doQuery(
 		WithField("query", string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
 	ctx.GetLogger().Debugf("Starting query")
 
-	finish := observeQuery(ctx, query)
-	defer finish(err)
-
 	start := time.Now()
 
 	if parsed == nil {

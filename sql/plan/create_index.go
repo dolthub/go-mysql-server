@@ -16,13 +16,10 @@ package plan
 
 import (
 	"fmt"
-	"strings"
-	"time"
-
 	opentracing "github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v1"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -213,22 +210,20 @@ func (c *CreateIndex) createIndex(
 			"driver": index.Driver(),
 		})
 
-	l := log.WithField("id", index.ID())
-
-	err := driver.Save(ctx, index, newLoggingPartitionKeyValueIter(l, iter))
+	err := driver.Save(ctx, index, iter)
 	close(done)
 
 	if err != nil {
-		span.FinishWithOptions(opentracing.FinishOptions{
-			LogRecords: []opentracing.LogRecord{
-				{
-					Timestamp: time.Now(),
-					Fields: []otlog.Field{
-						otlog.String("error", err.Error()),
-					},
-				},
-			},
-		})
+		//span.FinishWithOptions(opentracing.FinishOptions{
+		//	LogRecords: []opentracing.LogRecord{
+		//		{
+		//			Timestamp: time.Now(),
+		//			Fields: []otlog.Field{
+		//				otlog.String("error", err.Error()),
+		//			},
+		//		},
+		//	},
+		//})
 
 		ctx.Error(0, "unable to save the index: %s", err)
 		logrus.WithField("err", err).Error("unable to save the index")
@@ -403,96 +398,5 @@ func (i *evalKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error)
 }
 
 func (i *evalKeyValueIter) Close(ctx *sql.Context) error {
-	return i.iter.Close(ctx)
-}
-
-type loggingPartitionKeyValueIter struct {
-	log  *logrus.Entry
-	iter sql.PartitionIndexKeyValueIter
-	rows uint64
-}
-
-func newLoggingPartitionKeyValueIter(
-	log *logrus.Entry,
-	iter sql.PartitionIndexKeyValueIter,
-) *loggingPartitionKeyValueIter {
-	return &loggingPartitionKeyValueIter{
-		log:  log,
-		iter: iter,
-	}
-}
-
-func (i *loggingPartitionKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, iter, err := i.iter.Next(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return p, newLoggingKeyValueIter(i.log, iter, &i.rows), nil
-}
-
-func (i *loggingPartitionKeyValueIter) Close(ctx *sql.Context) error {
-	return i.iter.Close(ctx)
-}
-
-type loggingKeyValueIter struct {
-	span  opentracing.Span
-	log   *logrus.Entry
-	iter  sql.IndexKeyValueIter
-	rows  *uint64
-	start time.Time
-}
-
-func newLoggingKeyValueIter(
-	log *logrus.Entry,
-	iter sql.IndexKeyValueIter,
-	rows *uint64,
-) *loggingKeyValueIter {
-	return &loggingKeyValueIter{
-		log:   log,
-		iter:  iter,
-		start: time.Now(),
-		rows:  rows,
-	}
-}
-
-func (i *loggingKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
-	if i.span == nil {
-		i.span, _ = ctx.Span("plan.createIndex.iterator",
-			opentracing.Tags{
-				"start": i.rows,
-			},
-		)
-	}
-
-	(*i.rows)++
-	if *i.rows%sql.IndexBatchSize == 0 {
-		duration := time.Since(i.start)
-
-		i.log.WithFields(logrus.Fields{
-			"duration": duration,
-			"rows":     *i.rows,
-		}).Debugf("still creating index")
-
-		if i.span != nil {
-			i.span.LogKV("duration", duration.String())
-			i.span.Finish()
-			i.span = nil
-		}
-
-		i.start = time.Now()
-	}
-
-	val, loc, err := i.iter.Next(ctx)
-	if err != nil {
-		i.span.LogKV("error", err)
-		i.span.Finish()
-		i.span = nil
-	}
-
-	return val, loc, err
-}
-
-func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
 }

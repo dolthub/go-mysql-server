@@ -20,7 +20,6 @@ import (
 	"reflect"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
@@ -505,9 +504,8 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 }
 
 func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("analyze", opentracing.Tags{
-		//"plan": , n.String(),
-	})
+	span, ctx := ctx.Span("analyze")
+	defer span.Finish()
 
 	var (
 		same    = transform.SameTree
@@ -528,13 +526,6 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 			a.PopDebugContext()
 		}
 	}
-
-	defer func() {
-		if n != nil {
-			span.SetTag("IsResolved", n.Resolved())
-		}
-		span.Finish()
-	}()
 
 	return n, allSame, err
 }

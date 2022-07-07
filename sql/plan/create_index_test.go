@@ -74,16 +74,6 @@ func TestCreateIndexAsync(t *testing.T) {
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}}, idx)
-
-	found := false
-	for _, span := range tracer.Spans {
-		if span == "plan.createIndex" {
-			found = true
-			break
-		}
-	}
-
-	require.True(found)
 }
 
 func TestCreateIndexNotIndexableExprs(t *testing.T) {
@@ -182,16 +172,6 @@ func TestCreateIndexSync(t *testing.T) {
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}}, idx)
-
-	found := false
-	for _, span := range tracer.Spans {
-		if span == "plan.createIndex" {
-			found = true
-			break
-		}
-	}
-
-	require.True(found)
 }
 
 func TestCreateIndexChecksum(t *testing.T) {

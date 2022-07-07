@@ -44,7 +44,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/test"
 )
 
 // TestQueries tests a variety of queries against databases and tables provided by the given harness.
@@ -4287,51 +4286,6 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	for _, tt := range q {
 		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
 	}
-}
-
-func TestTracing(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-
-	tracer := new(test.MemTracer)
-
-	sql.WithTracer(tracer)(ctx)
-
-	sch, iter, err := e.Query(ctx, `SELECT DISTINCT i
-		FROM mytable
-		WHERE s = 'first row'
-		ORDER BY i DESC
-		LIMIT 1`)
-	require.NoError(t, err)
-
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.Len(t, rows, 1)
-	require.NoError(t, err)
-
-	spans := tracer.Spans
-	var expectedSpans = []string{
-		"plan.Limit",
-		"plan.TopN",
-		"plan.Distinct",
-		"plan.Project",
-		"plan.Filter",
-		"plan.IndexedTableAccess",
-	}
-
-	var spanOperations []string
-	for _, s := range spans {
-		// only check the ones inside the execution tree
-		if strings.HasPrefix(s, "plan.") ||
-			strings.HasPrefix(s, "expression.") ||
-			strings.HasPrefix(s, "function.") ||
-			strings.HasPrefix(s, "aggregation.") {
-			spanOperations = append(spanOperations, s)
-		}
-	}
-
-	require.Equal(t, expectedSpans, spanOperations)
 }
 
 func TestCurrentTimestamp(t *testing.T, harness Harness) {

@@ -690,21 +690,27 @@ func (c *Context) QueryTime() time.Time {
 	return c.queryTime
 }
 
+type NoopSpan byte
+
+func (n NoopSpan) Finish() {}
+
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all
 // children of this span.
 func (c *Context) Span(
 	opName string,
 	opts ...opentracing.StartSpanOption,
-) (opentracing.Span, *Context) {
-	parentSpan := opentracing.SpanFromContext(c.Context)
-	if parentSpan != nil {
-		opts = append(opts, opentracing.ChildOf(parentSpan.Context()))
-	}
-	span := c.tracer.StartSpan(opName, opts...)
-	ctx := opentracing.ContextWithSpan(c.Context, span)
-
-	return span, c.WithContext(ctx)
+) (NoopSpan, *Context) {
+	// TODO: replace with OpenTelemetry
+	//parentSpan := opentracing.SpanFromContext(c.Context)
+	//if parentSpan != nil {
+	//	opts = append(opts, opentracing.ChildOf(parentSpan.Context()))
+	//}
+	//span := c.tracer.StartSpan(opName, opts...)
+	//ctx := opentracing.ContextWithSpan(c.Context, span)
+	//
+	//return span, c.WithContext(ctx)
+	return NoopSpan(0), c
 }
 
 // NewSubContext creates a new sub-context with the current context as parent. Returns the resulting context.CancelFunc
@@ -794,7 +800,16 @@ type Services struct {
 
 // NewSpanIter creates a RowIter executed in the given span.
 // Currently inactive, returns the iter returned unaltered.
-func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
+func NewSpanIter(maybeSpan any, iter RowIter) RowIter {
+	if _, ok := maybeSpan.(NoopSpan); ok {
+		return iter
+	}
+	
+	span, ok := maybeSpan.(opentracing.Span)
+	if !ok {
+		return iter
+	}
+
 	// In the default, non traced case, we should not bother with
 	// collecting the timings below.
 	if (span.Tracer() == opentracing.NoopTracer{}) {

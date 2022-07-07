@@ -401,9 +401,10 @@ func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partit
 			if err != nil {
 				return err
 			}
-			count, err := sendAllRows(ctx, iter, rows)
-			span.LogKV("num_rows", count)
+			//count, err := sendAllRows(ctx, iter, rows)
+			//span.LogKV("num_rows", count)
 			span.Finish()
+			_, err = sendAllRows(ctx, iter, rows)
 			if err != nil {
 				return err
 			}
@@ -432,8 +433,9 @@ func iterPartitionRows2(ctx *sql.Context, getRowIter rowIter2PartitionFunc, part
 			if err != nil {
 				return err
 			}
-			count, err := sendAllRows2(ctx, iter, rows, f)
-			span.LogKV("num_rows", count)
+			//count, err := sendAllRows2(ctx, iter, rows, f)
+			//span.LogKV("num_rows", count)
+			_, err = sendAllRows2(ctx, iter, rows, f)
 			span.Finish()
 			if err != nil {
 				return err
