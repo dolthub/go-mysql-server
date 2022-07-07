@@ -798,28 +798,27 @@ type Services struct {
 // NewSpanIter creates a RowIter executed in the given span.
 // Currently inactive, returns the iter returned unaltered.
 func NewSpanIter(maybeSpan any, iter RowIter) RowIter {
-	if _, ok := maybeSpan.(NoopSpan); ok {
-		return iter
-	}
+	// TODO: replace opentracing.Span with opentelemetry
+	return iter
 
-	span, ok := maybeSpan.(opentracing.Span)
-	if !ok {
-		return iter
-	}
-
-	// In the default, non traced case, we should not bother with
-	// collecting the timings below.
-	if (span.Tracer() == opentracing.NoopTracer{}) {
-		return iter
-	} else {
-		var iter2 RowIter2
-		iter2, _ = iter.(RowIter2)
-		return &spanIter{
-			span:  span,
-			iter:  iter,
-			iter2: iter2,
-		}
-	}
+	//span, ok := maybeSpan.(opentracing.Span)
+	//if !ok {
+	//	return iter
+	//}
+	//
+	//// In the default, non traced case, we should not bother with
+	//// collecting the timings below.
+	//if (span.Tracer() == opentracing.NoopTracer{}) {
+	//	return iter
+	//} else {
+	//	var iter2 RowIter2
+	//	iter2, _ = iter.(RowIter2)
+	//	return &spanIter{
+	//		span:  span,
+	//		iter:  iter,
+	//		iter2: iter2,
+	//	}
+	//}
 }
 
 type spanIter struct {
