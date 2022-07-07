@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/trace"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -134,13 +134,20 @@ func TestLocks(t *testing.T) {
 }
 
 type mockSpan struct {
-	opentracing.Span
+	trace.Span
 	finished bool
 }
 
-func (m *mockSpan) Finish() {
+func (m *mockSpan) End(options ...trace.SpanEndOption) {
 	m.finished = true
+	m.Span.End(options...)
 }
+
+func newMockSpan(ctx context.Context) (context.Context, *mockSpan) {
+	ctx, span := trace.NewNoopTracerProvider().Tracer("").Start(ctx, "")
+	return ctx, &mockSpan{span, false}
+}
+
 
 func TestRootSpanFinish(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
@@ -148,14 +155,15 @@ func TestRootSpanFinish(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
-	ctx := harness.NewContext()
-	sql.WithRootSpan(fakeSpan)(ctx)
+	sqlCtx := harness.NewContext()
+	ctx, fakeSpan := newMockSpan(sqlCtx)
+	sql.WithRootSpan(fakeSpan)(sqlCtx)
+	sqlCtx = sqlCtx.WithContext(ctx)
 
-	sch, iter, err := e.Query(ctx, "SELECT 1")
+	sch, iter, err := e.Query(sqlCtx, "SELECT 1")
 	require.NoError(t, err)
 
-	_, err = sql.RowIterToRows(ctx, sch, iter)
+	_, err = sql.RowIterToRows(sqlCtx, sch, iter)
 	require.NoError(t, err)
 
 	require.True(t, fakeSpan.finished)

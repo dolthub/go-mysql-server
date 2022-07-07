@@ -25,8 +25,8 @@ import (
 )
 
 func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_views")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_views")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		urt, ok := n.(*plan.UnresolvedTable)

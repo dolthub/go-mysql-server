@@ -23,7 +23,7 @@ import (
 
 func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_subqueries")
-	defer span.Finish()
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
@@ -53,7 +53,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 
 func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("finalize_subqueries")
-	defer span.Finish()
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
@@ -83,7 +83,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 
 func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("flatten_table_aliases")
-	defer span.Finish()
+	defer span.End()
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.TableAlias:
@@ -321,7 +321,7 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 // SubqueryAlias resolution to happen.
 func setViewTargetSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("set_view_target_schema")
-	defer span.Finish()
+	defer span.End()
 
 	if _, ok := n.(*plan.ShowColumns); !ok {
 		return n, transform.SameTree, nil

@@ -122,8 +122,8 @@ func getOuterScopeIndexes(
 	scope *Scope,
 	tableAliases TableAliases,
 ) ([]subqueryIndexLookup, error) {
-	indexSpan, _ := ctx.Span("getOuterScopeIndexes")
-	defer indexSpan.Finish()
+	indexSpan, ctx := ctx.Span("getOuterScopeIndexes")
+	defer indexSpan.End()
 
 	var indexes map[string]sql.Index
 	var exprsByTable joinExpressionsByTable

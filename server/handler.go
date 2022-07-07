@@ -27,7 +27,8 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/go-kit/kit/metrics/discard"
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/attribute"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -774,7 +775,7 @@ var (
 )
 
 func observeQuery(ctx *sql.Context, query string) func(err error) {
-	span, _ := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
+	span, ctx := ctx.Span("query", trace.WithAttributes(attribute.String("query", query)))
 
 	t := time.Now()
 	return func(err error) {
@@ -785,6 +786,6 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 			QueryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
 		}
 
-		span.Finish()
+		span.End()
 	}
 }

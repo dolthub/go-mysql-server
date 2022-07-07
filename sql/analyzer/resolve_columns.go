@@ -385,7 +385,7 @@ const (
 // the expression's child node.
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_columns")
-	defer span.Finish()
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {

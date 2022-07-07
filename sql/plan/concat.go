@@ -56,7 +56,7 @@ func (c *Concat) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Concat")
 	li, err := c.left.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	i := newConcatIter(

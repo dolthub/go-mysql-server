@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -38,7 +38,7 @@ type Config struct {
 	Address string
 	// Tracer to use in the server. By default, a noop tracer will be used if
 	// no tracer is provided.
-	Tracer opentracing.Tracer
+	Tracer trace.Tracer
 	// Version string to advertise in running server
 	Version string
 	// ConnReadTimeout is the server's read timeout
