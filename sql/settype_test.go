@@ -28,7 +28,7 @@ import (
 func TestSetCompare(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		val1        interface{}
 		val2        interface{}
 		expectedCmp int
@@ -64,7 +64,7 @@ func TestSetCompare(t *testing.T) {
 func TestSetCompareErrors(t *testing.T) {
 	tests := []struct {
 		vals      []string
-		collation Collation
+		collation CollationID
 		val1      interface{}
 		val2      interface{}
 	}{
@@ -84,7 +84,7 @@ func TestSetCompareErrors(t *testing.T) {
 func TestSetCreate(t *testing.T) {
 	tests := []struct {
 		vals         []string
-		collation    Collation
+		collation    CollationID
 		expectedVals map[string]uint64
 		expectedErr  bool
 	}{
@@ -142,7 +142,7 @@ func TestSetCreateTooLarge(t *testing.T) {
 func TestSetConvert(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
@@ -231,7 +231,7 @@ func TestSetMarshalMax(t *testing.T) {
 func TestSetString(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		expectedStr string
 	}{
 		{[]string{"one"}, Collation_Default, "SET('one')"},

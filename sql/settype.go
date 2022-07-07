@@ -50,8 +50,8 @@ var (
 // The type of the returned value is uint64.
 type SetType interface {
 	Type
-	CharacterSet() CharacterSet
-	Collation() Collation
+	CharacterSet() CharacterSetID
+	Collation() CollationID
 	// NumberOfElements returns the number of elements in this set.
 	NumberOfElements() uint16
 	// BitsToString takes a previously-converted value and returns it as a string.
@@ -61,14 +61,14 @@ type SetType interface {
 }
 
 type setType struct {
-	collation         Collation
+	collation         CollationID
 	compareToOriginal map[string]string
 	valToBit          map[string]uint64
 	bitToVal          map[uint64]string
 }
 
 // CreateSetType creates a SetType.
-func CreateSetType(values []string, collation Collation) (SetType, error) {
+func CreateSetType(values []string, collation CollationID) (SetType, error) {
 	if len(values) == 0 {
 		return nil, fmt.Errorf("number of values may not be zero")
 	}
@@ -86,8 +86,8 @@ func CreateSetType(values []string, collation Collation) (SetType, error) {
 		}
 		/// For binary or case-sensitive collations, lettercase is taken into account when assigning values to the column.
 		//TODO: add the other case-sensitive collations
-		switch collation.Name {
-		case Collation_binary.Name:
+		switch collation {
+		case Collation_binary:
 			if _, ok := compareToOriginal[value]; ok {
 				return nil, ErrDuplicateEntrySet.New(value)
 			}
@@ -114,7 +114,7 @@ func CreateSetType(values []string, collation Collation) (SetType, error) {
 }
 
 // MustCreateSetType is the same as CreateSetType except it panics on errors.
-func MustCreateSetType(values []string, collation Collation) SetType {
+func MustCreateSetType(values []string, collation CollationID) SetType {
 	et, err := CreateSetType(values, collation)
 	if err != nil {
 		panic(err)
@@ -271,12 +271,12 @@ func (t setType) Zero() interface{} {
 }
 
 // CharacterSet implements EnumType interface.
-func (t setType) CharacterSet() CharacterSet {
+func (t setType) CharacterSet() CharacterSetID {
 	return t.collation.CharacterSet()
 }
 
 // Collation implements EnumType interface.
-func (t setType) Collation() Collation {
+func (t setType) Collation() CollationID {
 	return t.collation
 }
 
@@ -347,8 +347,8 @@ func (t setType) convertStringToBitField(str string) (uint64, error) {
 	vals := strings.Split(str, ",")
 	for _, val := range vals {
 		var compareVal string
-		switch t.collation.Name {
-		case Collation_binary.Name:
+		switch t.collation {
+		case Collation_binary:
 			compareVal = val
 		default:
 			compareVal = strings.ToLower(strings.TrimRight(val, " "))
