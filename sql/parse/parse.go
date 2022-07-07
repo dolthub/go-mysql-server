@@ -1789,38 +1789,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		ignore = true
 	}
 
-	columnWithDefaultValues := make(map[int]bool)
-
-	if e, ok := src.(*plan.Values); ok {
-		for i, tuple := range e.ExpressionTuples {
-			var needCols []sql.Expression
-			for j, s := range tuple {
-				if _, ok := s.(*expression.DefaultColumn); ok {
-					columnWithDefaultValues[j] = true
-				} else {
-					needCols = append(needCols, s)
-				}
-			}
-
-			// Only re-assign if found column with default values
-			if len(columnWithDefaultValues) == 0 {
-				break
-			}
-
-			e.ExpressionTuples[i] = needCols
-		}
-	}
-
-	var columns []string
-	if len(columnWithDefaultValues) > 0 {
-		for i, c := range columnsToStrings(i.Columns) {
-			if _, found := columnWithDefaultValues[i]; !found {
-				columns = append(columns, c)
-			}
-		}
-	} else {
-		columns = columnsToStrings(i.Columns)
-	}
+	var columns = columnsToStrings(i.Columns)
 
 	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columns, onDupExprs, ignore), nil
 }
