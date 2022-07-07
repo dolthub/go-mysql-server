@@ -476,7 +476,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.InsertInto:
-			newSource, _, err := transform.NodeExprs(node.Source, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			newSource, identity, err := transform.NodeExprs(node.Source, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
@@ -484,19 +484,17 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 
 				sch := node.Destination.Schema()
 
-				// TODO: Are these always going to be in the same order as the schema?
-				if colIndex >= len(sch) {
-					// TODO: This is hacky! :-(
-					colIndex = colIndex % len(sch)
-				}
+				// InsertInto.Source can contain multiple rows, so loop over the columns in the schema
+				colIndex = colIndex % len(sch)
 				col := sch[colIndex]
 				colIndex++
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 
-			node.Source = newSource
-			n = node
-			return n, false, err
+			if identity == transform.NewTree {
+				node.Source = newSource
+			}
+			return node, identity, err
 		case *plan.InsertDestination:
 			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
@@ -613,6 +611,7 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 	span, _ := ctx.Span("parse_column_defaults")
 	defer span.Finish()
 
+	nodeChanged := false
 	switch nn := n.(type) {
 	case *plan.InsertInto:
 		if !nn.Destination.Resolved() {
@@ -620,57 +619,50 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 		}
 		var err error
 		n, err = nn.WithChildren(plan.NewInsertDestination(nn.Destination.Schema(), nn.Destination))
+		nn = n.(*plan.InsertInto)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
-		// TODO: Hacky... can we clean this up? This is needed so we don't lose the changes above to
-		//       set the InsertDestination as the Destination of this node.
-		nn = n.(*plan.InsertInto)
 
 		err = fillInColumnDefaults(ctx, nn)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		// TODO: Duplicated... refactor this to clean up
-		newNode, _, err := transform.NodeExprsWithNode(nn.Source, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			eWrapper, ok := e.(*expression.Wrapper)
-			if !ok {
-				return e, transform.SameTree, nil
-			}
-			switch n.(type) {
-			case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
-				n, same, err := parseColumnDefaultsForWrapper(ctx, eWrapper)
-				return n, same, err
-			default:
-				return e, transform.SameTree, nil
-			}
-		})
+		// InsertInto.Source needs special handling, since it is not modeled as a Child
+		newNode, _, err := transformColumnDefaultsForNode(ctx, nn.Source)
 		if err != nil {
-			panic(err)
+			return nil, transform.SameTree, err
 		}
 
 		nn.Source = newNode
 		n = nn
+		nodeChanged = true
 	}
 
-	// TODO: Ignore identity since we change the node earlier and need that to show up...
-	node, _, err := transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	node, identity, err := transformColumnDefaultsForNode(ctx, n)
+	if nodeChanged {
+		identity = transform.NewTree
+	}
+
+	return node, identity, err
+}
+
+// transformColumnDefaultsForNode walks over the expressions contained in the specified node and transforms all
+// UnresolvedColumnDefaultValues into ColumnDefaultValues.
+func transformColumnDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(input, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {
 			return e, transform.SameTree, nil
 		}
-		switch n.(type) {
-		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
-			n, same, err := parseColumnDefaultsForWrapper(ctx, eWrapper)
-			return n, same, err
+		switch node.(type) {
+		case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
+			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, transform.SameTree, nil
 		}
 	})
-
-	return node, transform.NewTree, err
 }
 
 // fillInColumnDefaults fills in column default expressions for any source data that explicitly used
