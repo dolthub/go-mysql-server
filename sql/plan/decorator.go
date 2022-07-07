@@ -29,6 +29,13 @@ type DecoratedNode struct {
 var _ sql.Node = (*DecoratedNode)(nil)
 var _ sql.Node2 = (*DecoratedNode)(nil)
 
+func (n *DecoratedNode) Cost(ctx *sql.Context) float64 {
+	if c, ok := n.Child.(sql.Costable); ok {
+		return c.Cost(ctx)
+	}
+	return 0
+}
+
 func (n *DecoratedNode) RowIter(context *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return n.Child.RowIter(context, row)
 }

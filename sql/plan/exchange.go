@@ -52,6 +52,13 @@ func NewExchange(
 	}
 }
 
+func (e *Exchange) Cost(ctx *sql.Context) float64 {
+	if c, ok := e.Child.(sql.Costable); ok {
+		return c.Cost(ctx)
+	}
+	return 0
+}
+
 // RowIter implements the sql.Node interface.
 func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var t sql.Table

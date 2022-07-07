@@ -135,7 +135,7 @@ func EstimatePlanCost(ctx *sql.Context, node sql.Node) (float64, error) {
 	}
 
 	if n, ok := node.(sql.Costable); ok {
-		return n.Cost(), nil
+		return n.Cost(ctx), nil
 	}
 
 	var cost float64

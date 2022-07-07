@@ -59,6 +59,61 @@ func NewStaticIndexedTableAccess(resolvedTable *ResolvedTable, lookup sql.IndexL
 	}
 }
 
+func (i *IndexedTableAccess) Cost(ctx *sql.Context) float64 {
+	statsTbl, ok := i.ResolvedTable.Table.(sql.StatisticsTable)
+	if !ok {
+		return 0
+	}
+
+	stats, err := statsTbl.Statistics(ctx)
+	if err != nil {
+		return 0
+	}
+
+	if len(stats.HistogramMap()) == 0 {
+		return float64(stats.RowCount())
+	}
+
+	ranges := i.lookup.Ranges()
+	r := ranges[0][0]
+	lb := sql.GetRangeCutKey(r.LowerBound)
+	ub := sql.GetRangeCutKey(r.UpperBound)
+
+	i.lookup.Index()
+	idx := i.Index()
+	colExprTypes := idx.ColumnExpressionTypes(ctx)
+	colExpr := colExprTypes[0].Expression
+	colName := strings.Split(colExpr, ".")[1]
+
+	hist, err := stats.Histogram(colName)
+	if err != nil {
+		return 0
+	}
+
+	var freq float64
+	for _, bucket := range hist.Buckets {
+		if bucket.LowerBound < float64(lb.(int8)) {
+			continue
+		}
+		if bucket.LowerBound > float64(ub.(int8)) {
+			break
+		}
+		freq += bucket.Frequency
+
+	}
+
+	return freq * float64(hist.Count)
+
+	// TODO: future implementation should do this
+	//costableIndex, ok := i.lookup.(sql.Costable)
+	//if !ok {
+	//	return 0
+	//}
+	//costableIndex.Cost(ctx)
+
+	return 0
+}
+
 func (i *IndexedTableAccess) Resolved() bool {
 	return i.ResolvedTable.Resolved()
 }

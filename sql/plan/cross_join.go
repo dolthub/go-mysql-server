@@ -38,6 +38,18 @@ func NewCrossJoin(left sql.Node, right sql.Node) *CrossJoin {
 	}
 }
 
+func (p *CrossJoin) Cost(ctx *sql.Context) float64 {
+	l, ok := p.left.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	r, ok := p.right.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	return l.Cost(ctx) * r.Cost(ctx)
+}
+
 // Schema implements the Node interface.
 func (p *CrossJoin) Schema() sql.Schema {
 	return append(p.left.Schema(), p.right.Schema()...)

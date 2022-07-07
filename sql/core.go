@@ -24,7 +24,8 @@ import (
 
 // Costable is something that has cost.
 type Costable interface {
-	Cost() float64
+	Cost(ctx *Context) float64
+	//IndexWithStats(ctx *Context, table sql.StatisticsTable)
 }
 
 // Nameable is something that has a name.
