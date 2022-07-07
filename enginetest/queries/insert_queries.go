@@ -1141,6 +1141,7 @@ var InsertScripts = []ScriptTest{
 			"CREATE TABLE t1(id int DEFAULT '2', vc varchar(255) DEFAULT '2');",
 			"CREATE TABLE t2(id varchar(100) DEFAULT (uuid()));",
 			"CREATE TABLE t3(a int DEFAULT '1', b int default (2 * a));",
+			"CREATE TABLE t4(c0 varchar(10) null default 'c0', c1 varchar(10) null default 'c1');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1198,6 +1199,14 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "SELECT b from t3 order by b asc",
 				Expected: []sql.Row{{2}, {2}, {4}},
+			},
+			{
+				Query:    "INSERT INTO T4 (c1, c0) values (DEFAULT, NULL)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t4",
+				Expected: []sql.Row{{nil, "c1"}},
 			},
 		},
 	},
