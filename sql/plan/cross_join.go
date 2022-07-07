@@ -18,8 +18,8 @@ import (
 	"io"
 	"reflect"
 
-        "go.opentelemetry.io/otel/attribute"
-        "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )

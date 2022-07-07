@@ -24,9 +24,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 

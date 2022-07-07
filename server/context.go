@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
-	"go.opentelemetry.io/otel/trace"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"

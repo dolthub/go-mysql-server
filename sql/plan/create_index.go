@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-        "go.opentelemetry.io/otel/attribute"
-        "go.opentelemetry.io/otel/trace"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"

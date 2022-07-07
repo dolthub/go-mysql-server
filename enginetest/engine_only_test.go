@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"go.opentelemetry.io/otel/trace"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -147,7 +147,6 @@ func newMockSpan(ctx context.Context) (context.Context, *mockSpan) {
 	ctx, span := trace.NewNoopTracerProvider().Tracer("").Start(ctx, "")
 	return ctx, &mockSpan{span, false}
 }
-
 
 func TestRootSpanFinish(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()

@@ -19,9 +19,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/cespare/xxhash"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"github.com/cespare/xxhash"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"

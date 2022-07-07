@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"strings"
 
-	"go.opentelemetry.io/otel/attribute"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
