@@ -84,10 +84,6 @@ func TestNoDatabaseSelected(t *testing.T) {
 	enginetest.TestNoDatabaseSelected(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTracing(t *testing.T) {
-	enginetest.TestTracing(t, enginetest.NewDefaultMemoryHarness())
-}
-
 func TestCurrentTimestamp(t *testing.T) {
 	enginetest.TestCurrentTimestamp(t, enginetest.NewDefaultMemoryHarness())
 }

@@ -16,10 +16,10 @@ package plan
 
 import (
 	"fmt"
-	opentracing "github.com/opentracing/opentracing-go"
+	"strings"
+
 	"github.com/sirupsen/logrus"
 	errors "gopkg.in/src-d/go-errors.v1"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -203,12 +203,7 @@ func (c *CreateIndex) createIndex(
 	done chan<- struct{},
 	ready <-chan struct{},
 ) {
-	span, ctx := ctx.Span("plan.createIndex",
-		opentracing.Tags{
-			"index":  index.ID(),
-			"table":  index.Table(),
-			"driver": index.Driver(),
-		})
+	span, ctx := ctx.Span("plan.createIndex")
 
 	err := driver.Save(ctx, index, iter)
 	close(done)

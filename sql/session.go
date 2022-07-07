@@ -697,10 +697,7 @@ func (n NoopSpan) Finish() {}
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all
 // children of this span.
-func (c *Context) Span(
-	opName string,
-	opts ...opentracing.StartSpanOption,
-) (NoopSpan, *Context) {
+func (c *Context) Span(string) (NoopSpan, *Context) {
 	// TODO: replace with OpenTelemetry
 	//parentSpan := opentracing.SpanFromContext(c.Context)
 	//if parentSpan != nil {
@@ -804,7 +801,7 @@ func NewSpanIter(maybeSpan any, iter RowIter) RowIter {
 	if _, ok := maybeSpan.(NoopSpan); ok {
 		return iter
 	}
-	
+
 	span, ok := maybeSpan.(opentracing.Span)
 	if !ok {
 		return iter

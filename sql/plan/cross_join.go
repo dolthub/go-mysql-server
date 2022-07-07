@@ -16,9 +16,6 @@ package plan
 
 import (
 	"io"
-	"reflect"
-
-	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -50,23 +47,7 @@ func (p *CrossJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var left, right string
-	if leftTable, ok := p.left.(sql.Nameable); ok {
-		left = leftTable.Name()
-	} else {
-		left = reflect.TypeOf(p.left).String()
-	}
-
-	if rightTable, ok := p.right.(sql.Nameable); ok {
-		right = rightTable.Name()
-	} else {
-		right = reflect.TypeOf(p.right).String()
-	}
-
-	span, ctx := ctx.Span("plan.CrossJoin", opentracing.Tags{
-		"left":  left,
-		"right": right,
-	})
+	span, ctx := ctx.Span("plan.CrossJoin")
 
 	li, err := p.left.RowIter(ctx, row)
 	if err != nil {

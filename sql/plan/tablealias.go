@@ -15,10 +15,6 @@
 package plan
 
 import (
-	"reflect"
-
-	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -70,14 +66,7 @@ func (t *TableAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 
 // RowIter implements the Node interface.
 func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var table string
-	if tbl, ok := t.Child.(sql.Nameable); ok {
-		table = tbl.Name()
-	} else {
-		table = reflect.TypeOf(t.Child).String()
-	}
-
-	span, ctx := ctx.Span("sql.TableAlias", opentracing.Tag{Key: "table", Value: table})
+	span, ctx := ctx.Span("sql.TableAlias")
 
 	iter, err := t.Child.RowIter(ctx, row)
 	if err != nil {

@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"io"
 
-	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -65,7 +63,7 @@ func (l Limit) WithCalcFoundRows(v bool) *Limit {
 
 // RowIter implements the Node interface.
 func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.Limit})
+	span, ctx := ctx.Span("plan.Limit")
 
 	limit, err := getInt64Value(ctx, l.Limit)
 	if err != nil {

@@ -17,10 +17,7 @@ package plan
 import (
 	"io"
 	"os"
-	"reflect"
 	"strings"
-
-	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -391,23 +388,7 @@ func (t JoinType) String() string {
 }
 
 func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row, scopeLen int, mode joinMode) (sql.RowIter, error) {
-	var leftName, rightName string
-	if leftTable, ok := left.(sql.Nameable); ok {
-		leftName = leftTable.Name()
-	} else {
-		leftName = reflect.TypeOf(left).String()
-	}
-
-	if rightTable, ok := right.(sql.Nameable); ok {
-		rightName = rightTable.Name()
-	} else {
-		rightName = reflect.TypeOf(right).String()
-	}
-
-	span, ctx := ctx.Span("plan."+typ.String(), opentracing.Tags{
-		"left":  leftName,
-		"right": rightName,
-	})
+	span, ctx := ctx.Span("plan." + typ.String())
 
 	var inMemorySession bool
 	val, err := ctx.GetSessionVariable(ctx, inMemoryJoinSessionVar)

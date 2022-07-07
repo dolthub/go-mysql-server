@@ -16,9 +16,6 @@ package plan
 
 import (
 	"io"
-	"reflect"
-
-	"github.com/opentracing/opentracing-go"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -110,23 +107,7 @@ func indexedJoinRowIter(
 	joinType JoinType,
 	scopeLen int,
 ) (sql.RowIter, error) {
-	var leftName, rightName string
-	if leftTable, ok := left.(sql.Nameable); ok {
-		leftName = leftTable.Name()
-	} else {
-		leftName = reflect.TypeOf(left).String()
-	}
-
-	if rightTable, ok := right.(sql.Nameable); ok {
-		rightName = rightTable.Name()
-	} else {
-		rightName = reflect.TypeOf(right).String()
-	}
-
-	span, ctx := ctx.Span("plan.indexedJoin", opentracing.Tags{
-		"left":  leftName,
-		"right": rightName,
-	})
+	span, ctx := ctx.Span("plan.indexedJoin")
 
 	l, err := left.RowIter(ctx, parentRow)
 	if err != nil {

@@ -15,8 +15,6 @@
 package plan
 
 import (
-	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -54,7 +52,7 @@ func (o *Offset) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (o *Offset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Offset", opentracing.Tag{Key: "offset", Value: o.Offset})
+	span, ctx := ctx.Span("plan.Offset")
 
 	offset, err := getInt64Value(ctx, o.Offset)
 	if err != nil {

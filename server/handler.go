@@ -27,7 +27,6 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/go-kit/kit/metrics/discard"
-	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -771,7 +770,7 @@ var (
 )
 
 func observeQuery(ctx *sql.Context, query string) func(err error) {
-	span, _ := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
+	span, _ := ctx.Span("query")
 
 	t := time.Now()
 	return func(err error) {

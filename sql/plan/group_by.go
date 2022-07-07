@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash"
-	opentracing "github.com/opentracing/opentracing-go"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -86,10 +85,7 @@ func (g *GroupBy) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (g *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.GroupBy", opentracing.Tags{
-		"groupings":  len(g.GroupByExprs),
-		"aggregates": len(g.SelectedExprs),
-	})
+	span, ctx := ctx.Span("plan.GroupBy")
 
 	i, err := g.Child.RowIter(ctx, row)
 	if err != nil {
