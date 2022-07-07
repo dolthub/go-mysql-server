@@ -710,7 +710,7 @@ func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 	}
 
 	if insertInto.Source == nil {
-		return fmt.Errorf("no values specified for insert into statement")
+		return fmt.Errorf("no source specified for insert into statement")
 	}
 
 	// Walk through the expression tuples looking for any column defaults to fill in
