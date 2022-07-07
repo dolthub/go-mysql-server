@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -696,21 +695,11 @@ func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 	// Pull the column default values out into the same order the columns were specified
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(insertInto.ColumnNames))
 	for i, columnName := range insertInto.ColumnNames {
-		found := false
-		for _, col := range schema {
-			if strings.ToLower(col.Name) == strings.ToLower(columnName) {
-				columnDefaultValues[i] = col.Default
-				found = true
-				break
-			}
-		}
-		if !found {
+		index := schema.IndexOfColName(columnName)
+		if index == -1 {
 			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
 		}
-	}
-
-	if insertInto.Source == nil {
-		return fmt.Errorf("no source specified for insert into statement")
+		columnDefaultValues[i] = schema[index].Default
 	}
 
 	// Walk through the expression tuples looking for any column defaults to fill in
@@ -724,7 +713,7 @@ func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 					return e, transform.SameTree, nil
 				})
 				if err != nil {
-					panic(err)
+					return err
 				}
 				exprTuple[i] = expression.WrapExpression(newExpression)
 			}
