@@ -403,8 +403,8 @@ func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partit
 			}
 			//count, err := sendAllRows(ctx, iter, rows)
 			//span.LogKV("num_rows", count)
-			span.Finish()
 			_, err = sendAllRows(ctx, iter, rows)
+			span.Finish()
 			if err != nil {
 				return err
 			}

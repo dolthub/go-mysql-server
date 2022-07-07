@@ -209,17 +209,6 @@ func (c *CreateIndex) createIndex(
 	close(done)
 
 	if err != nil {
-		//span.FinishWithOptions(opentracing.FinishOptions{
-		//	LogRecords: []opentracing.LogRecord{
-		//		{
-		//			Timestamp: time.Now(),
-		//			Fields: []otlog.Field{
-		//				otlog.String("error", err.Error()),
-		//			},
-		//		},
-		//	},
-		//})
-
 		ctx.Error(0, "unable to save the index: %s", err)
 		logrus.WithField("err", err).Error("unable to save the index")
 
