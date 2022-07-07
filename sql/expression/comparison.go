@@ -37,6 +37,31 @@ type Comparer interface {
 // ErrNilOperand ir returned if some or both of the comparison's operands is nil.
 var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
+// ContainsImpreciseComparison searches an expression tree for comparison
+// expressions that require a conversion or type promotion.
+// This utility helps determine if filter predicates can be pushed down.
+func ContainsImpreciseComparison(e sql.Expression) bool {
+	var imprecise bool
+	sql.Inspect(e, func(expr sql.Expression) bool {
+		if cmp, ok := expr.(Comparer); ok {
+			left, right := cmp.Left().Type(), cmp.Right().Type()
+
+			// integer comparisons are exact
+			if sql.IsInteger(left) && sql.IsInteger(right) {
+				return true
+			}
+
+			// comparisons with type conversions are sometimes imprecise
+			if !left.Equals(right) {
+				imprecise = true
+				return false
+			}
+		}
+		return true
+	})
+	return imprecise
+}
+
 type comparison struct {
 	BinaryExpression
 }

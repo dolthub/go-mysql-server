@@ -195,7 +195,14 @@ func (idx *Index) ID() string {
 func (idx *Index) Table() string { return idx.TableName }
 
 func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
-	return filters
+	var handled []sql.Expression
+	for _, expr := range filters {
+		if expression.ContainsImpreciseComparison(expr) {
+			continue
+		}
+		handled = append(handled, expr)
+	}
+	return handled
 }
 
 // ExpressionsIndex is an index made out of one or more expressions (usually field expressions), linked to a Table.
