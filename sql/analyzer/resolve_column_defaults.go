@@ -475,6 +475,28 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				colIndex++
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
+		case *plan.InsertInto:
+			newSource, _, err := transform.NodeExprs(node.Source, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				sch := node.Destination.Schema()
+
+				// TODO: Are these always going to be in the same order as the schema?
+				if colIndex >= len(sch) {
+					// TODO: This is hacky! :-(
+					colIndex = colIndex % len(sch)
+				}
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+
+			node.Source = newSource
+			n = node
+			return n, false, err
 		case *plan.InsertDestination:
 			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
@@ -602,13 +624,39 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 			return nil, transform.SameTree, err
 		}
 
+		// TODO: Hacky... can we clean this up? This is needed so we don't lose the changes above to
+		//       set the InsertDestination as the Destination of this node.
+		nn = n.(*plan.InsertInto)
+
 		err = fillInColumnDefaults(ctx, nn)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		// TODO: Duplicated... refactor this to clean up
+		newNode, _, err := transform.NodeExprsWithNode(nn.Source, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			eWrapper, ok := e.(*expression.Wrapper)
+			if !ok {
+				return e, transform.SameTree, nil
+			}
+			switch n.(type) {
+			case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
+				n, same, err := parseColumnDefaultsForWrapper(ctx, eWrapper)
+				return n, same, err
+			default:
+				return e, transform.SameTree, nil
+			}
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		nn.Source = newNode
+		n = nn
 	}
 
-	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	// TODO: Ignore identity since we change the node earlier and need that to show up...
+	node, _, err := transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {
 			return e, transform.SameTree, nil
@@ -621,6 +669,8 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 			return e, transform.SameTree, nil
 		}
 	})
+
+	return node, transform.NewTree, err
 }
 
 // fillInColumnDefaults fills in column default expressions for any source data that explicitly used
@@ -671,7 +721,7 @@ func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 				if err != nil {
 					panic(err)
 				}
-				exprTuple[i] = newExpression
+				exprTuple[i] = expression.WrapExpression(newExpression)
 			}
 		}
 	}
