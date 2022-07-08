@@ -18,6 +18,12 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 var CreateTableQueries = []WriteQueryTest{
 	{
+		WriteQuery:          `create table floattypedefs (a float(10), b float(10, 2), c double(10, 2))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE floattypedefs",
+		ExpectedSelect:      []sql.Row{sql.Row{"floattypedefs", "CREATE TABLE `floattypedefs` (\n  `a` float,\n  `b` float,\n  `c` double\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
 		WriteQuery:          `CREATE TABLE t1 (a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
