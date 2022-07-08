@@ -17,7 +17,8 @@ package plan
 import (
 	"reflect"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -77,11 +78,11 @@ func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		table = reflect.TypeOf(t.Child).String()
 	}
 
-	span, ctx := ctx.Span("sql.TableAlias", opentracing.Tag{Key: "table", Value: table})
+	span, ctx := ctx.Span("sql.TableAlias", trace.WithAttributes(attribute.String("table", table)))
 
 	iter, err := t.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -505,9 +505,7 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 }
 
 func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("analyze", opentracing.Tags{
-		//"plan": , n.String(),
-	})
+	span, ctx := ctx.Span("analyze")
 
 	var (
 		same    = transform.SameTree
@@ -531,9 +529,9 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 
 	defer func() {
 		if n != nil {
-			span.SetTag("IsResolved", n.Resolved())
+			span.SetAttributes(attribute.Bool("IsResolved", n.Resolved()))
 		}
-		span.Finish()
+		span.End()
 	}()
 
 	return n, allSame, err

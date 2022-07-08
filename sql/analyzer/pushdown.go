@@ -30,7 +30,7 @@ import (
 // sql.IndexAddressableTable will get an appropriate index lookup applied.
 func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("pushdown_filters")
-	defer span.Finish()
+	defer span.End()
 
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
@@ -66,7 +66,7 @@ func pushdownFiltersAtNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 // individual subquery aliases.
 func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("pushdown_subquery_alias_filters")
-	defer span.Finish()
+	defer span.End()
 
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
@@ -83,7 +83,7 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 // pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
 func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("pushdown_projections")
-	defer span.Finish()
+	defer span.End()
 
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
@@ -817,8 +817,8 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 
 // getIndexesByTable returns applicable index lookups for each table named in the query node given
 func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (indexLookupsByTable, error) {
-	indexSpan, _ := ctx.Span("getIndexesByTable")
-	defer indexSpan.Finish()
+	indexSpan, ctx := ctx.Span("getIndexesByTable")
+	defer indexSpan.End()
 
 	tableAliases, err := getTableAliases(node, scope)
 	if err != nil {

@@ -61,7 +61,7 @@ func (i *Into) DebugString() string {
 
 func (i *Into) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Into")
-	defer span.Finish()
+	defer span.End()
 
 	rowIter, err := i.Child.RowIter(ctx, row)
 	if err != nil {

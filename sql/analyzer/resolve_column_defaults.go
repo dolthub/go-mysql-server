@@ -442,8 +442,8 @@ type targetSchema interface {
 }
 
 func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolveColumnDefaults")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolveColumnDefaults")
+	defer span.End()
 
 	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
 	//  returned by Expressions() for these nodes
@@ -607,8 +607,8 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 // amounts to parsing the string representation into an actual expression. We only require an actual column default
 // value for some node types, where the value will be used.
 func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("parse_column_defaults")
-	defer span.Finish()
+	span, ctx := ctx.Span("parse_column_defaults")
+	defer span.End()
 
 	nodeChanged := false
 	switch nn := n.(type) {

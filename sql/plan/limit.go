@@ -18,7 +18,8 @@ import (
 	"fmt"
 	"io"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -65,16 +66,17 @@ func (l Limit) WithCalcFoundRows(v bool) *Limit {
 
 // RowIter implements the Node interface.
 func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.Limit})
+	span, ctx := ctx.Span("plan.Limit", trace.WithAttributes(attribute.Stringer("limit", l.Limit)))
 
 	limit, err := getInt64Value(ctx, l.Limit)
 	if err != nil {
+		span.End()
 		return nil, err
 	}
 
 	childIter, err := l.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &limitIter{

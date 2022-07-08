@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
@@ -57,7 +57,7 @@ type managedSession struct {
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
 	addr        string
-	tracer      opentracing.Tracer
+	tracer      trace.Tracer
 	hasDBFunc   func(ctx *sql.Context, name string) bool
 	memory      *sql.MemoryManager
 	processlist sql.ProcessList
@@ -70,7 +70,7 @@ type SessionManager struct {
 // NewSessionManager creates a SessionManager with the given SessionBuilder.
 func NewSessionManager(
 	builder SessionBuilder,
-	tracer opentracing.Tracer,
+	tracer trace.Tracer,
 	hasDBFunc func(ctx *sql.Context, name string) bool,
 	memory *sql.MemoryManager,
 	processlist sql.ProcessList,
@@ -202,6 +202,8 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		return nil, err
 	}
 
+	ctx, span := s.tracer.Start(ctx, "query")
+
 	context := sql.NewContext(
 		ctx,
 		sql.WithSession(sess),
@@ -210,7 +212,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		sql.WithQuery(query),
 		sql.WithMemoryManager(s.memory),
 		sql.WithProcessList(s.processlist),
-		sql.WithRootSpan(s.tracer.StartSpan("query")),
+		sql.WithRootSpan(span),
 		sql.WithServices(sql.Services{
 			KillConnection: s.killConnection,
 			LoadInfile:     conn.LoadInfile,

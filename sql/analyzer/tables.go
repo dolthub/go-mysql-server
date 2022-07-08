@@ -254,8 +254,8 @@ func (f fieldsByTable) addAll(f2 fieldsByTable) {
 
 // getFieldsByTable returns a map of table name to set of field names in the node provided
 func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
-	colSpan, _ := ctx.Span("getFieldsByTable")
-	defer colSpan.Finish()
+	colSpan, ctx := ctx.Span("getFieldsByTable")
+	defer colSpan.End()
 
 	var fieldsByTable = make(fieldsByTable)
 	transform.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {

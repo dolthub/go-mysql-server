@@ -25,7 +25,8 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -100,8 +101,8 @@ func ParseOne(ctx *sql.Context, query string) (sql.Node, string, string, error) 
 }
 
 func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string, error) {
-	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
-	defer span.Finish()
+	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
+	defer span.End()
 
 	s := strings.TrimSpace(query)
 	if strings.HasSuffix(s, ";") {
