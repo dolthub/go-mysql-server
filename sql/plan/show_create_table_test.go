@@ -33,7 +33,7 @@ func TestShowCreateTable(t *testing.T) {
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false, PrimaryKey: true},
-		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "z`ab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
 		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
 		&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
@@ -55,11 +55,11 @@ func TestShowCreateTable(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `zab` int DEFAULT '0',\n"+
+			"  `z``ab` int DEFAULT '0',\n"+
 			"  `bza` bigint unsigned DEFAULT '0' COMMENT 'hello',\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
-			"  PRIMARY KEY (`baz`,`zab`)\n"+
+			"  PRIMARY KEY (`baz`,`z``ab`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
@@ -219,7 +219,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 		&mockIndex{
 			db:    "testdb",
 			table: "test-table",
-			id:    "qux",
+			id:    "`qux`",
 			exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(3, sql.Int64, "test-table", "foo", true),
 			},
@@ -259,7 +259,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`),\n"+
-			"  UNIQUE KEY `qux` (`foo`),\n"+
+			"  UNIQUE KEY ```qux``` (`foo`),\n"+
 			"  KEY `zug` (`pok`,`foo`) COMMENT 'test comment',\n"+
 			"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
 			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
