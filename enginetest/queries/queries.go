@@ -386,27 +386,6 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
-		Query:    "create table floattypedefs (a float(10), b float(10, 2), c double(10, 2))",
-		Expected: []sql.Row{{sql.OkResult{}}},
-	},
-	{
-		Query: "select * from floattypedefs",
-		ExpectedColumns: sql.Schema{
-			{
-				Name: "a",
-				Type: sql.Float32,
-			},
-			{
-				Name: "b",
-				Type: sql.Float32,
-			},
-			{
-				Name: "c",
-				Type: sql.Float64,
-			},
-		},
-	},
-	{
 		Query: "SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},
