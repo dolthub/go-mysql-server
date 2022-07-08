@@ -542,15 +542,15 @@ func (h *Handler) doQuery(
 	switch len(r.Rows) {
 	case 0:
 		if len(r.Info) > 0 {
-			ctx.GetLogger().Debugf("returning result %s", r.Info)
+			ctx.GetLogger().Tracef("returning result %s", r.Info)
 		} else {
-			ctx.GetLogger().Debugf("returning empty result")
+			ctx.GetLogger().Tracef("returning empty result")
 		}
 	case 1:
-		ctx.GetLogger().Debugf("returning result %v", r)
+		ctx.GetLogger().Tracef("returning result %v", r)
 	}
 
-	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
+	ctx.GetLogger().Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
 
 	// processedAtLeastOneBatch means we already called callback() at least
 	// once, so no need to call it if RowsAffected == 0.
