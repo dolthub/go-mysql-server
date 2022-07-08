@@ -66,7 +66,7 @@ func (h *Having) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Having")
 	iter, err := h.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

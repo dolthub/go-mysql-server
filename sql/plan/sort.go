@@ -58,7 +58,7 @@ func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Sort")
 	i, err := s.UnaryNode.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
@@ -68,7 +68,7 @@ func (s *Sort) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error)
 	span, ctx := ctx.Span("plan.Sort")
 	i, err := s.UnaryNode.Child.(sql.Node2).RowIter2(ctx, f)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, newSortIter(ctx, s, i)).(sql.RowIter2), nil
@@ -304,7 +304,7 @@ func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.TopN")
 	i, err := n.UnaryNode.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

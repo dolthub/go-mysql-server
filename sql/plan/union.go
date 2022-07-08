@@ -57,7 +57,7 @@ func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Union")
 	li, err := u.left.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	ui := &unionIter{

@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// DefaultColumn is an default expression of a column that is not yet resolved.
+// DefaultColumn is a default expression of a column that is not yet resolved.
 type DefaultColumn struct {
 	name string
 }

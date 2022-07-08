@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -43,7 +42,7 @@ func TestHandlerOutput(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -165,7 +164,7 @@ func TestHandlerComPrepare(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -223,7 +222,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -299,7 +298,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -409,7 +408,7 @@ func TestServerEventListener(t *testing.T) {
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			e.MemoryManager,
 			e.ProcessList,
@@ -490,7 +489,7 @@ func TestHandlerKill(t *testing.T) {
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			e.MemoryManager,
 			e.ProcessList,
@@ -572,7 +571,7 @@ func TestHandlerTimeout(t *testing.T) {
 
 	timeOutHandler := NewHandler(
 		e, NewSessionManager(testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -584,7 +583,7 @@ func TestHandlerTimeout(t *testing.T) {
 
 	noTimeOutHandler := NewHandler(
 		e2, NewSessionManager(testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -639,7 +638,7 @@ func TestOkClosedConnection(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -793,7 +792,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),

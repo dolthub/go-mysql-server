@@ -289,6 +289,8 @@ func GetConnInode(c *net.TCPConn) (n uint64, err error) {
 		return
 	}
 
+	defer f.Close()
+
 	socketStr := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), f.Fd())
 	socketLnk, err := os.Readlink(socketStr)
 	if err != nil {

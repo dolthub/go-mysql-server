@@ -18,7 +18,8 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -123,14 +124,14 @@ func indexedJoinRowIter(
 		rightName = reflect.TypeOf(right).String()
 	}
 
-	span, ctx := ctx.Span("plan.indexedJoin", opentracing.Tags{
-		"left":  leftName,
-		"right": rightName,
-	})
+	span, ctx := ctx.Span("plan.indexedJoin", trace.WithAttributes(
+		attribute.String("left", leftName),
+		attribute.String("right", rightName),
+	))
 
 	l, err := left.RowIter(ctx, parentRow)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &indexedJoinIter{

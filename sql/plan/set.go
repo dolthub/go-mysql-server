@@ -77,7 +77,7 @@ func (s *Set) Expressions() []sql.Expression {
 // RowIter implements the sql.Node interface.
 func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
-	defer span.Finish()
+	defer span.End()
 
 	var updateExprs []sql.Expression
 	for _, v := range s.Exprs {
