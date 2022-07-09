@@ -457,6 +457,23 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 		colIndex := 0
 
 		switch node := n.(type) {
+		case *plan.AlterPK:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				table := getResolvedTable(node)
+				sch := table.Schema()
+				if colIndex >= len(sch) {
+					return e, transform.SameTree, nil
+				}
+
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
 		case *plan.ShowColumns, *plan.ShowCreateTable:
 			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
@@ -656,7 +673,7 @@ func transformColumnDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node,
 			return e, transform.SameTree, nil
 		}
 		switch node.(type) {
-		case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
+		case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable, *plan.AlterPK:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, transform.SameTree, nil

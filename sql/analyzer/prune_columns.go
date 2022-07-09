@@ -322,7 +322,7 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithCtx(n, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
-		case *plan.RenameColumn, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet, *plan.DropColumn, *plan.ShowCreateTable, *plan.ShowColumns:
+		case *plan.RenameColumn, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet, *plan.DropColumn, *plan.ShowCreateTable, *plan.ShowColumns, *plan.AlterPK:
 			// do nothing, column defaults already have been resolved
 			return n, transform.SameTree, nil
 		case *plan.SubqueryAlias:
