@@ -79,23 +79,24 @@ var _ mysql.AuthServer = (*MySQLDb)(nil)
 // CreateEmptyMySQLDb returns a collection of MySQL Tables that do not contain any data.
 func CreateEmptyMySQLDb() *MySQLDb {
 	// original tables
-	mysqlDb := &MySQLDb{
-		user: newMySQLTable(
-			userTblName,
-			userTblSchema,
-			&User{},
-			UserPrimaryKey{},
-			UserSecondaryKey{},
-		),
-		role_edges: newMySQLTable(
-			roleEdgesTblName,
-			roleEdgesTblSchema,
-			&RoleEdge{},
-			RoleEdgesPrimaryKey{},
-			RoleEdgesFromKey{},
-			RoleEdgesToKey{},
-		),
-	}
+	mysqlDb := &MySQLDb{}
+	mysqlDb.user = newMySQLTable(
+		userTblName,
+		userTblSchema,
+		mysqlDb,
+		&User{},
+		UserPrimaryKey{},
+		UserSecondaryKey{},
+	)
+	mysqlDb.role_edges = newMySQLTable(
+		roleEdgesTblName,
+		roleEdgesTblSchema,
+		mysqlDb,
+		&RoleEdge{},
+		RoleEdgesPrimaryKey{},
+		RoleEdgesFromKey{},
+		RoleEdgesToKey{},
+	)
 
 	// mysqlTable shims
 	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
@@ -184,6 +185,7 @@ func (t *MySQLDb) SetPersister(persister MySQLDbPersistence) {
 func (t *MySQLDb) AddRootAccount() {
 	t.Enabled = true
 	addSuperUser(t.user, "root", "localhost", "")
+	t.cache.clear()
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
@@ -201,6 +203,7 @@ func (t *MySQLDb) AddSuperUser(username string, password string) {
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
 	addSuperUser(t.user, username, "%", password)
+	t.cache.clear()
 }
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
@@ -261,6 +264,9 @@ func (t *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 		}
 	}
 
+	// This is technically a race -- two clients could cache at the same time. But this shouldn't matter, as they will
+	// eventually get the same data after the cache is cleared on a write, and MySQL doesn't even guarantee immediate
+	// effect for grant statements.
 	t.cache.cacheUserPrivileges(user, privSet)
 	return privSet
 }
@@ -389,6 +395,8 @@ func (t *MySQLDb) ValidateCanPersist() error {
 
 // Persist passes along all changes to the integrator.
 func (t *MySQLDb) Persist(ctx *sql.Context) error {
+	defer t.cache.clear()
+
 	// Extract all user entries from table, and sort
 	userEntries := t.user.data.ToSlice(ctx)
 	users := make([]*User, len(userEntries))
@@ -541,6 +549,7 @@ func (pc *privilegeCache) userPrivileges(user *User) (PrivilegeSet, bool) {
 	return privs, ok
 }
 
+// cacheUserPrivileges Caches the user privileges given. Needs external locking.
 func (pc *privilegeCache) cacheUserPrivileges(user *User, privs PrivilegeSet) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
