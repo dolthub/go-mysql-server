@@ -65,6 +65,9 @@ type Session interface {
 	SetClient(Client)
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
+	// InitSessionVariable sets the given system variable to the value given for this session and will allow for
+	// initialization of readonly variables.
+	InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
 	SetUserVariable(ctx *Context, varName string, value interface{}) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
@@ -236,11 +239,24 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
-	if sysVar.Scope == SystemVariableScope_Global {
-		return ErrSystemVariableGlobalOnly.New(sysVarName)
-	}
 	if !sysVar.Dynamic {
 		return ErrSystemVariableReadOnly.New(sysVarName)
+	}
+	return s.setSessVar(ctx, sysVar, sysVarName, value)
+}
+
+// InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
+func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	if !ok {
+		return ErrUnknownSystemVariable.New(sysVarName)
+	}
+	return s.setSessVar(ctx, sysVar, sysVarName, value)
+}
+
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName string, value interface{}) error {
+	if sysVar.Scope == SystemVariableScope_Global {
+		return ErrSystemVariableGlobalOnly.New(sysVarName)
 	}
 	convertedVal, err := sysVar.Type.Convert(value)
 	if err != nil {
