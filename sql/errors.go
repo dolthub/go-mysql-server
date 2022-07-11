@@ -217,6 +217,8 @@ var (
 	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
 	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
 
+	ErrSystemVariableReinitialized = errors.NewKind(`Variable '%s' was initialized more than 1x`)
+
 	// ErrSystemVariableSessionOnly is returned when attempting to set a SESSION-only variable using SET GLOBAL.
 	ErrSystemVariableSessionOnly = errors.NewKind(`Variable '%s' is a SESSION variable and can't be used with SET GLOBAL`)
 
