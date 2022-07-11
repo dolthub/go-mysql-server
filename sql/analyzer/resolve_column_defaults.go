@@ -543,7 +543,6 @@ func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex
 		} else {
 			return nil, sql.ErrColumnNotFound.New(colIndex)
 		}
-		return schema[colIndex], nil
 	}
 }
 
