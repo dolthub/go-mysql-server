@@ -205,7 +205,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 		// Skip filling in target schema info for CreateTable nodes, since the
 		// target schema must be provided by the user and we don't want to pick
-		//  up any resolved tables in a subquery node.
+		//  up any resolved tables from a subquery node.
 		if _, ok := n.(*plan.CreateTable); ok {
 			return n, transform.SameTree, nil
 		}
