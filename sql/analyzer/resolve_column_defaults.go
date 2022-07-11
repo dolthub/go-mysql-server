@@ -600,7 +600,7 @@ func transformColumnDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node,
 			return e, transform.SameTree, nil
 		}
 		switch node.(type) {
-		case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable, *plan.AlterPK:
+		case *plan.Values, *plan.InsertDestination, sql.SchemaTarget:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, transform.SameTree, nil
