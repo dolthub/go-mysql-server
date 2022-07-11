@@ -457,24 +457,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 		colIndex := 0
 
 		switch node := n.(type) {
-		case *plan.AlterPK:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				table := getResolvedTable(node)
-				sch := table.Schema()
-				if colIndex >= len(sch) {
-					return e, transform.SameTree, nil
-				}
-
-				col := sch[colIndex]
-				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.ShowColumns, *plan.ShowCreateTable:
+		case *plan.InsertDestination:
 			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
@@ -492,12 +475,15 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.InsertInto:
+			// node.Source needs to be explicitly called here because it's not a
+			// registered child of InsertInto.
 			newSource, identity, err := transform.NodeExprs(node.Source, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
 
+				// Instead of grabbing the schema from TargetSchema(), use the Destination node
 				sch := node.Destination.Schema()
 
 				// InsertInto.Source can contain multiple rows, so loop over the columns in the schema
@@ -511,91 +497,8 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				node.Source = newSource
 			}
 			return node, identity, err
-		case *plan.InsertDestination:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-				sch := node.Sch
-				col := sch[colIndex]
-				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.CreateTable:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-				sch := node.CreateSchema.Schema
-				col := sch[colIndex]
-				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.RenameColumn, *plan.DropColumn:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				// Not a public interface, should make part of sql.SchemaTarget?
-				sch := node.(targetSchema).TargetSchema()
-
-				var col *sql.Column
-				if colIndex >= len(sch) {
-					return e, transform.SameTree, nil
-				}
-
-				col = sch[colIndex]
-				colIndex++
-
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-
-		case *plan.ModifyColumn:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				sch := node.TargetSchema()
-
-				var col *sql.Column
-				if colIndex < len(sch) {
-					col = sch[colIndex]
-				} else {
-					col = node.NewColumn()
-				}
-
-				colIndex++
-
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.AddColumn:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				sch := node.TargetSchema()
-
-				var col *sql.Column
-				if colIndex < len(sch) {
-					col = sch[colIndex]
-				} else {
-					col = node.Column()
-				}
-
-				colIndex++
-
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.AlterDefaultSet:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		case targetSchema:
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
