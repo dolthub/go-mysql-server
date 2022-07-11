@@ -29,7 +29,7 @@ import (
 // resolveVariables replaces UnresolvedColumn which are variables with their literal values
 func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_variables")
-	defer span.Finish()
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {

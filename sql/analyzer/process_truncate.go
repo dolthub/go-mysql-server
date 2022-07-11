@@ -28,8 +28,8 @@ import (
 // processTruncate is a combination of resolving fields in *plan.DeleteFrom and *plan.Truncate, validating the fields,
 // and in some cases converting *plan.DeleteFrom -> *plan.Truncate
 func processTruncate(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("processTruncate")
-	defer span.Finish()
+	span, ctx := ctx.Span("processTruncate")
+	defer span.End()
 
 	switch n := node.(type) {
 	case *plan.DeleteFrom:

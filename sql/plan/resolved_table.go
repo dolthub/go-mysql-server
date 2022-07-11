@@ -60,7 +60,7 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 
 	partitions, err := t.Table.Partitions(ctx)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -72,7 +72,7 @@ func (t *ResolvedTable) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter
 
 	partitions, err := t.Table.Partitions(ctx)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

@@ -43,7 +43,7 @@ func (f *Filter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	i, err := f.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

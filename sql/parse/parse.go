@@ -25,7 +25,8 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -100,8 +101,8 @@ func ParseOne(ctx *sql.Context, query string) (sql.Node, string, string, error) 
 }
 
 func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string, error) {
-	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
-	defer span.Finish()
+	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
+	defer span.End()
 
 	s := strings.TrimSpace(query)
 	if strings.HasSuffix(s, ";") {
@@ -1789,38 +1790,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		ignore = true
 	}
 
-	columnWithDefaultValues := make(map[int]bool)
-
-	if e, ok := src.(*plan.Values); ok {
-		for i, tuple := range e.ExpressionTuples {
-			var needCols []sql.Expression
-			for j, s := range tuple {
-				if _, ok := s.(*expression.DefaultColumn); ok {
-					columnWithDefaultValues[j] = true
-				} else {
-					needCols = append(needCols, s)
-				}
-			}
-
-			// Only re-assign if found column with default values
-			if len(columnWithDefaultValues) == 0 {
-				break
-			}
-
-			e.ExpressionTuples[i] = needCols
-		}
-	}
-
-	var columns []string
-	if len(columnWithDefaultValues) > 0 {
-		for i, c := range columnsToStrings(i.Columns) {
-			if _, found := columnWithDefaultValues[i]; !found {
-				columns = append(columns, c)
-			}
-		}
-	} else {
-		columns = columnsToStrings(i.Columns)
-	}
+	var columns = columnsToStrings(i.Columns)
 
 	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columns, onDupExprs, ignore), nil
 }

@@ -1703,7 +1703,8 @@ CREATE TABLE t2
 	}}), false, []string{}, []sql.Expression{}, false),
 	`INSERT INTO t1 (col1, col2) VALUES ('a', DEFAULT)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("a", sql.LongText),
-	}}), false, []string{"col1"}, []sql.Expression{}, false),
+		&expression.DefaultColumn{},
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
 		plan.NewFilter(
 			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),

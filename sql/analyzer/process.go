@@ -173,7 +173,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	return plan.NewQueryProcess(node, func() {
 		processList.Done(ctx.Pid())
 		if span := ctx.RootSpan(); span != nil {
-			span.Finish()
+			span.End()
 		}
 	}), transform.NewTree, nil
 }

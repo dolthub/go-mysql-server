@@ -18,9 +18,10 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/trace"
 
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type ServerEventListener interface {
@@ -38,11 +39,11 @@ func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
 func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEventListener) (*Server, error) {
-	var tracer opentracing.Tracer
+	var tracer trace.Tracer
 	if cfg.Tracer != nil {
 		tracer = cfg.Tracer
 	} else {
-		tracer = opentracing.NoopTracer{}
+		tracer = sql.NoopTracer
 	}
 
 	if cfg.ConnReadTimeout < 0 {

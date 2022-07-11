@@ -151,8 +151,8 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_is_resolved")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_is_resolved")
+	defer span.End()
 
 	if !n.Resolved() {
 		return nil, transform.SameTree, unresolvedError(n)
@@ -191,8 +191,8 @@ func unresolvedError(n sql.Node) error {
 }
 
 func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_order_by")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_order_by")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.Sort:
@@ -208,8 +208,8 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 }
 
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_group_by")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_group_by")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.GroupBy:
@@ -270,8 +270,8 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_schema_source")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_schema_source")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.TableAlias:
@@ -286,8 +286,8 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 }
 
 func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_index_creation")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_index_creation")
+	defer span.End()
 
 	ci, ok := n.(*plan.CreateIndex)
 	if !ok {
@@ -327,8 +327,8 @@ func validateSchema(t *plan.ResolvedTable) error {
 }
 
 func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_union_schemas_match")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_union_schemas_match")
+	defer span.End()
 
 	var firstmismatch []string
 	transform.Inspect(n, func(n sql.Node) bool {
@@ -362,7 +362,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 
 func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_case_result_types")
-	defer span.Finish()
+	defer span.End()
 
 	var err error
 	transform.InspectExpressions(n, func(e sql.Expression) bool {

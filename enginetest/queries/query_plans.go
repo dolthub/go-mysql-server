@@ -309,7 +309,7 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2`,
-		ExpectedPlan: "Insert()\n" +
+		ExpectedPlan: "Insert(i, s)\n" +
 			" ├─ Table(mytable)\n" +
 			" └─ Project(i, s)\n" +
 			"     └─ Project((sub.i + 10), ot.s2)\n" +

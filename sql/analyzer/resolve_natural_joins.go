@@ -25,8 +25,8 @@ import (
 )
 
 func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_natural_joins")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_natural_joins")
+	defer span.End()
 
 	var replacements = make(map[tableCol]tableCol)
 
