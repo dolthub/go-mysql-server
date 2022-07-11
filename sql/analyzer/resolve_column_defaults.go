@@ -17,10 +17,13 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var validColumnDefaultFuncs = map[string]struct{}{
@@ -434,99 +437,168 @@ var validColumnDefaultFuncs = map[string]struct{}{
 	"yearweek":                           {},
 }
 
-func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("resolveColumnDefaults")
-	defer span.Finish()
+type targetSchema interface {
+	TargetSchema() sql.Schema
+}
+
+func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("resolveColumnDefaults")
+	defer span.End()
 
 	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
 	//  returned by Expressions() for these nodes
-	colIndex := 0
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
-		eWrapper, ok := e.(*expression.Wrapper)
-		if !ok {
-			return e, nil
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if n.Resolved() {
+			return n, transform.SameTree, nil
 		}
+
+		// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
+		// we need to count the column indexes in the very hacky way outlined above.
+		colIndex := 0
+
 		switch node := n.(type) {
-		case *plan.InsertDestination, *plan.ShowColumns, *plan.ShowCreateTable:
-			table := getResolvedTable(node)
-			sch := table.Schema()
-			if colIndex >= len(sch) {
-				return e, nil
-			}
-
-			col := sch[colIndex]
-			colIndex++
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.CreateTable:
-			sch := node.CreateSchema.Schema
-			col := sch[colIndex]
-			colIndex++
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.RenameColumn:
-			table := getResolvedTable(node.Child)
-			if table == nil {
-				return e, nil
-			}
-
-			idx := table.Schema().IndexOf(node.ColumnName, table.Name())
-			if idx < 0 {
-				return nil, sql.ErrTableColumnNotFound.New(table.Name(), node.ColumnName)
-			}
-
-			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
-		case *plan.DropColumn:
-			table := getResolvedTable(node.Child)
-			if table == nil {
-				return e, nil
-			}
-
-			idx := table.Schema().IndexOf(node.Column, table.Name())
-			if idx < 0 {
-				return nil, sql.ErrTableColumnNotFound.New(table.Name(), node.Column)
-			}
-
-			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
-		case *plan.AddColumn:
-			sch := node.TargetSchema()
-
-			// TODO: this is kind of gross, relies on a known order of expressions returned by node
-			var col *sql.Column
-			if colIndex < len(sch) {
-				col = sch[colIndex]
-			} else {
-				col = node.Column()
-			}
-			colIndex++
-
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.ModifyColumn:
-			sch := node.TargetSchema()
-
-			// TODO: this is kind of gross, relies on a known order of expressions returned by node
-			var col *sql.Column
-			if colIndex < len(sch) {
-				col = sch[colIndex]
-			} else {
-				col = node.NewColumn()
-			}
-			colIndex++
-
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.AlterDefaultSet:
-			loweredColName := strings.ToLower(node.ColumnName)
-			var col *sql.Column
-			for _, schCol := range node.Schema() {
-				if strings.ToLower(schCol.Name) == loweredColName {
-					col = schCol
-					break
+		case *plan.ShowColumns, *plan.ShowCreateTable:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
 				}
+
+				table := getResolvedTable(node)
+				sch := table.Schema()
+				if colIndex >= len(sch) {
+					return e, transform.SameTree, nil
+				}
+
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.InsertInto:
+			newSource, identity, err := transform.NodeExprs(node.Source, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				sch := node.Destination.Schema()
+
+				// InsertInto.Source can contain multiple rows, so loop over the columns in the schema
+				colIndex = colIndex % len(sch)
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+
+			if identity == transform.NewTree {
+				node.Source = newSource
 			}
-			if col == nil {
-				return nil, sql.ErrTableColumnNotFound.New(node.Child.String(), node.ColumnName)
-			}
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			return node, identity, err
+		case *plan.InsertDestination:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+				sch := node.Sch
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.CreateTable:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+				sch := node.CreateSchema.Schema
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.RenameColumn, *plan.DropColumn:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				// Not a public interface, should make part of sql.SchemaTarget?
+				sch := node.(targetSchema).TargetSchema()
+
+				var col *sql.Column
+				if colIndex >= len(sch) {
+					return e, transform.SameTree, nil
+				}
+
+				col = sch[colIndex]
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+
+		case *plan.ModifyColumn:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				sch := node.TargetSchema()
+
+				var col *sql.Column
+				if colIndex < len(sch) {
+					col = sch[colIndex]
+				} else {
+					col = node.NewColumn()
+				}
+
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.AddColumn:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				sch := node.TargetSchema()
+
+				var col *sql.Column
+				if colIndex < len(sch) {
+					col = sch[colIndex]
+				} else {
+					col = node.Column()
+				}
+
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.AlterDefaultSet:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				loweredColName := strings.ToLower(node.ColumnName)
+				var col *sql.Column
+				for _, schCol := range node.Schema() {
+					if strings.ToLower(schCol.Name) == loweredColName {
+						col = schCol
+						break
+					}
+				}
+				if col == nil {
+					return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(node.Table, node.ColumnName)
+				}
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
 		default:
-			return e, nil
+			return node, transform.SameTree, nil
 		}
 	})
 }
@@ -534,83 +606,170 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 // parseColumnDefaults transforms UnresolvedColumnDefault expressions into ColumnDefaultValue expressions, which
 // amounts to parsing the string representation into an actual expression. We only require an actual column default
 // value for some node types, where the value will be used.
-func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("parse_column_defaults")
-	defer span.Finish()
+func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("parse_column_defaults")
+	defer span.End()
 
+	nodeChanged := false
 	switch nn := n.(type) {
 	case *plan.InsertInto:
 		if !nn.Destination.Resolved() {
-			return nn, nil
+			return nn, transform.SameTree, nil
 		}
 		var err error
 		n, err = nn.WithChildren(plan.NewInsertDestination(nn.Destination.Schema(), nn.Destination))
+		nn = n.(*plan.InsertInto)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
+
+		err = fillInColumnDefaults(ctx, nn)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		// InsertInto.Source needs special handling, since it is not modeled as a Child
+		newNode, _, err := transformColumnDefaultsForNode(ctx, nn.Source)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		nn.Source = newNode
+		n = nn
+		nodeChanged = true
 	}
 
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	node, identity, err := transformColumnDefaultsForNode(ctx, n)
+	if nodeChanged {
+		identity = transform.NewTree
+	}
+
+	return node, identity, err
+}
+
+// transformColumnDefaultsForNode walks over the expressions contained in the specified node and transforms all
+// UnresolvedColumnDefaultValues into ColumnDefaultValues.
+func transformColumnDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(input, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {
-			return e, nil
+			return e, transform.SameTree, nil
 		}
-		switch n.(type) {
-		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
+		switch node.(type) {
+		case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
-			return e, nil
+			return e, transform.SameTree, nil
 		}
 	})
 }
 
-func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql.Expression, error) {
+// fillInColumnDefaults fills in column default expressions for any source data that explicitly used
+// the 'DEFAULT' keyword as input. This requires that the InsertInto Destination has been fully resolved
+// before the column default values can be used.
+func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
+	schema := insertInto.Destination.Schema()
+
+	// If no column names were specified in the query, go ahead and fill
+	// them all in now that the destination is resolved.
+	if len(insertInto.ColumnNames) == 0 {
+		insertInto.ColumnNames = make([]string, len(schema))
+		for i, col := range schema {
+			insertInto.ColumnNames[i] = col.Name
+		}
+	}
+
+	// If the source values are not specified, fill in column default placeholders
+	if values, ok := insertInto.Source.(*plan.Values); ok {
+		for i, tuple := range values.ExpressionTuples {
+			if len(tuple) == 0 {
+				tuple = make([]sql.Expression, len(insertInto.ColumnNames))
+				for j, _ := range tuple {
+					tuple[j] = expression.NewDefaultColumn(insertInto.ColumnNames[j])
+				}
+				values.ExpressionTuples[i] = tuple
+			}
+		}
+	}
+
+	// Pull the column default values out into the same order the columns were specified
+	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(insertInto.ColumnNames))
+	for i, columnName := range insertInto.ColumnNames {
+		index := schema.IndexOfColName(columnName)
+		if index == -1 {
+			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
+		}
+		columnDefaultValues[i] = schema[index].Default
+	}
+
+	// Walk through the expression tuples looking for any column defaults to fill in
+	if values, ok := insertInto.Source.(*plan.Values); ok {
+		for _, exprTuple := range values.ExpressionTuples {
+			for i, value := range exprTuple {
+				newExpression, _, err := transform.Expr(value, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if _, ok := e.(*expression.DefaultColumn); ok {
+						return columnDefaultValues[i], transform.NewTree, nil
+					}
+					return e, transform.SameTree, nil
+				})
+				if err != nil {
+					return err
+				}
+				exprTuple[i] = expression.WrapExpression(newExpression)
+			}
+		}
+	}
+
+	return nil
+}
+
+func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
-		return e, nil
+		return e, transform.SameTree, nil
 	}
 
 	if newDefault.Resolved() {
-		return e, nil
+		return e, transform.SameTree, nil
 	}
 
 	if ucd, ok := newDefault.Expression.(sql.UnresolvedColumnDefault); ok {
 		var err error
 		newDefault, err = parse.StringToColumnDefaultValue(ctx, ucd.String())
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 	}
 
-	return expression.WrapExpression(newDefault), nil
+	return expression.WrapExpression(newDefault), transform.NewTree, nil
 }
 
-func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, error) {
+func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
-		return e, nil
+		return e, transform.SameTree, nil
 	}
 
 	if newDefault.Resolved() {
-		return e, nil
+		return e, transform.SameTree, nil
 	}
 
-	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() {
-		return nil, sql.ErrInvalidTextBlobColumnDefault.New()
+	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
+		return nil, transform.SameTree, sql.ErrInvalidTextBlobColumnDefault.New()
 	}
 
 	var err error
-	newDefault.Expression, err = expression.TransformUp(newDefault.Expression, func(e sql.Expression) (sql.Expression, error) {
+	newDefault.Expression, _, err = transform.Expr(newDefault.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if expr, ok := e.(*expression.GetField); ok {
 			// Default values can only reference their host table, so we can remove the table name, removing
 			// the necessity to update default values on table renames.
-			return expr.WithTable(""), nil
+			return expr.WithTable(""), transform.NewTree, nil
 		}
-		return e, nil
+		return e, transform.SameTree, nil
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
@@ -621,22 +780,39 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 				err = sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)
 				return false
 			}
-			if (funcName == "now" || funcName == "current_timestamp") &&
-				newDefault.IsLiteral() &&
-				(!sql.IsTime(col.Type) || sql.Date == col.Type) {
-				err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+			if newDefault.IsLiteral() {
+				if funcName == "now" || funcName == "current_timestamp" {
+					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
+						return true
+					} else {
+						err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+						return false
+					}
+				}
+				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 				return false
 			}
+
 			return true
 		case *plan.Subquery:
 			err = sql.ErrColumnDefaultSubquery.New(col.Name)
 			return false
+		case *deferredColumn:
+			err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
+			return false
+		case *expression.GetField:
+			if newDefault.IsLiteral() {
+				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
+				return false
+			} else {
+				return true
+			}
 		default:
 			return true
 		}
 	})
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
@@ -656,13 +832,13 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 
 	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	// validate type of default expression
 	if err = newDefault.CheckType(ctx); err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return expression.WrapExpression(newDefault), nil
+	return expression.WrapExpression(newDefault), transform.NewTree, nil
 }

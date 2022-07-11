@@ -118,10 +118,10 @@ func lineSegmentsIntersect(a, b, c, d sql.Point) bool {
 }
 
 // TODO: should go in line?
-func isLinearRing(line sql.Linestring) bool {
+func isLinearRing(line sql.LineString) bool {
 	// Get number of points
 	numPoints := len(line.Points)
-	// Check length of Linestring (must be 0 or 4+) points
+	// Check length of LineString (must be 0 or 4+) points
 	if numPoints != 0 && numPoints < 4 {
 		return false
 	}
@@ -146,7 +146,7 @@ func isLinearRing(line sql.Linestring) bool {
 // Eval implements the sql.Expression interface.
 func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of lines
-	var lines = make([]sql.Linestring, len(p.ChildExpressions))
+	var lines = make([]sql.LineString, len(p.ChildExpressions))
 
 	// Go through each argument
 	for i, arg := range p.ChildExpressions {
@@ -157,7 +157,7 @@ func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		// Must be of type linestring, throw error otherwise
 		switch v := val.(type) {
-		case sql.Linestring:
+		case sql.LineString:
 			// Check that line is a linear ring
 			if isLinearRing(v) {
 				lines[i] = v
@@ -165,7 +165,7 @@ func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, errors.New("Invalid GIS data provided to function polygon.")
 			}
 		case sql.Point, sql.Polygon:
-			return nil, ErrInvalidArgument.New(p.FunctionName())
+			return nil, sql.ErrInvalidArgumentDetails.New(p.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}

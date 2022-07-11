@@ -53,7 +53,7 @@ func (a *AsWKB) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (a *AsWKB) Type() sql.Type {
-	return a.Child.Type()
+	return sql.LongBlob
 }
 
 func (a *AsWKB) String() string {
@@ -68,63 +68,6 @@ func (a *AsWKB) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewAsWKB(children[0]), nil
 }
 
-// serializePoint fills in buf with the values from point
-func serializePoint(p sql.Point, buf []byte) {
-	// Assumes buf is correct size
-	binary.LittleEndian.PutUint64(buf[0:8], math.Float64bits(p.X))
-	binary.LittleEndian.PutUint64(buf[8:16], math.Float64bits(p.Y))
-}
-
-// PointToBytes converts a sql.Point to a byte array
-func PointToBytes(p sql.Point) []byte {
-	// Initialize point buffer
-	buf := make([]byte, 16)
-	serializePoint(p, buf)
-	return buf
-}
-
-// serializeLine fills in buf with values from linestring
-func serializeLine(l sql.Linestring, buf []byte) {
-	// Write number of points
-	binary.LittleEndian.PutUint32(buf[0:4], uint32(len(l.Points)))
-	// Append each point
-	for i, p := range l.Points {
-		start, stop := 4+16*i, 4+16*(i+1)
-		serializePoint(p, buf[start:stop])
-	}
-}
-
-// LineToBytes converts a sql.Linestring to a byte array
-func LineToBytes(l sql.Linestring) []byte {
-	// Initialize line buffer
-	buf := make([]byte, 4+16*len(l.Points))
-	serializeLine(l, buf)
-	return buf
-}
-
-func serializePoly(p sql.Polygon, buf []byte) {
-	// Write number of lines
-	binary.LittleEndian.PutUint32(buf[0:4], uint32(len(p.Lines)))
-	// Append each line
-	start, stop := 0, 4
-	for _, l := range p.Lines {
-		start, stop = stop, stop+4+16*len(l.Points)
-		serializeLine(l, buf[start:stop])
-	}
-}
-
-// PolyToBytes converts a sql.Polygon to a byte array
-func PolyToBytes(p sql.Polygon) []byte {
-	// Initialize polygon buffer
-	size := 0
-	for _, l := range p.Lines {
-		size += 4 + 16*len(l.Points)
-	}
-	buf := make([]byte, 4+size)
-	serializePoly(p, buf)
-	return buf
-}
-
 // Eval implements the sql.Expression interface.
 func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -133,38 +76,23 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Return nil when null
 	if val == nil {
 		return nil, nil
 	}
 
-	// Initialize buf with space for endianness (1 byte) and type (4 bytes)
-	buf := make([]byte, 5)
-	// MySQL seems to always use Little Endian
-	buf[0] = 1
-	var data []byte
-
 	// Expect one of the geometry types
+	// remove the SRID
 	switch v := val.(type) {
 	case sql.Point:
-		// Mark as point type
-		binary.LittleEndian.PutUint32(buf[1:5], 1)
-		data = PointToBytes(v)
-	case sql.Linestring:
-		// Mark as linestring type
-		binary.LittleEndian.PutUint32(buf[1:5], 2)
-		data = LineToBytes(v)
+		return sql.SerializePoint(v)[sql.SRIDSize:], nil
+	case sql.LineString:
+		return sql.SerializeLineString(v)[sql.SRIDSize:], nil
 	case sql.Polygon:
-		// Mark as Polygon type
-		binary.LittleEndian.PutUint32(buf[1:5], 3)
-		data = PolyToBytes(v)
+		return sql.SerializePolygon(v)[sql.SRIDSize:], nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_AsWKB")
 	}
-
-	// Append to header
-	buf = append(buf, data...)
-
-	return buf, nil
 }
 
 // Header contains endianness (1 byte) and geometry type (4 bytes)
@@ -225,7 +153,7 @@ func (g *GeomFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 func ParseWKBHeader(buf []byte) (bool, uint32, error) {
 	// Header length
 	if len(buf) < WKBHeaderLength {
-		return false, 0, sql.ErrInvalidGISData.New("ST_GeomFromWKB3")
+		return false, 0, sql.ErrInvalidGISData.New("ST_GeomFromWKB")
 	}
 
 	// Get Endianness
@@ -246,7 +174,7 @@ func ParseWKBHeader(buf []byte) (bool, uint32, error) {
 func WKBToPoint(buf []byte, isBig bool, srid uint32, order bool) (sql.Point, error) {
 	// Must be 16 bytes (2 floats)
 	if len(buf) != 16 {
-		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromWKB1")
+		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromWKB")
 	}
 
 	// Read floats x and y
@@ -268,10 +196,10 @@ func WKBToPoint(buf []byte, isBig bool, srid uint32, order bool) (sql.Point, err
 }
 
 // WKBToLine parses the data portion of a byte array in WKB format to a point object
-func WKBToLine(buf []byte, isBig bool, srid uint32, order bool) (sql.Linestring, error) {
+func WKBToLine(buf []byte, isBig bool, srid uint32, order bool) (sql.LineString, error) {
 	// Must be at least 4 bytes (length of linestring)
 	if len(buf) < 4 {
-		return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
+		return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
 	}
 
 	// Read length of line string
@@ -287,7 +215,7 @@ func WKBToLine(buf []byte, isBig bool, srid uint32, order bool) (sql.Linestring,
 
 	// Check length
 	if uint32(len(lineData)) < 16*numPoints {
-		return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
+		return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
 	}
 
 	// Parse points
@@ -296,18 +224,18 @@ func WKBToLine(buf []byte, isBig bool, srid uint32, order bool) (sql.Linestring,
 		if point, err := WKBToPoint(lineData[16*i:16*(i+1)], isBig, srid, order); err == nil {
 			points[i] = point
 		} else {
-			return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
+			return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
 		}
 	}
 
-	return sql.Linestring{SRID: srid, Points: points}, nil
+	return sql.LineString{SRID: srid, Points: points}, nil
 }
 
 // WKBToPoly parses the data portion of a byte array in WKB format to a point object
 func WKBToPoly(buf []byte, isBig bool, srid uint32, order bool) (sql.Polygon, error) {
 	// Must be at least 4 bytes (length of polygon)
 	if len(buf) < 4 {
-		return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB1")
+		return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
 	}
 
 	// Get number of lines in polygon
@@ -323,17 +251,17 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32, order bool) (sql.Polygon, er
 
 	// Parse lines
 	s := 0
-	lines := make([]sql.Linestring, numLines)
+	lines := make([]sql.LineString, numLines)
 	for i := uint32(0); i < numLines; i++ {
 		if line, err := WKBToLine(polyData[s:], isBig, srid, order); err == nil {
 			if isLinearRing(line) {
 				lines[i] = line
 				s += 4 + 16*len(line.Points) // shift parsing location over
 			} else {
-				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB2")
+				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
 			}
 		} else {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB3")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
 		}
 	}
 
@@ -397,9 +325,8 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != 0 && srid != 4230 {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Convert this block to helper function
@@ -506,7 +433,7 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	// TODO: convert to this block to helper function
 	// Determine SRID
-	srid := uint32(0)
+	srid := sql.CartesianSRID
 	if len(p.ChildExpressions) >= 2 {
 		s, err := p.ChildExpressions[1].Eval(ctx, row)
 		if err != nil {
@@ -522,9 +449,8 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != 0 && srid != 4230 {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -574,7 +500,7 @@ func (l *LineFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *LineFromWKB) Type() sql.Type {
-	return sql.LinestringType{}
+	return sql.LineStringType{}
 }
 
 func (l *LineFromWKB) String() string {
@@ -637,9 +563,8 @@ func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != 0 && srid != 4230 {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -752,9 +677,8 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
-	// Must be valid SRID
-	if srid != 0 && srid != 4230 {
-		return nil, ErrInvalidSRID.New(srid)
+	if err = ValidateSRID(srid); err != nil {
+		return nil, err
 	}
 
 	// Determine xy order
@@ -775,4 +699,11 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Read data
 	return WKBToPoly(v[WKBHeaderLength:], isBig, srid, order)
+}
+
+func ValidateSRID(srid uint32) error {
+	if srid != sql.CartesianSRID && srid != sql.GeoSpatialSRID {
+		return ErrInvalidSRID.New(srid)
+	}
+	return nil
 }

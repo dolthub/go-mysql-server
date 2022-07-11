@@ -149,15 +149,15 @@ func TestNullSafeEquals(t *testing.T) {
 				require.NotNil(row)
 				cmp := eval(t, seq, row)
 				if cmpResult == testEqual {
-					require.Equal(1, cmp)
+					require.Equal(true, cmp)
 				} else if cmpResult == testNil {
 					if pair[0] == nil && pair[1] == nil {
-						require.Equal(1, cmp)
+						require.Equal(true, cmp)
 					} else {
-						require.Equal(0, cmp)
+						require.Equal(false, cmp)
 					}
 				} else {
-					require.Equal(0, cmp)
+					require.Equal(false, cmp)
 				}
 			}
 		}

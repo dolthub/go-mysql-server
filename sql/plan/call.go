@@ -67,6 +67,13 @@ func (c *Call) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *Call) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: CALL needs to know which database it is referencing rather than assuming the current one, and add that db here
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Execute))
+}
+
 // Expressions implements the sql.Expressioner interface.
 func (c *Call) Expressions() []sql.Expression {
 	return c.Params
@@ -114,10 +121,28 @@ func (c *Call) String() string {
 	return fmt.Sprintf("CALL %s(%s)", c.Name, paramStr)
 }
 
+// DebugString implements sql.DebugStringer
+func (c *Call) DebugString() string {
+	paramStr := ""
+	for i, param := range c.Params {
+		if i > 0 {
+			paramStr += ", "
+		}
+		paramStr += sql.DebugString(param)
+	}
+	tp := sql.NewTreePrinter()
+	tp.WriteNode("CALL %s(%s)", c.Name, paramStr)
+	if c.proc != nil {
+		tp.WriteChildren(sql.DebugString(c.proc.Body))
+	}
+
+	return tp.String()
+}
+
 // RowIter implements the sql.Node interface.
 func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	for i, paramExpr := range c.Params {
-		val, err := paramExpr.Eval(ctx, nil)
+		val, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}

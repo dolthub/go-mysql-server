@@ -18,12 +18,15 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // An IndexedJoin is a join that uses index lookups for the secondary table.
+// IndexedJoin does not implement sql.Expressioner because FixFieldIndexesForExpressions
+// is not aware of the prefixed row.
 type IndexedJoin struct {
 	// The primary and secondary table nodes. The normal meanings of Left and
 	// Right in BinaryNode aren't necessarily meaningful here -- the Left node is always the primary table, and the Right
@@ -94,6 +97,11 @@ func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond, ij.scopeLen), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (ij *IndexedJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return ij.left.CheckPrivileges(ctx, opChecker) && ij.right.CheckPrivileges(ctx, opChecker)
+}
+
 func indexedJoinRowIter(
 	ctx *sql.Context,
 	parentRow sql.Row,
@@ -116,14 +124,14 @@ func indexedJoinRowIter(
 		rightName = reflect.TypeOf(right).String()
 	}
 
-	span, ctx := ctx.Span("plan.indexedJoin", opentracing.Tags{
-		"left":  leftName,
-		"right": rightName,
-	})
+	span, ctx := ctx.Span("plan.indexedJoin", trace.WithAttributes(
+		attribute.String("left", leftName),
+		attribute.String("right", rightName),
+	))
 
 	l, err := left.RowIter(ctx, parentRow)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &indexedJoinIter{

@@ -123,8 +123,21 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if numDecimalPlaces < 0 {
 		numDecimalPlaces = 0
+	} else if numDecimalPlaces > 30 { // MySQL cuts off at 30 for larger values
+		numDecimalPlaces = 30
 	}
 
+	// One way to round to a decimal place is to shift the number up by the desired decimal position, round to the
+	// nearest integer, and then shift back down.
+	// For example, we have 5.855 and want to round to 2 decimal places.
+	// In this case, numValue = 5.855 and numDecimalPlaces = 2
+	// round(numValue * 10^numDecimalPlaces) / 10^numDecimalPlaces
+	// round(5.855 * 10^2) / 10^2
+	// round(5.855 * 100) / 100
+	// round(585.5) / 100
+	// 586 / 100
+	// 5.86
+	//TODO: this can introduce rounding errors that don't show up in MySQL when the decimal places are larger than the input due to precision errors
 	roundedValue := math.Round(numValue*math.Pow(10.0, numDecimalPlaces)) / math.Pow(10.0, numDecimalPlaces)
 
 	// FORMAT(-5.932887e-08, 2);     		==> -0.00

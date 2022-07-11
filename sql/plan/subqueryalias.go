@@ -65,7 +65,7 @@ func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 	// subqueries do not have access to outer scope
 	iter, err := sq.Child.RowIter(ctx, nil)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -81,6 +81,11 @@ func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nn := *sq
 	nn.Child = children[0]
 	return &nn, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (sq *SubqueryAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return sq.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (sq SubqueryAlias) WithName(name string) *SubqueryAlias {

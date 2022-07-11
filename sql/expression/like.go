@@ -63,7 +63,7 @@ func (l *Like) Type() sql.Type { return sql.Boolean }
 // Eval implements the sql.Expression interface.
 func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("expression.Like")
-	defer span.Finish()
+	defer span.End()
 
 	left, err := l.Left.Eval(ctx, row)
 	if err != nil || left == nil {
@@ -108,6 +108,10 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if likeMatcher == nil {
+		return false, nil
 	}
 
 	ok := likeMatcher.Match(left.(string))

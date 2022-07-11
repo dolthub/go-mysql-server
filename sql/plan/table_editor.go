@@ -52,6 +52,12 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	_, isIg := err.(sql.ErrInsertIgnore)
 	if err != nil && err != io.EOF && !isIg {
 		s.errorEncountered = err
+		return row, err
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
 	return row, err
 }

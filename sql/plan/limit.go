@@ -18,7 +18,8 @@ import (
 	"fmt"
 	"io"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -65,16 +66,17 @@ func (l Limit) WithCalcFoundRows(v bool) *Limit {
 
 // RowIter implements the Node interface.
 func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.Limit})
+	span, ctx := ctx.Span("plan.Limit", trace.WithAttributes(attribute.Stringer("limit", l.Limit)))
 
 	limit, err := getInt64Value(ctx, l.Limit)
 	if err != nil {
+		span.End()
 		return nil, err
 	}
 
 	childIter, err := l.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &limitIter{
@@ -128,6 +130,11 @@ func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nl := *l
 	nl.Child = children[0]
 	return &nl, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (l *Limit) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return l.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (l Limit) String() string {

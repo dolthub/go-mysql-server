@@ -1,0 +1,19 @@
+exec
+CREATE TABLE `stringandtable` (
+   `k` bigint NOT NULL,
+   `i` bigint,
+   `v` varchar(20),
+   PRIMARY KEY (`k`)
+);
+----
+
+exec
+insert into stringandtable values
+    (0, 0, '0'),
+    (1, 1, '1'),
+    (2, 2, ''),
+    (3, 3, 'true'),
+    (4, 4, 'false'),
+    (5, 5, null),
+    (6, null, '2');
+----

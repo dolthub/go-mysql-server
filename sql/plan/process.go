@@ -17,15 +17,23 @@ package plan
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // QueryProcess represents a running query process node. It will use a callback
 // to notify when it has finished running.
+//TODO: QueryProcess -> trackedRowIter is required to dispose certain iter caches.
+// Make a proper scheduler interface to perform lifecycle management, caching, and
+// scan attaching
 type QueryProcess struct {
 	UnaryNode
 	Notify NotifyFunc
 }
+
+var _ sql.Node = (*QueryProcess)(nil)
+var _ sql.Node2 = (*QueryProcess)(nil)
 
 // NotifyFunc is a function to notify about some event.
 type NotifyFunc func()
@@ -33,6 +41,10 @@ type NotifyFunc func()
 // NewQueryProcess creates a new QueryProcess node.
 func NewQueryProcess(node sql.Node, notify NotifyFunc) *QueryProcess {
 	return &QueryProcess{UnaryNode{Child: node}, notify}
+}
+
+func (p *QueryProcess) Child() sql.Node {
+	return p.UnaryNode.Child
 }
 
 // WithChildren implements the Node interface.
@@ -44,28 +56,46 @@ func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewQueryProcess(children[0], p.Notify), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *QueryProcess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Child().CheckPrivileges(ctx, opChecker)
+}
+
 // RowIter implements the sql.Node interface.
 func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	iter, err := p.Child.RowIter(ctx, row)
+	iter, err := p.Child().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	qType := getQueryType(p.Child)
+	qType := getQueryType(p.Child())
 
-	return &trackedRowIter{
-		node:               p.Child,
-		iter:               iter,
-		onDone:             p.Notify,
-		queryType:          qType,
-		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
-	}, nil
+	trackedIter := newTrackedRowIter(p.Child(), iter, nil, p.Notify)
+	trackedIter.queryType = qType
+	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
+
+	return trackedIter, nil
+}
+
+func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	iter, err := p.Child().(sql.Node2).RowIter2(ctx, f)
+	if err != nil {
+		return nil, err
+	}
+
+	qType := getQueryType(p.Child())
+
+	trackedIter := newTrackedRowIter(p.Child(), iter, nil, p.Notify)
+	trackedIter.queryType = qType
+	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
+
+	return trackedIter, nil
 }
 
 func getQueryType(child sql.Node) queryType {
 	// TODO: behavior of CALL is not specified in the docs. Needs investigation
 	var queryType queryType = queryTypeSelect
-	Inspect(child, func(node sql.Node) bool {
+	transform.Inspect(child, func(node sql.Node) bool {
 		if IsNoRowNode(node) {
 			queryType = queryTypeDdl
 			return false
@@ -89,12 +119,12 @@ func getQueryType(child sql.Node) queryType {
 	return queryType
 }
 
-func (p *QueryProcess) String() string { return p.Child.String() }
+func (p *QueryProcess) String() string { return p.Child().String() }
 
 func (p *QueryProcess) DebugString() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("QueryProcess")
-	_ = tp.WriteChildren(sql.DebugString(p.Child))
+	_ = tp.WriteChildren(sql.DebugString(p.Child()))
 	return tp.String()
 }
 
@@ -103,7 +133,7 @@ func (p *QueryProcess) DebugString() string {
 func (p *QueryProcess) shouldSetFoundRows() bool {
 	var fromLimit *bool
 	var fromTopN *bool
-	Inspect(p.Child, func(n sql.Node) bool {
+	transform.Inspect(p.Child(), func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *StartTransaction:
 			return true
@@ -137,6 +167,8 @@ type ProcessIndexableTable struct {
 	OnPartitionStart NamedNotifyFunc
 	OnRowNext        NamedNotifyFunc
 }
+
+var _ sql.Table2 = (*ProcessIndexableTable)(nil)
 
 func (t *ProcessIndexableTable) DebugString() string {
 	tp := sql.NewTreePrinter()
@@ -175,6 +207,10 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 		return nil, err
 	}
 
+	return t.newPartIter(p, iter)
+}
+
+func (t *ProcessIndexableTable) newPartIter(p sql.Partition, iter sql.RowIter) (sql.RowIter, error) {
 	partitionName := partitionName(p)
 	if t.OnPartitionStart != nil {
 		t.OnPartitionStart(partitionName)
@@ -194,7 +230,21 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 		}
 	}
 
-	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+	return newTrackedRowIter(nil, iter, onNext, onDone), nil
+}
+
+func (t *ProcessIndexableTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
+	iter, err := t.DriverIndexableTable.(sql.Table2).PartitionRows2(ctx, part)
+	if err != nil {
+		return nil, err
+	}
+
+	partIter, err := t.newPartIter(part, iter)
+	if err != nil {
+		return nil, err
+	}
+
+	return partIter.(sql.RowIter2), nil
 }
 
 var _ sql.DriverIndexableTable = (*ProcessIndexableTable)(nil)
@@ -211,6 +261,8 @@ type ProcessTable struct {
 	OnPartitionStart NamedNotifyFunc
 	OnRowNext        NamedNotifyFunc
 }
+
+var _ sql.Table2 = (*ProcessTable)(nil)
 
 // NewProcessTable returns a new ProcessTable.
 func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
@@ -229,6 +281,24 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 		return nil, err
 	}
 
+	onDone, onNext := t.notifyFuncsForPartition(p)
+
+	return newTrackedRowIter(nil, iter, onNext, onDone), nil
+}
+
+func (t *ProcessTable) PartitionRows2(ctx *sql.Context, p sql.Partition) (sql.RowIter2, error) {
+	iter, err := t.Table.(sql.Table2).PartitionRows2(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	onDone, onNext := t.notifyFuncsForPartition(p)
+
+	return newTrackedRowIter(nil, iter, onNext, onDone), nil
+}
+
+// notifyFuncsForPartition returns the OnDone and OnNext NotifyFuncs for the partition given
+func (t *ProcessTable) notifyFuncsForPartition(p sql.Partition) (NotifyFunc, NotifyFunc) {
 	partitionName := partitionName(p)
 	if t.OnPartitionStart != nil {
 		t.OnPartitionStart(partitionName)
@@ -247,8 +317,7 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 			t.OnRowNext(partitionName)
 		}
 	}
-
-	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+	return onDone, onNext
 }
 
 type queryType byte
@@ -262,11 +331,22 @@ const (
 type trackedRowIter struct {
 	node               sql.Node
 	iter               sql.RowIter
+	iter2              sql.RowIter2
 	numRows            int64
 	queryType          queryType
 	shouldSetFoundRows bool
 	onDone             NotifyFunc
 	onNext             NotifyFunc
+}
+
+func newTrackedRowIter(
+	node sql.Node,
+	iter sql.RowIter,
+	onNext NotifyFunc,
+	onDone NotifyFunc,
+) *trackedRowIter {
+	iter2, _ := iter.(sql.RowIter2)
+	return &trackedRowIter{node: node, iter: iter, iter2: iter2, onDone: onDone, onNext: onNext}
 }
 
 func (i *trackedRowIter) done() {
@@ -281,11 +361,11 @@ func (i *trackedRowIter) done() {
 }
 
 func disposeNode(n sql.Node) {
-	Inspect(n, func(node sql.Node) bool {
+	transform.Inspect(n, func(node sql.Node) bool {
 		sql.Dispose(node)
 		return true
 	})
-	InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		sql.Dispose(e)
 		return true
 	})
@@ -310,6 +390,22 @@ func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return row, nil
+}
+
+func (i *trackedRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	err := i.iter2.Next2(ctx, frame)
+	if err != nil {
+		return err
+	}
+
+	// TODO: revisit this when we put more than one row per frame
+	i.numRows++
+
+	if i.onNext != nil {
+		i.onNext()
+	}
+
+	return nil
 }
 
 func (i *trackedRowIter) Close(ctx *sql.Context) error {
@@ -447,7 +543,7 @@ func IsShowNode(node sql.Node) bool {
 		*ShowDatabases, *ShowCreateDatabase,
 		*ShowColumns, *ShowIndexes,
 		*ShowProcessList, *ShowTableStatus,
-		*ShowVariables, *ShowWarnings:
+		*ShowVariables, ShowWarnings:
 		return true
 	default:
 		return false

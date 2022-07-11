@@ -41,6 +41,7 @@ var _ sql.WindowFunction = (*Lead)(nil)
 type SumAgg struct {
 	partitionStart, partitionEnd int
 	expr                         sql.Expression
+	framer                       sql.WindowFramer
 
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
 	prefixSum []float64
@@ -54,8 +55,16 @@ func NewSumAgg(e sql.Expression) *SumAgg {
 	}
 }
 
-func (a *SumAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *SumAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *SumAgg) Dispose() {
@@ -64,6 +73,9 @@ func (a *SumAgg) Dispose() {
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
 func (a *SumAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewUnboundedPrecedingToCurrentRowFramer()
 }
 
@@ -124,8 +136,10 @@ func computePrefixSum(interval sql.WindowInterval, partitionStart int, prefixSum
 }
 
 type AvgAgg struct {
-	partitionStart, partitionEnd int
-	expr                         sql.Expression
+	partitionStart int
+	partitionEnd   int
+	expr           sql.Expression
+	framer         sql.WindowFramer
 
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
 	prefixSum []float64
@@ -139,8 +153,16 @@ func NewAvgAgg(e sql.Expression) *AvgAgg {
 	}
 }
 
-func (a *AvgAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *AvgAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *AvgAgg) Dispose() {
@@ -149,6 +171,9 @@ func (a *AvgAgg) Dispose() {
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
 func (a *AvgAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewUnboundedPrecedingToCurrentRowFramer()
 }
 
@@ -182,7 +207,8 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 }
 
 type MaxAgg struct {
-	expr sql.Expression
+	expr   sql.Expression
+	framer sql.WindowFramer
 }
 
 func NewMaxAgg(e sql.Expression) *MaxAgg {
@@ -191,8 +217,16 @@ func NewMaxAgg(e sql.Expression) *MaxAgg {
 	}
 }
 
-func (a *MaxAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *MaxAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *MaxAgg) Dispose() {
@@ -201,6 +235,9 @@ func (a *MaxAgg) Dispose() {
 
 // DefaultFramer returns a NewPartitionFramer
 func (a *MaxAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewPartitionFramer()
 }
 
@@ -242,7 +279,8 @@ func (a *MaxAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer s
 }
 
 type MinAgg struct {
-	expr sql.Expression
+	expr   sql.Expression
+	framer sql.WindowFramer
 }
 
 func NewMinAgg(e sql.Expression) *MinAgg {
@@ -251,8 +289,16 @@ func NewMinAgg(e sql.Expression) *MinAgg {
 	}
 }
 
-func (a *MinAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *MinAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *MinAgg) Dispose() {
@@ -261,6 +307,9 @@ func (a *MinAgg) Dispose() {
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
 func (a *MinAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewUnboundedPrecedingToCurrentRowFramer()
 }
 
@@ -302,7 +351,8 @@ func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 }
 
 type LastAgg struct {
-	expr sql.Expression
+	expr   sql.Expression
+	framer sql.WindowFramer
 }
 
 func NewLastAgg(e sql.Expression) *LastAgg {
@@ -311,8 +361,16 @@ func NewLastAgg(e sql.Expression) *LastAgg {
 	}
 }
 
-func (a *LastAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *LastAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w != nil && w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *LastAgg) Dispose() {
@@ -321,6 +379,9 @@ func (a *LastAgg) Dispose() {
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
 func (a *LastAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewUnboundedPrecedingToCurrentRowFramer()
 }
 
@@ -348,6 +409,7 @@ func (a *LastAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer 
 type FirstAgg struct {
 	partitionStart, partitionEnd int
 	expr                         sql.Expression
+	framer                       sql.WindowFramer
 }
 
 func NewFirstAgg(e sql.Expression) *FirstAgg {
@@ -356,8 +418,16 @@ func NewFirstAgg(e sql.Expression) *FirstAgg {
 	}
 }
 
-func (a *FirstAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *FirstAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *FirstAgg) Dispose() {
@@ -366,6 +436,9 @@ func (a *FirstAgg) Dispose() {
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
 func (a *FirstAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewUnboundedPrecedingToCurrentRowFramer()
 }
 
@@ -392,8 +465,10 @@ func (a *FirstAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer
 }
 
 type CountAgg struct {
-	partitionStart, partitionEnd int
-	expr                         sql.Expression
+	partitionStart int
+	partitionEnd   int
+	expr           sql.Expression
+	framer         sql.WindowFramer
 
 	// use prefix sums to quickly calculate arbitrary a frame's row cnt within partition
 	prefixSum []float64
@@ -422,10 +497,20 @@ func NewCountDistinctAgg(e sql.Expression) *CountAgg {
 	}
 }
 
-func (a *CountAgg) WithWindow(w *sql.Window) sql.WindowFunction {
+func (a *CountAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
-	na.orderBy = w.OrderBy.ToExpressions()
-	return &na
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
+	}
+	return &na, nil
 }
 
 func (a *CountAgg) Dispose() {
@@ -434,7 +519,21 @@ func (a *CountAgg) Dispose() {
 
 // DefaultFramer returns a NewPartitionFramer
 func (a *CountAgg) DefaultFramer() sql.WindowFramer {
-	return NewPartitionFramer()
+	if a.framer != nil {
+		return a.framer
+	}
+
+	if a.orderBy == nil || len(a.orderBy) < 1 {
+		return NewPartitionFramer()
+	}
+
+	return &RangeUnboundedPrecedingToCurrentRowFramer{
+		rangeFramerBase{
+			orderBy:            a.orderBy[0],
+			unboundedPreceding: true,
+			endCurrentRow:      true,
+		},
+	}
 }
 
 func (a *CountAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
@@ -455,16 +554,8 @@ func (a *CountAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 }
 
 func (a *CountAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	// if a.pos >= a.peerGroup.End, find next peerGroup
-	if a.pos >= a.peerGroup.End {
-		var err error
-		a.peerGroup, err = nextPeerGroup(ctx, a.pos, interval.End, a.orderBy, buf)
-		if err != nil {
-			return err
-		}
-	}
 	a.pos++
-	return int64(computePrefixSum(sql.WindowInterval{Start: interval.Start, End: a.peerGroup.End}, a.partitionStart, a.prefixSum))
+	return int64(computePrefixSum(sql.WindowInterval{Start: interval.Start, End: interval.End}, a.partitionStart, a.prefixSum))
 }
 
 func countPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression) ([]float64, error) {
@@ -496,7 +587,8 @@ func countPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.Windo
 }
 
 type GroupConcatAgg struct {
-	gc *GroupConcat
+	gc     *GroupConcat
+	framer sql.WindowFramer
 	// hash map to deduplicate values
 	// TODO make this more efficient, ideally with sliding window and hashes
 	distinct map[string]struct{}
@@ -510,8 +602,16 @@ func NewGroupConcatAgg(gc *GroupConcat) *GroupConcatAgg {
 	}
 }
 
-func (a *GroupConcatAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *GroupConcatAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *GroupConcatAgg) Dispose() {
@@ -520,6 +620,9 @@ func (a *GroupConcatAgg) Dispose() {
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
 func (a *GroupConcatAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewUnboundedPrecedingToCurrentRowFramer()
 }
 
@@ -634,7 +737,8 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 }
 
 type WindowedJSONArrayAgg struct {
-	expr sql.Expression
+	expr   sql.Expression
+	framer sql.WindowFramer
 }
 
 func NewJsonArrayAgg(expr sql.Expression) *WindowedJSONArrayAgg {
@@ -643,8 +747,16 @@ func NewJsonArrayAgg(expr sql.Expression) *WindowedJSONArrayAgg {
 	}
 }
 
-func (a *WindowedJSONArrayAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *WindowedJSONArrayAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *WindowedJSONArrayAgg) Dispose() {
@@ -697,7 +809,8 @@ func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.Wind
 }
 
 type WindowedJSONObjectAgg struct {
-	j *JSONObjectAgg
+	j      *JSONObjectAgg
+	framer sql.WindowFramer
 	// we need to eval the partition before Compute to return nil key errors
 	vals map[string]interface{}
 }
@@ -708,8 +821,16 @@ func NewWindowedJSONObjectAgg(j *JSONObjectAgg) *WindowedJSONObjectAgg {
 	}
 }
 
-func (a *WindowedJSONObjectAgg) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *WindowedJSONObjectAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
 }
 
 func (a *WindowedJSONObjectAgg) Dispose() {
@@ -718,6 +839,9 @@ func (a *WindowedJSONObjectAgg) Dispose() {
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
 func (a *WindowedJSONObjectAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
 	return NewUnboundedPrecedingToCurrentRowFramer()
 }
 
@@ -788,8 +912,8 @@ func NewRowNumber() *RowNumber {
 	}
 }
 
-func (a *RowNumber) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *RowNumber) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	return a, nil
 }
 
 func (a *RowNumber) Dispose() {
@@ -839,10 +963,10 @@ func NewPercentRank(orderBy []sql.Expression) *PercentRank {
 	}
 }
 
-func (a *PercentRank) WithWindow(w *sql.Window) sql.WindowFunction {
+func (a *PercentRank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	na.orderBy = w.OrderBy.ToExpressions()
-	return &na
+	return &na, nil
 }
 
 func (a *PercentRank) Dispose() {
@@ -851,7 +975,7 @@ func (a *PercentRank) Dispose() {
 
 // DefaultFramer returns a NewPartitionFramer
 func (a *PercentRank) DefaultFramer() sql.WindowFramer {
-	return NewPartitionFramer()
+	return NewPeerGroupFramer(a.orderBy)
 }
 
 func (a *PercentRank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
@@ -869,16 +993,8 @@ func (a *PercentRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval)
 // Compute returns the number of elements before the current peer group (rank),
 // and returns (rank - 1)/(rows - 1).
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
-// there are 4 values less than 3 and (10 - 1) rows in the list
-func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) interface{} {
-	// if a.pos >= a.peerGroup.End, find next peerGroup
-	if a.pos >= a.peerGroup.End {
-		var err error
-		a.peerGroup, err = nextPeerGroup(ctx, a.pos, interval.End, a.orderBy, buffer)
-		if err != nil {
-			return err
-		}
-	}
+// there are 4 values less than 3, and there are (10 - 1) total rows in the list.
+func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	if interval.End-interval.Start < 1 {
 		return nil
 	}
@@ -886,61 +1002,11 @@ func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 	switch {
 	case a.pos == 0:
 		return float64(0)
-	case interval.End-interval.Start == 1:
+	case a.partitionEnd-a.partitionStart == 1:
 		return float64(0)
 	default:
-		return float64(a.peerGroup.Start-a.partitionStart) / float64(interval.End-interval.Start-1)
+		return float64(interval.Start-a.partitionStart) / float64(a.partitionEnd-a.partitionStart-1)
 	}
-}
-
-// nextPeerGroup scans for a sql.WindowInterval of rows with the same value as
-// the current row [a.pos]. This is equivalent to a partitioning algorithm, but
-// we are using the OrderBy fields, and we stream the results.
-// ex: [1, 2, 2, 2, 2, 3, 3, 4, 5, 5, 6] => {0,1}, {1,5}, {5,7}, {8,9}, {9,10}
-func nextPeerGroup(ctx *sql.Context, pos, partitionEnd int, orderBy []sql.Expression, buffer sql.WindowBuffer) (sql.WindowInterval, error) {
-	if pos >= len(buffer) {
-		return sql.WindowInterval{}, nil
-	}
-	var row sql.Row
-	i := pos + 1
-	last := buffer[pos]
-	for i < partitionEnd {
-		row = buffer[i]
-		if newPeerGroup, err := isNewOrderValue(ctx, orderBy, last, row); err != nil {
-			return sql.WindowInterval{}, err
-		} else if newPeerGroup {
-			break
-		}
-		i++
-		last = row
-	}
-	return sql.WindowInterval{Start: pos, End: i}, nil
-}
-
-// isNewOrderValue compares the order by columns between two rows, returning true when the last row is null or
-// when the next row's orderBy columns are unique
-func isNewOrderValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
-		return true, nil
-	}
-
-	lastExp, _, err := evalExprs(ctx, orderByExprs, last)
-	if err != nil {
-		return false, err
-	}
-
-	thisExp, _, err := evalExprs(ctx, orderByExprs, row)
-	if err != nil {
-		return false, err
-	}
-
-	for i := range lastExp {
-		if lastExp[i] != thisExp[i] {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 type Lag struct {
@@ -978,8 +1044,8 @@ type leadLagBase struct {
 	pos    int
 }
 
-func (a *leadLagBase) WithWindow(w *sql.Window) sql.WindowFunction {
-	return a
+func (a *leadLagBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	return a, nil
 }
 
 func (a *leadLagBase) Dispose() {

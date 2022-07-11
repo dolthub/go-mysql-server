@@ -33,7 +33,6 @@ var BuiltIns = []sql.Function{
 	// elt, find_in_set, insert, load_file, locate
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
 	sql.Function1{Name: "acos", Fn: NewAcos},
-	sql.Function1{Name: "array_length", Fn: NewArrayLength},
 	sql.Function1{Name: "ascii", Fn: NewAscii},
 	sql.Function1{Name: "asin", Fn: NewAsin},
 	sql.Function1{Name: "atan", Fn: NewAtan},
@@ -73,7 +72,6 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "dayofweek", Fn: NewDayOfWeek},
 	sql.Function1{Name: "dayofyear", Fn: NewDayOfYear},
 	sql.Function1{Name: "degrees", Fn: NewDegrees},
-	sql.Function1{Name: "explode", Fn: NewExplode},
 	sql.Function1{Name: "first", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewFirst(e) }},
 	sql.Function1{Name: "floor", Fn: NewFloor},
 	sql.Function0{Name: "found_rows", Fn: NewFoundRows},
@@ -136,7 +134,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "least", Fn: NewLeast},
 	sql.Function2{Name: "left", Fn: NewLeft},
 	sql.Function1{Name: "length", Fn: NewLength},
-	sql.FunctionN{Name: "linestring", Fn: NewLinestring},
+	sql.FunctionN{Name: "linestring", Fn: NewLineString},
 	sql.Function1{Name: "ln", Fn: NewLogBaseFunc(float64(math.E))},
 	sql.Function1{Name: "load_file", Fn: NewLoadFile},
 	sql.FunctionN{Name: "locate", Fn: NewLocate},
@@ -152,6 +150,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "mid", Fn: NewSubstring},
 	sql.Function1{Name: "min", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewMin(e) }},
 	sql.Function1{Name: "minute", Fn: NewMinute},
+	sql.FunctionN{Name: "mod", Fn: NewMod},
 	sql.Function1{Name: "month", Fn: NewMonth},
 	sql.Function1{Name: "monthname", Fn: NewMonthName},
 	sql.FunctionN{Name: "now", Fn: NewNow},
@@ -184,7 +183,6 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "sin", Fn: NewSin},
 	sql.Function1{Name: "sleep", Fn: NewSleep},
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
-	sql.Function2{Name: "split", Fn: NewSplit},
 	sql.Function1{Name: "sqrt", Fn: NewSqrt},
 	sql.FunctionN{Name: "str_to_date", Fn: NewStrToDate},
 	sql.Function1{Name: "st_asbinary", Fn: NewAsWKB},
@@ -192,9 +190,11 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_aswkb", Fn: NewAsWKB},
 	sql.Function1{Name: "st_aswkt", Fn: NewAsWKT},
 	sql.Function1{Name: "st_astext", Fn: NewAsWKT},
+	sql.Function1{Name: "st_dimension", Fn: NewDimension},
 	sql.FunctionN{Name: "st_geomfromgeojson", Fn: NewGeomFromGeoJSON},
 	sql.FunctionN{Name: "st_geomfromtext", Fn: NewGeomFromWKT},
 	sql.FunctionN{Name: "st_geomfromwkb", Fn: NewGeomFromWKB},
+	sql.FunctionN{Name: "st_longitude", Fn: NewLongitude},
 	sql.FunctionN{Name: "st_linefromwkb", Fn: NewLineFromWKB},
 	sql.FunctionN{Name: "st_pointfromwkb", Fn: NewPointFromWKB},
 	sql.FunctionN{Name: "st_polyfromwkb", Fn: NewPolyFromWKB},
@@ -203,6 +203,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "st_pointfromwkt", Fn: NewPointFromWKT},
 	sql.FunctionN{Name: "st_polyfromwkt", Fn: NewPolyFromWKT},
 	sql.FunctionN{Name: "st_srid", Fn: NewSRID},
+	sql.Function1{Name: "st_swapxy", Fn: NewSwapXY},
 	sql.FunctionN{Name: "st_x", Fn: NewSTX},
 	sql.FunctionN{Name: "st_y", Fn: NewSTY},
 	sql.FunctionN{Name: "substr", Fn: NewSubstring},
@@ -266,7 +267,7 @@ func (r Registry) Register(fn ...sql.Function) error {
 }
 
 // Function implements sql.FunctionProvider
-func (r Registry) Function(name string) (sql.Function, error) {
+func (r Registry) Function(ctx *sql.Context, name string) (sql.Function, error) {
 	if fn, ok := r[name]; ok {
 		return fn, nil
 	}

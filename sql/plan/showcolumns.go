@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -29,26 +31,27 @@ type ShowColumns struct {
 	targetSchema sql.Schema
 }
 
+var VarChar1000 = sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1000)
 var (
 	showColumnsSchema = sql.Schema{
-		{Name: "Field", Type: sql.LongText},
-		{Name: "Type", Type: sql.LongText},
-		{Name: "Null", Type: sql.LongText},
-		{Name: "Key", Type: sql.LongText},
-		{Name: "Default", Type: sql.LongText, Nullable: true},
-		{Name: "Extra", Type: sql.LongText},
+		{Name: "Field", Type: VarChar1000},
+		{Name: "Type", Type: VarChar1000},
+		{Name: "Null", Type: VarChar1000},
+		{Name: "Key", Type: VarChar1000},
+		{Name: "Default", Type: VarChar1000, Nullable: true},
+		{Name: "Extra", Type: VarChar1000},
 	}
 
 	showColumnsFullSchema = sql.Schema{
-		{Name: "Field", Type: sql.LongText},
-		{Name: "Type", Type: sql.LongText},
-		{Name: "Collation", Type: sql.LongText, Nullable: true},
-		{Name: "Null", Type: sql.LongText},
-		{Name: "Key", Type: sql.LongText},
-		{Name: "Default", Type: sql.LongText, Nullable: true},
-		{Name: "Extra", Type: sql.LongText},
-		{Name: "Privileges", Type: sql.LongText},
-		{Name: "Comment", Type: sql.LongText},
+		{Name: "Field", Type: VarChar1000},
+		{Name: "Type", Type: VarChar1000},
+		{Name: "Collation", Type: VarChar1000, Nullable: true},
+		{Name: "Null", Type: VarChar1000},
+		{Name: "Key", Type: VarChar1000},
+		{Name: "Default", Type: VarChar1000, Nullable: true},
+		{Name: "Extra", Type: VarChar1000},
+		{Name: "Privileges", Type: VarChar1000},
+		{Name: "Comment", Type: VarChar1000},
 	}
 )
 
@@ -58,6 +61,8 @@ func NewShowColumns(full bool, child sql.Node) *ShowColumns {
 }
 
 var _ sql.Node = (*ShowColumns)(nil)
+var _ sql.Expressioner = (*ShowColumns)(nil)
+var _ sql.SchemaTarget = (*ShowColumns)(nil)
 
 // Schema implements the sql.Node interface.
 func (s *ShowColumns) Schema() sql.Schema {
@@ -65,6 +70,21 @@ func (s *ShowColumns) Schema() sql.Schema {
 		return showColumnsFullSchema
 	}
 	return showColumnsSchema
+}
+
+// Resolved implements the sql.Node interface.
+func (s *ShowColumns) Resolved() bool {
+	if !s.Child.Resolved() {
+		return false
+	}
+
+	for _, col := range s.targetSchema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s *ShowColumns) Expressions() []sql.Expression {
@@ -75,18 +95,24 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 	return wrappedColumnDefaults(s.targetSchema)
 }
 
-func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.targetSchema))
 	}
 
-	s.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
-	return &s, nil
+	ss := *s
+	ss.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
+	return &ss, nil
 }
 
-func (s ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
-	s.targetSchema = schema
-	return &s, nil
+func (s *ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	ss := *s
+	ss.targetSchema = schema
+	return &ss, nil
+}
+
+func (s *ShowColumns) TargetSchema() sql.Schema {
+	return s.targetSchema
 }
 
 // RowIter creates a new ShowColumns node.
@@ -130,6 +156,11 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		var defaultVal string
 		if col.Default != nil {
 			defaultVal = col.Default.String()
+		} else {
+			// From: https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
+			// The default value for the column. This is NULL if the column has an explicit default of NULL,
+			// or if the column definition includes no DEFAULT clause.
+			defaultVal = "NULL"
 		}
 
 		// TODO: rather than lower-casing here, we should lower-case the String() method of types
@@ -163,13 +194,20 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 }
 
 // WithChildren implements the Node interface.
-func (s ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
-	s.Child = children[0]
-	return &s, nil
+	ss := *s
+	ss.Child = children[0]
+	return &ss, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowColumns) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
+	return true
 }
 
 func (s *ShowColumns) String() string {

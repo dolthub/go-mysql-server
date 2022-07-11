@@ -15,11 +15,13 @@
 package test
 
 import (
+	"context"
 	"sync"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var _, noopSpan = trace.NewNoopTracerProvider().Tracer("").Start(context.Background(), "")
 
 // MemTracer implements a simple tracer in memory for testing.
 type MemTracer struct {
@@ -31,37 +33,9 @@ type memSpan struct {
 	opName string
 }
 
-// StartSpan implements opentracing.Tracer interface.
-func (t *MemTracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
+func (t *MemTracer) Start(ctx context.Context, operationName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	t.Lock()
 	t.Spans = append(t.Spans, operationName)
 	t.Unlock()
-	return &memSpan{operationName}
+	return ctx, noopSpan
 }
-
-// Inject implements opentracing.Tracer interface.
-func (t *MemTracer) Inject(sm opentracing.SpanContext, format interface{}, carrier interface{}) error {
-	panic("not implemented")
-}
-
-// Extract implements opentracing.Tracer interface.
-func (t *MemTracer) Extract(format interface{}, carrier interface{}) (opentracing.SpanContext, error) {
-	panic("not implemented")
-}
-
-func (m memSpan) Context() opentracing.SpanContext                      { return m }
-func (m memSpan) SetBaggageItem(key, val string) opentracing.Span       { return m }
-func (m memSpan) BaggageItem(key string) string                         { return "" }
-func (m memSpan) SetTag(key string, value interface{}) opentracing.Span { return m }
-func (m memSpan) LogFields(fields ...log.Field)                         {}
-func (m memSpan) LogKV(keyVals ...interface{})                          {}
-func (m memSpan) Finish()                                               {}
-func (m memSpan) FinishWithOptions(opts opentracing.FinishOptions)      {}
-func (m memSpan) SetOperationName(operationName string) opentracing.Span {
-	return &memSpan{operationName}
-}
-func (m memSpan) Tracer() opentracing.Tracer                            { return &MemTracer{} }
-func (m memSpan) LogEvent(event string)                                 {}
-func (m memSpan) LogEventWithPayload(event string, payload interface{}) {}
-func (m memSpan) Log(data opentracing.LogData)                          {}
-func (m memSpan) ForeachBaggageItem(handler func(k, v string) bool)     {}

@@ -15,9 +15,13 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemStringValueType = reflect.TypeOf(string(""))
 
 // systemStringType is an internal string type ONLY for system variables.
 type systemStringType struct {
@@ -74,13 +78,21 @@ func (t systemStringType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemStringType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemStringType); ok {
+		return t.varName == ot.varName
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemStringType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemStringType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -90,7 +102,9 @@ func (t systemStringType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), []byte(v.(string))), nil
+	val := appendAndSliceString(dest, v.(string))
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.
@@ -101,6 +115,11 @@ func (t systemStringType) String() string {
 // Type implements Type interface.
 func (t systemStringType) Type() query.Type {
 	return sqltypes.VarChar
+}
+
+// ValueType implements Type interface.
+func (t systemStringType) ValueType() reflect.Type {
+	return systemStringValueType
 }
 
 // Zero implements Type interface.

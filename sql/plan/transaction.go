@@ -17,6 +17,8 @@ package plan
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -44,6 +46,9 @@ func (s *StartTransaction) Database() sql.Database {
 }
 
 func (s StartTransaction) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	s.db = database
 	return &s, nil
 }
@@ -125,6 +130,15 @@ func (s StartTransaction) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &s, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *StartTransaction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	child := s.UnaryNode.Child
+	if child != nil {
+		return s.Child.CheckPrivileges(ctx, opChecker)
+	}
+	return true
+}
+
 // Resolved implements the sql.Node interface.
 func (s *StartTransaction) Resolved() bool {
 	// If the database is nameless, we count it as resolved
@@ -165,6 +179,9 @@ func (c *Commit) Database() sql.Database {
 }
 
 func (c Commit) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	c.db = database
 	return &c, nil
 }
@@ -202,6 +219,11 @@ func (c *Commit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return c, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (c *Commit) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
 }
 
 // Resolved implements the sql.Node interface.
@@ -264,6 +286,9 @@ func (r *Rollback) Database() sql.Database {
 }
 
 func (r Rollback) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	r.db = database
 	return &r, nil
 }
@@ -279,8 +304,16 @@ func (r *Rollback) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return r, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r *Rollback) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
 // Resolved implements the sql.Node interface.
 func (r *Rollback) Resolved() bool {
+	if r.db.Name() == "" {
+		return true
+	}
 	_, ok := r.db.(sql.UnresolvedDatabase)
 	return !ok
 }
@@ -333,6 +366,9 @@ func (c *CreateSavepoint) Database() sql.Database {
 }
 
 func (c CreateSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	c.db = database
 	return &c, nil
 }
@@ -346,6 +382,11 @@ func (c *CreateSavepoint) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return c, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateSavepoint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
 }
 
 // Resolved implements the sql.Node interface.
@@ -402,6 +443,9 @@ func (r *RollbackSavepoint) Database() sql.Database {
 }
 
 func (r RollbackSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	r.db = database
 	return &r, nil
 }
@@ -415,6 +459,11 @@ func (r *RollbackSavepoint) WithChildren(children ...sql.Node) (sql.Node, error)
 	}
 
 	return r, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (r *RollbackSavepoint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
 }
 
 // Resolved implements the sql.Node interface.
@@ -471,6 +520,9 @@ func (r *ReleaseSavepoint) Database() sql.Database {
 }
 
 func (r ReleaseSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	r.db = database
 	return &r, nil
 }
@@ -484,6 +536,11 @@ func (r *ReleaseSavepoint) WithChildren(children ...sql.Node) (sql.Node, error) 
 	}
 
 	return r, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (r *ReleaseSavepoint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
 }
 
 // Resolved implements the sql.Node interface.

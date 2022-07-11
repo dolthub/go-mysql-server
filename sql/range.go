@@ -99,9 +99,25 @@ func (ranges RangeCollection) DebugString() string {
 func (rang Range) AsEmpty() Range {
 	emptyRange := make(Range, len(rang))
 	for i := range rang {
-		emptyRange[i] = EmptyRangeColumnExpr(rang[i].typ)
+		emptyRange[i] = EmptyRangeColumnExpr(rang[i].Typ)
 	}
 	return emptyRange
+}
+
+func (rang Range) IsEmpty() (bool, error) {
+	if len(rang) == 0 {
+		return true, nil
+	}
+	for i := range rang {
+		res, err := rang[i].IsEmpty()
+		if err != nil {
+			return false, err
+		}
+		if res {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Copy returns a duplicate of this Range.
@@ -146,11 +162,11 @@ func (rang Range) Compare(otherRange Range) (int, error) {
 		return 0, fmt.Errorf("compared ranges must have matching lengths")
 	}
 	for i := range rang {
-		cmp, err := rang[i].LowerBound.Compare(otherRange[i].LowerBound, rang[i].typ)
+		cmp, err := rang[i].LowerBound.Compare(otherRange[i].LowerBound, rang[i].Typ)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
-		cmp, err = rang[i].UpperBound.Compare(otherRange[i].UpperBound, rang[i].typ)
+		cmp, err = rang[i].UpperBound.Compare(otherRange[i].UpperBound, rang[i].Typ)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
@@ -429,7 +445,11 @@ func RemoveOverlappingRanges(ranges ...Range) (RangeCollection, error) {
 		return nil, nil
 	}
 
-	rangeTree := NewRangeColumnExprTree(ranges[0])
+	colExprTypes := GetColExprTypes(ranges)
+	rangeTree, err := NewRangeColumnExprTree(ranges[0], colExprTypes)
+	if err != nil {
+		return nil, err
+	}
 	for i := 1; i < len(ranges); i++ {
 		rang := ranges[i]
 		connectingRanges, err := rangeTree.FindConnections(rang, 0)

@@ -16,8 +16,8 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
@@ -28,6 +28,8 @@ type Scope struct {
 	// Memo nodes are nodes in the execution context that shouldn't be considered for name resolution, but are still
 	// important for analysis.
 	memos []sql.Node
+
+	procedures *ProcedureCache
 }
 
 // newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
@@ -39,7 +41,11 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 	var newNodes []sql.Node
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.nodes...)
-	return &Scope{nodes: newNodes, memos: s.memos}
+	return &Scope{
+		nodes:      newNodes,
+		memos:      s.memos,
+		procedures: s.procedures,
+	}
 }
 
 // memo creates a new Scope object with the memo node given. Memo nodes don't affect name resolution, but are used in
@@ -51,7 +57,11 @@ func (s *Scope) memo(node sql.Node) *Scope {
 	var newNodes []sql.Node
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.memos...)
-	return &Scope{memos: newNodes, nodes: s.nodes}
+	return &Scope{
+		memos:      newNodes,
+		nodes:      s.nodes,
+		procedures: s.procedures,
+	}
 }
 
 // withMemos returns a new scope object identical to the receiver, but with its memos replaced with the ones given.
@@ -59,7 +69,11 @@ func (s *Scope) withMemos(memoNodes []sql.Node) *Scope {
 	if s == nil {
 		return &Scope{memos: memoNodes}
 	}
-	return &Scope{memos: memoNodes, nodes: s.nodes}
+	return &Scope{
+		memos:      memoNodes,
+		nodes:      s.nodes,
+		procedures: s.procedures,
+	}
 }
 
 func (s *Scope) MemoNodes() []sql.Node {
@@ -67,6 +81,28 @@ func (s *Scope) MemoNodes() []sql.Node {
 		return nil
 	}
 	return s.memos
+}
+
+func (s *Scope) procedureCache() *ProcedureCache {
+	if s == nil {
+		return nil
+	}
+	return s.procedures
+}
+
+func (s *Scope) withProcedureCache(cache *ProcedureCache) *Scope {
+	if s == nil {
+		return &Scope{procedures: cache}
+	}
+	return &Scope{
+		memos:      s.memos,
+		nodes:      s.nodes,
+		procedures: cache,
+	}
+}
+
+func (s *Scope) proceduresPopulating() bool {
+	return s != nil && s.procedures != nil && s.procedures.IsPopulating
 }
 
 // InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope. When using these nodes for
@@ -112,7 +148,7 @@ func (s *Scope) Schema() sql.Schema {
 				for _, expr := range n.Projections {
 					var col *sql.Column
 					if expr.Resolved() {
-						col = expression.ExpressionToColumn(expr)
+						col = transform.ExpressionToColumn(expr)
 					} else {
 						// TODO: a new type here?
 						col = &sql.Column{

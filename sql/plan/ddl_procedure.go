@@ -25,8 +25,8 @@ import (
 
 type CreateProcedure struct {
 	*Procedure
+	ddlNode
 	BodyString string
-	Db         sql.Database
 }
 
 var _ sql.Node = (*CreateProcedure)(nil)
@@ -35,6 +35,7 @@ var _ sql.DebugStringer = (*CreateProcedure)(nil)
 
 // NewCreateProcedure returns a *CreateProcedure node.
 func NewCreateProcedure(
+	db sql.Database,
 	name,
 	definer string,
 	params []ProcedureParam,
@@ -58,24 +59,25 @@ func NewCreateProcedure(
 	return &CreateProcedure{
 		Procedure:  procedure,
 		BodyString: bodyString,
+		ddlNode:    ddlNode{db},
 	}
 }
 
 // Database implements the sql.Databaser interface.
 func (c *CreateProcedure) Database() sql.Database {
-	return c.Db
+	return c.db
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (c *CreateProcedure) WithDatabase(database sql.Database) (sql.Node, error) {
-	nc := *c
-	nc.Db = database
-	return &nc, nil
+	cp := *c
+	cp.db = database
+	return &cp, nil
 }
 
 // Resolved implements the sql.Node interface.
 func (c *CreateProcedure) Resolved() bool {
-	return c.Procedure.Resolved()
+	return c.ddlNode.Resolved() && c.Procedure.Resolved()
 }
 
 // Schema implements the sql.Node interface.
@@ -101,6 +103,12 @@ func (c *CreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nc := *c
 	nc.Procedure = procedure
 	return &nc, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_CreateRoutine))
 }
 
 // String implements the sql.Node interface.
@@ -162,7 +170,7 @@ func (c *CreateProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			CreatedAt:       c.CreatedAt,
 			ModifiedAt:      c.ModifiedAt,
 		},
-		db: c.Db,
+		db: c.db,
 	}, nil
 }
 
@@ -182,7 +190,7 @@ func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if !run {
 		return nil, io.EOF
 	}
-
+	//TODO: if "automatic_sp_privileges" is true then the creator automatically gets EXECUTE and ALTER ROUTINE on this procedure
 	pdb, ok := c.db.(sql.StoredProcedureDatabase)
 	if !ok {
 		return nil, sql.ErrStoredProceduresNotSupported.New(c.db.Name())

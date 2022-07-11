@@ -111,6 +111,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: add cases for geometry, point, linestring, and polygon
 	switch val := arg.(type) {
 	case string:
 		return hexForString(val), nil
@@ -163,8 +164,17 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case []byte:
 		return hexForString(string(val)), nil
 
+	case sql.Point:
+		return hexForString(string(sql.SerializePoint(val))), nil
+
+	case sql.LineString:
+		return hexForString(string(sql.SerializeLineString(val))), nil
+
+	case sql.Polygon:
+		return hexForString(string(sql.SerializePolygon(val))), nil
+
 	default:
-		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
+		return nil, sql.ErrInvalidArgumentDetails.New("hex", fmt.Sprint(arg))
 	}
 }
 
@@ -252,7 +262,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongBlob.Convert(arg)
+	val, err := sql.LongText.Convert(arg)
 
 	if err != nil {
 		return nil, err
@@ -411,7 +421,7 @@ func (h *Bitlength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 128, nil
 	}
 
-	return nil, ErrInvalidArgument.New("bit_length", fmt.Sprint(arg))
+	return nil, sql.ErrInvalidArgumentDetails.New("bit_length", fmt.Sprint(arg))
 }
 
 // WithChildren implements the sql.Expression interface

@@ -29,11 +29,11 @@ import (
 func TestJoinSchema(t *testing.T) {
 	t1 := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
-	})), nil, nil)
+	}), nil), nil, nil)
 
 	t2 := NewResolvedTable(memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "b", Source: "bar", Type: sql.Int64},
-	})), nil, nil)
+	}), nil), nil, nil)
 
 	t.Run("inner", func(t *testing.T) {
 		j := NewInnerJoin(t1, t2, nil)
@@ -88,8 +88,8 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 	t.Helper()
 
 	require := require.New(t)
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -113,8 +113,8 @@ func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 
 	j := NewInnerJoin(
 		NewResolvedTable(ltable, nil, nil),
@@ -134,12 +134,12 @@ func BenchmarkInnerJoin(b *testing.B) {
 	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
 		{Name: "b", Source: "foo", Type: sql.Text},
-	}))
+	}), nil)
 
 	t2 := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "bar", Type: sql.Int64},
 		{Name: "b", Source: "bar", Type: sql.Text},
-	}))
+	}), nil)
 
 	for i := 0; i < 5; i++ {
 		t1.Insert(sql.NewEmptyContext(), sql.NewRow(int64(i), fmt.Sprintf("t1_%d", i)))
@@ -184,7 +184,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n1.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, iter)
+			rows, err := sql.RowIterToRows(ctx, nil, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -199,7 +199,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n1.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, iter)
+			rows, err := sql.RowIterToRows(ctx, nil, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -215,7 +215,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n1.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, iter)
+			rows, err := sql.RowIterToRows(ctx, nil, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -229,7 +229,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 			iter, err := n2.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, iter)
+			rows, err := sql.RowIterToRows(ctx, nil, iter)
 			require.NoError(err)
 
 			require.Equal(expected, rows)
@@ -240,8 +240,8 @@ func BenchmarkInnerJoin(b *testing.B) {
 func TestLeftJoin(t *testing.T) {
 	require := require.New(t)
 
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -259,7 +259,7 @@ func TestLeftJoin(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 	require.ElementsMatch([]sql.Row{
 		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},
@@ -270,8 +270,8 @@ func TestLeftJoin(t *testing.T) {
 func TestRightJoin(t *testing.T) {
 	require := require.New(t)
 
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -289,7 +289,7 @@ func TestRightJoin(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 	require.ElementsMatch([]sql.Row{
 		{nil, nil, nil, nil, "col1_1", "col2_1", int32(1), int64(2)},

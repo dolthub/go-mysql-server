@@ -986,6 +986,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemBoolType("inmemory_joins"),
 		Default:           int8(0),
 	},
+	"innodb_stats_auto_recalc": {
+		Name:              "inmemory_joins",
+		Scope:             SystemVariableScope_Global,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              NewSystemBoolType("innodb_stats_auto_recalc"),
+		Default:           int8(1),
+	},
 	"interactive_timeout": {
 		Name:              "interactive_timeout",
 		Scope:             SystemVariableScope_Both,
@@ -1017,6 +1025,14 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: true,
 		Type:              NewSystemUintType("join_buffer_size", 128, 18446744073709547520),
 		Default:           uint64(262144),
+	},
+	"join_complexity_limit": {
+		Name:              "join_complexity_limit",
+		Scope:             SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: true,
+		Type:              NewSystemUintType("join_complexity_limit", 2, 20),
+		Default:           uint64(12),
 	},
 	"keep_files_on_create": {
 		Name:              "keep_files_on_create",
@@ -2149,6 +2165,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemBoolType("show_create_table_verbosity"),
 		Default:           int8(0),
 	},
+	"show_external_procedures": {
+		Name:              "show_external_procedures",
+		Scope:             SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: true,
+		Type:              NewSystemBoolType("show_external_procedures"),
+		Default:           int8(1),
+	},
 	"show_old_temporals": {
 		Name:              "show_old_temporals",
 		Scope:             SystemVariableScope_Both,
@@ -2266,7 +2290,7 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: true,
-		Type:              NewSystemSetType("sql_mode", "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL"),
+		Type:              NewSystemSetType("sql_mode", "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL"),
 		Default:           "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION",
 	},
 	"sql_notes": {

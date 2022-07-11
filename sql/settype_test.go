@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -27,7 +28,7 @@ import (
 func TestSetCompare(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		val1        interface{}
 		val2        interface{}
 		expectedCmp int
@@ -63,7 +64,7 @@ func TestSetCompare(t *testing.T) {
 func TestSetCompareErrors(t *testing.T) {
 	tests := []struct {
 		vals      []string
-		collation Collation
+		collation CollationID
 		val1      interface{}
 		val2      interface{}
 	}{
@@ -83,7 +84,7 @@ func TestSetCompareErrors(t *testing.T) {
 func TestSetCreate(t *testing.T) {
 	tests := []struct {
 		vals         []string
-		collation    Collation
+		collation    CollationID
 		expectedVals map[string]uint64
 		expectedErr  bool
 	}{
@@ -141,7 +142,7 @@ func TestSetCreateTooLarge(t *testing.T) {
 func TestSetConvert(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
@@ -185,7 +186,12 @@ func TestSetConvert(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, test.expectedVal, val)
+				res, err := typ.Compare(test.expectedVal, val)
+				require.NoError(t, err)
+				assert.Equal(t, 0, res)
+				if val != nil {
+					assert.Equal(t, typ.ValueType(), reflect.TypeOf(val))
+				}
 			}
 		})
 	}
@@ -208,12 +214,14 @@ func TestSetMarshalMax(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
-			bits, err := typ.Marshal(test)
+			bits, err := typ.Convert(test)
 			require.NoError(t, err)
-			res1, err := typ.Unmarshal(bits)
+			res1, err := typ.BitsToString(bits.(uint64))
 			require.NoError(t, err)
 			require.Equal(t, test, res1)
-			res2, err := typ.Convert(bits)
+			bits2, err := typ.Convert(bits)
+			require.NoError(t, err)
+			res2, err := typ.BitsToString(bits2.(uint64))
 			require.NoError(t, err)
 			require.Equal(t, test, res2)
 		})
@@ -223,7 +231,7 @@ func TestSetMarshalMax(t *testing.T) {
 func TestSetString(t *testing.T) {
 	tests := []struct {
 		vals        []string
-		collation   Collation
+		collation   CollationID
 		expectedStr string
 	}{
 		{[]string{"one"}, Collation_Default, "SET('one')"},

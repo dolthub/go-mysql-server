@@ -21,3 +21,17 @@ when the opportunities arise.
 If we end up using more of cockroach DB's optimizer, they codegen their
 expressions, normalization rules, exploration rules, and execution code
 stem from this general setup.
+
+## Generators
+
+AggGen: `sql` package unary aggregate expression definitions.
+
+FrameGen: `plan` package nodes that implement `sql.WindowFrame`.
+
+FrameFactoryGen: `parse` package function `NewFrame`
+that coverts `ast.Frame`into a `sql.WindowFrame` definitions
+from `plan`.
+
+FramerGen: `sql` package `sql.WindowFramer` implementations
+and `NewFramer` function that converts a `plan.WindowFrame`
+into `sql.WindowFramer` implementations.

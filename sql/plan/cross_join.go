@@ -18,7 +18,8 @@ import (
 	"io"
 	"reflect"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -63,14 +64,11 @@ func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		right = reflect.TypeOf(p.right).String()
 	}
 
-	span, ctx := ctx.Span("plan.CrossJoin", opentracing.Tags{
-		"left":  left,
-		"right": right,
-	})
+	span, ctx := ctx.Span("plan.CrossJoin", trace.WithAttributes(attribute.String("left", left), attribute.String("right", right)))
 
 	li, err := p.left.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -87,6 +85,11 @@ func (p *CrossJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewCrossJoin(children[0], children[1]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *CrossJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.left.CheckPrivileges(ctx, opChecker) && p.right.CheckPrivileges(ctx, opChecker)
 }
 
 func (p *CrossJoin) String() string {

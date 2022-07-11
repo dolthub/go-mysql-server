@@ -17,36 +17,38 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	} else if _, ok := n.(*plan.CreateProcedure); ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		insert, ok := n.(*plan.InsertInto)
 		if !ok {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		table := getResolvedTable(insert.Destination)
 
 		insertable, err := plan.GetInsertable(table)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		if insert.IsReplace {
 			var ok bool
 			_, ok = insertable.(sql.ReplaceableTable)
 			if !ok {
-				return nil, plan.ErrReplaceIntoNotSupported.New()
+				return nil, transform.SameTree, plan.ErrReplaceIntoNotSupported.New()
 			}
 		}
 
@@ -54,7 +56,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			var ok bool
 			_, ok = insertable.(sql.UpdatableTable)
 			if !ok {
-				return nil, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
+				return nil, transform.SameTree, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
 			}
 		}
 
@@ -62,12 +64,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		// TriggerExecutor has already been analyzed
 		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
 			// Analyze the source of the insert independently
-			source, err = a.Analyze(ctx, insert.Source, scope)
+			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, sel)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
-			source = StripQueryProcess(source)
+			source = StripPassthroughNodes(source)
 		}
 
 		dstSchema := insertable.Schema()
@@ -87,22 +89,46 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		} else {
 			err = validateColumns(columnNames, dstSchema)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 		}
 
 		err = validateValueCount(columnNames, source)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
 		project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project), nil
+		return insert.WithSource(project), transform.NewTree, nil
+	})
+}
+
+// resolvePreparedInsert applies post-optimization
+// rules to Insert.Source for prepared statements.
+func resolvePreparedInsert(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		ins, ok := n.(*plan.InsertInto)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		// TriggerExecutor has already been analyzed
+		if _, ok := ins.Source.(*plan.TriggerExecutor); ok {
+			return n, transform.SameTree, nil
+		}
+
+		source, _, err := a.analyzeWithSelector(ctx, ins.Source, scope, SelectAllBatches, postPrepareInsertSourceRuleSelector)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		source = StripPassthroughNodes(source)
+		return ins.WithSource(source), transform.NewTree, nil
 	})
 }
 
@@ -190,6 +216,14 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 				return plan.ErrInsertIntoMismatchValueCount.New()
 			}
 		}
+	case *plan.LoadData:
+		dataColLen := len(node.ColumnNames)
+		if dataColLen == 0 {
+			dataColLen = len(node.Schema())
+		}
+		if len(columnNames) != dataColLen {
+			return plan.ErrInsertIntoMismatchValueCount.New()
+		}
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
 		if len(columnNames) != len(values.Schema()) {
@@ -229,7 +263,7 @@ func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
 	}
 
 	switch n := values.(type) {
-	case *plan.Values:
+	case *plan.Values, *plan.LoadData:
 		// already verified
 		return nil
 	default:

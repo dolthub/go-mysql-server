@@ -36,8 +36,10 @@ func TestBetween(t *testing.T) {
 		err      bool
 	}{
 		{"val is null", sql.NewRow(nil, 1, 2), nil, false},
-		{"lower is null", sql.NewRow(1, nil, 2), nil, false},
-		{"upper is null", sql.NewRow(1, 2, nil), nil, false},
+		{"lower is null, out of range", sql.NewRow(1, nil, 2), nil, false},
+		{"lower is null, in range", sql.NewRow(2, nil, 2), nil, false},
+		{"upper is null, out of range", sql.NewRow(1, 2, nil), false, false},
+		{"upper is null, in range", sql.NewRow(2, 2, nil), nil, false},
 		{"val is lower", sql.NewRow(1, 1, 3), true, false},
 		{"val is upper", sql.NewRow(3, 1, 3), true, false},
 		{"val is between lower and upper", sql.NewRow(2, 1, 3), true, false},
@@ -159,6 +161,47 @@ func TestBetweenResolved(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.resolved, tt.b.Resolved())
+		})
+	}
+}
+
+func TestNotBetween(t *testing.T) {
+	n := NewNot(NewBetween(
+		NewGetField(0, sql.Int64, "val", true),
+		NewGetField(1, sql.Int64, "lower", true),
+		NewGetField(2, sql.Int64, "upper", true),
+	))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"val is null", sql.NewRow(nil, 1, 2), nil, false},
+		{"lower is null, out of range", sql.NewRow(1, nil, 2), nil, false},
+		{"lower is null, in range", sql.NewRow(2, nil, 2), nil, false},
+		{"upper is null, out of range", sql.NewRow(1, 2, nil), true, false},
+		{"upper is null, in range", sql.NewRow(2, 2, nil), nil, false},
+		{"val is lower", sql.NewRow(1, 1, 3), false, false},
+		{"val is upper", sql.NewRow(3, 1, 3), false, false},
+		{"val is between lower and upper", sql.NewRow(2, 1, 3), false, false},
+		{"val is less than lower", sql.NewRow(0, 1, 3), true, false},
+		{"val is more than upper", sql.NewRow(4, 1, 3), true, false},
+		{"val type is different than lower", sql.NewRow(4, "lower", 3), true, true},
+		{"val type is different than upper", sql.NewRow(4, 1, "upper"), true, true},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			result, err := n.Eval(sql.NewEmptyContext(), tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, result)
+			}
 		})
 	}
 }

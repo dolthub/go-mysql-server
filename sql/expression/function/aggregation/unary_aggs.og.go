@@ -5,6 +5,8 @@ package aggregation
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -39,7 +41,7 @@ func (a *Avg) String() string {
 	return fmt.Sprintf("AVG(%s)", a.Child)
 }
 
-func (a *Avg) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Avg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Avg{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -50,7 +52,7 @@ func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +60,11 @@ func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Avg) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewAvgAgg(child).WithWindow(a.Window()), nil
+	return NewAvgAgg(child).WithWindow(a.Window())
 }
 
 type Count struct {
@@ -95,7 +97,7 @@ func (a *Count) String() string {
 	return fmt.Sprintf("COUNT(%s)", a.Child)
 }
 
-func (a *Count) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Count) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Count{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -106,7 +108,7 @@ func (a *Count) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 func (a *Count) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +116,11 @@ func (a *Count) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Count) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewCountAgg(child).WithWindow(a.Window()), nil
+	return NewCountAgg(child).WithWindow(a.Window())
 }
 
 type CountDistinct struct {
@@ -151,7 +153,7 @@ func (a *CountDistinct) String() string {
 	return fmt.Sprintf("COUNTDISTINCT(%s)", a.Child)
 }
 
-func (a *CountDistinct) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &CountDistinct{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -162,7 +164,7 @@ func (a *CountDistinct) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -170,11 +172,11 @@ func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewCountDistinctAgg(child).WithWindow(a.Window()), nil
+	return NewCountDistinctAgg(child).WithWindow(a.Window())
 }
 
 type First struct {
@@ -207,7 +209,7 @@ func (a *First) String() string {
 	return fmt.Sprintf("FIRST(%s)", a.Child)
 }
 
-func (a *First) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *First) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &First{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -218,7 +220,7 @@ func (a *First) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 func (a *First) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -226,11 +228,11 @@ func (a *First) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *First) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewFirstAgg(child).WithWindow(a.Window()), nil
+	return NewFirstAgg(child).WithWindow(a.Window())
 }
 
 type Last struct {
@@ -263,7 +265,7 @@ func (a *Last) String() string {
 	return fmt.Sprintf("LAST(%s)", a.Child)
 }
 
-func (a *Last) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Last) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Last{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -274,7 +276,7 @@ func (a *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 }
 
 func (a *Last) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -282,11 +284,11 @@ func (a *Last) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Last) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewLastAgg(child).WithWindow(a.Window()), nil
+	return NewLastAgg(child).WithWindow(a.Window())
 }
 
 type Max struct {
@@ -319,7 +321,7 @@ func (a *Max) String() string {
 	return fmt.Sprintf("MAX(%s)", a.Child)
 }
 
-func (a *Max) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Max) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Max{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -330,7 +332,7 @@ func (a *Max) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Max) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -338,11 +340,11 @@ func (a *Max) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Max) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewMaxAgg(child).WithWindow(a.Window()), nil
+	return NewMaxAgg(child).WithWindow(a.Window())
 }
 
 type Min struct {
@@ -375,7 +377,7 @@ func (a *Min) String() string {
 	return fmt.Sprintf("MIN(%s)", a.Child)
 }
 
-func (a *Min) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Min) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Min{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -386,7 +388,7 @@ func (a *Min) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Min) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -394,11 +396,11 @@ func (a *Min) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Min) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewMinAgg(child).WithWindow(a.Window()), nil
+	return NewMinAgg(child).WithWindow(a.Window())
 }
 
 type Sum struct {
@@ -431,7 +433,7 @@ func (a *Sum) String() string {
 	return fmt.Sprintf("SUM(%s)", a.Child)
 }
 
-func (a *Sum) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Sum) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Sum{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -442,7 +444,7 @@ func (a *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Sum) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -450,11 +452,11 @@ func (a *Sum) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Sum) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewSumAgg(child).WithWindow(a.Window()), nil
+	return NewSumAgg(child).WithWindow(a.Window())
 }
 
 type JsonArray struct {
@@ -487,7 +489,7 @@ func (a *JsonArray) String() string {
 	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
 }
 
-func (a *JsonArray) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *JsonArray) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -498,7 +500,7 @@ func (a *JsonArray) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 func (a *JsonArray) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -506,9 +508,9 @@ func (a *JsonArray) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *JsonArray) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return NewJsonArrayAgg(child).WithWindow(a.Window()), nil
+	return NewJsonArrayAgg(child).WithWindow(a.Window())
 }

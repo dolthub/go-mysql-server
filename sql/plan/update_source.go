@@ -126,7 +126,7 @@ func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
 		return u.Child.Schema(), nil
 	}
 
-	table, err := getUpdatable(u.Child)
+	table, err := GetUpdatable(u.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -157,4 +157,9 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 	return NewUpdateSource(children[0], u.UpdateExprs), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (u *UpdateSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return u.Child.CheckPrivileges(ctx, opChecker)
 }

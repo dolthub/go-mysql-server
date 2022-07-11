@@ -81,7 +81,7 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:        "imposible conversion string to signed",
+			name:        "impossible conversion string to signed",
 			row:         nil,
 			castTo:      ConvertToSigned,
 			expression:  NewLiteral("A", sql.LongText),
@@ -125,7 +125,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToBinary,
 			expression:  NewLiteral(float64(-2.3), sql.Float64),
-			expected:    "-2.3",
+			expected:    []byte("-2.3"),
 			expectedErr: false,
 		},
 		{
@@ -141,7 +141,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(2, sql.Int32),
-			expected:    sql.JSONDocument{Val: 2},
+			expected:    sql.JSONDocument{Val: float64(2)},
 			expectedErr: false,
 		},
 		{

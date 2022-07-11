@@ -17,7 +17,8 @@ package plan
 import (
 	"reflect"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -60,6 +61,14 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewTableAlias(t.name, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (t *TableAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	if t.UnaryNode != nil {
+		return t.UnaryNode.Child.CheckPrivileges(ctx, opChecker)
+	}
+	return true
+}
+
 // RowIter implements the Node interface.
 func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var table string
@@ -69,11 +78,11 @@ func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		table = reflect.TypeOf(t.Child).String()
 	}
 
-	span, ctx := ctx.Span("sql.TableAlias", opentracing.Tag{Key: "table", Value: table})
+	span, ctx := ctx.Span("sql.TableAlias", trace.WithAttributes(attribute.String("table", table)))
 
 	iter, err := t.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

@@ -17,29 +17,24 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // applyUpdateAccumulators wraps any Insert, Update, or Delete nodes with RowUpdateAccumulators to tally the results
 // for report to the client.
-func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	// Scope will be non-null in the case of trigger execution analysis. We don't want to apply update accumulators in
-	// that case.
-	// TODO: probably better to just remove this rule from the analyzer in that specific case
-	if scope != nil {
-		return n, nil
-	}
-
+func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 		accumulatorType, err := getUpdateAccumulatorType(n)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
-		return plan.NewRowUpdateAccumulator(n, accumulatorType), nil
+		return plan.NewRowUpdateAccumulator(n, accumulatorType), transform.NewTree, nil
 	default:
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 }
 
@@ -60,7 +55,7 @@ func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
 	case *plan.Update:
 		// search for a join
 		hasJoin := false
-		plan.Inspect(n, func(node sql.Node) bool {
+		transform.Inspect(n, func(node sql.Node) bool {
 			switch node.(type) {
 			case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin:
 				hasJoin = true

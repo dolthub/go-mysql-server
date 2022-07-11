@@ -17,6 +17,9 @@ package plan
 import (
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -25,6 +28,7 @@ import (
 type CreateRole struct {
 	IfNotExists bool
 	Roles       []UserName
+	MySQLDb     sql.Database
 }
 
 // NewCreateRole returns a new CreateRole node.
@@ -32,6 +36,7 @@ func NewCreateRole(ifNotExists bool, roles []UserName) *CreateRole {
 	return &CreateRole{
 		IfNotExists: ifNotExists,
 		Roles:       roles,
+		MySQLDb:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -46,7 +51,7 @@ func (n *CreateRole) Schema() sql.Schema {
 func (n *CreateRole) String() string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
-		roles[i] = role.StringWithQuote("", "")
+		roles[i] = role.String("")
 	}
 	ifNotExists := ""
 	if n.IfNotExists {
@@ -55,9 +60,22 @@ func (n *CreateRole) String() string {
 	return fmt.Sprintf("CreateRole(%s%s)", ifNotExists, strings.Join(roles, ", "))
 }
 
+// Database implements the interface sql.Databaser.
+func (n *CreateRole) Database() sql.Database {
+	return n.MySQLDb
+}
+
+// WithDatabase implements the interface sql.Databaser.
+func (n *CreateRole) WithDatabase(db sql.Database) (sql.Node, error) {
+	nn := *n
+	nn.MySQLDb = db
+	return &nn, nil
+}
+
 // Resolved implements the interface sql.Node.
 func (n *CreateRole) Resolved() bool {
-	return true
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
+	return !ok
 }
 
 // Children implements the interface sql.Node.
@@ -73,7 +91,62 @@ func (n *CreateRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// Both CREATE ROLE and CREATE USER are valid privileges, so we use an OR
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateRole)) ||
+		opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
 // RowIter implements the interface sql.Node.
 func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
+	if !ok {
+		return nil, sql.ErrDatabaseNotFound.New("mysql")
+	}
+
+	// Check if you can even persist in the first place
+	if err := mysqlDb.ValidateCanPersist(); err != nil {
+		return nil, err
+	}
+
+	userTableData := mysqlDb.UserTable().Data()
+	for _, role := range n.Roles {
+		userPk := mysql_db.UserPrimaryKey{
+			Host: role.Host,
+			User: role.Name,
+		}
+		if role.AnyHost {
+			userPk.Host = "%"
+		}
+		existingRows := userTableData.Get(userPk)
+		if len(existingRows) > 0 {
+			if n.IfNotExists {
+				continue
+			}
+			return nil, sql.ErrRoleCreationFailure.New(role.String("'"))
+		}
+
+		//TODO: When password expiration is implemented, make sure that roles have an expired password on creation
+		err := userTableData.Put(ctx, &mysql_db.User{
+			User:                userPk.User,
+			Host:                userPk.Host,
+			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
+			Plugin:              "mysql_native_password",
+			Password:            "",
+			PasswordLastChanged: time.Now().UTC(),
+			Locked:              true,
+			Attributes:          nil,
+			IsRole:              true,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := mysqlDb.Persist(ctx); err != nil {
+		return nil, err
+	}
+	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }

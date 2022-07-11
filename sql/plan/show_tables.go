@@ -15,7 +15,10 @@
 package plan
 
 import (
+	"fmt"
 	"sort"
+
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -26,15 +29,6 @@ type ShowTables struct {
 	db   sql.Database
 	Full bool
 	AsOf sql.Expression
-}
-
-var showTablesSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-}
-
-var showTablesFullSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-	{Name: "Table_type", Type: sql.LongText},
 }
 
 // NewShowTables creates a new show tables node given a database.
@@ -74,11 +68,15 @@ func (*ShowTables) Children() []sql.Node {
 
 // Schema implements the Node interface.
 func (p *ShowTables) Schema() sql.Schema {
-	if p.Full {
-		return showTablesFullSchema
+	var sch sql.Schema
+	colName := fmt.Sprintf("Tables_in_%s", p.Database().Name())
+	sch = sql.Schema{
+		{Name: colName, Type: sql.LongText},
 	}
-
-	return showTablesSchema
+	if p.Full {
+		sch = append(sch, &sql.Column{Name: "Table_type", Type: sql.LongText})
+	}
+	return sch
 }
 
 // RowIter implements the Node interface.
@@ -120,7 +118,11 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	// TODO: currently there is no way to see views AS OF a particular time
-	if vdb, ok := p.db.(sql.ViewDatabase); ok {
+	maybeVdb := p.db
+	if privilegedDatabase, ok := maybeVdb.(mysql_db.PrivilegedDatabase); ok {
+		maybeVdb = privilegedDatabase.Unwrap()
+	}
+	if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {
 		views, err := vdb.AllViews(ctx)
 		if err != nil {
 			return nil, err
@@ -134,7 +136,7 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 	}
 
-	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(p.db.Name()) {
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(maybeVdb.Name()) {
 		row := sql.Row{view.Name()}
 		if p.Full {
 			row = append(row, "VIEW")
@@ -156,6 +158,12 @@ func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return p, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *ShowTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// Some tables won't be visible during the resolution step if the user doesn't have the correct privileges
+	return true
 }
 
 func (p ShowTables) String() string {

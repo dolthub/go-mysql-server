@@ -16,16 +16,23 @@ package sql
 
 import (
 	"encoding/json"
+	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
-var ErrConvertingToJSON = errors.NewKind("value %v is not valid JSON")
+var (
+	jsonValueType = reflect.TypeOf((*JSONValue)(nil)).Elem()
+
+	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
+)
 
 var JSON JsonType = jsonType{}
 
+// JsonType represents the JSON type.
+// https://dev.mysql.com/doc/refman/8.0/en/json.html
+// The type of the returned value is JSONValue.
 type JsonType interface {
 	Type
 }
@@ -51,14 +58,25 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	case JSONValue:
 		return v, nil
 	case []byte:
+		if int64(len(v)) > MaxJsonFieldByteLength {
+			return nil, ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
+		}
 		err = json.Unmarshal(v, &doc)
 	case string:
+		charsetMaxLength := Collation_Default.CharacterSet().MaxLength()
+		length := int64(len(v)) * charsetMaxLength
+		if length > MaxJsonFieldByteLength {
+			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
+		}
 		err = json.Unmarshal([]byte(v), &doc)
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
-		if _, err = json.Marshal(v); err == nil {
-			return JSONDocument{Val: v}, nil
+		if b, berr := json.Marshal(v); berr == nil {
+			if int64(len(b)) > MaxJsonFieldByteLength {
+				return nil, ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
+			}
+			err = json.Unmarshal(b, &doc)
 		}
 	}
 	if err != nil {
@@ -67,21 +85,29 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	return JSONDocument{Val: doc}, nil
 }
 
+// Equals implements the Type interface.
+func (t jsonType) Equals(otherType Type) bool {
+	_, ok := otherType.(jsonType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t jsonType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	js, ok := v.(JSONValue)
-	if !ok {
-		return sqltypes.NULL, nil
+	// Convert to jsonType
+	jsVal, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.NULL, err
 	}
+	js := jsVal.(JSONValue)
 
 	// todo: making a context here is expensive
 	s, err := js.ToString(NewEmptyContext())
@@ -89,7 +115,9 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, err
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.TypeJSON, []byte(s)), nil
+	val := appendAndSliceString(dest, s)
+
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
 
 // String implements Type interface.
@@ -100,6 +128,11 @@ func (t jsonType) String() string {
 // Type implements Type interface.
 func (t jsonType) Type() query.Type {
 	return sqltypes.TypeJSON
+}
+
+// ValueType implements Type interface.
+func (t jsonType) ValueType() reflect.Type {
+	return jsonValueType
 }
 
 // Zero implements Type interface.

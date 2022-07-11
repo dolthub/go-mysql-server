@@ -19,6 +19,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -107,6 +109,11 @@ func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (srn *StripRowNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return srn.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // prependNode wraps its child by prepending column values onto any result rows
 type prependNode struct {
 	UnaryNode
@@ -163,6 +170,11 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *prependNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // Eval implements the Expression interface.
 func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	s.cacheMu.Lock()
@@ -202,16 +214,16 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // prependRowInPlan returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, error) {
-	return func(n sql.Node) (sql.Node, error) {
+func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, sql.Table, *ValueDerivedTable, *Union:
+		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, *IndexedTableAccess, sql.Table, *ValueDerivedTable, *Union:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
-			}, nil
+			}, transform.NewTree, nil
 		default:
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 	}
 }
@@ -244,7 +256,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	q, _, err := transform.Node(s.Query, prependRowInPlan(row))
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +341,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	q, _, err := transform.Node(s.Query, prependRowInPlan(row))
 	if err != nil {
 		return false, err
 	}

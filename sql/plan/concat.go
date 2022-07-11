@@ -56,7 +56,7 @@ func (c *Concat) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Concat")
 	li, err := c.left.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	i := newConcatIter(
@@ -75,6 +75,11 @@ func (c *Concat) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 2)
 	}
 	return NewConcat(children[0], children[1]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (c *Concat) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return c.left.CheckPrivileges(ctx, opChecker) && c.right.CheckPrivileges(ctx, opChecker)
 }
 
 func (c Concat) String() string {

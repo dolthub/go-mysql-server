@@ -20,9 +20,11 @@ import (
 	"reflect"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 const (
@@ -122,6 +124,11 @@ func (j *InnerJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nj, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (j *InnerJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
+}
+
 func (j *InnerJoin) WithScopeLen(i int) JoinNode {
 	nj := *j
 	nj.ScopeLen = i
@@ -214,6 +221,11 @@ func (j *LeftJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nj := *j
 	nj.BinaryNode = BinaryNode{children[0], children[1]}
 	return &nj, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (j *LeftJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -310,6 +322,11 @@ func (j *RightJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nj, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (j *RightJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (j *RightJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
@@ -388,10 +405,10 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 		rightName = reflect.TypeOf(right).String()
 	}
 
-	span, ctx := ctx.Span("plan."+typ.String(), opentracing.Tags{
-		"left":  leftName,
-		"right": rightName,
-	})
+	span, ctx := ctx.Span("plan."+typ.String(), trace.WithAttributes(
+		attribute.String("left", leftName),
+		attribute.String("right", rightName),
+	))
 
 	var inMemorySession bool
 	val, err := ctx.GetSessionVariable(ctx, inMemoryJoinSessionVar)
@@ -409,7 +426,7 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 	if typ == JoinTypeRight {
 		r, err := right.RowIter(ctx, row)
 		if err != nil {
-			span.Finish()
+			span.End()
 			return nil, err
 		}
 		return sql.NewSpanIter(span, &joinIter{
@@ -428,7 +445,7 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 
 	l, err := left.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -720,7 +737,7 @@ func makeNullable(cols []*sql.Column) []*sql.Column {
 
 func nodeHasJoin(node sql.Node) bool {
 	hasJoinNode := false
-	Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
 		case JoinNode, *CrossJoin, *IndexedJoin:
 			hasJoinNode = true

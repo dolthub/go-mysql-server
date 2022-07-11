@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -25,11 +24,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// validateCreateCheck legal expressions for CREATE CHECK statements, including those embedded in CREATE TABLE
-// statements
-func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+// validateCheckConstraints validates DDL nodes that create table check constraints, such as CREATE TABLE and
+// ALTER TABLE statements.
+//
+// TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
+//       checks that will never evaluate correctly.
+func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
 		return validateCreateCheckNode(n)
@@ -37,16 +40,16 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return validateCreateTableChecks(ctx, a, n, scope)
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *Scope) (sql.Node, error) {
+func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	columns, err := indexColumns(ctx, a, n, scope)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		if err != nil {
 			return false
 		}
@@ -77,19 +80,19 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, error) {
+func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, transform.TreeIdentity, error) {
 	err := checkExpressionValid(ct.Check.Expr)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return ct, nil
+	return ct, transform.SameTree, nil
 }
 
 func checkExpressionValid(e sql.Expression) error {
@@ -115,104 +118,162 @@ func checkExpressionValid(e sql.Expression) error {
 
 // loadChecks loads any checks that are required for a plan node to operate properly (except for nodes dealing with
 // check execution).
-func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("loadChecks")
-	defer span.Finish()
+func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("loadChecks")
+	defer span.End()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch node := n.(type) {
 		case *plan.InsertInto:
 			nn := *node
 
 			rtable := getResolvedTable(nn.Destination)
 			if rtable == nil {
-				return node, nil
+				return node, transform.SameTree, nil
 			}
 
 			table, ok := rtable.Table.(sql.CheckTable)
 			if !ok {
-				return node, nil
+				return node, transform.SameTree, nil
 			}
 
 			var err error
 			nn.Checks, err = loadChecksFromTable(ctx, table)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-
-			return &nn, nil
+			if len(nn.Checks) == 0 {
+				return node, transform.SameTree, nil
+			}
+			return &nn, transform.NewTree, nil
 		case *plan.Update:
-			rtable := getResolvedTable(node)
+			nn := *node
 
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
-				return node, nil
+				return node, transform.SameTree, nil
 			}
 
 			table, ok := rtable.Table.(sql.CheckTable)
 			if !ok {
-				return node, nil
+				return node, transform.SameTree, nil
 			}
 
 			var err error
-			nn := *node
 			nn.Checks, err = loadChecksFromTable(ctx, table)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-
-			return &nn, nil
+			if len(nn.Checks) == 0 {
+				return node, transform.SameTree, nil
+			}
+			return &nn, transform.NewTree, nil
 		case *plan.ShowCreateTable:
-			rtable := getResolvedTable(node)
+			nn := *node
 
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
-				return node, nil
+				return node, transform.SameTree, nil
 			}
 
 			table, ok := rtable.Table.(sql.CheckTable)
 			if !ok {
-				return node, nil
+				return node, transform.SameTree, nil
 			}
 
 			var err error
-			nn := *node
 			checks, err := loadChecksFromTable(ctx, table)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
-			transformedChecks := make(sql.CheckConstraints, len(checks))
+			if len(checks) == 0 {
+				return node, transform.SameTree, nil
+			}
 
+			// To match MySQL output format, transform the column names and wrap with backticks
+			var transformedChecks sql.CheckConstraints
 			for i, check := range checks {
-				newExpr, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+				newExpr, same, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if t, ok := e.(*expression.UnresolvedColumn); ok {
-						name := t.Name()
-						strings.Replace(name, "`", "", -1) // remove any preexisting backticks
-
-						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name)), nil
+						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
 					}
-
-					return e, nil
+					return e, transform.SameTree, nil
 				})
-
 				if err != nil {
-					return nil, err
+					return nil, transform.SameTree, err
 				}
+				if !same {
+					if transformedChecks == nil {
+						transformedChecks = make(sql.CheckConstraints, len(checks))
+						copy(transformedChecks, checks)
+					}
+					check.Expr = newExpr
+					transformedChecks[i] = check
+				}
+			}
+			if len(transformedChecks) == 0 {
+				return node, transform.SameTree, nil
+			}
+			nn.Checks = transformedChecks
+			return &nn, transform.NewTree, nil
 
-				check.Expr = newExpr
-				transformedChecks[i] = check
+		case *plan.DropColumn:
+			nn := *node
+
+			rtable := getResolvedTable(nn.Table)
+			if rtable == nil {
+				return node, transform.SameTree, nil
 			}
 
-			nn.Checks = transformedChecks
+			table, ok := rtable.Table.(sql.CheckTable)
+			if !ok {
+				return node, transform.SameTree, nil
+			}
 
-			return &nn, nil
+			var err error
+			nn.Checks, err = loadChecksFromTable(ctx, table)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 
-		// TODO: throw an error if an ALTER TABLE would invalidate a check constraint, or fix them up automatically
-		//  when possible
-		//case *plan.DropColumn:
-		//case *plan.RenameColumn:
-		//case *plan.ModifyColumn:
+			if len(nn.Checks) == 0 {
+				return node, transform.SameTree, nil
+			}
+
+			return &nn, transform.NewTree, nil
+
+		case *plan.RenameColumn:
+			nn := *node
+
+			rtable := getResolvedTable(nn.Table)
+			if rtable == nil {
+				return node, transform.SameTree, nil
+			}
+
+			table, ok := rtable.Table.(sql.CheckTable)
+			if !ok {
+				return node, transform.SameTree, nil
+			}
+
+			var err error
+			nn.Checks, err = loadChecksFromTable(ctx, table)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			if len(nn.Checks) == 0 {
+				return node, transform.SameTree, nil
+			}
+
+			return &nn, transform.NewTree, nil
+
+		// TODO: ModifyColumn can also invalidate table check constraints (e.g. by changing the column's type).
+		//       Ideally, we should also load checks for ModifyColumn and error out if they would be invalidated.
+		// case *plan.ModifyColumn:
+
 		default:
-			return node, nil
+			return node, transform.SameTree, nil
 		}
 	})
 }
@@ -225,7 +286,7 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 			return nil, err
 		}
 		for _, ch := range checks {
-			constraint, err := convertCheckDefToConstraint(ctx, &ch)
+			constraint, err := ConvertCheckDefToConstraint(ctx, &ch)
 			if err != nil {
 				return nil, err
 			}
@@ -235,7 +296,7 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 	return loadedChecks, nil
 }
 
-func convertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
+func ConvertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
 	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
 	parsed, err := sqlparser.Parse(parseStr)
 	if err != nil {

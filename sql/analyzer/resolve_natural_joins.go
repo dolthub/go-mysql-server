@@ -17,25 +17,31 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("resolve_natural_joins")
-	defer span.Finish()
+func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("resolve_natural_joins")
+	defer span.End()
 
 	var replacements = make(map[tableCol]tableCol)
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.NaturalJoin:
-			return resolveNaturalJoin(n, replacements)
+			newn, err := resolveNaturalJoin(n, replacements)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return newn, transform.NewTree, nil
 		case sql.Expressioner:
 			return replaceExpressionsForNaturalJoin(ctx, node, replacements)
 		default:
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
@@ -126,17 +132,17 @@ func replaceExpressionsForNaturalJoin(
 	ctx *sql.Context,
 	n sql.Node,
 	replacements map[tableCol]tableCol,
-) (sql.Node, error) {
-	return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+) (sql.Node, transform.TreeIdentity, error) {
+	return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
 			var tableName = strings.ToLower(e.(sql.Tableable).Table())
 
 			name := e.(sql.Nameable).Name()
 			if col, ok := replacements[tableCol{strings.ToLower(tableName), strings.ToLower(name)}]; ok {
-				return expression.NewUnresolvedQualifiedColumn(col.table, col.col), nil
+				return expression.NewUnresolvedQualifiedColumn(col.table, col.col), transform.NewTree, nil
 			}
 		}
-		return e, nil
+		return e, transform.SameTree, nil
 	})
 }

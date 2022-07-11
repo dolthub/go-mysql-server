@@ -17,6 +17,7 @@ package plan
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ApplyBindings replaces all `BindVar` expressions in the given sql.Node with
@@ -24,38 +25,75 @@ import (
 // If a binding for a |BindVar| expression is not found in the map, no error is
 // returned and the |BindVar| expression is left in place. There is no check on
 // whether all entries in |bindings| are used at least once throughout the |n|.
-//
-// This applies binding substitutions across *SubqueryAlias nodes, but will
-// fail to apply bindings across other |sql.Opaque| nodes.
-func ApplyBindings(ctx *sql.Context, n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
-	withSubqueries, err := TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		switch n := n.(type) {
-		case *SubqueryAlias:
-			child, err := ApplyBindings(ctx, n.Child, bindings)
-			if err != nil {
-				return nil, err
-			}
-			return n.WithChildren(child)
-		case *InsertInto:
-			source, err := ApplyBindings(ctx, n.Source, bindings)
-			if err != nil {
-				return nil, err
-			}
-			return n.WithSource(source), nil
-		default:
-			return n, nil
-		}
-	})
+// sql.DeferredType instances will be resolved by the binding types.
+func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
+	n, _, err := applyBindingsHelper(n, bindings)
 	if err != nil {
 		return nil, err
 	}
-	return TransformExpressionsUp(withSubqueries, func(e sql.Expression) (sql.Expression, error) {
-		if bv, ok := e.(*expression.BindVar); ok {
-			val, found := bindings[bv.Name]
-			if found {
-				return val, nil
-			}
+	return n, err
+}
+
+func fixBindings(expr sql.Expression, bindings map[string]sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	switch e := expr.(type) {
+	case *expression.BindVar:
+		val, found := bindings[e.Name]
+		if found {
+			return val, transform.NewTree, nil
 		}
-		return e, nil
+	case *expression.GetField:
+		//TODO: aliases derived from arithmetic
+		// expressions on BindVars should have types
+		// re-evaluated
+		t, ok := e.Type().(sql.DeferredType)
+		if !ok {
+			return expr, transform.SameTree, nil
+		}
+		val, found := bindings[t.Name()]
+		if !found {
+			return expr, transform.SameTree, nil
+		}
+		return expression.NewGetFieldWithTable(e.Index(), val.Type().Promote(), e.Table(), e.Name(), val.IsNullable()), transform.NewTree, nil
+	case *Subquery:
+		// *Subquery is a sql.Expression with a sql.Node not reachable
+		// by the visitor. Manually apply bindings to [Query] field.
+		q, err := ApplyBindings(e.Query, bindings)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		return e.WithQuery(q), transform.NewTree, nil
+	}
+	return expr, transform.SameTree, nil
+}
+
+func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	fixBindingsTransform := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		return fixBindings(e, bindings)
+	}
+	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := node.(type) {
+		case *IndexedJoin:
+			// *plan.IndexedJoin cannot implement sql.Expressioner
+			// because the column indexes get mis-ordered by FixFieldIndexesForExpressions.
+			cond, same, err := transform.Expr(n.Cond, fixBindingsTransform)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return NewIndexedJoin(n.left, n.right, n.joinType, cond, n.scopeLen), same, nil
+		case *InsertInto:
+			// Manually apply bindings to [Source] because only [Destination]
+			// is a proper child.
+			newSource, same, err := applyBindingsHelper(n.Source, bindings)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return transform.NodeExprs(n, fixBindingsTransform)
+			}
+			ne, _, err := transform.NodeExprs(n.WithSource(newSource), fixBindingsTransform)
+			return ne, transform.NewTree, err
+		default:
+		}
+		return transform.NodeExprs(node, fixBindingsTransform)
 	})
 }

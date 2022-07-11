@@ -128,14 +128,10 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if lval != nil {
-		lvalBool, err := sql.ConvertToBool(lval)
-		if err == nil && lvalBool {
+		lval, err = sql.ConvertToBool(lval)
+		if err == nil && lval.(bool) {
 			return true, nil
 		}
-	}
-
-	if lval == true {
-		return true, nil
 	}
 
 	rval, err := o.Right.Eval(ctx, row)
@@ -143,17 +139,19 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if rval != nil {
-		rvalBool, err := sql.ConvertToBool(rval)
-		if err == nil && rvalBool {
+		rval, err = sql.ConvertToBool(rval)
+		if err == nil && rval.(bool) {
 			return true, nil
 		}
 	}
 
-	if lval == nil && rval == nil {
-		return nil, nil
+	// Can also be triggered by lval and rval not being bool types.
+	if lval == false && rval == false {
+		return false, nil
 	}
 
-	return rval == true, nil
+	// (lval == nil && rval == nil) || (lval == false && rval == nil) || (lval == nil && rval == false)
+	return nil, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -162,4 +160,68 @@ func (o *Or) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 2)
 	}
 	return NewOr(children[0], children[1]), nil
+}
+
+// Xor checks whether only one of the two given expressions is true.
+type Xor struct {
+	BinaryExpression
+}
+
+// NewXor creates a new Xor expression.
+func NewXor(left, right sql.Expression) sql.Expression {
+	return &Xor{BinaryExpression{Left: left, Right: right}}
+}
+
+func (x *Xor) String() string {
+	return fmt.Sprintf("(%s XOR %s)", x.Left, x.Right)
+}
+
+func (x *Xor) DebugString() string {
+	return fmt.Sprintf("%s XOR %s", sql.DebugString(x.Left), sql.DebugString(x.Right))
+}
+
+// Type implements the Expression interface.
+func (*Xor) Type() sql.Type {
+	return sql.Boolean
+}
+
+// Eval implements the Expression interface.
+func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	lval, err := x.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if lval == nil {
+		return nil, nil
+	}
+	lvalue, err := sql.ConvertToBool(lval)
+	if err != nil {
+		return nil, err
+	}
+
+	rval, err := x.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if rval == nil {
+		return nil, nil
+	}
+	rvalue, err := sql.ConvertToBool(rval)
+	if err != nil {
+		return nil, err
+	}
+
+	// a XOR b == (a AND (NOT b)) OR ((NOT a) and b)
+	if (rvalue && !lvalue) || (!rvalue && lvalue) {
+		return true, nil
+	}
+	return false, nil
+}
+
+// WithChildren implements the Expression interface.
+func (x *Xor) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(x, len(children), 2)
+	}
+	return NewXor(children[0], children[1]), nil
 }

@@ -1,0 +1,39 @@
+exec
+CREATE TABLE `bus_routes` (
+  `origin` varchar(20) NOT NULL,
+  `dst` varchar(20) NOT NULL,
+  PRIMARY KEY (`origin`,`dst`)
+)
+----
+
+exec
+insert into bus_routes values
+    ('New York', 'Boston'),
+    ('Boston', 'New York'),
+    ('New York', 'Washington'),
+    ('Washington', 'Boston'),
+    ('Washington', 'Raleigh')
+----
+
+exec
+CREATE TABLE `parts` (
+  `part` varchar(20) NOT NULL,
+  `sub_part` varchar(20) NOT NULL,
+  `quantity` bigint NOT NULL,
+  PRIMARY KEY (`part`,`sub_part`)
+)
+----
+
+exec
+insert into parts values
+	('pie', 'crust', 1),
+	('pie', 'filling', 2),
+	('crust', 'flour', 20),
+	('crust', 'sugar', 2),
+	('crust', 'butter', 15),
+	('crust', 'salt', 15),
+	('filling', 'sugar', 5),
+	('filling', 'fruit', 9),
+	('filling', 'salt', 3),
+	('filling', 'butter', 3)
+----

@@ -27,6 +27,8 @@ type RenameUser struct {
 	NewName []UserName
 }
 
+var _ sql.Node = (*RenameUser)(nil)
+
 // NewRenameUser returns a new RenameUser node.
 func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 	return &RenameUser{
@@ -34,8 +36,6 @@ func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 		NewName: newNames,
 	}
 }
-
-var _ sql.Node = (*RenameUser)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *RenameUser) Schema() sql.Schema {
@@ -47,7 +47,7 @@ func (n *RenameUser) String() string {
 	strs := make([]string, len(n.OldName))
 	for i := range n.OldName {
 		strs[i] = fmt.Sprintf("%s->%s",
-			n.OldName[i].StringWithQuote("", ""), n.NewName[i].StringWithQuote("", ""))
+			n.OldName[i].String(""), n.NewName[i].String(""))
 	}
 	return fmt.Sprintf("RenameUser(%s)", strings.Join(strs, ", "))
 }
@@ -68,6 +68,12 @@ func (n *RenameUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}
 	return n, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (n *RenameUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
 }
 
 // RowIter implements the interface sql.Node.

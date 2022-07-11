@@ -68,13 +68,24 @@ func (s Schema) Contains(column string, source string) bool {
 	return s.IndexOf(column, source) >= 0
 }
 
-// IndexOf returns the index of the given column in the schema or -1 if it's
-// not present.
+// IndexOf returns the index of the given column in the schema or -1 if it's not present.
 func (s Schema) IndexOf(column, source string) int {
 	column = strings.ToLower(column)
 	source = strings.ToLower(source)
 	for i, col := range s {
 		if strings.ToLower(col.Name) == column && strings.ToLower(col.Source) == source {
+			return i
+		}
+	}
+	return -1
+}
+
+// IndexOfColName returns the index of the given column in the schema or -1 if it's  not present. Only safe for schemas
+// corresponding to a single table, where the source of the column is irrelevant.
+func (s Schema) IndexOfColName(column string) int {
+	column = strings.ToLower(column)
+	for i, col := range s {
+		if strings.ToLower(col.Name) == column {
 			return i
 		}
 	}
@@ -135,4 +146,24 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 		}
 	}
 	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds}
+}
+
+// SchemaToPrimaryKeySchema adapts the schema given to a PrimaryKey schema using the primary keys of the table given, if
+// present. The resulting PrimaryKeySchema may have an empty key set if the table has no primary keys. Matching for
+// ordinals is performed by column name.
+func SchemaToPrimaryKeySchema(table Table, sch Schema) PrimaryKeySchema {
+	var pks []*Column
+	if pkt, ok := table.(PrimaryKeyTable); ok {
+		schema := pkt.PrimaryKeySchema()
+		for _, ordinal := range schema.PkOrdinals {
+			pks = append(pks, schema.Schema[ordinal])
+		}
+	}
+
+	ords := make([]int, len(pks))
+	for i, pk := range pks {
+		ords[i] = sch.IndexOf(pk.Name, pk.Source)
+	}
+
+	return NewPrimaryKeySchema(sch, ords...)
 }

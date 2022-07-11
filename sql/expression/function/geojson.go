@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -58,7 +59,7 @@ func PointToSlice(p sql.Point) [2]float64 {
 	return [2]float64{p.X, p.Y}
 }
 
-func LineToSlice(l sql.Linestring) [][2]float64 {
+func LineToSlice(l sql.LineString) [][2]float64 {
 	arr := make([][2]float64, len(l.Points))
 	for i, p := range l.Points {
 		arr[i] = PointToSlice(p)
@@ -79,7 +80,7 @@ func FindBBox(v interface{}) [4]float64 {
 	switch v := v.(type) {
 	case sql.Point:
 		res = [4]float64{v.X, v.Y, v.X, v.Y}
-	case sql.Linestring:
+	case sql.LineString:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
 		for _, p := range v.Points {
 			tmp := FindBBox(p)
@@ -121,6 +122,20 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 	return nil
 }
 
+// GetSRID returns the SRID given a Geometry type, will return -1 otherwise
+func GetSRID(val interface{}) int {
+	switch v := val.(type) {
+	case sql.Point:
+		return int(v.SRID)
+	case sql.LineString:
+		return int(v.SRID)
+	case sql.Polygon:
+		return int(v.SRID)
+	default:
+		return -1
+	}
+}
+
 // Eval implements the sql.Expression interface.
 func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -135,12 +150,12 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Create map object to hold values
-	obj := make(map[string]interface{}, 3) // TODO: needs to be 3 when including bounding box
+	obj := make(map[string]interface{})
 	switch v := val.(type) {
 	case sql.Point:
 		obj["type"] = "Point"
 		obj["coordinates"] = PointToSlice(v)
-	case sql.Linestring:
+	case sql.LineString:
 		obj["type"] = "LineString"
 		obj["coordinates"] = LineToSlice(v)
 	case sql.Polygon:
@@ -160,6 +175,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Return null if precision is null
 	if p == nil {
 		return nil, nil
 	}
@@ -203,6 +219,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Return null if flag is null
 	if flag == nil {
 		return nil, nil
 	}
@@ -224,17 +241,44 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	// Only flags 0-7 are valid
 	if _flag < 0 || _flag > 7 {
-		return nil, ErrInvalidArgument.New(g.FunctionName(), _flag)
+		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), _flag)
 	}
-	// TODO: figure out exactly what flags are; only 1,3,5 have bbox
-	if _flag%2 == 1 {
+
+	switch _flag {
+	// Flags 1,3,5 have bounding box
+	case 1, 3, 5:
 		// Calculate bounding box
 		res := FindBBox(val)
 		for i, r := range res {
 			res[i] = math.Round(r*prec) / prec
 		}
 		obj["bbox"] = res
+	// Flag 2 and 4 add CRS URN (EPSG: <srid>); only shows up if SRID != 0
+	case 2, 4:
+		// CRS obj only shows up if srid != 0
+		srid := GetSRID(val)
+		if srid != 0 {
+			// Create CRS URN Object
+			crs := make(map[string]interface{})
+			crs["type"] = "name"
+
+			// Create properties
+			props := make(map[string]interface{})
+			// Flag 2 is short format CRS URN, while 4 is long format
+			sridStr := strconv.Itoa(srid)
+			if _flag == 2 {
+				props["name"] = "EPSG:" + sridStr
+			} else {
+				props["name"] = "urn:ogc:def:crs:EPSG::" + sridStr
+			}
+			// Add properties to crs
+			crs["properties"] = props
+
+			// Add CRS to main object
+			obj["crs"] = crs
+		}
 	}
+
 	return sql.JSONDocument{Val: obj}, nil
 }
 
@@ -298,7 +342,7 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("coordinate must be of type number")
 	}
-	return sql.Point{SRID: 4326, X: x, Y: y}, nil
+	return sql.Point{SRID: sql.GeoSpatialSRID, X: x, Y: y}, nil
 }
 
 func SliceToLine(coords interface{}) (interface{}, error) {
@@ -318,7 +362,7 @@ func SliceToLine(coords interface{}) (interface{}, error) {
 		}
 		points[i] = p.(sql.Point)
 	}
-	return sql.Linestring{SRID: 4326, Points: points}, nil
+	return sql.LineString{SRID: sql.GeoSpatialSRID, Points: points}, nil
 }
 
 func SliceToPoly(coords interface{}) (interface{}, error) {
@@ -330,18 +374,18 @@ func SliceToPoly(coords interface{}) (interface{}, error) {
 	if len(cs) == 0 {
 		return nil, errors.New("not enough lines")
 	}
-	lines := make([]sql.Linestring, len(cs))
+	lines := make([]sql.LineString, len(cs))
 	for i, c := range cs {
 		l, err := SliceToLine(c)
 		if err != nil {
 			return nil, err
 		}
-		if !isLinearRing(l.(sql.Linestring)) {
+		if !isLinearRing(l.(sql.LineString)) {
 			return nil, errors.New("invalid GeoJSON data provided")
 		}
-		lines[i] = l.(sql.Linestring)
+		lines[i] = l.(sql.LineString)
 	}
-	return sql.Polygon{SRID: 4326, Lines: lines}, nil
+	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -360,9 +404,15 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil {
 		return nil, err
 	}
+	switch s := val.(type) {
+	case string:
+		val = []byte(s)
+	case []byte:
+		val = s
+	}
 	// Parse string as JSON
 	var obj map[string]interface{}
-	err = json.Unmarshal([]byte(val.(string)), &obj)
+	err = json.Unmarshal(val.([]byte), &obj)
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +471,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	}
 	// Only flags 1-4 are valid
 	if _flag < 1 || _flag > 4 {
-		return nil, ErrInvalidArgument.New(g.FunctionName(), _flag)
+		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), _flag)
 	}
 	// If flag is 1 and dimension of coordinates is greater than 2, throw error
 	if _flag == 1 {
@@ -475,12 +525,11 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	default:
 		return nil, errors.New("incorrect srid value")
 	}
-	// Check for invalid SRID
-	if _srid != 0 && _srid != 4326 {
-		return nil, ErrInvalidSRID.New(g.FunctionName(), _srid)
+	if err = ValidateSRID(_srid); err != nil {
+		return nil, err
 	}
-	// If SRID 4326, do nothing
-	if _srid == 4326 {
+	// If SRID is GeoSpatialSRID (4326), do nothing
+	if _srid == sql.GeoSpatialSRID {
 		return res, nil
 	}
 	// Swap coordinates with SRID 0
@@ -491,7 +540,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		_res.X, _res.Y = _res.Y, _res.X
 		return _res, nil
 	case "LineString":
-		_res := res.(sql.Linestring)
+		_res := res.(sql.LineString)
 		_res.SRID = _srid
 		for i, p := range _res.Points {
 			_res.Points[i].SRID = _srid

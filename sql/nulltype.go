@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -57,13 +59,19 @@ func (t nullType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t nullType) Equals(otherType Type) bool {
+	_, ok := otherType.(nullType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t nullType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t nullType) SQL(interface{}) (sqltypes.Value, error) {
+func (t nullType) SQL([]byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil
 }
 
@@ -75,6 +83,11 @@ func (t nullType) String() string {
 // Type implements Type interface.
 func (t nullType) Type() query.Type {
 	return sqltypes.Null
+}
+
+// ValueType implements Type interface.
+func (t nullType) ValueType() reflect.Type {
+	return nil
 }
 
 // Zero implements Type interface.

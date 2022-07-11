@@ -15,31 +15,32 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
 // the trigger body. Also validates that these old and new references are being used appropriately -- they are only
 // valid for certain kinds of triggers and certain statements.
-func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := node.(*plan.CreateTrigger)
 	if !ok {
-		return node, nil
+		return node, transform.SameTree, nil
 	}
 
 	// We just want to verify that the trigger is correctly defined before creating it. If it is, we replace the
 	// UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
 	// TODO: this might work badly for databases with tables named new and old. Needs tests.
 	var err error
-	plan.InspectExpressions(ct, func(e sql.Expression) bool {
+	transform.InspectExpressions(ct.Body, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "new" {
@@ -68,11 +69,11 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	// Check to see if the plan sets a value for "old" rows, or if an AFTER trigger assigns to NEW. Both are illegal.
-	plan.InspectExpressionsWithNode(node, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(ct.Body, func(n sql.Node, e sql.Expression) bool {
 		if _, ok := n.(*plan.Set); !ok {
 			return true
 		}
@@ -94,38 +95,51 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	// Finally analyze the entire trigger body with an appropriate scope for any "old" and "new" table references. This
-	// will catch (most) other errors in a trigger body. We set the trigger body at the end to pass to final validation
-	// steps at the end of analysis.
-	scopeNode := plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewCrossJoin(
-			plan.NewTableAlias("old", getResolvedTable(ct.Table)),
-			plan.NewTableAlias("new", getResolvedTable(ct.Table)),
-		),
-	)
+	trigTable := getResolvedTable(ct.Table)
+	sch := trigTable.Schema()
+	colsList := make(map[string]struct{})
+	for _, c := range sch {
+		colsList[c.Name] = struct{}{}
+	}
 
-	triggerLogic, err := a.Analyze(ctx, ct.Body, (*Scope)(nil).newScope(scopeNode))
+	// Check to see if the columns with "new" and "old" table reference are valid columns from the trigger table.
+	transform.InspectExpressions(ct.Body, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.UnresolvedColumn:
+			if strings.ToLower(e.Table()) == "old" || strings.ToLower(e.Table()) == "new" {
+				if _, ok := colsList[e.Name()]; !ok {
+					err = sql.ErrUnknownColumn.New(e.Name(), e.Table())
+				}
+			}
+		case *deferredColumn:
+			if strings.ToLower(e.Table()) == "old" || strings.ToLower(e.Table()) == "new" {
+				if _, ok := colsList[e.Name()]; !ok {
+					err = sql.ErrUnknownColumn.New(e.Name(), e.Table())
+				}
+			}
+		}
+		return true
+	})
+
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
-
-	return ct.WithChildren(ct.Table, StripQueryProcess(triggerLogic))
+	return node, transform.NewTree, nil
 }
 
-func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Skip this step for CreateTrigger statements
 	if _, ok := n.(*plan.CreateTrigger); ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	var affectedTables []string
 	var triggerEvent plan.TriggerEvent
 	db := ctx.GetCurrentDatabase()
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, getTableName(n))
@@ -150,32 +164,32 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	})
 
 	if len(affectedTables) == 0 {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	// TODO: database should be dependent on the table being inserted / updated, but we don't have that info available
 	//  from the table object yet.
-	database, err := a.Catalog.Database(db)
+	database, err := a.Catalog.Database(ctx, db)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	var affectedTriggers []*plan.CreateTrigger
 	if tdb, ok := database.(sql.TriggerDatabase); ok {
 		triggers, err := tdb.GetTriggers(ctx)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		for _, trigger := range triggers {
 			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
 			ct, ok := parsedTrigger.(*plan.CreateTrigger)
 			if !ok {
-				return nil, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
+				return nil, transform.SameTree, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 			}
 
 			triggerTable := getTableName(ct.Table)
@@ -189,35 +203,37 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	}
 
 	if len(affectedTriggers) == 0 {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	triggers := orderTriggersAndReverseAfter(affectedTriggers)
 	originalNode := n
-
+	same := transform.SameTree
+	allSame := transform.SameTree
 	for _, trigger := range triggers {
 		err = validateNoCircularUpdates(trigger, originalNode, scope)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
-		n, err = applyTrigger(ctx, a, originalNode, n, scope, trigger)
+		n, same, err = applyTrigger(ctx, a, originalNode, n, scope, trigger)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
+		allSame = same && allSame
 	}
 
-	return n, nil
+	return n, allSame, nil
 }
 
 // applyTrigger applies the trigger given to the node given, returning the resulting node
-func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, transform.TreeIdentity, error) {
 	triggerLogic, err := getTriggerLogic(ctx, a, originalNode, scope, trigger)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
 		// parent is a trigger body.
 		// TODO: this won't work for BEGIN END blocks, stored procedures, etc. For those, we need to examine all ancestors,
@@ -225,7 +241,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		//  (probably better).
 		if _, ok := c.Parent.(*plan.TriggerExecutor); ok {
 			if c.ChildNum == 1 { // Right child is the trigger execution logic
-				return c.Node, nil
+				return c.Node, transform.SameTree, nil
 			}
 		}
 
@@ -236,12 +252,12 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithSource(triggerExecutor), nil
+				return n.WithSource(triggerExecutor), transform.NewTree, nil
 			} else {
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				}), transform.NewTree, nil
 			}
 		case *plan.Update:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -249,12 +265,13 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithChildren(triggerExecutor)
+				node, err := n.WithChildren(triggerExecutor)
+				return node, transform.NewTree, err
 			} else {
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				}), transform.NewTree, nil
 			}
 		case *plan.DeleteFrom:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -262,22 +279,30 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithChildren(triggerExecutor)
+				node, err := n.WithChildren(triggerExecutor)
+				return node, transform.NewTree, err
 			} else {
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				}), transform.NewTree, nil
 			}
 		}
 
-		return c.Node, nil
+		return c.Node, transform.SameTree, nil
 	})
 }
 
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
 func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+	// For trigger body analysis, we don't want any row update accumulators applied to insert / update / delete
+	// statements, we need the raw output from them.
+	var noRowUpdateAccumulators RuleSelector
+	noRowUpdateAccumulators = func(id RuleId) bool {
+		return DefaultRuleSelector(id) && id != applyRowUpdateAccumulatorsId
+	}
+
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
 	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
@@ -289,7 +314,8 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("new", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.UpdateStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
@@ -298,27 +324,25 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 				plan.NewTableAlias("new", getResolvedTable(n)),
 			),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", getResolvedTable(n)),
 		)
-		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
+		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	}
 
-	if qp, ok := triggerLogic.(*plan.QueryProcess); ok {
-		triggerLogic = qp.Child
-	}
-
-	return triggerLogic, err
+	return StripPassthroughNodes(triggerLogic), err
 }
 
 // validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any
 // table being updated in an outer scope of this analysis)
 func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *Scope) error {
 	var circularRef error
-	plan.Inspect(trigger.Body, func(node sql.Node) bool {
+	transform.Inspect(trigger.Body, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
 			for _, n := range append([]sql.Node{n}, scope.MemoNodes()...) {
@@ -338,7 +362,7 @@ func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *S
 }
 
 func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
-	beforeTriggers, afterTriggers := OrderTriggers(triggers)
+	beforeTriggers, afterTriggers := plan.OrderTriggers(triggers)
 
 	// Reverse the order of after triggers. This is because we always apply them to the Insert / Update / Delete node
 	// that initiated the trigger, so after triggers, which wrap the Insert, need be applied in reverse order for them to
@@ -350,49 +374,77 @@ func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.Create
 	return append(beforeTriggers, afterTriggers...)
 }
 
-func OrderTriggers(triggers []*plan.CreateTrigger) (beforeTriggers []*plan.CreateTrigger, afterTriggers []*plan.CreateTrigger) {
-	orderedTriggers := make([]*plan.CreateTrigger, len(triggers))
-	copy(orderedTriggers, triggers)
-
-Top:
-	for i, trigger := range triggers {
-		if trigger.TriggerOrder != nil {
-			ref := trigger.TriggerOrder.OtherTriggerName
-			// remove the trigger from the slice
-			orderedTriggers = append(orderedTriggers[:i], orderedTriggers[i+1:]...)
-			// then find where to reinsert it
-			for j, t := range orderedTriggers {
-				if t.TriggerName == ref {
-					if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
-						orderedTriggers = append(orderedTriggers[:j], append(triggers[i:i+1], orderedTriggers[j:]...)...)
-					} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
-						if len(orderedTriggers) == j-1 {
-							orderedTriggers = append(orderedTriggers, triggers[i])
-						} else {
-							orderedTriggers = append(orderedTriggers[:j+1], append(triggers[i:i+1], orderedTriggers[j+1:]...)...)
-						}
-					} else {
-						panic("unexpected value for trigger order")
-					}
-					continue Top
-				}
-			}
-			panic(fmt.Sprintf("Referenced trigger %s not found", ref))
-		}
-	}
-
-	// Now that we have ordered the triggers according to precedence, split them into BEFORE / AFTER triggers
-	for _, trigger := range orderedTriggers {
-		if trigger.TriggerTime == sqlparser.BeforeStr {
-			beforeTriggers = append(beforeTriggers, trigger)
-		} else {
-			afterTriggers = append(afterTriggers, trigger)
-		}
-	}
-
-	return beforeTriggers, afterTriggers
-}
-
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 	return strings.ToLower((string)(event)) == strings.ToLower(event2)
+}
+
+// wrapWritesWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
+func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// Check if tree contains a TriggerExecutor
+	containsTrigger := false
+	transform.Inspect(n, func(n sql.Node) bool {
+		// After Triggers wrap nodes
+		if _, ok := n.(*plan.TriggerExecutor); ok {
+			containsTrigger = true
+			return false // done, don't bother to recurse
+		}
+
+		// Before Triggers on Inserts are inside Source
+		if n, ok := n.(*plan.InsertInto); ok {
+			if _, ok := n.Source.(*plan.TriggerExecutor); ok {
+				containsTrigger = true
+				return false
+			}
+		}
+
+		// Before Triggers on Delete and Update should be in children
+		return true
+	})
+
+	// No TriggerExecutor, so return same tree
+	if !containsTrigger {
+		return n, transform.SameTree, nil
+	}
+
+	// No database set, find it through tree
+	dbName := ctx.GetCurrentDatabase()
+	if dbName == "" {
+		transform.Inspect(n, func(n sql.Node) bool {
+			switch n := n.(type) {
+			case *plan.InsertInto:
+				if n.Database() != nil && n.Database().Name() != "" {
+					dbName = n.Database().Name()
+				}
+			case *plan.Update:
+				if n.Database() != "" {
+					dbName = n.Database()
+				}
+			case *plan.DeleteFrom:
+				if n.Database() != "" {
+					dbName = n.Database()
+				}
+			}
+			return true
+		})
+	}
+
+	// Get current database
+	currDb, err := a.Catalog.Database(ctx, dbName)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	// Extract from privilegedDatabase
+	if privilegedDatabase, ok := currDb.(mysql_db.PrivilegedDatabase); ok {
+		currDb = privilegedDatabase.Unwrap()
+	}
+
+	// Not a TransactionDatabase, do nothing
+	tdb, ok := currDb.(sql.TransactionDatabase)
+	if !ok {
+		return n, transform.SameTree, err
+	}
+
+	// Wrap tree with new node
+	return plan.NewTriggerRollback(n, tdb), transform.NewTree, nil
 }

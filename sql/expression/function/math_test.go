@@ -69,7 +69,7 @@ func TestRandWithSeed(t *testing.T) {
 	assert.Equal(t, f64, f642)
 
 	r, _ = NewRand(expression.NewLiteral("not a number", sql.LongText))
-	assert.Equal(t, `RAND("not a number")`, r.String())
+	assert.Equal(t, `RAND('not a number')`, r.String())
 
 	f, err = r.Eval(nil, nil)
 	require.NoError(t, err)
@@ -250,4 +250,30 @@ func TestSignFunc(t *testing.T) {
 	tf.AddSucceeding(int8(0), "-.z1,1,1")
 
 	tf.Test(t, nil, nil)
+}
+
+func TestMod(t *testing.T) {
+	tests := []struct {
+		name     string
+		left     interface{}
+		right    interface{}
+		expected interface{}
+	}{
+		{"MOD(5,2)", 5, 2, int64(1)},
+		{"MOD(2,5)", 2, 5, int64(2)},
+		{"MOD(NULL,2)", nil, 2, nil},
+		{"MOD(5,NULL)", 5, nil, nil},
+		{"MOD(NULL,NULL)", nil, nil, nil},
+	}
+
+	f := sql.FunctionN{Name: "mod", Fn: NewMod}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mod, err := f.Fn(expression.NewLiteral(test.left, sql.Int32), expression.NewLiteral(test.right, sql.Int32))
+			res, err := mod.Eval(nil, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, res)
+		})
+	}
 }

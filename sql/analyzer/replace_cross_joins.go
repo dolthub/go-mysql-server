@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // comparisonSatisfiesJoinCondition checks a) whether a comparison is a valid join predicate,
@@ -30,9 +31,8 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 	var re, le *expression.GetField
 	switch e := expr.(type) {
 	case *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
-		*expression.GreaterThanOrEqual, *expression.NullSafeGreaterThanOrEqual,
-		*expression.NullSafeGreaterThan, *expression.LessThan, *expression.LessThanOrEqual,
-		*expression.NullSafeLessThanOrEqual, *expression.NullSafeLessThan:
+		*expression.LessThan, *expression.LessThanOrEqual, *expression.GreaterThanOrEqual:
+
 		ce, ok := e.(expression.Comparer)
 		if !ok {
 			return false
@@ -57,7 +57,7 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 // satisfies the join condition. The input conjunctions have already been split,
 // so we do not care which predicate satisfies the expression.
 func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
-	return expression.InspectUp(c, func(expr sql.Expression) bool {
+	return transform.InspectExpr(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
 			return comparisonSatisfiesJoinCondition(e, j)
@@ -72,22 +72,23 @@ func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
 // 2) For every CrossJoin, check whether a subset of predicates covers as join conditions,
 //    and create a new InnerJoin with the matching predicates.
 // 3) Remove predicates from the parent Filter that have been pushed into InnerJoins.
-func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+
+func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 		predicates := splitConjunction(f.Expression)
 		movedPredicates := make(map[int]struct{})
-		newF, err := plan.TransformUp(f, func(n sql.Node) (sql.Node, error) {
+		newF, _, err := transform.Node(f, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			cj, ok := n.(*plan.CrossJoin)
 			if !ok {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
 			joinConjs := make([]int, 0, len(predicates))
@@ -98,7 +99,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 
 			if len(joinConjs) == 0 {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
 			newExprs := make([]sql.Expression, len(joinConjs))
@@ -106,20 +107,20 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				movedPredicates[v] = struct{}{}
 				newExprs[i] = predicates[v]
 			}
-			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), nil
+			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), transform.NewTree, nil
 		})
 		if err != nil {
-			return f, err
+			return f, transform.SameTree, err
 		}
 
 		// only alter the Filter expression tree if we transferred predicates to an InnerJoin
 		if len(movedPredicates) == 0 {
-			return f, nil
+			return f, transform.SameTree, nil
 		}
 
 		// remove Filter if all expressions were transferred to joins
 		if len(predicates) == len(movedPredicates) {
-			return newF.(*plan.Filter).Child, nil
+			return newF.(*plan.Filter).Child, transform.NewTree, nil
 		}
 
 		newFilterExprs := make([]sql.Expression, 0, len(predicates)-len(movedPredicates))
@@ -129,6 +130,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 			newFilterExprs = append(newFilterExprs, e)
 		}
-		return newF.(*plan.Filter).WithExpressions(expression.JoinAnd(newFilterExprs...))
+		newF, err = newF.(*plan.Filter).WithExpressions(expression.JoinAnd(newFilterExprs...))
+		return newF, transform.NewTree, err
 	})
 }

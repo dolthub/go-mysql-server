@@ -1,0 +1,18 @@
+exec
+create table othertable (s2 varchar(20) not null, i2 bigint primary key)
+----
+
+exec
+insert into othertable values
+    ('first', 3),
+    ('second', 2),
+    ('third', 1)
+----
+
+exec
+create index othertable_s2 on othertable (s2)
+----
+
+exec
+create index othertable_s2_i2 on othertable (s2,i2)
+----

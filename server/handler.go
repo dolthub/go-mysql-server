@@ -27,13 +27,15 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/go-kit/kit/metrics/discard"
-	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 )
@@ -48,8 +50,7 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
 var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
-// TODO parametrize
-const rowsBatch = 100
+const rowsBatch = 128
 
 var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
@@ -88,30 +89,38 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
-	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
+	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 	return h.sm.SetDB(c, schemaName)
 }
 
+// ComPrepare parses, partially analyzes, and caches a prepared statement's plan
+// with the given [c.ConnectionID].
 func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
 	ctx, err := h.sm.NewContextWithQuery(c, query)
 	if err != nil {
 		return nil, err
 	}
-	schema, err := h.e.AnalyzeQuery(ctx, query)
+
+	var analyzed sql.Node
+	if analyzer.PreparedStmtDisabled {
+		analyzed, err = h.e.AnalyzeQuery(ctx, query)
+	} else {
+		analyzed, err = h.e.PrepareQuery(ctx, query)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if sql.IsOkResultSchema(schema) {
+
+	if sql.IsOkResultSchema(analyzed.Schema()) {
 		return nil, nil
 	}
-	return schemaToFields(schema), nil
+	return schemaToFields(analyzed.Schema()), nil
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-
 	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
 	})
@@ -139,7 +148,9 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
 
-	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
+	defer h.e.CloseSession(ctx)
+
+	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
 
 func (h *Handler) ComMultiQuery(
@@ -208,12 +219,11 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(c, t)
 		case v.Type() == sqltypes.Decimal:
-			t := sql.MustCreateDecimalType(sql.DecimalTypeMaxPrecision, sql.DecimalTypeMaxScale)
-			v, err := t.Convert(string(v.ToBytes()))
+			v, err := sql.InternalDecimalType.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
-			res[k] = expression.NewLiteral(v, t)
+			res[k] = expression.NewLiteral(v, sql.InternalDecimalType)
 		case v.Type() == sqltypes.Bit:
 			t := sql.MustCreateBitType(sql.BitTypeMaxBits)
 			v, err := t.Convert(v.ToBytes())
@@ -301,15 +311,6 @@ func (h *Handler) doQuery(
 	finish := observeQuery(ctx, query)
 	defer finish(err)
 
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
-	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
-	defer func() {
-		if err != nil && ctx != nil {
-			ctx.ProcessList.Done(ctx.Pid())
-		}
-	}()
-
 	start := time.Now()
 
 	if parsed == nil {
@@ -330,40 +331,81 @@ func (h *Handler) doQuery(
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
-	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
+	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
+	//  marked done until we're done spooling rows over the wire
+	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
+	defer func() {
+		if err != nil && ctx != nil {
+			ctx.ProcessList.Done(ctx.Pid())
+		}
+	}()
+
+	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
 
-	var r *sqltypes.Result
-	var proccesedAtLeastOneBatch bool
+	var rowChan chan sql.Row
+	var row2Chan chan sql.Row2
 
-	// Reads rows from the row reading goroutine
-	rowChan := make(chan sql.Row)
+	var rowIter2 sql.RowIter2
+	if ri2, ok := rowIter.(sql.RowIterTypeSelector); ok && ri2.IsNode2() {
+		rowIter2 = rowIter.(sql.RowIter2)
+		row2Chan = make(chan sql.Row2, 512)
+	} else {
+		rowChan = make(chan sql.Row, 512)
+	}
 
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	// Read rows off the row iterator and send them to the row channel.
 	eg.Go(func() error {
-		defer close(rowChan)
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				row, err := rows.Next(ctx)
+		defer wg.Done()
+		if rowIter2 != nil {
+			defer close(row2Chan)
+
+			frame := sql.NewRowFrame()
+			defer frame.Recycle()
+
+			for {
+				frame.Clear()
+				err := rowIter2.Next2(ctx, frame)
 				if err != nil {
 					if err == io.EOF {
-						return rows.Close(ctx)
+						return rowIter2.Close(ctx)
 					}
-					cerr := rows.Close(ctx)
+					cerr := rowIter2.Close(ctx)
 					if cerr != nil {
 						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
 					}
 					return err
 				}
 				select {
-				case rowChan <- row:
+				case row2Chan <- frame.Row2Copy():
 				case <-ctx.Done():
 					return nil
+				}
+			}
+		} else {
+			defer close(rowChan)
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				default:
+					row, err := rowIter.Next(ctx)
+					if err == io.EOF {
+						return nil
+					}
+					if err != nil {
+						return err
+					}
+					select {
+					case rowChan <- row:
+					case <-ctx.Done():
+						return nil
+					}
 				}
 			}
 		}
@@ -379,16 +421,20 @@ func (h *Handler) doQuery(
 	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
 	// call Handler.CloseConnection()
 	waitTime := 1 * time.Minute
-
 	if h.readTimeout > 0 {
 		waitTime = h.readTimeout
 	}
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// Read rows off the row iterator and send them to the row channel.
+	var r *sqltypes.Result
+	var proccesedAtLeastOneBatch bool
+
+	// reads rows from the channel, converts them to wire format,
+	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
 		defer cancelF()
+		defer wg.Done()
 		for {
 			if r == nil {
 				r = &sqltypes.Result{Fields: schemaToFields(schema)}
@@ -403,34 +449,68 @@ func (h *Handler) doQuery(
 				continue
 			}
 
-			select {
-			case <-ctx.Done():
-				return nil
-			case row, ok := <-rowChan:
-				if !ok {
+			if rowIter2 != nil {
+				select {
+				case <-ctx.Done():
 					return nil
-				}
-				if sql.IsOkResult(row) {
-					if len(r.Rows) > 0 {
-						panic("Got OkResult mixed with RowResult")
+				case row, ok := <-row2Chan:
+					if !ok {
+						return nil
 					}
-					r = resultFromOkResult(row[0].(sql.OkResult))
-					continue
-				}
+					// TODO: OK result for Row2
+					// if sql.IsOkResult(row) {
+					// 	if len(r.Rows) > 0 {
+					// 		panic("Got OkResult mixed with RowResult")
+					// 	}
+					// 	r = resultFromOkResult(row[0].(sql.OkResult))
+					// 	continue
+					// }
 
-				outputRow, err := rowToSQL(schema, row)
-				if err != nil {
-					return err
-				}
+					outputRow, err := row2ToSQL(schema, row)
+					if err != nil {
+						return err
+					}
 
-				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-				r.Rows = append(r.Rows, outputRow)
-				r.RowsAffected++
-			case <-timer.C:
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Tracef("connection timeout")
-					return ErrRowTimeout.New()
+					ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+					r.Rows = append(r.Rows, outputRow)
+					r.RowsAffected++
+				case <-timer.C:
+					if h.readTimeout != 0 {
+						// Cancel and return so Vitess can call the CloseConnection callback
+						ctx.GetLogger().Tracef("connection timeout")
+						return ErrRowTimeout.New()
+					}
+				}
+			} else {
+				select {
+				case <-ctx.Done():
+					return nil
+				case row, ok := <-rowChan:
+					if !ok {
+						return nil
+					}
+					if sql.IsOkResult(row) {
+						if len(r.Rows) > 0 {
+							panic("Got OkResult mixed with RowResult")
+						}
+						r = resultFromOkResult(row[0].(sql.OkResult))
+						continue
+					}
+
+					outputRow, err := rowToSQL(schema, row)
+					if err != nil {
+						return err
+					}
+
+					ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+					r.Rows = append(r.Rows, outputRow)
+					r.RowsAffected++
+				case <-timer.C:
+					if h.readTimeout != 0 {
+						// Cancel and return so Vitess can call the CloseConnection callback
+						ctx.GetLogger().Tracef("connection timeout")
+						return ErrRowTimeout.New()
+					}
 				}
 			}
 			if !timer.Stop() {
@@ -440,11 +520,20 @@ func (h *Handler) doQuery(
 		}
 	})
 
+	// Close() kills this PID in the process list,
+	// wait until all rows have be sent over the wire
+	eg.Go(func() error {
+		wg.Wait()
+		return rowIter.Close(ctx)
+	})
+
 	err = eg.Wait()
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
+
+	// errGroup context is now canceled
 	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
@@ -628,7 +717,26 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 			continue
 		}
 
-		o[i], err = s[i].Type.SQL(v)
+		o[i], err = s[i].Type.SQL(nil, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return o, nil
+}
+
+func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
+	o := make([]sqltypes.Value, len(row))
+	var err error
+	for i := 0; i < row.Len(); i++ {
+		v := row.GetField(i)
+		if v.IsNull() {
+			o[i] = sqltypes.NULL
+			continue
+		}
+
+		o[i], err = s[i].Type.(sql.Type2).SQL2(v)
 		if err != nil {
 			return nil, err
 		}
@@ -641,7 +749,7 @@ func schemaToFields(s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
 		var charset uint32 = mysql.CharacterSetUtf8
-		if sql.IsBlob(c.Type) {
+		if sql.IsBinaryType(c.Type) {
 			charset = mysql.CharacterSetBinary
 		}
 
@@ -667,7 +775,7 @@ var (
 )
 
 func observeQuery(ctx *sql.Context, query string) func(err error) {
-	span, _ := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
+	span, ctx := ctx.Span("query", trace.WithAttributes(attribute.String("query", query)))
 
 	t := time.Now()
 	return func(err error) {
@@ -678,6 +786,6 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 			QueryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
 		}
 
-		span.Finish()
+		span.End()
 	}
 }

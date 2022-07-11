@@ -98,13 +98,12 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			rightDatetime = rightDatetime.In(leftDatetime.Location())
 		}
 		return sql.Time.Convert(leftDatetime.Sub(rightDatetime))
-	} else if leftTime, err := sql.Time.ConvertToTimeDuration(left); err == nil {
-		rightTime, err := sql.Time.ConvertToTimeDuration(right)
+	} else if leftTime, err := sql.Time.ConvertToTimespan(left); err == nil {
+		rightTime, err := sql.Time.ConvertToTimespan(right)
 		if err != nil {
 			return nil, err
 		}
-		resTime := leftTime - rightTime
-		return sql.Time.Convert(resTime)
+		return leftTime.Subtract(rightTime), nil
 	} else {
 		return nil, ErrInvalidArgumentType.New("timediff")
 	}

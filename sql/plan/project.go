@@ -17,10 +17,12 @@ package plan
 import (
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Project is a projection of certain expression from the children node.
@@ -42,7 +44,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		s[i] = expression.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e)
 	}
 	return s
 }
@@ -55,14 +57,13 @@ func (p *Project) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Project", opentracing.Tag{
-		Key:   "projections",
-		Value: len(p.Projections),
-	})
+	span, ctx := ctx.Span("plan.Project", trace.WithAttributes(
+		attribute.Int("projections", len(p.Projections)),
+	))
 
 	i, err := p.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -109,6 +110,11 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewProject(p.Projections, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *Project) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(p.Projections) {
@@ -139,7 +145,7 @@ func (i *iter) Close(ctx *sql.Context) error {
 
 // ProjectRow evaluates a set of projections.
 func ProjectRow(
-	s *sql.Context,
+	ctx *sql.Context,
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
@@ -151,21 +157,19 @@ func ProjectRow(
 		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
 		// This ensures that all columns referenced by expressions will have already been evaluated.
 		// Since literals do not reference other columns, they're evaluated on the first pass.
-		if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok {
-			if !defaultVal.IsLiteral() {
-				fields = append(fields, nil)
-				secondPass = append(secondPass, i)
-				continue
-			}
+		if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok && !defaultVal.IsLiteral() {
+			fields = append(fields, nil)
+			secondPass = append(secondPass, i)
+			continue
 		}
-		f, err := expr.Eval(s, row)
-		if err != nil {
-			return nil, err
+		f, fErr := expr.Eval(ctx, row)
+		if fErr != nil {
+			return nil, fErr
 		}
 		fields = append(fields, f)
 	}
 	for _, index := range secondPass {
-		fields[index], err = projections[index].Eval(s, fields)
+		fields[index], err = projections[index].Eval(ctx, fields)
 		if err != nil {
 			return nil, err
 		}

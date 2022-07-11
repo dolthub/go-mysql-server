@@ -35,19 +35,23 @@ var benchtable = func() *memory.Table {
 		{Name: "bigintfield", Type: sql.Int64, Nullable: false},
 		{Name: "blobfield", Type: sql.Blob, Nullable: false},
 	})
-	t := memory.NewTable("test", schema)
+	t := memory.NewTable("test", schema, nil)
 
 	for i := 0; i < 100; i++ {
 		n := fmt.Sprint(i)
+		boolVal := int8(0)
+		if i%2 == 0 {
+			boolVal = 1
+		}
 		err := t.Insert(
 			sql.NewEmptyContext(),
 			sql.NewRow(
 				repeatStr(n, i%10+1),
 				float64(i),
-				i%2 == 0,
+				boolVal,
 				int32(i),
 				int64(i),
-				[]byte(repeatStr(n, 100+(i%100))),
+				repeatBytes(n, 100+(i%100)),
 			),
 		)
 		if err != nil {
@@ -60,10 +64,10 @@ var benchtable = func() *memory.Table {
 				sql.NewRow(
 					repeatStr(n, i%10+1),
 					float64(i),
-					i%2 == 0,
+					boolVal,
 					int32(i),
 					int64(i),
-					[]byte(repeatStr(n, 100+(i%100))),
+					repeatBytes(n, 100+(i%100)),
 				),
 			)
 			if err != nil {
@@ -81,6 +85,14 @@ func repeatStr(str string, n int) string {
 		buf.WriteString(str)
 	}
 	return buf.String()
+}
+
+func repeatBytes(str string, n int) []byte {
+	var buf bytes.Buffer
+	for i := 0; i < n; i++ {
+		buf.WriteString(str)
+	}
+	return buf.Bytes()
 }
 
 func assertRows(t *testing.T, ctx *sql.Context, iter sql.RowIter, expected int64) {
@@ -124,7 +136,7 @@ func collectRows(t *testing.T, node sql.Node) []sql.Row {
 
 func TestIsUnary(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", sql.PrimaryKeySchema{})
+	table := memory.NewTable("foo", sql.PrimaryKeySchema{}, nil)
 
 	require.True(IsUnary(NewFilter(nil, NewResolvedTable(table, nil, nil))))
 	require.False(IsUnary(NewCrossJoin(
@@ -135,7 +147,7 @@ func TestIsUnary(t *testing.T) {
 
 func TestIsBinary(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", sql.PrimaryKeySchema{})
+	table := memory.NewTable("foo", sql.PrimaryKeySchema{}, nil)
 
 	require.False(IsBinary(NewFilter(nil, NewResolvedTable(table, nil, nil))))
 	require.True(IsBinary(NewCrossJoin(

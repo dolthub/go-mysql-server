@@ -15,9 +15,11 @@
 package function
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -267,16 +269,30 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				dVal = float64(dNum)
 			case int:
 				dVal = float64(dNum)
+			case []byte:
+				val, err := strconv.ParseUint(hex.EncodeToString(dNum), 16, 64)
+				if err != nil {
+					return nil, err
+				}
+				dVal = float64(val)
 			default:
 				dTemp, err = sql.Float64.Convert(dTemp)
 				if err == nil {
 					dVal = dTemp.(float64)
 				}
 			}
+			if dVal > 30 { // MySQL cuts off at 30 for larger values
+				dVal = 30
+			}
 		}
 	}
 
-	if !sql.IsNumber(r.Left.Type()) {
+	if sql.IsText(r.Left.Type()) {
+		xVal, err = sql.Float64.Convert(xVal)
+		if err != nil {
+			return int32(0), nil
+		}
+	} else if !sql.IsNumber(r.Left.Type()) {
 		xVal, err = sql.Float64.Convert(xVal)
 		if err != nil {
 			return int32(0), nil
@@ -286,6 +302,16 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int32(math.Round(xNum*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	}
 
+	// One way to round to a decimal place is to shift the number up by the desired decimal position, round to the
+	// nearest integer, and then shift back down.
+	// For example, we have 5.855 and want to round to 2 decimal places.
+	// In this case, xNum = 5.855 and dVal = 2
+	// round(xNum * 10^dVal) / 10^dVal
+	// round(5.855 * 10^2) / 10^2
+	// round(5.855 * 100) / 100
+	// round(585.5) / 100
+	// 586 / 100
+	// 5.86
 	switch xNum := xVal.(type) {
 	case float64:
 		return math.Round(xNum*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal), nil

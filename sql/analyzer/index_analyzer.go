@@ -17,6 +17,8 @@ package analyzer
 import (
 	"sort"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -30,11 +32,11 @@ type indexAnalyzer struct {
 	registryIdxes  []sql.Index
 }
 
-// getIndexesForNode returns an analyzer for indexes available in the node given, keyed by the table name. These might
-// come from either the tables themselves natively, or else from an index driver that has indexes for the tables
+// newIndexAnalyzerForNode returns an analyzer for indexes available in the node given, keyed by the table name. These
+// might come from either the tables themselves natively, or else from an index driver that has indexes for the tables
 // included in the nodes. Indexes are keyed by the aliased name of the table, if applicable. These names must be
 // unaliased when matching against the names of tables in index definitions.
-func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyzer, error) {
+func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, error) {
 	var analysisErr error
 	indexes := make(map[string][]sql.Index)
 
@@ -55,7 +57,7 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 
 	// Find all of the native indexed tables in the node (those that don't require a driver)
 	if n != nil {
-		plan.Inspect(n, func(n sql.Node) bool {
+		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.TableAlias:
 				rt, ok := n.Child.(*plan.ResolvedTable)

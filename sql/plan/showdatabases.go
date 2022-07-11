@@ -52,7 +52,7 @@ func (*ShowDatabases) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (p *ShowDatabases) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	dbs := p.Catalog.AllDatabases()
+	dbs := p.Catalog.AllDatabases(ctx)
 	var rows = make([]sql.Row, 0, len(dbs))
 	for _, db := range dbs {
 		rows = append(rows, sql.Row{db.Name()})
@@ -72,6 +72,13 @@ func (p *ShowDatabases) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return p, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *ShowDatabases) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: Having the "SHOW DATABASES" privilege should allow one to see all databases
+	// Currently, only shows databases that the user has access to
+	return true
 }
 
 func (p ShowDatabases) String() string {

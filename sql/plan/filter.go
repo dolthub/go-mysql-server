@@ -43,7 +43,7 @@ func (f *Filter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	i, err := f.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -57,6 +57,11 @@ func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewFilter(f.Expression, children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (f *Filter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return f.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // WithExpressions implements the Expressioner interface.

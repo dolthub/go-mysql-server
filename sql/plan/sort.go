@@ -28,7 +28,7 @@ import (
 // Sort is the sort node.
 type Sort struct {
 	UnaryNode
-	SortFields []sql.SortField
+	SortFields sql.SortFields
 }
 
 // NewSort creates a new Sort node.
@@ -40,6 +40,8 @@ func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
 }
 
 var _ sql.Expressioner = (*Sort)(nil)
+var _ sql.Node = (*Sort)(nil)
+var _ sql.Node2 = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
@@ -56,10 +58,20 @@ func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Sort")
 	i, err := s.UnaryNode.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
+}
+
+func (s *Sort) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	span, ctx := ctx.Span("plan.Sort")
+	i, err := s.UnaryNode.Child.(sql.Node2).RowIter2(ctx, f)
+	if err != nil {
+		span.End()
+		return nil, err
+	}
+	return sql.NewSpanIter(span, newSortIter(ctx, s, i)).(sql.RowIter2), nil
 }
 
 func (s *Sort) String() string {
@@ -103,36 +115,40 @@ func (s *Sort) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewSort(s.SortFields, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *Sort) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return s.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.SortFields) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.SortFields))
 	}
 
-	var fields = make([]sql.SortField, len(s.SortFields))
-	for i, expr := range exprs {
-		fields[i] = sql.SortField{
-			Column:       expr,
-			NullOrdering: s.SortFields[i].NullOrdering,
-			Order:        s.SortFields[i].Order,
-		}
-	}
-
+	fields := s.SortFields.FromExpressions(exprs...)
 	return NewSort(fields, s.Child), nil
 }
 
 type sortIter struct {
-	s          *Sort
-	childIter  sql.RowIter
-	sortedRows []sql.Row
-	idx        int
+	s           *Sort
+	childIter   sql.RowIter
+	childIter2  sql.RowIter2
+	sortedRows  []sql.Row
+	sortedRows2 []sql.Row2
+	idx         int
 }
 
+var _ sql.RowIter = (*sortIter)(nil)
+var _ sql.RowIter2 = (*sortIter)(nil)
+
 func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
+	childIter2, _ := child.(sql.RowIter2)
 	return &sortIter{
-		s:         s,
-		childIter: child,
-		idx:       -1,
+		s:          s,
+		childIter:  child,
+		childIter2: childIter2,
+		idx:        -1,
 	}
 }
 
@@ -151,6 +167,26 @@ func (i *sortIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row := i.sortedRows[i.idx]
 	i.idx++
 	return row, nil
+}
+
+func (i *sortIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	if i.idx == -1 {
+		err := i.computeSortedRows2(ctx)
+		if err != nil {
+			return err
+		}
+		i.idx = 0
+	}
+
+	if i.idx >= len(i.sortedRows2) {
+		return io.EOF
+	}
+
+	row := i.sortedRows2[i.idx]
+	i.idx++
+	frame.Append(row...)
+
+	return nil
 }
 
 func (i *sortIter) Close(ctx *sql.Context) error {
@@ -189,6 +225,42 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 		return sorter.LastError
 	}
 	i.sortedRows = rows
+	return nil
+}
+
+func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
+	cache, dispose := ctx.Memory.NewRows2Cache()
+	defer dispose()
+
+	f := sql.NewRowFrame()
+	defer f.Recycle()
+
+	for {
+		f.Clear()
+		err := i.childIter2.Next2(ctx, f)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := cache.Add2(f.Row2Copy()); err != nil {
+			return err
+		}
+	}
+
+	rows := cache.Get2()
+	sorter := &expression.Sorter2{
+		SortFields: i.s.SortFields,
+		Rows:       rows,
+		Ctx:        ctx,
+	}
+	sort.Stable(sorter)
+	if sorter.LastError != nil {
+		return sorter.LastError
+	}
+	i.sortedRows2 = rows
 	return nil
 }
 
@@ -232,7 +304,7 @@ func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.TopN")
 	i, err := n.UnaryNode.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -267,7 +339,9 @@ func (n *TopN) DebugString() string {
 
 // Expressions implements the Expressioner interface.
 func (n *TopN) Expressions() []sql.Expression {
-	return n.Fields.ToExpressions()
+	exprs := []sql.Expression{n.Limit}
+	exprs = append(exprs, n.Fields.ToExpressions()...)
+	return exprs
 }
 
 // WithChildren implements the Node interface.
@@ -281,15 +355,21 @@ func (n *TopN) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return topn, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *TopN) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(n.Fields) {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields))
+	if len(exprs) != len(n.Fields)+1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields)+1)
 	}
 
-	var fields = n.Fields.FromExpressions(exprs)
+	var limit = exprs[0]
+	var fields = n.Fields.FromExpressions(exprs[1:]...)
 
-	topn := NewTopN(fields, n.Limit, n.Child)
+	topn := NewTopN(fields, limit, n.Child)
 	topn.CalcFoundRows = n.CalcFoundRows
 	return topn, nil
 }

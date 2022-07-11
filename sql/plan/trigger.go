@@ -17,9 +17,9 @@ package plan
 import (
 	"io"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type TriggerEvent string
@@ -85,6 +85,13 @@ func (t *TriggerExecutor) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewTriggerExecutor(children[0], children[1], t.TriggerEvent, t.TriggerTime, t.TriggerDefinition), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (t *TriggerExecutor) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// TODO: Figure out exactly how triggers work, not exactly clear whether trigger creator AND user needs the privileges
+	return t.left.CheckPrivileges(ctx, opChecker) && opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(t.right), getTableName(t.right), "", sql.PrivilegeType_Trigger))
+}
+
 type triggerIter struct {
 	child          sql.RowIter
 	executionLogic sql.Node
@@ -96,27 +103,27 @@ type triggerIter struct {
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func prependRowInPlanForTriggerExecution(row sql.Row) func(c TransformContext) (sql.Node, error) {
-	return func(c TransformContext) (sql.Node, error) {
+func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+	return func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *Project:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
 			switch c.Parent.(type) {
 			case *InsertInto, *TriggerExecutor:
-				return n, nil
+				return n, transform.SameTree, nil
 			default:
 				return &prependNode{
 					UnaryNode: UnaryNode{Child: n},
 					row:       row,
-				}, nil
+				}, transform.NewTree, nil
 			}
 		case *ResolvedTable, *IndexedTableAccess:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
-			}, nil
+			}, transform.NewTree, nil
 		default:
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 	}
 }
@@ -128,7 +135,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	}
 
 	// Wrap the execution logic with the current child row before executing it.
-	logic, err := TransformUpCtx(t.executionLogic, nil, prependRowInPlanForTriggerExecution(childRow))
+	logic, _, err := transform.NodeWithCtx(t.executionLogic, nil, prependRowInPlanForTriggerExecution(childRow))
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +195,7 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 		return hasSetField, row[len(row)/2:]
 	case *TriggerBeginEndBlock:
 		hasSetField := false
-		Inspect(logic, func(n sql.Node) bool {
+		transform.Inspect(logic, func(n sql.Node) bool {
 			set, ok := n.(*Set)
 			if !ok {
 				return true
@@ -227,4 +234,92 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		executionLogic: t.right,
 		ctx:            ctx,
 	}, nil
+}
+
+const SavePointName = "__go_mysql_server_starting_savepoint__"
+
+// TriggerRollback is a node that wraps the entire tree iff it contains a trigger, creates a savepoint, and performs a
+// rollback if something went wrong during execution
+type TriggerRollback struct {
+	UnaryNode
+	Db sql.TransactionDatabase
+}
+
+func NewTriggerRollback(child sql.Node, db sql.TransactionDatabase) *TriggerRollback {
+	return &TriggerRollback{
+		UnaryNode: UnaryNode{Child: child},
+		Db:        db,
+	}
+}
+
+func (t *TriggerRollback) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+
+	return NewTriggerRollback(children[0], t.Db), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (t *TriggerRollback) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return t.Child.CheckPrivileges(ctx, opChecker)
+}
+
+func (t *TriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	childIter, err := t.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", SavePointName)
+	if err := t.Db.CreateSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
+	}
+
+	return &triggerRollbackIter{
+		child:        childIter,
+		db:           t.Db,
+		hasSavepoint: true,
+	}, nil
+}
+
+func (t *TriggerRollback) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TriggerRollback()")
+	_ = pr.WriteChildren(t.Child.String())
+	return pr.String()
+}
+
+type triggerRollbackIter struct {
+	child        sql.RowIter
+	db           sql.TransactionDatabase
+	hasSavepoint bool
+}
+
+func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
+	childRow, err := t.child.Next(ctx)
+
+	// Rollback if error occurred
+	if err != nil && err != io.EOF {
+		if err := t.db.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling RollbackToSavePoint during triggerRollbackIter.Next()")
+		}
+		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Next()")
+		} else {
+			t.hasSavepoint = false
+		}
+	}
+
+	return childRow, err
+}
+
+func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
+	if t.hasSavepoint {
+		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Close()")
+		}
+		t.hasSavepoint = false
+	}
+	return t.child.Close(ctx)
 }

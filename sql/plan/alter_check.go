@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var (
@@ -151,6 +152,12 @@ func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewAlterAddCheck(children[0], c.Check), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(c.Child), getTableName(c.Child), "", sql.PrivilegeType_Alter))
+}
+
 func (c *CreateCheck) Schema() sql.Schema { return nil }
 
 func (c *CreateCheck) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -196,6 +203,13 @@ func (p *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	return NewAlterDropCheck(children[0], p.Name), nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
+}
+
 func (p *DropCheck) Schema() sql.Schema { return nil }
 
 func (p DropCheck) String() string {
@@ -209,12 +223,12 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 	// When transforming an analyzed CheckConstraint into a CheckDefinition (for storage), we strip off any table
 	// qualifiers that got resolved during analysis. This is to naively match the MySQL behavior, which doesn't print
 	// any table qualifiers in check expressions.
-	unqualifiedCols, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+	unqualifiedCols, _, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		gf, ok := e.(*expression.GetField)
 		if ok {
-			return expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable()), nil
+			return expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable()), transform.NewTree, nil
 		}
-		return e, nil
+		return e, transform.SameTree, nil
 	})
 	if err != nil {
 		return nil, err
@@ -253,6 +267,12 @@ func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nd := &d
 	nd.UnaryNode = UnaryNode{children[0]}
 	return nd, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropConstraint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
 }
 
 // NewDropConstraint returns a new DropConstraint node

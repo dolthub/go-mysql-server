@@ -20,7 +20,8 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash"
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -86,14 +87,14 @@ func (g *GroupBy) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (g *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.GroupBy", opentracing.Tags{
-		"groupings":  len(g.GroupByExprs),
-		"aggregates": len(g.SelectedExprs),
-	})
+	span, ctx := ctx.Span("plan.GroupBy", trace.WithAttributes(
+		attribute.Int("groupings", len(g.GroupByExprs)),
+		attribute.Int("aggregates", len(g.SelectedExprs)),
+	))
 
 	i, err := g.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -114,6 +115,11 @@ func (g *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewGroupBy(g.SelectedExprs, g.GroupByExprs, children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (g *GroupBy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return g.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // WithExpressions implements the Node interface.

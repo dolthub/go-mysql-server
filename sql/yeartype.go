@@ -15,8 +15,11 @@
 package sql
 
 import (
+	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -27,10 +30,13 @@ var (
 	Year YearType = yearType{}
 
 	ErrConvertingToYear = errors.NewKind("value %v is not a valid Year")
+
+	yearValueType = reflect.TypeOf(int16(0))
 )
 
-// Represents the YEAR type.
+// YearType represents the YEAR type.
 // https://dev.mysql.com/doc/refman/8.0/en/year.html
+// The type of the returned value is int16.
 type YearType interface {
 	Type
 }
@@ -105,6 +111,13 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(int64(value))
 	case float64:
 		return t.Convert(int64(value))
+	case decimal.Decimal:
+		return t.Convert(value.IntPart())
+	case decimal.NullDecimal:
+		if !value.Valid {
+			return nil, nil
+		}
+		return t.Convert(value.Decimal.IntPart())
 	case string:
 		valueLength := len(value)
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
@@ -136,13 +149,19 @@ func (t yearType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t yearType) Equals(otherType Type) bool {
+	_, ok := otherType.(yearType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t yearType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t yearType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t yearType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -152,7 +171,11 @@ func (t yearType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Year, strconv.AppendInt(nil, int64(v.(int16)), 10)), nil
+	stop := len(dest)
+	dest = strconv.AppendInt(dest, int64(v.(int16)), 10)
+	val := dest[stop:]
+
+	return sqltypes.MakeTrusted(sqltypes.Year, val), nil
 }
 
 // String implements Type interface.
@@ -163,6 +186,11 @@ func (t yearType) String() string {
 // Type implements Type interface.
 func (t yearType) Type() query.Type {
 	return sqltypes.Year
+}
+
+// ValueType implements Type interface.
+func (t yearType) ValueType() reflect.Type {
+	return yearValueType
 }
 
 // Zero implements Type interface.

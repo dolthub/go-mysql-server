@@ -16,7 +16,7 @@ package sql
 
 import (
 	"fmt"
-	"io"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -55,12 +55,19 @@ type Type interface {
 	Compare(interface{}, interface{}) (int, error)
 	// Convert a value of a compatible type to a most accurate type.
 	Convert(interface{}) (interface{}, error)
+	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
+	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
+	Equals(otherType Type) bool
 	// Promote will promote the current type to the largest representing type of the same kind, such as Int8 to Int64.
 	Promote() Type
 	// SQL returns the sqltypes.Value for the given value.
-	SQL(interface{}) (sqltypes.Value, error)
+	// Implementations can optionally use |dest| to append
+	// serialized data, but should not mutate existing data.
+	SQL(dest []byte, v interface{}) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
+	// ValueType returns the Go type of the value returned by Convert().
+	ValueType() reflect.Type
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
@@ -75,6 +82,18 @@ type Type2 interface {
 	Convert2(Value) (Value, error)
 	// Zero2 returns the zero Value for this type.
 	Zero2() Value
+	// SQL2 returns the sqltypes.Value for the given value
+	SQL2(Value) (sqltypes.Value, error)
+}
+
+// SpatialColumnType is a node that contains a reference to all spatial types.
+type SpatialColumnType interface {
+	// GetSpatialTypeSRID returns the SRID value for spatial types.
+	GetSpatialTypeSRID() (uint32, bool)
+	// SetSRID sets SRID value for spatial types.
+	SetSRID(uint32) Type
+	// MatchSRID returns nil if column type SRID matches given value SRID otherwise returns error.
+	MatchSRID(interface{}) error
 }
 
 type LikeMatcher interface {
@@ -123,7 +142,7 @@ func ApproximateTypeFromValue(val interface{}) Type {
 		return Uint16
 	case uint8:
 		return Uint8
-	case time.Duration:
+	case Timespan, time.Duration:
 		return Time
 	case time.Time:
 		return Datetime
@@ -256,9 +275,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return Int64, nil
 	case "float":
-		if ct.Scale != nil {
-			return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Cannot set both precision and scale")
-		} else if ct.Length != nil {
+		if ct.Length != nil {
 			precision, err := strconv.ParseInt(string(ct.Length.Val), 10, 8)
 			if err != nil {
 				return nil, err
@@ -452,9 +469,10 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "json":
 		return JSON, nil
 	case "geometry":
+		return GeometryType{}, nil
 	case "geometrycollection":
 	case "linestring":
-		return LinestringType{}, nil
+		return LineStringType{}, nil
 	case "multilinestring":
 	case "point":
 		return PointType{}, nil
@@ -532,14 +550,18 @@ func ConvertToBool(v interface{}) (bool, error) {
 	}
 }
 
-// IsArray returns whether the given type is an array.
-func IsArray(t Type) bool {
-	_, ok := t.(arrayType)
-	return ok
+// IsByteType checks if t is BINARY, VARBINARY, or BLOB
+func IsByteType(t Type) bool {
+	switch t.Type() {
+	case sqltypes.Blob:
+		return true
+	default:
+		return false
+	}
 }
 
-// IsBlob checks if t is BINARY, VARBINARY, or BLOB
-func IsBlob(t Type) bool {
+// IsBinaryType checks if t is BINARY, VARBINARY, or BLOB
+func IsBinaryType(t Type) bool {
 	switch t.Type() {
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
 		return true
@@ -676,71 +698,6 @@ func ErrIfMismatchedColumnsInTuple(t1, t2 Type) error {
 		}
 	}
 	return nil
-}
-
-// UnderlyingType returns the underlying type of an array if the type is an
-// array, or the type itself in any other case.
-func UnderlyingType(t Type) Type {
-	a, ok := t.(arrayType)
-	if !ok {
-		return t
-	}
-
-	return a.underlying
-}
-
-func convertForJSON(t Type, v interface{}) (interface{}, error) {
-	switch t := t.(type) {
-	case jsonType:
-		return t.Convert(v)
-	case arrayType:
-		return convertArrayForJSON(t, v)
-	default:
-		return t.Convert(v)
-	}
-}
-
-func convertArrayForJSON(t arrayType, v interface{}) (interface{}, error) {
-	switch v := v.(type) {
-	case JSONValue:
-		return v, nil
-	case []interface{}:
-		var result = make([]interface{}, len(v))
-		for i, v := range v {
-			var err error
-			result[i], err = convertForJSON(t.underlying, v)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return result, nil
-	case Generator:
-		var values []interface{}
-		for {
-			val, err := v.Next()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, err
-			}
-
-			val, err = convertForJSON(t.underlying, val)
-			if err != nil {
-				return nil, err
-			}
-
-			values = append(values, val)
-		}
-
-		if err := v.Close(); err != nil {
-			return nil, err
-		}
-
-		return values, nil
-	default:
-		return nil, ErrNotArray.New(v)
-	}
 }
 
 // compareNulls compares two values, and returns true if either is null.

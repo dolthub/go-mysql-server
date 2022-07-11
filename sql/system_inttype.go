@@ -15,11 +15,16 @@
 package sql
 
 import (
+	"reflect"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemIntValueType = reflect.TypeOf(int64(0))
 
 // systemIntType is an internal integer type ONLY for system variables.
 type systemIntType struct {
@@ -95,6 +100,14 @@ func (t systemIntType) Convert(v interface{}) (interface{}, error) {
 		if value == float64(int64(value)) {
 			return t.Convert(int64(value))
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	}
 
 	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
@@ -109,13 +122,21 @@ func (t systemIntType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemIntType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemIntType); ok {
+		return t.varName == ot.varName && t.lowerbound == ot.lowerbound && t.upperbound == ot.upperbound && t.negativeOne == ot.negativeOne
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemIntType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemIntType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemIntType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -125,7 +146,11 @@ func (t systemIntType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), strconv.AppendInt(nil, v.(int64), 10)), nil
+	stop := len(dest)
+	dest = strconv.AppendInt(dest, v.(int64), 10)
+	val := dest[stop:]
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.
@@ -136,6 +161,11 @@ func (t systemIntType) String() string {
 // Type implements Type interface.
 func (t systemIntType) Type() query.Type {
 	return sqltypes.Int64
+}
+
+// ValueType implements Type interface.
+func (t systemIntType) ValueType() reflect.Type {
+	return systemIntValueType
 }
 
 // Zero implements Type interface.

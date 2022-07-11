@@ -28,12 +28,12 @@ func TestShowTableStatus(t *testing.T) {
 	require := require.New(t)
 
 	db1 := memory.NewDatabase("a")
-	db1.AddTable("t1", memory.NewTable("t1", sql.PrimaryKeySchema{}))
-	db1.AddTable("t2", memory.NewTable("t2", sql.PrimaryKeySchema{}))
+	db1.AddTable("t1", memory.NewTable("t1", sql.PrimaryKeySchema{}, db1.GetForeignKeyCollection()))
+	db1.AddTable("t2", memory.NewTable("t2", sql.PrimaryKeySchema{}, db1.GetForeignKeyCollection()))
 
 	db2 := memory.NewDatabase("b")
-	db2.AddTable("t3", memory.NewTable("t3", sql.PrimaryKeySchema{}))
-	db2.AddTable("t4", memory.NewTable("t4", sql.PrimaryKeySchema{}))
+	db2.AddTable("t3", memory.NewTable("t3", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
+	db2.AddTable("t4", memory.NewTable("t4", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
 
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db1, db2))
 
@@ -44,7 +44,7 @@ func TestShowTableStatus(t *testing.T) {
 	iter, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -59,7 +59,7 @@ func TestShowTableStatus(t *testing.T) {
 	iter, err = node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err = sql.RowIterToRows(ctx, iter)
+	rows, err = sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected = []sql.Row{

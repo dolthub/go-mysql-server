@@ -1,0 +1,11 @@
+exec
+create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)
+----
+
+exec
+insert into jsontable values
+    (1, 'row one', '[1,2]', '{"a": 2}'),
+    (2, 'row two', '[3,4]', '{"b": 2}'),
+    (3, 'row three', '[5,6]', '{"c": 2}'),
+    (4, 'row four', '[7,8]', '{"d": 2}')
+----

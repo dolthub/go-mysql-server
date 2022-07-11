@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -28,6 +30,9 @@ type UnresolvedColumn struct {
 	name  string
 	table string
 }
+
+var _ sql.Expression = (*UnresolvedColumn)(nil)
+var _ sql.Expression2 = (*UnresolvedColumn)(nil)
 
 // NewUnresolvedColumn creates a new UnresolvedColumn expression.
 func NewUnresolvedColumn(name string) *UnresolvedColumn {
@@ -60,6 +65,14 @@ func (*UnresolvedColumn) Type() sql.Type {
 	panic("unresolved column is a placeholder node, but Type was called")
 }
 
+func (uc *UnresolvedColumn) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+	panic("unresolved column is a placeholder node, but Eval2 was called")
+}
+
+func (uc *UnresolvedColumn) Type2() sql.Type2 {
+	panic("unresolved column is a placeholder node, but Type2 was called")
+}
+
 // Name implements the Nameable interface.
 func (uc *UnresolvedColumn) Name() string { return uc.name }
 
@@ -86,6 +99,112 @@ func (uc *UnresolvedColumn) WithChildren(children ...sql.Expression) (sql.Expres
 	return uc, nil
 }
 
+// ErrUnresolvedTableFunction is thrown when a table function cannot be resolved
+var ErrUnresolvedTableFunction = errors.NewKind("unresolved table function")
+
+var _ sql.TableFunction = (*UnresolvedTableFunction)(nil)
+
+// UnresolvedTableFunction represents a table function that is not yet resolved.
+// This is a placeholder node, so methods such as Schema, RowIter, etc, are not
+// intended to be used.
+type UnresolvedTableFunction struct {
+	name      string
+	Arguments []sql.Expression
+	database  sql.Database
+}
+
+// NewUnresolvedTableFunction creates a new UnresolvedTableFunction node for a sql plan.
+func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *UnresolvedTableFunction {
+	return &UnresolvedTableFunction{
+		name:      name,
+		Arguments: arguments,
+	}
+}
+
+// NewInstance implements the TableFunction interface
+func (utf *UnresolvedTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
+	return nil, ErrUnresolvedTableFunction.New()
+}
+
+// Database implements the Databaser interface
+func (utf *UnresolvedTableFunction) Database() sql.Database {
+	return utf.database
+}
+
+// WithDatabase implements the Databaser interface
+func (utf *UnresolvedTableFunction) WithDatabase(database sql.Database) (sql.Node, error) {
+	utf.database = database
+	return utf, nil
+}
+
+// FunctionName implements the TableFunction interface
+func (utf *UnresolvedTableFunction) FunctionName() string {
+	return utf.name
+}
+
+// Expressions implements the Expressioner interface
+func (utf *UnresolvedTableFunction) Expressions() []sql.Expression {
+	return utf.Arguments
+}
+
+// WithExpressions implements the Expressioner interface
+func (utf *UnresolvedTableFunction) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
+	if len(expression) != len(utf.Expressions()) {
+		return nil, sql.ErrInvalidExpressionNumber.New(utf, len(expression), len(utf.Expressions()))
+	}
+
+	nutf := *utf
+	nutf.Arguments = make([]sql.Expression, len(expression))
+	for i, _ := range expression {
+		nutf.Arguments[i] = expression[i]
+	}
+
+	return &nutf, nil
+}
+
+// Schema implements the Node interface
+func (utf *UnresolvedTableFunction) Schema() sql.Schema {
+	return nil
+}
+
+// Children implements the Node interface
+func (utf *UnresolvedTableFunction) Children() []sql.Node {
+	return nil
+}
+
+// RowIter implements the Node interface
+func (utf *UnresolvedTableFunction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return nil, ErrUnresolvedTableFunction.New()
+}
+
+// WithChildren implements the Node interface
+func (utf *UnresolvedTableFunction) WithChildren(node ...sql.Node) (sql.Node, error) {
+	panic("no expected children for unresolved table function")
+}
+
+// CheckPrivileges implements the Node interface
+func (utf UnresolvedTableFunction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	panic("attempting to check privileges on an unresolved table function")
+	return false
+}
+
+// Resolved implements the Resolvable interface
+func (utf *UnresolvedTableFunction) Resolved() bool {
+	return false
+}
+
+// String implements the Stringer interface
+func (utf *UnresolvedTableFunction) String() string {
+	var exprs = make([]string, len(utf.Arguments))
+	for i, e := range utf.Arguments {
+		exprs[i] = e.String()
+	}
+
+	return fmt.Sprintf("%s(%s)", utf.name, strings.Join(exprs, ", "))
+}
+
+var _ sql.Expression = (*UnresolvedFunction)(nil)
+
 // UnresolvedFunction represents a function that is not yet resolved.
 // This is a placeholder node, so its methods Type, IsNullable and Eval are not
 // supposed to be called.
@@ -94,7 +213,7 @@ type UnresolvedFunction struct {
 	// IsAggregate or not.
 	IsAggregate bool
 	// Window is the window for this function, if present
-	Window *sql.Window
+	Window *sql.WindowDefinition
 	// Children of the expression.
 	Arguments []sql.Expression
 }
@@ -103,7 +222,7 @@ type UnresolvedFunction struct {
 func NewUnresolvedFunction(
 	name string,
 	agg bool,
-	window *sql.Window,
+	window *sql.WindowDefinition,
 	arguments ...sql.Expression,
 ) *UnresolvedFunction {
 	return &UnresolvedFunction{
@@ -117,6 +236,13 @@ func NewUnresolvedFunction(
 // Children implements the Expression interface.
 func (uf *UnresolvedFunction) Children() []sql.Expression {
 	return append(uf.Arguments, uf.Window.ToExpressions()...)
+}
+
+// Children implements the Expression interface.
+func (uf *UnresolvedFunction) WithWindow(def *sql.WindowDefinition) *UnresolvedFunction {
+	nf := *uf
+	nf.Window = def
+	return &nf
 }
 
 // Resolved implements the Expression interface.

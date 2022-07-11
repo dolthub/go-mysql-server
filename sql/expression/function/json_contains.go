@@ -107,7 +107,7 @@ func (j *JSONContains) Type() sql.Type {
 }
 
 func (j *JSONContains) IsNullable() bool {
-	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || j.Path.IsNullable()
+	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || (j.Path != nil && j.Path.IsNullable())
 }
 
 func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -115,10 +115,16 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
+	if target == nil {
+		return nil, nil
+	}
 
 	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate)
 	if err != nil {
 		return nil, err
+	}
+	if candidate == nil {
+		return nil, nil
 	}
 
 	// If there's path reevaluate target based off of this path
@@ -154,10 +160,19 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 	if err != nil {
 		return nil, err
 	}
+	if js == nil {
+		return nil, nil
+	}
 
-	converted, err := sql.JSON.Convert(js)
-	if err != nil {
-		return nil, sql.ErrInvalidJSONText.New(js)
+	var converted interface{}
+	switch js.(type) {
+	case string, []interface{}, map[string]interface{}, JSONValue:
+		converted, err = sql.JSON.Convert(js)
+		if err != nil {
+			return nil, sql.ErrInvalidJSONText.New(js)
+		}
+	default:
+		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
 
 	searchable, ok := converted.(sql.SearchableJSONValue)

@@ -1,0 +1,10 @@
+exec
+create table explode (a bigint, b JSON, c varchar(20))
+----
+
+exec
+insert into explode values
+    (1, '["a", "b"]', 'first'),
+    (2, '["c", "d"]', 'second'),
+    (3, '["e", "f"]', 'third')
+----

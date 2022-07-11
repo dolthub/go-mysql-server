@@ -26,21 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-)
-
-const (
-	validateResolvedRule          = "validate_resolved"
-	validateOrderByRule           = "validate_order_by"
-	validateGroupByRule           = "validate_group_by"
-	validateSchemaSourceRule      = "validate_schema_source"
-	validateOperandsRule          = "validate_operands_rule"
-	validateIndexCreationRule     = "validate_index_creation"
-	validateCaseResultTypesRule   = "validate_case_result_types"
-	validateIntervalUsageRule     = "validate_interval_usage"
-	validateExplodeUsageRule      = "validate_explode_usage"
-	validateSubqueryColumnsRule   = "validate_subquery_columns"
-	validateUnionSchemasMatchRule = "validate_union_schemas_match"
-	validateAggregationsRule      = "validate_aggregations"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var (
@@ -98,89 +84,81 @@ var (
 	)
 )
 
-// DefaultValidationRules to apply while analyzing nodes.
-var DefaultValidationRules = []Rule{
-	{validateResolvedRule, validateIsResolved},
-	{validateOrderByRule, validateOrderBy},
-	{validateGroupByRule, validateGroupBy},
-	{validateSchemaSourceRule, validateSchemaSource},
-	{validateIndexCreationRule, validateIndexCreation},
-	{validateOperandsRule, validateOperands},
-	{validateCaseResultTypesRule, validateCaseResultTypes},
-	{validateIntervalUsageRule, validateIntervalUsage},
-	{validateExplodeUsageRule, validateExplodeUsage},
-	{validateSubqueryColumnsRule, validateSubqueryColumns},
-	{validateUnionSchemasMatchRule, validateUnionSchemasMatch},
-	{validateAggregationsRule, validateAggregations},
-}
-
 // validateLimitAndOffset ensures that only integer literals are used for limit and offset values
-func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var err error
+	var i, i64 interface{}
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
 				if !sql.IsInteger(e.Type()) {
-					return nil, sql.ErrInvalidType.New(e.Type().String())
+					err = sql.ErrInvalidType.New(e.Type().String())
+					return false
 				}
-				i, err := e.Eval(ctx, nil)
+				i, err = e.Eval(ctx, nil)
 				if err != nil {
-					return nil, err
+					return false
 				}
 
-				i64, err := sql.Int64.Convert(i)
+				i64, err = sql.Int64.Convert(i)
 				if err != nil {
-					return nil, err
+					return false
 				}
 				if i64.(int64) < 0 {
-					return nil, sql.ErrInvalidSyntax.New("negative limit")
+					err = sql.ErrInvalidSyntax.New("negative limit")
+					return false
 				}
 			case *expression.BindVar:
-				return n, nil
+				return true
 			default:
-				return nil, sql.ErrInvalidType.New(e.Type().String())
+				err = sql.ErrInvalidType.New(e.Type().String())
+				return false
 			}
-			return n, nil
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
 				if !sql.IsInteger(e.Type()) {
-					return nil, sql.ErrInvalidType.New(e.Type().String())
+					err = sql.ErrInvalidType.New(e.Type().String())
+					return false
 				}
-				i, err := e.Eval(ctx, nil)
+				i, err = e.Eval(ctx, nil)
 				if err != nil {
-					return nil, err
+					return false
 				}
 
-				i64, err := sql.Int64.Convert(i)
+				i64, err = sql.Int64.Convert(i)
 				if err != nil {
-					return nil, err
+					return false
 				}
 				if i64.(int64) < 0 {
-					return nil, sql.ErrInvalidSyntax.New("negative offset")
+					err = sql.ErrInvalidSyntax.New("negative offset")
+					return false
 				}
 			case *expression.BindVar:
-				return n, nil
+				return true
 			default:
-				return nil, sql.ErrInvalidType.New(e.Type().String())
+				err = sql.ErrInvalidType.New(e.Type().String())
+				return false
 			}
-			return n, nil
 		default:
-			return n, nil
+			return true
 		}
+		return true
 	})
+	return n, transform.SameTree, err
 }
 
-func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("validate_is_resolved")
-	defer span.Finish()
+func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_is_resolved")
+	defer span.End()
 
 	if !n.Resolved() {
-		return nil, unresolvedError(n)
+		return nil, transform.SameTree, unresolvedError(n)
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
 // unresolvedError returns an appropriate error message for the unresolved node given
@@ -190,7 +168,7 @@ func unresolvedError(n sql.Node) error {
 	walkFn = func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *plan.Subquery:
-			plan.InspectExpressions(e.Query, walkFn)
+			transform.InspectExpressions(e.Query, walkFn)
 			if err != nil {
 				return false
 			}
@@ -204,7 +182,7 @@ func unresolvedError(n sql.Node) error {
 		}
 		return true
 	}
-	plan.InspectExpressions(n, walkFn)
+	transform.InspectExpressions(n, walkFn)
 
 	if err != nil {
 		return err
@@ -212,33 +190,33 @@ func unresolvedError(n sql.Node) error {
 	return ErrValidationResolved.New(n)
 }
 
-func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("validate_order_by")
-	defer span.Finish()
+func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_order_by")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.Sort:
 		for _, field := range n.SortFields {
 			switch field.Column.(type) {
 			case sql.Aggregation:
-				return nil, ErrValidationOrderBy.New()
+				return nil, transform.SameTree, ErrValidationOrderBy.New()
 			}
 		}
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("validate_group_by")
-	defer span.Finish()
+func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_group_by")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.GroupBy:
 		// Allow the parser use the GroupBy node to eval the aggregation functions
 		// for sql statements that don't make use of the GROUP BY expression.
 		if len(n.GroupByExprs) == 0 {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		var groupBys []string
@@ -249,15 +227,15 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		for _, expr := range n.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					return nil, ErrValidationGroupBy.New(expr.String())
+					return nil, transform.SameTree, ErrValidationGroupBy.New(expr.String())
 				}
 			}
 		}
 
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
 func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {
@@ -291,29 +269,29 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 	return valid
 }
 
-func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("validate_schema_source")
-	defer span.Finish()
+func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_schema_source")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.TableAlias:
 		// table aliases should not be validated
 		if child, ok := n.Child.(*plan.ResolvedTable); ok {
-			return n, validateSchema(child)
+			return n, transform.SameTree, validateSchema(child)
 		}
 	case *plan.ResolvedTable:
-		return n, validateSchema(n)
+		return n, transform.SameTree, validateSchema(n)
 	}
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("validate_index_creation")
-	defer span.Finish()
+func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_index_creation")
+	defer span.End()
 
 	ci, ok := n.(*plan.CreateIndex)
 	if !ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	schema := ci.Table.Schema()
@@ -333,10 +311,10 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	}
 
 	if len(unknownColumns) > 0 {
-		return nil, ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
+		return nil, transform.SameTree, ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
 func validateSchema(t *plan.ResolvedTable) error {
@@ -348,12 +326,12 @@ func validateSchema(t *plan.ResolvedTable) error {
 	return nil
 }
 
-func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("validate_union_schemas_match")
-	defer span.Finish()
+func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_union_schemas_match")
+	defer span.End()
 
 	var firstmismatch []string
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		if u, ok := n.(*plan.Union); ok {
 			ls := u.Left().Schema()
 			rs := u.Right().Schema()
@@ -377,17 +355,17 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return true
 	})
 	if firstmismatch != nil {
-		return nil, ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
+		return nil, transform.SameTree, ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
 	}
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_case_result_types")
-	defer span.Finish()
+	defer span.End()
 
 	var err error
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.Case:
 			typ := e.Type()
@@ -412,15 +390,15 @@ func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var invalid bool
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		// If it's already invalid just skip everything else.
 		if invalid {
 			return false
@@ -441,38 +419,13 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	})
 
 	if invalid {
-		return nil, ErrIntervalInvalidUse.New()
+		return nil, transform.SameTree, ErrIntervalInvalidUse.New()
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	var invalid bool
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
-		// If it's already invalid just skip everything else.
-		if invalid {
-			return false
-		}
-
-		// All usage of Explode will be incorrect because the ones in projects
-		// would have already been converted to Generate, so we only have to
-		// look for those.
-		if _, ok := e.(*function.Explode); ok {
-			invalid = true
-		}
-
-		return true
-	})
-
-	if invalid {
-		return nil, ErrExplodeInvalidUse.New()
-	}
-
-	return n, nil
-}
-
-func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Validate that the number of columns in an operand or a top level
 	// expression are as expected. The current rules are:
 	// * Every top level expression of a node must have 1 column.
@@ -487,7 +440,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	// We do not use plan.InspectExpressions here because we're treating
 	// top-level expressions of sql.Node differently from subexpressions.
 	var err error
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		if n == nil {
 			return false
 		}
@@ -544,30 +497,30 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		return err == nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Then validate that every subquery has field indexes within the correct range
 	// TODO: Why is this only for subqueries?
 
 	// TODO: Currently disabled.
 	if true {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	var outOfRangeIndexExpression sql.Expression
 	var outOfRangeColumns int
-	plan.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
 		s, ok := e.(*plan.Subquery)
 		if !ok {
 			return true
 		}
 
 		outerScopeRowLen := len(scope.Schema()) + len(schemas(n.Children()))
-		plan.Inspect(s.Query, func(n sql.Node) bool {
+		transform.Inspect(s.Query, func(n sql.Node) bool {
 			if n == nil {
 				return true
 			}
@@ -598,10 +551,10 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 		return outOfRangeIndexExpression == nil
 	})
 	if outOfRangeIndexExpression != nil {
-		return nil, ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
+		return nil, transform.SameTree, ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
 func stringContains(strs []string, target string) bool {
@@ -623,7 +576,7 @@ func tableColsContains(strs []tableCol, target tableCol) bool {
 }
 
 // validateReadOnlyDatabase invalidates queries that attempt to write to ReadOnlyDatabases.
-func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	valid := true
 	var readOnlyDB sql.ReadOnlyDatabase
 
@@ -640,16 +593,16 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return valid
 	}
 
-	plan.Inspect(n, func(node sql.Node) bool {
+	transform.Inspect(n, func(node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.LockTables, *plan.UnlockTables:
-			plan.Inspect(node, readOnlyDBSearch)
+			transform.Inspect(node, readOnlyDBSearch)
 			return false
 
 		case *plan.InsertInto:
 			// ReadOnlyDatabase can be an insertion Source,
 			// only inspect the Destination tree
-			plan.Inspect(n.Destination, readOnlyDBSearch)
+			transform.Inspect(n.Destination, readOnlyDBSearch)
 			return false
 
 		case *plan.CreateTable:
@@ -669,7 +622,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			// CreateTable is the only DDL node allowed
 			// to contain a ReadOnlyDatabase
 			if plan.IsDDLNode(n) {
-				plan.Inspect(n, readOnlyDBSearch)
+				transform.Inspect(n, readOnlyDBSearch)
 				return false
 			}
 		}
@@ -677,23 +630,23 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return valid
 	})
 	if !valid {
-		return nil, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+		return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
 // validateReadOnlyTransaction invalidates read only transactions that try to perform improper write operations.
-func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	t := ctx.GetTransaction()
 
 	if t == nil {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	// If this is a normal read write transaction don't enforce read-only. Otherwise we must prevent an invalid query.
 	if !t.IsReadOnly() {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	valid := true
@@ -714,13 +667,13 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return valid
 	}
 
-	plan.Inspect(n, func(node sql.Node) bool {
+	transform.Inspect(n, func(node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.UnlockTables:
-			plan.Inspect(node, temporaryTableSearch)
+			transform.Inspect(node, temporaryTableSearch)
 			return false
 		case *plan.InsertInto:
-			plan.Inspect(n.Destination, temporaryTableSearch)
+			transform.Inspect(n.Destination, temporaryTableSearch)
 			return false
 		case *plan.LockTables:
 			// TODO: Technically we should allow for the locking of temporary tables but the LockTables implementation
@@ -746,10 +699,10 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	})
 
 	if !valid {
-		return nil, sql.ErrReadOnlyTransaction.New()
+		return nil, transform.SameTree, sql.ErrReadOnlyTransaction.New()
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
 // validateAggregations returns an error if an Aggregation
@@ -759,7 +712,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // See https://github.com/dolthub/go-mysql-server/issues/542 for some queries
 // that should be supported but that currently trigger this validation because
 // aggregation expressions end up in the wrong place.
-func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var invalidExpr sql.Expression
 	checkExpressions := func(exprs []sql.Expression) bool {
 		for _, e := range exprs {
@@ -772,7 +725,7 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 		return invalidExpr == nil
 	}
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		if gb, ok := n.(*plan.GroupBy); ok {
 			return checkExpressions(gb.GroupByExprs)
 		} else if _, ok := n.(*plan.Window); ok {
@@ -782,7 +735,60 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		return invalidExpr == nil
 	})
 	if invalidExpr != nil {
-		return nil, ErrAggregationUnsupported.New(invalidExpr.String())
+		return nil, transform.SameTree, ErrAggregationUnsupported.New(invalidExpr.String())
 	}
-	return n, nil
+	return n, transform.SameTree, nil
+}
+
+func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var err error
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
+		err = validateSem(e)
+		return err == nil
+	})
+	return n, transform.SameTree, err
+}
+
+// validateSem is a way to add validation logic for
+// specific expression types.
+//todo(max): Refactor and consolidate validation so it can
+// run before the rest of analysis. Add more expression types.
+// Add node equivalent.
+func validateSem(e sql.Expression) error {
+	switch e := e.(type) {
+	case *expression.And:
+		if err := logicalSem(e.BinaryExpression); err != nil {
+			return err
+		}
+	case *expression.Or:
+		if err := logicalSem(e.BinaryExpression); err != nil {
+			return err
+		}
+	default:
+	}
+	return nil
+}
+
+func logicalSem(e expression.BinaryExpression) error {
+	if lc := fds(e.Left); lc != 1 {
+		return sql.ErrInvalidOperandColumns.New(1, lc)
+	}
+	if rc := fds(e.Right); rc != 1 {
+		return sql.ErrInvalidOperandColumns.New(1, rc)
+	}
+	return nil
+}
+
+// fds counts the functional dependencies of an expression.
+//todo(max): input/output fd's should be part of the expression
+// interface.
+func fds(e sql.Expression) int {
+	switch e.(type) {
+	case *expression.UnresolvedColumn:
+		return 1
+	case *expression.UnresolvedFunction:
+		return 1
+	default:
+		return sql.NumColumns(e.Type())
+	}
 }

@@ -18,18 +18,15 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
-var ErrInvalidLagOffset = errors.NewKind("'LAG' offset must be a non-negative integer; found: %v")
-var ErrInvalidLagDefault = errors.NewKind("'LAG' default must be a literal; found: %v")
-
 type Lag struct {
-	window *sql.Window
+	window *sql.WindowDefinition
 	expression.NaryExpression
 	offset int
 	pos    int
@@ -38,36 +35,6 @@ type Lag struct {
 var _ sql.FunctionExpression = (*Lag)(nil)
 var _ sql.WindowAggregation = (*Lag)(nil)
 var _ sql.WindowAdaptableExpression = (*Lag)(nil)
-
-// getLagOffset extracts a non-negative integer from an expression.Literal, or errors
-func getLagOffset(e sql.Expression) (int, error) {
-	lit, ok := e.(*expression.Literal)
-	if !ok {
-		return 0, ErrInvalidLagOffset.New(e)
-	}
-	val := lit.Value()
-	var offset int
-	switch e := val.(type) {
-	case int:
-		offset = e
-	case int8:
-		offset = int(e)
-	case int16:
-		offset = int(e)
-	case int32:
-		offset = int(e)
-	case int64:
-		offset = int(e)
-	default:
-		return 0, ErrInvalidLagOffset.New(e)
-	}
-
-	if offset < 0 {
-		return 0, ErrInvalidLagOffset.New(e)
-	}
-
-	return offset, nil
-}
 
 // NewLag accepts variadic arguments to create a new Lag node:
 // If 1 expression, use default values for [default] and [offset]
@@ -80,13 +47,13 @@ func NewLag(e ...sql.Expression) (*Lag, error) {
 	case 1:
 		return &Lag{NaryExpression: expression.NaryExpression{ChildExpressions: e[:1]}, offset: 1}, nil
 	case 2:
-		offset, err := getLagOffset(e[1])
+		offset, err := expression.LiteralToInt(e[1])
 		if err != nil {
 			return nil, err
 		}
 		return &Lag{NaryExpression: expression.NaryExpression{ChildExpressions: e[:1]}, offset: offset}, nil
 	case 3:
-		offset, err := getLagOffset(e[1])
+		offset, err := expression.LiteralToInt(e[1])
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +68,7 @@ func (l *Lag) Description() string {
 }
 
 // Window implements sql.WindowExpression
-func (l *Lag) Window() *sql.Window {
+func (l *Lag) Window() *sql.WindowDefinition {
 	return l.window
 }
 
@@ -190,20 +157,20 @@ func (l *Lag) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 // WithWindow implements sql.WindowAggregation
-func (l *Lag) WithWindow(window *sql.Window) (sql.WindowAggregation, error) {
+func (l *Lag) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
 	nl := *l
 	nl.window = window
 	return &nl, nil
 }
 
 func (l *Lag) NewWindowFunction() (sql.WindowFunction, error) {
-	c, err := expression.Clone(l.ChildExpressions[0])
+	c, err := transform.Clone(l.ChildExpressions[0])
 	if err != nil {
 		return nil, err
 	}
 	var def sql.Expression
 	if len(l.ChildExpressions) > 1 {
-		def, err = expression.Clone(l.ChildExpressions[1])
+		def, err = transform.Clone(l.ChildExpressions[1])
 		if err != nil {
 			return nil, err
 		}

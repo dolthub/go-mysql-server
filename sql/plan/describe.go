@@ -35,10 +35,10 @@ func NewDescribe(child sql.Node) *Describe {
 func (d *Describe) Schema() sql.Schema {
 	return sql.Schema{{
 		Name: "name",
-		Type: sql.LongText,
+		Type: VarChar1000,
 	}, {
 		Name: "type",
-		Type: sql.LongText,
+		Type: VarChar1000,
 	}}
 }
 
@@ -54,6 +54,11 @@ func (d *Describe) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewDescribe(children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *Describe) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (d Describe) String() string {
@@ -103,9 +108,14 @@ func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
 	return d, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return d.child.CheckPrivileges(ctx, opChecker)
+}
+
 // DescribeSchema is the schema returned by a DescribeQuery node.
 var DescribeSchema = sql.Schema{
-	{Name: "plan", Type: sql.LongText},
+	{Name: "plan", Type: VarChar1000},
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.

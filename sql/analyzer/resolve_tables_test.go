@@ -27,77 +27,77 @@ import (
 
 func TestResolveTables(t *testing.T) {
 	require := require.New(t)
-	f := getRule("resolve_tables")
+	f := getRule(resolveTablesId)
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewHistoryDatabase("mydb")
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
 	db.AddTableAsOf("mytable", table, "2019-01-01")
 
-	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Id, f.Apply).Build()
 	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
-	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table, db, nil), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("MyTable", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table, db, nil), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("nonexistant", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.Error(err)
 	require.Nil(analyzed)
 
-	analyzed, err = f.Apply(ctx, a, plan.NewResolvedTable(table, db, nil), nil)
+	analyzed, _, err = f.Apply(ctx, a, plan.NewResolvedTable(table, db, nil), nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table, db, nil), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable, nil, nil), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable, nil, nil), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
-	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table, db, "2019-01-01"), analyzed)
 
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-02", sql.LongText))
-	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.Error(err)
 }
 
 func TestResolveTablesNoCurrentDB(t *testing.T) {
 	require := require.New(t)
-	f := getRule("resolve_tables")
+	f := getRule(resolveTablesId)
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewDatabase("mydb")
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
 
-	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Id, f.Apply).Build()
 	ctx := sql.NewEmptyContext()
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
-	_, err := f.Apply(ctx, a, notAnalyzed, nil)
+	_, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.Error(err)
 	require.True(sql.ErrNoDatabaseSelected.Is(err), "wrong error kind")
 
 	notAnalyzed = plan.NewUnresolvedTable("mytable", "doesNotExist")
-	_, err = f.Apply(ctx, a, notAnalyzed, nil)
+	_, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.Error(err)
 	require.True(sql.ErrDatabaseNotFound.Is(err), "wrong error kind")
 
 	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(dualTable, nil, nil), analyzed)
 }
@@ -105,24 +105,24 @@ func TestResolveTablesNoCurrentDB(t *testing.T) {
 func TestResolveTablesNested(t *testing.T) {
 	require := require.New(t)
 
-	f := getRule("resolve_tables")
+	f := getRule(resolveTablesId)
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
-	table2 := memory.NewTable("my_other_table", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewDatabase("mydb")
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
+	table2 := memory.NewTable("my_other_table", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
 
 	db2 := memory.NewDatabase("my_other_db")
 	db2.AddTable("my_other_table", table2)
 
-	a := NewBuilder(sql.NewDatabaseProvider(db, db2)).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+	a := NewBuilder(sql.NewDatabaseProvider(db, db2)).AddPostAnalyzeRule(f.Id, f.Apply).Build()
 	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
 
 	notAnalyzed := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("mytable", ""),
 	)
-	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	expected := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
@@ -134,7 +134,7 @@ func TestResolveTablesNested(t *testing.T) {
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},
 		plan.NewUnresolvedTable("my_other_table", "my_other_db"),
 	)
-	analyzed, err = f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	expected = plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, sql.Int32, "i", true)},

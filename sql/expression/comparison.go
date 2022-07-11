@@ -37,6 +37,31 @@ type Comparer interface {
 // ErrNilOperand ir returned if some or both of the comparison's operands is nil.
 var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
+// ContainsImpreciseComparison searches an expression tree for comparison
+// expressions that require a conversion or type promotion.
+// This utility helps determine if filter predicates can be pushed down.
+func ContainsImpreciseComparison(e sql.Expression) bool {
+	var imprecise bool
+	sql.Inspect(e, func(expr sql.Expression) bool {
+		if cmp, ok := expr.(Comparer); ok {
+			left, right := cmp.Left().Type(), cmp.Right().Type()
+
+			// integer comparisons are exact
+			if sql.IsInteger(left) && sql.IsInteger(right) {
+				return true
+			}
+
+			// comparisons with type conversions are sometimes imprecise
+			if !left.Equals(right) {
+				imprecise = true
+				return false
+			}
+		}
+		return true
+	})
+	return imprecise
+}
+
 type comparison struct {
 	BinaryExpression
 }
@@ -62,11 +87,12 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(left, right)
 	}
 
-	// ENUM and SET must be considered when doing comparisons, as they can match arbitrary strings to numbers based on
-	// their elements. For other types it seems there are other considerations, therefore we only take the type for
-	// ENUM and SET, and default to direct literal comparisons for all other types. Eventually we will need to make our
-	// comparisons context-sensitive, as all comparisons should probably be based on the column/variable if present.
-	// Until then, this is a workaround specifically for ENUM and SET.
+	// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
+	// base.
+	//
+	// The best overall method would be to assign type priority. For example, INT would have a higher priority than
+	// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
+	// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
 	var compareType sql.Type
 	switch c.Left().(type) {
 	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
@@ -80,60 +106,8 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	if compareType != nil {
 		_, isEnum := compareType.(sql.EnumType)
 		_, isSet := compareType.(sql.SetType)
-		if !isEnum && !isSet {
-			compareType = nil
-		}
-	}
-	if compareType == nil {
-		left, right, compareType, err = c.castLeftAndRight(left, right)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	return compareType.Compare(left, right)
-}
-
-// NullSafeCompare the two given values using the types of the expressions in the comparison.
-// Since both types should be equal, it does not matter which type is used, but for
-// reference, the left type is always used. Unlike Compare, this sorts nil values.
-func (c *comparison) NullSafeCompare(ctx *sql.Context, row sql.Row) (int, error) {
-	left, right, err := c.evalLeftAndRight(ctx, row)
-	if err != nil {
-		return 0, err
-	}
-
-	if left == nil && right == nil {
-		return 0, nil
-	} else if left == nil {
-		return 1, nil
-	} else if right == nil {
-		return -1, nil
-	}
-
-	if sql.TypesEqual(c.Left().Type(), c.Right().Type()) {
-		return c.Left().Type().Compare(left, right)
-	}
-
-	// ENUM and SET must be considered when doing comparisons, as they can match arbitrary strings to numbers based on
-	// their elements. For other types it seems there are other considerations, therefore we only take the type for
-	// ENUM and SET, and default to direct literal comparisons for all other types. Eventually we will need to make our
-	// comparisons context-sensitive, as all comparisons should probably be based on the column/variable if present.
-	// Until then, this is a workaround specifically for ENUM and SET.
-	var compareType sql.Type
-	switch c.Left().(type) {
-	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-		compareType = c.Left().Type()
-	default:
-		switch c.Right().(type) {
-		case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-			compareType = c.Right().Type()
-		}
-	}
-	if compareType != nil {
-		_, isEnum := compareType.(sql.EnumType)
-		_, isSet := compareType.(sql.SetType)
-		if !isEnum && !isSet {
+		_, isTime := compareType.(sql.TimeType)
+		if !isEnum && !isSet && !isTime {
 			compareType = nil
 		}
 	}
@@ -166,6 +140,14 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	rightType := c.Right().Type()
 	if sql.IsTuple(leftType) && sql.IsTuple(rightType) {
 		return left, right, c.Left().Type(), nil
+	}
+
+	if sql.IsBinaryType(leftType) || sql.IsBinaryType(rightType) {
+		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return l, r, sql.LongBlob, nil
 	}
 
 	if sql.IsNumber(leftType) || sql.IsNumber(rightType) {
@@ -305,7 +287,7 @@ func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEqual
 
 // Type implements the Expression interface.
 func (e *NullSafeEquals) Type() sql.Type {
-	return sql.Int8
+	return sql.Boolean
 }
 
 func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
@@ -342,10 +324,7 @@ func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, err
 	}
 
-	if result == 0 {
-		return 1, nil
-	}
-	return 0, nil
+	return result == 0, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -392,7 +371,7 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 
 // Eval implements the Expression interface.
 func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if sql.IsText(re.Left().Type()) && sql.IsText(re.Right().Type()) {
+	if sql.IsText(re.Right().Type()) {
 		return re.compareRegexp(ctx, row)
 	}
 
@@ -536,43 +515,6 @@ func (gt *GreaterThan) DebugString() string {
 	return fmt.Sprintf("(%s > %s)", sql.DebugString(gt.Left()), sql.DebugString(gt.Right()))
 }
 
-// NullSafeGreaterThan is a comparison that checks an expression is greater than another. This is not directly
-// accessible through the SQL language.
-type NullSafeGreaterThan struct {
-	comparison
-}
-
-// NewNullSafeGreaterThan creates a new NullSafeGreaterThan expression.
-func NewNullSafeGreaterThan(left sql.Expression, right sql.Expression) *NullSafeGreaterThan {
-	return &NullSafeGreaterThan{newComparison(left, right)}
-}
-
-// Eval implements the Expression interface.
-func (gt *NullSafeGreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	result, err := gt.NullSafeCompare(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return result == 1, nil
-}
-
-// WithChildren implements the Expression interface.
-func (gt *NullSafeGreaterThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(gt, len(children), 2)
-	}
-	return NewNullSafeGreaterThan(children[0], children[1]), nil
-}
-
-func (gt *NullSafeGreaterThan) String() string {
-	return fmt.Sprintf("(%s > %s)", gt.Left(), gt.Right())
-}
-
-func (gt *NullSafeGreaterThan) DebugString() string {
-	return fmt.Sprintf("(%s > %s)", sql.DebugString(gt.Left()), sql.DebugString(gt.Right()))
-}
-
 // LessThan is a comparison that checks an expression is less than another.
 type LessThan struct {
 	comparison
@@ -610,43 +552,6 @@ func (lt *LessThan) String() string {
 }
 
 func (lt *LessThan) DebugString() string {
-	return fmt.Sprintf("(%s < %s)", sql.DebugString(lt.Left()), sql.DebugString(lt.Right()))
-}
-
-// NullSafeLessThan is a comparison that checks an expression is less than another. This is not directly accessible
-// through the SQL language.
-type NullSafeLessThan struct {
-	comparison
-}
-
-// NewNullSafeLessThan creates a new NullSafeLessThan expression.
-func NewNullSafeLessThan(left sql.Expression, right sql.Expression) *NullSafeLessThan {
-	return &NullSafeLessThan{newComparison(left, right)}
-}
-
-// Eval implements the expression interface.
-func (lt *NullSafeLessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	result, err := lt.NullSafeCompare(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return result == -1, nil
-}
-
-// WithChildren implements the Expression interface.
-func (lt *NullSafeLessThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(lt, len(children), 2)
-	}
-	return NewNullSafeLessThan(children[0], children[1]), nil
-}
-
-func (lt *NullSafeLessThan) String() string {
-	return fmt.Sprintf("(%s < %s)", lt.Left(), lt.Right())
-}
-
-func (lt *NullSafeLessThan) DebugString() string {
 	return fmt.Sprintf("(%s < %s)", sql.DebugString(lt.Left()), sql.DebugString(lt.Right()))
 }
 
@@ -691,43 +596,6 @@ func (gte *GreaterThanOrEqual) DebugString() string {
 	return fmt.Sprintf("(%s >= %s)", sql.DebugString(gte.Left()), sql.DebugString(gte.Right()))
 }
 
-// NullSafeGreaterThanOrEqual is a comparison that checks an expression is greater or equal to
-// another. This is not directly accessible through the SQL language.
-type NullSafeGreaterThanOrEqual struct {
-	comparison
-}
-
-// NewNullSafeGreaterThanOrEqual creates a new NullSafeGreaterThanOrEqual
-func NewNullSafeGreaterThanOrEqual(left sql.Expression, right sql.Expression) *NullSafeGreaterThanOrEqual {
-	return &NullSafeGreaterThanOrEqual{newComparison(left, right)}
-}
-
-// Eval implements the Expression interface.
-func (gte *NullSafeGreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	result, err := gte.NullSafeCompare(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return result > -1, nil
-}
-
-// WithChildren implements the Expression interface.
-func (gte *NullSafeGreaterThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(gte, len(children), 2)
-	}
-	return NewNullSafeGreaterThanOrEqual(children[0], children[1]), nil
-}
-
-func (gte *NullSafeGreaterThanOrEqual) String() string {
-	return fmt.Sprintf("(%s >= %s)", gte.Left(), gte.Right())
-}
-
-func (gte *NullSafeGreaterThanOrEqual) DebugString() string {
-	return fmt.Sprintf("(%s >= %s)", sql.DebugString(gte.Left()), sql.DebugString(gte.Right()))
-}
-
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
 // another.
 type LessThanOrEqual struct {
@@ -766,43 +634,6 @@ func (lte *LessThanOrEqual) String() string {
 }
 
 func (lte *LessThanOrEqual) DebugString() string {
-	return fmt.Sprintf("(%s <= %s)", sql.DebugString(lte.Left()), sql.DebugString(lte.Right()))
-}
-
-// NullSafeLessThanOrEqual is a comparison that checks an expression is equal or lower than
-// another. This is not directly accessible through the SQL language.
-type NullSafeLessThanOrEqual struct {
-	comparison
-}
-
-// NewNullSafeLessThanOrEqual creates a NullSafeLessThanOrEqual expression.
-func NewNullSafeLessThanOrEqual(left sql.Expression, right sql.Expression) *NullSafeLessThanOrEqual {
-	return &NullSafeLessThanOrEqual{newComparison(left, right)}
-}
-
-// Eval implements the Expression interface.
-func (lte *NullSafeLessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	result, err := lte.NullSafeCompare(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return result < 1, nil
-}
-
-// WithChildren implements the Expression interface.
-func (lte *NullSafeLessThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(lte, len(children), 2)
-	}
-	return NewNullSafeLessThanOrEqual(children[0], children[1]), nil
-}
-
-func (lte *NullSafeLessThanOrEqual) String() string {
-	return fmt.Sprintf("(%s <= %s)", lte.Left(), lte.Right())
-}
-
-func (lte *NullSafeLessThanOrEqual) DebugString() string {
 	return fmt.Sprintf("(%s <= %s)", sql.DebugString(lte.Left()), sql.DebugString(lte.Right()))
 }
 

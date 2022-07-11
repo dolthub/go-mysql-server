@@ -18,10 +18,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrAggregationMissingWindow = errors.New("aggregation missing window expression")
@@ -73,7 +73,7 @@ func (w *Window) DebugString() string {
 func (w *Window) Schema() sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = expression.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e)
 	}
 	return s
 }
@@ -85,6 +85,11 @@ func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewWindow(w.SelectExprs, children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (w *Window) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return w.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // Expressions implements sql.Expressioner
@@ -122,12 +127,15 @@ func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error) {
 	partIdToOutputIdxs := make(map[uint64][]int, 0)
 	partIdToBlock := make(map[uint64]*aggregation.WindowPartition, 0)
-	var window *sql.Window
+	var window *sql.WindowDefinition
 	var agg *aggregation.Aggregation
 	var fn sql.WindowFunction
 	var err error
 	// collect functions in hash map keyed by partitioning scheme
 	for i, expr := range w.SelectExprs {
+		if alias, ok := expr.(*expression.Alias); ok {
+			expr = alias.Child
+		}
 		switch e := expr.(type) {
 		case sql.Aggregation:
 			window = e.Window()
@@ -137,8 +145,8 @@ func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error
 			fn, err = e.NewWindowFunction()
 		default:
 			// non window aggregates resolve to LastAgg with empty over clause
-			window = sql.NewWindow(nil, nil)
-			fn, err = aggregation.NewLast(expr).NewWindowFunction()
+			window = sql.NewWindowDefinition(nil, nil, nil, "", "")
+			fn, err = aggregation.NewLast(e).NewWindowFunction()
 		}
 		if err != nil {
 			return nil, nil, err

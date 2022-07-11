@@ -24,9 +24,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -41,6 +41,9 @@ const (
 	CurrentDBSessionVar  = "current_database"
 	AutoCommitSessionVar = "autocommit"
 )
+
+var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/dolthub/go-mysql-server/sql")
+var _, noopSpan = NoopTracer.Start(context.Background(), "noop")
 
 // Client holds session user information.
 type Client struct {
@@ -58,6 +61,8 @@ type Session interface {
 	Address() string
 	// Client returns the user of the session.
 	Client() Client
+	// SetClient returns a new session with the given client.
+	SetClient(Client)
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
@@ -120,6 +125,8 @@ type Session interface {
 	// SetViewRegistry sets the view registry for this session. Integrators should set a view registry if their database
 	// doesn't implement ViewDatabase and they want views created to persist across sessions.
 	SetViewRegistry(*ViewRegistry)
+	// WithConnectionId sets this sessions unique ID
+	SetConnectionId(connId uint32)
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -204,6 +211,12 @@ func (s *BaseSession) Address() string { return s.addr }
 
 // Client returns session's client information.
 func (s *BaseSession) Client() Client { return s.client }
+
+// WithClient implements Session.
+func (s *BaseSession) SetClient(c Client) {
+	s.client = c
+	return
+}
 
 // GetAllSessionVariables implements the Session interface.
 func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
@@ -290,6 +303,12 @@ func (s *BaseSession) SetCurrentDatabase(dbName string) {
 
 // ID implements the Session interface.
 func (s *BaseSession) ID() uint32 { return s.id }
+
+// SetConnectionId sets the [id] for this session
+func (s *BaseSession) SetConnectionId(id uint32) {
+	s.id = id
+	return
+}
 
 // Warn stores the warning in the session.
 func (s *BaseSession) Warn(warn *Warning) {
@@ -495,6 +514,7 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 
 // NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
+	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
 	return &BaseSession{
 		addr:          server,
 		client:        client,
@@ -514,6 +534,7 @@ var autoSessionIDs uint32 = 1
 
 // NewBaseSession creates a new empty session.
 func NewBaseSession() *BaseSession {
+	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:    SystemVariables.NewSessionMap(),
@@ -536,8 +557,8 @@ type Context struct {
 	pid         uint64
 	query       string
 	queryTime   time.Time
-	tracer      opentracing.Tracer
-	rootSpan    opentracing.Span
+	tracer      trace.Tracer
+	rootSpan    trace.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -551,7 +572,7 @@ func WithSession(s Session) ContextOption {
 }
 
 // WithTracer adds the given tracer to the context.
-func WithTracer(t opentracing.Tracer) ContextOption {
+func WithTracer(t trace.Tracer) ContextOption {
 	return func(ctx *Context) {
 		ctx.tracer = t
 	}
@@ -579,7 +600,7 @@ func WithMemoryManager(m *MemoryManager) ContextOption {
 }
 
 // WithRootSpan sets the root span of the context.
-func WithRootSpan(s opentracing.Span) ContextOption {
+func WithRootSpan(s trace.Span) ContextOption {
 	return func(ctx *Context) {
 		ctx.rootSpan = s
 	}
@@ -627,7 +648,7 @@ func NewContext(
 		Context:   ctx,
 		Session:   nil,
 		queryTime: ctxNowFunc(),
-		tracer:    opentracing.NoopTracer{},
+		tracer:    NoopTracer,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -677,15 +698,13 @@ func (c *Context) QueryTime() time.Time {
 // children of this span.
 func (c *Context) Span(
 	opName string,
-	opts ...opentracing.StartSpanOption,
-) (opentracing.Span, *Context) {
-	parentSpan := opentracing.SpanFromContext(c.Context)
-	if parentSpan != nil {
-		opts = append(opts, opentracing.ChildOf(parentSpan.Context()))
+	opts ...trace.SpanStartOption,
+) (trace.Span, *Context) {
+	if c.tracer == NoopTracer {
+		return noopSpan, c
 	}
-	span := c.tracer.StartSpan(opName, opts...)
-	ctx := opentracing.ContextWithSpan(c.Context, span)
 
+	ctx, span := c.tracer.Start(c.Context, opName, opts...)
 	return span, c.WithContext(ctx)
 }
 
@@ -710,7 +729,7 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 }
 
 // RootSpan returns the root span, if any.
-func (c *Context) RootSpan() opentracing.Span {
+func (c *Context) RootSpan() trace.Span {
 	return c.rootSpan
 }
 
@@ -755,6 +774,13 @@ func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 	return eg, c.WithContext(egCtx)
 }
 
+// NewCtxWithClient returns a new Context with the given [client]
+func (c *Context) NewCtxWithClient(client Client) *Context {
+	nc := *c
+	nc.Session.SetClient(client)
+	return &nc
+}
+
 // Services are handles to optional or plugin functionality that can be
 // used by the SQL implementation in certain situations. An integrator can set
 // methods on Services for a given *Context and different parts of go-mysql-server
@@ -769,28 +795,35 @@ type Services struct {
 
 // NewSpanIter creates a RowIter executed in the given span.
 // Currently inactive, returns the iter returned unaltered.
-func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
+func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 	// In the default, non traced case, we should not bother with
 	// collecting the timings below.
-	if (span.Tracer() == opentracing.NoopTracer{}) {
+	if !span.IsRecording() {
 		return iter
 	} else {
+		var iter2 RowIter2
+		iter2, _ = iter.(RowIter2)
 		return &spanIter{
-			span: span,
-			iter: iter,
+			span:  span,
+			iter:  iter,
+			iter2: iter2,
 		}
 	}
 }
 
 type spanIter struct {
-	span  opentracing.Span
+	span  trace.Span
 	iter  RowIter
+	iter2 RowIter2
 	count int
 	max   time.Duration
 	min   time.Duration
 	total time.Duration
 	done  bool
 }
+
+var _ RowIter = (*spanIter)(nil)
+var _ RowIter2 = (*spanIter)(nil)
 
 func (i *spanIter) updateTimings(start time.Time) {
 	elapsed := time.Since(start)
@@ -824,38 +857,57 @@ func (i *spanIter) Next(ctx *Context) (Row, error) {
 	return row, nil
 }
 
+func (i *spanIter) Next2(ctx *Context, frame *RowFrame) error {
+	start := time.Now()
+
+	err := i.iter2.Next2(ctx, frame)
+	if err == io.EOF {
+		i.finish()
+		return err
+	}
+
+	if err != nil {
+		i.finishWithError(err)
+		return err
+	}
+
+	i.count++
+	i.updateTimings(start)
+	return nil
+}
+
 func (i *spanIter) finish() {
 	var avg time.Duration
 	if i.count > 0 {
 		avg = i.total / time.Duration(i.count)
 	}
 
-	i.span.FinishWithOptions(opentracing.FinishOptions{
-		LogRecords: []opentracing.LogRecord{
-			{
-				Timestamp: time.Now(),
-				Fields: []log.Field{
-					log.Int("rows", i.count),
-					log.String("total_time", i.total.String()),
-					log.String("max_time", i.max.String()),
-					log.String("min_time", i.min.String()),
-					log.String("avg_time", avg.String()),
-				},
-			},
-		},
-	})
+	i.span.AddEvent("finish", trace.WithAttributes(
+		attribute.Int("rows", i.count),
+		attribute.Stringer("total_time", i.total),
+		attribute.Stringer("max_time", i.max),
+		attribute.Stringer("min_time", i.min),
+		attribute.Stringer("avg_time", avg),
+	))
+	i.span.End()
 	i.done = true
 }
 
 func (i *spanIter) finishWithError(err error) {
-	i.span.FinishWithOptions(opentracing.FinishOptions{
-		LogRecords: []opentracing.LogRecord{
-			{
-				Timestamp: time.Now(),
-				Fields:    []log.Field{log.String("error", err.Error())},
-			},
-		},
-	})
+	var avg time.Duration
+	if i.count > 0 {
+		avg = i.total / time.Duration(i.count)
+	}
+
+	i.span.RecordError(err)
+	i.span.AddEvent("finish", trace.WithAttributes(
+		attribute.Int("rows", i.count),
+		attribute.Stringer("total_time", i.total),
+		attribute.Stringer("max_time", i.max),
+		attribute.Stringer("min_time", i.min),
+		attribute.Stringer("avg_time", avg),
+	))
+	i.span.End()
 	i.done = true
 }
 

@@ -16,13 +16,13 @@ package sql
 
 type Catalog interface {
 	// AllDatabases returns all databases known to this catalog
-	AllDatabases() []Database
+	AllDatabases(ctx *Context) []Database
 
 	// HasDB returns whether a db with the name given exists, case-insensitive
-	HasDB(db string) bool
+	HasDB(ctx *Context, db string) bool
 
 	// Database returns the database with the name given, case-insensitive, or an error if it doesn't exist
-	Database(db string) (Database, error)
+	Database(ctx *Context, db string) (Database, error)
 
 	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
 	CreateDatabase(ctx *Context, dbName string) error
@@ -37,11 +37,11 @@ type Catalog interface {
 	TableAsOf(ctx *Context, dbName, tableName string, asOf interface{}) (Table, Database, error)
 
 	// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
-	Function(name string) (Function, error)
+	Function(ctx *Context, name string) (Function, error)
 
 	// RegisterFunction registers the functions given, adding them to the built-in functions.
 	// Integrators with custom functions should typically use the FunctionProvider interface to register their functions.
-	RegisterFunction(fns ...Function)
+	RegisterFunction(ctx *Context, fns ...Function)
 
 	// LockTable locks the table named
 	LockTable(ctx *Context, table string)

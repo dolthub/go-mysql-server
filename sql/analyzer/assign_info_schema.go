@@ -17,46 +17,53 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// Grab-bag analyzer function to assign information schema info to any plan nodes that need it, like various SHOW *
-// statements. The logic for each node is necessarily pretty custom.
-func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+// loadInfoSchema is a grab-bag analyzer function to assign information schema info
+// to any plan nodes that need it, like various SHOW *  statements. The logic for
+// each node is necessarily pretty custom.
+func loadInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch x := n.(type) {
 		case *plan.ShowIndexes:
 			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
 			x.IndexesToShow = filterGeneratedIndexes(tableIndexes)
+			return x, transform.NewTree, nil
 		case *plan.ShowCreateTable:
 			if !x.IsView {
 				tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
 				if err != nil {
-					return nil, err
+					return nil, transform.SameTree, err
 				}
 
 				x.Indexes = filterGeneratedIndexes(tableIndexes)
+				return x, transform.NewTree, nil
 			}
 		case *plan.ShowColumns:
 			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
 			x.Indexes = filterGeneratedIndexes(tableIndexes)
+			return x, transform.NewTree, nil
+
 		case *plan.ShowCharset:
 			rt, err := getInformationSchemaTable(ctx, a, "character_sets")
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
 			x.CharacterSetTable = rt
+			return x, transform.NewTree, nil
+		default:
 		}
-
-		return n, nil
+		return n, transform.SameTree, nil
 	})
 }
 
@@ -74,7 +81,7 @@ func filterGeneratedIndexes(indexes []sql.Index) []sql.Index {
 // getIndexesForTable returns all indexes on the table represented by the node given. If the node isn't a
 // *(plan.ResolvedTable), returns an empty slice.
 func getIndexesForTable(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index, error) {
-	ia, err := getIndexesForNode(ctx, a, node)
+	ia, err := newIndexAnalyzerForNode(ctx, node)
 	if err != nil {
 		return nil, err
 	}

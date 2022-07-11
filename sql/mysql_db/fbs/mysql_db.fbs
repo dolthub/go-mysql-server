@@ -1,0 +1,65 @@
+// Copyright 2022 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+table PrivilegeSetColumn {
+    name:string;
+    privs:[int];
+}
+
+table PrivilegeSetTable {
+    name:string;
+    privs:[int];
+    columns:[PrivilegeSetColumn];
+}
+
+table PrivilegeSetDatabase {
+    name:string;
+    privs:[int];
+    tables:[PrivilegeSetTable];
+}
+
+table PrivilegeSet {
+    global_static:[int];
+    global_dynamic:[string];
+    databases:[PrivilegeSetDatabase];
+}
+
+// Entries in the user table
+table User {
+    user:string;
+    host:string;
+    privilege_set:PrivilegeSet;
+    plugin:string;
+    password:string;
+    password_last_changed:int64; // represents time.Time
+    locked:bool;
+    attributes:string; // represents *string
+}
+
+// Entries in the role_edges table
+table RoleEdge {
+    from_host:string;
+    from_user:string;
+    to_host:string;
+    to_user:string;
+    with_admin_option:bool;
+}
+
+// The MySQL Db containing all the tables
+table MySQLDb {
+    user:[User];
+    role_edges:[RoleEdge];
+}
+
+root_type MySQLDb;

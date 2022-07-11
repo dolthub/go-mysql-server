@@ -1,0 +1,16 @@
+exec
+CREATE TABLE `newlinetable` (
+  `i` bigint NOT NULL,
+  `s` varchar(32) NOT NULL,
+  PRIMARY KEY (`i`)
+)
+----
+
+exec
+insert into newlinetable values
+    (1, '\nthere is some text in here'),
+	(2, 'there is some\ntext in here'),
+	(3, 'there is some text\nin here'),
+	(4, 'there is some text in here\n'),
+	(5, 'there is some text in here')
+----

@@ -27,13 +27,13 @@ import (
 )
 
 func TestPushdownSortProject(t *testing.T) {
-	rule := getRule("pushdown_sort")
+	rule := getRule(pushdownSortId)
 	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
-	}))
+	}), nil)
 
 	tests := []analyzerFnTestCase{
 		{
@@ -106,13 +106,13 @@ func TestPushdownSortProject(t *testing.T) {
 }
 
 func TestPushdownSortGroupby(t *testing.T) {
-	rule := getRule("pushdown_sort")
+	rule := getRule(pushdownSortId)
 	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
-	}))
+	}), nil)
 
 	tests := []analyzerFnTestCase{
 		{
@@ -208,13 +208,13 @@ func TestPushdownSortGroupby(t *testing.T) {
 }
 
 func TestPushdownSortWindow(t *testing.T) {
-	rule := getRule("pushdown_sort")
+	rule := getRule(pushdownSortId)
 	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
-	}))
+	}), nil)
 
 	tests := []analyzerFnTestCase{
 		{
@@ -227,16 +227,13 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-							sql.NewWindow(
-								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							sql.NewWindowDefinition([]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							}, sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 								},
-								sql.SortFields{
-									{
-										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-									},
-								},
-							),
+							}, nil, "", ""),
 						)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
@@ -253,16 +250,13 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-							sql.NewWindow(
-								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							sql.NewWindowDefinition([]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							}, sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 								},
-								sql.SortFields{
-									{
-										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-									},
-								},
-							),
+							}, nil, "", ""),
 						)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
@@ -272,16 +266,13 @@ func TestPushdownSortWindow(t *testing.T) {
 				[]sql.Expression{
 					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						sql.NewWindowDefinition([]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						}, sql.SortFields{
+							{
+								Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-								},
-							},
-						),
+						}, nil, "", ""),
 					)),
 				},
 				plan.NewSort(
@@ -302,16 +293,13 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-							sql.NewWindow(
-								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							sql.NewWindowDefinition([]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							}, sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 								},
-								sql.SortFields{
-									{
-										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-									},
-								},
-							),
+							}, nil, "", ""),
 						)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
@@ -321,16 +309,13 @@ func TestPushdownSortWindow(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						sql.NewWindowDefinition([]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						}, sql.SortFields{
+							{
+								Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-								},
-							},
-						),
+						}, nil, "", ""),
 					)),
 				},
 				plan.NewSort(
@@ -348,12 +333,12 @@ func TestPushdownSortWindow(t *testing.T) {
 
 func TestResolveOrderByLiterals(t *testing.T) {
 	require := require.New(t)
-	f := getRule("resolve_orderby_literals")
+	f := getRule(resolveOrderbyLiteralsId)
 
 	table := memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.Int64, Source: "t"},
-	}))
+	}), nil)
 
 	node := plan.NewSort(
 		[]sql.SortField{
@@ -363,14 +348,20 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	require.Equal(
 		plan.NewSort(
 			[]sql.SortField{
-				{Column: expression.NewUnresolvedQualifiedColumn("t", "b")},
-				{Column: expression.NewUnresolvedQualifiedColumn("t", "a")},
+				{
+					Column:  expression.NewUnresolvedQualifiedColumn("t", "b"),
+					Column2: expression.NewUnresolvedQualifiedColumn("t", "b"),
+				},
+				{
+					Column:  expression.NewUnresolvedQualifiedColumn("t", "a"),
+					Column2: expression.NewUnresolvedQualifiedColumn("t", "a"),
+				},
 			},
 			plan.NewResolvedTable(table, nil, nil),
 		),
@@ -385,7 +376,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	_, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	_, _, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.Error(err)
 	require.True(ErrOrderByColumnIndex.Is(err))
 }

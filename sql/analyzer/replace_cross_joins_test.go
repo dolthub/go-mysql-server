@@ -1,3 +1,17 @@
+// Copyright 2022 DoltHub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package analyzer
 
 import (
@@ -15,12 +29,12 @@ func TestConvertCrossJoin(t *testing.T) {
 		{Name: "x", Type: sql.Int64, Source: "a"},
 		{Name: "y", Type: sql.Int64, Source: "a"},
 		{Name: "z", Type: sql.Int64, Source: "a"},
-	}))
+	}), nil)
 	tableB := memory.NewTable("b", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: sql.Int64, Source: "b"},
 		{Name: "y", Type: sql.Int64, Source: "b"},
 		{Name: "z", Type: sql.Int64, Source: "b"},
-	}))
+	}), nil)
 
 	fieldAx := expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false)
 	fieldBy := expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)
@@ -31,12 +45,8 @@ func TestConvertCrossJoin(t *testing.T) {
 		expression.NewNullSafeEquals(fieldAx, fieldBy),
 		expression.NewGreaterThan(fieldAx, fieldBy),
 		expression.NewGreaterThanOrEqual(fieldAx, fieldBy),
-		expression.NewNullSafeGreaterThan(fieldAx, fieldBy),
-		expression.NewNullSafeGreaterThanOrEqual(fieldAx, fieldBy),
 		expression.NewLessThan(fieldAx, fieldBy),
-		expression.NewNullSafeLessThan(fieldAx, fieldBy),
 		expression.NewLessThanOrEqual(fieldAx, fieldBy),
-		expression.NewNullSafeLessThanOrEqual(fieldAx, fieldBy),
 		expression.NewOr(
 			expression.NewEquals(fieldAx, fieldBy),
 			expression.NewEquals(litOne, litOne),
@@ -254,5 +264,5 @@ func TestConvertCrossJoin(t *testing.T) {
 	}
 	tests = append(tests, nested...)
 
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule("replace_cross_joins"))
+	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(replaceCrossJoinsId))
 }

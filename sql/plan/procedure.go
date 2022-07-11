@@ -16,8 +16,11 @@ package plan
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -52,6 +55,7 @@ type ProcedureParam struct {
 	Direction ProcedureParamDirection // Direction is the direction of the parameter.
 	Name      string                  // Name is the name of the parameter.
 	Type      sql.Type                // Type is the SQL type of the parameter.
+	Variadic  bool                    // Variadic states whether the parameter is variadic.
 }
 
 // Characteristic represents a characteristic that is defined on either a stored procedure or stored function.
@@ -103,6 +107,7 @@ func NewProcedure(
 			Direction: param.Direction,
 			Name:      strings.ToLower(param.Name),
 			Type:      param.Type,
+			Variadic:  param.Variadic,
 		}
 	}
 	return &Procedure{
@@ -155,9 +160,71 @@ func (p *Procedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &np, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *Procedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Body.CheckPrivileges(ctx, opChecker)
+}
+
 // RowIter implements the sql.Node interface.
 func (p *Procedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return p.Body.RowIter(ctx, row)
+}
+
+// ExtendVariadic returns a new procedure that has the variadic parameter extended to match the CALL's parameter count.
+func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
+	if !p.HasVariadicParameter() {
+		return p
+	}
+	np := *p
+	body := p.Body.(*ExternalProcedure)
+	newBody := *body
+	np.Body = &newBody
+
+	newParamDefinitions := make([]ProcedureParam, length)
+	newParams := make([]*expression.ProcedureParam, length)
+	if length < len(p.Params) {
+		newParamDefinitions = p.Params[:len(p.Params)-1]
+		newParams = body.Params[:len(body.Params)-1]
+	} else {
+		for i := range p.Params {
+			newParamDefinitions[i] = p.Params[i]
+			newParams[i] = body.Params[i]
+		}
+		if length >= len(p.Params) {
+			variadicParam := p.Params[len(p.Params)-1]
+			for i := len(p.Params); i < length; i++ {
+				paramName := "A" + strconv.FormatInt(int64(i), 10)
+				newParamDefinitions[i] = ProcedureParam{
+					Direction: variadicParam.Direction,
+					Name:      paramName,
+					Type:      variadicParam.Type,
+					Variadic:  variadicParam.Variadic,
+				}
+				newParams[i] = expression.NewProcedureParam(paramName)
+			}
+		}
+	}
+
+	newBody.ParamDefinitions = newParamDefinitions
+	newBody.Params = newParams
+	np.Params = newParamDefinitions
+	return &np
+}
+
+// HasVariadicParameter returns if the last parameter is variadic.
+func (p *Procedure) HasVariadicParameter() bool {
+	if len(p.Params) > 0 {
+		return p.Params[len(p.Params)-1].Variadic
+	}
+	return false
+}
+
+// IsExternal returns whether the stored procedure is external.
+func (p *Procedure) IsExternal() bool {
+	if _, ok := p.Body.(*ExternalProcedure); ok {
+		return true
+	}
+	return false
 }
 
 // String returns the original SQL representation.

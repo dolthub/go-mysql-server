@@ -54,6 +54,12 @@ func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *Set) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: determine which variables cannot be set without a privilege check
+	return true
+}
+
 // WithExpressions implements the sql.Expressioner interface.
 func (s *Set) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.Exprs) {
@@ -71,7 +77,7 @@ func (s *Set) Expressions() []sql.Expression {
 // RowIter implements the sql.Node interface.
 func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
-	defer span.Finish()
+	defer span.End()
 
 	var updateExprs []sql.Expression
 	for _, v := range s.Exprs {

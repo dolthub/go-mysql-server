@@ -1,0 +1,14 @@
+exec
+CREATE TABLE `reservedWordsTable` (
+  `Timestamp` varchar(20) NOT NULL,
+  `and` varchar(20),
+  `or` varchar(20),
+  `select` varchar(20),
+  PRIMARY KEY (`Timestamp`)
+)
+----
+
+exec
+insert into reservedWordsTable values
+    ('1', '1.1', 'aaa', 'create')
+----

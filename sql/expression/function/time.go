@@ -25,8 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
-
 // ErrInvalidArgumentType is thrown when a function receives invalid argument types
 var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
 
@@ -463,6 +461,8 @@ func NewYearWeek(args ...sql.Expression) (sql.Expression, error) {
 	yw := &YearWeek{date: args[0]}
 	if len(args) > 1 && args[1].Resolved() && sql.IsInteger(args[1].Type()) {
 		yw.mode = args[1]
+	} else if len(args) > 1 && expression.IsBindVar(args[1]) {
+		yw.mode = args[1]
 	} else {
 		yw.mode = expression.NewLiteral(0, sql.Int64)
 	}
@@ -493,15 +493,15 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	yyyy, ok := year(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid year")
+		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid year")
 	}
 	mm, ok := month(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid month")
+		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid month")
 	}
 	dd, ok := day(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid day")
+		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid day")
 	}
 
 	mode := int64(0)
@@ -589,15 +589,15 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	yyyy, ok := year(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("WEEK", "invalid year")
+		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid year")
 	}
 	mm, ok := month(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("WEEK", "invalid month")
+		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid month")
 	}
 	dd, ok := day(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("WEEK", "invalid day")
+		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid day")
 	}
 
 	mode := int64(0)

@@ -1,0 +1,13 @@
+exec
+CREATE TABLE `myhistorytable` (
+  `i` bigint NOT NULL,
+  `s` varchar(20) NOT NULL,
+  `c` varchar(20) NOT NULL,
+  PRIMARY KEY (`i`)
+)
+----
+
+# TODO add history rows, and version the table
+# exec
+# insert into myhistorytable values
+#----

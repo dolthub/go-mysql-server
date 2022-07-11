@@ -49,6 +49,11 @@ func (n *TransformedNamedNode) WithChildren(children ...sql.Node) (sql.Node, err
 	return NewTransformedNamedNode(children[0], n.name), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *TransformedNamedNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (n *TransformedNamedNode) String() string {
 	return n.Child.String()
 }

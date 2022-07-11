@@ -23,6 +23,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // returns whether to include the table name given in the test data setup. A nil set of included tables will include
@@ -43,6 +44,9 @@ func includeTable(includedTables []string, tableName string) bool {
 // sql.TransactionDatabase, then the function is simply run and the transaction logic is a no-op.
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
 	ctx := NewContext(harness).WithCurrentDB(db.Name())
+	if privilegedDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = privilegedDatabase.Unwrap()
+	}
 	if tdb, ok := db.(sql.TransactionDatabase); ok {
 		tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)
 		require.NoError(t, err)
@@ -68,13 +72,12 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	return createSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
 }
 
-func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
-	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
-	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
-	// transaction without committing the work done so far.
-	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
-	// when adding data to it
-	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+func CreateSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
+	dbs := harness.NewDatabases("mydb", "foo")
+	return createSpatialSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
+}
+
+func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
 	var table sql.Table
 	var err error
 
@@ -100,6 +103,28 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
+	if includeTable(includedTables, "geometry_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "geometry_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "geometry_table", PrimaryKey: true},
+				{Name: "g", Type: sql.GeometryType{}, Source: "geometry_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(1, sql.Point{X: 1, Y: 2}),
+					sql.NewRow(2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+					sql.NewRow(3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+					sql.NewRow(4, sql.Point{SRID: 4326, X: 1, Y: 2}),
+					sql.NewRow(5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}),
+					sql.NewRow(6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "geometry_table", err)
+			}
+		})
+	}
+
 	if includeTable(includedTables, "point_table") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "point_table", sql.NewPrimaryKeySchema(sql.Schema{
@@ -121,13 +146,13 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "line_table", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "line_table", PrimaryKey: true},
-				{Name: "l", Type: sql.LinestringType{}, Source: "line_table"},
+				{Name: "l", Type: sql.LineStringType{}, Source: "line_table"},
 			}))
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
-					sql.NewRow(1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
+					sql.NewRow(0, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+					sql.NewRow(1, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "line_table", err)
@@ -144,13 +169,34 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+					sql.NewRow(0, sql.Polygon{
+						Lines: []sql.LineString{
+							{Points: []sql.Point{
+								{X: 0, Y: 0},
+								{X: 0, Y: 1},
+								{X: 1, Y: 1},
+								{X: 0, Y: 0},
+							}},
+						}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)
 			}
 		})
 	}
+
+	return []sql.Database{myDb, foo}
+}
+
+func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
+	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
+	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
+	// transaction without committing the work done so far.
+	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
+	// when adding data to it
+	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+	var table sql.Table
+	var err error
 
 	if includeTable(includedTables, "specialtable") {
 		wrapInTransaction(t, myDb, harness, func() {
@@ -161,21 +207,21 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, "first_row"),
-					sql.NewRow(2, "second_row"),
-					sql.NewRow(3, "third_row"),
-					sql.NewRow(4, `%`),
-					sql.NewRow(5, `'`),
-					sql.NewRow(6, `"`),
-					sql.NewRow(7, "\t"),
-					sql.NewRow(8, "\n"),
-					sql.NewRow(9, "\v"),
-					sql.NewRow(10, `test%test`),
-					sql.NewRow(11, `test'test`),
-					sql.NewRow(12, `test"test`),
-					sql.NewRow(13, "test\ttest"),
-					sql.NewRow(14, "test\ntest"),
-					sql.NewRow(15, "test\vtest"),
+					sql.NewRow(int64(1), "first_row"),
+					sql.NewRow(int64(2), "second_row"),
+					sql.NewRow(int64(3), "third_row"),
+					sql.NewRow(int64(4), `%`),
+					sql.NewRow(int64(5), `'`),
+					sql.NewRow(int64(6), `"`),
+					sql.NewRow(int64(7), "\t"),
+					sql.NewRow(int64(8), "\n"),
+					sql.NewRow(int64(9), "\v"),
+					sql.NewRow(int64(10), `test%test`),
+					sql.NewRow(int64(11), `test'test`),
+					sql.NewRow(int64(12), `test"test`),
+					sql.NewRow(int64(13), "test\ttest"),
+					sql.NewRow(int64(14), "test\ntest"),
+					sql.NewRow(int64(15), "test\vtest"),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "specialtable", err)
@@ -214,10 +260,10 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, 0, 1, 2, 3, 4),
-					sql.NewRow(1, 10, 11, 12, 13, 14),
-					sql.NewRow(2, 20, 21, 22, 23, 24),
-					sql.NewRow(3, 30, 31, 32, 33, 34))
+					sql.NewRow(int8(0), int8(0), int8(1), int8(2), int8(3), int8(4)),
+					sql.NewRow(int8(1), int8(10), int8(11), int8(12), int8(13), int8(14)),
+					sql.NewRow(int8(2), int8(20), int8(21), int8(22), int8(23), int8(24)),
+					sql.NewRow(int8(3), int8(30), int8(31), int8(32), int8(33), int8(34)))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
 			}
@@ -235,12 +281,12 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, "row one", sql.JSONDocument{Val: []interface{}{1, 2}}, sql.JSONDocument{Val: map[string]interface{}{"a": 2}}),
-					sql.NewRow(2, "row two", sql.JSONDocument{Val: []interface{}{3, 4}}, sql.JSONDocument{Val: map[string]interface{}{"b": 2}}),
-					sql.NewRow(3, "row three", sql.JSONDocument{Val: []interface{}{5, 6}}, sql.JSONDocument{Val: map[string]interface{}{"c": 2}}),
-					sql.NewRow(4, "row four", sql.JSONDocument{Val: []interface{}{7, 8}}, sql.JSONDocument{Val: map[string]interface{}{"d": 2}}))
+					sql.NewRow(int8(1), "row one", sql.JSONDocument{Val: []interface{}{1, 2}}, sql.JSONDocument{Val: map[string]interface{}{"a": 2}}),
+					sql.NewRow(int8(2), "row two", sql.JSONDocument{Val: []interface{}{3, 4}}, sql.JSONDocument{Val: map[string]interface{}{"b": 2}}),
+					sql.NewRow(int8(3), "row three", sql.JSONDocument{Val: []interface{}{5, 6}}, sql.JSONDocument{Val: map[string]interface{}{"c": 2}}),
+					sql.NewRow(int8(4), "row four", sql.JSONDocument{Val: []interface{}{7, 8}}, sql.JSONDocument{Val: map[string]interface{}{"d": 2}}))
 			} else {
-				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
+				t.Logf("Warning: could not create table %s: %s", "jsontable", err)
 			}
 		})
 	}
@@ -259,10 +305,10 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, 0, 0, 1, 2, 3, 4),
-					sql.NewRow(0, 1, 10, 11, 12, 13, 14),
-					sql.NewRow(1, 0, 20, 21, 22, 23, 24),
-					sql.NewRow(1, 1, 30, 31, 32, 33, 34))
+					sql.NewRow(int8(0), int8(0), int8(0), int8(1), int8(2), int8(3), int8(4)),
+					sql.NewRow(int8(0), int8(1), int8(10), int8(11), int8(12), int8(13), int8(14)),
+					sql.NewRow(int8(1), int8(0), int8(20), int8(21), int8(22), int8(23), int8(24)),
+					sql.NewRow(int8(1), int8(1), int8(30), int8(31), int8(32), int8(33), int8(34)))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "two_pk", err)
 			}
@@ -279,14 +325,14 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, 0, 0),
-					sql.NewRow(1, 1, 1),
-					sql.NewRow(2, 2, 2),
-					sql.NewRow(3, 3, 3),
-					sql.NewRow(4, 4, 4),
-					sql.NewRow(5, 5, 5),
-					sql.NewRow(6, 6, 6),
-					sql.NewRow(7, 7, 7))
+					sql.NewRow(int64(0), int64(0), int64(0)),
+					sql.NewRow(int64(1), int64(1), int64(1)),
+					sql.NewRow(int64(2), int64(2), int64(2)),
+					sql.NewRow(int64(3), int64(3), int64(3)),
+					sql.NewRow(int64(4), int64(4), int64(4)),
+					sql.NewRow(int64(5), int64(5), int64(5)),
+					sql.NewRow(int64(6), int64(6), int64(6)),
+					sql.NewRow(int64(7), int64(7), int64(7)))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "one_pk_two_idx", err)
 			}
@@ -304,14 +350,14 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, 0, 0, 0),
-					sql.NewRow(1, 0, 0, 1),
-					sql.NewRow(2, 0, 1, 0),
-					sql.NewRow(3, 0, 2, 2),
-					sql.NewRow(4, 1, 0, 0),
-					sql.NewRow(5, 2, 0, 3),
-					sql.NewRow(6, 3, 3, 0),
-					sql.NewRow(7, 4, 4, 4))
+					sql.NewRow(int64(0), int64(0), int64(0), int64(0)),
+					sql.NewRow(int64(1), int64(0), int64(0), int64(1)),
+					sql.NewRow(int64(2), int64(0), int64(1), int64(0)),
+					sql.NewRow(int64(3), int64(0), int64(2), int64(2)),
+					sql.NewRow(int64(4), int64(1), int64(0), int64(0)),
+					sql.NewRow(int64(5), int64(2), int64(0), int64(3)),
+					sql.NewRow(int64(6), int64(3), int64(3), int64(0)),
+					sql.NewRow(int64(7), int64(4), int64(4), int64(4)))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "one_pk_three_idx", err)
 			}
@@ -345,9 +391,9 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(int64(1), "first row"),
-					sql.NewRow(int64(2), "second row"),
-					sql.NewRow(int64(3), "third row"))
+					sql.NewRow(int32(1), "first row"),
+					sql.NewRow(int32(2), "second row"),
+					sql.NewRow(int32(3), "third row"))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "tabletest", err)
 			}
@@ -368,7 +414,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	}
 
 	if includeTable(includedTables, "other_table") {
-		wrapInTransaction(t, myDb, harness, func() {
+		wrapInTransaction(t, foo, harness, func() {
 			table, err = harness.NewTable(foo, "other_table", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
 				{Name: "number", Type: sql.Int32, Source: "other_table"},
@@ -472,11 +518,11 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
 					sql.NewRow(int64(1), nil, nil, nil),
-					sql.NewRow(int64(2), int64(2), 1, nil),
-					sql.NewRow(int64(3), nil, 0, nil),
+					sql.NewRow(int64(2), int64(2), int8(1), nil),
+					sql.NewRow(int64(3), nil, int8(0), nil),
 					sql.NewRow(int64(4), int64(4), nil, float64(4)),
-					sql.NewRow(int64(5), nil, 1, float64(5)),
-					sql.NewRow(int64(6), int64(6), 0, float64(6)))
+					sql.NewRow(int64(5), nil, int8(1), float64(5)),
+					sql.NewRow(int64(6), int64(6), int8(0), float64(6)))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "niltable", err)
 			}
@@ -547,7 +593,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 						t1,
 						t2,
 						"fourteen",
-						0,
+						int8(0),
 						nil,
 						nil,
 					))
@@ -569,9 +615,9 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, mustParseDate("2019-12-31T12:00:00Z"), mustParseTime("2020-01-01T12:00:00Z"), mustParseTime("2020-01-02T12:00:00Z"), mustSQLTime(3*time.Hour+10*time.Minute)),
-					sql.NewRow(2, mustParseDate("2020-01-03T12:00:00Z"), mustParseTime("2020-01-04T12:00:00Z"), mustParseTime("2020-01-05T12:00:00Z"), mustSQLTime(4*time.Hour+44*time.Second)),
-					sql.NewRow(3, mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z"), mustSQLTime(15*time.Hour+5*time.Millisecond)),
+					sql.NewRow(int64(1), mustParseDate("2019-12-31T12:00:00Z"), mustParseTime("2020-01-01T12:00:00Z"), mustParseTime("2020-01-02T12:00:00Z"), mustSQLTime(3*time.Hour+10*time.Minute)),
+					sql.NewRow(int64(2), mustParseDate("2020-01-03T12:00:00Z"), mustParseTime("2020-01-04T12:00:00Z"), mustParseTime("2020-01-05T12:00:00Z"), mustSQLTime(4*time.Hour+44*time.Second)),
+					sql.NewRow(int64(3), mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z"), mustSQLTime(15*time.Hour+5*time.Millisecond)),
 				)
 			}
 		})
@@ -628,9 +674,9 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, 1, "first row"),
-					sql.NewRow(2, 2, "second row"),
-					sql.NewRow(3, 3, "third row"),
+					sql.NewRow(int64(1), int64(1), "first row"),
+					sql.NewRow(int64(2), int64(2), "second row"),
+					sql.NewRow(int64(3), int64(3), "third row"),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "fk_tbl", err)
@@ -648,11 +694,15 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			autoTbl, ok := table.(sql.AutoIncrementTable)
 
 			if err == nil && ok {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
-					sql.NewRow(1, 11),
-					sql.NewRow(2, 22),
-					sql.NewRow(3, 33),
+				ctx := NewContext(harness)
+				InsertRows(t, ctx, mustInsertableTable(t, autoTbl),
+					sql.NewRow(int64(1), int64(11)),
+					sql.NewRow(int64(2), int64(22)),
+					sql.NewRow(int64(3), int64(33)),
 				)
+				// InsertRows bypasses integrator auto increment methods
+				// manually set the auto increment value here
+				setAutoIncrementValue(t, ctx, autoTbl, 4)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
 			}
@@ -671,12 +721,62 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil && ok {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
-					sql.NewRow(0, 2, 2),
-					sql.NewRow(1, 1, 0),
-					sql.NewRow(2, 0, 1),
+					sql.NewRow(int64(0), int64(2), int64(2)),
+					sql.NewRow(int64(1), int64(1), int64(0)),
+					sql.NewRow(int64(2), int64(0), int64(1)),
 				)
 			} else {
-				t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
+				t.Logf("Warning: could not create table %s: %s", "invert_pk", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "parts") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "parts", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "part", Type: sql.Text, Source: "parts", PrimaryKey: true},
+				{Name: "sub_part", Type: sql.Text, Source: "parts", PrimaryKey: true},
+				{Name: "quantity", Type: sql.Int64, Source: "parts"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					[]sql.Row{
+						{"pie", "crust", int64(1)},
+						{"pie", "filling", int64(2)},
+						{"crust", "flour", int64(20)},
+						{"crust", "sugar", int64(2)},
+						{"crust", "butter", int64(15)},
+						{"crust", "salt", int64(15)},
+						{"filling", "sugar", int64(5)},
+						{"filling", "fruit", int64(9)},
+						{"filling", "salt", int64(3)},
+						{"filling", "butter", int64(3)},
+					}...)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "parts", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "bus_routes") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "bus_routes", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "origin", Type: sql.Text, Source: "bus_routes", PrimaryKey: true},
+				{Name: "dst", Type: sql.Text, Source: "bus_routes", PrimaryKey: true},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					[]sql.Row{
+						{"New York", "Boston"},
+						{"Boston", "New York"},
+						{"New York", "Washington"},
+						{"Washington", "Boston"},
+						{"Washington", "Raleigh"},
+					}...)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "bus_routes", err)
 			}
 		})
 	}
@@ -731,6 +831,30 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		wrapInTransaction(t, myDb, harness, func() {
 			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02"))
 		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+			}), "2019-01-03")
+
+			if err == nil {
+				DeleteRows(t, NewContext(harness), mustDeletableTable(t, table),
+					sql.NewRow(int64(1), "first row, 2"),
+					sql.NewRow(int64(2), "second row, 2"),
+					sql.NewRow(int64(3), "third row, 2"))
+				column := sql.Column{Name: "c", Type: sql.Text}
+				AddColumn(t, NewContext(harness), mustAlterableTable(t, table), &column)
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(1), "first row, 3", "1"),
+					sql.NewRow(int64(2), "second row, 3", "2"),
+					sql.NewRow(int64(3), "third row, 3", "3"))
+			}
+		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-03"))
+		})
 	}
 
 	if keyless, ok := harness.(KeylessTableHarness); ok &&
@@ -747,6 +871,22 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
 					sql.NewRow(int64(0), int64(0)),
 					sql.NewRow(int64(1), int64(1)),
+					sql.NewRow(int64(1), int64(1)),
+					sql.NewRow(int64(2), int64(2)))
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "keyless", err)
+			}
+		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "unique_keyless", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "c0", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+				{Name: "c1", Type: sql.Int64, Source: "unique_keyless", Nullable: true},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(0), int64(0)),
 					sql.NewRow(int64(1), int64(1)),
 					sql.NewRow(int64(2), int64(2)))
 			} else {
@@ -782,9 +922,14 @@ func mustParseDate(datestring string) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-// createTestData uses the provided harness to create test tables and data for many of the other tests.
+// CreateTestData uses the provided harness to create test tables and data for many of the other tests.
 func CreateTestData(t *testing.T, harness Harness) []sql.Database {
 	return CreateSubsetTestData(t, harness, nil)
+}
+
+// CreateSpatialTestData uses the provided harness to create test tables and data for tests involving spatial types.
+func CreateSpatialTestData(t *testing.T, harness Harness) []sql.Database {
+	return CreateSpatialSubsetTestData(t, harness, nil)
 }
 
 func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
@@ -799,6 +944,12 @@ func mustDeletableTable(t *testing.T, table sql.Table) sql.DeletableTable {
 	return deletable
 }
 
+func mustAlterableTable(t *testing.T, table sql.Table) sql.AlterableTable {
+	alterable, ok := table.(sql.AlterableTable)
+	require.True(t, ok, "Table must implement sql.AlterableTable")
+	return alterable
+}
+
 func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows ...sql.Row) {
 	t.Helper()
 
@@ -807,6 +958,14 @@ func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows 
 		require.NoError(t, inserter.Insert(ctx, r))
 	}
 	err := inserter.Close(ctx)
+	require.NoError(t, err)
+}
+
+// AddColumn adds a column to the specified table
+func AddColumn(t *testing.T, ctx *sql.Context, table sql.AlterableTable, column *sql.Column) {
+	t.Helper()
+
+	err := table.AddColumn(ctx, column, nil)
 	require.NoError(t, err)
 }
 
@@ -820,6 +979,12 @@ func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows .
 		}
 	}
 	require.NoError(t, deleter.Close(ctx))
+}
+
+func setAutoIncrementValue(t *testing.T, ctx *sql.Context, table sql.AutoIncrementTable, val uint64) {
+	setter := table.AutoIncrementSetter(ctx)
+	require.NoError(t, setter.SetAutoIncrementValue(ctx, val))
+	require.NoError(t, setter.Close(ctx))
 }
 
 func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
@@ -841,10 +1006,10 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 
 	for _, q := range createIndexes {
 		ctx := NewContext(harness)
-		_, iter, err := e.Query(ctx, q)
+		sch, iter, err := e.Query(ctx, q)
 		require.NoError(t, err)
 
-		_, err = sql.RowIterToRows(ctx, iter)
+		_, err = sql.RowIterToRows(ctx, sch, iter)
 		require.NoError(t, err)
 	}
 

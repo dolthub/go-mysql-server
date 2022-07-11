@@ -45,6 +45,15 @@ func (v *ValueDerivedTable) Schema() sql.Schema {
 	return schema
 }
 
+// WithChildren implements the Node interface.
+func (v *ValueDerivedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 0)
+	}
+
+	return v, nil
+}
+
 // WithExpressions implements the Expressioner interface.
 func (v *ValueDerivedTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	newValues, err := v.Values.WithExpressions(exprs...)

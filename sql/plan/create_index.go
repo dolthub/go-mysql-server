@@ -19,13 +19,14 @@ import (
 	"strings"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var (
@@ -51,6 +52,8 @@ type CreateIndex struct {
 	CurrentDatabase string
 }
 
+var _ sql.Databaseable = (*CreateIndex)(nil)
+
 // NewCreateIndex creates a new CreateIndex node.
 func NewCreateIndex(
 	name string,
@@ -67,6 +70,8 @@ func NewCreateIndex(
 		Config: config,
 	}
 }
+
+func (c *CreateIndex) Database() string { return c.CurrentDatabase }
 
 // Children implements the Node interface.
 func (c *CreateIndex) Children() []sql.Node { return []sql.Node{c.Table} }
@@ -137,7 +142,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 
 	for _, e := range exprs {
-		if sql.IsBlob(e.Type()) || sql.IsJSON(e.Type()) {
+		if sql.IsByteType(e.Type()) || sql.IsJSON(e.Type()) {
 			return nil, ErrExprTypeNotIndexable.New(e, e.Type())
 		}
 	}
@@ -202,11 +207,13 @@ func (c *CreateIndex) createIndex(
 	ready <-chan struct{},
 ) {
 	span, ctx := ctx.Span("plan.createIndex",
-		opentracing.Tags{
-			"index":  index.ID(),
-			"table":  index.Table(),
-			"driver": index.Driver(),
-		})
+		trace.WithAttributes(
+			attribute.String("index", index.ID()),
+			attribute.String("table", index.Table()),
+			attribute.String("driver", index.Driver()),
+		),
+	)
+	defer span.End()
 
 	l := log.WithField("id", index.ID())
 
@@ -214,16 +221,7 @@ func (c *CreateIndex) createIndex(
 	close(done)
 
 	if err != nil {
-		span.FinishWithOptions(opentracing.FinishOptions{
-			LogRecords: []opentracing.LogRecord{
-				{
-					Timestamp: time.Now(),
-					Fields: []otlog.Field{
-						otlog.String("error", err.Error()),
-					},
-				},
-			},
-		})
+		span.RecordError(err)
 
 		ctx.Error(0, "unable to save the index: %s", err)
 		logrus.WithField("err", err).Error("unable to save the index")
@@ -237,7 +235,6 @@ func (c *CreateIndex) createIndex(
 		}
 	} else {
 		<-ready
-		span.Finish()
 		log.Info("index successfully created")
 	}
 }
@@ -288,6 +285,12 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nc, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Index))
+}
+
 // GetColumnsAndPrepareExpressions extracts the unique columns required by all
 // those expressions and fixes the indexes of the GetFields in the expressions
 // to match a row with only the returned columns in that same order.
@@ -300,10 +303,10 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+		ex, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
-				return e, nil
+				return e, transform.SameTree, nil
 			}
 
 			var idx int
@@ -321,7 +324,7 @@ func GetColumnsAndPrepareExpressions(
 				gf.Table(),
 				gf.Name(),
 				gf.IsNullable(),
-			), nil
+			), transform.NewTree, nil
 		})
 
 		if err != nil {
@@ -425,7 +428,7 @@ func (i *loggingPartitionKeyValueIter) Close(ctx *sql.Context) error {
 }
 
 type loggingKeyValueIter struct {
-	span  opentracing.Span
+	span  trace.Span
 	log   *logrus.Entry
 	iter  sql.IndexKeyValueIter
 	rows  *uint64
@@ -447,11 +450,7 @@ func newLoggingKeyValueIter(
 
 func (i *loggingKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
 	if i.span == nil {
-		i.span, _ = ctx.Span("plan.createIndex.iterator",
-			opentracing.Tags{
-				"start": i.rows,
-			},
-		)
+		i.span, ctx = ctx.Span("plan.createIndex.iterator", trace.WithAttributes(attribute.Int64("start", int64(*i.rows))))
 	}
 
 	(*i.rows)++
@@ -464,8 +463,8 @@ func (i *loggingKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, err
 		}).Debugf("still creating index")
 
 		if i.span != nil {
-			i.span.LogKV("duration", duration.String())
-			i.span.Finish()
+			i.span.SetAttributes(attribute.Stringer("duration", duration))
+			i.span.End()
 			i.span = nil
 		}
 
@@ -474,8 +473,8 @@ func (i *loggingKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, err
 
 	val, loc, err := i.iter.Next(ctx)
 	if err != nil {
-		i.span.LogKV("error", err)
-		i.span.Finish()
+		i.span.RecordError(err)
+		i.span.End()
 		i.span = nil
 	}
 

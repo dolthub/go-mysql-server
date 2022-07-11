@@ -60,14 +60,14 @@ func (Use) Schema() sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	dbName := u.db.Name()
-	_, err := u.Catalog.Database(dbName)
-
+	db, err := u.Catalog.Database(ctx, u.db.Name())
 	if err != nil {
 		return nil, err
 	}
 
-	ctx.SetCurrentDatabase(dbName)
+	ctx.SetCurrentDatabase(db.Name())
+	ctx.SetLogger(ctx.GetLogger().WithField(sql.ConnectionDbLogField, db.Name()))
+
 	return sql.RowsToRowIter(), nil
 }
 
@@ -78,6 +78,13 @@ func (u *Use) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return u, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (u *Use) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// The given database will not be visible if the user does not have the appropriate privileges, so we can just
+	// return true here.
+	return true
 }
 
 // String implements the sql.Node interface.

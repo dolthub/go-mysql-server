@@ -99,7 +99,7 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	substr, ok := substrVal.(string)
 	if !ok {
-		return nil, ErrInvalidArgument.New("locate", "substring must be a string")
+		return nil, sql.ErrInvalidArgumentDetails.New("locate", "substring must be a string")
 	}
 
 	strVal, err := l.ChildExpressions[1].Eval(ctx, row)
@@ -113,7 +113,7 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	str, ok := strVal.(string)
 	if !ok {
-		return nil, ErrInvalidArgument.New("locate", "string must be a string")
+		return nil, sql.ErrInvalidArgumentDetails.New("locate", "string must be a string")
 	}
 
 	position := 1
@@ -127,7 +127,7 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if posVal != nil {
 			posInt, err := sql.Int32.Convert(posVal)
 			if err != nil {
-				return nil, sql.ErrInvalidArgument.New("locate", "start must be an integer")
+				return nil, sql.ErrInvalidArgumentDetails.New("locate", "start must be an integer")
 			}
 			position = int(posInt.(int32))
 		}

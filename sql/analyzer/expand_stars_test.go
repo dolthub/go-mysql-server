@@ -25,17 +25,17 @@ import (
 )
 
 func TestExpandStars(t *testing.T) {
-	f := getRule("expand_stars")
+	f := getRule(expandStarsId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int32, Source: "mytable"},
 		{Name: "b", Type: sql.Int32, Source: "mytable"},
-	}))
+	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c", Type: sql.Int32, Source: "mytable2"},
 		{Name: "d", Type: sql.Int32, Source: "mytable2"},
-	}))
+	}), nil)
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -153,16 +153,13 @@ func TestExpandStars(t *testing.T) {
 					expression.NewStar(),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+						sql.NewWindowDefinition([]sql.Expression{
+							expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+						}, sql.SortFields{
+							{
+								Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-								},
-							},
-						),
+						}, nil, "", ""),
 					)),
 				},
 				plan.NewResolvedTable(table, nil, nil),
@@ -173,16 +170,13 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+						sql.NewWindowDefinition([]sql.Expression{
+							expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+						}, sql.SortFields{
+							{
+								Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-								},
-							},
-						),
+						}, nil, "", ""),
 					)),
 				},
 				plan.NewResolvedTable(table, nil, nil),

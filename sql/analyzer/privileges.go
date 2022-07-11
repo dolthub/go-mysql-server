@@ -15,18 +15,38 @@
 package analyzer
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// checkPrivileges verifies the given statement (node n) by checking that the calling user has the necessary privileges
+// validatePrivileges verifies the given statement (node n) by checking that the calling user has the necessary privileges
 // to execute it.
-func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	//TODO: implement this
+//TODO: add the remaining statements that interact with the grant tables
+func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	mysqlDb := a.Catalog.MySQLDb
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
-		a.Catalog.GrantTables.Enabled = true
+		mysqlDb.Enabled = true
 	}
-	return n, nil
+	if !mysqlDb.Enabled {
+		return n, transform.SameTree, nil
+	}
+
+	client := ctx.Session.Client()
+	user := mysqlDb.GetUser(client.User, client.Address, false)
+	if user == nil {
+		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
+	}
+	if sql.IsDualTable(getTable(n)) {
+		return n, transform.SameTree, nil
+	}
+	if !n.CheckPrivileges(ctx, a.Catalog.MySQLDb) {
+		return nil, transform.SameTree, sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))
+	}
+	return n, transform.SameTree, nil
 }

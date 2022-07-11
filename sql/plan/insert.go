@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -58,6 +59,7 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrForeignKeyParentViolation,
 	sql.ErrDuplicateEntry,
 	sql.ErrUniqueKeyViolation,
+	sql.ErrCheckConstraintViolated,
 }
 
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
@@ -75,6 +77,7 @@ type InsertInto struct {
 
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
+var _ sql.Expressioner = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
@@ -171,7 +174,7 @@ func (id *InsertDestination) Resolved() bool {
 	}
 
 	for _, col := range id.Sch {
-		if col.Default != nil && !col.Default.Expression.Resolved() {
+		if !col.Default.Resolved() {
 			return false
 		}
 	}
@@ -190,6 +193,11 @@ func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error)
 
 	id.UnaryNode.Child = children[0]
 	return &id, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (id *InsertDestination) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return id.Child.CheckPrivileges(ctx, opChecker)
 }
 
 type insertIter struct {
@@ -299,7 +307,7 @@ func newInsertIter(
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
 	var exprs []sql.Expression
-	Inspect(values, func(node sql.Node) bool {
+	transform.Inspect(values, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *Project:
 			exprs = node.Projections
@@ -331,36 +339,30 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		return i.ignoreOrClose(ctx, row, err)
 	}
 
-	// apply check constraints
-	for _, check := range i.checks {
-		if !check.Enforced {
-			continue
-		}
-
-		res, err := sql.EvaluateCondition(ctx, check.Expr, row)
-
-		if err != nil {
-			return nil, i.warnOnIgnorableError(ctx, row, err)
-		}
-
-		if sql.IsFalse(res) {
-			return nil, sql.NewWrappedInsertError(row, sql.ErrCheckConstraintViolated.New(check.Name))
-		}
+	err = i.evaluateChecks(ctx, row)
+	if err != nil {
+		return i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, err := col.Type.Convert(row[idx]) // allows for better error handling
-			if err != nil {
+			converted, cErr := col.Type.Convert(row[idx]) // allows for better error handling
+			if cErr != nil {
 				if i.ignore {
-					row, err = i.convertDataAndWarn(ctx, row, idx, err)
+					row, err = i.convertDataAndWarn(ctx, row, idx, cErr)
 					if err != nil {
 						return nil, err
 					}
 					continue
 				} else {
-					return nil, sql.NewWrappedInsertError(row, err)
+					// Fill in error with information
+					if sql.ErrLengthBeyondLimit.Is(cErr) {
+						cErr = sql.ErrLengthBeyondLimit.New(row[idx], col.Name)
+					} else if sql.ErrNotMatchingSRID.Is(cErr) {
+						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
+					}
+					return nil, sql.NewWrappedInsertError(row, cErr)
 				}
 			}
 			row[idx] = converted
@@ -441,9 +443,15 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpda
 		newRow = val.(sql.Row)
 	}
 
+	// Should revaluate the check conditions.
+	err = i.evaluateChecks(ctx, newRow)
+	if err != nil {
+		return i.ignoreOrClose(ctx, newRow, err)
+	}
+
 	err = i.updater.Update(ctx, rowToUpdate, newRow)
 	if err != nil {
-		return nil, err
+		return i.ignoreOrClose(ctx, newRow, err)
 	}
 
 	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
@@ -608,6 +616,26 @@ func (i *insertIter) warnOnIgnorableError(ctx *sql.Context, row sql.Row, err err
 	return err
 }
 
+func (i *insertIter) evaluateChecks(ctx *sql.Context, row sql.Row) error {
+	for _, check := range i.checks {
+		if !check.Enforced {
+			continue
+		}
+
+		res, err := sql.EvaluateCondition(ctx, check.Expr, row)
+
+		if err != nil {
+			return err
+		}
+
+		if sql.IsFalse(res) {
+			return sql.ErrCheckConstraintViolated.New(check.Name)
+		}
+	}
+
+	return nil
+}
+
 func toInt64(x interface{}) int64 {
 	switch x := x.(type) {
 	case int:
@@ -653,6 +681,17 @@ func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 	np := *ii
 	np.Destination = children[0]
 	return &np, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	if ii.IsReplace {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert, sql.PrivilegeType_Delete))
+	} else {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert))
+	}
 }
 
 // WithSource sets the source node for this insert, which is analyzed separately

@@ -40,13 +40,16 @@ type Resolvable interface {
 	Resolved() bool
 }
 
-// TransformNodeFunc is a function that given a node will return that node
-// as is or transformed along with an error, if any.
-type TransformNodeFunc func(Node) (Node, error)
+// BinaryNode has two children
+type BinaryNode interface {
+	Left() Node
+	Right() Node
+}
 
-// TransformExprFunc is a function that given an expression will return that
-// expression as is or transformed along with an error, if any.
-type TransformExprFunc func(Expression) (Expression, error)
+// UnaryNode has one child
+type UnaryNode interface {
+	Child() Node
+}
 
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
@@ -70,7 +73,9 @@ type Expression interface {
 type Expression2 interface {
 	Expression
 	// Eval2 evaluates the given row frame and returns a result.
-	Eval2(ctx *Context, f *RowFrame) (Value, error)
+	Eval2(ctx *Context, row Row2) (Value, error)
+	// Type2 returns the expression type.
+	Type2() Type2
 }
 
 // UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
@@ -104,10 +109,10 @@ type Aggregation interface {
 	WindowAdaptableExpression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() (AggregationBuffer, error)
-	// WithWindow returns a version of this aggregation with the window given
-	WithWindow(window *Window) (Aggregation, error)
+	// WithWindow returns a version of this aggregation with the WindowDefinition given
+	WithWindow(window *WindowDefinition) (Aggregation, error)
 	// Window returns this expression's window
-	Window() *Window
+	Window() *WindowDefinition
 }
 
 // WindowBuffer is a type alias for a window materialization
@@ -123,8 +128,8 @@ type WindowInterval struct {
 type WindowFunction interface {
 	Disposable
 
-	// WithWindow passes fields from the parent Window, deferring partial construction of a WindowFunction
-	WithWindow(w *Window) WindowFunction
+	// WithWindow passes fields from the parent WindowDefinition, deferring partial construction of a WindowFunction
+	WithWindow(w *WindowDefinition) (WindowFunction, error)
 	// StartPartition discards any previous state and initializes the aggregation for a new partition
 	StartPartition(*Context, WindowInterval, WindowBuffer) error
 	// DefaultFramer returns a new instance of the default WindowFramer for a particular aggregation
@@ -151,9 +156,9 @@ type WindowAdaptableExpression interface {
 type WindowFramer interface {
 	// NewFramer is a prototype constructor that create a new Framer with pass-through
 	// parent arguments
-	NewFramer(WindowInterval) WindowFramer
+	NewFramer(WindowInterval) (WindowFramer, error)
 	// Next returns the next WindowInterval frame, or an io.EOF error after the last row
-	Next() (WindowInterval, error)
+	Next(*Context, WindowBuffer) (WindowInterval, error)
 	// FirstIdx returns the current frame start index
 	FirstIdx() int
 	// LastIdx returns the last valid index in the current frame
@@ -164,6 +169,33 @@ type WindowFramer interface {
 	// last frame, and added range since the last frame.
 	// TODO: implement sliding window interface in framers, windowBlockIter, and aggregation functions
 	//SlidingInterval(ctx Context) (WindowInterval, WindowInterval, WindowInterval)
+}
+
+// WindowFrame describe input bounds for an aggregation function
+// execution. A frame will only have two non-null fields for the start
+// and end bounds. A WindowFrame plan node is associated
+// with an exec WindowFramer.
+type WindowFrame interface {
+	fmt.Stringer
+
+	// NewFramer constructs an executable WindowFramer
+	NewFramer(*WindowDefinition) (WindowFramer, error)
+	// UnboundedFollowing returns whether a frame end is unbounded
+	UnboundedFollowing() bool
+	// UnboundedPreceding returns whether a frame start is unbounded
+	UnboundedPreceding() bool
+	// StartCurrentRow returns whether a frame start is CURRENT ROW
+	StartCurrentRow() bool
+	// EndCurrentRow returns whether a frame end is CURRENT ROW
+	EndCurrentRow() bool
+	// StartNFollowing returns a frame's start preceding Expression or nil
+	StartNPreceding() Expression
+	// StartNFollowing returns a frame's start following Expression or nil
+	StartNFollowing() Expression
+	// EndNPreceding returns whether a frame end preceding Expression or nil
+	EndNPreceding() Expression
+	// EndNPreceding returns whether a frame end following Expression or nil
+	EndNFollowing() Expression
 }
 
 type AggregationBuffer interface {
@@ -182,9 +214,9 @@ type AggregationBuffer interface {
 type WindowAggregation interface {
 	WindowAdaptableExpression
 	// Window returns this expression's window
-	Window() *Window
+	Window() *WindowDefinition
 	// WithWindow returns a version of this window aggregation with the window given
-	WithWindow(window *Window) (WindowAggregation, error)
+	WithWindow(window *WindowDefinition) (WindowAggregation, error)
 }
 
 // Node is a node in the execution plan tree.
@@ -202,7 +234,11 @@ type Node interface {
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
-	WithChildren(...Node) (Node, error)
+	WithChildren(children ...Node) (Node, error)
+	// CheckPrivileges passes the operations representative of this Node to the PrivilegedOperationChecker to determine
+	// whether a user (contained in the context, along with their active roles) has the necessary privileges to execute
+	// this node (and its children).
+	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
 }
 
 type Node2 interface {
@@ -211,6 +247,12 @@ type Node2 interface {
 	// RowIter2 produces a row iterator from this node. The current row frame being
 	// evaluated is provided, as well the context of the query.
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
+}
+
+// RowIterTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
+type RowIterTypeSelector interface {
+	RowIter
+	IsNode2() bool
 }
 
 // CommentedNode allows comments to be set and retrieved on it
@@ -266,9 +308,47 @@ type Databaser interface {
 	WithDatabase(Database) (Node, error)
 }
 
-// SchemaTarget is a node that has a target schema that can be set
+// Databaseable is a node with a string reference to a database
+type Databaseable interface {
+	Database() string
+}
+
+// MultiDatabaser is a node that contains a reference to a database provider. This interface is intended for very
+// specific nodes that must resolve databases during execution time rather than during analysis, such as block
+// statements where the execution of a nested statement in the block may affect future statements within that same block.
+type MultiDatabaser interface {
+	// DatabaseProvider returns the current DatabaseProvider.
+	DatabaseProvider() DatabaseProvider
+	// WithDatabaseProvider returns a new node instance with the database provider replaced with the one given as parameter.
+	WithDatabaseProvider(DatabaseProvider) (Node, error)
+}
+
+// SchemaTarget is a node that has a target schema that can be set during analysis. This is necessary because some
+// schema objects (things that involve expressions, column references, etc.) can only be reified during analysis. The
+// target schema is the schema of a table under a DDL operation, not the schema of rows returned by this node.
 type SchemaTarget interface {
+	// WithTargetSchema returns a copy of this node with the target schema set
 	WithTargetSchema(Schema) (Node, error)
+	// TargetSchema returns the target schema for this node
+	TargetSchema() Schema
+}
+
+// PrimaryKeySchemaTarget is a node that has a primary key target schema that can be set
+type PrimaryKeySchemaTarget interface {
+	SchemaTarget
+	WithPrimaryKeySchema(schema PrimaryKeySchema) (Node, error)
+}
+
+// TableFunction is a node that is generated by a function
+type TableFunction interface {
+	Node
+	Expressioner
+	Databaser
+
+	// NewInstance returns a new instance of the table function
+	NewInstance(ctx *Context, db Database, expressions []Expression) (Node, error)
+	// FunctionName returns the name of this table function
+	FunctionName() string
 }
 
 // Table represents the backend of a SQL table.
@@ -283,7 +363,7 @@ type Table interface {
 type Table2 interface {
 	Table
 
-	PartitionRows2(*Context, Partition) (RowIter2, error)
+	PartitionRows2(ctx *Context, part Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {
@@ -315,17 +395,8 @@ type FilteredTable interface {
 // that's more optimized given the columns that are projected.
 type ProjectedTable interface {
 	Table
-	WithProjection(colNames []string) Table
-}
-
-// StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
-// planning performance.
-type StatisticsTable interface {
-	Table
-	// NumRows returns the unfiltered count of rows contained in the table
-	NumRows(*Context) (uint64, error)
-	// DataLength returns the length of the data file (varies by engine).
-	DataLength(ctx *Context) (uint64, error)
+	WithProjections(colNames []string) Table
+	Projections() []string
 }
 
 // IndexUsing is the desired storage type.
@@ -364,13 +435,24 @@ type IndexedTable interface {
 	GetIndexes(ctx *Context) ([]Index, error)
 }
 
-// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match a given index
+// IndexAddressable provides a Table that has its row iteration restricted to only the rows that match the given index
 // lookup.
-type IndexAddressableTable interface {
-	Table
+type IndexAddressable interface {
 	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
 	// which was in turn created by a call to Index.Get() for a set of keys for this table.
 	WithIndexLookup(IndexLookup) Table
+}
+
+// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match the given index
+// lookup.
+type IndexAddressableTable interface {
+	Table
+	IndexAddressable
+}
+
+type ParallelizedIndexAddressableTable interface {
+	IndexAddressableTable
+	ShouldParallelizeAccess() bool
 }
 
 // IndexAlterableTable represents a table that supports index modification operations.
@@ -386,22 +468,36 @@ type IndexAlterableTable interface {
 	RenameIndex(ctx *Context, fromIndexName string, toIndexName string) error
 }
 
-// ForeignKeyTable is a table that can declare its foreign key constraints.
+// ForeignKeyTable is a table that can declare its foreign key constraints, as well as be referenced.
 type ForeignKeyTable interface {
-	Table
-	// GetForeignKeys returns the foreign key constraints on this table.
-	GetForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+	IndexedTable
+	// CreateIndexForForeignKey creates an index for this table, using the provided parameters. Indexes created through
+	// this function are specifically ones generated for use with a foreign key. Returns an error if the index name
+	// already exists, or an index on the same columns already exists.
+	CreateIndexForForeignKey(ctx *Context, indexName string, using IndexUsing, constraint IndexConstraint, columns []IndexColumn) error
+
+	// GetDeclaredForeignKeys returns the foreign key constraints that are declared by this table.
+	GetDeclaredForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+	// GetReferencedForeignKeys returns the foreign key constraints that are referenced by this table.
+	GetReferencedForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+	// AddForeignKey adds the given foreign key constraint to the table. Returns an error if the foreign key name
+	// already exists on any other table within the database.
+	AddForeignKey(ctx *Context, fk ForeignKeyConstraint) error
+	// DropForeignKey removes a foreign key from the table.
+	DropForeignKey(ctx *Context, fkName string) error
+	// UpdateForeignKey updates the given foreign key constraint. May range from updated table names to setting the
+	// IsResolved boolean.
+	UpdateForeignKey(ctx *Context, fkName string, fk ForeignKeyConstraint) error
+	// GetForeignKeyUpdater returns a ForeignKeyUpdater for this table.
+	GetForeignKeyUpdater(ctx *Context) ForeignKeyUpdater
 }
 
-// ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
-type ForeignKeyAlterableTable interface {
-	Table
-	// CreateForeignKey creates an index for this table, using the provided parameters.
-	// Returns an error if the foreign key name already exists.
-	CreateForeignKey(ctx *Context, fkName string, columns []string, referencedTable string, referencedColumns []string,
-		onUpdate, onDelete ForeignKeyReferenceOption) error
-	// DropForeignKey removes a foreign key from the database.
-	DropForeignKey(ctx *Context, fkName string) error
+// ForeignKeyUpdater is a TableEditor that is addressable via IndexLookup.
+type ForeignKeyUpdater interface {
+	RowInserter
+	RowUpdater
+	RowDeleter
+	IndexAddressable
 }
 
 // CheckTable is a table that can declare its check constraints.
@@ -503,14 +599,11 @@ type TruncateableTable interface {
 // and AUTO_INCREMENT column in their schema.
 type AutoIncrementTable interface {
 	Table
-	// PeekNextAutoIncrementValue returns the expected next AUTO_INCREMENT value but does not require
-	// implementations to update their state.
-	PeekNextAutoIncrementValue(*Context) (interface{}, error)
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.
 	// Implementations are responsible for updating their state to provide the correct values.
-	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (interface{}, error)
+	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
 }
@@ -521,7 +614,7 @@ var ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns
 // AUTO_INCREMENT sequence, eg 'ALTER TABLE t AUTO_INCREMENT = 10;'
 type AutoIncrementSetter interface {
 	// SetAutoIncrementValue sets a new AUTO_INCREMENT value.
-	SetAutoIncrementValue(*Context, interface{}) error
+	SetAutoIncrementValue(*Context, uint64) error
 	// Close finalizes the set operation, persisting the result.
 	Closer
 }
@@ -543,11 +636,11 @@ type RowReplacer interface {
 	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
 	// Close is called.
 	Delete(*Context, Row) error
-	// Close finalizes the replace operation, persisting the result.
+	// Closer finalizes the replace operation, persisting the result.
 	Closer
 }
 
-// Replacer allows rows to be replaced through a Delete (if applicable) then Insert.
+// ReplaceableTable allows rows to be replaced through a Delete (if applicable) then Insert.
 type ReplaceableTable interface {
 	Table
 	// Replacer returns a RowReplacer for this table. The RowReplacer will have Insert and optionally Delete called once
@@ -555,7 +648,7 @@ type ReplaceableTable interface {
 	Replacer(ctx *Context) RowReplacer
 }
 
-// UpdateableTable is a table that can process updates of existing rows via update statements.
+// UpdatableTable is a table that can process updates of existing rows via update statements.
 type UpdatableTable interface {
 	Table
 	// Updater returns a RowUpdater for this table. The RowUpdater will have Update called once for each row to be
@@ -568,20 +661,40 @@ type RowUpdater interface {
 	TableEditor
 	// Update the given row. Provides both the old and new rows.
 	Update(ctx *Context, old Row, new Row) error
-	// Close finalizes the update operation, persisting the result.
+	// Closer finalizes the update operation, persisting the result.
 	Closer
+}
+
+// RewritableTable is an extension to Table that makes it simpler for integrators to adapt to schema changes that must
+// rewrite every row of the table. In this case, rows are streamed from the existing table in the old schema,
+// transformed / updated appropriately, and written with the new format.
+type RewritableTable interface {
+	Table
+	AlterableTable
+
+	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old and new
+	// versions of the schema and modified column are provided. For some operations, one or both of |oldColumn| or
+	// |newColumn| may be nil.
+	// The engine may decide to rewrite tables regardless in some cases, such as when a new non-nullable column is added.
+	ShouldRewriteTable(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) bool
+
+	// RewriteInserter returns a RowInserter for the new schema. Rows from the current table, with the old schema, will
+	// be streamed from the table and passed to this RowInserter. Implementor tables must still return rows in the
+	// current schema until the rewrite operation completes. |Close| will be called on RowInserter when all rows have
+	// been inserted.
+	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) (RowInserter, error)
 }
 
 // DatabaseProvider is a collection of Database.
 type DatabaseProvider interface {
 	// Database gets a Database from the provider.
-	Database(name string) (Database, error)
+	Database(ctx *Context, name string) (Database, error)
 
 	// HasDatabase checks if the Database exists in the provider.
-	HasDatabase(name string) bool
+	HasDatabase(ctx *Context, name string) bool
 
 	// AllDatabases returns a slice of all Databases in the provider.
-	AllDatabases() []Database
+	AllDatabases(ctx *Context) []Database
 }
 
 type MutableDatabaseProvider interface {
@@ -597,7 +710,13 @@ type MutableDatabaseProvider interface {
 // FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
 type FunctionProvider interface {
 	// Function returns the function with the name provided, case-insensitive
-	Function(name string) (Function, error)
+	Function(ctx *Context, name string) (Function, error)
+}
+
+// TableFunctionProvider is an extension of DatabaseProvider that allows custom table functions to be provided
+type TableFunctionProvider interface {
+	// TableFunction returns the table function with the name provided, case-insensitive
+	TableFunction(ctx *Context, name string) (TableFunction, error)
 }
 
 // Database represents the database.
@@ -635,6 +754,18 @@ type VersionedDatabase interface {
 	// GetTableNamesAsOf returns the table names of every table in the database as of the revision given. Implementors
 	// must choose which types of expressions to accept as revision names.
 	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
+}
+
+// UnresolvedTable is a Table that is either unresolved or deferred for until an asOf resolution
+type UnresolvedTable interface {
+	Nameable
+	// Database returns the database name
+	Database() string
+	// WithAsOf returns a copy of this versioned table with its AsOf
+	// field set to the given value. Analogous to WithChildren.
+	WithAsOf(asOf Expression) (Node, error)
+	//AsOf returns this table's asof expression.
+	AsOf() Expression
 }
 
 type TransactionCharacteristic int
@@ -679,8 +810,9 @@ type TransactionDatabase interface {
 // TriggerDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
 // but must store and return them when asked.
 type TriggerDefinition struct {
-	Name            string // The name of this trigger. Trigger names in a database are unique.
-	CreateStatement string // The text of the statement to create this trigger.
+	Name            string    // The name of this trigger. Trigger names in a database are unique.
+	CreateStatement string    // The text of the statement to create this trigger.
+	CreatedAt       time.Time // The time that the trigger was created.
 }
 
 // TriggerDatabase is a Database that supports the creation and execution of triggers. The engine handles all parsing
@@ -789,7 +921,7 @@ func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error
 
 // TableCreator should be implemented by databases that can create new tables.
 type TableCreator interface {
-	// Creates the table with the given name and schema. If a table with that name already exists, must return
+	// CreateTable creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
@@ -798,7 +930,7 @@ type TableCreator interface {
 // Note that temporary tables with the same name as persisted tables take precedence in most SQL operations.
 type TemporaryTableCreator interface {
 	Database
-	// Creates the table with the given name and schema. If a temporary table with that name already exists, must
+	// CreateTemporaryTable creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
 	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
@@ -833,7 +965,7 @@ type TableDropper interface {
 
 // TableRenamer should be implemented by databases that can rename tables.
 type TableRenamer interface {
-	// Renames a table from oldName to newName as given. If a table with newName already exists, must return
+	// RenameTable renames a table from oldName to newName as given. If a table with newName already exists, must return
 	// sql.ErrTableAlreadyExists.
 	RenameTable(ctx *Context, oldName, newName string) error
 }
@@ -883,6 +1015,52 @@ type StoredProcedureDetails struct {
 	ModifiedAt      time.Time // The time of the last modification to the stored procedure.
 }
 
+// ExternalStoredProcedureDetails are the details of an external stored procedure. Compared to standard stored
+// procedures, external ones are considered "built-in", in that they're not created by the user, and may not be modified
+// or deleted by a user. In addition, they're implemented as a function taking standard parameters, compared to stored
+// procedures being implemented as expressions.
+type ExternalStoredProcedureDetails struct {
+	// Name is the name of the external stored procedure. If two external stored procedures share a name, then they're
+	// considered overloaded. Standard stored procedures do not support overloading.
+	Name string
+	// Schema describes the row layout of the RowIter returned from Function.
+	Schema Schema
+	// Function is the implementation of the external stored procedure. All functions should have the following definition:
+	// `func(*Context, <PARAMETERS>) (RowIter, error)`. The <PARAMETERS> may be any of the following types: `bool`,
+	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `Decimal`
+	// (shopspring/decimal). The architecture-dependent types `int` and `uint` (without a number) are also supported.
+	// It is valid to return a nil RowIter if there are no rows to be returned.
+	//
+	// Each parameter, by default, is an IN parameter. If the parameter type is a pointer, e.g. `*int32`, then it
+	// becomes an INOUT parameter. There is no way to set a parameter as an OUT parameter.
+	//
+	// Values are converted to their nearest type before being passed in, following the conversion rules of their
+	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with
+	// the default collation) and Decimal (treated with a larger precision and scale). Take extra care when using decimal
+	// for an INOUT parameter, to ensure that the returned value fits the original's precision and scale, else an error
+	// will occur.
+	//
+	// As functions support overloading, each variant must have a completely unique function signature to prevent
+	// ambiguity. Uniqueness is determined by the number of parameters. If two functions are returned that have the same
+	// name and same number of parameters, then an error is thrown. If the last parameter is variadic, then the stored
+	// procedure functions as though it has the integer-max number of parameters. When an exact match is not found for
+	// overloaded functions, the largest function is used (which in this case will be the variadic function). Also, due
+	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
+	// The type of the variadic parameter may not have a pointer type.
+	Function interface{}
+}
+
+// Comment returns a comment stating that this is an external stored procedure, which is defined by the given database.
+func (espd ExternalStoredProcedureDetails) Comment(dbName string) string {
+	return fmt.Sprintf("External stored procedure defined by %s", dbName)
+}
+
+// FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some
+// tools (such as Java's JDBC connector) require a valid statement in some situations.
+func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt(dbName string) string {
+	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT '%s';", espd.Name, espd.Comment(dbName))
+}
+
 // StoredProcedureDatabase is a database that supports the creation and execution of stored procedures. The engine will
 // handle all parsing and execution logic for stored procedures. Integrators only need to store and retrieve
 // StoredProcedureDetails, while verifying that all stored procedures have a unique name without regard to
@@ -899,6 +1077,16 @@ type StoredProcedureDatabase interface {
 
 	// DropStoredProcedure removes the StoredProcedureDetails with the matching name from the database.
 	DropStoredProcedure(ctx *Context, name string) error
+}
+
+// ExternalStoredProcedureDatabase is a database that implements its own stored procedures as a function, rather than as
+// a SQL statement. The returned stored procedures are treated as "built-in", in that they cannot be modified nor
+// deleted.
+type ExternalStoredProcedureDatabase interface {
+	StoredProcedureDatabase
+
+	// GetExternalStoredProcedures returns all ExternalStoredProcedureDetails for the database.
+	GetExternalStoredProcedures(ctx *Context) ([]ExternalStoredProcedureDetails, error)
 }
 
 // EvaluateCondition evaluates a condition, which is an expression whose value

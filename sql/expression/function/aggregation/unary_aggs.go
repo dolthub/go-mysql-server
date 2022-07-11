@@ -4,7 +4,7 @@ import "github.com/dolthub/go-mysql-server/optgen/cmd/support"
 
 //go:generate optgen -out unary_aggs.og.go -pkg aggregation aggs unary_aggs.go
 
-var UnaryAggDefs = []support.AggDef{ // alphabetically sorted
+var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{
 		Name:     "Avg",
 		Desc:     "returns the average value of expr in all rows.",

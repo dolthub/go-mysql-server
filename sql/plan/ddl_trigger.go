@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -28,6 +31,7 @@ type TriggerOrder struct {
 }
 
 type CreateTrigger struct {
+	ddlNode
 	TriggerName         string
 	TriggerTime         string
 	TriggerEvent        string
@@ -36,11 +40,23 @@ type CreateTrigger struct {
 	Body                sql.Node
 	CreateTriggerString string
 	BodyString          string
-	CreateDatabase      sql.Database
+	CreatedAt           time.Time
+	Definer             string
 }
 
-func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrder *TriggerOrder, table sql.Node, body sql.Node, createTriggerString, bodyString string) *CreateTrigger {
+func NewCreateTrigger(triggerDb sql.Database,
+	triggerName,
+	triggerTime,
+	triggerEvent string,
+	triggerOrder *TriggerOrder,
+	table sql.Node,
+	body sql.Node,
+	createTriggerString,
+	bodyString string,
+	createdAt time.Time,
+	definer string) *CreateTrigger {
 	return &CreateTrigger{
+		ddlNode:             ddlNode{db: triggerDb},
 		TriggerName:         triggerName,
 		TriggerTime:         triggerTime,
 		TriggerEvent:        triggerEvent,
@@ -49,21 +65,24 @@ func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrde
 		Body:                body,
 		BodyString:          bodyString,
 		CreateTriggerString: createTriggerString,
+		CreatedAt:           createdAt,
+		Definer:             definer,
 	}
 }
 
 func (c *CreateTrigger) Database() sql.Database {
-	return c.CreateDatabase
+	return c.db
 }
 
 func (c *CreateTrigger) WithDatabase(database sql.Database) (sql.Node, error) {
-	nc := *c
-	nc.CreateDatabase = database
-	return &nc, nil
+	ct := *c
+	ct.db = database
+	return &ct, nil
 }
 
 func (c *CreateTrigger) Resolved() bool {
-	return c.Table.Resolved() && c.Body.Resolved()
+	// c.Body can be unresolved since it can have unresolved table reference to non-existent table
+	return c.ddlNode.Resolved() && c.Table.Resolved()
 }
 
 func (c *CreateTrigger) Schema() sql.Schema {
@@ -71,18 +90,23 @@ func (c *CreateTrigger) Schema() sql.Schema {
 }
 
 func (c *CreateTrigger) Children() []sql.Node {
-	return []sql.Node{c.Table, c.Body}
+	return []sql.Node{c.Table}
 }
 
 func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 2)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 
 	nc := *c
 	nc.Table = children[0]
-	nc.Body = children[1]
 	return &nc, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Trigger))
 }
 
 func (c *CreateTrigger) String() string {
@@ -140,7 +164,53 @@ func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		definition: sql.TriggerDefinition{
 			Name:            c.TriggerName,
 			CreateStatement: c.CreateTriggerString,
+			CreatedAt:       c.CreatedAt,
 		},
-		db: c.CreateDatabase,
+		db: c.db,
 	}, nil
+}
+
+// OrderTriggers is a utility method that first sorts triggers into their precedence. It then splits the triggers into
+// before and after pairs.
+func OrderTriggers(triggers []*CreateTrigger) (beforeTriggers []*CreateTrigger, afterTriggers []*CreateTrigger) {
+	orderedTriggers := make([]*CreateTrigger, len(triggers))
+	copy(orderedTriggers, triggers)
+
+Top:
+	for i, trigger := range triggers {
+		if trigger.TriggerOrder != nil {
+			ref := trigger.TriggerOrder.OtherTriggerName
+			// remove the trigger from the slice
+			orderedTriggers = append(orderedTriggers[:i], orderedTriggers[i+1:]...)
+			// then find where to reinsert it
+			for j, t := range orderedTriggers {
+				if t.TriggerName == ref {
+					if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
+						orderedTriggers = append(orderedTriggers[:j], append(triggers[i:i+1], orderedTriggers[j:]...)...)
+					} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
+						if len(orderedTriggers) == j-1 {
+							orderedTriggers = append(orderedTriggers, triggers[i])
+						} else {
+							orderedTriggers = append(orderedTriggers[:j+1], append(triggers[i:i+1], orderedTriggers[j+1:]...)...)
+						}
+					} else {
+						panic("unexpected value for trigger order")
+					}
+					continue Top
+				}
+			}
+			panic(fmt.Sprintf("Referenced trigger %s not found", ref))
+		}
+	}
+
+	// Now that we have ordered the triggers according to precedence, split them into BEFORE / AFTER triggers
+	for _, trigger := range orderedTriggers {
+		if trigger.TriggerTime == sqlparser.BeforeStr {
+			beforeTriggers = append(beforeTriggers, trigger)
+		} else {
+			afterTriggers = append(afterTriggers, trigger)
+		}
+	}
+
+	return beforeTriggers, afterTriggers
 }

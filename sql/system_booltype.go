@@ -15,12 +15,17 @@
 package sql
 
 import (
+	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemBoolValueType = reflect.TypeOf(int8(0))
 
 // systemBoolType is an internal boolean type ONLY for system variables.
 type systemBoolType struct {
@@ -95,6 +100,14 @@ func (t systemBoolType) Convert(v interface{}) (interface{}, error) {
 		if value == float64(int64(value)) {
 			return t.Convert(int64(value))
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	case string:
 		switch strings.ToLower(value) {
 		case "on", "true":
@@ -116,13 +129,21 @@ func (t systemBoolType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemBoolType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemBoolType); ok {
+		return t.varName == ot.varName
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemBoolType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemBoolType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemBoolType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -132,7 +153,11 @@ func (t systemBoolType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), strconv.AppendInt(nil, int64(v.(int8)), 10)), nil
+	stop := len(dest)
+	dest = strconv.AppendInt(dest, int64(v.(int8)), 10)
+	val := dest[stop:]
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.
@@ -143,6 +168,11 @@ func (t systemBoolType) String() string {
 // Type implements Type interface.
 func (t systemBoolType) Type() query.Type {
 	return sqltypes.Int8
+}
+
+// ValueType implements Type interface.
+func (t systemBoolType) ValueType() reflect.Type {
+	return systemBoolValueType
 }
 
 // Zero implements Type interface.

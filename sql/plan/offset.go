@@ -15,7 +15,8 @@
 package plan
 
 import (
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -54,16 +55,17 @@ func (o *Offset) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (o *Offset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Offset", opentracing.Tag{Key: "offset", Value: o.Offset})
+	span, ctx := ctx.Span("plan.Offset", trace.WithAttributes(attribute.Stringer("offset", o.Offset)))
 
 	offset, err := getInt64Value(ctx, o.Offset)
 	if err != nil {
+		span.End()
 		return nil, err
 	}
 
 	it, err := o.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &offsetIter{offset, it}), nil
@@ -75,6 +77,11 @@ func (o *Offset) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 1)
 	}
 	return NewOffset(o.Offset, children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (o *Offset) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return o.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (o Offset) String() string {

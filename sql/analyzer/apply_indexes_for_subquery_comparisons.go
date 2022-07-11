@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // applyIndexesForSubqueryComparisons converts a `Filter(id = (SELECT ...),
@@ -29,13 +30,13 @@ import (
 // 3. The left hand side is a GetField expression against the Child.
 // 4. The Child is a *plan.ResolvedTable.
 // 5. The referenced field in the Child is indexed.
-func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	aliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			var replacement sql.Node
@@ -45,10 +46,10 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 				replacement = getIndexedInSubqueryFilter(ctx, a, is.Left, is.Right, node, false, scope, aliases)
 			}
 			if replacement != nil {
-				return replacement, nil
+				return replacement, transform.NewTree, nil
 			}
 		}
-		return node, nil
+		return node, transform.SameTree, nil
 	})
 }
 
@@ -63,7 +64,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 	if referencesChildRow {
 		return nil
 	}
-	indexes, err := getIndexesForNode(ctx, a, rt)
+	indexes, err := newIndexAnalyzerForNode(ctx, rt)
 	if err != nil {
 		return nil
 	}
@@ -73,7 +74,9 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 		return nil
 	}
 	keyExpr := gf.WithIndex(0)
-	ita := plan.NewIndexedTableAccess(rt, idx, []sql.Expression{keyExpr})
+	// We currently only support *expresssion.Equals and *InSubquery; neither matches null.
+	nullmask := []bool{false}
+	ita := plan.NewIndexedTableAccess(rt, plan.NewLookupBuilder(idx, []sql.Expression{keyExpr}, nullmask))
 	if canBuildIndex, err := ita.CanBuildIndex(ctx); err != nil || !canBuildIndex {
 		return nil
 	}
@@ -85,7 +88,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 // range [low, high).
 func nodeHasGetFieldReferenceBetween(n sql.Node, low, high int) bool {
 	var found bool
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				if expressionHasGetFieldReferenceBetween(e, low, high) {

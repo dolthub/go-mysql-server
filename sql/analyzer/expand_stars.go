@@ -17,70 +17,79 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // expandStars replaces star expressions into lists of concrete column expressions
-func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("expand_stars")
-	defer span.Finish()
+func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("expand_stars")
+	defer span.End()
 
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		switch n := n.(type) {
 		case *plan.Project:
 			if !n.Child.Resolved() {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
-			expanded, err := expandStarsForExpressions(a, n.Projections, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child.Schema(), tableAliases)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-
-			return plan.NewProject(expanded, n.Child), nil
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return plan.NewProject(expanded, n.Child), transform.NewTree, nil
 		case *plan.GroupBy:
 			if !n.Child.Resolved() {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
-			expanded, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child.Schema(), tableAliases)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-
-			return plan.NewGroupBy(expanded, n.GroupByExprs, n.Child), nil
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return plan.NewGroupBy(expanded, n.GroupByExprs, n.Child), transform.NewTree, nil
 		case *plan.Window:
 			if !n.Child.Resolved() {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
-
-			expanded, err := expandStarsForExpressions(a, n.SelectExprs, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child.Schema(), tableAliases)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-
-			return plan.NewWindow(expanded, n.Child), nil
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return plan.NewWindow(expanded, n.Child), transform.NewTree, nil
 		default:
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, error) {
+func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, transform.TreeIdentity, error) {
 	var expressions []sql.Expression
+	same := transform.SameTree
 	for _, e := range exprs {
 		if star, ok := e.(*expression.Star); ok {
+			same = transform.NewTree
 			var exprs []sql.Expression
 			for i, col := range schema {
 				lowerSource := strings.ToLower(col.Source)
@@ -93,7 +102,7 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.S
 			}
 
 			if len(exprs) == 0 && star.Table != "" {
-				return nil, sql.ErrTableNotFound.New(star.Table)
+				return nil, false, sql.ErrTableNotFound.New(star.Table)
 			}
 
 			expressions = append(expressions, exprs...)
@@ -103,5 +112,5 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.S
 	}
 
 	a.Log("resolved * to expressions %s", expressions)
-	return expressions, nil
+	return expressions, same, nil
 }

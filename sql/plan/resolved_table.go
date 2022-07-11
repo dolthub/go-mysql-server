@@ -28,6 +28,10 @@ type ResolvedTable struct {
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
+var _ sql.Node2 = (*ResolvedTable)(nil)
+
+// Can't embed Table2 like we do Table1 as it's an extension not everyone implements
+var _ sql.Table2 = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
@@ -56,11 +60,28 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 
 	partitions, err := t.Table.Partitions(ctx)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)), nil
+}
+
+func (t *ResolvedTable) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	span, ctx := ctx.Span("plan.ResolvedTable")
+
+	partitions, err := t.Table.Partitions(ctx)
+	if err != nil {
+		span.End()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)).(sql.RowIter2), nil
+}
+
+// PartitionRows2 implements sql.Table2. sql.Table methods are embedded in the type.
+func (t *ResolvedTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
+	return t.Table.(sql.Table2).PartitionRows2(ctx, part)
 }
 
 // WithChildren implements the Node interface.
@@ -70,6 +91,19 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return t, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
+	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
+	// nodes are things such as indexed access, filters, limits, etc.
+	if sql.IsDualTable(t) {
+		return true
+	}
+
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
 }
 
 // WithTable returns this Node with the given table. The new table should have the same name as the previous table.

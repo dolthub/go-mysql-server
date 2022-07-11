@@ -124,18 +124,28 @@ func (a *Arithmetic) IsNullable() bool {
 
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
+	//TODO: what if both BindVars? should be constant folded
+	rTyp := a.Right.Type()
+	if sql.IsDeferredType(rTyp) {
+		return rTyp
+	}
+	lTyp := a.Left.Type()
+	if sql.IsDeferredType(lTyp) {
+		return lTyp
+	}
+
 	switch strings.ToLower(a.Op) {
 	case sqlparser.PlusStr, sqlparser.MinusStr, sqlparser.MultStr, sqlparser.DivStr:
 		if isInterval(a.Left) || isInterval(a.Right) {
 			return sql.Datetime
 		}
 
-		if sql.IsTime(a.Left.Type()) && sql.IsTime(a.Right.Type()) {
+		if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
 			return sql.Int64
 		}
 
-		if sql.IsInteger(a.Left.Type()) && sql.IsInteger(a.Right.Type()) {
-			if sql.IsUnsigned(a.Left.Type()) && sql.IsUnsigned(a.Right.Type()) {
+		if sql.IsInteger(lTyp) && sql.IsInteger(rTyp) {
+			if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 				return sql.Uint64
 			}
 			return sql.Int64
@@ -147,7 +157,7 @@ func (a *Arithmetic) Type() sql.Type {
 		return sql.Uint64
 
 	case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.IntDivStr, sqlparser.ModStr:
-		if sql.IsUnsigned(a.Left.Type()) && sql.IsUnsigned(a.Right.Type()) {
+		if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 			return sql.Uint64
 		}
 		return sql.Int64
@@ -366,7 +376,7 @@ func div(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case uint64:
 			if r == 0 {
-				return sql.Null, nil
+				return nil, nil
 			}
 			return l / r, nil
 		}
@@ -375,7 +385,7 @@ func div(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case int64:
 			if r == 0 {
-				return sql.Null, nil
+				return nil, nil
 			}
 			return l / r, nil
 		}
@@ -384,7 +394,7 @@ func div(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case float64:
 			if r == 0 {
-				return sql.Null, nil
+				return nil, nil
 			}
 			return l / r, nil
 		}
@@ -477,7 +487,7 @@ func intDiv(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case uint64:
 			if r == 0 {
-				return sql.Null, nil
+				return nil, nil
 			}
 			return uint64(l / r), nil
 		}
@@ -486,7 +496,7 @@ func intDiv(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case int64:
 			if r == 0 {
-				return sql.Null, nil
+				return nil, nil
 			}
 			return int64(l / r), nil
 		}

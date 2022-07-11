@@ -128,7 +128,7 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	formatStr, ok := right.(string)
 	if !ok {
-		return nil, ErrInvalidArgument.New("time_format", "format must be a string")
+		return nil, sql.ErrInvalidArgumentDetails.New("time_format", "format must be a string")
 	}
 
 	return formatTime(

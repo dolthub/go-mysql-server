@@ -69,7 +69,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "c1", Source: "foo", Type: tc.colType},
-			}))
+			}), nil)
 
 			insertPlan := NewInsertInto(sql.UnresolvedDatabase(""), NewResolvedTable(table, nil, nil), NewValues([][]sql.Expression{{
 				expression.NewLiteral(tc.value, tc.valueType),

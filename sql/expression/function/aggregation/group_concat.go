@@ -32,7 +32,7 @@ type GroupConcat struct {
 	selectExprs []sql.Expression
 	maxLen      int
 	returnType  sql.Type
-	window      *sql.Window
+	window      *sql.WindowDefinition
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
@@ -58,14 +58,14 @@ func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, s
 }
 
 // WithWindow implements sql.Aggregation
-func (g *GroupConcat) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (g *GroupConcat) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	ng := *g
 	ng.window = window
 	return &ng, nil
 }
 
 // Window implements sql.Aggregation
-func (g *GroupConcat) Window() *sql.Window {
+func (g *GroupConcat) Window() *sql.WindowDefinition {
 	return g.window
 }
 
@@ -180,7 +180,7 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	sortFieldMarker := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[sortFieldMarker:], g.maxLen)
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen)
 }
 
 type groupConcatBuffer struct {
@@ -204,21 +204,26 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 	}
 
 	var v interface{}
-	if retType == sql.Blob {
+	var vs string
+	if sql.IsByteType(retType) {
 		v, err = sql.Blob.Convert(evalRow[0])
+		if err != nil {
+			return err
+		}
+		vs = string(v.([]byte))
+		if len(vs) == 0 {
+			return nil
+		}
 	} else {
 		v, err = sql.LongText.Convert(evalRow[0])
+		if err != nil {
+			return err
+		}
+		if v == nil {
+			return nil
+		}
+		vs = v.(string)
 	}
-
-	if err != nil {
-		return err
-	}
-
-	if v == nil {
-		return nil
-	}
-
-	vs := v.(string)
 
 	// Get the current array of rows and the map
 	// Check if distinct is active if so look at and update our map

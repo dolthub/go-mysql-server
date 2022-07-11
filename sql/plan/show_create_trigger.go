@@ -17,7 +17,6 @@ package plan
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -100,7 +99,7 @@ func (s *ShowCreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 				characterSetClient,      // character_set_client
 				collationConnection,     // collation_connection
 				collationServer,         // Database Collation
-				time.Unix(0, 0).UTC(),   // Created
+				trigger.CreatedAt,       // Created
 			}), nil
 		}
 	}
@@ -110,6 +109,12 @@ func (s *ShowCreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 // WithChildren implements the sql.Node interface.
 func (s *ShowCreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowCreateTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: figure out what privileges are needed here
+	return true
 }
 
 // Database implements the sql.Databaser interface.

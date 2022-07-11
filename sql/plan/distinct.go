@@ -43,7 +43,7 @@ func (d *Distinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	it, err := d.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -57,6 +57,11 @@ func (d *Distinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewDistinct(children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *Distinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (d Distinct) String() string {
@@ -155,7 +160,7 @@ func (d *OrderedDistinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 
 	it, err := d.Child.RowIter(ctx, nil)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -169,6 +174,11 @@ func (d *OrderedDistinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewOrderedDistinct(children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *OrderedDistinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (d OrderedDistinct) String() string {

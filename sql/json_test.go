@@ -16,7 +16,10 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
+
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -94,14 +97,22 @@ func TestJsonCompare(t *testing.T) {
 }
 
 func TestJsonConvert(t *testing.T) {
+	type testStruct struct {
+		Field string `json:"field"`
+	}
 	tests := []struct {
 		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
 		{`""`, MustJSON(`""`), false},
-		{[]int{1, 2}, JSONDocument{Val: []int{1, 2}}, false},
+		{[]int{1, 2}, MustJSON(`[1, 2]`), false},
 		{`{"a": true, "b": 3}`, MustJSON(`{"a":true,"b":3}`), false},
+		{[]byte(`{"a": true, "b": 3}`), MustJSON(`{"a":true,"b":3}`), false},
+		{testStruct{Field: "test"}, MustJSON(`{"field":"test"}`), false},
+		{MustJSON(`{"field":"test"}`), MustJSON(`{"field":"test"}`), false},
+		{[]string{}, MustJSON(`[]`), false},
+		{[]string{`555-555-5555`}, MustJSON(`["555-555-5555"]`), false},
 	}
 
 	for _, test := range tests {
@@ -112,6 +123,9 @@ func TestJsonConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if val != nil {
+					assert.True(t, reflect.TypeOf(val).Implements(JSON.ValueType()))
+				}
 			}
 		})
 	}
@@ -119,4 +133,41 @@ func TestJsonConvert(t *testing.T) {
 
 func TestJsonString(t *testing.T) {
 	require.Equal(t, "JSON", JSON.String())
+}
+
+func TestJsonSQL(t *testing.T) {
+	tests := []struct {
+		val         interface{}
+		expectedErr bool
+	}{
+		{`""`, false},
+		{`"555-555-555"`, false},
+		{`{}`, false},
+		{`{"field":"test"}`, false},
+		{MustJSON(`{"field":"test"}`), false},
+		{"1", false},
+		{`[1,2,3]`, false},
+		{[]int{1, 2, 3}, false},
+		{[]string{"1", "2", "3"}, false},
+		{"thisisbad", true},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.val), func(t *testing.T) {
+			val, err := JSON.SQL(nil, test.val)
+			if test.expectedErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, querypb.Type_JSON, val.Type())
+			}
+		})
+	}
+
+	// test that nulls are null
+	t.Run(fmt.Sprintf("%v", nil), func(t *testing.T) {
+		val, err := JSON.SQL(nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, querypb.Type_NULL_TYPE, val.Type())
+	})
 }

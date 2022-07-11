@@ -34,7 +34,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "foo"},
 		{Name: "b", Type: sql.Text, Source: "foo"},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -49,7 +49,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 		),
 	)
 
-	result, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -71,11 +71,11 @@ func TestQualifyColumnsProject(t *testing.T) {
 
 func TestMisusedAlias(t *testing.T) {
 	require := require.New(t)
-	f := getRule("resolve_columns")
+	f := getRule(resolveColumnsId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -86,16 +86,16 @@ func TestMisusedAlias(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	_, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	_, _, err := f.Apply(sql.NewEmptyContext(), nil, node, nil, DefaultRuleSelector)
 	require.EqualError(err, sql.ErrMisusedAlias.New("alias_i").Error())
 }
 
 func TestQualifyVariables(t *testing.T) {
 	assert := assert.New(t)
-	f := getRule("qualify_columns")
+	f := getRule(qualifyColumnsId)
 
-	sessionTable := memory.NewTable("@@session", sql.NewPrimaryKeySchema(sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}}))
-	globalTable := memory.NewTable("@@global", sql.NewPrimaryKeySchema(sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}}))
+	sessionTable := memory.NewTable("@@session", sql.NewPrimaryKeySchema(sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}}), nil)
+	globalTable := memory.NewTable("@@global", sql.NewPrimaryKeySchema(sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -115,7 +115,8 @@ func TestQualifyVariables(t *testing.T) {
 		plan.NewResolvedTable(globalTable, nil, nil),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	result, _, err := f.Apply(sql.NewEmptyContext(), nil, node, nil, DefaultRuleSelector)
+
 	assert.NoError(err)
 	assert.Equal(expected, result)
 
@@ -137,21 +138,21 @@ func TestQualifyVariables(t *testing.T) {
 		plan.NewResolvedTable(sessionTable, nil, nil),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	result, _, err = f.Apply(sql.NewEmptyContext(), nil, node, nil, DefaultRuleSelector)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 }
 
 func TestQualifyColumns(t *testing.T) {
-	f := getRule("qualify_columns")
+	f := getRule(qualifyColumnsId)
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "x", Type: sql.Int32, Source: "mytable"},
-	}))
+	}), nil)
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable2"},
 		{Name: "y", Type: sql.Int32, Source: "mytable2"},
-	}))
+	}), nil)
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -388,9 +389,9 @@ func TestQualifyColumns(t *testing.T) {
 
 func TestQualifyColumnsQualifiedStar(t *testing.T) {
 	require := require.New(t)
-	f := getRule("qualify_columns")
+	f := getRule(qualifyColumnsId)
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -416,21 +417,21 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	result, _, err := f.Apply(sql.NewEmptyContext(), nil, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
 
 func TestResolveColumns(t *testing.T) {
-	f := getRule("resolve_columns")
+	f := getRule(resolveColumnsId)
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "t1"},
 		{Name: "x", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 	t2 := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "t2"},
 		{Name: "y", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -623,11 +624,11 @@ func TestPushdownGroupByAliases(t *testing.T) {
 	a := NewDefault(nil)
 	node := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true, nil,
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,
 				uc("c"),
 			)),
 			expression.NewAlias("b", uc("d")),
-			expression.NewUnresolvedFunction("bar", false, nil,
+			expression.NewUnresolvedFunction("bar", true, nil,
 				uc("b"),
 			),
 		},
@@ -635,16 +636,16 @@ func TestPushdownGroupByAliases(t *testing.T) {
 			uc("a"),
 			uc("b"),
 		},
-		plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}), nil, nil),
+		plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}, nil), nil, nil),
 	)
 
 	expected := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true, nil,
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,
 				uc("c"),
 			)),
 			uc("b"),
-			expression.NewUnresolvedFunction("bar", false, nil,
+			expression.NewUnresolvedFunction("bar", true, nil,
 				uc("b_01"),
 			),
 		},
@@ -659,11 +660,11 @@ func TestPushdownGroupByAliases(t *testing.T) {
 				expression.NewAlias("b_01", uc("b")),
 				uc("c"),
 			},
-			plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}), nil, nil),
+			plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}, nil), nil, nil),
 		),
 	)
 
-	result, err := pushdownGroupByAliases(sql.NewEmptyContext(), a, node, nil)
+	result, _, err := pushdownGroupByAliases(sql.NewEmptyContext(), a, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	require.Equal(expected, result)

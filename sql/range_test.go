@@ -29,7 +29,7 @@ var rangeType = sql.Uint8
 
 func TestRangeOverlapTwoColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	x, y, _, values2, _ := setup()
+	x, y, _, values2, _, _ := setup()
 
 	tests := []struct {
 		reference sql.Expression
@@ -202,7 +202,7 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 
 func TestRangeOverlapThreeColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	x, y, z, _, values3 := setup()
+	x, y, z, _, values3, _ := setup()
 
 	tests := []struct {
 		reference sql.Expression
@@ -315,7 +315,96 @@ func TestRangeOverlapThreeColumns(t *testing.T) {
 	}
 }
 
-func setup() (x, y, z sql.Expression, values2, values3 [][]interface{}) {
+func TestRangeOverlapNulls(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	x, y, _, _, _, valuesNull := setup()
+
+	tests := []struct {
+		reference sql.Expression
+		ranges    sql.RangeCollection
+	}{
+		{
+			reference: or(
+				and(isNull(x), gt(y, 5)),
+			),
+			ranges: sql.RangeCollection{
+				r(null(), rgt(5)),
+			},
+		},
+		{
+			reference: or(
+				and(isNull(x), isNotNull(y)),
+			),
+			ranges: sql.RangeCollection{
+				r(null(), notNull()),
+			},
+		},
+		{
+			reference: or(
+				and(isNull(x), lt(y, 5)),
+			),
+			ranges: sql.RangeCollection{
+				r(null(), rlt(5)),
+			},
+		},
+		{
+			reference: or(
+				and(isNull(x), gte(y, 5)),
+			),
+			ranges: sql.RangeCollection{
+				r(null(), rgte(5)),
+			},
+		},
+		{
+			reference: or(
+				and(isNull(x), lte(y, 5)),
+			),
+			ranges: sql.RangeCollection{
+				r(null(), rlte(5)),
+			},
+		},
+		{
+			reference: or(
+				and(isNull(x), lte(y, 5)),
+			),
+			ranges: sql.RangeCollection{
+				r(null(), rlte(5)),
+			},
+		},
+		{
+			reference: or(
+				and(isNull(x), eq(y, 1)),
+			),
+			ranges: sql.RangeCollection{
+				r(null(), req(1)),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
+			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+			require.NoError(t, err)
+			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			require.NoError(t, err)
+			for _, row := range valuesNull {
+				referenceBool, err := test.reference.Eval(ctx, row)
+				require.NoError(t, err)
+				rangeBool := evalRanges(t, discreteRanges, row)
+				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+			}
+			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			require.NoError(t, err)
+			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			require.NoError(t, err)
+			ok, err := discreteRanges.Equals(verificationRanges)
+			require.NoError(t, err)
+			assert.True(t, ok)
+		})
+	}
+}
+
+func setup() (x, y, z sql.Expression, values2, values3, valuesNull [][]interface{}) {
 	values2 = make([][]interface{}, 0, 100)
 	values3 = make([][]interface{}, 0, 1000)
 	for i := byte(1); i <= 10; i++ {
@@ -324,6 +413,11 @@ func setup() (x, y, z sql.Expression, values2, values3 [][]interface{}) {
 				values3 = append(values3, []interface{}{i, j, k})
 			}
 			values2 = append(values2, []interface{}{i, j})
+			if i%2 == 0 {
+				valuesNull = append(valuesNull, []interface{}{nil, j})
+			} else {
+				valuesNull = append(valuesNull, []interface{}{i, j})
+			}
 		}
 	}
 	x = expression.NewGetField(0, rangeType, "x", true)
@@ -349,7 +443,11 @@ func evalRanges(t *testing.T, ranges []sql.Range, row []interface{}) bool {
 func evalRange(t *testing.T, rang sql.Range, row []interface{}) bool {
 	rowRange := make(sql.Range, len(rang))
 	for i, val := range row {
-		rowRange[i] = sql.ClosedRangeColumnExpr(val, val, rangeType)
+		if val == nil {
+			rowRange[i] = sql.NullRangeColumnExpr(rangeType)
+		} else {
+			rowRange[i] = sql.ClosedRangeColumnExpr(val, val, rangeType)
+		}
 	}
 	ok, err := rang.IsSupersetOf(rowRange)
 	require.NoError(t, err)
@@ -391,46 +489,54 @@ func eq(field sql.Expression, val uint8) sql.Expression {
 }
 
 func lt(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeLessThan(field, expression.NewLiteral(val, rangeType))
+	return expression.NewLessThan(field, expression.NewLiteral(val, rangeType))
 }
 
 func lte(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(val, rangeType))
+	return expression.NewLessThanOrEqual(field, expression.NewLiteral(val, rangeType))
 }
 
 func gt(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeGreaterThan(field, expression.NewLiteral(val, rangeType))
+	return expression.NewGreaterThan(field, expression.NewLiteral(val, rangeType))
 }
 
 func gte(field sql.Expression, val uint8) sql.Expression {
-	return expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(val, rangeType))
+	return expression.NewGreaterThanOrEqual(field, expression.NewLiteral(val, rangeType))
+}
+
+func isNull(field sql.Expression) sql.Expression {
+	return expression.NewIsNull(field)
+}
+
+func isNotNull(field sql.Expression) sql.Expression {
+	return expression.NewNot(expression.NewIsNull(field))
 }
 
 func cc(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
 func co(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThan(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThan(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
 func oc(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
 func oo(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
 	return and(
-		expression.NewNullSafeGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
-		expression.NewNullSafeLessThan(field, expression.NewLiteral(upperbound, rangeType)),
+		expression.NewGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewLessThan(field, expression.NewLiteral(upperbound, rangeType)),
 	)
 }
 
@@ -460,6 +566,14 @@ func rgt(val byte) sql.RangeColumnExpr {
 
 func rgte(val byte) sql.RangeColumnExpr {
 	return sql.GreaterOrEqualRangeColumnExpr(val, rangeType)
+}
+
+func null() sql.RangeColumnExpr {
+	return sql.NullRangeColumnExpr(rangeType)
+}
+
+func notNull() sql.RangeColumnExpr {
+	return sql.NotNullRangeColumnExpr(rangeType)
 }
 
 func rcc(lowerbound, upperbound byte) sql.RangeColumnExpr {

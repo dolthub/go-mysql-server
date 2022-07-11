@@ -20,9 +20,11 @@ func TestAggGen(t *testing.T) {
 			},
 		},
 		expected: `
-		        import (
+        import (
+            "fmt"
             "github.com/dolthub/go-mysql-server/sql"
             "github.com/dolthub/go-mysql-server/sql/expression"
+            "github.com/dolthub/go-mysql-server/sql/transform"
         )
 
         type Test struct{
@@ -55,7 +57,7 @@ func TestAggGen(t *testing.T) {
             return fmt.Sprintf("TEST(%s)", a.Child)
         }
 
-        func (a *Test) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+        func (a *Test) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
             res, err := a.unaryAggBase.WithWindow(window)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }
@@ -66,7 +68,7 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) NewBuffer() (sql.AggregationBuffer, error) {
-            child, err := expression.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.UnaryExpression.Child)
             if err != nil {
                 return nil, err
             }
@@ -74,11 +76,11 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) NewWindowFunction() (sql.WindowFunction, error) {
-            child, err := expression.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.UnaryExpression.Child)
             if err != nil {
                 return nil, err
             }
-            return NewTestAgg(child).WithWindow(a.Window()), nil
+            return NewTestAgg(child).WithWindow(a.Window())
         }
 		`,
 	}

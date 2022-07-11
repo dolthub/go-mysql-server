@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // CreateUser represents the statement CREATE USER.
@@ -33,7 +33,7 @@ type CreateUser struct {
 	PasswordOptions *PasswordOptions
 	Locked          bool
 	Attribute       string
-	GrantTables     sql.Database
+	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*CreateUser)(nil)
@@ -48,7 +48,7 @@ func (n *CreateUser) Schema() sql.Schema {
 func (n *CreateUser) String() string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
-		users[i] = user.UserName.StringWithQuote("", "")
+		users[i] = user.UserName.String("")
 	}
 	ifNotExists := ""
 	if n.IfNotExists {
@@ -59,19 +59,19 @@ func (n *CreateUser) String() string {
 
 // Database implements the interface sql.Databaser.
 func (n *CreateUser) Database() sql.Database {
-	return n.GrantTables
+	return n.MySQLDb
 }
 
 // WithDatabase implements the interface sql.Databaser.
 func (n *CreateUser) WithDatabase(db sql.Database) (sql.Node, error) {
 	nn := *n
-	nn.GrantTables = db
+	nn.MySQLDb = db
 	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *CreateUser) Resolved() bool {
-	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	_, ok := n.MySQLDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -88,15 +88,25 @@ func (n *CreateUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
 // RowIter implements the interface sql.Node.
 func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := grantTables.UserTable().Data()
+	// Check if you can even persist in the first place
+	if err := mysqlDb.ValidateCanPersist(); err != nil {
+		return nil, err
+	}
+	userTableData := mysqlDb.UserTable().Data()
 	for _, user := range n.Users {
-		userPk := grant_tables.UserPrimaryKey{
+		userPk := mysql_db.UserPrimaryKey{
 			Host: user.UserName.Host,
 			User: user.UserName.Name,
 		}
@@ -105,7 +115,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			if n.IfNotExists {
 				continue
 			}
-			return nil, sql.ErrUserCreationFailure.New(user.UserName.StringWithQuote("'", ""))
+			return nil, sql.ErrUserCreationFailure.New(user.UserName.String("'"))
 		}
 
 		plugin := "mysql_native_password"
@@ -114,66 +124,24 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			plugin = user.Auth1.Plugin()
 			password = user.Auth1.Password()
 		}
+		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
 		//TODO: validate all of the data
-		err := userTableData.Put(sql.Row{
-			user.UserName.Host, // 00: Host
-			user.UserName.Name, // 01: User
-			"N",                // 02: Select_priv
-			"N",                // 03: Insert_priv
-			"N",                // 04: Update_priv
-			"N",                // 05: Delete_priv
-			"N",                // 06: Create_priv
-			"N",                // 07: Drop_priv
-			"N",                // 08: Reload_priv
-			"N",                // 09: Shutdown_priv
-			"N",                // 10: Process_priv
-			"N",                // 11: File_priv
-			"N",                // 12: Grant_priv
-			"N",                // 13: References_priv
-			"N",                // 14: Index_priv
-			"N",                // 15: Alter_priv
-			"N",                // 16: Show_db_priv
-			"N",                // 17: Super_priv
-			"N",                // 18: Create_tmp_table_priv
-			"N",                // 19: Lock_tables_priv
-			"N",                // 20: Execute_priv
-			"N",                // 21: Repl_slave_priv
-			"N",                // 22: Repl_client_priv
-			"N",                // 23: Create_view_priv
-			"N",                // 24: Show_view_priv
-			"N",                // 25: Create_routine_priv
-			"N",                // 26: Alter_routine_priv
-			"N",                // 27: Create_user_priv
-			"N",                // 28: Event_priv
-			"N",                // 29: Trigger_priv
-			"N",                // 30: Create_tablespace_priv
-			"",                 // 31: ssl_type
-			"",                 // 32: ssl_cipher
-			"",                 // 33: x509_issuer
-			"",                 // 34: x509_subject
-			0,                  // 35: max_questions
-			0,                  // 36: max_updates
-			0,                  // 37: max_connections
-			0,                  // 38: max_user_connections
-			plugin,             // 39: plugin
-			password,           // 40: authentication_string
-			"N",                // 41: password_expired
-			time.Now().UTC(),   // 42: password_last_changed
-			nil,                // 43: password_lifetime
-			"N",                // 44: account_locked
-			"N",                // 45: Create_role_priv
-			"N",                // 46: Drop_role_priv
-			nil,                // 47: Password_reuse_history
-			nil,                // 48: Password_reuse_time
-			nil,                // 49: Password_require_current
-			nil,                // 50: User_attributes
+		err := userTableData.Put(ctx, &mysql_db.User{
+			User:                user.UserName.Name,
+			Host:                user.UserName.Host,
+			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
+			Plugin:              plugin,
+			Password:            password,
+			PasswordLastChanged: time.Now().UTC(),
+			Locked:              false,
+			Attributes:          nil,
+			IsRole:              false,
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
-	err := grantTables.Persist(ctx)
-	if err != nil {
+	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

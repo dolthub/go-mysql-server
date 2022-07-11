@@ -16,10 +16,15 @@ package enginetest
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"testing"
 
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
 type IndexDriverInitalizer func([]sql.Database) sql.IndexDriver
@@ -33,6 +38,10 @@ type MemoryHarness struct {
 	nativeIndexSupport     bool
 	skippedQueries         map[string]struct{}
 	session                sql.Session
+	checkpointTables       []*memory.Table
+	dbOff                  []int
+	dbNames                []string
+	setupData              []setup.SetupScript
 }
 
 func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
@@ -83,9 +92,10 @@ var _ Harness = (*MemoryHarness)(nil)
 var _ IndexDriverHarness = (*MemoryHarness)(nil)
 var _ IndexHarness = (*MemoryHarness)(nil)
 var _ VersionedDBHarness = (*MemoryHarness)(nil)
+var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
-var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
+var _ ClientHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
 
 type SkippingMemoryHarness struct {
@@ -94,6 +104,43 @@ type SkippingMemoryHarness struct {
 
 func (s SkippingMemoryHarness) SkipQueryTest(query string) bool {
 	return true
+}
+
+func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
+	m.setupData = nil
+	for i := range setupData {
+		m.setupData = append(m.setupData, setupData[i]...)
+	}
+	return
+}
+
+func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
+	pro := memory.NewMemoryDBProvider(information_schema.NewInformationSchemaDatabase())
+	return NewEngineWithProviderSetup(t, m, pro, m.setupData)
+}
+
+func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
+	var fkColl *memory.ForeignKeyCollection
+	if memDb, ok := db.(*memory.HistoryDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	}
+	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
+	if m.nativeIndexSupport {
+		table.EnablePrimaryKeyIndexes()
+	}
+	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
+		ro.HistoryDatabase.AddTableAsOf(name, table, asOf)
+	} else {
+		db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
+	}
+	return table
+}
+
+func (m *MemoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error {
+	// Nothing to do for this implementation: the NewTableAsOf method does all the work of creating the snapshot.
+	return nil
 }
 
 func (m *MemoryHarness) SupportsNativeIndexCreation() bool {
@@ -126,22 +173,13 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 	)
 }
 
-func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
-	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
-	if m.nativeIndexSupport {
-		table.EnablePrimaryKeyIndexes()
-	}
-	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
-		ro.HistoryDatabase.AddTableAsOf(name, table, asOf)
-	} else {
-		db.(*memory.HistoryDatabase).AddTableAsOf(name, table, asOf)
-	}
-	return table
-}
+func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
+	session := sql.NewBaseSessionWithClientServer("address", client, 1)
 
-func (m *MemoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error {
-	// Nothing to do for this implementation: the NewTableAsOf method does all the work of creating the snapshot.
-	return nil
+	return sql.NewContext(
+		context.Background(),
+		sql.WithSession(session),
+	)
 }
 
 func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
@@ -171,8 +209,26 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 	return dbs
 }
 
+func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
+	dbs := make([]sql.ReadOnlyDatabase, len(names))
+	for i, name := range names {
+		dbs[i] = memory.NewReadOnlyDatabase(name)
+	}
+	return dbs
+}
+
 func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
-	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	var fkColl *memory.ForeignKeyCollection
+	if memDb, ok := db.(*memory.BaseDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.Database); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.HistoryDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	}
+	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()
 	}
@@ -185,10 +241,61 @@ func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Primar
 	return table, nil
 }
 
-func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
-	dbs := make([]sql.ReadOnlyDatabase, len(names))
-	for i, name := range names {
-		dbs[i] = memory.NewReadOnlyDatabase(name)
+func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {
+	return sanityCheckEngine(ctx, e)
+}
+
+type ExternalStoredProcedureMemoryHarness struct {
+	*MemoryHarness
+}
+
+var _ Harness = ExternalStoredProcedureMemoryHarness{}
+
+func NewExternalStoredProcedureMemoryHarness() *ExternalStoredProcedureMemoryHarness {
+	return &ExternalStoredProcedureMemoryHarness{NewDefaultMemoryHarness()}
+}
+
+func (h ExternalStoredProcedureMemoryHarness) NewDatabase(name string) sql.Database {
+	database := memory.NewExternalStoredProcedureDatabase(name)
+	if h.nativeIndexSupport {
+		database.EnablePrimaryKeyIndexes()
+	}
+	return database
+}
+
+func (h ExternalStoredProcedureMemoryHarness) NewDatabases(names ...string) []sql.Database {
+	var dbs []sql.Database
+	for _, name := range names {
+		dbs = append(dbs, h.NewDatabase(name))
 	}
 	return dbs
+}
+
+func sanityCheckEngine(ctx *sql.Context, e *sqle.Engine) (err error) {
+	for _, db := range e.Analyzer.Catalog.AllDatabases(ctx) {
+		if err = sanityCheckDatabase(ctx, db); err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func sanityCheckDatabase(ctx *sql.Context, db sql.Database) error {
+	names, err := db.GetTableNames(ctx)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		t, ok, err := db.GetTableInsensitive(ctx, name)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("expected to find table %s", name)
+		}
+		if t.Name() != name {
+			return fmt.Errorf("unexpected table name (%s !=  %s)", name, t.Name())
+		}
+	}
+	return nil
 }

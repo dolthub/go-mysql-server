@@ -29,17 +29,29 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
-	IsView       bool
-	Indexes      []sql.Index
-	Checks       sql.CheckConstraints
-	targetSchema sql.Schema
+	IsView           bool
+	Indexes          []sql.Index
+	Checks           sql.CheckConstraints
+	targetSchema     sql.Schema
+	primaryKeySchema sql.PrimaryKeySchema
+	AsOf             sql.Expression
 }
+
+var _ sql.Node = (*ShowCreateTable)(nil)
+var _ sql.Expressioner = (*ShowCreateTable)(nil)
+var _ sql.SchemaTarget = (*ShowCreateTable)(nil)
 
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
+	return NewShowCreateTableWithAsOf(table, isView, nil)
+}
+
+// NewShowCreateTableWithAsOf creates a new ShowCreateTable node for a specific version of a table.
+func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression) *ShowCreateTable {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
+		AsOf:      asOf,
 	}
 }
 
@@ -65,7 +77,7 @@ func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	child := children[0]
 
 	switch child.(type) {
-	case *SubqueryAlias, *ResolvedTable, *UnresolvedTable:
+	case *SubqueryAlias, *ResolvedTable, sql.UnresolvedTable:
 	default:
 		return nil, sql.ErrInvalidChildType.New(sc, child, (*SubqueryAlias)(nil))
 	}
@@ -74,8 +86,23 @@ func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &sc, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (sc *ShowCreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
+	return true
+}
+
 func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	sc.targetSchema = schema
+	return &sc, nil
+}
+
+func (sc *ShowCreateTable) TargetSchema() sql.Schema {
+	return sc.targetSchema
+}
+
+func (sc ShowCreateTable) WithPrimaryKeySchema(schema sql.PrimaryKeySchema) (sql.Node, error) {
+	sc.primaryKeySchema = schema
 	return &sc, nil
 }
 
@@ -99,8 +126,10 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 		return sql.Schema{
 			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
 			&sql.Column{Name: "Create View", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
 		}
-	case *ResolvedTable, *UnresolvedTable:
+	case *ResolvedTable, sql.UnresolvedTable:
 		return sql.Schema{
 			&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
 			&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
@@ -110,14 +139,20 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 	}
 }
 
+// GetTargetSchema returns the final resolved target schema of show create table.
+func (sc *ShowCreateTable) GetTargetSchema() sql.Schema {
+	return sc.targetSchema
+}
+
 // RowIter implements the Node interface
 func (sc *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		table:   sc.Child,
-		isView:  sc.IsView,
-		indexes: sc.Indexes,
-		checks:  sc.Checks,
-		schema:  sc.targetSchema,
+		table:    sc.Child,
+		isView:   sc.IsView,
+		indexes:  sc.Indexes,
+		checks:   sc.Checks,
+		schema:   sc.targetSchema,
+		pkSchema: sc.primaryKeySchema,
 	}, nil
 }
 
@@ -133,7 +168,12 @@ func (sc *ShowCreateTable) String() string {
 		name = nameable.Name()
 	}
 
-	return fmt.Sprintf("SHOW CREATE %s %s", t, name)
+	asOfClause := ""
+	if sc.AsOf != nil {
+		asOfClause = fmt.Sprintf("as of %v", sc.AsOf)
+	}
+
+	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)
 }
 
 type showCreateTablesIter struct {
@@ -143,6 +183,7 @@ type showCreateTablesIter struct {
 	isView       bool
 	indexes      []sql.Index
 	checks       sql.CheckConstraints
+	pkSchema     sql.PrimaryKeySchema
 }
 
 func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -152,9 +193,7 @@ func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	i.didIteration = true
 
-	var composedCreateTableStatement string
-	var tableName string
-
+	var row sql.Row
 	switch table := i.table.(type) {
 	case *ResolvedTable:
 		// MySQL behavior is to allow show create table for views, but not show create view for tables.
@@ -162,23 +201,34 @@ func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, ErrNotView.New(table.Name())
 		}
 
-		tableName = table.Name()
-		var err error
-		composedCreateTableStatement, err = i.produceCreateTableStatement(ctx, table.Table, i.schema)
+		composedCreateTableStatement, err := i.produceCreateTableStatement(ctx, table.Table, i.schema, i.pkSchema)
 		if err != nil {
 			return nil, err
 		}
+		row = sql.NewRow(
+			table.Name(),                 // "Table" string
+			composedCreateTableStatement, // "Create Table" string
+		)
 	case *SubqueryAlias:
-		tableName = table.Name()
-		composedCreateTableStatement = produceCreateViewStatement(table)
+		characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+		if err != nil {
+			return nil, err
+		}
+		collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+		if err != nil {
+			return nil, err
+		}
+		row = sql.NewRow(
+			table.Name(),                      // "View" string
+			produceCreateViewStatement(table), // "Create View" string
+			characterSetClient,
+			collationConnection,
+		)
 	default:
 		panic(fmt.Sprintf("unexpected type %T", i.table))
 	}
 
-	return sql.NewRow(
-		tableName,                    // "Table" string
-		composedCreateTableStatement, // "Create Table" string
-	), nil
+	return row, nil
 }
 
 type NameAndSchema interface {
@@ -186,14 +236,19 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema) (string, error) {
+func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
+
+	var pkOrdinals []int
+	if len(pkSchema.Schema) > 0 {
+		pkOrdinals = pkSchema.PkOrdinals
+	}
 
 	// Statement creation parts for each column
 	// TODO: rather than lower-casing here, we should do it in the String() method of types
 	for i, col := range schema {
-		stmt := fmt.Sprintf("  `%s` %s", col.Name, strings.ToLower(col.Type.String()))
+		stmt := fmt.Sprintf("  %s %s", quoteIdentifier(col.Name), strings.ToLower(col.Type.String()))
 
 		if !col.Nullable {
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)
@@ -203,24 +258,41 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
 		}
 
+		if c, ok := col.Type.(sql.SpatialColumnType); ok {
+			if v, d := c.GetSpatialTypeSRID(); d {
+				stmt = fmt.Sprintf("%s SRID %v", stmt, v)
+			}
+		}
+
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
-			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())
+			// TODO : string literals should have character set introducer
+			defStr := col.Default.String()
+			if defStr != "NULL" && col.Default.IsLiteral() && !sql.IsTime(col.Default.Type()) && !sql.IsText(col.Default.Type()) {
+				v, err := col.Default.Eval(ctx, nil)
+				if err != nil {
+					return "", err
+				}
+				defStr = fmt.Sprintf("'%v'", v)
+			}
+			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, defStr)
 		}
 
 		if col.Comment != "" {
 			stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, col.Comment)
 		}
 
-		if col.PrimaryKey {
-			primaryKeyCols = append(primaryKeyCols, col.Name)
+		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
+			pkOrdinals = append(pkOrdinals, i)
 		}
 
 		colStmts[i] = stmt
 	}
 
-	// TODO: the order of the primary key columns might not match their order in the schema. The current interface can't
-	//  represent this. We will need a new sql.Table extension to support this cleanly.
+	for _, i := range pkOrdinals {
+		primaryKeyCols = append(primaryKeyCols, schema[i].Name)
+	}
+
 	if len(primaryKeyCols) > 0 {
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
@@ -236,7 +308,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		for _, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexCols = append(indexCols, fmt.Sprintf("`%s`", col.Name))
+				indexCols = append(indexCols, quoteIdentifier(col.Name))
 			}
 		}
 
@@ -245,7 +317,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			unique = "UNIQUE "
 		}
 
-		key := fmt.Sprintf("  %sKEY `%s` (%s)", unique, index.ID(), strings.Join(indexCols, ","))
+		key := fmt.Sprintf("  %sKEY %s (%s)", unique, quoteIdentifier(index.ID()), strings.Join(indexCols, ","))
 		if index.Comment() != "" {
 			key = fmt.Sprintf("%s COMMENT '%s'", key, index.Comment())
 		}
@@ -253,30 +325,30 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		colStmts = append(colStmts, key)
 	}
 
-	fkt := getForeignKeyTable(table)
-	if fkt != nil {
-		fks, err := fkt.GetForeignKeys(ctx)
+	fkt, err := getForeignKeyTable(table)
+	if err == nil && fkt != nil {
+		fks, err := fkt.GetDeclaredForeignKeys(ctx)
 		if err != nil {
 			return "", err
 		}
 		for _, fk := range fks {
 			keyCols := strings.Join(quoteIdentifiers(fk.Columns), ",")
-			refCols := strings.Join(quoteIdentifiers(fk.ReferencedColumns), ",")
+			refCols := strings.Join(quoteIdentifiers(fk.ParentColumns), ",")
 			onDelete := ""
-			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferenceOption_DefaultAction {
+			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferentialAction_DefaultAction {
 				onDelete = " ON DELETE " + string(fk.OnDelete)
 			}
 			onUpdate := ""
-			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferenceOption_DefaultAction {
+			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
 				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)%s%s", quoteIdentifier(fk.Name), keyCols, quoteIdentifier(fk.ParentTable), refCols, onDelete, onUpdate))
 		}
 	}
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, check.Expr.String())
+			fmted := fmt.Sprintf("  CONSTRAINT %s CHECK (%s)", quoteIdentifier(check.Name), check.Expr.String())
 
 			if !check.Enforced {
 				fmted += " /*!80016 NOT ENFORCED */"
@@ -287,28 +359,25 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	return fmt.Sprintf(
-		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-		table.Name(),
+		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+		quoteIdentifier(table.Name()),
 		strings.Join(colStmts, ",\n"),
 	), nil
 }
 
-// getForeignKeyTable returns the underlying ForeignKeyTable for the table given, or nil if it isn't a ForeignKeyTable
-func getForeignKeyTable(t sql.Table) sql.ForeignKeyTable {
-	switch t := t.(type) {
-	case sql.ForeignKeyTable:
-		return t
-	case sql.TableWrapper:
-		return getForeignKeyTable(t.Underlying())
-	default:
-		return nil
-	}
+// quoteIdentifier wraps the specified identifier in backticks and escapes all occurrences of backticks in the
+// identifier by replacing them with double backticks.
+func quoteIdentifier(id string) string {
+	id = strings.ReplaceAll(id, "`", "``")
+	return fmt.Sprintf("`%s`", id)
 }
 
+// quoteIdentifiers wraps each of the specified identifiers in backticks, escapes all occurrences of backticks in
+// the identifier, and returns a slice of the quoted identifiers.
 func quoteIdentifiers(ids []string) []string {
 	quoted := make([]string, len(ids))
 	for i, id := range ids {
-		quoted[i] = fmt.Sprintf("`%s`", id)
+		quoted[i] = quoteIdentifier(id)
 	}
 	return quoted
 }

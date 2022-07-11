@@ -15,11 +15,16 @@
 package sql
 
 import (
+	"reflect"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemDoubleValueType = reflect.TypeOf(float64(0))
 
 // systemDoubleType is an internal double type ONLY for system variables.
 type systemDoubleType struct {
@@ -87,6 +92,14 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, error) {
 		if value >= t.lowerbound && value <= t.upperbound {
 			return value, nil
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	}
 
 	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
@@ -101,13 +114,21 @@ func (t systemDoubleType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemDoubleType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemDoubleType); ok {
+		return t.varName == ot.varName && t.lowerbound == ot.lowerbound && t.upperbound == ot.upperbound
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemDoubleType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemDoubleType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemDoubleType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -117,7 +138,11 @@ func (t systemDoubleType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), strconv.AppendFloat(nil, v.(float64), 'f', -1, 64)), nil
+	stop := len(dest)
+	dest = strconv.AppendFloat(dest, v.(float64), 'f', -1, 64)
+	val := dest[stop:]
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.
@@ -128,6 +153,11 @@ func (t systemDoubleType) String() string {
 // Type implements Type interface.
 func (t systemDoubleType) Type() query.Type {
 	return sqltypes.Float64
+}
+
+// ValueType implements Type interface.
+func (t systemDoubleType) ValueType() reflect.Type {
+	return systemDoubleValueType
 }
 
 // Zero implements Type interface.

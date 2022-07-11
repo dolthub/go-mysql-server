@@ -20,12 +20,13 @@ import (
 	"reflect"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -40,6 +41,20 @@ var ErrInAnalysis = errors.NewKind("error in analysis: %s")
 
 // ErrInvalidNodeType is thrown when the analyzer can't handle a particular kind of node type
 var ErrInvalidNodeType = errors.NewKind("%s: invalid node of type: %T")
+
+const disablePrepareStmtKey = "DISABLE_PREPARED_STATEMENTS"
+
+var PreparedStmtDisabled bool
+
+func init() {
+	if v := os.Getenv(disablePrepareStmtKey); v != "" {
+		PreparedStmtDisabled = true
+	}
+}
+
+func SetPreparedStmts(v bool) {
+	PreparedStmtDisabled = v
+}
 
 // Builder provides an easy way to generate Analyzer with custom rules and options.
 type Builder struct {
@@ -84,38 +99,38 @@ func (ab *Builder) WithParallelism(parallelism int) *Builder {
 }
 
 // AddPreAnalyzeRule adds a new rule to the analyze before the standard analyzer rules.
-func (ab *Builder) AddPreAnalyzeRule(name string, fn RuleFunc) *Builder {
-	ab.preAnalyzeRules = append(ab.preAnalyzeRules, Rule{name, fn})
+func (ab *Builder) AddPreAnalyzeRule(id RuleId, fn RuleFunc) *Builder {
+	ab.preAnalyzeRules = append(ab.preAnalyzeRules, Rule{id, fn})
 
 	return ab
 }
 
 // AddPostAnalyzeRule adds a new rule to the analyzer after standard analyzer rules.
-func (ab *Builder) AddPostAnalyzeRule(name string, fn RuleFunc) *Builder {
-	ab.postAnalyzeRules = append(ab.postAnalyzeRules, Rule{name, fn})
+func (ab *Builder) AddPostAnalyzeRule(id RuleId, fn RuleFunc) *Builder {
+	ab.postAnalyzeRules = append(ab.postAnalyzeRules, Rule{id, fn})
 
 	return ab
 }
 
 // AddPreValidationRule adds a new rule to the analyzer before standard validation rules.
-func (ab *Builder) AddPreValidationRule(name string, fn RuleFunc) *Builder {
-	ab.preValidationRules = append(ab.preValidationRules, Rule{name, fn})
+func (ab *Builder) AddPreValidationRule(id RuleId, fn RuleFunc) *Builder {
+	ab.preValidationRules = append(ab.preValidationRules, Rule{id, fn})
 
 	return ab
 }
 
 // AddPostValidationRule adds a new rule to the analyzer after standard validation rules.
-func (ab *Builder) AddPostValidationRule(name string, fn RuleFunc) *Builder {
-	ab.postValidationRules = append(ab.postValidationRules, Rule{name, fn})
+func (ab *Builder) AddPostValidationRule(id RuleId, fn RuleFunc) *Builder {
+	ab.postValidationRules = append(ab.postValidationRules, Rule{id, fn})
 
 	return ab
 }
 
-func duplicateRulesWithout(rules []Rule, excludedRuleName string) []Rule {
+func duplicateRulesWithout(rules []Rule, excludedRuleId RuleId) []Rule {
 	newRules := make([]Rule, 0, len(rules))
 
 	for _, rule := range rules {
-		if rule.Name != excludedRuleName {
+		if rule.Id != excludedRuleId {
 			newRules = append(newRules, rule)
 		}
 	}
@@ -124,36 +139,36 @@ func duplicateRulesWithout(rules []Rule, excludedRuleName string) []Rule {
 }
 
 // RemoveOnceBeforeRule removes a default rule from the analyzer which would occur before other rules
-func (ab *Builder) RemoveOnceBeforeRule(name string) *Builder {
-	ab.onceBeforeRules = duplicateRulesWithout(ab.onceBeforeRules, name)
+func (ab *Builder) RemoveOnceBeforeRule(id RuleId) *Builder {
+	ab.onceBeforeRules = duplicateRulesWithout(ab.onceBeforeRules, id)
 
 	return ab
 }
 
 // RemoveDefaultRule removes a default rule from the analyzer that is executed as part of the analysis
-func (ab *Builder) RemoveDefaultRule(name string) *Builder {
-	ab.defaultRules = duplicateRulesWithout(ab.defaultRules, name)
+func (ab *Builder) RemoveDefaultRule(id RuleId) *Builder {
+	ab.defaultRules = duplicateRulesWithout(ab.defaultRules, id)
 
 	return ab
 }
 
 // RemoveOnceAfterRule removes a default rule from the analyzer which would occur just once after the default analysis
-func (ab *Builder) RemoveOnceAfterRule(name string) *Builder {
-	ab.onceAfterRules = duplicateRulesWithout(ab.onceAfterRules, name)
+func (ab *Builder) RemoveOnceAfterRule(id RuleId) *Builder {
+	ab.onceAfterRules = duplicateRulesWithout(ab.onceAfterRules, id)
 
 	return ab
 }
 
 // RemoveValidationRule removes a default rule from the analyzer which would occur as part of the validation rules
-func (ab *Builder) RemoveValidationRule(name string) *Builder {
-	ab.validationRules = duplicateRulesWithout(ab.validationRules, name)
+func (ab *Builder) RemoveValidationRule(id RuleId) *Builder {
+	ab.validationRules = duplicateRulesWithout(ab.validationRules, id)
 
 	return ab
 }
 
 // RemoveAfterAllRule removes a default rule from the analyzer which would occur after all other rules
-func (ab *Builder) RemoveAfterAllRule(name string) *Builder {
-	ab.afterAllRules = duplicateRulesWithout(ab.afterAllRules, name)
+func (ab *Builder) RemoveAfterAllRule(id RuleId) *Builder {
+	ab.afterAllRules = duplicateRulesWithout(ab.afterAllRules, id)
 
 	return ab
 }
@@ -190,7 +205,7 @@ func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return ([]byte)(msg), nil
 }
 
-// Build creates a new Analyzer using all previous data setted to the Builder
+// Build creates a new Analyzer from the builder parameters
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
 	var batches = []*Batch{
@@ -242,12 +257,11 @@ func (ab *Builder) Build() *Analyzer {
 	}
 
 	return &Analyzer{
-		Debug:          debug || ab.debug,
-		contextStack:   make([]string, 0),
-		Batches:        batches,
-		Catalog:        NewCatalog(ab.provider),
-		Parallelism:    ab.parallelism,
-		ProcedureCache: NewProcedureCache(),
+		Debug:        debug || ab.debug,
+		contextStack: make([]string, 0),
+		Batches:      batches,
+		Catalog:      NewCatalog(ab.provider),
+		Parallelism:  ab.parallelism,
 	}
 }
 
@@ -265,8 +279,6 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
-	// ProcedureCache is a cache of stored procedures.
-	ProcedureCache *ProcedureCache
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
@@ -328,7 +340,7 @@ func (a *Analyzer) LogDiff(prev, next sql.Node) {
 
 // PushDebugContext pushes the given context string onto the context stack, to use when logging debug messages.
 func (a *Analyzer) PushDebugContext(msg string) {
-	if a != nil {
+	if a != nil && a.Debug {
 		a.contextStack = append(a.contextStack, msg)
 	}
 }
@@ -340,17 +352,144 @@ func (a *Analyzer) PopDebugContext() {
 	}
 }
 
-func analyzeAll(batchName string) bool {
+func SelectAllBatches(string) bool { return true }
+
+func DefaultRuleSelector(id RuleId) bool {
+	switch id {
+	// prepared statement rules are incompatible with default rules
+	case stripDecorationsId,
+		reresolveTablesId,
+		resolvePreparedInsertId:
+		return false
+	}
 	return true
 }
 
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
-	return a.analyzeWithSelector(ctx, n, scope, analyzeAll)
+	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
+	return n, err
 }
 
-func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string) (sql.Node, error) {
+// prePrepareRuleSelector are applied before a prepared statement before bindvars
+// are applied
+func prePrepareRuleSelector(id RuleId) bool {
+	switch id {
+	case resolvePreparedInsertId,
+		insertTopNId,
+		inSubqueryIndexesId,
+		AutocommitId,
+		TrackProcessId,
+		parallelizeId,
+		clearWarningsId,
+		stripDecorationsId,
+		reresolveTablesId,
+		validateResolvedId,
+		validateOrderById,
+		validateGroupById,
+		validateSchemaSourceId,
+		validateIndexCreationId,
+		validateOperandsId,
+		validateCaseResultTypesId,
+		validateIntervalUsageId,
+		validateExplodeUsageId,
+		validateSubqueryColumnsId,
+		validateUnionSchemasMatchId,
+		validateAggregationsId:
+		return false
+	default:
+		return true
+	}
+}
+
+// PrepareQuery applies a partial set of transformations to a prepared plan.
+func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, prePrepareRuleSelector)
+	return n, err
+}
+
+// prePrepareRuleSelector are applied to a cached prepared statement plan
+// after bindvars are applied
+func postPrepareRuleSelector(id RuleId) bool {
+	switch id {
+	case
+		// OnceBeforeDefault
+		resolveDatabasesId,
+		resolveTablesId,
+		reresolveTablesId,
+		setTargetSchemasId,
+		stripDecorationsId,
+		parseColumnDefaultsId,
+
+		// DefaultRules
+		resolveOrderbyLiteralsId,
+		resolveFunctionsId,
+		flattenTableAliasesId,
+		pushdownSortId,
+		pushdownGroupbyAliasesId,
+		qualifyColumnsId,
+		resolveColumnsId,
+		resolveColumnDefaultsId,
+		expandStarsId,
+
+		// OnceAfterDefault
+		pushdownFiltersId,
+		subqueryIndexesId,
+		inSubqueryIndexesId,
+		resolvePreparedInsertId,
+
+		// DefaultValidationRules
+
+		// OnceAfterAll
+		AutocommitId,
+		TrackProcessId,
+		parallelizeId,
+		clearWarningsId:
+		return true
+	}
+	return false
+}
+
+// prePrepareRuleSelector are applied to a cached prepared statement plan
+// after bindvars are applied
+func postPrepareInsertSourceRuleSelector(id RuleId) bool {
+	switch id {
+	case stripDecorationsId,
+		reresolveTablesId,
+
+		expandStarsId,
+		resolveFunctionsId,
+		flattenTableAliasesId,
+		pushdownSortId,
+		pushdownGroupbyAliasesId,
+		resolveDatabasesId,
+		resolveTablesId,
+
+		resolveOrderbyLiteralsId,
+		qualifyColumnsId,
+		resolveColumnsId,
+
+		pushdownFiltersId,
+		subqueryIndexesId,
+		inSubqueryIndexesId,
+		resolveInsertRowsId,
+
+		AutocommitId,
+		TrackProcessId,
+		parallelizeId,
+		clearWarningsId:
+		return true
+	}
+	return false
+}
+
+// AnalyzePrepared runs a partial rule set against a previously analyzed plan.
+func (a *Analyzer) AnalyzePrepared(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, postPrepareRuleSelector)
+}
+
+func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	stop := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if stop {
@@ -362,24 +501,27 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 		// we return true even for the matching description; only start
 		// returning false after this batch.
 		return true
-	})
+	}, sel)
 }
 
-func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, selector func(d string) bool) (sql.Node, error) {
-	span, ctx := ctx.Span("analyze", opentracing.Tags{
-		//"plan": , n.String(),
-	})
+func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("analyze")
 
-	var err error
+	var (
+		same    = transform.SameTree
+		allSame = transform.SameTree
+		err     error
+	)
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
-		if selector(batch.Desc) {
+		if batchSelector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)
-			n, err = batch.Eval(ctx, a, n, scope)
+			n, same, err = batch.Eval(ctx, a, n, scope, ruleSelector)
+			allSame = allSame && same
 			if err != nil {
 				a.Log("Encountered error: %v", err)
 				a.PopDebugContext()
-				return n, err
+				return n, transform.SameTree, err
 			}
 			a.PopDebugContext()
 		}
@@ -387,15 +529,15 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 
 	defer func() {
 		if n != nil {
-			span.SetTag("IsResolved", n.Resolved())
+			span.SetAttributes(attribute.Bool("IsResolved", n.Resolved()))
 		}
-		span.Finish()
+		span.End()
 	}()
 
-	return n, err
+	return n, allSame, err
 }
 
-func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string) (sql.Node, error) {
+func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	start := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if desc == startAt {
@@ -405,5 +547,13 @@ func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *S
 			return true
 		}
 		return false
+	}, sel)
+}
+
+func DeepCopyNode(node sql.Node) (sql.Node, error) {
+	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		e, err := transform.Clone(e)
+		return e, transform.NewTree, err
 	})
+	return n, err
 }

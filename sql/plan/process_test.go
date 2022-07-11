@@ -30,7 +30,7 @@ func TestQueryProcess(t *testing.T) {
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64},
-	}))
+	}), nil)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))
@@ -53,7 +53,7 @@ func TestQueryProcess(t *testing.T) {
 	iter, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -70,7 +70,7 @@ func TestProcessTable(t *testing.T) {
 
 	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64},
-	}), 2)
+	}), nil, 2)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))
@@ -103,7 +103,7 @@ func TestProcessTable(t *testing.T) {
 	iter, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -124,7 +124,7 @@ func TestProcessIndexableTable(t *testing.T) {
 
 	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
-	}), 2)
+	}), nil, 2)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))

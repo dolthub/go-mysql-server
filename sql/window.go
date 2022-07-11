@@ -15,26 +15,35 @@
 package sql
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cespare/xxhash"
 )
 
-// A Window specifies the window parameters of a window function
-type Window struct {
-	PartitionBy []Expression
-	OrderBy     SortFields
-	id          uint64
-	// TODO: window frame
+func NewWindowDefinition(partitionBy []Expression, orderBy SortFields, frame WindowFrame, ref, name string) *WindowDefinition {
+	return &WindowDefinition{
+		PartitionBy: partitionBy,
+		OrderBy:     orderBy,
+		Frame:       frame,
+		Ref:         ref,
+		Name:        name,
+	}
 }
 
-func NewWindow(partitionBy []Expression, orderBy []SortField) *Window {
-	return &Window{PartitionBy: partitionBy, OrderBy: orderBy}
+// A WindowDefinition specifies the window parameters of a window function
+type WindowDefinition struct {
+	PartitionBy []Expression
+	OrderBy     SortFields
+	Frame       WindowFrame
+	Ref         string
+	Name        string
+	id          uint64
 }
 
 // ToExpressions converts the PartitionBy and OrderBy expressions to a single slice of expressions suitable for
 // manipulation by analyzer rules.
-func (w *Window) ToExpressions() []Expression {
+func (w *WindowDefinition) ToExpressions() []Expression {
 	if w == nil {
 		return nil
 	}
@@ -43,7 +52,7 @@ func (w *Window) ToExpressions() []Expression {
 
 // FromExpressions returns copy of this window with the given expressions taken to stand in for the partition and order
 // by fields. An error is returned if the lengths or types of these expressions are incompatible with this window.
-func (w *Window) FromExpressions(children []Expression) (*Window, error) {
+func (w *WindowDefinition) FromExpressions(children []Expression) (*WindowDefinition, error) {
 	if w == nil {
 		return nil, nil
 	}
@@ -53,12 +62,12 @@ func (w *Window) FromExpressions(children []Expression) (*Window, error) {
 	}
 
 	nw := *w
-	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)])
+	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)]...)
 	nw.PartitionBy = children[len(nw.OrderBy):]
 	return &nw, nil
 }
 
-func (w *Window) String() string {
+func (w *WindowDefinition) String() string {
 	if w == nil {
 		return ""
 	}
@@ -82,11 +91,14 @@ func (w *Window) String() string {
 			sb.WriteString(ob.String())
 		}
 	}
+	if w.Frame != nil {
+		sb.WriteString(fmt.Sprintf(" %s", w.Frame.String()))
+	}
 	sb.WriteString(")")
 	return sb.String()
 }
 
-func (w *Window) PartitionId() (uint64, error) {
+func (w *WindowDefinition) PartitionId() (uint64, error) {
 	if w == nil {
 		return 0, nil
 	}
@@ -113,30 +125,9 @@ func (w *Window) PartitionId() (uint64, error) {
 	return w.id, nil
 }
 
-func (w *Window) DebugString() string {
+func (w *WindowDefinition) DebugString() string {
 	if w == nil {
 		return ""
 	}
-	sb := strings.Builder{}
-	sb.WriteString("over (")
-	if len(w.PartitionBy) > 0 {
-		sb.WriteString(" partition by ")
-		for i, expression := range w.PartitionBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(DebugString(expression))
-		}
-	}
-	if len(w.OrderBy) > 0 {
-		sb.WriteString(" order by ")
-		for i, ob := range w.OrderBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(DebugString(ob))
-		}
-	}
-	sb.WriteString(")")
-	return sb.String()
+	return w.String()
 }

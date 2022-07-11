@@ -57,7 +57,7 @@ func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Union")
 	li, err := u.left.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 	ui := &unionIter{
@@ -75,6 +75,11 @@ func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 2)
 	}
 	return NewUnion(children[0], children[1]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (u *Union) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return u.left.CheckPrivileges(ctx, opChecker) && u.right.CheckPrivileges(ctx, opChecker)
 }
 
 func (u Union) String() string {

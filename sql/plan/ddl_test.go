@@ -69,13 +69,16 @@ func TestDropTable(t *testing.T) {
 	require.NoError(createTable(t, db, "testTable2", s, IfNotExistsAbsent, IsTempTableAbsent))
 	require.NoError(createTable(t, db, "testTable3", s, IfNotExistsAbsent, IsTempTableAbsent))
 
-	d := NewDropTable(db, false, "testTable1", "testTable2")
+	d := NewDropTable([]sql.Node{NewResolvedTable(memory.NewTable("testTable1", s, db.GetForeignKeyCollection()), db, nil), NewResolvedTable(memory.NewTable("testTable2", s, db.GetForeignKeyCollection()), db, nil)}, false)
 	rows, err := d.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
 	r, err := rows.Next(ctx)
-	require.Equal(err, io.EOF)
-	require.Nil(r)
+	require.Nil(err)
+	require.Equal(sql.NewRow(sql.NewOkResult(0)), r)
+
+	r, err = rows.Next(ctx)
+	require.Equal(io.EOF, err)
 
 	_, ok := db.Tables()["testTable1"]
 	require.False(ok)
@@ -84,15 +87,11 @@ func TestDropTable(t *testing.T) {
 	_, ok = db.Tables()["testTable3"]
 	require.True(ok)
 
-	d = NewDropTable(db, false, "testTable1")
+	d = NewDropTable([]sql.Node{NewResolvedTable(memory.NewTable("testTable1", s, db.GetForeignKeyCollection()), db, nil)}, false)
 	_, err = d.RowIter(sql.NewEmptyContext(), nil)
 	require.Error(err)
 
-	d = NewDropTable(db, true, "testTable1")
-	_, err = d.RowIter(sql.NewEmptyContext(), nil)
-	require.NoError(err)
-
-	d = NewDropTable(db, true, "testTable1", "testTable2", "testTable3")
+	d = NewDropTable([]sql.Node{NewResolvedTable(memory.NewTable("testTable3", s, db.GetForeignKeyCollection()), db, nil)}, false)
 	_, err = d.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
@@ -110,7 +109,10 @@ func createTable(t *testing.T, db sql.Database, name string, schema sql.PrimaryK
 
 	ctx := sql.NewEmptyContext()
 	r, err := rows.Next(ctx)
-	require.Nil(t, r)
+	require.Nil(t, err)
+	require.Equal(t, sql.NewRow(sql.NewOkResult(0)), r)
+
+	r, err = rows.Next(ctx)
 	require.Equal(t, io.EOF, err)
 	return nil
 }

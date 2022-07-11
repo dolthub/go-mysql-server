@@ -27,6 +27,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Rand returns a random float 0 <= x < 1. If it has an argument, that argument will be used to seed the random number
@@ -585,7 +586,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			bytes = []byte{0}
 		}
 	default:
-		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
+		return nil, sql.ErrInvalidArgumentDetails.New("crc32", fmt.Sprint(arg))
 	}
 
 	return crc32.ChecksumIEEE(bytes), nil
@@ -700,4 +701,19 @@ func (s *Sign) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 	return NewSign(children[0]), nil
+}
+
+// NewMod returns a new MOD function expression
+func NewMod(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("mod", "2", len(args))
+	}
+
+	return &expression.Arithmetic{
+		BinaryExpression: expression.BinaryExpression{
+			Left:  args[0],
+			Right: args[1],
+		},
+		Op: "%",
+	}, nil
 }
