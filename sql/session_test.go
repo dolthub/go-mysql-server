@@ -85,6 +85,10 @@ func TestInitReadonlySessionVariable(t *testing.T) {
 	val, err = sess.GetSessionVariable(ctx, readonlyVariable)
 	require.NoError(err)
 	require.Equal(variableValue, val.(string))
+
+	err = sess.InitSessionVariable(ctx, readonlyVariable, variableValue)
+	require.Error(err)
+	require.True(ErrSystemVariableReinitialized.Is(err))
 }
 
 type testNode struct{}

@@ -251,6 +251,12 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
+
+	val, ok := s.systemVars[sysVar.Name]
+	if ok && val != sysVar.Default {
+		return ErrSystemVariableReinitialized.New(sysVarName)
+	}
+
 	return s.setSessVar(ctx, sysVar, sysVarName, value)
 }
 
