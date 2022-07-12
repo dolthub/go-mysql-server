@@ -269,6 +269,17 @@ func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext N
 	return &ProcessTable{t, onPartitionDone, onPartitionStart, OnRowNext}
 }
 
+func (t *ProcessTable) Cost(ctx *sql.Context) float64 {
+	if statsTbl, ok := t.Table.(sql.StatisticsTable); ok {
+		stats, err := statsTbl.Statistics(ctx)
+		if err != nil {
+			return 0
+		}
+		return float64(stats.RowCount())
+	}
+	return 0
+}
+
 // Underlying implements sql.TableWrapper interface.
 func (t *ProcessTable) Underlying() sql.Table {
 	return t.Table

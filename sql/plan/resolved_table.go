@@ -38,6 +38,20 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 	return &ResolvedTable{table, db, asOf}
 }
 
+func (t *ResolvedTable) Cost(ctx *sql.Context) float64 {
+	if statsTbl, ok := t.Table.(sql.StatisticsTable); ok {
+		stats, err := statsTbl.Statistics(ctx)
+		if err != nil {
+			return 0
+		}
+		return float64(stats.RowCount())
+	}
+	if tbl, ok := t.Table.(sql.Costable); ok {
+		return tbl.Cost(ctx)
+	}
+	return 0
+}
+
 // Resolved implements the Resolvable interface.
 func (*ResolvedTable) Resolved() bool {
 	return true
