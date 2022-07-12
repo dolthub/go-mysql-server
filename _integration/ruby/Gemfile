@@ -1,3 +1,3 @@
 source 'https://rubygems.org'
-gem 'ruby-mysql', '~> 2.9', '>= 2.9.14'
+gem 'ruby-mysql', '~> 2.10'
 gem 'minitest', '~> 5.11', '>= 5.11.3'
