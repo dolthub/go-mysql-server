@@ -460,6 +460,10 @@ var (
 	// ErrReadOnlyTransaction is returned when a write query is executed in a READ ONLY transaction.
 	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
 
+	// ErrLockDeadlock is the go-mysql-server equivalent of ER_LOCK_DEADLOCK. Transactions throwing this error
+	// are automatically rolled back. Clients receiving this error must retry the transaction.
+	ErrLockDeadlock = errors.NewKind("Deadlock found when trying to get lock, try restarting transaction.")
+
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")
 
@@ -646,6 +650,15 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = 1553 // TODO: Needs to be added to vitess
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
+	case ErrLockDeadlock.Is(err):
+		// ER_LOCK_DEADLOCK signals that the transaction was rolled back
+		// due to a deadlock between concurrent transactions.
+		// MySQL maps this error to the ANSI SQLSTATE code of 40001 which
+		// has the more general meaning of "serialization failure".
+		// 	https://mariadb.com/kb/en/mariadb-error-codes/
+		// 	https://en.wikipedia.org/wiki/SQLSTATE
+		code = mysql.ERLockDeadlock
+		sqlState = mysql.SSLockDeadlock
 	default:
 		code = mysql.ERUnknownError
 	}
