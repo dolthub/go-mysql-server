@@ -248,7 +248,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	// Statement creation parts for each column
 	// TODO: rather than lower-casing here, we should do it in the String() method of types
 	for i, col := range schema {
-		stmt := fmt.Sprintf("  `%s` %s", col.Name, strings.ToLower(col.Type.String()))
+		stmt := fmt.Sprintf("  %s %s", quoteIdentifier(col.Name), strings.ToLower(col.Type.String()))
 
 		if !col.Nullable {
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)
@@ -308,7 +308,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		for _, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexCols = append(indexCols, fmt.Sprintf("`%s`", col.Name))
+				indexCols = append(indexCols, quoteIdentifier(col.Name))
 			}
 		}
 
@@ -317,7 +317,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			unique = "UNIQUE "
 		}
 
-		key := fmt.Sprintf("  %sKEY `%s` (%s)", unique, index.ID(), strings.Join(indexCols, ","))
+		key := fmt.Sprintf("  %sKEY %s (%s)", unique, quoteIdentifier(index.ID()), strings.Join(indexCols, ","))
 		if index.Comment() != "" {
 			key = fmt.Sprintf("%s COMMENT '%s'", key, index.Comment())
 		}
@@ -342,13 +342,13 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
 				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ParentTable, refCols, onDelete, onUpdate))
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)%s%s", quoteIdentifier(fk.Name), keyCols, quoteIdentifier(fk.ParentTable), refCols, onDelete, onUpdate))
 		}
 	}
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, check.Expr.String())
+			fmted := fmt.Sprintf("  CONSTRAINT %s CHECK (%s)", quoteIdentifier(check.Name), check.Expr.String())
 
 			if !check.Enforced {
 				fmted += " /*!80016 NOT ENFORCED */"
@@ -359,16 +359,25 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	return fmt.Sprintf(
-		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-		table.Name(),
+		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+		quoteIdentifier(table.Name()),
 		strings.Join(colStmts, ",\n"),
 	), nil
 }
 
+// quoteIdentifier wraps the specified identifier in backticks and escapes all occurrences of backticks in the
+// identifier by replacing them with double backticks.
+func quoteIdentifier(id string) string {
+	id = strings.ReplaceAll(id, "`", "``")
+	return fmt.Sprintf("`%s`", id)
+}
+
+// quoteIdentifiers wraps each of the specified identifiers in backticks, escapes all occurrences of backticks in
+// the identifier, and returns a slice of the quoted identifiers.
 func quoteIdentifiers(ids []string) []string {
 	quoted := make([]string, len(ids))
 	for i, id := range ids {
-		quoted[i] = fmt.Sprintf("`%s`", id)
+		quoted[i] = quoteIdentifier(id)
 	}
 	return quoted
 }
