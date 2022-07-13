@@ -23,7 +23,7 @@ type mysqlTable struct {
 	name string
 	sch  sql.Schema
 	data *in_mem_table.Data
-	db *MySQLDb
+	db   *MySQLDb
 }
 
 var _ sql.Table = (*mysqlTable)(nil)
@@ -110,7 +110,7 @@ func (t *mysqlTable) Data() *in_mem_table.Data {
 
 // cacheClearingDataEditor is a simple wrapper around a DataEditor that clears the mysql DB's user cache on every update.
 type cacheClearingDataEditor struct {
-  db *MySQLDb
+	db     *MySQLDb
 	editor *in_mem_table.DataEditor
 }
 
