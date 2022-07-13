@@ -30,7 +30,7 @@ import (
 // constructJoinPlan finds an optimal table ordering and access plan for the tables in the query.
 func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("construct_join_plan")
-	defer span.Finish()
+	defer span.End()
 
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
@@ -637,8 +637,8 @@ func findJoinIndexesByTable(
 	tableAliases TableAliases,
 	a *Analyzer,
 ) (joinIndexesByTable, error) {
-	indexSpan, _ := ctx.Span("find_join_indexes")
-	defer indexSpan.Finish()
+	indexSpan, ctx := ctx.Span("find_join_indexes")
+	defer indexSpan.End()
 
 	var err error
 	var conds []joinCond

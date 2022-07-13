@@ -24,9 +24,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -41,6 +41,9 @@ const (
 	CurrentDBSessionVar  = "current_database"
 	AutoCommitSessionVar = "autocommit"
 )
+
+var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/dolthub/go-mysql-server/sql")
+var _, noopSpan = NoopTracer.Start(context.Background(), "noop")
 
 // Client holds session user information.
 type Client struct {
@@ -62,6 +65,9 @@ type Session interface {
 	SetClient(Client)
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
+	// InitSessionVariable sets the given system variable to the value given for this session and will allow for
+	// initialization of readonly variables.
+	InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
 	SetUserVariable(ctx *Context, varName string, value interface{}) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
@@ -233,11 +239,30 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
-	if sysVar.Scope == SystemVariableScope_Global {
-		return ErrSystemVariableGlobalOnly.New(sysVarName)
-	}
 	if !sysVar.Dynamic {
 		return ErrSystemVariableReadOnly.New(sysVarName)
+	}
+	return s.setSessVar(ctx, sysVar, sysVarName, value)
+}
+
+// InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
+func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	if !ok {
+		return ErrUnknownSystemVariable.New(sysVarName)
+	}
+
+	val, ok := s.systemVars[sysVar.Name]
+	if ok && val != sysVar.Default {
+		return ErrSystemVariableReinitialized.New(sysVarName)
+	}
+
+	return s.setSessVar(ctx, sysVar, sysVarName, value)
+}
+
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName string, value interface{}) error {
+	if sysVar.Scope == SystemVariableScope_Global {
+		return ErrSystemVariableGlobalOnly.New(sysVarName)
 	}
 	convertedVal, err := sysVar.Type.Convert(value)
 	if err != nil {
@@ -554,8 +579,8 @@ type Context struct {
 	pid         uint64
 	query       string
 	queryTime   time.Time
-	tracer      opentracing.Tracer
-	rootSpan    opentracing.Span
+	tracer      trace.Tracer
+	rootSpan    trace.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -569,7 +594,7 @@ func WithSession(s Session) ContextOption {
 }
 
 // WithTracer adds the given tracer to the context.
-func WithTracer(t opentracing.Tracer) ContextOption {
+func WithTracer(t trace.Tracer) ContextOption {
 	return func(ctx *Context) {
 		ctx.tracer = t
 	}
@@ -597,7 +622,7 @@ func WithMemoryManager(m *MemoryManager) ContextOption {
 }
 
 // WithRootSpan sets the root span of the context.
-func WithRootSpan(s opentracing.Span) ContextOption {
+func WithRootSpan(s trace.Span) ContextOption {
 	return func(ctx *Context) {
 		ctx.rootSpan = s
 	}
@@ -645,7 +670,7 @@ func NewContext(
 		Context:   ctx,
 		Session:   nil,
 		queryTime: ctxNowFunc(),
-		tracer:    opentracing.NoopTracer{},
+		tracer:    NoopTracer,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -695,15 +720,13 @@ func (c *Context) QueryTime() time.Time {
 // children of this span.
 func (c *Context) Span(
 	opName string,
-	opts ...opentracing.StartSpanOption,
-) (opentracing.Span, *Context) {
-	parentSpan := opentracing.SpanFromContext(c.Context)
-	if parentSpan != nil {
-		opts = append(opts, opentracing.ChildOf(parentSpan.Context()))
+	opts ...trace.SpanStartOption,
+) (trace.Span, *Context) {
+	if c.tracer == NoopTracer {
+		return noopSpan, c
 	}
-	span := c.tracer.StartSpan(opName, opts...)
-	ctx := opentracing.ContextWithSpan(c.Context, span)
 
+	ctx, span := c.tracer.Start(c.Context, opName, opts...)
 	return span, c.WithContext(ctx)
 }
 
@@ -728,7 +751,7 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 }
 
 // RootSpan returns the root span, if any.
-func (c *Context) RootSpan() opentracing.Span {
+func (c *Context) RootSpan() trace.Span {
 	return c.rootSpan
 }
 
@@ -794,10 +817,10 @@ type Services struct {
 
 // NewSpanIter creates a RowIter executed in the given span.
 // Currently inactive, returns the iter returned unaltered.
-func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
+func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 	// In the default, non traced case, we should not bother with
 	// collecting the timings below.
-	if (span.Tracer() == opentracing.NoopTracer{}) {
+	if !span.IsRecording() {
 		return iter
 	} else {
 		var iter2 RowIter2
@@ -811,7 +834,7 @@ func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
 }
 
 type spanIter struct {
-	span  opentracing.Span
+	span  trace.Span
 	iter  RowIter
 	iter2 RowIter2
 	count int
@@ -881,32 +904,32 @@ func (i *spanIter) finish() {
 		avg = i.total / time.Duration(i.count)
 	}
 
-	i.span.FinishWithOptions(opentracing.FinishOptions{
-		LogRecords: []opentracing.LogRecord{
-			{
-				Timestamp: time.Now(),
-				Fields: []log.Field{
-					log.Int("rows", i.count),
-					log.String("total_time", i.total.String()),
-					log.String("max_time", i.max.String()),
-					log.String("min_time", i.min.String()),
-					log.String("avg_time", avg.String()),
-				},
-			},
-		},
-	})
+	i.span.AddEvent("finish", trace.WithAttributes(
+		attribute.Int("rows", i.count),
+		attribute.Stringer("total_time", i.total),
+		attribute.Stringer("max_time", i.max),
+		attribute.Stringer("min_time", i.min),
+		attribute.Stringer("avg_time", avg),
+	))
+	i.span.End()
 	i.done = true
 }
 
 func (i *spanIter) finishWithError(err error) {
-	i.span.FinishWithOptions(opentracing.FinishOptions{
-		LogRecords: []opentracing.LogRecord{
-			{
-				Timestamp: time.Now(),
-				Fields:    []log.Field{log.String("error", err.Error())},
-			},
-		},
-	})
+	var avg time.Duration
+	if i.count > 0 {
+		avg = i.total / time.Duration(i.count)
+	}
+
+	i.span.RecordError(err)
+	i.span.AddEvent("finish", trace.WithAttributes(
+		attribute.Int("rows", i.count),
+		attribute.Stringer("total_time", i.total),
+		attribute.Stringer("max_time", i.max),
+		attribute.Stringer("min_time", i.min),
+		attribute.Stringer("avg_time", avg),
+	))
+	i.span.End()
 	i.done = true
 }
 

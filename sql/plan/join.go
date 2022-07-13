@@ -20,7 +20,8 @@ import (
 	"reflect"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -404,10 +405,10 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 		rightName = reflect.TypeOf(right).String()
 	}
 
-	span, ctx := ctx.Span("plan."+typ.String(), opentracing.Tags{
-		"left":  leftName,
-		"right": rightName,
-	})
+	span, ctx := ctx.Span("plan."+typ.String(), trace.WithAttributes(
+		attribute.String("left", leftName),
+		attribute.String("right", rightName),
+	))
 
 	var inMemorySession bool
 	val, err := ctx.GetSessionVariable(ctx, inMemoryJoinSessionVar)
@@ -425,7 +426,7 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 	if typ == JoinTypeRight {
 		r, err := right.RowIter(ctx, row)
 		if err != nil {
-			span.Finish()
+			span.End()
 			return nil, err
 		}
 		return sql.NewSpanIter(span, &joinIter{
@@ -444,7 +445,7 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 
 	l, err := left.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

@@ -22,8 +22,8 @@ import (
 )
 
 func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_table_functions")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_table_functions")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
@@ -60,8 +60,8 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 
 // resolveFunctions replaces UnresolvedFunction nodes with equivalent functions from the Catalog.
 func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_functions")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_functions")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {

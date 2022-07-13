@@ -275,9 +275,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return Int64, nil
 	case "float":
-		if ct.Scale != nil {
-			return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Cannot set both precision and scale")
-		} else if ct.Length != nil {
+		if ct.Length != nil {
 			precision, err := strconv.ParseInt(string(ct.Length.Val), 10, 8)
 			if err != nil {
 				return nil, err

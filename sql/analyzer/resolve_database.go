@@ -24,8 +24,8 @@ import (
 // actual sql.Database implementation from the catalog. Also sets the database provider for nodes that implement
 // sql.MultiDatabaser.
 func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_database")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_database")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		treeIdentity := transform.SameTree

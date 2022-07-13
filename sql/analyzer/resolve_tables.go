@@ -41,8 +41,8 @@ var dualTable = func() sql.Table {
 }()
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_tables")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_tables")
+	defer span.End()
 
 	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		ignore := false
@@ -194,8 +194,8 @@ func getAllColumnsWithDefaultValue(ctx *sql.Context, a *Analyzer) ([]*sql.Column
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
 // store supplementary schema information. This is useful for lazy resolution of column default values.
 func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("set_target_schema")
-	defer span.Finish()
+	span, ctx := ctx.Span("set_target_schema")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		t, ok := n.(sql.SchemaTarget)

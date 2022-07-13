@@ -31,8 +31,8 @@ type CatalogTable interface {
 
 // assignCatalog sets the catalog in the required nodes.
 func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("assign_catalog")
-	defer span.Finish()
+	span, ctx := ctx.Span("assign_catalog")
+	defer span.End()
 
 	// TODO make the catalog interfaces change sensitive
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {

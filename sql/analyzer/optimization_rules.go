@@ -24,8 +24,8 @@ import (
 // eraseProjection removes redundant Project nodes from the plan. A project is redundant if it doesn't alter the schema
 // of its child.
 func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("erase_projection")
-	defer span.Finish()
+	span, ctx := ctx.Span("erase_projection")
+	defer span.End()
 
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
@@ -46,8 +46,8 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 // ordered. The OrderedDistinct node is much faster and uses much less memory, since it only has to compare the
 // previous row to the current one to determine its distinct-ness.
 func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("optimize_distinct")
-	defer span.Finish()
+	span, ctx := ctx.Span("optimize_distinct")
+	defer span.End()
 
 	if n, ok := node.(*plan.Distinct); ok {
 		var sortField *expression.GetField
@@ -161,8 +161,8 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 // removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
 func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("remove_unnecessary_converts")
-	defer span.Finish()
+	span, ctx := ctx.Span("remove_unnecessary_converts")
+	defer span.End()
 
 	if !n.Resolved() {
 		return n, transform.SameTree, nil

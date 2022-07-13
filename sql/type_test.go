@@ -29,7 +29,7 @@ func TestFloatCovert(t *testing.T) {
 		expected Type
 		err      bool
 	}{
-		{"53", "0", nil, true},
+		{"20", "2", Float32, false},
 		{"-1", "", nil, true},
 		{"54", "", nil, true},
 		{"", "", Float32, false},
