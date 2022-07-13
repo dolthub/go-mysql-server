@@ -463,7 +463,7 @@ func (db *MySQLDb) clearCache() {
 	if db == nil { // nil in the case of some tests
 		return
 	}
-	db.clearCache()
+	db.cache.clear()
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given
