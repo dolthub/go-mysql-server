@@ -59,8 +59,8 @@ func TestCreateViewWithRegistry(t *testing.T) {
 	require.NoError(err)
 
 	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
-	actualView, err := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
-	require.NoError(err)
+	actualView, ok := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
+	require.True(ok)
 	require.Equal(expectedView, actualView)
 }
 
@@ -175,7 +175,7 @@ func TestReplaceExistingViewWithRegistry(t *testing.T) {
 	require.NoError(err)
 
 	expectedView := createView.View()
-	actualView, err := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
-	require.NoError(err)
+	actualView, ok := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
+	require.True(ok)
 	require.Equal(expectedView, actualView)
 }

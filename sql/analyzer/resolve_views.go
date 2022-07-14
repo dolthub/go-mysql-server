@@ -75,11 +75,9 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		// If we didn't find the view from the database directly, use the in-session registry
 		var err error
 		if view == nil {
-			view, err = ctx.GetViewRegistry().View(dbName, viewName)
-			if sql.ErrViewDoesNotExist.Is(err) {
+			view, ok = ctx.GetViewRegistry().View(dbName, viewName)
+			if !ok {
 				return n, transform.SameTree, nil
-			} else if err != nil {
-				return nil, transform.SameTree, err
 			}
 		}
 

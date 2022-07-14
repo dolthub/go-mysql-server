@@ -51,8 +51,8 @@ func TestRegisterNonExistingView(t *testing.T) {
 
 	registry := newRegistry(require)
 
-	actualView, err := registry.View(dbName, viewName)
-	require.NoError(err)
+	actualView, ok := registry.View(dbName, viewName)
+	require.True(ok)
 	require.Equal(testView, actualView)
 }
 
@@ -96,8 +96,8 @@ func TestGetExistingView(t *testing.T) {
 
 	registry := newRegistry(require)
 
-	actualView, err := registry.View(dbName, viewName)
-	require.NoError(err)
+	actualView, ok := registry.View(dbName, viewName)
+	require.True(ok)
 	require.Equal(testView, actualView)
 }
 
@@ -107,10 +107,9 @@ func TestGetNonExistingView(t *testing.T) {
 
 	registry := NewViewRegistry()
 
-	actualView, err := registry.View(dbName, viewName)
-	require.Error(err)
+	actualView, ok := registry.View(dbName, viewName)
+	require.False(ok)
 	require.Nil(actualView)
-	require.True(ErrViewDoesNotExist.Is(err))
 }
 
 // Tests that retrieving the views registered under a database succeeds,

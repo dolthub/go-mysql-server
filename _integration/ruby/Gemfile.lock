@@ -2,14 +2,14 @@ GEM
   remote: https://rubygems.org/
   specs:
     minitest (5.11.3)
-    ruby-mysql (2.9.14)
+    ruby-mysql (2.10.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   minitest (~> 5.11, >= 5.11.3)
-  ruby-mysql (~> 2.9, >= 2.9.14)
+  ruby-mysql (~> 2.10)
 
 BUNDLED WITH
    1.16.5
