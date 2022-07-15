@@ -196,7 +196,7 @@ func (db *MySQLDb) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(db.user, username, "%", password)
+	addSuperUser(db.user, username, "localhost", password)
 	db.clearCache()
 }
 
