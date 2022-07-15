@@ -5574,10 +5574,6 @@ type memoryPersister struct {
 
 var _ mysql_db.MySQLDbPersistence = &memoryPersister{}
 
-func (p *memoryPersister) ValidateCanPersist() error {
-	return nil
-}
-
 func (p *memoryPersister) Persist(ctx *sql.Context, data []byte) error {
 	//erase everything from users and roles
 	p.users = make([]*mysql_db.User, 0)
