@@ -387,6 +387,10 @@ func TestInsertIgnoreInto(t *testing.T) {
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
+	enginetest.TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestInsertIntoErrors(t *testing.T) {
 	enginetest.TestInsertIntoErrors(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -756,12 +760,6 @@ func TestPrepared(t *testing.T) {
 
 func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-}
-
-func TestKeylessUniqueIndex(t *testing.T) {
-	// TODO: GMS does not support unique indexes for keyless tables.
-	t.Skip()
-	enginetest.TestKeylessUniqueIndex(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestTypesOverWire(t *testing.T) {

@@ -473,23 +473,49 @@ func EncodeIndexValue(value *IndexValue) ([]byte, error) {
 }
 
 func (t *Table) Inserter(*sql.Context) sql.RowInserter {
-	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
+	return t.newTableEditor()
 }
 
 func (t *Table) Updater(*sql.Context) sql.RowUpdater {
-	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
+	return t.newTableEditor()
 }
 
 func (t *Table) Replacer(*sql.Context) sql.RowReplacer {
-	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
+	return t.newTableEditor()
 }
 
 func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
-	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
+	return t.newTableEditor()
 }
 
 func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
-	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
+	return t.newTableEditor()
+}
+
+func (t *Table) newTableEditor() *tableEditor {
+	var uniqIdxCols [][]int
+	for _, idx := range t.indexes {
+		if !idx.IsUnique() {
+			continue
+		}
+		var colNames []string
+		expressions := idx.(*Index).Exprs
+		for _, exp := range expressions {
+			colNames = append(colNames, exp.(*expression.GetField).Name())
+		}
+		colIdxs, err := t.columnIndexes(colNames)
+		if err != nil {
+			panic("failed to get column indexes")
+		}
+		uniqIdxCols = append(uniqIdxCols, colIdxs)
+	}
+	return &tableEditor{
+		table:             t,
+		initialAutoIncVal: 1,
+		initialPartitions: nil,
+		ea:                NewTableEditAccumulator(t),
+		initialInsert:     0,
+		uniqueIdxCols:     uniqIdxCols}
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
@@ -1102,7 +1128,7 @@ func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 
 // GetForeignKeyUpdater implements sql.ForeignKeyTable.
 func (t *Table) GetForeignKeyUpdater(ctx *sql.Context) sql.ForeignKeyUpdater {
-	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
+	return t.newTableEditor()
 }
 
 // GetChecks implements sql.CheckTable
@@ -1198,7 +1224,7 @@ func (t *Table) errIfDuplicateEntryExist(cols []string, idxName string) error {
 				return err
 			}
 			if _, ok := unique[h]; ok {
-				return sql.ErrDuplicateEntry.New(idxName)
+				return sql.NewUniqueKeyErr(formatRow(row, columnMapping), false, nil)
 			}
 			unique[h] = struct{}{}
 		}
@@ -1209,6 +1235,15 @@ func (t *Table) errIfDuplicateEntryExist(cols []string, idxName string) error {
 func hasNulls(row sql.Row) bool {
 	for _, v := range row {
 		if v == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func hasNullForAnyCols(row sql.Row, cols []int) bool {
+	for _, idx := range cols {
+		if row[idx] == nil {
 			return true
 		}
 	}

@@ -507,6 +507,15 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	}
 }
 
+// todo: merge this into the above test when https://github.com/dolthub/dolt/issues/3836 is fixed
+func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts {
+		TestScript(t, harness, script)
+	}
+
+}
+
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, expectedFailure := range queries.InsertErrorTests {
@@ -4782,7 +4791,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		// single column unique constraint (failure)
 		RunQuery(t, e, harness, "ALTER TABLE t38 DROP INDEX u_col1;")
 		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (5, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrDuplicateEntry)
+		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrUniqueKeyViolation)
 		tt := queries.QueryTest{
 			Query: "show create table t38;",
 			Expected: []sql.Row{{"t38", "CREATE TABLE `t38` (\n" +
@@ -4796,7 +4805,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		// multi column unique constraint (failure)
 		RunQuery(t, e, harness, "ALTER TABLE t39 DROP INDEX u_col1_col2;")
 		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (10, 1, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrDuplicateEntry)
+		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrUniqueKeyViolation)
 		tt = queries.QueryTest{
 			Query: "show create table t39;",
 			Expected: []sql.Row{{"t39", "CREATE TABLE `t39` (\n" +
@@ -5252,17 +5261,6 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 					tt.ExpectedPersist, res)
 			}
 		})
-	}
-}
-
-func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
-	harness.Setup(setup.KeylessSetup...)
-	for _, tt := range queries.InsertIntoKeylessUnique {
-		RunWriteQueryTest(t, harness, tt)
-	}
-
-	for _, tt := range queries.InsertIntoKeylessUniqueError {
-		runGenericErrorTest(t, harness, tt)
 	}
 }
 
