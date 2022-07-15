@@ -1334,4 +1334,154 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Table with inverted primary key referencing another table can insert rows",
+		SetUpScript: []string{
+			"create table a (x int, y int, primary key (x,y), INDEX `a_y_idx` (y));",
+			"create table b (x int, y int, primary key (y,x), foreign key (y) references a(y) on update cascade on delete cascade);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT into a VALUES (1, 3);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "INSERT into b VALUES (2, 3);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from a;",
+				Expected: []sql.Row{{1, 3}},
+			},
+			{
+				Query:    "SELECT * from b;",
+				Expected: []sql.Row{{2, 3}},
+			},
+			{
+				Query:       "INSERT into b VALUES (3, 5);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name: "Table with inverted primary key referencing another table with inverted primary keys can be inserted",
+		SetUpScript: []string{
+			"create table a (x int, y int, primary key (y,x));",
+			"create table b (x int, y int, primary key (y,x), foreign key (y) references a(y) on update cascade on delete cascade);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT into a VALUES (1, 3);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "INSERT into b VALUES (2, 3);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from a;",
+				Expected: []sql.Row{{1, 3}},
+			},
+			{
+				Query:    "SELECT * from b;",
+				Expected: []sql.Row{{2, 3}},
+			},
+			{
+				Query:       "INSERT into b VALUES (3, 5);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name: "Table with inverted primary key referencing another table can be updated",
+		SetUpScript: []string{
+			"create table a (x int, y int, primary key (x,y), INDEX `a_y_idx` (y));",
+			"create table b (x int, y int, primary key (y,x), foreign key (y) references a(y) on update cascade on delete cascade);",
+			"INSERT into a VALUES (1, 3);",
+			"INSERT into b VALUES (2, 3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE a SET y = 4 where y = 3;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * from a;",
+				Expected: []sql.Row{{1, 4}},
+			},
+			{
+				Query:    "SELECT * from b;",
+				Expected: []sql.Row{{2, 4}},
+			},
+		},
+	},
+	{
+		Name: "Table with inverted primary key referencing another table with inverted primary keys can be updated",
+		SetUpScript: []string{
+			"create table a (x int, y int, primary key (y,x));",
+			"create table b (x int, y int, primary key (y,x), foreign key (y) references a(y) on update cascade on delete cascade);",
+			"INSERT into a VALUES (1, 3)",
+			"INSERT into b VALUES (2, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE a SET y = 4 where y = 3;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * from a;",
+				Expected: []sql.Row{{1, 4}},
+			},
+			{
+				Query:    "SELECT * from b;",
+				Expected: []sql.Row{{2, 4}},
+			},
+		},
+	},
+	{
+		Name: "Table with inverted primary key referencing another table can be deleted",
+		SetUpScript: []string{
+			"create table a (x int, y int, primary key (x,y), INDEX `a_y_idx` (y));",
+			"create table b (x int, y int, primary key (y,x), foreign key (y) references a(y) on update cascade on delete cascade);",
+			"INSERT into a VALUES (1, 3);",
+			"INSERT into b VALUES (2, 3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DELETE from a where x = 1 AND y = 3;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * from b;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "Table with inverted primary key referencing another table with inverted primary keys can be deleted",
+		SetUpScript: []string{
+			"create table a (x int, y int, primary key (y,x));",
+			"create table b (x int, y int, primary key (y,x), foreign key (y) references a(y) on update cascade on delete cascade);",
+			"INSERT into a VALUES (1, 3)",
+			"INSERT into b VALUES (2, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DELETE from a where x = 1 AND y = 3;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * from a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * from b;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
