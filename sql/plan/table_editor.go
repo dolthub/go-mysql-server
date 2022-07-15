@@ -49,8 +49,7 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 		s.editor.StatementBegin(ctx)
 	})
 	row, err := s.inner.Next(ctx)
-	_, isIg := err.(sql.ErrInsertIgnore)
-	if err != nil && err != io.EOF && !isIg {
+	if err != nil && err != io.EOF {
 		s.errorEncountered = err
 		return row, err
 	}
@@ -64,8 +63,11 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Close implements the interface sql.RowIter.
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
-	var err error
-	if s.errorEncountered != nil {
+
+	err := s.errorEncountered
+	_, isIG := err.(sql.ErrInsertIgnore)
+
+	if err != nil && !isIG {
 		err = s.editor.DiscardChanges(ctx, s.errorEncountered)
 	} else {
 		err = s.editor.StatementComplete(ctx)
@@ -76,4 +78,42 @@ func (s *tableEditorIter) Close(ctx *sql.Context) error {
 		err = s.inner.Close(ctx)
 	}
 	return err
+}
+
+type checkpointingTableEditorIter struct {
+	editor sql.TableEditor
+	inner  sql.RowIter
+}
+
+var _ sql.RowIter = (*tableEditorIter)(nil)
+
+// NewCheckpointingTableEditorIter is similar to NewTableEditorIter except that
+// it returns an iter that calls BeginStatement and CompleteStatement on |table|
+// after every iter of |wrappedIter|. While SLOW, this functionality ensures
+// correctness for statements that need to rollback individual statements that
+// error such as INSERT IGNORE INTO.
+func NewCheckpointingTableEditorIter(table sql.TableEditor, wrappedIter sql.RowIter) sql.RowIter {
+	return &checkpointingTableEditorIter{
+		editor: table,
+		inner:  wrappedIter,
+	}
+}
+
+func (c checkpointingTableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
+	c.editor.StatementBegin(ctx)
+	row, err := c.inner.Next(ctx)
+	if err != nil && err != io.EOF {
+		if dErr := c.editor.DiscardChanges(ctx, err); dErr != nil {
+			return nil, err
+		}
+		return row, err
+	}
+	if sErr := c.editor.StatementComplete(ctx); sErr != nil {
+		return row, sErr
+	}
+	return row, err
+}
+
+func (c checkpointingTableEditorIter) Close(context *sql.Context) error {
+	return c.inner.Close(context)
 }
