@@ -65,9 +65,9 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
 
 	err := s.errorEncountered
-	_, isIG := err.(sql.ErrInsertIgnore)
+	_, ok := err.(sql.ErrInsertIgnore)
 
-	if err != nil && !isIG {
+	if err != nil && !ok {
 		err = s.editor.DiscardChanges(ctx, s.errorEncountered)
 	} else {
 		err = s.editor.StatementComplete(ctx)
@@ -104,7 +104,7 @@ func (c checkpointingTableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := c.inner.Next(ctx)
 	if err != nil && err != io.EOF {
 		if dErr := c.editor.DiscardChanges(ctx, err); dErr != nil {
-			return nil, err
+			return nil, dErr
 		}
 		return row, err
 	}
