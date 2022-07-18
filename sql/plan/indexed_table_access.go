@@ -90,6 +90,10 @@ func (i *IndexedTableAccess) Cost(ctx *sql.Context) float64 {
 		return float64(stats.RowCount())
 	}
 
+	if i.lookup == nil {
+		return float64(stats.RowCount())
+	}
+
 	// TODO: add some logic to be inclusive/exclusive for > vs >=
 	ranges := i.lookup.Ranges()
 	r := ranges[0][0]
