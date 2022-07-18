@@ -16,11 +16,12 @@ package plan
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"sort"
-	"strings"
 )
 
 // ShowVariables is a node that shows the global and session variables
