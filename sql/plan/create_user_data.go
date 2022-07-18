@@ -117,3 +117,16 @@ func (a AuthenticationMysqlNativePassword) Password() string {
 func NewDefaultAuthentication(password string) Authentication {
 	return AuthenticationMysqlNativePassword(password)
 }
+
+// AuthenticationMysqlCleartextPassword is an authentication type that represents "mysql_cleartext_password".
+type AuthenticationMysqlCleartextPassword string
+
+// Plugin implements the interface Authentication.
+func (a AuthenticationMysqlCleartextPassword) Plugin() string {
+	return "mysql_cleartext_password"
+}
+
+// Password implements the interface Authentication.
+func (a AuthenticationMysqlCleartextPassword) Password() string {
+	return string(a)
+}

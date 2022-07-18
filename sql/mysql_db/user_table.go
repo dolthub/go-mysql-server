@@ -230,6 +230,7 @@ func init() {
 		columnTemplate("Password_reuse_time", userTblName, false, smallint_unsigned_nullable_default_nil),
 		columnTemplate("Password_require_current", userTblName, false, enum_N_Y_utf8_general_ci_nullable_default_nil),
 		columnTemplate("User_attributes", userTblName, false, json_nullable_default_nil),
+		columnTemplate("identity", userTblName, false, text_utf8_bin_nullable_default_empty),
 	}
 }
 
@@ -303,4 +304,5 @@ const (
 	userTblColIndex_Password_reuse_time
 	userTblColIndex_Password_require_current
 	userTblColIndex_User_attributes
+	userTblColIndex_identity
 )

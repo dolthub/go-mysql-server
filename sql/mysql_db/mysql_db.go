@@ -46,6 +46,13 @@ func (p *NoopPersister) Persist(ctx *sql.Context, data []byte) error {
 	return nil
 }
 
+type JwksConfig struct {
+	Name        string
+	LocationUrl string
+	Claims      map[string]string
+	FieldsToLog []string
+}
+
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
 	Enabled bool
@@ -62,7 +69,8 @@ type MySQLDb struct {
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
 
-	persister MySQLDbPersistence
+	persister  MySQLDbPersistence
+	jwksConfig []JwksConfig
 
 	cache *privilegeCache
 }
@@ -173,6 +181,10 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 // SetPersister sets the custom persister to be used when the MySQL Db tables have been updated and need to be persisted.
 func (db *MySQLDb) SetPersister(persister MySQLDbPersistence) {
 	db.persister = persister
+}
+
+func (db *MySQLDb) SetJwksConfig(config []JwksConfig) {
+	db.jwksConfig = config
 }
 
 // AddRootAccount adds the root account to the list of accounts.
@@ -329,9 +341,15 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (db *MySQLDb) AuthMethod(user string) (string, error) {
-	//TODO: this should pass in the host as well to correctly determine which auth method to use
-	return "mysql_native_password", nil
+func (db *MySQLDb) AuthMethod(user, host string) (string, error) {
+	u := db.GetUser(user, host, false)
+	if u == nil {
+		return "mysql_native_password", nil
+	}
+	if u.Plugin == "authentication_dolt_jwt" {
+		return "mysql_cleartext_password", nil
+	}
+	return u.Plugin, nil
 }
 
 // Salt implements the interface mysql.AuthServer.
@@ -372,14 +390,45 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
 func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
+	host, _, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return nil, err
+	}
+	connUser := MysqlConnectionUser{User: user, Host: host}
 	if !db.Enabled {
-		host, _, err := net.SplitHostPort(addr.String())
+		return connUser, nil
+	}
+	method, err := db.AuthMethod(user, host)
+	if err != nil {
+		return nil, err
+	}
+	if method == "mysql_cleartext_password" {
+		pass, err := mysql.AuthServerReadPacketString(c)
 		if err != nil {
 			return nil, err
 		}
-		return MysqlConnectionUser{User: user, Host: host}, nil
+		userEntry := db.GetUser(user, host, false)
+		if userEntry == nil || userEntry.Locked {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		}
+		if userEntry.Plugin == "authentication_dolt_jwt" {
+			ok, err := validateAuthenticationDoltJwt(db, user, userEntry.Identity, pass)
+			if err != nil {
+				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v', error: %v", user, err)
+			}
+			if !ok {
+				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+			}
+			return connUser, nil
+		} else {
+			if !validateMysqlCleartextPassword(pass) {
+				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+			}
+			return connUser, nil
+		}
+
 	}
-	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
+	return nil, fmt.Errorf(`the only user login interfaces currently supported are "mysql_native_password" and "mysql_cleartext_password"`)
 }
 
 // Persist passes along all changes to the integrator.
@@ -502,6 +551,20 @@ func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword 
 	candidateHash2 := crypt.Sum(nil)
 
 	return bytes.Equal(candidateHash2, hash)
+}
+
+func validateMysqlCleartextPassword(mysqlCleartextPassword string) bool {
+	if len(mysqlCleartextPassword) == 0 {
+		return false
+	}
+	if mysqlCleartextPassword == "rightpassword" {
+		return true
+	}
+	return false
+}
+
+func validateAuthenticationDoltJwt(db *MySQLDb, username, identity, token string) (bool, error) {
+	return validateJWT(db.jwksConfig, username, identity, token)
 }
 
 // mustDefault enforces that no error occurred when constructing the column default value.

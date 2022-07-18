@@ -34,6 +34,7 @@ type User struct {
 	PasswordLastChanged time.Time
 	Locked              bool
 	Attributes          *string
+	Identity            string
 	//TODO: add the remaining fields
 
 	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a
@@ -66,6 +67,7 @@ func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, er
 		PasswordLastChanged: passwordLastChanged,
 		Locked:              row[userTblColIndex_account_locked].(uint16) == 2,
 		Attributes:          attributes,
+		Identity:            row[userTblColIndex_identity].(string),
 		IsRole:              false,
 	}, nil
 }
@@ -96,6 +98,7 @@ func (u *User) ToRow(ctx *sql.Context) sql.Row {
 	row[userTblColIndex_plugin] = u.Plugin
 	row[userTblColIndex_authentication_string] = u.Password
 	row[userTblColIndex_password_last_changed] = u.PasswordLastChanged
+	row[userTblColIndex_identity] = u.Identity
 	if u.Locked {
 		row[userTblColIndex_account_locked] = uint16(2)
 	}
@@ -118,6 +121,7 @@ func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 		u.Host != otherUser.Host ||
 		u.Plugin != otherUser.Plugin ||
 		u.Password != otherUser.Password ||
+		u.Identity != otherUser.Identity ||
 		!u.PasswordLastChanged.Equal(otherUser.PasswordLastChanged) ||
 		u.Locked != otherUser.Locked ||
 		!u.PrivilegeSet.Equals(otherUser.PrivilegeSet) ||

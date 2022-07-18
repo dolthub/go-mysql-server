@@ -94,6 +94,7 @@ type ServerAuthenticationTest struct {
 type ServerAuthenticationTestAssertion struct {
 	Username    string
 	Password    string
+	UsePacket   bool
 	Query       string
 	ExpectedErr bool
 }
@@ -360,6 +361,7 @@ var UserPrivTests = []UserPrivilegeTest{
 						nil,                     // Password_reuse_time
 						nil,                     // Password_require_current
 						nil,                     // User_attributes
+						"",                      // identity
 					},
 				},
 			},
@@ -1029,6 +1031,56 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Password:    "",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: true,
+			},
+		},
+	},
+	{
+		Name: "Create User with mysql_cleartext_password plugin specification",
+		SetUpScript: []string{
+			"CREATE USER ctpuse@localhost IDENTIFIED WITH mysql_cleartext_password",
+			"GRANT ALL ON *.* TO ctpuse@localhost WITH GRANT OPTION;",
+		},
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:    "ctpuse",
+				Password:    "",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: true,
+				UsePacket:   true,
+			},
+			{
+				Username:    "ctpuse",
+				Password:    "rightpassword",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: false,
+				UsePacket:   true,
+			},
+		},
+	},
+	{
+		Name: "Create User with jwt plugin specification",
+		SetUpScript: []string{
+			"CREATE USER jwksuse@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=doltdb_hosted,sub=hosted_ui_reader';",
+			"GRANT ALL ON *.* TO jwksuse@localhost WITH GRANT OPTION;",
+		},
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:    "jwksuse",
+				Password:    "what",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: true,
+			},
+			{
+				Username:    "jwksuse",
+				Password:    "",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: true,
+			},
+			{
+				Username:    "jwksuse",
+				Password:    "good",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: false,
 			},
 		},
 	},
