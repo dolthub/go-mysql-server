@@ -603,14 +603,18 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String())), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
 		var likepattern string
+		var filter sql.Expression
+		var err error
 		if s.Filter != nil {
 			if s.Filter.Filter != nil {
-				unsupportedShow := fmt.Sprintf("SHOW VARIABLES WHERE ...")
-				return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
 			}
 			likepattern = s.Filter.Like
 		}
-		return plan.NewShowVariables(likepattern), nil
+		return plan.NewShowVariables(likepattern, filter), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression

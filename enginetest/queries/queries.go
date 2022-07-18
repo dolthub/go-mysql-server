@@ -3852,6 +3852,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
+		Expected: []sql.Row{
+			{"autocommit", 1}, {"version", ""},
+		},
+	},
+	{
+		Query: `SHOW VARIABLES WHERE Variable_name > 'version' and variable_name like '%_%'`,
+		Expected: []sql.Row{
+			{"version_comment", ""}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
+		},
+	},
+	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
 		Expected: []sql.Row{
 			{"block_encryption_mode", "aes-128-ecb"},
@@ -8592,6 +8604,10 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 JSON DEFAULT JSON_ARRAY(1,2));",
 		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:          "SHOW VARIABLES WHERE value = ''",
+		ExpectedErrStr: "WHERE clause supports only 'variable_name' column for SHOW VARIABLES",
 	},
 }
 

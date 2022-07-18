@@ -16,23 +16,26 @@ package plan
 
 import (
 	"fmt"
-	"sort"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"sort"
+	"strings"
 )
 
 // ShowVariables is a node that shows the global and session variables
 //TODO: implement the GLOBAL and SESSION distinction
 type ShowVariables struct {
 	pattern string
+	filter  sql.Expression
 }
 
 // NewShowVariables returns a new ShowVariables reference.
 // like is a "like pattern". If like is an empty string it will return all variables.
-func NewShowVariables(like string) *ShowVariables {
+func NewShowVariables(like string, filter sql.Expression) *ShowVariables {
 	return &ShowVariables{
 		pattern: like,
+		filter:  filter,
 	}
 }
 
@@ -90,7 +93,20 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		)
 	}
 
-	for k, v := range ctx.GetAllSessionVariables() {
+	filteredMap := make(map[string]interface{})
+	var err error
+
+	sessVariables := ctx.GetAllSessionVariables()
+	if sv.filter != nil {
+		filteredMap, err = filterVariables(ctx, sessVariables, sv.filter)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		filteredMap = sessVariables
+	}
+
+	for k, v := range filteredMap {
 		if like != nil {
 			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
 			if err != nil {
@@ -109,4 +125,36 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 	})
 
 	return sql.RowsToRowIter(rows...), nil
+}
+
+func filterVariables(ctx *sql.Context, sessVars map[string]interface{}, filter sql.Expression) (map[string]interface{}, error) {
+	filteredMap := make(map[string]interface{})
+	for k, v := range sessVars {
+		updatedFilter, _, err := replaceUnresolvedColumnsWithKey(filter, k)
+		if err != nil {
+			return nil, err
+		}
+
+		if res, err := updatedFilter.Eval(ctx, nil); err != nil {
+			return nil, err
+		} else if res.(bool) {
+			filteredMap[k] = v
+		}
+	}
+
+	return filteredMap, nil
+}
+
+func replaceUnresolvedColumnsWithKey(input sql.Expression, key string) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(input, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e.(type) {
+		case *expression.UnresolvedColumn:
+			if strings.ToLower(e.String()) != "variable_name" {
+				return nil, transform.SameTree, fmt.Errorf("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
+			}
+			return expression.NewLiteral(key, sql.Text), transform.NewTree, nil
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
 }
