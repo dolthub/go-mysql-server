@@ -56,7 +56,12 @@ func (sv *ShowVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 
 // String implements the fmt.Stringer interface.
 func (sv *ShowVariables) String() string {
-	return fmt.Sprintf("SHOW VARIABLES%s", sv.filter.String())
+	var f string
+	if sv.filter != nil {
+		f = fmt.Sprintf(" WHERE %s", sv.filter.String())
+	}
+
+	return fmt.Sprintf("SHOW VARIABLES%s", f)
 }
 
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.

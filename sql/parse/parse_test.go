@@ -2507,12 +2507,12 @@ CREATE TABLE t2
 	`SHOW GLOBAL VARIABLES`:  plan.NewShowVariables(nil),
 	`SHOW SESSION VARIABLES`: plan.NewShowVariables(nil),
 	`SHOW VARIABLES LIKE 'gtid_mode'`: plan.NewShowVariables(expression.NewLike(
-		expression.NewGetField(0, sql.LongText, "", false),
+		expression.NewGetField(0, sql.LongText, "variable_name", false),
 		expression.NewLiteral("gtid_mode", sql.LongText),
 		nil,
 	)),
 	`SHOW SESSION VARIABLES LIKE 'autocommit'`: plan.NewShowVariables(expression.NewLike(
-		expression.NewGetField(0, sql.LongText, "", false),
+		expression.NewGetField(0, sql.LongText, "variable_name", false),
 		expression.NewLiteral("autocommit", sql.LongText),
 		nil,
 	)),

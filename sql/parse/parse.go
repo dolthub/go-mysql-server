@@ -628,7 +628,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 			if s.Filter.Like != "" {
 				like = expression.NewLike(
-					expression.NewGetField(0, sql.LongText, "", false),
+					expression.NewGetField(0, sql.LongText, "variable_name", false),
 					expression.NewLiteral(s.Filter.Like, sql.LongText),
 					nil,
 				)
