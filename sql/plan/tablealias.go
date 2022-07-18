@@ -26,7 +26,8 @@ import (
 // TableAlias is a node that acts as a table with a given name.
 type TableAlias struct {
 	*UnaryNode
-	name string
+	name  string
+	relId sql.RelId
 }
 
 // NewTableAlias returns a new Table alias node.
@@ -37,6 +38,11 @@ func NewTableAlias(name string, node sql.Node) *TableAlias {
 // Name implements the Nameable interface.
 func (t *TableAlias) Name() string {
 	return t.name
+}
+
+func (t *TableAlias) WithRelationalId(id sql.RelId) sql.Node {
+	t.relId = id
+	return t
 }
 
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of

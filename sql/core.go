@@ -395,8 +395,17 @@ type FilteredTable interface {
 // that's more optimized given the columns that are projected.
 type ProjectedTable interface {
 	Table
-	WithProjections(colNames []string) Table
+	WithProjections([]string) Table
 	Projections() []string
+}
+
+type RelId uint16
+
+// RelationalNode is a column namespaced source of rows
+type RelationalNode interface {
+	Node
+	WithRelationalId(RelId) Node
+	RelationalId() RelId
 }
 
 // IndexUsing is the desired storage type.

@@ -25,17 +25,31 @@ type ResolvedTable struct {
 	sql.Table
 	Database sql.Database
 	AsOf     interface{}
+	relId    sql.RelId
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
+
+var _ sql.RelationalNode = (*ResolvedTable)(nil)
+
+// IsRelational implements sql.RelationalNode
+func (t *ResolvedTable) WithRelationalId(id sql.RelId) sql.Node {
+	nt := *t
+	nt.relId = id
+	return &nt
+}
+
+func (t *ResolvedTable) RelationalId() sql.RelId {
+	return t.relId
+}
 
 // Can't embed Table2 like we do Table1 as it's an extension not everyone implements
 var _ sql.Table2 = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
-	return &ResolvedTable{table, db, asOf}
+	return &ResolvedTable{Table: table, Database: db, AsOf: asOf}
 }
 
 // Resolved implements the Resolvable interface.

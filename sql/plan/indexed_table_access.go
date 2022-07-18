@@ -32,12 +32,23 @@ type IndexedTableAccess struct {
 	ResolvedTable *ResolvedTable
 	lb            LookupBuilder
 	lookup        sql.IndexLookup
+	relId         sql.RelId
+}
+
+func (i *IndexedTableAccess) WithRelationalId(id sql.RelId) sql.Node {
+	i.relId = id
+	return i
+}
+
+func (i *IndexedTableAccess) RelationalId() sql.RelId {
+	return i.relId
 }
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Node2 = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
+var _ sql.RelationalNode = (*IndexedTableAccess)(nil)
 
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and

@@ -81,19 +81,19 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 }
 
 // pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
-func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("pushdown_projections")
-	defer span.End()
-
-	if !canDoPushdown(n) {
-		return n, transform.SameTree, nil
-	}
-	if !canProject(n, a) {
-		return n, transform.SameTree, nil
-	}
-
-	return transformPushdownProjections(ctx, a, n, scope)
-}
+//func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+//	span, ctx := ctx.Span("pushdown_projections")
+//	defer span.End()
+//
+//	if !canDoPushdown(n) {
+//		return n, transform.SameTree, nil
+//	}
+//	if !canProject(n, a) {
+//		return n, transform.SameTree, nil
+//	}
+//
+//	return transformPushdownProjections(ctx, a, n, scope)
+//}
 
 func canProject(n sql.Node, a *Analyzer) bool {
 	switch n.(type) {
@@ -424,8 +424,6 @@ func convertFiltersToIndexedAccess(
 
 	return transform.NodeWithCtx(n, childSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch node := c.Node.(type) {
-		// TODO: some indexes, once pushed down, can be safely removed from the filter. But not all of them, as currently
-		//  implemented -- some indexes return more values than strictly match.
 		case *plan.TableAlias:
 			table, same, err := pushdownIndexesToTable(a, node, indexes)
 			if err != nil {
@@ -704,93 +702,94 @@ func formatIndexDecoratorString(indexes ...sql.Index) []string {
 	return indexStrs
 }
 
-// pushdownProjectionsToTable attempts to push projected columns down to tables that implement sql.ProjectedTable.
-func pushdownProjectionsToTable(
-	a *Analyzer,
-	tableNode NameableNode,
-	fieldsByTable fieldsByTable,
-	usedProjections fieldsByTable,
-) (sql.Node, transform.TreeIdentity, error) {
-
-	table := getTable(tableNode)
-	if table == nil {
-		return tableNode, transform.SameTree, nil
-	}
-
-	var newTableNode sql.Node = tableNode
-
-	replacedTable := false
-	if pt, ok := table.(sql.ProjectedTable); ok && len(fieldsByTable[tableNode.Name()]) > 0 {
-		if usedProjections[tableNode.Name()] == nil {
-			projectedFields := fieldsByTable[tableNode.Name()]
-			table = pt.WithProjections(projectedFields)
-			usedProjections[tableNode.Name()] = projectedFields
-		}
-
-		newTableNode = plan.NewDecoratedNode(
-			fmt.Sprintf("Projected table access on %v",
-				fieldsByTable[tableNode.Name()]), newTableNode)
-		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
-
-		replacedTable = true
-	}
-
-	if !replacedTable {
-		return tableNode, transform.SameTree, nil
-	}
-
-	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess:
-		node, _, err := withTable(newTableNode, table)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		return node, transform.NewTree, nil
-	default:
-		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdown", tableNode)
-	}
-}
-
-func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	usedFieldsByTable := make(fieldsByTable)
-	fieldsByTable := getFieldsByTable(ctx, n)
-
-	selector := func(c transform.Context) bool {
-		switch c.Parent.(type) {
-		case *plan.TableAlias:
-			// When we hit a table alias, we don't want to descend farther into the tree for expression matches, which
-			// would give us the original (unaliased) names of columns
-			return false
-		default:
-			return true
-		}
-	}
-
-	return transform.NodeWithCtx(n, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		var nameable NameableNode
-
-		switch c.Node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
-			nameable = c.Node.(NameableNode)
-		}
-
-		if nameable != nil {
-			table, same, err := pushdownProjectionsToTable(a, nameable, fieldsByTable, usedFieldsByTable)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			if !same {
-				n, _, err := FixFieldIndexesForExpressions(ctx, a, table, scope)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				return n, transform.NewTree, nil
-			}
-		}
-		return FixFieldIndexesForExpressions(ctx, a, c.Node, scope)
-	})
-}
+//
+//// pushdownProjectionsToTable attempts to push projected columns down to tables that implement sql.ProjectedTable.
+//func pushdownProjectionsToTable(
+//	a *Analyzer,
+//	tableNode NameableNode,
+//	fieldsByTable fieldsByTable,
+//	usedProjections fieldsByTable,
+//) (sql.Node, transform.TreeIdentity, error) {
+//
+//	table := getTable(tableNode)
+//	if table == nil {
+//		return tableNode, transform.SameTree, nil
+//	}
+//
+//	var newTableNode sql.Node = tableNode
+//
+//	replacedTable := false
+//	if pt, ok := table.(sql.ProjectedTable); ok && len(fieldsByTable[tableNode.Name()]) > 0 {
+//		if usedProjections[tableNode.Name()] == nil {
+//			projectedFields := fieldsByTable[tableNode.Name()]
+//			table = pt.WithProjections(projectedFields)
+//			usedProjections[tableNode.Name()] = projectedFields
+//		}
+//
+//		newTableNode = plan.NewDecoratedNode(
+//			fmt.Sprintf("Projected table access on %v",
+//				fieldsByTable[tableNode.Name()]), newTableNode)
+//		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
+//
+//		replacedTable = true
+//	}
+//
+//	if !replacedTable {
+//		return tableNode, transform.SameTree, nil
+//	}
+//
+//	switch tableNode.(type) {
+//	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess:
+//		node, _, err := withTable(newTableNode, table)
+//		if err != nil {
+//			return nil, transform.SameTree, err
+//		}
+//
+//		return node, transform.NewTree, nil
+//	default:
+//		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdown", tableNode)
+//	}
+//}
+//
+//func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+//	usedFieldsByTable := make(fieldsByTable)
+//	fieldsByTable := getFieldsByTable(ctx, n)
+//
+//	selector := func(c transform.Context) bool {
+//		switch c.Parent.(type) {
+//		case *plan.TableAlias:
+//			// When we hit a table alias, we don't want to descend farther into the tree for expression matches, which
+//			// would give us the original (unaliased) names of columns
+//			return false
+//		default:
+//			return true
+//		}
+//	}
+//
+//	return transform.NodeWithCtx(n, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+//		var nameable NameableNode
+//
+//		switch c.Node.(type) {
+//		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
+//			nameable = c.Node.(NameableNode)
+//		}
+//
+//		if nameable != nil {
+//			table, same, err := pushdownProjectionsToTable(a, nameable, fieldsByTable, usedFieldsByTable)
+//			if err != nil {
+//				return nil, transform.SameTree, err
+//			}
+//			if !same {
+//				n, _, err := FixFieldIndexesForExpressions(ctx, a, table, scope)
+//				if err != nil {
+//					return nil, transform.SameTree, err
+//				}
+//				return n, transform.NewTree, nil
+//			}
+//		}
+//		return FixFieldIndexesForExpressions(ctx, a, c.Node, scope)
+//	})
+//}
 
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.

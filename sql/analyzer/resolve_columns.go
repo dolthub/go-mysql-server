@@ -104,14 +104,16 @@ type column interface {
 // nestingLevelSymbols tracks available table and column name symbols at a nesting level for a query. Each nested
 // subquery represents an additional nesting level.
 type nestingLevelSymbols struct {
-	availableColumns map[string][]string
-	availableTables  map[string]string
+	availableColumns   map[string][]string
+	availableTables    map[string]string
+	availableTableCols map[tableCol]struct{}
 }
 
 func newNestingLevelSymbols() nestingLevelSymbols {
 	return nestingLevelSymbols{
-		availableColumns: make(map[string][]string),
-		availableTables:  make(map[string]string),
+		availableColumns:   make(map[string][]string),
+		availableTables:    make(map[string]string),
+		availableTableCols: make(map[tableCol]struct{}),
 	}
 }
 
@@ -126,8 +128,10 @@ func (a availableNames) indexColumn(table, col string, nestingLevel int) {
 	if !ok {
 		a[nestingLevel] = newNestingLevelSymbols()
 	}
-	if !stringContains(a[nestingLevel].availableColumns[col], strings.ToLower(table)) {
-		a[nestingLevel].availableColumns[col] = append(a[nestingLevel].availableColumns[col], strings.ToLower(table))
+	tableLower := strings.ToLower(table)
+	if !stringContains(a[nestingLevel].availableColumns[col], tableLower) {
+		a[nestingLevel].availableColumns[col] = append(a[nestingLevel].availableColumns[col], tableLower)
+		a[nestingLevel].availableTableCols[tableCol{table: tableLower, col: col}] = struct{}{}
 	}
 }
 
@@ -169,6 +173,11 @@ func (a availableNames) tablesForColumnAtLevel(column string, level int) []strin
 	return a[level].availableColumns[column]
 }
 
+func (a availableNames) hasTableCol(scope int, tc tableCol) bool {
+	_, ok := a[scope].availableTableCols[tc]
+	return ok
+}
+
 func dedupStrings(in []string) []string {
 	var seen = make(map[string]struct{})
 	var result []string
@@ -188,7 +197,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			return n, transform.SameTree, nil
 		}
 
-		symbols := getNodeAvailableNames(n, scope)
+		names := make(availableNames)
+		symbols := getNodeAvailableNames(n, scope, names)
 
 		return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
@@ -196,12 +206,422 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	})
 }
 
+type scope struct {
+	cols            map[tableCol]struct{}
+	parent          *scope
+	b               *builder
+	stars           map[string]struct{}
+	unqualifiedStar bool
+}
+
+func (s *scope) push() *scope {
+	r := s.b.newScope()
+	r.parent = s
+	return r
+}
+
+func (s *scope) format() string {
+	b := strings.Builder{}
+	var sep string
+	for i := range s.cols {
+		b.WriteString(fmt.Sprintf("%s%s", s.cols[i], sep))
+		sep = ", "
+	}
+	return b.String()
+}
+
+func (s *scope) addCols(cols ...tableCol) {
+	for i := range cols {
+		s.cols[cols[i]] = struct{}{}
+	}
+}
+
+func (s *scope) appendScopeCols(other *scope) {
+	for i := range other.cols {
+		s.cols[i] = struct{}{}
+	}
+	s.unqualifiedStar = s.unqualifiedStar || other.unqualifiedStar
+}
+
+func (s *scope) hasCol(col tableCol) bool {
+	_, ok := s.cols[col]
+	return ok
+}
+
+func (s *scope) addColsFromAlias(outer *scope, table, alias string, columns []string) {
+	for i := range columns {
+		// need to get the table in the subquery alias
+		baseCol := tableCol{table: table, col: columns[i]}
+		aliasCol := tableCol{table: alias, col: columns[i]}
+		if outer.hasCol(aliasCol) {
+			// if the outer scope requests an aliased column
+			// a table lower in the tree must provide the source
+			s.addCols(baseCol)
+		}
+	}
+}
+
+type builder struct {
+	ctx       *sql.Context
+	root      sql.Node
+	tableCols map[sql.RelId][]tableCol
+	id        sql.RelId
+
+	// subquery attributes
+	activeSubquery          bool
+	activeSubqueryBaseTable string
+	//allCols   FastIntSet
+}
+
+func newBuilder(ctx *sql.Context, root sql.Node) *builder {
+	return &builder{
+		ctx:       ctx,
+		root:      root,
+		tableCols: make(map[sql.RelId][]tableCol),
+	}
+}
+
+func (b *builder) addTableCols(id sql.RelId, other []tableCol) {
+	if curr, ok := b.tableCols[id]; !ok {
+		b.tableCols[id] = other
+	} else {
+		newCols := make(map[tableCol]struct{})
+		for i := range other {
+			newCols[other[i]] = struct{}{}
+		}
+		for i := range curr {
+			newCols[curr[i]] = struct{}{}
+		}
+		i := 0
+		out := make([]tableCol, len(newCols))
+		for k := range newCols {
+			out[i] = k
+			i++
+		}
+		b.tableCols[id] = out
+	}
+}
+
+func (b *builder) buildTable(n sql.Node, inScope *scope) *scope {
+	if inScope.unqualifiedStar {
+		return inScope
+	}
+
+	table := getTable(n)
+	t, ok := table.(sql.ProjectedTable)
+	if !ok {
+		return inScope
+	}
+
+	if _, ok := inScope.stars[t.Name()]; ok {
+		return inScope
+	}
+
+	cols := make([]tableCol, 0)
+	for _, col := range t.Schema() {
+		c := tableCol{table: col.Source, col: col.Name}
+		if inScope.hasCol(c) {
+			cols = append(cols, c)
+		}
+	}
+	if len(cols) > 0 {
+		b.addTableCols(n.(sql.RelationalNode).RelationalId(), cols)
+	}
+	return inScope
+}
+
+func (b *builder) buildValues(n sql.Node, inScope *scope) *scope {
+	// ex: select x from (values row(1,2), row(3,4)) as t(x,y)
+	//todo push cols into value nodes
+	return inScope
+}
+
+func (b *builder) buildTableAlias(n *plan.TableAlias, inScope *scope) *scope {
+	// ex: select b.x from a as b
+	//   b.x is in scope when we hit alias
+	//   loop through a's dependencies, plug in alias name
+	//   when we find match, add original col to scope
+	//   result is (b.x, a.x)
+	// todo is there a case where it's bad to pickup too many cols? for a join maybe?
+	//     - select a.* from a as a, a as b where a.x = b.x
+	//		=> b should only select x in tablescan
+	tab := n.Child.(sql.Table)
+	outScope := inScope.push()
+	cols := make([]string, len(tab.Schema()))
+	for i, c := range tab.Schema() {
+		cols[i] = c.Name
+	}
+
+	b.id++
+	n = n.WithRelationalId(b.id).(*plan.TableAlias)
+
+	outScope.addColsFromAlias(inScope, tab.Name(), n.Name(), cols)
+	return outScope
+}
+
+func (b *builder) buildSubqueryAlias(n *plan.SubqueryAlias, inScope *scope) *scope {
+	// ex: select x from (select x,y from a)
+	// subquery is a row source, so it should accept projections
+	//todo: can subquery see entire outer scope?
+
+	// bail until i can do this correctly
+	// what should happen is:
+	//  - the subquery accesses outer scope dependencies to filter it's rels
+	//  - subquery is also a source, we should push outer scope deps into subquery's schema
+	//  - that looks different for different rel-types:
+	//    - project
+	//    - union
+	//    - recursively subquery alias
+	//    - join
+	//    - ?
+
+	// ex: we want d.x, d.x from subquery
+	// add project of those cols?
+	subqueryScope := inScope.push()
+	_ = b.walk(n.Child, subqueryScope)
+	// subquery is a source to outer scope, not sink
+	return inScope
+	//var cols []tableCol
+	////switch on possible subquery types
+	//if len(n.Columns) > 0 {
+	//	for _, col := range n.Columns {
+	//		c := tableCol{table: n.Name(), col: col}
+	//		if inScope.hasCol(c) {
+	//			cols = append(cols, c)
+	//		}
+	//	}
+	//} else {
+	//	cols = make([]tableCol, len(n.Columns))
+	//	for col := range inScope.cols {
+	//		c := tableCol{table: n.Name(), col: col.col}
+	//		cols = append(cols, c)
+	//
+	//	}
+	//}
+	//b.addTableCols(n.Name(), cols)
+	//outScope := b.walk(n.Child, inScope)
+	//return outScope
+}
+
+func (b *builder) buildCorrelatedSubquery(n *plan.Subquery, inScope *scope) *scope {
+	// ex: select b.y in (select a.x from a where a.x = b.x)
+	// ex: select b.y in (select c.w from (select a.* from a) as c where c.x = b.x)
+	// so we want the subq scope to have access to |inScope|
+	// we also want the inScope to receive the dependencies at the end of the returned scope
+	// how do we pass that information backwards? outScope
+	outScope := b.walk(n.Query, inScope)
+	return outScope
+}
+
+func (b *builder) buildCte(n *plan.Subquery, inScope *scope) *scope {
+	//todo: do we need this? or are Cte's always in subquery alias form at this point?
+	// either way can probably discard for now
+	return inScope
+}
+
+func (b *builder) buildGenericNode(n sql.Node, inScope *scope) *scope {
+	// do not make a new scope => we need to collect all of the filters/projections/etc
+	// add expressions
+	addColExprsToScope(n, inScope)
+	return inScope
+}
+
+func (b *builder) newScope() *scope {
+	// do not make a new scope => we need to collect all of the filters/projections/etc
+	// add expressions
+	return &scope{
+		b:    b,
+		cols: make(map[tableCol]struct{}),
+	}
+}
+
+// pushProjections
+// collect column expressions into a map
+// add filter to tables using only columns in used column map
+func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if s != nil {
+		//todo filter for top-level
+		return n, transform.SameTree, nil
+	}
+	b := newBuilder(ctx, n)
+	// hack to differentiate tables
+	err := b.assignRelIds()
+	if err != nil {
+		if errors.Is(err, ErrAlreadyPushedProjections) {
+			return n, transform.SameTree, nil
+		}
+		return nil, transform.SameTree, err
+	}
+	emptyScope := b.newScope()
+	// record keep on the way down
+	b.walk(b.root, emptyScope)
+	// transform up and rebuild nodes with the cached info
+	return b.finish()
+}
+
+var ErrAlreadyPushedProjections = errors.NewKind("already pushed projections")
+
+func (b *builder) assignRelIds() error {
+	n, same, err := transform.NodeWithOpaque(b.root, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case sql.RelationalNode:
+			if n.RelationalId() > 0 {
+				return nil, transform.SameTree, ErrAlreadyPushedProjections.New()
+			}
+			b.id++
+			return n.WithRelationalId(b.id), transform.NewTree, nil
+		default:
+			return n, transform.SameTree, nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+	if same {
+		return nil
+	}
+	b.root = n
+	return nil
+}
+
+func (b *builder) finish() (sql.Node, transform.TreeIdentity, error) {
+	//todo add opaques, need to pair scope and node walks
+	return transform.Node(b.root, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			// replace with projected version
+			cols, ok := b.tableCols[n.RelationalId()]
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+			projections := make([]string, len(cols))
+			for i := range cols {
+				projections[i] = cols[i].col
+			}
+			tab := getTable(n)
+			ptab, ok := tab.(sql.ProjectedTable)
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+			ret, err := n.WithTable(ptab.WithProjections(projections))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return ret, transform.NewTree, nil
+		case *plan.Values:
+			return n, transform.SameTree, nil
+		default:
+			return n, transform.SameTree, nil
+		}
+	})
+}
+
+func (b *builder) walk(n sql.Node, inScope *scope) *scope {
+	//todo function for processing a scope
+	// input node
+	// output the top-level deps of that node
+	findSubqueryExpr := func(n sql.Node) (*plan.Subquery, bool) {
+		en, ok := n.(sql.Expressioner)
+		if !ok {
+			return nil, false
+		}
+		for _, e := range en.Expressions() {
+			n, isSubqe := e.(*plan.Subquery)
+			if isSubqe {
+				return n, true
+			}
+		}
+		return nil, false
+	}
+
+	var outScope = inScope
+	transform.Inspect(n, func(n sql.Node) bool {
+		inScope = outScope
+
+		sqe, ok := findSubqueryExpr(n)
+		if ok {
+			//todo process this node's deps first
+			inScope = b.buildCorrelatedSubquery(sqe, inScope)
+		}
+
+		switch n := n.(type) {
+		case *plan.ResolvedTable, *plan.IndexedTableAccess:
+			// push cols into tables
+			outScope = b.buildTable(n, inScope)
+		case *plan.Values:
+			// push cols into values
+			outScope = b.buildValues(n, inScope)
+		case *plan.TableAlias:
+			// table alias mapping is special to pickup cols
+			outScope = b.buildTableAlias(n, inScope)
+		case *plan.Union:
+			// union is opaque to parent
+			leftScope := inScope.push()
+			rightScope := inScope.push()
+			outScope = b.walk(n.Left(), leftScope)
+			rOut := b.walk(n.Right(), rightScope)
+			outScope.appendScopeCols(rOut)
+			return false
+		case *plan.SubqueryAlias:
+			// assume no outer scope access?
+			// but we add the
+			outScope = b.buildSubqueryAlias(n, inScope)
+		case plan.JoinNode, *plan.CrossJoin:
+			//first add join expression
+			outScope = b.buildGenericNode(n, inScope)
+			// both relations need the same outer scope
+			innerScope := outScope.push()
+			outerScope := outScope.push()
+			innerScope.appendScopeCols(inScope)
+			outerScope.appendScopeCols(inScope)
+			_ = b.walk(n.(sql.BinaryNode).Left(), innerScope)
+			_ = b.walk(n.(sql.BinaryNode).Right(), outerScope)
+			//todo add output scopes back?
+		default:
+			outScope = b.buildGenericNode(n, inScope)
+		}
+		return true
+	})
+	return outScope
+}
+
+func addColExprsToScope(n sql.Node, s *scope) {
+	ne, ok := n.(sql.Expressioner)
+	if !ok {
+		return
+	}
+	for _, e := range ne.Expressions() {
+		transform.InspectExpr(e, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.Alias:
+				switch e := e.Child.(type) {
+				case *expression.GetField:
+					s.addCols(tableCol{table: e.Table(), col: e.Name()})
+				case *expression.UnresolvedColumn:
+					s.addCols(tableCol{table: e.Table(), col: e.Name()})
+				default:
+				}
+			case *expression.GetField:
+				s.addCols(tableCol{table: e.Table(), col: e.Name()})
+			case *expression.UnresolvedColumn:
+				s.addCols(tableCol{table: e.Table(), col: e.Name()})
+			case *expression.Star:
+				if len(e.Table) > 0 {
+					s.stars[e.Table] = struct{}{}
+				} else {
+					s.unqualifiedStar = true
+				}
+			default:
+			}
+			return false
+		})
+	}
+}
+
 // getNodeAvailableSymbols returns the set of table and column names accessible to the node given and using the scope
 // given. Table aliases overwrite table names: the original name is not considered accessible once aliased.
 // The value of the map is the same as the key, just used for existence checks.
-func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
-	names := make(availableNames)
-
+func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames) availableNames {
 	// Examine all columns, from the innermost scope (this one) outward.
 	getColumnsInNodes(n.Children(), names, 0)
 	for i, n := range scope.InnerToOuter() {

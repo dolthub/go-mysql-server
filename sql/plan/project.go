@@ -136,6 +136,9 @@ func (i *iter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if len(childRow) == 1 {
+		return childRow, nil
+	}
 	return ProjectRow(ctx, i.p.Projections, childRow)
 }
 
