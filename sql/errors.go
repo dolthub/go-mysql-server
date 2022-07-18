@@ -462,7 +462,7 @@ var (
 
 	// ErrLockDeadlock is the go-mysql-server equivalent of ER_LOCK_DEADLOCK. Transactions throwing this error
 	// are automatically rolled back. Clients receiving this error must retry the transaction.
-	ErrLockDeadlock = errors.NewKind("Deadlock found when trying to get lock, try restarting transaction.")
+	ErrLockDeadlock = errors.NewKind("serialization failure: %s, try restarting transaction.")
 
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")

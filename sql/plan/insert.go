@@ -298,10 +298,17 @@ func newInsertIter(
 		ignore:      ignore,
 	}
 
+	var ed sql.TableEditor
 	if replacer != nil {
-		return NewTableEditorIter(replacer, insertIter), nil
+		ed = replacer
 	} else {
-		return NewTableEditorIter(inserter, insertIter), nil
+		ed = inserter
+	}
+
+	if ignore {
+		return NewCheckpointingTableEditorIter(ed, insertIter), nil
+	} else {
+		return NewTableEditorIter(ed, insertIter), nil
 	}
 }
 
