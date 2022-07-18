@@ -28,7 +28,7 @@ func TestShowVariables(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	sv := NewShowVariables("")
+	sv := NewShowVariables("", nil)
 	require.True(sv.Resolved())
 
 	it, err := sv.RowIter(ctx, nil)
@@ -52,7 +52,7 @@ func TestShowVariables(t *testing.T) {
 }
 
 func TestShowVariablesWithLike(t *testing.T) {
-	sv := NewShowVariables("%t_into_buffer_size")
+	sv := NewShowVariables("%t_into_buffer_size", nil)
 	require.True(t, sv.Resolved())
 
 	context := sql.NewEmptyContext()
