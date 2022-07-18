@@ -201,10 +201,6 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	// Check if you can even persist in the first place
-	if err := mysqlDb.ValidateCanPersist(); err != nil {
-		return nil, err
-	}
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.ObjectType != ObjectType_Any {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
