@@ -48,7 +48,9 @@ func (p *CrossJoin) Cost(ctx *sql.Context) float64 {
 	if !ok {
 		return 0
 	}
-	return l.Cost(ctx) * r.Cost(ctx)
+	lCost := l.Cost(ctx)
+	rCost := r.Cost(ctx)
+	return lCost * rCost
 }
 
 // Schema implements the Node interface.

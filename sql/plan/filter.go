@@ -32,6 +32,13 @@ func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	}
 }
 
+func (f *Filter) Cost(ctx *sql.Context) float64 {
+	if c, ok := f.Child.(sql.Costable); ok {
+		return c.Cost(ctx)
+	}
+	return 0
+}
+
 // Resolved implements the Resolvable interface.
 func (f *Filter) Resolved() bool {
 	return f.UnaryNode.Child.Resolved() && f.Expression.Resolved()
