@@ -352,9 +352,16 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		return err
 	}
 	defer rowIter.Close(ctx)
-	if _, err = rowIter.Next(ctx); err == nil {
+
+	_, err = rowIter.Next(ctx)
+	if err != nil && err != io.EOF {
+		return err
+	}
+	if err == nil {
+		// We have a parent row so throw no error
 		return nil
 	}
+
 	if reference.ForeignKey.IsSelfReferential() {
 		allMatch := true
 		for i := range reference.ForeignKey.Columns {

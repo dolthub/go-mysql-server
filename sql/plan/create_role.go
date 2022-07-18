@@ -107,11 +107,6 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
 
-	// Check if you can even persist in the first place
-	if err := mysqlDb.ValidateCanPersist(); err != nil {
-		return nil, err
-	}
-
 	userTableData := mysqlDb.UserTable().Data()
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{

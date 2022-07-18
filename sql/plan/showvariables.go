@@ -19,20 +19,19 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ShowVariables is a node that shows the global and session variables
 //TODO: implement the GLOBAL and SESSION distinction
 type ShowVariables struct {
-	pattern string
+	filter sql.Expression
 }
 
 // NewShowVariables returns a new ShowVariables reference.
 // like is a "like pattern". If like is an empty string it will return all variables.
-func NewShowVariables(like string) *ShowVariables {
+func NewShowVariables(filter sql.Expression) *ShowVariables {
 	return &ShowVariables{
-		pattern: like,
+		filter: filter,
 	}
 }
 
@@ -57,11 +56,12 @@ func (sv *ShowVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 
 // String implements the fmt.Stringer interface.
 func (sv *ShowVariables) String() string {
-	var like string
-	if sv.pattern != "" {
-		like = fmt.Sprintf(" LIKE '%s'", sv.pattern)
+	var f string
+	if sv.filter != nil {
+		f = fmt.Sprintf(" WHERE %s", sv.filter.String())
 	}
-	return fmt.Sprintf("SHOW VARIABLES%s", like)
+
+	return fmt.Sprintf("SHOW VARIABLES%s", f)
 }
 
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
@@ -78,29 +78,18 @@ func (*ShowVariables) Children() []sql.Node { return nil }
 // RowIter implements the sql.Node interface.
 // The function returns an iterator for filtered variables (based on like pattern)
 func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var (
-		rows []sql.Row
-		like sql.Expression
-	)
-	if sv.pattern != "" {
-		like = expression.NewLike(
-			expression.NewGetField(0, sql.LongText, "", false),
-			expression.NewGetField(1, sql.LongText, sv.pattern, false),
-			nil,
-		)
-	}
+	var rows []sql.Row
 
 	for k, v := range ctx.GetAllSessionVariables() {
-		if like != nil {
-			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
+		if sv.filter != nil {
+			res, err := sv.filter.Eval(ctx, sql.Row{k})
 			if err != nil {
 				return nil, err
 			}
-			if !b.(bool) {
+			if !res.(bool) {
 				continue
 			}
 		}
-
 		rows = append(rows, sql.NewRow(k, v))
 	}
 
