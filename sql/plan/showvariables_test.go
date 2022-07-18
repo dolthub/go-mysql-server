@@ -29,7 +29,7 @@ func TestShowVariables(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	sv := NewShowVariables("", nil)
+	sv := NewShowVariables(nil)
 	require.True(sv.Resolved())
 
 	it, err := sv.RowIter(ctx, nil)
@@ -53,7 +53,11 @@ func TestShowVariables(t *testing.T) {
 }
 
 func TestShowVariablesWithLike(t *testing.T) {
-	sv := NewShowVariables("%t_into_buffer_size", nil)
+	sv := NewShowVariables(expression.NewLike(
+		expression.NewGetField(0, sql.LongText, "", false),
+		expression.NewLiteral("%t_into_buffer_size", sql.LongText),
+		nil,
+	))
 	require.True(t, sv.Resolved())
 
 	context := sql.NewEmptyContext()
@@ -75,7 +79,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 
 func TestShowVariablesWithWhere(t *testing.T) {
 	filter := expression.NewEquals(expression.NewGetField(0, sql.Text, "variable_name", true), expression.NewLiteral("select_into_buffer_size", sql.Text))
-	sv := NewShowVariables("", filter)
+	sv := NewShowVariables(filter)
 	require.True(t, sv.Resolved())
 
 	context := sql.NewEmptyContext()

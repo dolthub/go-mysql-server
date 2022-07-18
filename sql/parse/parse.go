@@ -602,8 +602,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String())), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
-		var likepattern string
 		var filter sql.Expression
+		var like sql.Expression
 		var err error
 		if s.Filter != nil {
 			if s.Filter.Filter != nil {
@@ -626,9 +626,21 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					return nil, err
 				}
 			}
-			likepattern = s.Filter.Like
+			if s.Filter.Like != "" {
+				like = expression.NewLike(
+					expression.NewGetField(0, sql.LongText, "", false),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+				if filter != nil {
+					filter = expression.NewAnd(like, filter)
+				} else {
+					filter = like
+				}
+			}
 		}
-		return plan.NewShowVariables(likepattern, filter), nil
+
+		return plan.NewShowVariables(filter), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression

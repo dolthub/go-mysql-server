@@ -19,22 +19,19 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ShowVariables is a node that shows the global and session variables
 //TODO: implement the GLOBAL and SESSION distinction
 type ShowVariables struct {
-	pattern string
-	filter  sql.Expression
+	filter sql.Expression
 }
 
 // NewShowVariables returns a new ShowVariables reference.
 // like is a "like pattern". If like is an empty string it will return all variables.
-func NewShowVariables(like string, filter sql.Expression) *ShowVariables {
+func NewShowVariables(filter sql.Expression) *ShowVariables {
 	return &ShowVariables{
-		pattern: like,
-		filter:  filter,
+		filter: filter,
 	}
 }
 
@@ -59,11 +56,7 @@ func (sv *ShowVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 
 // String implements the fmt.Stringer interface.
 func (sv *ShowVariables) String() string {
-	var like string
-	if sv.pattern != "" {
-		like = fmt.Sprintf(" LIKE '%s'", sv.pattern)
-	}
-	return fmt.Sprintf("SHOW VARIABLES%s", like)
+	return fmt.Sprintf("SHOW VARIABLES%s", sv.filter.String())
 }
 
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
@@ -80,42 +73,18 @@ func (*ShowVariables) Children() []sql.Node { return nil }
 // RowIter implements the sql.Node interface.
 // The function returns an iterator for filtered variables (based on like pattern)
 func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var (
-		rows []sql.Row
-		like sql.Expression
-	)
-	if sv.pattern != "" {
-		like = expression.NewLike(
-			expression.NewGetField(0, sql.LongText, "", false),
-			expression.NewGetField(1, sql.LongText, sv.pattern, false),
-			nil,
-		)
-	}
+	var rows []sql.Row
 
-	filteredMap := make(map[string]interface{})
-	var err error
-
-	sessVariables := ctx.GetAllSessionVariables()
-	if sv.filter != nil {
-		filteredMap, err = filterVariables(ctx, sessVariables, sv.filter)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		filteredMap = sessVariables
-	}
-
-	for k, v := range filteredMap {
-		if like != nil {
-			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
+	for k, v := range ctx.GetAllSessionVariables() {
+		if sv.filter != nil {
+			res, err := sv.filter.Eval(ctx, sql.Row{k})
 			if err != nil {
 				return nil, err
 			}
-			if !b.(bool) {
+			if !res.(bool) {
 				continue
 			}
 		}
-
 		rows = append(rows, sql.NewRow(k, v))
 	}
 
@@ -124,17 +93,4 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 	})
 
 	return sql.RowsToRowIter(rows...), nil
-}
-
-func filterVariables(ctx *sql.Context, sessVars map[string]interface{}, filter sql.Expression) (map[string]interface{}, error) {
-	filteredMap := make(map[string]interface{})
-	for k, v := range sessVars {
-		if res, err := filter.Eval(ctx, sql.Row{k}); err != nil {
-			return nil, err
-		} else if res.(bool) {
-			filteredMap[k] = v
-		}
-	}
-
-	return filteredMap, nil
 }
