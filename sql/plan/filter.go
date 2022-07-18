@@ -32,6 +32,7 @@ func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	}
 }
 
+// Cost implements the Costable interface.
 func (f *Filter) Cost(ctx *sql.Context) float64 {
 	if c, ok := f.Child.(sql.Costable); ok {
 		return c.Cost(ctx)

@@ -39,6 +39,7 @@ func NewCrossJoin(left sql.Node, right sql.Node) *CrossJoin {
 	}
 }
 
+// Cost implements the Costable interface.
 func (p *CrossJoin) Cost(ctx *sql.Context) float64 {
 	l, ok := p.left.(sql.Costable)
 	if !ok {

@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -59,6 +60,21 @@ func NewStaticIndexedTableAccess(resolvedTable *ResolvedTable, lookup sql.IndexL
 	}
 }
 
+func keyToFload64(c sql.RangeCut) float64 {
+	v := sql.GetRangeCutKey(c)
+	switch v := v.(type) {
+	case int8:
+		return float64(v)
+	case int16:
+		return float64(v)
+	case int32:
+		return float64(v)
+	case int64:
+		return float64(v)
+	}
+	panic("idk what type this is")
+}
+
 func (i *IndexedTableAccess) Cost(ctx *sql.Context) float64 {
 	statsTbl, ok := i.ResolvedTable.Table.(sql.StatisticsTable)
 	if !ok {
@@ -74,10 +90,24 @@ func (i *IndexedTableAccess) Cost(ctx *sql.Context) float64 {
 		return float64(stats.RowCount())
 	}
 
+	// TODO: add some logic to be inclusive/exclusive for > vs >=
 	ranges := i.lookup.Ranges()
 	r := ranges[0][0]
-	lb := sql.GetRangeCutKey(r.LowerBound)
-	ub := sql.GetRangeCutKey(r.UpperBound)
+	lb := -math.MaxFloat64
+	ub := math.MaxFloat64
+	if r.HasLowerBound() {
+		lb = keyToFload64(r.LowerBound)
+	}
+	if r.HasUpperBound() {
+		ub = keyToFload64(r.UpperBound)
+	}
+
+	// Empty set
+	_, lbAboveAll := r.LowerBound.(sql.AboveAll)
+	_, ubAboveAll := r.UpperBound.(sql.AboveAll)
+	if lbAboveAll && ubAboveAll {
+		return 0
+	}
 
 	i.lookup.Index()
 	idx := i.Index()
@@ -92,10 +122,10 @@ func (i *IndexedTableAccess) Cost(ctx *sql.Context) float64 {
 
 	var freq float64
 	for _, bucket := range hist.Buckets {
-		if bucket.LowerBound < float64(lb.(int8)) {
+		if bucket.LowerBound < lb {
 			continue
 		}
-		if bucket.LowerBound > float64(ub.(int8)) {
+		if bucket.LowerBound > ub {
 			break
 		}
 		freq += bucket.Frequency

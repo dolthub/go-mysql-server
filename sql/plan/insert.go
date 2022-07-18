@@ -92,6 +92,13 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 	}
 }
 
+func (ii *InsertInto) Cost(ctx *sql.Context) float64 {
+	if c, ok := ii.Source.(sql.Costable); ok {
+		return c.Cost(ctx)
+	}
+	return 0
+}
+
 // Schema implements the sql.Node interface.
 // Insert nodes return rows that are inserted. Replaces return a concatenation of the deleted row and the inserted row.
 // If no row was deleted, the value of those columns is nil.

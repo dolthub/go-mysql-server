@@ -40,6 +40,14 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
+func (p *Project) Cost(ctx *sql.Context) float64 {
+	if c, ok := p.Child.(sql.Costable); ok {
+		return c.Cost(ctx)
+	}
+
+	return 0
+}
+
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))

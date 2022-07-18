@@ -31,6 +31,10 @@ func NewValues(tuples [][]sql.Expression) *Values {
 	return &Values{tuples}
 }
 
+func (p *Values) Cost(ctx *sql.Context) float64 {
+	return float64(len(p.ExpressionTuples))
+}
+
 // Schema implements the Node interface.
 func (p *Values) Schema() sql.Schema {
 	if len(p.ExpressionTuples) == 0 {

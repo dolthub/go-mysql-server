@@ -54,6 +54,18 @@ func NewIndexedJoin(left, right sql.Node, joinType JoinType, cond sql.Expression
 	}
 }
 
+func (ij *IndexedJoin) Cost(ctx *sql.Context) float64 {
+	l, ok := ij.left.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	r, ok := ij.right.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	return l.Cost(ctx) * r.Cost(ctx)
+}
+
 func (ij *IndexedJoin) String() string {
 	pr := sql.NewTreePrinter()
 	joinType := ""

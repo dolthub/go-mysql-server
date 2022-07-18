@@ -98,6 +98,19 @@ func NewInnerJoin(left, right sql.Node, cond sql.Expression) *InnerJoin {
 	}
 }
 
+// Cost implements the Cost interface.
+func (j *InnerJoin) Cost(ctx *sql.Context) float64 {
+	l, ok := j.left.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	r, ok := j.right.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	return l.Cost(ctx) * r.Cost(ctx)
+}
+
 // Schema implements the Node interface.
 func (j *InnerJoin) Schema() sql.Schema {
 	return append(j.left.Schema(), j.right.Schema()...)
@@ -197,6 +210,23 @@ func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	}
 }
 
+// Cost implements the Cost interface.
+func (j *LeftJoin) Cost(ctx *sql.Context) float64 {
+	l, ok := j.left.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	r, ok := j.right.(sql.Costable)
+	if !ok {
+		return 0
+	}
+
+	// TODO: get histogram out of the two and merge them
+	lCost := l.Cost(ctx)
+	rCost := r.Cost(ctx)
+	return lCost * rCost
+}
+
 // Schema implements the Node interface.
 func (j *LeftJoin) Schema() sql.Schema {
 	return append(j.left.Schema(), makeNullable(j.right.Schema())...)
@@ -294,6 +324,21 @@ func NewRightJoin(left, right sql.Node, cond sql.Expression) *RightJoin {
 			Cond: cond,
 		},
 	}
+}
+
+// Cost implements the sql.Costable interface.
+func (j *RightJoin) Cost(ctx *sql.Context) float64 {
+	l, ok := j.left.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	r, ok := j.right.(sql.Costable)
+	if !ok {
+		return 0
+	}
+	lCost := l.Cost(ctx)
+	rCost := r.Cost(ctx)
+	return lCost * rCost
 }
 
 // Schema implements the Node interface.
