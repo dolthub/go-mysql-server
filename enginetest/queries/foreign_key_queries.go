@@ -1342,23 +1342,23 @@ var ForeignKeyTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "INSERT into a VALUES (1, 3);",
+				Query:    "INSERT into a (x, y) VALUES (1, 3);",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:    "INSERT into b VALUES (2, 3);",
+				Query:    "INSERT into b (x, y) VALUES (2, 3);",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:    "SELECT * from a;",
+				Query:    "SELECT x, y from a;",
 				Expected: []sql.Row{{1, 3}},
 			},
 			{
-				Query:    "SELECT * from b;",
+				Query:    "SELECT x, y  from b;",
 				Expected: []sql.Row{{2, 3}},
 			},
 			{
-				Query:       "INSERT into b VALUES (3, 5);",
+				Query:       "INSERT into b (x, y) VALUES (3, 5);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
@@ -1371,23 +1371,23 @@ var ForeignKeyTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "INSERT into a VALUES (1, 3);",
+				Query:    "INSERT into a (x, y) VALUES (1, 3);",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:    "INSERT into b VALUES (2, 3);",
+				Query:    "INSERT into b (x, y) VALUES (2, 3);",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:    "SELECT * from a;",
+				Query:    "SELECT x, y from a;",
 				Expected: []sql.Row{{1, 3}},
 			},
 			{
-				Query:    "SELECT * from b;",
+				Query:    "SELECT x, y from b;",
 				Expected: []sql.Row{{2, 3}},
 			},
 			{
-				Query:       "INSERT into b VALUES (3, 5);",
+				Query:       "INSERT into b (x, y) VALUES (3, 5);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
@@ -1406,11 +1406,11 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				Query:    "SELECT * from a;",
+				Query:    "SELECT x, y from a;",
 				Expected: []sql.Row{{1, 4}},
 			},
 			{
-				Query:    "SELECT * from b;",
+				Query:    "SELECT x, y from b;",
 				Expected: []sql.Row{{2, 4}},
 			},
 		},
@@ -1429,11 +1429,11 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
-				Query:    "SELECT * from a;",
+				Query:    "SELECT x, y from a;",
 				Expected: []sql.Row{{1, 4}},
 			},
 			{
-				Query:    "SELECT * from b;",
+				Query:    "SELECT x, y from b;",
 				Expected: []sql.Row{{2, 4}},
 			},
 		},
