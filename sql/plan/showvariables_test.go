@@ -74,7 +74,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 }
 
 func TestShowVariablesWithWhere(t *testing.T) {
-	filter := expression.NewEquals(expression.NewUnresolvedColumn("variable_name"), expression.NewLiteral("select_into_buffer_size", sql.Text))
+	filter := expression.NewEquals(expression.NewGetField(0, sql.Text, "variable_name", true), expression.NewLiteral("select_into_buffer_size", sql.Text))
 	sv := NewShowVariables("", filter)
 	require.True(t, sv.Resolved())
 

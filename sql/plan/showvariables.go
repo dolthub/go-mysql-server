@@ -16,12 +16,9 @@ package plan
 
 import (
 	"fmt"
-	"sort"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"sort"
 )
 
 // ShowVariables is a node that shows the global and session variables
@@ -131,12 +128,7 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 func filterVariables(ctx *sql.Context, sessVars map[string]interface{}, filter sql.Expression) (map[string]interface{}, error) {
 	filteredMap := make(map[string]interface{})
 	for k, v := range sessVars {
-		updatedFilter, _, err := replaceUnresolvedColumnsWithKey(filter, k)
-		if err != nil {
-			return nil, err
-		}
-
-		if res, err := updatedFilter.Eval(ctx, nil); err != nil {
+		if res, err := filter.Eval(ctx, sql.Row{k}); err != nil {
 			return nil, err
 		} else if res.(bool) {
 			filteredMap[k] = v
@@ -144,18 +136,4 @@ func filterVariables(ctx *sql.Context, sessVars map[string]interface{}, filter s
 	}
 
 	return filteredMap, nil
-}
-
-func replaceUnresolvedColumnsWithKey(input sql.Expression, key string) (sql.Expression, transform.TreeIdentity, error) {
-	return transform.Expr(input, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		switch e.(type) {
-		case *expression.UnresolvedColumn:
-			if strings.ToLower(e.String()) != "variable_name" {
-				return nil, transform.SameTree, fmt.Errorf("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
-			}
-			return expression.NewLiteral(key, sql.Text), transform.NewTree, nil
-		default:
-			return e, transform.SameTree, nil
-		}
-	})
 }

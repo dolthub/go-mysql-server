@@ -3862,6 +3862,8 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT i, row_number() over (order by a) group by 1`:       sql.ErrUnsupportedFeature,
 	`SHOW COUNT(*) WARNINGS`:                                    sql.ErrUnsupportedFeature,
 	`SHOW ERRORS`:                                               sql.ErrUnsupportedFeature,
+	`SHOW VARIABLES WHERE Value = ''`:                           sql.ErrUnsupportedFeature,
+	`SHOW SESSION VARIABLES WHERE Value IS NOT NULL`:            sql.ErrUnsupportedFeature,
 	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
 	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               sql.ErrUnsupportedFeature,
 	`DROP TABLE curdb.t1, t2`:                                   sql.ErrUnsupportedFeature,

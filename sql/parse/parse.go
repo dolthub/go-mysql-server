@@ -611,6 +611,20 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				if err != nil {
 					return nil, err
 				}
+				filter, _, err = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e.(type) {
+					case *expression.UnresolvedColumn:
+						if strings.ToLower(e.String()) != "variable_name" {
+							return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
+						}
+						return expression.NewGetField(0, sql.Text, "variable_name", true), transform.NewTree, nil
+					default:
+						return e, transform.SameTree, nil
+					}
+				})
+				if err != nil {
+					return nil, err
+				}
 			}
 			likepattern = s.Filter.Like
 		}
