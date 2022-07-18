@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 	"testing"
 
@@ -53,6 +54,28 @@ func TestShowVariables(t *testing.T) {
 
 func TestShowVariablesWithLike(t *testing.T) {
 	sv := NewShowVariables("%t_into_buffer_size", nil)
+	require.True(t, sv.Resolved())
+
+	context := sql.NewEmptyContext()
+	err := context.SetSessionVariable(context, "select_into_buffer_size", int64(8192))
+	require.NoError(t, err)
+
+	it, err := sv.RowIter(context, nil)
+	require.NoError(t, err)
+
+	rows, err := sql.RowIterToRows(context, nil, it)
+	require.NoError(t, err)
+
+	expectedRows := []sql.Row{
+		{"select_into_buffer_size", int64(8192)},
+	}
+
+	assert.Equal(t, expectedRows, rows)
+}
+
+func TestShowVariablesWithWhere(t *testing.T) {
+	filter := expression.NewEquals(expression.NewUnresolvedColumn("variable_name"), expression.NewLiteral("select_into_buffer_size", sql.Text))
+	sv := NewShowVariables("", filter)
 	require.True(t, sv.Resolved())
 
 	context := sql.NewEmptyContext()
