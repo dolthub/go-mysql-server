@@ -22,6 +22,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -94,7 +95,6 @@ type ServerAuthenticationTest struct {
 type ServerAuthenticationTestAssertion struct {
 	Username    string
 	Password    string
-	UsePacket   bool
 	Query       string
 	ExpectedErr bool
 }
@@ -1035,9 +1035,9 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 	},
 	{
-		Name: "Create User with mysql_cleartext_password plugin specification",
+		Name: "Create User with mysql_clear_password plugin specification",
 		SetUpScript: []string{
-			"CREATE USER ctpuse@localhost IDENTIFIED WITH mysql_cleartext_password",
+			"CREATE USER ctpuse@localhost IDENTIFIED WITH mysql_clear_password",
 			"GRANT ALL ON *.* TO ctpuse@localhost WITH GRANT OPTION;",
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
@@ -1046,39 +1046,51 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Password:    "",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: true,
-				UsePacket:   true,
 			},
 			{
 				Username:    "ctpuse",
 				Password:    "rightpassword",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: false,
-				UsePacket:   true,
 			},
 		},
 	},
 	{
 		Name: "Create User with jwt plugin specification",
 		SetUpScript: []string{
-			"CREATE USER jwksuse@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=doltdb_hosted,sub=hosted_ui_reader';",
-			"GRANT ALL ON *.* TO jwksuse@localhost WITH GRANT OPTION;",
+			"CREATE USER `test-user`@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=testing,sub=test-user,iss=dolthub.com,aud=some_id';",
+			"GRANT ALL ON *.* TO `test-user`@localhost WITH GRANT OPTION;",
+		},
+		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
+			engine.Analyzer.Catalog.MySQLDb.SetJwksConfig([]mysql_db.JwksConfig{
+				{
+					Name:   "testing",
+					Source: "testdata/test_jwks_keys.json", // TODO: Use url only?
+					Claims: map[string]string{
+						"alg": "RS256",
+						"aud": "some_id",
+						"iss": "dolthub.com",
+					},
+					FieldsToLog: []string{"id", "on_behalf_of"},
+				},
+			})
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
-				Username:    "jwksuse",
+				Username:    "test-user",
 				Password:    "what",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: true,
 			},
 			{
-				Username:    "jwksuse",
+				Username:    "test-user",
 				Password:    "",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: true,
 			},
 			{
-				Username:    "jwksuse",
-				Password:    "good",
+				Username:    "test-user",
+				Password:    "eyJhbGciOiJSUzI1NiIsImtpZCI6IjNlMTZkY2NmLTI0YmYtNDQ3Yi04ZDcyLTI5NTAwNDJiNDM1ZiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsic29tZV9pZCJdLCJpYXQiOjE2NTgxOTIwNzcsImlzcyI6ImRvbHRodWIuY29tIiwianRpIjoiM2UxNmRjY2YtMjRiZi00NDdiLThkNzItMjk1MDA0MmI0MzVmIiwib25fYmVoYWxmX29mIjoibXktdXNlcm5hbWUiLCJzdWIiOiJ0ZXN0LXVzZXIifQ.DNEexsNM5GVZfnZ7peaiaOuSL_0wDv7Ooa_7fp4ag1ZbzbXpglLYi2ZP1aJnPBlJ32U9i4gyydMBr5eMrs0A-WvLUMw5ZDTJK2nEOriorVFVVUzD6--r9FURSfHrXpnSzHuYbsKDMTMZ6RuU0jzNrBc_k2fMEUhDyYOlIUmx71YdNIYTQ5MOHqTZ9dR78YBELWKv2HnMvMUm7m5IieoRSnxvQ3Fu9R3q2fEKgW_KPUcxZ9cwA_6XNFkHxIQMueh66_D_VZhZHcfZG6oYa255ejqYwNQwD6Hx2F_pvF96GvqLdl8NUOZra5VEDXA20WmslktKvgdr-1SZKsrd1Na-aA",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: false,
 			},

@@ -15,21 +15,26 @@
 package mysql_db
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base32"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-var ErrKeyNotFound = errors.New("Key not found")
+var errKeyNotFound = errors.New("Key not found")
+var errFileNotFound = errors.New("file not found")
 
-// TODO: log jwt fields from jwks config
 func validateJWT(config []JwksConfig, username, identity, token string) (bool, error) {
 	// Verify that the JWKS for the configured authentication exists.
 	if len(config) == 0 {
@@ -43,7 +48,7 @@ func validateJWT(config []JwksConfig, username, identity, token string) (bool, e
 		return false, fmt.Errorf("ValidateJWT: Unexpected JWT headers length %v.", len(parsed.Headers))
 	}
 	parsedIdentity := parseUserIdentity(identity)
-	jwksConfig, err := getMatchingJwksConfig(config, parsedIdentity["name"])
+	jwksConfig, err := getMatchingJwksConfig(config, parsedIdentity["jwks"])
 	if err != nil {
 		return false, err
 	}
@@ -55,16 +60,15 @@ func validateJWT(config []JwksConfig, username, identity, token string) (bool, e
 		return false, fmt.Errorf("ValidateJWT: Algorithms do not match")
 	}
 	// Verify the signature of the JWT using the JWKS contents fetched from the configured location.
-	fetchedJwks, err := getJWKSFromUrl(jwksConfig.LocationUrl)
+	fetchedJwks, err := getJWKSFromSource(jwksConfig.Source)
 	if err != nil {
 		return false, err
 	}
-
 	keyID := parsed.Headers[0].KeyID
 	keys := fetchedJwks.Key(keyID)
 
 	var claims jwt.Claims
-	claimsError := fmt.Errorf("ValidateJWT: KeyID: %v. Err: %w", keyID, ErrKeyNotFound)
+	claimsError := fmt.Errorf("ValidateJWT: KeyID: %v. Err: %w", keyID, errKeyNotFound)
 	for _, key := range keys {
 		claimsError = parsed.Claims(key.Key, &claims)
 		if claimsError == nil {
@@ -81,11 +85,28 @@ func validateJWT(config []JwksConfig, username, identity, token string) (bool, e
 	if err := claims.Validate(expectedClaims.WithTime(time.Now())); err != nil {
 		return false, err
 	}
+
+	logString := "Authenticating with JWT: "
+	for _, field := range jwksConfig.FieldsToLog {
+		logString = logString + fmt.Sprintf("%s: %s,", field, getClaimFromKey(claims, field))
+	}
+	logrus.Info(logString)
 	return true, nil
 }
 
+func getClaimFromKey(claims jwt.Claims, field string) string {
+	switch field {
+	case "id":
+		return claims.ID
+	case "iss":
+		return claims.Issuer
+	case "sub":
+		return claims.Subject
+	}
+	return ""
+}
+
 func getExpectedClaims(claims map[string]string) jwt.Expected {
-	// expectedClaims := make(jwt.Expected{}, len(claims))
 	var expectedClaims jwt.Expected
 	for cl, value := range claims {
 		switch cl {
@@ -109,6 +130,21 @@ func getMatchingJwksConfig(config []JwksConfig, name string) (*JwksConfig, error
 	return nil, fmt.Errorf("ValidateJWT: Matching JWKS config not found")
 }
 
+func getJWKSFromFile(filepath string) (*jose.JSONWebKeySet, error) {
+
+	file, err := os.Open(filepath)
+	if err != nil || file == nil {
+		return nil, errFileNotFound
+	}
+	defer file.Close()
+
+	byteValue, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	return unmarshalAndConvertKeys(byteValue)
+}
+
 func getJWKSFromUrl(locationUrl string) (*jose.JSONWebKeySet, error) {
 	client := &http.Client{}
 
@@ -129,13 +165,68 @@ func getJWKSFromUrl(locationUrl string) (*jose.JSONWebKeySet, error) {
 			return nil, err
 		}
 
-		jwks := jose.JSONWebKeySet{}
-		err = json.Unmarshal(contents, &jwks)
+		return unmarshalAndConvertKeys(contents)
+	}
+}
+
+type jsonKey struct {
+	ID  string `json:"id"`
+	Key string `json:"key_bytes"`
+}
+
+func unmarshalAndConvertKeys(byteValue []byte) (*jose.JSONWebKeySet, error) {
+	jsonKeys := []jsonKey{}
+	err := json.Unmarshal(byteValue, &jsonKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]jose.JSONWebKey, len(jsonKeys))
+	for i, jKey := range jsonKeys {
+		priv, err := decodePrivateKey(jKey.Key)
 		if err != nil {
 			return nil, err
 		}
-		return &jwks, nil
+		pub := priv.Public()
+		keys[i] = jose.JSONWebKey{
+			KeyID: jKey.ID,
+			Key:   pub,
+		}
 	}
+
+	return &jose.JSONWebKeySet{Keys: keys}, nil
+}
+
+func decodePrivateKey(key string) (*rsa.PrivateKey, error) {
+	dec, err := base32.StdEncoding.DecodeString(key)
+	if err != nil {
+		return nil, err
+	}
+	privKey, err := x509.ParsePKCS8PrivateKey(dec)
+	if err != nil {
+		return nil, err
+	}
+	k, ok := privKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("could not convert to rsa.PrivateKey")
+	}
+	return k, nil
+}
+
+func getJWKSFromSource(source string) (*jose.JSONWebKeySet, error) {
+	// Check if file exists, otherwise get from url
+	jwks, err := getJWKSFromFile(source)
+	if err != nil {
+		if errors.Is(err, errFileNotFound) {
+			jwks, err = getJWKSFromUrl(source)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+	return jwks, nil
 }
 
 func parseUserIdentity(identity string) map[string]string {

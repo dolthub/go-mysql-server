@@ -1200,6 +1200,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
+
 			if script.SetUpFunc != nil {
 				script.SetUpFunc(ctx, t, engine)
 			}
@@ -1223,7 +1224,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}()
 
 			for _, assertion := range script.Assertions {
-				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/",
+				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true",
 					assertion.Username, assertion.Password, port), nil)
 				require.NoError(t, err)
 				if assertion.ExpectedErr {

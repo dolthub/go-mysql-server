@@ -48,7 +48,7 @@ func (p *NoopPersister) Persist(ctx *sql.Context, data []byte) error {
 
 type JwksConfig struct {
 	Name        string
-	LocationUrl string
+	Source      string
 	Claims      map[string]string
 	FieldsToLog []string
 }
@@ -223,6 +223,7 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 		Host: host,
 		User: user,
 	})
+
 	if len(userEntries) == 1 {
 		userEntry = userEntries[0].(*User)
 	} else {
@@ -346,8 +347,8 @@ func (db *MySQLDb) AuthMethod(user, host string) (string, error) {
 	if u == nil {
 		return "mysql_native_password", nil
 	}
-	if u.Plugin == "authentication_dolt_jwt" {
-		return "mysql_cleartext_password", nil
+	if u.Plugin == "mysql_clear_password" || u.Plugin == "authentication_dolt_jwt" {
+		return "mysql_clear_password", nil
 	}
 	return u.Plugin, nil
 }
@@ -402,7 +403,7 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 	if err != nil {
 		return nil, err
 	}
-	if method == "mysql_cleartext_password" {
+	if method == "mysql_clear_password" {
 		pass, err := mysql.AuthServerReadPacketString(c)
 		if err != nil {
 			return nil, err
@@ -414,21 +415,21 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 		if userEntry.Plugin == "authentication_dolt_jwt" {
 			ok, err := validateAuthenticationDoltJwt(db, user, userEntry.Identity, pass)
 			if err != nil {
-				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v', error: %v", user, err)
+				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for jwt user '%v', error: %v", user, err)
 			}
 			if !ok {
-				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for jwt user '%v'", user)
 			}
 			return connUser, nil
 		} else {
-			if !validateMysqlCleartextPassword(pass) {
+			if !validateMysqlClearPassword(pass) {
 				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 			}
 			return connUser, nil
 		}
 
 	}
-	return nil, fmt.Errorf(`the only user login interfaces currently supported are "mysql_native_password" and "mysql_cleartext_password"`)
+	return nil, fmt.Errorf(`the only user login interfaces currently supported are "mysql_native_password" and "mysql_clear_password"`)
 }
 
 // Persist passes along all changes to the integrator.
@@ -553,14 +554,12 @@ func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword 
 	return bytes.Equal(candidateHash2, hash)
 }
 
-func validateMysqlCleartextPassword(mysqlCleartextPassword string) bool {
-	if len(mysqlCleartextPassword) == 0 {
+// TODO: what other validation is needed here?
+func validateMysqlClearPassword(mysqlClearPassword string) bool {
+	if len(mysqlClearPassword) == 0 {
 		return false
 	}
-	if mysqlCleartextPassword == "rightpassword" {
-		return true
-	}
-	return false
+	return true
 }
 
 func validateAuthenticationDoltJwt(db *MySQLDb, username, identity, token string) (bool, error) {

@@ -58,6 +58,7 @@ type AuthenticatedUser struct {
 	Auth2       Authentication
 	Auth3       Authentication
 	AuthInitial Authentication
+	Identity    string
 }
 
 // TLSOptions represents a user's TLS options.
@@ -118,15 +119,28 @@ func NewDefaultAuthentication(password string) Authentication {
 	return AuthenticationMysqlNativePassword(password)
 }
 
-// AuthenticationMysqlCleartextPassword is an authentication type that represents "mysql_cleartext_password".
-type AuthenticationMysqlCleartextPassword string
+// AuthenticationMysqlClearPassword is an authentication type that represents "mysql_clear_password".
+type AuthenticationMysqlClearPassword string
 
 // Plugin implements the interface Authentication.
-func (a AuthenticationMysqlCleartextPassword) Plugin() string {
-	return "mysql_cleartext_password"
+func (a AuthenticationMysqlClearPassword) Plugin() string {
+	return "mysql_clear_password"
 }
 
 // Password implements the interface Authentication.
-func (a AuthenticationMysqlCleartextPassword) Password() string {
+func (a AuthenticationMysqlClearPassword) Password() string {
+	return string(a)
+}
+
+// AuthenticationDoltJwt is an authentication type that represents "authentication_dolt_jwt".
+type AuthenticationDoltJwt string
+
+// Plugin implements the interface Authentication.
+func (a AuthenticationDoltJwt) Plugin() string {
+	return "authentication_dolt_jwt"
+}
+
+// Password implements the interface Authentication.
+func (a AuthenticationDoltJwt) Password() string {
 	return string(a)
 }

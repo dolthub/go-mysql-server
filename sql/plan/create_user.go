@@ -132,7 +132,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			Locked:              false,
 			Attributes:          nil,
 			IsRole:              false,
-			Identity:            "", // TODO
+			Identity:            user.Identity,
 		})
 		if err != nil {
 			return nil, err
