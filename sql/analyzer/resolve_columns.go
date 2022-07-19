@@ -261,6 +261,7 @@ func (s *scope) addColsFromAlias(outer *scope, table, alias string, columns []st
 			s.addCols(baseCol)
 		}
 	}
+	s.unqualifiedStar = s.unqualifiedStar || outer.unqualifiedStar
 }
 
 type builder struct {
