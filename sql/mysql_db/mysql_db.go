@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -132,6 +133,17 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 	// Do nothing if data file doesn't exist or is empty
 	if buf == nil || len(buf) == 0 {
 		return nil
+	}
+
+	type privDataJson struct {
+		Users []*User
+		Roles []*RoleEdge
+	}
+
+	// if it's a json file, convert it to flatbuffer
+	data := &privDataJson{}
+	if err := json.Unmarshal(buf, data); err == nil {
+		return db.LoadPrivilegeData(ctx, data.Users, data.Roles)
 	}
 
 	// Indicate that mysql db exists
