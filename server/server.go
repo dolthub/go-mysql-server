@@ -83,7 +83,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 		ConnWriteTimeout:         cfg.ConnWriteTimeout,
 		MaxConns:                 cfg.MaxConnections,
 		ConnReadBufferSize:       mysql.DefaultConnBufferSize,
-		AllowClearTextWithoutTLS: true,
+		AllowClearTextWithoutTLS: cfg.AllowClearTextWithoutTLS,
 	}
 	vtListnr, err := mysql.NewListenerWithConfig(listenerCfg)
 	if err != nil {

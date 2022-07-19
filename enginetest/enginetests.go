@@ -1191,9 +1191,10 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				Address: "localhost",
 			})
 			serverConfig := server.Config{
-				Protocol:       "tcp",
-				Address:        fmt.Sprintf("localhost:%d", port),
-				MaxConnections: 1000,
+				Protocol:                 "tcp",
+				Address:                  fmt.Sprintf("localhost:%d", port),
+				MaxConnections:           1000,
+				AllowClearTextWithoutTLS: true,
 			}
 
 			engine := mustNewEngine(t, harness)

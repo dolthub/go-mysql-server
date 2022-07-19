@@ -954,6 +954,15 @@ var UserPrivTests = []UserPrivilegeTest{
 	},
 }
 
+// NoopPlaintextPlugin is used to authenticate plaintext user plugins
+type NoopPlaintextPlugin struct{}
+
+var _ mysql_db.PlaintextAuthPlugin = &NoopPlaintextPlugin{}
+
+func (p *NoopPlaintextPlugin) Authenticate(db *mysql_db.MySQLDb, user string, userEntry *mysql_db.User, pass string) (bool, error) {
+	return pass == "right-password", nil
+}
+
 // ServerAuthTests test the server authentication system. These tests always have the root account available, and the
 // root account is used with any queries in the SetUpScript, along as being set to the context passed to SetUpFunc.
 var ServerAuthTests = []ServerAuthenticationTest{
@@ -1043,15 +1052,9 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
 				Username:    "ctpuse",
-				Password:    "",
+				Password:    "test-pass",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: true,
-			},
-			{
-				Username:    "ctpuse",
-				Password:    "rightpassword",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: false,
 			},
 		},
 	},
@@ -1062,18 +1065,8 @@ var ServerAuthTests = []ServerAuthenticationTest{
 			"GRANT ALL ON *.* TO `test-user`@localhost WITH GRANT OPTION;",
 		},
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
-			engine.Analyzer.Catalog.MySQLDb.SetJwksConfig([]mysql_db.JwksConfig{
-				{
-					Name:   "testing",
-					Source: "testdata/test_jwks_keys.json", // TODO: Use url only?
-					Claims: map[string]string{
-						"alg": "RS256",
-						"aud": "some_id",
-						"iss": "dolthub.com",
-					},
-					FieldsToLog: []string{"id", "on_behalf_of"},
-				},
-			})
+			plugins := map[string]mysql_db.PlaintextAuthPlugin{"authentication_dolt_jwt": &NoopPlaintextPlugin{}}
+			engine.Analyzer.Catalog.MySQLDb.SetPlugins(plugins)
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
@@ -1090,7 +1083,7 @@ var ServerAuthTests = []ServerAuthenticationTest{
 			},
 			{
 				Username:    "test-user",
-				Password:    "eyJhbGciOiJSUzI1NiIsImtpZCI6IjNlMTZkY2NmLTI0YmYtNDQ3Yi04ZDcyLTI5NTAwNDJiNDM1ZiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsic29tZV9pZCJdLCJpYXQiOjE2NTgxOTIwNzcsImlzcyI6ImRvbHRodWIuY29tIiwianRpIjoiM2UxNmRjY2YtMjRiZi00NDdiLThkNzItMjk1MDA0MmI0MzVmIiwib25fYmVoYWxmX29mIjoibXktdXNlcm5hbWUiLCJzdWIiOiJ0ZXN0LXVzZXIifQ.DNEexsNM5GVZfnZ7peaiaOuSL_0wDv7Ooa_7fp4ag1ZbzbXpglLYi2ZP1aJnPBlJ32U9i4gyydMBr5eMrs0A-WvLUMw5ZDTJK2nEOriorVFVVUzD6--r9FURSfHrXpnSzHuYbsKDMTMZ6RuU0jzNrBc_k2fMEUhDyYOlIUmx71YdNIYTQ5MOHqTZ9dR78YBELWKv2HnMvMUm7m5IieoRSnxvQ3Fu9R3q2fEKgW_KPUcxZ9cwA_6XNFkHxIQMueh66_D_VZhZHcfZG6oYa255ejqYwNQwD6Hx2F_pvF96GvqLdl8NUOZra5VEDXA20WmslktKvgdr-1SZKsrd1Na-aA",
+				Password:    "right-password",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: false,
 			},

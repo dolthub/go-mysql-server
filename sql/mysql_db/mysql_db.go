@@ -46,11 +46,8 @@ func (p *NoopPersister) Persist(ctx *sql.Context, data []byte) error {
 	return nil
 }
 
-type JwksConfig struct {
-	Name        string
-	Source      string
-	Claims      map[string]string
-	FieldsToLog []string
+type PlaintextAuthPlugin interface {
+	Authenticate(db *MySQLDb, user string, userEntry *User, pass string) (bool, error)
 }
 
 // MySQLDb are the collection of tables that are in the MySQL database
@@ -69,8 +66,8 @@ type MySQLDb struct {
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
 
-	persister  MySQLDbPersistence
-	jwksConfig []JwksConfig
+	persister MySQLDbPersistence
+	plugins   map[string]PlaintextAuthPlugin
 
 	cache *privilegeCache
 }
@@ -183,8 +180,8 @@ func (db *MySQLDb) SetPersister(persister MySQLDbPersistence) {
 	db.persister = persister
 }
 
-func (db *MySQLDb) SetJwksConfig(config []JwksConfig) {
-	db.jwksConfig = config
+func (db *MySQLDb) SetPlugins(plugins map[string]PlaintextAuthPlugin) {
+	db.plugins = plugins
 }
 
 // AddRootAccount adds the root account to the list of accounts.
@@ -342,7 +339,11 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (db *MySQLDb) AuthMethod(user, host string) (string, error) {
+func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", err
+	}
 	u := db.GetUser(user, host, false)
 	if u == nil {
 		return "mysql_native_password", nil
@@ -399,37 +400,27 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 	if !db.Enabled {
 		return connUser, nil
 	}
-	method, err := db.AuthMethod(user, host)
-	if err != nil {
-		return nil, err
-	}
-	if method == "mysql_clear_password" {
+	userEntry := db.GetUser(user, host, false)
+
+	if userEntry.Plugin != "" {
+		authplugin, ok := db.plugins[userEntry.Plugin]
+		if !ok {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'; auth plugin %s not registered with server", user, userEntry.Plugin)
+		}
 		pass, err := mysql.AuthServerReadPacketString(c)
 		if err != nil {
 			return nil, err
 		}
-		userEntry := db.GetUser(user, host, false)
-		if userEntry == nil || userEntry.Locked {
-			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		authed, err := authplugin.Authenticate(db, user, userEntry, pass)
+		if err != nil {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user 1 '%v'", user)
 		}
-		if userEntry.Plugin == "authentication_dolt_jwt" {
-			ok, err := validateAuthenticationDoltJwt(db, user, userEntry.Identity, pass)
-			if err != nil {
-				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for jwt user '%v', error: %v", user, err)
-			}
-			if !ok {
-				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for jwt user '%v'", user)
-			}
-			return connUser, nil
-		} else {
-			if !validateMysqlClearPassword(pass) {
-				return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
-			}
-			return connUser, nil
+		if !authed {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user 2 '%v'", user)
 		}
-
+		return connUser, nil
 	}
-	return nil, fmt.Errorf(`the only user login interfaces currently supported are "mysql_native_password" and "mysql_clear_password"`)
+	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }
 
 // Persist passes along all changes to the integrator.
@@ -552,18 +543,6 @@ func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword 
 	candidateHash2 := crypt.Sum(nil)
 
 	return bytes.Equal(candidateHash2, hash)
-}
-
-// TODO: what other validation is needed here?
-func validateMysqlClearPassword(mysqlClearPassword string) bool {
-	if len(mysqlClearPassword) == 0 {
-		return false
-	}
-	return true
-}
-
-func validateAuthenticationDoltJwt(db *MySQLDb, username, identity, token string) (bool, error) {
-	return validateJWT(db.jwksConfig, username, identity, token)
 }
 
 // mustDefault enforces that no error occurred when constructing the column default value.

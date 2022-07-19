@@ -27,8 +27,6 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 )
 
-require golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -41,7 +39,6 @@ require (
 	google.golang.org/grpc v1.37.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
-	gopkg.in/square/go-jose.v2 v2.6.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
 
