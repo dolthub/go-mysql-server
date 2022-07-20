@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -128,14 +129,32 @@ func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnec
 
 // LoadData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
+func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	// Do nothing if data file doesn't exist or is empty
 	if buf == nil || len(buf) == 0 {
 		return nil
 	}
 
+	type privDataJson struct {
+		Users []*User
+		Roles []*RoleEdge
+	}
+
+	// if it's a json file, read it; will be rewritten as flatbuffer later
+	data := &privDataJson{}
+	if err := json.Unmarshal(buf, data); err == nil {
+		return db.LoadPrivilegeData(ctx, data.Users, data.Roles)
+	}
+
 	// Indicate that mysql db exists
 	db.Enabled = true
+
+	// Recover from panics
+	defer func() {
+		if recover() != nil {
+			err = fmt.Errorf("ill formatted privileges file")
+		}
+	}()
 
 	// Deserialize the flatbuffer
 	serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
@@ -167,7 +186,7 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 	db.clearCache()
 
 	// TODO: fill in other tables when they exist
-	return nil
+	return
 }
 
 // SetPersister sets the custom persister to be used when the MySQL Db tables have been updated and need to be persisted.
@@ -196,7 +215,7 @@ func (db *MySQLDb) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(db.user, username, "%", password)
+	addSuperUser(db.user, username, "localhost", password)
 	db.clearCache()
 }
 
@@ -390,9 +409,13 @@ func (db *MySQLDb) Persist(ctx *sql.Context) error {
 
 	// Extract all user entries from table, and sort
 	userEntries := db.user.data.ToSlice(ctx)
-	users := make([]*User, len(userEntries))
-	for i, userEntry := range userEntries {
-		users[i] = userEntry.(*User)
+	users := make([]*User, 0)
+	for _, userEntry := range userEntries {
+		user := userEntry.(*User)
+		if user.IsSuperUser {
+			continue
+		}
+		users = append(users, user)
 	}
 	sort.Slice(users, func(i, j int) bool {
 		if users[i].Host == users[j].Host {

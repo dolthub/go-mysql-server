@@ -34,6 +34,7 @@ type User struct {
 	PasswordLastChanged time.Time
 	Locked              bool
 	Attributes          *string
+	IsSuperUser         bool
 	//TODO: add the remaining fields
 
 	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a
