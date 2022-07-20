@@ -348,7 +348,7 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (db *MySQLDb) AuthMethod(user string) (string, error) {
+func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	//TODO: this should pass in the host as well to correctly determine which auth method to use
 	return "mysql_native_password", nil
 }
