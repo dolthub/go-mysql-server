@@ -365,7 +365,7 @@ func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	}
 	u := db.GetUser(user, host, false)
 	if u == nil {
-		return "mysql_native_password", nil
+		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
 	}
 	if u.Plugin == "mysql_clear_password" || u.Plugin == "authentication_dolt_jwt" {
 		return "mysql_clear_password", nil
