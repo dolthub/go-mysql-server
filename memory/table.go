@@ -1004,6 +1004,7 @@ func (t *Table) WithProjections(cols []string) sql.Table {
 		projectedSchema[i] = nt.schema.Schema[j]
 	}
 	nt.projectedSchema = projectedSchema
+	nt.projection = cols
 
 	return &nt
 }

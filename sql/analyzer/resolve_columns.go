@@ -242,6 +242,9 @@ func (s *scope) appendScopeCols(other *scope) {
 	for i := range other.cols {
 		s.cols[i] = struct{}{}
 	}
+	for t := range other.stars {
+		s.stars[t] = struct{}{}
+	}
 	s.unqualifiedStar = s.unqualifiedStar || other.unqualifiedStar
 }
 
@@ -251,14 +254,20 @@ func (s *scope) hasCol(col tableCol) bool {
 }
 
 func (s *scope) addColsFromAlias(outer *scope, table, alias string, columns []string) {
+	_, starred := outer.stars[alias]
 	for i := range columns {
 		// need to get the table in the subquery alias
 		baseCol := tableCol{table: table, col: columns[i]}
 		aliasCol := tableCol{table: alias, col: columns[i]}
-		if outer.hasCol(aliasCol) {
+		if starred || outer.hasCol(aliasCol) {
 			// if the outer scope requests an aliased column
 			// a table lower in the tree must provide the source
 			s.addCols(baseCol)
+		}
+	}
+	for t := range outer.stars {
+		if t == alias {
+			s.stars[t] = struct{}{}
 		}
 	}
 	s.unqualifiedStar = s.unqualifiedStar || outer.unqualifiedStar
@@ -301,8 +310,15 @@ func (b *builder) addTableCols(id sql.RelId, other []tableCol) {
 			out[i] = k
 			i++
 		}
+		fmt.Println(curr)
+		fmt.Println(other)
+		fmt.Println(out)
 		b.tableCols[id] = out
 	}
+}
+
+func (b *builder) delTableCols(id sql.RelId) {
+	delete(b.tableCols, id)
 }
 
 func (b *builder) buildTable(n sql.Node, inScope *scope) *scope {
@@ -317,6 +333,7 @@ func (b *builder) buildTable(n sql.Node, inScope *scope) *scope {
 	}
 
 	if _, ok := inScope.stars[t.Name()]; ok {
+		b.delTableCols(n.(sql.RelationalNode).RelationalId())
 		return inScope
 	}
 
@@ -426,6 +443,14 @@ func (b *builder) buildCte(n *plan.Subquery, inScope *scope) *scope {
 	return inScope
 }
 
+func (b *builder) buildGroupBy(n *plan.GroupBy, inScope *scope) *scope {
+	return inScope
+}
+
+func (b *builder) buildWindow(n *plan.Window, inScope *scope) *scope {
+	return inScope
+}
+
 func (b *builder) buildGenericNode(n sql.Node, inScope *scope) *scope {
 	// do not make a new scope => we need to collect all of the filters/projections/etc
 	// add expressions
@@ -498,6 +523,7 @@ func (b *builder) finish() (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			// replace with projected version
+			// todo we might have reordered cols when adding overlapping cols
 			cols, ok := b.tableCols[n.RelationalId()]
 			if !ok {
 				return n, transform.SameTree, nil
@@ -585,7 +611,7 @@ func (b *builder) walk(n sql.Node, inScope *scope) *scope {
 			_ = b.walk(n.(sql.BinaryNode).Left(), innerScope)
 			_ = b.walk(n.(sql.BinaryNode).Right(), outerScope)
 			//todo add output scopes back?
-		case *plan.Filter, *plan.Project, *plan.Sort:
+		case *plan.Filter, *plan.Project, *plan.Sort, *plan.GroupBy, *plan.Window:
 			outScope = b.buildGenericNode(n, inScope)
 		}
 		return true
