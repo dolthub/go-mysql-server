@@ -105,6 +105,7 @@ type column interface {
 // subquery represents an additional nesting level.
 type nestingLevelSymbols struct {
 	availableColumns   map[string][]string
+	availableAliases   map[string]*expression.Alias
 	availableTables    map[string]string
 	availableTableCols map[tableCol]struct{}
 	lastRel            string
@@ -113,6 +114,7 @@ type nestingLevelSymbols struct {
 func newNestingLevelSymbols() *nestingLevelSymbols {
 	return &nestingLevelSymbols{
 		availableColumns:   make(map[string][]string),
+		availableAliases:   make(map[string]*expression.Alias),
 		availableTables:    make(map[string]string),
 		availableTableCols: make(map[tableCol]struct{}),
 	}
@@ -134,6 +136,28 @@ func (a availableNames) indexColumn(table, col string, nestingLevel int) {
 		a[nestingLevel].availableColumns[col] = append(a[nestingLevel].availableColumns[col], tableLower)
 		a[nestingLevel].availableTableCols[tableCol{table: tableLower, col: col}] = struct{}{}
 	}
+}
+
+// indexColumn adds a column with the given table and column name at the given nesting level
+func (a availableNames) indexAlias(e *expression.Alias, nestingLevel int) {
+	name := strings.ToLower(e.Name())
+	_, ok := a[nestingLevel]
+	if !ok {
+		a[nestingLevel] = newNestingLevelSymbols()
+	}
+	_, ok = a[nestingLevel].availableAliases[name]
+	if !ok {
+		a[nestingLevel].availableAliases[name] = e
+	}
+}
+
+func (a availableNames) conflictingAlias(name string, nestingLevel int) bool {
+	for i := 0; i < nestingLevel-1; i++ {
+		if _, ok := a[i].availableAliases[name]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // indexTable adds a table with the given name at the given nesting level
@@ -205,7 +229,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
 		nestingLevel++
 
-		return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
 		})
 	})
@@ -707,8 +731,17 @@ func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames, nesti
 					names.indexTable(alias, name, i)
 				}
 				return false
+			case *plan.Project:
+				// project aliases can overwrite lower namespaces
+				for _, e := range n.Projections {
+					a, ok := e.(*expression.Alias)
+					if !ok {
+						return true
+					}
+					names.indexAlias(a, nestingLevel)
+				}
+				return false
 			}
-
 			return true
 		})
 	}
@@ -758,8 +791,12 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 
 		// Look in all the scope, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
 		// match for the column name. If any scope has ambiguity in available column names, that's an error.
-		for level := range symbols {
-			name := strings.ToLower(col.Name())
+		name := strings.ToLower(col.Name())
+		if symbols.conflictingAlias(name, len(symbols)) {
+			return col, transform.SameTree, nil
+		}
+		for level := 0; level < len(symbols); level++ {
+			//_, ok := symbols[len(symbols)-1].availableAliases[name]
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
 
 			// If the table exists but it's not available for this node it
