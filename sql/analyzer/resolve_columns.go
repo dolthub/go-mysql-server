@@ -107,10 +107,11 @@ type nestingLevelSymbols struct {
 	availableColumns   map[string][]string
 	availableTables    map[string]string
 	availableTableCols map[tableCol]struct{}
+	lastRel            string
 }
 
-func newNestingLevelSymbols() nestingLevelSymbols {
-	return nestingLevelSymbols{
+func newNestingLevelSymbols() *nestingLevelSymbols {
+	return &nestingLevelSymbols{
 		availableColumns:   make(map[string][]string),
 		availableTables:    make(map[string]string),
 		availableTableCols: make(map[tableCol]struct{}),
@@ -119,7 +120,7 @@ func newNestingLevelSymbols() nestingLevelSymbols {
 
 // availableNames tracks available table and column name symbols at each nesting level for a query, where level 0
 // is the node being analyzed, and each additional level is one layer of query scope outward.
-type availableNames map[int]nestingLevelSymbols
+type availableNames map[int]*nestingLevelSymbols
 
 // indexColumn adds a column with the given table and column name at the given nesting level
 func (a availableNames) indexColumn(table, col string, nestingLevel int) {
@@ -143,6 +144,8 @@ func (a availableNames) indexTable(alias, name string, nestingLevel int) {
 		a[nestingLevel] = newNestingLevelSymbols()
 	}
 	a[nestingLevel].availableTables[alias] = strings.ToLower(name)
+	l := a[nestingLevel]
+	l.lastRel = alias
 }
 
 // nesting levels returns all levels present, from inner to outer
@@ -267,7 +270,7 @@ func (s *scope) addColsFromAlias(outer *scope, table, alias string, columns []st
 	}
 	for t := range outer.stars {
 		if t == alias {
-			s.stars[t] = struct{}{}
+			s.stars[table] = struct{}{}
 		}
 	}
 	s.unqualifiedStar = s.unqualifiedStar || outer.unqualifiedStar
@@ -482,6 +485,8 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, se
 	if err != nil {
 		if errors.Is(err, ErrAlreadyPushedProjections) {
 			return n, transform.SameTree, nil
+		} else if errors.Is(err, ErrProjectWithSubqueryFailed) {
+			return n, transform.SameTree, nil
 		}
 		return nil, transform.SameTree, err
 	}
@@ -493,9 +498,23 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, se
 }
 
 var ErrAlreadyPushedProjections = errors.NewKind("already pushed projections")
+var ErrProjectWithSubqueryFailed = errors.NewKind("project with subquery expression failed")
 
 func (b *builder) assignRelIds() error {
 	n, same, err := transform.NodeWithOpaque(b.root, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		//todo(max): support for subquery expressions
+		if ne, ok := n.(sql.Expressioner); ok {
+			for _, e := range ne.Expressions() {
+				foundSq := transform.InspectExpr(e, func(e sql.Expression) bool {
+					_, ok := e.(*plan.Subquery)
+					return ok
+				})
+				if foundSq {
+					return nil, transform.SameTree, ErrProjectWithSubqueryFailed.New()
+				}
+			}
+		}
+
 		switch n := n.(type) {
 		case sql.RelationalNode:
 			if n.RelationalId() > 0 {
@@ -555,17 +574,24 @@ func (b *builder) walk(n sql.Node, inScope *scope) *scope {
 	// input node
 	// output the top-level deps of that node
 	findSubqueryExpr := func(n sql.Node) (*plan.Subquery, bool) {
-		en, ok := n.(sql.Expressioner)
+		var sq *plan.Subquery
+		ne, ok := n.(sql.Expressioner)
 		if !ok {
 			return nil, false
 		}
-		for _, e := range en.Expressions() {
-			n, isSubqe := e.(*plan.Subquery)
-			if isSubqe {
-				return n, true
+		for _, e := range ne.Expressions() {
+			found := transform.InspectExpr(e, func(e sql.Expression) bool {
+				if e, ok := e.(*plan.Subquery); ok {
+					sq = e
+					return true
+				}
+				return false
+			})
+			if found {
+				return sq, true
 			}
 		}
-		return nil, false
+		return sq, false
 	}
 
 	var outScope = inScope
@@ -597,8 +623,6 @@ func (b *builder) walk(n sql.Node, inScope *scope) *scope {
 			outScope.appendScopeCols(rOut)
 			return false
 		case *plan.SubqueryAlias:
-			// assume no outer scope access?
-			// but we add the
 			outScope = b.buildSubqueryAlias(n, inScope)
 		case plan.JoinNode, *plan.CrossJoin:
 			//first add join expression
@@ -611,7 +635,9 @@ func (b *builder) walk(n sql.Node, inScope *scope) *scope {
 			_ = b.walk(n.(sql.BinaryNode).Left(), innerScope)
 			_ = b.walk(n.(sql.BinaryNode).Right(), outerScope)
 			//todo add output scopes back?
-		case *plan.Filter, *plan.Project, *plan.Sort, *plan.GroupBy, *plan.Window:
+		case *plan.GroupBy:
+			outScope = b.buildGenericNode(n, inScope)
+		case *plan.Filter, *plan.Project, *plan.Sort, *plan.Window:
 			outScope = b.buildGenericNode(n, inScope)
 		}
 		return true
@@ -757,6 +783,12 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 					col.Name(),
 				), transform.NewTree, nil
 			default:
+				if len(symbols[level].lastRel) > 0 {
+					return expression.NewUnresolvedQualifiedColumn(
+						symbols[level].lastRel,
+						col.Name(),
+					), transform.NewTree, nil
+				}
 				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
 			}
 		}

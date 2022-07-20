@@ -36,8 +36,6 @@ func Walk(v Visitor, expr Expression) {
 	for _, child := range expr.Children() {
 		Walk(v, child)
 	}
-
-	v.Visit(nil)
 }
 
 // NodeVisitor visits expressions in an expression tree. Like Visitor, but with the added context of the node in which
