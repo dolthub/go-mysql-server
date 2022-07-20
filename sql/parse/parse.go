@@ -2197,10 +2197,8 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 			authUser.Identity = user.Auth1.Identity
 			if user.Auth1.Plugin == "mysql_native_password" && len(user.Auth1.Password) > 0 {
 				authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
-			} else if user.Auth1.Plugin == "authentication_dolt_jwt" {
-				authUser.Auth1 = plan.AuthenticationDoltJwt(user.Auth1.Password)
-			} else if user.Auth1.Plugin == "mysql_clear_password" {
-				authUser.Auth1 = plan.AuthenticationMysqlClearPassword(user.Auth1.Password)
+			} else if len(user.Auth1.Plugin) > 0 {
+				authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
 			} else if user.Auth1.Plugin == "" && len(user.Auth1.Password) > 0 {
 				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			} else {

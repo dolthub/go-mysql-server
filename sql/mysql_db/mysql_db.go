@@ -203,6 +203,14 @@ func (db *MySQLDb) SetPlugins(plugins map[string]PlaintextAuthPlugin) {
 	db.plugins = plugins
 }
 
+func (db *MySQLDb) VerifyPlugin(plugin string) error {
+	_, ok := db.plugins[plugin]
+	if ok {
+		return nil
+	}
+	return fmt.Errorf(`must provide authentication plugin for unsupported authentication format`)
+}
+
 // AddRootAccount adds the root account to the list of accounts.
 func (db *MySQLDb) AddRootAccount() {
 	db.Enabled = true
@@ -367,7 +375,7 @@ func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	if u == nil {
 		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
 	}
-	if u.Plugin == "mysql_clear_password" || u.Plugin == "authentication_dolt_jwt" {
+	if _, ok := db.plugins[u.Plugin]; ok {
 		return "mysql_clear_password", nil
 	}
 	return u.Plugin, nil

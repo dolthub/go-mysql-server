@@ -116,9 +116,15 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 		plugin := "mysql_native_password"
 		password := ""
+		// mysqlDb.SetPlugins()
 		if user.Auth1 != nil {
 			plugin = user.Auth1.Plugin()
 			password = user.Auth1.Password()
+		}
+		if plugin != "mysql_native_password" {
+			if err := mysqlDb.VerifyPlugin(plugin); err != nil {
+				return nil, sql.ErrUserCreationFailure.New(err)
+			}
 		}
 		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
 		// TODO: validate all of the data

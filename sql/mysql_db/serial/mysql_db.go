@@ -522,17 +522,8 @@ func (rcv *User) Attributes() []byte {
 	return nil
 }
 
-func (rcv *User) Identity() []byte {
-	// TODO: offset?
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
-	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
-	}
-	return nil
-}
-
 func UserStart(builder *flatbuffers.Builder) {
-	builder.StartObject(9)
+	builder.StartObject(8)
 }
 func UserAddUser(builder *flatbuffers.Builder, user flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(user), 0)
@@ -557,9 +548,6 @@ func UserAddLocked(builder *flatbuffers.Builder, locked bool) {
 }
 func UserAddAttributes(builder *flatbuffers.Builder, attributes flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(attributes), 0)
-}
-func UserAddIdentity(builder *flatbuffers.Builder, identity flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(8, flatbuffers.UOffsetT(identity), 0)
 }
 func UserEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

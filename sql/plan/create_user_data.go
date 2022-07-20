@@ -114,33 +114,28 @@ func (a AuthenticationMysqlNativePassword) Password() string {
 	return "*" + strings.ToUpper(hex.EncodeToString(s2))
 }
 
-// NewDefaultAuthentication returns the given password with the default authentication method.
+// NewDefaultAuthentication returns the given password with the default
+// authentication method.
 func NewDefaultAuthentication(password string) Authentication {
 	return AuthenticationMysqlNativePassword(password)
 }
 
-// AuthenticationMysqlClearPassword is an authentication type that represents "mysql_clear_password".
-type AuthenticationMysqlClearPassword string
-
-// Plugin implements the interface Authentication.
-func (a AuthenticationMysqlClearPassword) Plugin() string {
-	return "mysql_clear_password"
+// AuthenticationOther is an authentication type that represents plugin types
+// other than "mysql_native_password". There must be a mysqldb plugin provided
+// to use this plugin.
+type AuthenticationOther struct {
+	password string
+	plugin   string
 }
 
-// Password implements the interface Authentication.
-func (a AuthenticationMysqlClearPassword) Password() string {
-	return string(a)
+func NewOtherAuthentication(password, plugin string) Authentication {
+	return AuthenticationOther{password, plugin}
 }
 
-// AuthenticationDoltJwt is an authentication type that represents "authentication_dolt_jwt".
-type AuthenticationDoltJwt string
-
-// Plugin implements the interface Authentication.
-func (a AuthenticationDoltJwt) Plugin() string {
-	return "authentication_dolt_jwt"
+func (a AuthenticationOther) Plugin() string {
+	return a.plugin
 }
 
-// Password implements the interface Authentication.
-func (a AuthenticationDoltJwt) Password() string {
-	return string(a)
+func (a AuthenticationOther) Password() string {
+	return string(a.password)
 }
