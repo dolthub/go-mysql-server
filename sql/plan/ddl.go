@@ -133,6 +133,7 @@ type CreateTable struct {
 var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
+var _ sql.SchemaTarget = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
@@ -180,6 +181,16 @@ func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tab
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
+}
+
+// WithTargetSchema  implements the sql.TargetSchema interface.
+func (c *CreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	return nil, fmt.Errorf("unable to set target schema without primary key info")
+}
+
+// TargetSchema implements the sql.TargetSchema interface.
+func (c *CreateTable) TargetSchema() sql.Schema {
+	return c.CreateSchema.Schema
 }
 
 // WithDatabase implements the sql.Databaser interface.

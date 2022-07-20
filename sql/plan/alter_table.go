@@ -147,6 +147,10 @@ type AddColumn struct {
 	targetSch sql.Schema
 }
 
+var _ sql.Node = (*AddColumn)(nil)
+var _ sql.Expressioner = (*AddColumn)(nil)
+var _ sql.SchemaTarget = (*AddColumn)(nil)
+
 func (a *AddColumn) DebugString() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("add column %s to %s", a.column.Name, a.Table)
@@ -160,9 +164,6 @@ func (a *AddColumn) DebugString() string {
 	pr.WriteChildren(children...)
 	return pr.String()
 }
-
-var _ sql.Node = (*AddColumn)(nil)
-var _ sql.Expressioner = (*AddColumn)(nil)
 
 func NewAddColumn(database sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	column.Source = table.name
@@ -630,6 +631,7 @@ type DropColumn struct {
 
 var _ sql.Node = (*DropColumn)(nil)
 var _ sql.Databaser = (*DropColumn)(nil)
+var _ sql.SchemaTarget = (*DropColumn)(nil)
 
 func NewDropColumn(database sql.Database, table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
@@ -913,6 +915,7 @@ type RenameColumn struct {
 
 var _ sql.Node = (*RenameColumn)(nil)
 var _ sql.Databaser = (*RenameColumn)(nil)
+var _ sql.SchemaTarget = (*RenameColumn)(nil)
 
 func NewRenameColumn(database sql.Database, table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
@@ -1061,6 +1064,7 @@ type ModifyColumn struct {
 var _ sql.Node = (*ModifyColumn)(nil)
 var _ sql.Expressioner = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
+var _ sql.SchemaTarget = (*ModifyColumn)(nil)
 
 func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	column.Source = table.name

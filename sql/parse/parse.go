@@ -602,15 +602,45 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String())), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
-		var likepattern string
+		var filter sql.Expression
+		var like sql.Expression
+		var err error
 		if s.Filter != nil {
 			if s.Filter.Filter != nil {
-				unsupportedShow := fmt.Sprintf("SHOW VARIABLES WHERE ...")
-				return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+				filter, _, err = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e.(type) {
+					case *expression.UnresolvedColumn:
+						if strings.ToLower(e.String()) != "variable_name" {
+							return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
+						}
+						return expression.NewGetField(0, sql.Text, "variable_name", true), transform.NewTree, nil
+					default:
+						return e, transform.SameTree, nil
+					}
+				})
+				if err != nil {
+					return nil, err
+				}
 			}
-			likepattern = s.Filter.Like
+			if s.Filter.Like != "" {
+				like = expression.NewLike(
+					expression.NewGetField(0, sql.LongText, "variable_name", false),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+				if filter != nil {
+					filter = expression.NewAnd(like, filter)
+				} else {
+					filter = like
+				}
+			}
 		}
-		return plan.NewShowVariables(likepattern), nil
+
+		return plan.NewShowVariables(filter), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression

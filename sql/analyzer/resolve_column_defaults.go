@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"strings"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -437,10 +435,6 @@ var validColumnDefaultFuncs = map[string]struct{}{
 	"yearweek":                           {},
 }
 
-type targetSchema interface {
-	TargetSchema() sql.Schema
-}
-
 func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolveColumnDefaults")
 	defer span.End()
@@ -457,7 +451,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 		colIndex := 0
 
 		switch node := n.(type) {
-		case *plan.ShowColumns, *plan.ShowCreateTable:
+		case *plan.InsertDestination:
 			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
@@ -475,12 +469,15 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.InsertInto:
+			// node.Source needs to be explicitly handled here because it's not a
+			// registered child of InsertInto
 			newSource, identity, err := transform.NodeExprs(node.Source, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
 
+				// Instead of grabbing the schema from TargetSchema(), use the Destination node
 				sch := node.Destination.Schema()
 
 				// InsertInto.Source can contain multiple rows, so loop over the columns in the schema
@@ -494,113 +491,59 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				node.Source = newSource
 			}
 			return node, identity, err
-		case *plan.InsertDestination:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-				sch := node.Sch
-				col := sch[colIndex]
-				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.CreateTable:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-				sch := node.CreateSchema.Schema
-				col := sch[colIndex]
-				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.RenameColumn, *plan.DropColumn:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		case sql.SchemaTarget:
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
 
-				// Not a public interface, should make part of sql.SchemaTarget?
-				sch := node.(targetSchema).TargetSchema()
-
-				var col *sql.Column
-				if colIndex >= len(sch) {
-					return e, transform.SameTree, nil
+				col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+				if err != nil {
+					return nil, transform.SameTree, err
 				}
-
-				col = sch[colIndex]
 				colIndex++
 
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-
-		case *plan.ModifyColumn:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				sch := node.TargetSchema()
-
-				var col *sql.Column
-				if colIndex < len(sch) {
-					col = sch[colIndex]
-				} else {
-					col = node.NewColumn()
-				}
-
-				colIndex++
-
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.AddColumn:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				sch := node.TargetSchema()
-
-				var col *sql.Column
-				if colIndex < len(sch) {
-					col = sch[colIndex]
-				} else {
-					col = node.Column()
-				}
-
-				colIndex++
-
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-		case *plan.AlterDefaultSet:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				loweredColName := strings.ToLower(node.ColumnName)
-				var col *sql.Column
-				for _, schCol := range node.Schema() {
-					if strings.ToLower(schCol.Name) == loweredColName {
-						col = schCol
-						break
-					}
-				}
-				if col == nil {
-					return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(node.Table, node.ColumnName)
-				}
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		default:
 			return node, transform.SameTree, nil
 		}
 	})
+}
+
+// lookupColumnForTargetSchema looks at the target schema for the specifeid SchemaTarget node and returns
+// the column based on the specified index. For most node types, this is simply indexing into the target
+// schema but a few types require special handling.
+func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex int) (*sql.Column, error) {
+	schema := node.TargetSchema()
+
+	switch n2 := node.(type) {
+	case *plan.ModifyColumn:
+		if colIndex < len(schema) {
+			return schema[colIndex], nil
+		} else {
+			return n2.NewColumn(), nil
+		}
+	case *plan.AddColumn:
+		if colIndex < len(schema) {
+			return schema[colIndex], nil
+		} else {
+			return n2.Column(), nil
+		}
+	case *plan.AlterDefaultSet:
+		index := schema.IndexOfColName(n2.ColumnName)
+		if index == -1 {
+			return nil, sql.ErrTableColumnNotFound.New(n2.Table, n2.ColumnName)
+		}
+		return n2.Schema()[index], nil
+	default:
+		if colIndex < len(schema) {
+			return schema[colIndex], nil
+		} else {
+			return nil, sql.ErrColumnNotFound.New(colIndex)
+		}
+	}
 }
 
 // parseColumnDefaults transforms UnresolvedColumnDefault expressions into ColumnDefaultValue expressions, which
@@ -656,7 +599,7 @@ func transformColumnDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node,
 			return e, transform.SameTree, nil
 		}
 		switch node.(type) {
-		case *plan.Values, *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
+		case *plan.Values, *plan.InsertDestination, sql.SchemaTarget:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, transform.SameTree, nil
