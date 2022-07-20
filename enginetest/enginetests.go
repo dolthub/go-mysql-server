@@ -507,6 +507,15 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	}
 }
 
+// todo: merge this into the above test when https://github.com/dolthub/dolt/issues/3836 is fixed
+func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts {
+		TestScript(t, harness, script)
+	}
+
+}
+
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, expectedFailure := range queries.InsertErrorTests {
@@ -4415,7 +4424,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",
 		"use mydb",
-		"create table t1 (pk varchar(20), v varchar(20), primary key (pk, v))",
+		"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
 		"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
 	}})
 	e := mustNewEngine(t, harness)
@@ -4504,7 +4513,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// Assert that the schema of t1 is unchanged
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
 		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "MUL", "NULL", ""},
+		{"v", "varchar(20)", "NO", "MUL", "(concat(pk, '-foo'))", ""},
 	}, nil, nil)
 	// Assert that adding a primary key with an unknown column causes an error
 	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
@@ -4519,7 +4528,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
 		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "PRI", "NULL", ""},
+		{"v", "varchar(20)", "NO", "PRI", "(concat(pk, '-foo'))", ""},
 	}, nil, nil)
 	AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
@@ -4535,7 +4544,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
 		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "", "NULL", ""},
+		{"v", "varchar(20)", "NO", "", "(concat(pk, '-foo'))", ""},
 	}, nil, nil)
 	TestQueryWithContext(t, ctx, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 		{"a1", "a2"},
@@ -4625,7 +4634,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	}
 
 	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int default (v1), toRename int)")
 		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk,
 			drop column v2, modify v1 varchar(100) not null,
 			alter column v3 set default 100, rename column toRename to newName`)
@@ -4782,7 +4791,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		// single column unique constraint (failure)
 		RunQuery(t, e, harness, "ALTER TABLE t38 DROP INDEX u_col1;")
 		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (5, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrDuplicateEntry)
+		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrUniqueKeyViolation)
 		tt := queries.QueryTest{
 			Query: "show create table t38;",
 			Expected: []sql.Row{{"t38", "CREATE TABLE `t38` (\n" +
@@ -4796,7 +4805,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		// multi column unique constraint (failure)
 		RunQuery(t, e, harness, "ALTER TABLE t39 DROP INDEX u_col1_col2;")
 		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (10, 1, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrDuplicateEntry)
+		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrUniqueKeyViolation)
 		tt = queries.QueryTest{
 			Query: "show create table t39;",
 			Expected: []sql.Row{{"t39", "CREATE TABLE `t39` (\n" +
@@ -5252,17 +5261,6 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 					tt.ExpectedPersist, res)
 			}
 		})
-	}
-}
-
-func TestKeylessUniqueIndex(t *testing.T, harness Harness) {
-	harness.Setup(setup.KeylessSetup...)
-	for _, tt := range queries.InsertIntoKeylessUnique {
-		RunWriteQueryTest(t, harness, tt)
-	}
-
-	for _, tt := range queries.InsertIntoKeylessUniqueError {
-		runGenericErrorTest(t, harness, tt)
 	}
 }
 

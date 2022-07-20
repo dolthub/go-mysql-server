@@ -754,32 +754,6 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 }
 
-var InsertIntoKeylessUnique = []WriteQueryTest{
-	{
-		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 3);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
-		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
-	},
-	{
-		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 4);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
-		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 4}},
-	},
-}
-
-var InsertIntoKeylessUniqueError = []GenericErrorQueryTest{
-	{
-		Name:  "Try to insert into a unique keyless table",
-		Query: "INSERT INTO unique_keyless (100, 2)",
-	},
-	{
-		Name:  "Try to insert into a unique keyless table",
-		Query: "INSERT INTO unique_keyless (1, 1)",
-	},
-}
-
 var InsertScripts = []ScriptTest{
 	{
 		Name: "insert into sparse auto_increment table",
@@ -1325,7 +1299,7 @@ var InsertScripts = []ScriptTest{
 		Name: "Insert on duplicate key",
 		SetUpScript: []string{
 			`CREATE TABLE users (
-  				id varchar(42) PRIMARY KEY
+				id varchar(42) PRIMARY KEY
 			)`,
 			`CREATE TABLE nodes (
 			    id varchar(42) PRIMARY KEY,
@@ -1356,6 +1330,141 @@ var InsertScripts = []ScriptTest{
 					{"id1", "milo", "on", 1},
 					{"id2", "dabe", "off", 3},
 				},
+			},
+		},
+	},
+	{
+		Name: "Insert throws primary key violations",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk int PRIMARY key);",
+			"CREATE TABLE t2 (pk1 int, pk2 int, PRIMARY KEY (pk1, pk2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t VALUES (1), (2);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:       "INSERT into t VALUES (1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "INSERT into t2 VALUES (1, 1), (2, 2);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:       "INSERT into t2 VALUES (1, 1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name: "Insert throws unique key violations",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk int PRIMARY key, col1 int UNIQUE);",
+			"CREATE TABLE t2 (pk int PRIMARY key, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"INSERT into t VALUES (1, 1);",
+			"INSERT into t2 VALUES (1, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t VALUES (2, 2), (3, 1), (4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (2, 2, 2), (3, 1, 1), (4, 4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t VALUES (5, 2), (6, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (5, 2, 2), (6, 2, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:    "INSERT into t2 VALUES (5, NULL, 1), (6, NULL, 1), (7, 1, NULL), (8, 1, NULL), (9, NULL, NULL), (10, NULL, NULL)",
+				Expected: []sql.Row{{sql.NewOkResult(6)}},
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
+			},
+		},
+	},
+	{
+		Name: "Insert throws unique key violations for keyless tables",
+		SetUpScript: []string{
+			"CREATE TABLE t (not_pk int NOT NULL, col1 int UNIQUE);",
+			"CREATE TABLE t2 (not_pk int NOT NULL, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"INSERT into t VALUES (1, 1);",
+			"INSERT into t2 VALUES (1, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t VALUES (2, 2), (3, 1), (4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (2, 2, 2), (3, 1, 1), (4, 4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t VALUES (5, 2), (6, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (5, 2, 2), (6, 2, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:    "INSERT into t2 VALUES (5, NULL, 1), (6, NULL, 1), (7, 1, NULL), (8, 1, NULL), (9, NULL, NULL), (10, NULL, NULL)",
+				Expected: []sql.Row{{sql.NewOkResult(6)}},
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
 			},
 		},
 	},
@@ -1591,26 +1700,87 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Test that INSERT IGNORE INTO works with unique keys",
+		SetUpScript: []string{
+			"CREATE TABLE one_uniq(pk int PRIMARY KEY, col1 int UNIQUE)",
+			"CREATE TABLE two_uniq(pk int PRIMARY KEY, col1 int, col2 int, UNIQUE KEY col1_col2_uniq (col1, col2))",
+			"INSERT INTO one_uniq values (1, 1)",
+			"INSERT INTO two_uniq values (1, 1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 3}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from one_uniq;",
+				Expected: []sql.Row{
+					{1, 1}, {3, 2}, {4, nil}, {5, nil},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 8}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from two_uniq;",
+				Expected: []sql.Row{
+					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
+				},
+			},
+		},
+	},
+}
+
+var InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
+	{
+		Name: "Test that INSERT IGNORE INTO works with unique keys on a keyless table",
+		SetUpScript: []string{
+			"CREATE TABLE one_uniq(not_pk int, value int UNIQUE)",
+			"CREATE TABLE two_uniq(not_pk int, col1 int, col2 int, UNIQUE KEY col1_col2_uniq (col1, col2));",
+			"INSERT INTO one_uniq values (1, 1)",
+			"INSERT INTO two_uniq values (1, 1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 3}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from one_uniq;",
+				Expected: []sql.Row{
+					{1, 1}, {3, 2}, {4, nil}, {5, nil},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 8}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from two_uniq;",
+				Expected: []sql.Row{
+					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
+				},
+			},
+		},
+	},
 }
 
 var InsertBrokenScripts = []ScriptTest{
 	// TODO: Support unique keys and FK violations in memory implementation
-	{
-		Name: "Test that INSERT IGNORE INTO works with unique keys",
-		SetUpScript: []string{
-			"CREATE TABLE mytable(pk int PRIMARY KEY, value varchar(10) UNIQUE)",
-			"INSERT INTO mytable values (1,'one')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "INSERT IGNORE INTO mytable VALUES (2, 'one')",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 0}},
-				},
-				ExpectedWarning: mysql.ERDupEntry,
-			},
-		},
-	},
 	{
 		Name: "Test that INSERT IGNORE works with FK Violations",
 		SetUpScript: []string{
