@@ -116,7 +116,6 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 		plugin := "mysql_native_password"
 		password := ""
-		// mysqlDb.SetPlugins()
 		if user.Auth1 != nil {
 			plugin = user.Auth1.Plugin()
 			password = user.Auth1.Password()
