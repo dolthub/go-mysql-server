@@ -244,6 +244,7 @@ func addSuperUser(userTable *mysqlTable, username string, host string, password 
 		Locked:              false,
 		Attributes:          nil,
 		IsRole:              false,
+		IsSuperUser:         true,
 	})
 	if err != nil {
 		panic(err) // Insertion should never fail so this should never be reached
