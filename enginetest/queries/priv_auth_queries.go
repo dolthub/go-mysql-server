@@ -1044,21 +1044,6 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 	},
 	{
-		Name: "Create User with mysql_clear_password plugin specification",
-		SetUpScript: []string{
-			"CREATE USER ctpuse@localhost IDENTIFIED WITH mysql_clear_password",
-			"GRANT ALL ON *.* TO ctpuse@localhost WITH GRANT OPTION;",
-		},
-		Assertions: []ServerAuthenticationTestAssertion{
-			{
-				Username:    "ctpuse",
-				Password:    "test-pass",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: true,
-			},
-		},
-	},
-	{
 		Name: "Create User with jwt plugin specification",
 		SetUpScript: []string{
 			"CREATE USER `test-user`@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=testing,sub=test-user,iss=dolthub.com,aud=some_id';",
