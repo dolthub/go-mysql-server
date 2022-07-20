@@ -410,9 +410,9 @@ func (db *MySQLDb) Persist(ctx *sql.Context) error {
 	users := make([]*User, 0)
 	for _, userEntry := range userEntries {
 		user := userEntry.(*User)
-		if user.IsSuperUser {
-			continue
-		}
+		//if user.IsSuperUser {
+		//	continue
+		//}
 		users = append(users, user)
 	}
 	sort.Slice(users, func(i, j int) bool {
