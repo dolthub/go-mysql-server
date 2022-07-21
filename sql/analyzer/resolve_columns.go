@@ -139,6 +139,18 @@ func (a availableNames) indexColumn(table, col string, nestingLevel int) {
 }
 
 // indexColumn adds a column with the given table and column name at the given nesting level
+func (a availableNames) levels() []int {
+	levels := make([]int, len(a))
+	i := 0
+	for l := range a {
+		levels[i] = l
+		i++
+	}
+	sort.Ints(levels)
+	return levels
+}
+
+// indexColumn adds a column with the given table and column name at the given nesting level
 func (a availableNames) indexAlias(e *expression.Alias, nestingLevel int) {
 	name := strings.ToLower(e.Name())
 	_, ok := a[nestingLevel]
@@ -374,8 +386,9 @@ func (b *builder) buildTable(n sql.Node, inScope *scope) *scope {
 	}
 
 	cols := make([]tableCol, 0)
+	source := strings.ToLower(t.Name())
 	for _, col := range t.Schema() {
-		c := tableCol{table: col.Source, col: col.Name}
+		c := tableCol{table: source, col: strings.ToLower(col.Name)}
 		if inScope.hasCol(c) {
 			cols = append(cols, c)
 		}
@@ -413,6 +426,12 @@ func (b *builder) buildTableAlias(n *plan.TableAlias, inScope *scope) *scope {
 
 	outScope.addColsFromAlias(inScope, tab.Name(), n.Name(), cols)
 	return outScope
+}
+
+func (b *builder) buildNaturalJoin(n sql.Node, inScope *scope) *scope {
+	// natural joins will project a columns with same name from each table,
+	// but only recorded once in the root-project
+	return inScope
 }
 
 func (b *builder) buildJoin(n sql.Node, inScope *scope) *scope {
@@ -542,6 +561,8 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, se
 			return n, transform.SameTree, nil
 		} else if errors.Is(err, ErrProjectIntoDML) {
 			return n, transform.SameTree, nil
+		} else if errors.Is(err, ErrProjectIntoNaturalJoinFailed) {
+			return n, transform.SameTree, nil
 		}
 		return nil, transform.SameTree, err
 	}
@@ -554,12 +575,13 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, se
 
 var ErrAlreadyPushedProjections = errors.NewKind("already pushed projections")
 var ErrProjectWithSubqueryFailed = errors.NewKind("project with subquery expression failed")
-var ErrProjectIntoDML = errors.NewKind("project with DML expression failed")
+var ErrProjectIntoDML = errors.NewKind("project into DML expression failed")
+var ErrProjectIntoNaturalJoinFailed = errors.NewKind("project into natural join failed")
 
 func (b *builder) assignRelIds() error {
 	n, same, err := transform.NodeWithOpaque(b.root, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		//todo(max): support for subquery expressions
 		if ne, ok := n.(sql.Expressioner); ok {
+			//todo(max): support for subquery expressions
 			for _, e := range ne.Expressions() {
 				foundSq := transform.InspectExpr(e, func(e sql.Expression) bool {
 					_, ok := e.(*plan.Subquery)
@@ -572,9 +594,12 @@ func (b *builder) assignRelIds() error {
 		}
 
 		switch n := n.(type) {
-		//todo(max): support for DML
 		case *plan.DeleteFrom, *plan.InsertInto, *plan.Update:
+			//todo(max): support for DML
 			return nil, transform.SameTree, ErrProjectIntoDML.New()
+		case *plan.NaturalJoin:
+			//todo(max): support for natural join
+			return nil, transform.SameTree, ErrProjectIntoNaturalJoinFailed.New()
 		case sql.RelationalNode:
 			if n.RelationalId() > 0 {
 				return nil, transform.SameTree, ErrAlreadyPushedProjections.New()
@@ -680,6 +705,8 @@ func (b *builder) walk(n sql.Node, inScope *scope) *scope {
 			outScope = b.buildSubqueryAlias(n, inScope)
 		case plan.JoinNode, *plan.CrossJoin:
 			outScope = b.buildJoin(n, inScope)
+		case *plan.NaturalJoin:
+			outScope = b.buildNaturalJoin(n, inScope)
 		case *plan.GroupBy:
 			outScope = b.buildGenericNode(n, inScope)
 		case *plan.Filter, *plan.Project, *plan.Sort, *plan.Window:
@@ -818,8 +845,9 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 		if symbols.conflictingAlias(name, len(symbols)) {
 			return col, transform.SameTree, nil
 		}
-		for level := 0; level < len(symbols); level++ {
+		for _, level := range symbols.levels() {
 			//_, ok := symbols[len(symbols)-1].availableAliases[name]
+
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
 
 			// If the table exists but it's not available for this node it

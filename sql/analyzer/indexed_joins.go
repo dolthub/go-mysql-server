@@ -287,15 +287,16 @@ func replaceTableAccessWithIndexedAccess(
 			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 
-		if sameL && sameR {
-			return node, transform.SameTree, nil
-		}
-
 		// the condition's field indexes might need adjusting if the order of tables changed
-		cond, _, err := FixFieldIndexes(ctx, scope, a, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
+		cond, sameC, err := FixFieldIndexes(ctx, scope, a, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		if sameL && sameR && sameC {
+			return node, transform.SameTree, nil
+		}
+
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond, len(scope.Schema())), transform.NewTree, nil
 	case *plan.Limit:
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
