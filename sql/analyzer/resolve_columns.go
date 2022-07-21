@@ -200,9 +200,14 @@ func (a availableNames) tablesForColumnAtLevel(column string, level int) []strin
 	return a[level].availableColumns[column]
 }
 
-func (a availableNames) hasTableCol(scope int, tc tableCol) bool {
-	_, ok := a[scope].availableTableCols[tc]
-	return ok
+func (a availableNames) hasTableCol(tc tableCol) bool {
+	for i := range a {
+		_, ok := a[i].availableTableCols[tc]
+		if ok {
+			return true
+		}
+	}
+	return false
 }
 
 func dedupStrings(in []string) []string {
@@ -715,6 +720,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames, nesti
 	}
 
 	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.
+	// note: we terminate the symbols for this level after finding the first relation (column source)
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
@@ -732,15 +738,13 @@ func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames, nesti
 				}
 				return false
 			case *plan.Project:
-				// project aliases can overwrite lower namespaces
+				// project aliases can overwrite lower namespaces, but importantly,
+				// we do not terminate symbol generation.
 				for _, e := range n.Projections {
-					a, ok := e.(*expression.Alias)
-					if !ok {
-						return true
+					if a, ok := e.(*expression.Alias); ok {
+						names.indexAlias(a, nestingLevel)
 					}
-					names.indexAlias(a, nestingLevel)
 				}
-				return false
 			}
 			return true
 		})
@@ -782,6 +786,9 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			}
 
 			if !tableFound {
+				if symbols.hasTableCol(tableCol{table: strings.ToLower(col.Table()), col: strings.ToLower(col.Name())}) {
+					return col, transform.SameTree, nil
+				}
 				similar := similartext.Find(symbols.allTables(), col.Table())
 				return nil, transform.SameTree, sql.ErrTableNotFound.New(col.Table() + similar)
 			}
