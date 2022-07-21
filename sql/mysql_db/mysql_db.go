@@ -215,7 +215,7 @@ func (db *MySQLDb) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(db.user, username, "%", password)
+	addSuperUser(db.user, username, "localhost", password)
 	db.clearCache()
 }
 
@@ -410,9 +410,9 @@ func (db *MySQLDb) Persist(ctx *sql.Context) error {
 	users := make([]*User, 0)
 	for _, userEntry := range userEntries {
 		user := userEntry.(*User)
-		//if user.IsSuperUser {
-		//	continue
-		//}
+		if user.IsSuperUser {
+			continue
+		}
 		users = append(users, user)
 	}
 	sort.Slice(users, func(i, j int) bool {
