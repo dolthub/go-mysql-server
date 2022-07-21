@@ -516,6 +516,8 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, se
 			return n, transform.SameTree, nil
 		} else if errors.Is(err, ErrProjectWithSubqueryFailed) {
 			return n, transform.SameTree, nil
+		} else if errors.Is(err, ErrProjectIntoDML) {
+			return n, transform.SameTree, nil
 		}
 		return nil, transform.SameTree, err
 	}
@@ -528,6 +530,7 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, se
 
 var ErrAlreadyPushedProjections = errors.NewKind("already pushed projections")
 var ErrProjectWithSubqueryFailed = errors.NewKind("project with subquery expression failed")
+var ErrProjectIntoDML = errors.NewKind("project with DML expression failed")
 
 func (b *builder) assignRelIds() error {
 	n, same, err := transform.NodeWithOpaque(b.root, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -545,6 +548,9 @@ func (b *builder) assignRelIds() error {
 		}
 
 		switch n := n.(type) {
+		//todo(max): support for DML
+		case *plan.DeleteFrom, *plan.InsertInto, *plan.Update:
+			return nil, transform.SameTree, ErrProjectIntoDML.New()
 		case sql.RelationalNode:
 			if n.RelationalId() > 0 {
 				return nil, transform.SameTree, ErrAlreadyPushedProjections.New()
