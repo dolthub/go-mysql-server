@@ -415,6 +415,30 @@ func (b *builder) buildTableAlias(n *plan.TableAlias, inScope *scope) *scope {
 	return outScope
 }
 
+func (b *builder) buildJoin(n sql.Node, inScope *scope) *scope {
+	//first add join expression
+	outScope := b.buildGenericNode(n, inScope)
+	// both relations need the same outer scope
+	innerScope := outScope.push()
+	outerScope := outScope.push()
+	innerScope.appendScopeCols(inScope)
+	outerScope.appendScopeCols(inScope)
+	_ = b.walk(n.(sql.BinaryNode).Left(), innerScope)
+	_ = b.walk(n.(sql.BinaryNode).Right(), outerScope)
+	//todo add sub scopes back?
+	return outScope
+}
+
+func (b *builder) buildUnion(n *plan.Union, inScope *scope) *scope {
+	// union is opaque to parent
+	leftScope := inScope.push()
+	rightScope := inScope.push()
+	outScope := b.walk(n.Left(), leftScope)
+	rOut := b.walk(n.Right(), rightScope)
+	outScope.appendScopeCols(rOut)
+	return outScope
+}
+
 func (b *builder) buildSubqueryAlias(n *plan.SubqueryAlias, inScope *scope) *scope {
 	// ex: select x from (select x,y from a)
 	// subquery is a row source, so it should accept projections
@@ -650,26 +674,12 @@ func (b *builder) walk(n sql.Node, inScope *scope) *scope {
 			// table alias mapping is special to pickup cols
 			outScope = b.buildTableAlias(n, inScope)
 		case *plan.Union:
-			// union is opaque to parent
-			leftScope := inScope.push()
-			rightScope := inScope.push()
-			outScope = b.walk(n.Left(), leftScope)
-			rOut := b.walk(n.Right(), rightScope)
-			outScope.appendScopeCols(rOut)
+			outScope = b.buildUnion(n, inScope)
 			return false
 		case *plan.SubqueryAlias:
 			outScope = b.buildSubqueryAlias(n, inScope)
 		case plan.JoinNode, *plan.CrossJoin:
-			//first add join expression
-			outScope = b.buildGenericNode(n, inScope)
-			// both relations need the same outer scope
-			innerScope := outScope.push()
-			outerScope := outScope.push()
-			innerScope.appendScopeCols(inScope)
-			outerScope.appendScopeCols(inScope)
-			_ = b.walk(n.(sql.BinaryNode).Left(), innerScope)
-			_ = b.walk(n.(sql.BinaryNode).Right(), outerScope)
-			//todo add output scopes back?
+			outScope = b.buildJoin(n, inScope)
 		case *plan.GroupBy:
 			outScope = b.buildGenericNode(n, inScope)
 		case *plan.Filter, *plan.Project, *plan.Sort, *plan.Window:
