@@ -380,9 +380,6 @@ func (b *builder) buildTable(n sql.Node, inScope *scope) *scope {
 	if inScope.unqualifiedStar {
 		selectStar = true
 	}
-	//	b.delTableCols(n.(sql.RelationalNode).RelationalId())
-	//	return inScope
-	//}
 
 	cols := make([]tableCol, 0)
 	source := strings.ToLower(t.Name())

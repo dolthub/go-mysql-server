@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
@@ -170,6 +171,8 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 				expected = tt.node
 			}
 
+			result = clearCachedAttributes(result)
+
 			assertNodesEqualWithDiff(t, expected, result)
 		})
 	}
@@ -214,4 +217,16 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 		return false
 	}
 	return true
+}
+
+func clearCachedAttributes(n sql.Node) sql.Node {
+	n, _, _ = transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case sql.RelationalNode:
+			return n.WithRelationalId(0), transform.NewTree, nil
+		default:
+			return n, transform.SameTree, nil
+		}
+	})
+	return n
 }

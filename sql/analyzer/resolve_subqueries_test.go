@@ -84,8 +84,7 @@ func TestResolveSubqueries(t *testing.T) {
 					plan.NewCrossJoin(
 						plan.NewSubqueryAlias(
 							"t1", "",
-							plan.NewDecoratedNode("Projected table access on [a]",
-								plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil)),
+							plan.NewResolvedTable(foo, db, nil),
 						),
 						plan.NewSubqueryAlias(
 							"t2", "",
@@ -93,8 +92,7 @@ func TestResolveSubqueries(t *testing.T) {
 								"t2alias", "",
 								plan.NewProject(
 									[]sql.Expression{gf(0, "bar", "b")},
-									plan.NewDecoratedNode("Projected table access on [b]",
-										plan.NewResolvedTable(bar.WithProjections([]string{"b"}), db, nil)),
+									plan.NewResolvedTable(bar, db, nil),
 								),
 							),
 						),
