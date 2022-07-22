@@ -203,7 +203,7 @@ func (db *MySQLDb) AddRootAccount() {
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
 // meant to replace the "auth.New..." functions while the remaining functions are added.
-func (db *MySQLDb) AddSuperUser(username string, password string) {
+func (db *MySQLDb) AddSuperUser(username string, host string, password string) {
 	//TODO: remove this function and the called function
 	db.Enabled = true
 	if len(password) > 0 {
@@ -215,7 +215,7 @@ func (db *MySQLDb) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(db.user, username, "localhost", password)
+	addSuperUser(db.user, username, host, password)
 	db.clearCache()
 }
 
