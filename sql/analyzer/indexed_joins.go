@@ -320,6 +320,8 @@ func replaceTableAccessWithIndexedAccess(
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.Distinct:
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
+	case *plan.DecoratedNode:
+		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.CrossJoin:
 		// TODO: be more principled about integrating cross joins into the overall join plan, no reason to keep them separate
 		newRight, same, err := replaceTableAccessWithIndexedAccess(ctx, node.Right(), a, append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
@@ -384,7 +386,7 @@ func replanJoin(
 	eligible := true
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
-		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, nil:
+		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, *plan.DecoratedNode, nil:
 		case *plan.SubqueryAlias:
 			// The join planner can use the subquery alias as a
 			// table alias in join conditions, but the subquery
@@ -987,6 +989,10 @@ func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 // has indexable tables.
 func hasIndexableChild(node plan.JoinNode) bool {
 	switch n := node.Right().(type) {
+	case *plan.DecoratedNode:
+		if _, ok := seeThroughDecoration(n); ok {
+			return true
+		}
 	case *plan.ResolvedTable, *plan.TableAlias:
 		return true
 	case *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.StripRowNode, *plan.RecursiveCte:
@@ -999,6 +1005,10 @@ func hasIndexableChild(node plan.JoinNode) bool {
 	}
 
 	switch n := node.Left().(type) {
+	case *plan.DecoratedNode:
+		if _, ok := seeThroughDecoration(n); ok {
+			return true
+		}
 	case *plan.ResolvedTable, *plan.TableAlias:
 		return true
 	case plan.JoinNode:

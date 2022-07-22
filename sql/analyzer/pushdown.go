@@ -908,9 +908,15 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		var rs *plan.ResolvedTable
 		aliasMap := make(map[string]string)
 		pj, ok := s.UnaryNode.Child.(*plan.Project)
+		var decoratingParent sql.Node
 		if ok {
+			n := pj.Child
 			// If there is a projection, its immediate child must be ResolvedTable
-			if rs, ok = pj.UnaryNode.Child.(*plan.ResolvedTable); !ok {
+			if dn, ok := n.(*plan.DecoratedNode); ok {
+				decoratingParent = dn
+				n = dn.Child
+			}
+			if rs, ok = n.(*plan.ResolvedTable); !ok {
 				return n, transform.SameTree, nil
 			}
 			// Extract aliases
@@ -920,8 +926,14 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				}
 			}
 		} else {
+			n := s.Child
+			// If there is a projection, its immediate child must be ResolvedTable
+			if dn, ok := n.(*plan.DecoratedNode); ok {
+				decoratingParent = dn
+				n = dn.Child
+			}
 			// Otherwise, sorts immediate child must be ResolvedTable
-			if rs, ok = s.UnaryNode.Child.(*plan.ResolvedTable); !ok {
+			if rs, ok = n.(*plan.ResolvedTable); !ok {
 				return n, transform.SameTree, nil
 			}
 		}
@@ -991,16 +1003,23 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 		newNode := plan.NewStaticIndexedTableAccess(rs, lookup)
 
+		var resNode sql.Node = newNode
+		if decoratingParent != nil {
+			resNode, err = decoratingParent.WithChildren(resNode)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+		}
 		// Don't forget aliases
 		if pj != nil {
-			resNode, err := pj.WithChildren(newNode)
+			resNode, err = pj.WithChildren(resNode)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			return resNode, transform.NewTree, nil
 		}
 
-		return newNode, transform.NewTree, nil
+		return resNode, transform.NewTree, nil
 	})
 }
 

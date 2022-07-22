@@ -366,18 +366,9 @@ func (b *builder) delTableCols(id sql.RelId) {
 }
 
 func (b *builder) buildTable(n sql.Node, inScope *scope) *scope {
-	if inScope.unqualifiedStar {
-		return inScope
-	}
-
 	table := getTable(n)
 	t, ok := table.(sql.ProjectedTable)
 	if !ok {
-		return inScope
-	}
-
-	if _, ok := inScope.stars[t.Name()]; ok {
-		b.delTableCols(n.(sql.RelationalNode).RelationalId())
 		return inScope
 	}
 
@@ -385,11 +376,19 @@ func (b *builder) buildTable(n sql.Node, inScope *scope) *scope {
 		return inScope
 	}
 
+	_, selectStar := inScope.stars[t.Name()]
+	if inScope.unqualifiedStar {
+		selectStar = true
+	}
+	//	b.delTableCols(n.(sql.RelationalNode).RelationalId())
+	//	return inScope
+	//}
+
 	cols := make([]tableCol, 0)
 	source := strings.ToLower(t.Name())
 	for _, col := range t.Schema() {
 		c := tableCol{table: source, col: strings.ToLower(col.Name)}
-		if inScope.hasCol(c) {
+		if selectStar || inScope.hasCol(c) {
 			cols = append(cols, c)
 		}
 	}
@@ -644,7 +643,8 @@ func (b *builder) finish() (sql.Node, transform.TreeIdentity, error) {
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return ret, transform.NewTree, nil
+			dec := plan.NewDecoratedNode(fmt.Sprintf("Projected table access on %v", projections), ret)
+			return dec, transform.NewTree, nil
 		case *plan.Values:
 			return n, transform.SameTree, nil
 		default:
