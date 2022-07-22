@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func not(e sql.Expression) sql.Expression {
@@ -220,7 +220,7 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 }
 
 func clearCachedAttributes(n sql.Node) sql.Node {
-	n, _, _ = transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, _, _ = transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case sql.RelationalNode:
 			return n.WithRelationalId(0), transform.NewTree, nil
