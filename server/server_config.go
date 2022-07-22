@@ -60,7 +60,8 @@ type Config struct {
 	// of not supporting the CLIENT_MULTI_STATEMENTS option on the server.
 	DisableClientMultiStatements bool
 	// NoDefaults prevents using persisted configuration for new server sessions
-	NoDefaults bool
+	NoDefaults               bool
+	AllowClearTextWithoutTLS bool
 }
 
 func (c Config) NewConfig() (Config, error) {
