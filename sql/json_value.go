@@ -129,12 +129,12 @@ func containsJSON(a, b interface{}) (interface{}, error) {
 	}
 
 	switch a := a.(type) {
-	case bool:
-		return containsJSONBool(a, b)
 	case []interface{}:
 		return containsJSONArray(a, b)
 	case map[string]interface{}:
 		return containsJSONObject(a, b)
+	case bool:
+		return containsJSONBool(a, b)
 	case string:
 		return containsJSONString(a, b)
 	case float64:
