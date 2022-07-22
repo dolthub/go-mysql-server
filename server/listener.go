@@ -15,8 +15,9 @@
 package server
 
 import (
-	"golang.org/x/sync/errgroup"
 	"net"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type connRes struct {
