@@ -215,7 +215,7 @@ func (db *MySQLDb) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(db.user, username, "localhost", password)
+	addSuperUser(db.user, username, "%", password)
 	db.clearCache()
 }
 
@@ -348,7 +348,7 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (db *MySQLDb) AuthMethod(user string) (string, error) {
+func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	//TODO: this should pass in the host as well to correctly determine which auth method to use
 	return "mysql_native_password", nil
 }
@@ -412,9 +412,9 @@ func (db *MySQLDb) Persist(ctx *sql.Context) error {
 	users := make([]*User, 0)
 	for _, userEntry := range userEntries {
 		user := userEntry.(*User)
-		if user.IsSuperUser {
-			continue
-		}
+		//if user.IsSuperUser {
+		//	continue
+		//}
 		users = append(users, user)
 	}
 	sort.Slice(users, func(i, j int) bool {

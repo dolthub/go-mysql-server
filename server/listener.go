@@ -16,22 +16,93 @@ package server
 
 import (
 	"net"
+	"os"
+
+	"golang.org/x/sync/errgroup"
 )
 
+type connRes struct {
+	conn net.Conn
+	err  error
+}
+
 type Listener struct {
-	net.Listener
-	h *Handler
+	netListener  net.Listener
+	fileListener net.Listener
+	eg           *errgroup.Group
+	conns        chan connRes
+	shutdown     chan struct{}
 }
 
 // NewListener creates a new Listener.
-func NewListener(protocol, address string, handler *Handler) (*Listener, error) {
-	l, err := net.Listen(protocol, address)
+func NewListener(protocol, address string) (*Listener, error) {
+	netl, err := net.Listen(protocol, address)
 	if err != nil {
 		return nil, err
 	}
-	return &Listener{l, handler}, nil
+	socketf, err := os.OpenFile("/var/tmp/mysql.sock", os.O_CREATE, os.ModeSocket | 0755)
+	if err != nil {
+		return nil, err
+	}
+	fl, err := net.FileListener(socketf) // nonsense here
+	if err != nil {
+		return nil, err
+	}
+	l := &Listener{
+		netListener:  netl,
+		fileListener: fl,
+		conns:        make(chan connRes),
+		eg:           new(errgroup.Group),
+		shutdown:     make(chan struct{}),
+	}
+	l.eg.Go(func() error {
+		for {
+			conn, err := l.netListener.Accept()
+			if err == net.ErrClosed {
+				return nil
+			}
+			select {
+			case <-l.shutdown:
+				conn.Close()
+				return nil
+			case l.conns <- connRes{conn, err}:
+			}
+		}
+	})
+	l.eg.Go(func() error {
+		for {
+			conn, err := l.fileListener.Accept()
+			if err == net.ErrClosed {
+				return nil
+			}
+			select {
+			case <-l.shutdown:
+				conn.Close()
+				return nil
+			case l.conns <- connRes{conn, err}:
+			}
+		}
+	})
+	return l, nil
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
-	return l.Listener.Accept()
+	cr, ok := <-l.conns
+	if !ok {
+		return nil, net.ErrClosed
+	}
+	return cr.conn, cr.err
+}
+
+func (l *Listener) Close() error {
+	close(l.shutdown)
+	l.netListener.Close()
+	l.fileListener.Close()
+	err := l.eg.Wait()
+	close(l.conns)
+	return err
+}
+
+func (l *Listener) Addr() net.Addr {
+	return l.netListener.Addr()
 }
