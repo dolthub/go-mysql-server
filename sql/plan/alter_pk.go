@@ -64,6 +64,12 @@ func NewAlterDropPk(db sql.Database, table sql.Node) *AlterPK {
 }
 
 func (a *AlterPK) Resolved() bool {
+	for _, expr := range a.Expressions() {
+		if expr.Resolved() == false {
+			return false
+		}
+	}
+
 	return a.Table.Resolved() && a.ddlNode.Resolved()
 }
 

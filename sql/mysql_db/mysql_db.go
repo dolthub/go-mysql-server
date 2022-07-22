@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -46,6 +47,10 @@ func (p *NoopPersister) Persist(ctx *sql.Context, data []byte) error {
 	return nil
 }
 
+type PlaintextAuthPlugin interface {
+	Authenticate(db *MySQLDb, user string, userEntry *User, pass string) (bool, error)
+}
+
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
 	Enabled bool
@@ -63,6 +68,7 @@ type MySQLDb struct {
 	//password_history *mysqlTable
 
 	persister MySQLDbPersistence
+	plugins   map[string]PlaintextAuthPlugin
 
 	cache *privilegeCache
 }
@@ -128,14 +134,32 @@ func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnec
 
 // LoadData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
+func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	// Do nothing if data file doesn't exist or is empty
 	if buf == nil || len(buf) == 0 {
 		return nil
 	}
 
+	type privDataJson struct {
+		Users []*User
+		Roles []*RoleEdge
+	}
+
+	// if it's a json file, read it; will be rewritten as flatbuffer later
+	data := &privDataJson{}
+	if err := json.Unmarshal(buf, data); err == nil {
+		return db.LoadPrivilegeData(ctx, data.Users, data.Roles)
+	}
+
 	// Indicate that mysql db exists
 	db.Enabled = true
+
+	// Recover from panics
+	defer func() {
+		if recover() != nil {
+			err = fmt.Errorf("ill formatted privileges file")
+		}
+	}()
 
 	// Deserialize the flatbuffer
 	serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
@@ -167,12 +191,24 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 	db.clearCache()
 
 	// TODO: fill in other tables when they exist
-	return nil
+	return
 }
 
 // SetPersister sets the custom persister to be used when the MySQL Db tables have been updated and need to be persisted.
 func (db *MySQLDb) SetPersister(persister MySQLDbPersistence) {
 	db.persister = persister
+}
+
+func (db *MySQLDb) SetPlugins(plugins map[string]PlaintextAuthPlugin) {
+	db.plugins = plugins
+}
+
+func (db *MySQLDb) VerifyPlugin(plugin string) error {
+	_, ok := db.plugins[plugin]
+	if ok {
+		return nil
+	}
+	return fmt.Errorf(`must provide authentication plugin for unsupported authentication format`)
 }
 
 // AddRootAccount adds the root account to the list of accounts.
@@ -211,6 +247,7 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 		Host: host,
 		User: user,
 	})
+
 	if len(userEntries) == 1 {
 		userEntry = userEntries[0].(*User)
 	} else {
@@ -329,9 +366,19 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (db *MySQLDb) AuthMethod(user string) (string, error) {
-	//TODO: this should pass in the host as well to correctly determine which auth method to use
-	return "mysql_native_password", nil
+func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", err
+	}
+	u := db.GetUser(user, host, false)
+	if u == nil {
+		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
+	}
+	if _, ok := db.plugins[u.Plugin]; ok {
+		return "mysql_clear_password", nil
+	}
+	return u.Plugin, nil
 }
 
 // Salt implements the interface mysql.AuthServer.
@@ -372,12 +419,33 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
 func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
+	host, _, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return nil, err
+	}
+	connUser := MysqlConnectionUser{User: user, Host: host}
 	if !db.Enabled {
-		host, _, err := net.SplitHostPort(addr.String())
+		return connUser, nil
+	}
+	userEntry := db.GetUser(user, host, false)
+
+	if userEntry.Plugin != "" {
+		authplugin, ok := db.plugins[userEntry.Plugin]
+		if !ok {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'; auth plugin %s not registered with server", user, userEntry.Plugin)
+		}
+		pass, err := mysql.AuthServerReadPacketString(c)
 		if err != nil {
 			return nil, err
 		}
-		return MysqlConnectionUser{User: user, Host: host}, nil
+		authed, err := authplugin.Authenticate(db, user, userEntry, pass)
+		if err != nil {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v': %v", user, err)
+		}
+		if !authed {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		}
+		return connUser, nil
 	}
 	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }
@@ -388,9 +456,13 @@ func (db *MySQLDb) Persist(ctx *sql.Context) error {
 
 	// Extract all user entries from table, and sort
 	userEntries := db.user.data.ToSlice(ctx)
-	users := make([]*User, len(userEntries))
-	for i, userEntry := range userEntries {
-		users[i] = userEntry.(*User)
+	users := make([]*User, 0)
+	for _, userEntry := range userEntries {
+		user := userEntry.(*User)
+		//if user.IsSuperUser {
+		//	continue
+		//}
+		users = append(users, user)
 	}
 	sort.Slice(users, func(i, j int) bool {
 		if users[i].Host == users[j].Host {

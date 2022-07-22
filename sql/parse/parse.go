@@ -602,15 +602,45 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String())), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
-		var likepattern string
+		var filter sql.Expression
+		var like sql.Expression
+		var err error
 		if s.Filter != nil {
 			if s.Filter.Filter != nil {
-				unsupportedShow := fmt.Sprintf("SHOW VARIABLES WHERE ...")
-				return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+				filter, _, err = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e.(type) {
+					case *expression.UnresolvedColumn:
+						if strings.ToLower(e.String()) != "variable_name" {
+							return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
+						}
+						return expression.NewGetField(0, sql.Text, "variable_name", true), transform.NewTree, nil
+					default:
+						return e, transform.SameTree, nil
+					}
+				})
+				if err != nil {
+					return nil, err
+				}
 			}
-			likepattern = s.Filter.Like
+			if s.Filter.Like != "" {
+				like = expression.NewLike(
+					expression.NewGetField(0, sql.LongText, "variable_name", false),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+				if filter != nil {
+					filter = expression.NewAnd(like, filter)
+				} else {
+					filter = like
+				}
+			}
 		}
-		return plan.NewShowVariables(likepattern), nil
+
+		return plan.NewShowVariables(filter), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression
@@ -2164,13 +2194,17 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 			UserName: convertAccountName(user.AccountName)[0],
 		}
 		if user.Auth1 != nil {
+			authUser.Identity = user.Auth1.Identity
 			if user.Auth1.Plugin == "mysql_native_password" && len(user.Auth1.Password) > 0 {
 				authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
+			} else if len(user.Auth1.Plugin) > 0 {
+				authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
 			} else if user.Auth1.Plugin == "" && len(user.Auth1.Password) > 0 {
 				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			} else {
 				return nil, fmt.Errorf(`the given authentication format is not yet supported`)
 			}
+
 		}
 		if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
 			return nil, fmt.Errorf(`multi-factor authentication is not yet supported`)

@@ -1191,15 +1191,17 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				Address: "localhost",
 			})
 			serverConfig := server.Config{
-				Protocol:       "tcp",
-				Address:        fmt.Sprintf("localhost:%d", port),
-				MaxConnections: 1000,
+				Protocol:                 "tcp",
+				Address:                  fmt.Sprintf("localhost:%d", port),
+				MaxConnections:           1000,
+				AllowClearTextWithoutTLS: true,
 			}
 
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
+
 			if script.SetUpFunc != nil {
 				script.SetUpFunc(ctx, t, engine)
 			}
@@ -1223,7 +1225,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}()
 
 			for _, assertion := range script.Assertions {
-				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/",
+				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true",
 					assertion.Username, assertion.Password, port), nil)
 				require.NoError(t, err)
 				if assertion.ExpectedErr {
@@ -2613,11 +2615,11 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
 		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
-			[]sql.Row{sql.Row{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
+			[]sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
 			"", false)
 
 		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
-			[]sql.Row{sql.Row{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
+			[]sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
 			"", false)
 
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
@@ -4424,7 +4426,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",
 		"use mydb",
-		"create table t1 (pk varchar(20), v varchar(20), primary key (pk, v))",
+		"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
 		"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
 	}})
 	e := mustNewEngine(t, harness)
@@ -4448,7 +4450,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 	// Assert that the table is insertable
 	TestQueryWithContext(t, ctx, e, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
-		sql.Row{sql.OkResult{RowsAffected: 1}},
+		{sql.OkResult{RowsAffected: 1}},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
@@ -4459,7 +4461,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, `DELETE FROM t1 WHERE pk = "a1" LIMIT 1`, []sql.Row{
-		sql.Row{sql.OkResult{RowsAffected: 1}},
+		{sql.OkResult{RowsAffected: 1}},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
@@ -4483,7 +4485,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 	// Assert the table is insertable
 	TestQueryWithContext(t, ctx, e, `INSERT INTO t1 VALUES ("a4", "a3")`, []sql.Row{
-		sql.Row{sql.OkResult{RowsAffected: 1}},
+		{sql.OkResult{RowsAffected: 1}},
 	}, nil, nil)
 
 	// Assert that an indexed based query still functions appropriately
@@ -4496,7 +4498,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 	// Assert that the table is insertable
 	TestQueryWithContext(t, ctx, e, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
-		sql.Row{sql.OkResult{RowsAffected: 1}},
+		{sql.OkResult{RowsAffected: 1}},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
@@ -4513,7 +4515,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	// Assert that the schema of t1 is unchanged
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
 		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "MUL", "NULL", ""},
+		{"v", "varchar(20)", "NO", "MUL", "(concat(pk, '-foo'))", ""},
 	}, nil, nil)
 	// Assert that adding a primary key with an unknown column causes an error
 	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
@@ -4528,7 +4530,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
 		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "PRI", "NULL", ""},
+		{"v", "varchar(20)", "NO", "PRI", "(concat(pk, '-foo'))", ""},
 	}, nil, nil)
 	AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
@@ -4544,7 +4546,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
 	TestQueryWithContext(t, ctx, e, `DESCRIBE t1`, []sql.Row{
 		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "", "NULL", ""},
+		{"v", "varchar(20)", "NO", "", "(concat(pk, '-foo'))", ""},
 	}, nil, nil)
 	TestQueryWithContext(t, ctx, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 		{"a1", "a2"},
@@ -4634,7 +4636,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	}
 
 	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int default (v1), toRename int)")
 		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk,
 			drop column v2, modify v1 varchar(100) not null,
 			alter column v3 set default 100, rename column toRename to newName`)

@@ -122,6 +122,7 @@ func LoadUser(serialUser *serial.User) *User {
 		PasswordLastChanged: time.Unix(serialUser.PasswordLastChanged(), 0),
 		Locked:              serialUser.Locked(),
 		Attributes:          attributes,
+		Identity:            string(serialUser.Identity()),
 	}
 }
 
