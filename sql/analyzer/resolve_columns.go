@@ -324,8 +324,8 @@ type builder struct {
 	id        sql.RelId
 
 	// subquery attributes
-	activeSubquery          bool
-	activeSubqueryBaseTable string
+	inSubquery string
+
 	//allCols   FastIntSet
 }
 
@@ -337,28 +337,59 @@ func newBuilder(ctx *sql.Context, root sql.Node) *builder {
 	}
 }
 
-func (b *builder) addTableCols(id sql.RelId, other []tableCol) {
-	if curr, ok := b.tableCols[id]; !ok {
-		b.tableCols[id] = other
-	} else {
-		newCols := make(map[tableCol]struct{})
-		for i := range other {
-			newCols[other[i]] = struct{}{}
-		}
-		for i := range curr {
-			newCols[curr[i]] = struct{}{}
-		}
-		i := 0
-		out := make([]tableCol, len(newCols))
-		for k := range newCols {
-			out[i] = k
-			i++
-		}
-		fmt.Println(curr)
-		fmt.Println(other)
-		fmt.Println(out)
-		b.tableCols[id] = out
+func compareTableCol(i, j tableCol) int {
+	if i.table < j.table {
+		return -1
+	} else if i.table > j.table {
+		return 1
+	} else if i.col < j.col {
+		return -1
+	} else if i.col > j.col {
+		return 1
 	}
+	return 0
+}
+
+func mergeTableCols(x, y []tableCol) []tableCol {
+	if len(x) == 0 {
+		return y
+	} else if len(y) == 0 {
+		return x
+	}
+	newCols := make([]tableCol, len(x)+len(y))
+	var i, j, k int
+	for i < len(x) && j < len(y) {
+		cmp := compareTableCol(x[i], y[j])
+		if cmp < 0 {
+			newCols[k] = x[i]
+			i++
+		} else if cmp > 0 {
+			newCols[k] = y[j]
+			j++
+		} else {
+			newCols[k] = x[i]
+			i++
+			j++
+		}
+		k++
+	}
+	for i < len(x) {
+		newCols[k] = x[i]
+		i++
+		k++
+	}
+	for j < len(y) {
+		newCols[k] = y[j]
+		j++
+		k++
+	}
+	return newCols[:k]
+}
+
+// addTableCols combines the scope dependencies, maintaining schema sort ordering
+func (b *builder) addTableCols(id sql.RelId, other []tableCol) {
+	curr, _ := b.tableCols[id]
+	b.tableCols[id] = mergeTableCols(curr, other)
 }
 
 func (b *builder) delTableCols(id sql.RelId) {
@@ -472,9 +503,19 @@ func (b *builder) buildSubqueryAlias(n *plan.SubqueryAlias, inScope *scope) *sco
 
 	// ex: we want d.x, d.x from subquery
 	// add project of those cols?
+
+	// subquery alias
+	// rename a subquery
+	// so outer scope columns w/ subquery name, need to be transformed to the inner source
+	// but we don't have the source yet
+	// subquery is a source to outer scope, not sink
+	// what we could do, is find the unqualified columns in parent scope that reference this table
 	subqueryScope := inScope.push()
+	oldSq := b.inSubquery
+	b.inSubquery = n.Name()
 	_ = b.walk(n.Child, subqueryScope)
 	// subquery is a source to outer scope, not sink
+	b.inSubquery = oldSq
 	return inScope
 	//var cols []tableCol
 	////switch on possible subquery types
@@ -636,6 +677,7 @@ func (b *builder) finish() (sql.Node, transform.TreeIdentity, error) {
 			if !ok {
 				return n, transform.SameTree, nil
 			}
+
 			ret, err := n.WithTable(ptab.WithProjections(projections))
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -843,7 +885,6 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, transform.SameTree, nil
 		}
 		for _, level := range symbols.levels() {
-			//_, ok := symbols[len(symbols)-1].availableAliases[name]
 
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
 

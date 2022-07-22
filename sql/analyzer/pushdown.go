@@ -917,7 +917,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				n = dn.Child
 			}
 			if rs, ok = n.(*plan.ResolvedTable); !ok {
-				return n, transform.SameTree, nil
+				return s, transform.SameTree, nil
 			}
 			// Extract aliases
 			for _, expr := range pj.Expressions() {
@@ -934,14 +934,14 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 			// Otherwise, sorts immediate child must be ResolvedTable
 			if rs, ok = n.(*plan.ResolvedTable); !ok {
-				return n, transform.SameTree, nil
+				return s, transform.SameTree, nil
 			}
 		}
 
 		// Extract primary key columns from index to maintain order
 		idxTbl, ok := rs.Table.(sql.IndexedTable)
 		if !ok {
-			return n, transform.SameTree, nil
+			return s, transform.SameTree, nil
 		}
 		idxs, err := idxTbl.GetIndexes(ctx)
 		if err != nil {
@@ -961,7 +961,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 		}
 		if pkIndex == nil {
-			return n, transform.SameTree, nil
+			return s, transform.SameTree, nil
 		}
 
 		// Get primary key column names; these are qualified
@@ -984,14 +984,14 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 
 		// SortField is definitely not a prefix to PrimaryKey
 		if len(sfColNames) > len(pkColNames) {
-			return n, transform.SameTree, nil
+			return s, transform.SameTree, nil
 		}
 
 		// Check if SortField is a prefix to PrimaryKey
 		for i := 0; i < len(sfColNames); i++ {
 			// Stop when column names stop matching
 			if sfColNames[i] != pkColNames[i] {
-				return n, transform.SameTree, nil
+				return s, transform.SameTree, nil
 			}
 		}
 
