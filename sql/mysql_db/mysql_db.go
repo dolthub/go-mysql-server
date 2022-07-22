@@ -367,10 +367,18 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 
 // AuthMethod implements the interface mysql.AuthServer.
 func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return "", err
+	var host string
+	// addr is empty if it's unix socket connection
+	if addr != "" {
+		splitHost, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return "", err
+		}
+		host = splitHost
+	} else {
+		host = "localhost"
 	}
+
 	u := db.GetUser(user, host, false)
 	if u == nil {
 		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)

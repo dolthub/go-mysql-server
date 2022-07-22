@@ -15,34 +15,49 @@
 package server
 
 import (
+	"errors"
+	"fmt"
 	"net"
+	"runtime"
 
 	"golang.org/x/sync/errgroup"
 )
 
+// connRes represents a connection made to a listener and an error result
 type connRes struct {
 	conn net.Conn
 	err  error
 }
 
+// Listener implements a single listener with two net.Listener, one for TCP socket and another for unix socket.
 type Listener struct {
-	netListener  net.Listener
-	fileListener net.Listener
+	// netListener is a tcp socket listener
+	netListener net.Listener
+	// unixListener is a unix socket listener
+	unixListener net.Listener
 	eg           *errgroup.Group
-	conns        chan connRes
-	shutdown     chan struct{}
+	// channel to receive connections on either listener
+	conns chan connRes
+	// channel to close both listener
+	shutdown chan struct{}
 }
 
 // NewListener creates a new Listener.
-func NewListener(protocol, address string, socket string) (*Listener, error) {
+// 'protocol' takes "tcp" and 'address' takes "host:port" information for TCP socket connection.
+// For unix socket connection, 'unixSocketPath' takes the path to unix socket file.
+// If 'unixSocketPath' is empty, no need to create the second listener.
+func NewListener(protocol, address string, unixSocketPath string) (*Listener, error) {
 	netl, err := net.Listen(protocol, address)
 	if err != nil {
 		return nil, err
 	}
 
 	var unixl net.Listener
-	if socket != "" {
-		unixListener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socket, Net: "unix"})
+	if unixSocketPath != "" {
+		if runtime.GOOS == "windows" {
+			return nil, fmt.Errorf("create unix socket listener on Windows")
+		}
+		unixListener, err := net.ListenUnix("unix", &net.UnixAddr{Name: unixSocketPath, Net: "unix"})
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +66,7 @@ func NewListener(protocol, address string, socket string) (*Listener, error) {
 
 	l := &Listener{
 		netListener:  netl,
-		fileListener: unixl,
+		unixListener: unixl,
 		conns:        make(chan connRes),
 		eg:           new(errgroup.Group),
 		shutdown:     make(chan struct{}),
@@ -59,13 +74,8 @@ func NewListener(protocol, address string, socket string) (*Listener, error) {
 	l.eg.Go(func() error {
 		for {
 			conn, err := l.netListener.Accept()
-			if err != nil {
-				if err == net.ErrClosed || err.Error() == "use of closed network connection" {
-					return nil
-				}
-			}
-
-			if conn == nil {
+			// connection can be closed already from the other goroutine
+			if errors.Is(err, net.ErrClosed) {
 				return nil
 			}
 
@@ -78,17 +88,12 @@ func NewListener(protocol, address string, socket string) (*Listener, error) {
 		}
 	})
 
-	if l.fileListener != nil {
+	if l.unixListener != nil {
 		l.eg.Go(func() error {
 			for {
-				conn, err := l.fileListener.Accept()
-				if err != nil {
-					if err == net.ErrClosed || err.Error() == "use of closed network connection" {
-						return nil
-					}
-				}
-
-				if conn == nil {
+				conn, err := l.unixListener.Accept()
+				// connection can be closed already from the other goroutine
+				if errors.Is(err, net.ErrClosed) {
 					return nil
 				}
 
@@ -115,11 +120,17 @@ func (l *Listener) Accept() (net.Conn, error) {
 
 func (l *Listener) Close() error {
 	close(l.shutdown)
-	l.netListener.Close()
-	if l.fileListener != nil {
-		l.fileListener.Close()
+	err := l.netListener.Close()
+	if !errors.Is(err, net.ErrClosed) {
+		return err
 	}
-	err := l.eg.Wait()
+	if l.unixListener != nil {
+		err = l.unixListener.Close()
+		if !errors.Is(err, net.ErrClosed) {
+			return err
+		}
+	}
+	err = l.eg.Wait()
 	close(l.conns)
 	return err
 }
