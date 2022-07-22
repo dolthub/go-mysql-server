@@ -15,9 +15,8 @@
 package server
 
 import (
-	"net"
-
 	"golang.org/x/sync/errgroup"
+	"net"
 )
 
 type connRes struct {
@@ -42,8 +41,7 @@ func NewListener(protocol, address string, socket string) (*Listener, error) {
 
 	var unixl net.Listener
 	if socket != "" {
-		unixAddr, err := net.ResolveUnixAddr("unix", socket)
-		unixListener, err := net.ListenUnix("unix", unixAddr)
+		unixListener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socket, Net: "unix"})
 		if err != nil {
 			return nil, err
 		}
