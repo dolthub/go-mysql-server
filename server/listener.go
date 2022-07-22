@@ -29,7 +29,8 @@ type connRes struct {
 	err  error
 }
 
-// Listener implements a single listener with two net.Listener, one for TCP socket and another for unix socket.
+// Listener implements a single listener with two net.Listener,
+// one for TCP socket and another for unix socket connections.
 type Listener struct {
 	// netListener is a tcp socket listener
 	netListener net.Listener
@@ -44,7 +45,7 @@ type Listener struct {
 
 // NewListener creates a new Listener.
 // 'protocol' takes "tcp" and 'address' takes "host:port" information for TCP socket connection.
-// For unix socket connection, 'unixSocketPath' takes the path to unix socket file.
+// For unix socket connection, 'unixSocketPath' takes a path for the unix socket file.
 // If 'unixSocketPath' is empty, no need to create the second listener.
 func NewListener(protocol, address string, unixSocketPath string) (*Listener, error) {
 	netl, err := net.Listen(protocol, address)
