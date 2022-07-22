@@ -61,6 +61,8 @@ type Config struct {
 	DisableClientMultiStatements bool
 	// NoDefaults prevents using persisted configuration for new server sessions
 	NoDefaults bool
+	// Socket is a path to unix socket file
+	Socket string
 }
 
 func (c Config) NewConfig() (Config, error) {

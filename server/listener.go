@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,8 @@
 package server
 
 import (
-	"net"
-	"os"
-
 	"golang.org/x/sync/errgroup"
+	"net"
 )
 
 type connRes struct {
@@ -35,22 +33,25 @@ type Listener struct {
 }
 
 // NewListener creates a new Listener.
-func NewListener(protocol, address string) (*Listener, error) {
+func NewListener(protocol, address string, socket string) (*Listener, error) {
 	netl, err := net.Listen(protocol, address)
 	if err != nil {
 		return nil, err
 	}
-	socketf, err := os.OpenFile("/var/tmp/mysql.sock", os.O_CREATE, os.ModeSocket | 0755)
-	if err != nil {
-		return nil, err
+
+	var unixl net.Listener
+	if socket != "" {
+		unixAddr, err := net.ResolveUnixAddr("unix", socket)
+		unixListener, err := net.ListenUnix("unix", unixAddr)
+		if err != nil {
+			return nil, err
+		}
+		unixl = unixListener
 	}
-	fl, err := net.FileListener(socketf) // nonsense here
-	if err != nil {
-		return nil, err
-	}
+
 	l := &Listener{
 		netListener:  netl,
-		fileListener: fl,
+		fileListener: unixl,
 		conns:        make(chan connRes),
 		eg:           new(errgroup.Group),
 		shutdown:     make(chan struct{}),
@@ -58,9 +59,16 @@ func NewListener(protocol, address string) (*Listener, error) {
 	l.eg.Go(func() error {
 		for {
 			conn, err := l.netListener.Accept()
-			if err == net.ErrClosed {
+			if err != nil {
+				if err == net.ErrClosed || err.Error() == "use of closed network connection" {
+					return nil
+				}
+			}
+
+			if conn == nil {
 				return nil
 			}
+
 			select {
 			case <-l.shutdown:
 				conn.Close()
@@ -69,20 +77,31 @@ func NewListener(protocol, address string) (*Listener, error) {
 			}
 		}
 	})
-	l.eg.Go(func() error {
-		for {
-			conn, err := l.fileListener.Accept()
-			if err == net.ErrClosed {
-				return nil
+
+	if l.fileListener != nil {
+		l.eg.Go(func() error {
+			for {
+				conn, err := l.fileListener.Accept()
+				if err != nil {
+					if err == net.ErrClosed || err.Error() == "use of closed network connection" {
+						return nil
+					}
+				}
+
+				if conn == nil {
+					return nil
+				}
+
+				select {
+				case <-l.shutdown:
+					conn.Close()
+					return nil
+				case l.conns <- connRes{conn, err}:
+				}
 			}
-			select {
-			case <-l.shutdown:
-				conn.Close()
-				return nil
-			case l.conns <- connRes{conn, err}:
-			}
-		}
-	})
+		})
+	}
+
 	return l, nil
 }
 
@@ -97,7 +116,9 @@ func (l *Listener) Accept() (net.Conn, error) {
 func (l *Listener) Close() error {
 	close(l.shutdown)
 	l.netListener.Close()
-	l.fileListener.Close()
+	if l.fileListener != nil {
+		l.fileListener.Close()
+	}
 	err := l.eg.Wait()
 	close(l.conns)
 	return err

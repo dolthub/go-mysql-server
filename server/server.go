@@ -70,7 +70,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 		cfg.DisableClientMultiStatements,
 		listener,
 	)
-	l, err := NewListener(cfg.Protocol, cfg.Address)
+	l, err := NewListener(cfg.Protocol, cfg.Address, cfg.Socket)
 	if err != nil {
 		return nil, err
 	}
