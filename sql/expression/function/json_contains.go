@@ -127,7 +127,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	// If there's path reevaluate target based off of this path
+	// If there's a path reevaluate target based off of it
 	if j.Path != nil {
 		// Evaluate the given path if there is one
 		path, err := j.Path.Eval(ctx, row)
