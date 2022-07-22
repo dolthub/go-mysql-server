@@ -166,7 +166,7 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 
 	var converted interface{}
 	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, JSONValue:
+	case string, []interface{}, map[string]interface{}, sql.JSONValue:
 		converted, err = sql.JSON.Convert(js)
 		if err != nil {
 			return nil, sql.ErrInvalidJSONText.New(js)
