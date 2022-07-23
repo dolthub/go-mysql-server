@@ -164,35 +164,12 @@ func containsJSONBool(a bool, b interface{}) (bool, error) {
 //   select json_contains('[1, [1, 2, 3], [10]]', '[1, [10]]'); => true
 func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 	if _, ok := b.([]interface{}); ok {
-		b := b.([]interface{})
-		for _, bb := range b {
-			foundMatch := false
-			for _, aa := range a {
-				// If aa is an array, we need to recurse and look for elements from b
-				if _, ok := aa.([]interface{}); ok {
-					aa := aa.([]interface{})
-					contains, err := containsJSONArray(aa, bb)
-					if err != nil {
-						return false, err
-					}
-
-					if contains == true {
-						foundMatch = true
-						break
-					}
-				} else {
-					cmp, err := compareJSON(aa, bb)
-					if err != nil {
-						return false, err
-					}
-
-					if cmp == 0 {
-						foundMatch = true
-						break
-					}
-				}
+		for _, bb := range b.([]interface{}) {
+			contains, err := containsJSONArray(a, bb)
+			if err != nil {
+				return false, err
 			}
-			if !foundMatch {
+			if contains == false {
 				return false, nil
 			}
 		}
@@ -204,7 +181,6 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 			if err != nil {
 				return false, err
 			}
-
 			if contains == true {
 				return true, nil
 			}
