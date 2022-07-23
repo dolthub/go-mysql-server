@@ -85,6 +85,7 @@ func TestJSONContains(t *testing.T) {
 		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `{"a": [2, 4]}`}, true, nil},
 		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `[2]`}, false, nil},
 		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `2`}, false, nil},
+		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `"foo"`}, false, nil},
 
 		// Path Tests
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("should start with '$'")},
