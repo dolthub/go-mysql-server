@@ -229,27 +229,27 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 //   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '[2]'); => false
 //   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '2'); => false
 func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
-	if _, ok := b.(map[string]interface{}); ok {
-		b := b.(map[string]interface{})
-
-		for key, bvalue := range b {
-			avalue, ok := a[key]
-			if !ok {
-				return false, nil
-			}
-			contains, err := containsJSON(avalue, bvalue)
-			if err != nil {
-				return false, err
-			}
-			if contains == false {
-				return false, nil
-			}
-		}
-		return true, nil
-	} else {
-		// If b is a scalar or an array, json_contains will always return false
+	_, isMap := b.(map[string]interface{})
+	if !isMap {
+		// If b is a scalar or an array, json_contains always returns false
 		return false, nil
 	}
+
+	for key, bvalue := range b.(map[string]interface{}) {
+		avalue, ok := a[key]
+		if !ok {
+			return false, nil
+		}
+
+		contains, err := containsJSON(avalue, bvalue)
+		if err != nil {
+			return false, err
+		}
+		if contains == false {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func containsJSONString(a string, b interface{}) (bool, error) {
