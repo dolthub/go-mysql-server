@@ -122,12 +122,12 @@ func (l *Listener) Accept() (net.Conn, error) {
 func (l *Listener) Close() error {
 	close(l.shutdown)
 	err := l.netListener.Close()
-	if !errors.Is(err, net.ErrClosed) {
+	if err != nil && !errors.Is(err, net.ErrClosed) {
 		return err
 	}
 	if l.unixListener != nil {
 		err = l.unixListener.Close()
-		if !errors.Is(err, net.ErrClosed) {
+		if err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
 		}
 	}
