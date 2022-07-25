@@ -56,7 +56,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 	var unixl net.Listener
 	if unixSocketPath != "" {
 		if runtime.GOOS == "windows" {
-			return nil, fmt.Errorf("create unix socket listener on Windows")
+			return nil, fmt.Errorf("unable to create unix socket listener on Windows")
 		}
 		unixListener, err := net.ListenUnix("unix", &net.UnixAddr{Name: unixSocketPath, Net: "unix"})
 		if err != nil {
