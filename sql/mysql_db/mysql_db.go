@@ -439,7 +439,7 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 			return nil, err
 		}
 	}
-	
+
 	connUser := MysqlConnectionUser{User: user, Host: host}
 	if !db.Enabled {
 		return connUser, nil
