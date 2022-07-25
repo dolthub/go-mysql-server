@@ -16,7 +16,6 @@ package sql
 
 import (
 	"encoding/json"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -129,12 +128,12 @@ func containsJSON(a, b interface{}) (interface{}, error) {
 	}
 
 	switch a := a.(type) {
-	case bool:
-		return containsJSONBool(a, b)
 	case []interface{}:
 		return containsJSONArray(a, b)
 	case map[string]interface{}:
 		return containsJSONObject(a, b)
+	case bool:
+		return containsJSONBool(a, b)
 	case string:
 		return containsJSONString(a, b)
 	case float64:
@@ -153,82 +152,81 @@ func containsJSONBool(a bool, b interface{}) (bool, error) {
 	}
 }
 
+// containsJSONArray returns true if b is contained in the JSON array a. From the official
+// MySQL docs: "A candidate array is contained in a target array if and only if every
+// element in the candidate is contained in *some* element of the target. A candidate
+// non-array is contained in a target array if and only if the candidate is contained
+// in some element of the target."
+//
+// Examples:
+//   select json_contains('[1, [1, 2, 3], 10]', '[1, 10]'); => true
+//   select json_contains('[1, [1, 2, 3, 10]]', '[1, 10]'); => true
+//   select json_contains('[1, [1, 2, 3], [10]]', '[1, [10]]'); => true
 func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
-	switch reflect.TypeOf(b).Kind() {
-	case reflect.Slice:
-		sl := reflect.ValueOf(b)
-
-		if sl.Len() > len(a) {
-			return false, nil
-		}
-
-		// validate that every element in b is in a
-		for i := 0; i < sl.Len(); i++ {
-			contains := false
-			for _, aa := range a {
-				cmp, err := compareJSON(aa, sl.Index(i).Interface())
-				if err != nil {
-					return false, err
-				}
-
-				if cmp == 0 {
-					contains = true
-					break
-				}
-			}
-
-			if !contains {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	default:
-		for _, aa := range a {
-			cmp, err := compareJSON(aa, b)
+	if _, ok := b.([]interface{}); ok {
+		for _, bb := range b.([]interface{}) {
+			contains, err := containsJSONArray(a, bb)
 			if err != nil {
 				return false, err
 			}
-
-			if cmp == 0 {
+			if contains == false {
+				return false, nil
+			}
+		}
+		return true, nil
+	} else {
+		// A candidate non-array is contained in a target array if and only if the candidate is contained in some element of the target.
+		for _, aa := range a {
+			contains, err := containsJSON(aa, b)
+			if err != nil {
+				return false, err
+			}
+			if contains == true {
 				return true, nil
 			}
 		}
-		return false, nil
 	}
+
+	return false, nil
 }
 
+// containsJSONObject returns true if b is contained in the JSON object a. From the
+// official MySQL docs: "A candidate object is contained in a target object if and only
+// if for each key in the candidate there is a key with the same name in the target and
+// the value associated with the candidate key is contained in the value associated with
+// the target key."
+//
+// Examples:
+//   select json_contains('{"b": {"a": [1, 2, 3]}}', '{"a": [1]}'); => false
+//   select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": [1]}'); => true
+//   select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": []}'); => true
+//   select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": {}}'); => false
+//   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '{"a": [2, 4]}'); => true
+//   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '[2]'); => false
+//   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '2'); => false
 func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
-	switch b := b.(type) {
-	case map[string]interface{}:
-		if len(b) > len(a) {
-			return false, nil
-		}
-
-		inter := jsonObjectKeyIntersection(a, b)
-
-		if len(inter) == 0 && len(a) != len(b) {
-			return false, nil
-		}
-
-		for _, key := range inter {
-			aa := a[key]
-			bb := b[key]
-
-			cmp, err := compareJSON(aa, bb)
-			if err != nil {
-				return false, err
-			}
-
-			if cmp != 0 {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	default:
+	_, isMap := b.(map[string]interface{})
+	if !isMap {
+		// If b is a scalar or an array, json_contains always returns false when
+		// testing containment in a JSON object
 		return false, nil
 	}
+
+	for key, bvalue := range b.(map[string]interface{}) {
+		avalue, ok := a[key]
+		if !ok {
+			return false, nil
+		}
+
+		contains, err := containsJSON(avalue, bvalue)
+		if err != nil {
+			return false, err
+		}
+		if contains == false {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func containsJSONString(a string, b interface{}) (bool, error) {
