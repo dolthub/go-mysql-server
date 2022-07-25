@@ -396,15 +396,9 @@ func (db *MySQLDb) Salt() ([]byte, error) {
 
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
 func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
-	var host string
-	var err error
-	if addr.Network() == "unix" {
-		host = "localhost"
-	} else {
-		host, _, err = net.SplitHostPort(addr.String())
-		if err != nil {
-			return nil, err
-		}
+	host, _, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return nil, err
 	}
 
 	if !db.Enabled {
@@ -429,15 +423,9 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
 func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
-	var host string
-	var err error
-	if addr.Network() == "unix" {
-		host = "localhost"
-	} else {
-		host, _, err = net.SplitHostPort(addr.String())
-		if err != nil {
-			return nil, err
-		}
+	host, _, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return nil, err
 	}
 
 	connUser := MysqlConnectionUser{User: user, Host: host}
