@@ -207,7 +207,8 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
 	_, isMap := b.(map[string]interface{})
 	if !isMap {
-		// If b is a scalar or an array, json_contains always returns false
+		// If b is a scalar or an array, json_contains always returns false when
+		// testing containment in a JSON object
 		return false, nil
 	}
 
