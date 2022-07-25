@@ -76,6 +76,8 @@ func TestJSONContains(t *testing.T) {
 		{f2, sql.Row{`[1, [1, 2, 3, 10]]`, `[1, 10]`}, true, nil},
 		{f2, sql.Row{`[1, [1, 2, 3], [10]]`, `[1, [10]]`}, true, nil},
 		{f2, sql.Row{`[1, [1, 2, 3], [10]]`, `1`}, true, nil},
+		{f2, sql.Row{`[1, [1, 2, 3], [10], {"e": 1, "f": 2}]`, `{"e": 1}`}, true, nil},
+		{f2, sql.Row{`[1, [1, 2, 3], [10], {"e": [6, 7], "f": 2}]`, `[6, 7]`}, false, nil},
 
 		// JSON Object Tests
 		{f2, sql.Row{`{"b": {"a": [1, 2, 3]}}`, `{"a": [1]}`}, false, nil},
