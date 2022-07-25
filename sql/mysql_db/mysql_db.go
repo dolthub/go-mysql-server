@@ -368,15 +368,15 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 // AuthMethod implements the interface mysql.AuthServer.
 func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	var host string
-	// addr is empty if it's unix socket connection
-	if addr != "" {
+	// TODO : need to check for network type instead of addr string if it's unix socket network
+	if addr == "@" {
+		host = "localhost"
+	} else {
 		splitHost, _, err := net.SplitHostPort(addr)
 		if err != nil {
 			return "", err
 		}
 		host = splitHost
-	} else {
-		host = "localhost"
 	}
 
 	u := db.GetUser(user, host, false)
@@ -398,7 +398,7 @@ func (db *MySQLDb) Salt() ([]byte, error) {
 func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
 	var host string
 	var err error
-	if addr.Network() == "unix" || addr.String() == "" {
+	if addr.Network() == "unix" {
 		host = "localhost"
 	} else {
 		host, _, err = net.SplitHostPort(addr.String())
@@ -431,7 +431,7 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
 	var host string
 	var err error
-	if addr.Network() == "unix" || addr.String() == "" {
+	if addr.Network() == "unix" {
 		host = "localhost"
 	} else {
 		host, _, err = net.SplitHostPort(addr.String())
