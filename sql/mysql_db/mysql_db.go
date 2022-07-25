@@ -368,8 +368,9 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 // AuthMethod implements the interface mysql.AuthServer.
 func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	var host string
-	// TODO : need to check for network type instead of addr string if it's unix socket network
-	if addr == "@" {
+	// TODO : need to check for network type instead of addr string if it's unix socket network,
+	//  macOS passes empty addr, but ubuntu returns "@" as addr for `localhost`
+	if addr == "@" || addr == "" {
 		host = "localhost"
 	} else {
 		splitHost, _, err := net.SplitHostPort(addr)
