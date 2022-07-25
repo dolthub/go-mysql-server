@@ -28,8 +28,8 @@ var (
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
-	// ErrNotAuthorized is returned when the engine has been set to Read Only but a write operation was attempted.
-	ErrNotAuthorized = errors.NewKind("not authorized")
+	// ErrReadOnly is returned when the engine has been set to Read Only but a write operation was attempted.
+	ErrReadOnly = errors.NewKind("database server is set to read only mode")
 
 	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
 	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
@@ -594,6 +594,11 @@ var (
 
 	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
 	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
+	// ErrReadOnly is returned when the engine has been set to Read Only but a write operation was attempted.
+
+	// ErrDatabaseWriteLocked is returned when a database is in read-only mode to avoid
+	// conflicts with an active server
+	ErrDatabaseWriteLocked = errors.NewKind("database is locked to writes")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
