@@ -594,9 +594,8 @@ var (
 
 	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
 	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
-	// ErrReadOnly is returned when the engine has been set to Read Only but a write operation was attempted.
 
-	// ErrDatabaseWriteLocked is returned when a database is in read-only mode to avoid
+	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server
 	ErrDatabaseWriteLocked = errors.NewKind("database is locked to writes")
 )
