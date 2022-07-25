@@ -227,6 +227,10 @@ func TestUserTableSchema(t *testing.T) {
 			if userTblColIndex_User_attributes != i {
 				t.FailNow()
 			}
+		case "identity":
+			if userTblColIndex_identity != i {
+				t.FailNow()
+			}
 		default:
 			t.Errorf(`col "%s" does not have a constant`, col.Name)
 		}

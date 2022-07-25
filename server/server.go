@@ -76,13 +76,14 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 	}
 
 	listenerCfg := mysql.ListenerConfig{
-		Listener:           l,
-		AuthServer:         e.Analyzer.Catalog.MySQLDb,
-		Handler:            handler,
-		ConnReadTimeout:    cfg.ConnReadTimeout,
-		ConnWriteTimeout:   cfg.ConnWriteTimeout,
-		MaxConns:           cfg.MaxConnections,
-		ConnReadBufferSize: mysql.DefaultConnBufferSize,
+		Listener:                 l,
+		AuthServer:               e.Analyzer.Catalog.MySQLDb,
+		Handler:                  handler,
+		ConnReadTimeout:          cfg.ConnReadTimeout,
+		ConnWriteTimeout:         cfg.ConnWriteTimeout,
+		MaxConns:                 cfg.MaxConnections,
+		ConnReadBufferSize:       mysql.DefaultConnBufferSize,
+		AllowClearTextWithoutTLS: cfg.AllowClearTextWithoutTLS,
 	}
 	vtListnr, err := mysql.NewListenerWithConfig(listenerCfg)
 	if err != nil {

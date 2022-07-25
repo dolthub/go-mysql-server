@@ -22,6 +22,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -360,6 +361,7 @@ var UserPrivTests = []UserPrivilegeTest{
 						nil,                     // Password_reuse_time
 						nil,                     // Password_require_current
 						nil,                     // User_attributes
+						"",                      // identity
 					},
 				},
 			},
@@ -952,6 +954,15 @@ var UserPrivTests = []UserPrivilegeTest{
 	},
 }
 
+// NoopPlaintextPlugin is used to authenticate plaintext user plugins
+type NoopPlaintextPlugin struct{}
+
+var _ mysql_db.PlaintextAuthPlugin = &NoopPlaintextPlugin{}
+
+func (p *NoopPlaintextPlugin) Authenticate(db *mysql_db.MySQLDb, user string, userEntry *mysql_db.User, pass string) (bool, error) {
+	return pass == "right-password", nil
+}
+
 // ServerAuthTests test the server authentication system. These tests always have the root account available, and the
 // root account is used with any queries in the SetUpScript, along as being set to the context passed to SetUpFunc.
 var ServerAuthTests = []ServerAuthenticationTest{
@@ -1029,6 +1040,37 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Password:    "",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: true,
+			},
+		},
+	},
+	{
+		Name: "Create User with jwt plugin specification",
+		SetUpScript: []string{
+			"CREATE USER `test-user`@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=testing,sub=test-user,iss=dolthub.com,aud=some_id';",
+			"GRANT ALL ON *.* TO `test-user`@localhost WITH GRANT OPTION;",
+		},
+		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
+			plugins := map[string]mysql_db.PlaintextAuthPlugin{"authentication_dolt_jwt": &NoopPlaintextPlugin{}}
+			engine.Analyzer.Catalog.MySQLDb.SetPlugins(plugins)
+		},
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:    "test-user",
+				Password:    "what",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: true,
+			},
+			{
+				Username:    "test-user",
+				Password:    "",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: true,
+			},
+			{
+				Username:    "test-user",
+				Password:    "right-password",
+				Query:       "SELECT * FROM mysql.user;",
+				ExpectedErr: false,
 			},
 		},
 	},

@@ -58,6 +58,7 @@ type AuthenticatedUser struct {
 	Auth2       Authentication
 	Auth3       Authentication
 	AuthInitial Authentication
+	Identity    string
 }
 
 // TLSOptions represents a user's TLS options.
@@ -113,7 +114,28 @@ func (a AuthenticationMysqlNativePassword) Password() string {
 	return "*" + strings.ToUpper(hex.EncodeToString(s2))
 }
 
-// NewDefaultAuthentication returns the given password with the default authentication method.
+// NewDefaultAuthentication returns the given password with the default
+// authentication method.
 func NewDefaultAuthentication(password string) Authentication {
 	return AuthenticationMysqlNativePassword(password)
+}
+
+// AuthenticationOther is an authentication type that represents plugin types
+// other than "mysql_native_password". There must be a mysqldb plugin provided
+// to use this plugin.
+type AuthenticationOther struct {
+	password string
+	plugin   string
+}
+
+func NewOtherAuthentication(password, plugin string) Authentication {
+	return AuthenticationOther{password, plugin}
+}
+
+func (a AuthenticationOther) Plugin() string {
+	return a.plugin
+}
+
+func (a AuthenticationOther) Password() string {
+	return string(a.password)
 }
