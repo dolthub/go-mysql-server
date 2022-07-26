@@ -326,6 +326,22 @@ func (t datetimeType) Equals(otherType Type) bool {
 	return t.baseType == otherType.Type()
 }
 
+// MaxByteLength implements the Type interface
+func (t datetimeType) MaxByteLength() uint32 {
+	switch t.baseType {
+	case sqltypes.Date:
+		return uint32(len(DateLayout))
+	case sqltypes.Time:
+		return uint32(len("+123:00:00.999999"))
+	case sqltypes.Year:
+		return 4
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		return uint32(len(TimestampDatetimeLayout))
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
+	}
+}
+
 // Promote implements the Type interface.
 func (t datetimeType) Promote() Type {
 	return Datetime
