@@ -52,31 +52,18 @@ func TestJSONContains(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	json := map[string]interface{}{
-		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
-		"b": map[string]interface{}{
-			"c": "foo",
-			"d": true,
-		},
-		"e": []interface{}{
-			[]interface{}{float64(1), float64(2)},
-			[]interface{}{float64(3), float64(4)},
-		},
-	}
+	json, err := sql.JSON.Convert(`{` +
+		`"a": [1, 2, 3, 4], ` +
+		`"b": {"c": "foo", "d": true}, ` +
+		`"e": [[1, 2], [3, 4]] ` +
+		`}`)
+	require.NoError(t, err)
 
-	badMap := map[string]interface{}{
-		"x": []interface{}{
-			[]interface{}{float64(1), float64(2)},
-			[]interface{}{float64(3), float64(4)},
-		},
-	}
+	badMap, err := sql.JSON.Convert(`{"x": [[1, 2], [3, 4]]}`)
+	require.NoError(t, err)
 
-	goodMap := map[string]interface{}{
-		"e": []interface{}{
-			[]interface{}{float64(1), float64(2)},
-			[]interface{}{float64(3), float64(4)},
-		},
-	}
+	goodMap, err := sql.JSON.Convert(`{"e": [[1, 2], [3, 4]]}`)
+	require.NoError(t, err)
 
 	testCases := []struct {
 		f        sql.Expression
@@ -84,6 +71,27 @@ func TestJSONContains(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
+		// JSON Array Tests
+		{f2, sql.Row{`[1, [1, 2, 3], 10]`, `[1, 10]`}, true, nil},
+		{f2, sql.Row{`[1, [1, 2, 3, 10]]`, `[1, 10]`}, true, nil},
+		{f2, sql.Row{`[1, [1, 2, 3], [10]]`, `[1, [10]]`}, true, nil},
+		{f2, sql.Row{`[1, [1, 2, 3], [10]]`, `1`}, true, nil},
+		{f2, sql.Row{`[1, [1, 2, 3], [10], {"e": 1, "f": 2}]`, `{"e": 1}`}, true, nil},
+		{f2, sql.Row{`[1, [1, 2, 3], [10], {"e": [6, 7], "f": 2}]`, `[6, 7]`}, false, nil},
+
+		// JSON Object Tests
+		{f2, sql.Row{`{"b": {"a": [1, 2, 3]}}`, `{"a": [1]}`}, false, nil},
+		{f2, sql.Row{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": [1]}`}, true, nil},
+		{f2, sql.Row{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": []}`}, true, nil},
+		{f2, sql.Row{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": {}}`}, false, nil},
+		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `{"a": [2, 4]}`}, true, nil},
+		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `[2]`}, false, nil},
+		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `2`}, false, nil},
+		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `"foo"`}, false, nil},
+		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"a\": {\"foo\": [1]}}"}, true, nil},
+		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"foo\": [1]}"}, false, nil},
+
+		// Path Tests
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("should start with '$'")},
 		{f, sql.Row{1, nil, "$.a"}, nil, errors.New("Invalid argument to 1")},
 		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, errors.New("Invalid argument to 2")},
@@ -96,11 +104,13 @@ func TestJSONContains(t *testing.T) {
 		{f, sql.Row{json, `1`, "$.e[0][0]"}, true, nil},
 		{f, sql.Row{json, `[1, 2]`, "$.e[0][*]"}, true, nil},
 		{f, sql.Row{json, `[1, 2]`, "$.e[0]"}, true, nil},
-		{f, sql.Row{json, json, "$"}, true, nil}, // reflexivity
-		{f, sql.Row{json, json["e"], "$.e"}, true, nil},
-		{f, sql.Row{json, badMap, "$"}, false, nil}, // false due to key name difference
+		{f, sql.Row{json, json, "$"}, true, nil},       // reflexivity
+		{f, sql.Row{json, goodMap, "$.e"}, false, nil}, // The path statement selects an array, which does not contain goodMap
+		{f, sql.Row{json, badMap, "$"}, false, nil},    // false due to key name difference
 		{f, sql.Row{json, goodMap, "$"}, true, nil},
-		{f2, sql.Row{json, `[1, 2]`}, false, nil},
+
+		// Miscellaneous Tests
+		{f2, sql.Row{json, `[1, 2]`}, false, nil}, // When testing containment against a map, scalars and arrays always return false
 		{f2, sql.Row{"[1,2,3,4]", `[1, 2]`}, true, nil},
 		{f2, sql.Row{"[1,2,3,4]", `1`}, true, nil},
 		{f2, sql.Row{`["apple", "orange", "banana"]`, `"orange"`}, true, nil},
