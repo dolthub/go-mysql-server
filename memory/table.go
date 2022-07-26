@@ -780,6 +780,11 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		if col.Name == columnName {
 			oldIdx = i
 			column.PrimaryKey = col.PrimaryKey
+			// We've removed auto increment through this modification so we need to do some bookkeeping
+			if col.AutoIncrement && !column.AutoIncrement {
+				t.autoColIdx = -1
+				t.autoIncVal = 0
+			}
 			break
 		}
 	}
@@ -1521,6 +1526,8 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	for _, c := range pks {
 		c.PrimaryKey = false
 	}
+
+	delete(t.indexes, "PRIMARY")
 
 	t.schema.PkOrdinals = []int{}
 
