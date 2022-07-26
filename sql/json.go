@@ -91,6 +91,11 @@ func (t jsonType) Equals(otherType Type) bool {
 	return ok
 }
 
+// MaxByteLength implements the Type interface
+func (t jsonType) MaxByteLength() uint32 {
+	return uint32(MaxJsonFieldByteLength)
+}
+
 // Promote implements the Type interface.
 func (t jsonType) Promote() Type {
 	return t

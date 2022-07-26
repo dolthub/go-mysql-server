@@ -140,6 +140,11 @@ func (t PolygonType) Equals(otherType Type) bool {
 	return ok
 }
 
+// MaxByteLength implements the Type interface
+func (t PolygonType) MaxByteLength() uint32 {
+	return GeometryMaxByteLength
+}
+
 // Promote implements the Type interface.
 func (t PolygonType) Promote() Type {
 	return t

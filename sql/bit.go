@@ -69,6 +69,11 @@ func MustCreateBitType(numOfBits uint8) BitType {
 	return bt
 }
 
+// MaxByteLength implements Type interface
+func (t bitType) MaxByteLength() uint32 {
+	return uint32(t.numOfBits)
+}
+
 // Compare implements Type interface.
 func (t bitType) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := compareNulls(a, b); hasNulls {

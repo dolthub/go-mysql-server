@@ -137,6 +137,12 @@ func (t systemBoolType) Equals(otherType Type) bool {
 	return false
 }
 
+// MaxByteLength implements the Type interface
+func (t systemBoolType) MaxByteLength() uint32 {
+	// system types are not sent directly across the wire
+	return 0
+}
+
 // Promote implements the Type interface.
 func (t systemBoolType) Promote() Type {
 	return t

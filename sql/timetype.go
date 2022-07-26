@@ -67,6 +67,13 @@ type TimeType interface {
 
 type timespanType struct{}
 
+// MaxByteLength implements the Type interface
+func (t timespanType) MaxByteLength() uint32 {
+	// 10 digits are required for a text representation without microseconds, but with microseconds
+	// requires 17, so return 17 as an upper limit
+	return 17
+}
+
 // Timespan is the value type returned by TimeType.Convert().
 type Timespan int64
 

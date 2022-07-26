@@ -69,7 +69,6 @@ type StringType interface {
 	CharacterSet() CharacterSetID
 	Collation() CollationID
 	MaxCharacterLength() int64
-	MaxByteLength() int64
 	Length() int64
 }
 
@@ -201,6 +200,11 @@ func CreateLongText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
+// MaxByteLength implements the Type interface
+func (t stringType) MaxByteLength() uint32 {
+	return uint32(t.charLength * t.CharacterSet().MaxLength())
+}
+
 func (t stringType) Length() int64 {
 	return t.charLength
 }
@@ -320,7 +324,7 @@ func ConvertToString(v interface{}, t stringType) (string, error) {
 
 	if t.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
-		if int64(len(val)) > t.MaxByteLength() {
+		if int64(len(val)) > int64(t.MaxByteLength()) {
 			return "", ErrLengthBeyondLimit.New(val, t.String())
 		}
 	} else {
@@ -475,11 +479,6 @@ func (t stringType) Collation() CollationID {
 // MaxCharacterLength is the maximum character length for this type.
 func (t stringType) MaxCharacterLength() int64 {
 	return t.charLength
-}
-
-// MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
-func (t stringType) MaxByteLength() int64 {
-	return t.charLength * t.CharacterSet().MaxLength()
 }
 
 func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {

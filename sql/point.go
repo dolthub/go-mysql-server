@@ -127,6 +127,11 @@ func (t PointType) Equals(otherType Type) bool {
 	return ok
 }
 
+// MaxByteLength implements the Type interface
+func (t PointType) MaxByteLength() uint32 {
+	return GeometryMaxByteLength
+}
+
 // Promote implements the Type interface.
 func (t PointType) Promote() Type {
 	return t
