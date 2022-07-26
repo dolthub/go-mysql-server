@@ -60,7 +60,9 @@ type Config struct {
 	// of not supporting the CLIENT_MULTI_STATEMENTS option on the server.
 	DisableClientMultiStatements bool
 	// NoDefaults prevents using persisted configuration for new server sessions
-	NoDefaults               bool
+	NoDefaults bool
+	// Socket is a path to unix socket file
+	Socket                   string
 	AllowClearTextWithoutTLS bool
 }
 
