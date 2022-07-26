@@ -65,6 +65,7 @@ type setType struct {
 	compareToOriginal map[string]string
 	valToBit          map[string]uint64
 	bitToVal          map[uint64]string
+	maxByteLength     uint32
 }
 
 // CreateSetType creates a SetType.
@@ -79,6 +80,8 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 	compareToOriginal := make(map[string]string)
 	valToBit := make(map[string]uint64)
 	bitToVal := make(map[uint64]string)
+	var maxByteLength uint32
+	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
 		/// ...SET member values should not themselves contain commas.
 		if strings.Contains(value, ",") {
@@ -104,12 +107,17 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 		bit := uint64(1 << uint64(i))
 		valToBit[value] = bit
 		bitToVal[bit] = value
+		maxByteLength = maxByteLength + uint32((len([]rune(value)))*int(maxCharLength))
+		if i != 0 {
+			maxByteLength = maxByteLength + uint32(maxCharLength)
+		}
 	}
 	return setType{
 		collation:         collation,
 		compareToOriginal: compareToOriginal,
 		valToBit:          valToBit,
 		bitToVal:          bitToVal,
+		maxByteLength:     maxByteLength,
 	}, nil
 }
 
@@ -195,6 +203,11 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 	}
 
 	return uint64(0), ErrConvertingToSet.New(v)
+}
+
+// MaxByteLength implements the Type interface
+func (t setType) MaxByteLength() uint32 {
+	return t.maxByteLength
 }
 
 // MustConvert implements the Type interface.
