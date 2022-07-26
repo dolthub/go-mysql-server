@@ -1,0 +1,12 @@
+
+exec
+CREATE INDEX keyless_c0_idx ON keyless (c0)
+----
+
+exec
+CREATE INDEX keyless_c0_c1_idx ON keyless (c0, c1)
+----
+
+exec
+CREATE INDEX keyless_c1_c0_odx ON keyless (c1, c0)
+----

@@ -151,7 +151,7 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 
-	harness.Setup(setup.MydbData, setup.KeylessData, setup.MytableData)
+	harness.Setup(setup.MydbData, setup.KeylessData, setup.Keyless_idxData, setup.MytableData)
 	for _, tt := range queries.KeylessQueries {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
@@ -489,7 +489,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 }
 
 func TestInsertInto(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.KeylessData, setup.NiltableData, setup.TypestableData, setup.EmptytableData, setup.AutoincrementData, setup.OthertableData, setup.Othertable_del_idxData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.KeylessData, setup.Keyless_idxData, setup.NiltableData, setup.TypestableData, setup.EmptytableData, setup.AutoincrementData, setup.OthertableData, setup.Othertable_del_idxData)
 	for _, insertion := range queries.InsertQueries {
 		RunWriteQueryTest(t, harness, insertion)
 	}
@@ -589,7 +589,7 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 		runGenericErrorTest(t, harness, expectedFailure)
 	}
 
-	harness.Setup(setup.MydbData, setup.KeylessData, setup.PeopleData)
+	harness.Setup(setup.MydbData, setup.KeylessData, setup.Keyless_idxData, setup.PeopleData)
 	for _, expectedFailure := range queries.UpdateErrorTests {
 		runQueryErrorTest(t, harness, expectedFailure)
 	}
@@ -628,7 +628,7 @@ func TestDeleteQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 func TestInsertQueriesPrepared(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.KeylessData, setup.TypestableData, setup.NiltableData, setup.EmptytableData, setup.AutoincrementData, setup.OthertableData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.KeylessData, setup.Keyless_idxData, setup.TypestableData, setup.NiltableData, setup.EmptytableData, setup.AutoincrementData, setup.OthertableData)
 	for _, tt := range queries.InsertQueries {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
