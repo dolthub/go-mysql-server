@@ -96,6 +96,9 @@ var KeylessData = []SetupScript{{
 	`insert into unique_keyless values    (0,0),    (1,1),    (2,2)`,
 	"CREATE TABLE `keyless` (  `c0` bigint,  `c1` bigint)",
 	`insert into keyless values    (0,0),    (1,1),    (1,1),    (2,2)`,
+	`CREATE INDEX keyless_c0_idx ON keyless (c0);`,
+	`CREATE UNIQUE INDEX keyless_c0_c1_idx ON keyless (c0, c1);`,
+	`CREATE INDEX keyless_c1_c0_odx ON keyless (c1, c0);`,
 }}
 
 var LoadtableData = []SetupScript{{
