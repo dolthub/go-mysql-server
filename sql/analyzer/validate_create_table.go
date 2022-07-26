@@ -411,7 +411,6 @@ func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Sche
 			// Some information about the column is not specified in a MODIFY COLUMN statement, such as being a key
 			cc.PrimaryKey = sch[i].PrimaryKey
 			cc.Source = sch[i].Source
-			// TODO: Do we modify autoincrement? wtf do we doooo
 			schCopy[i] = &cc
 		} else {
 			cc := *sch[i]
