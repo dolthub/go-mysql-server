@@ -401,7 +401,7 @@ type ProjectedTable interface {
 
 type RelId uint16
 
-// RelationalNode is a column namespaced source of rows
+// RelationalNode is a namespaced source of rows
 type RelationalNode interface {
 	Node
 	WithRelationalId(RelId) Node

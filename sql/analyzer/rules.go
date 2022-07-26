@@ -70,7 +70,6 @@ var DefaultRules = []Rule{
 	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{qualifyColumnsId, qualifyColumns},
-	//{expandStarsId, expandStars},
 	{pushdownProjectionsId, pushdownProjections},
 	{resolveColumnsId, resolveColumns},
 	{resolveColumnDefaultsId, resolveColumnDefaults},

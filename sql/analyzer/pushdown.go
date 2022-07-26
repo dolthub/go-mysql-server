@@ -16,8 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -78,77 +76,6 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 	}
 
 	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
-}
-
-// pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
-//func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-//	span, ctx := ctx.Span("pushdown_projections")
-//	defer span.End()
-//
-//	if !canDoPushdown(n) {
-//		return n, transform.SameTree, nil
-//	}
-//	if !canProject(n, a) {
-//		return n, transform.SameTree, nil
-//	}
-//
-//	return transformPushdownProjections(ctx, a, n, scope)
-//}
-
-func canProject(n sql.Node, a *Analyzer) bool {
-	switch n.(type) {
-	case *plan.Update, *plan.RowUpdateAccumulator, *plan.DeleteFrom, *plan.Block, *plan.BeginEndBlock, *plan.TriggerBeginEndBlock:
-		return false
-	}
-
-	// Pushdown of projections interferes with subqueries on the same table: the table gets two different sets of
-	// projected columns pushed down, once for its alias in the subquery and once for its alias outside. For that reason,
-	// skip pushdown for any query with a subquery in it.
-	// TODO: fix this
-	containsSubquery := false
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		if _, ok := e.(*plan.Subquery); ok {
-			containsSubquery = true
-			return false
-		}
-		return true
-	})
-
-	if containsSubquery {
-		a.Log("skipping pushdown of projection for query with subquery")
-		return false
-	}
-
-	containsIndexedJoin := false
-	transform.Inspect(n, func(node sql.Node) bool {
-		if _, ok := node.(*plan.IndexedJoin); ok {
-			containsIndexedJoin = true
-			return false
-		}
-		return true
-
-	})
-
-	if containsIndexedJoin {
-		a.Log("skipping pushdown of projection for query with an indexed join")
-		return false
-	}
-
-	// Because analysis runs more than once on subquery, it's possible for projection pushdown logic to be applied
-	// multiple times. It's totally undefined what happens when you push a projection down to a table that already has
-	// one, and shouldn't happen. We don't have the necessary interface to interrogate a projected table about its
-	// projection, so we do this for now.
-	// TODO: this is a hack, we shouldn't use decorator nodes for logic like this.
-	alreadyPushedDown := false
-	transform.Inspect(n, func(n sql.Node) bool {
-		if n, ok := n.(*plan.DecoratedNode); ok && strings.Contains(n.String(), "Projected table access on") {
-			alreadyPushedDown = true
-			return false
-		}
-		return true
-	})
-
-	return !alreadyPushedDown
 }
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
@@ -689,107 +616,6 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 		return n, transform.SameTree, nil
 	})
 }
-
-func formatIndexDecoratorString(indexes ...sql.Index) []string {
-	var indexStrs []string
-	for _, idx := range indexes {
-		var expStrs []string
-		for _, e := range idx.Expressions() {
-			expStrs = append(expStrs, e)
-		}
-		indexStrs = append(indexStrs, fmt.Sprintf("[%s]", strings.Join(expStrs, ",")))
-	}
-	return indexStrs
-}
-
-//
-//// pushdownProjectionsToTable attempts to push projected columns down to tables that implement sql.ProjectedTable.
-//func pushdownProjectionsToTable(
-//	a *Analyzer,
-//	tableNode NameableNode,
-//	fieldsByTable fieldsByTable,
-//	usedProjections fieldsByTable,
-//) (sql.Node, transform.TreeIdentity, error) {
-//
-//	table := getTable(tableNode)
-//	if table == nil {
-//		return tableNode, transform.SameTree, nil
-//	}
-//
-//	var newTableNode sql.Node = tableNode
-//
-//	replacedTable := false
-//	if pt, ok := table.(sql.ProjectedTable); ok && len(fieldsByTable[tableNode.Name()]) > 0 {
-//		if usedProjections[tableNode.Name()] == nil {
-//			projectedFields := fieldsByTable[tableNode.Name()]
-//			table = pt.WithProjections(projectedFields)
-//			usedProjections[tableNode.Name()] = projectedFields
-//		}
-//
-//		newTableNode = plan.NewDecoratedNode(
-//			fmt.Sprintf("Projected table access on %v",
-//				fieldsByTable[tableNode.Name()]), newTableNode)
-//		a.Log("table %q transformed with pushdown of projection", tableNode.Name())
-//
-//		replacedTable = true
-//	}
-//
-//	if !replacedTable {
-//		return tableNode, transform.SameTree, nil
-//	}
-//
-//	switch tableNode.(type) {
-//	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess:
-//		node, _, err := withTable(newTableNode, table)
-//		if err != nil {
-//			return nil, transform.SameTree, err
-//		}
-//
-//		return node, transform.NewTree, nil
-//	default:
-//		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdown", tableNode)
-//	}
-//}
-//
-//func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-//	usedFieldsByTable := make(fieldsByTable)
-//	fieldsByTable := getFieldsByTable(ctx, n)
-//
-//	selector := func(c transform.Context) bool {
-//		switch c.Parent.(type) {
-//		case *plan.TableAlias:
-//			// When we hit a table alias, we don't want to descend farther into the tree for expression matches, which
-//			// would give us the original (unaliased) names of columns
-//			return false
-//		default:
-//			return true
-//		}
-//	}
-//
-//	return transform.NodeWithCtx(n, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-//		var nameable NameableNode
-//
-//		switch c.Node.(type) {
-//		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
-//			nameable = c.Node.(NameableNode)
-//		}
-//
-//		if nameable != nil {
-//			table, same, err := pushdownProjectionsToTable(a, nameable, fieldsByTable, usedFieldsByTable)
-//			if err != nil {
-//				return nil, transform.SameTree, err
-//			}
-//			if !same {
-//				n, _, err := FixFieldIndexesForExpressions(ctx, a, table, scope)
-//				if err != nil {
-//					return nil, transform.SameTree, err
-//				}
-//				return n, transform.NewTree, nil
-//			}
-//		}
-//		return FixFieldIndexesForExpressions(ctx, a, c.Node, scope)
-//	})
-//}
 
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.

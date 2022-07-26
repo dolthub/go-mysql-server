@@ -75,11 +75,13 @@ func (j joinStruct) Comment() string {
 	return j.CommentStr
 }
 
+// WithRelationalId implements sql.RelationalNode
 func (j *InnerJoin) WithRelationalId(id sql.RelId) sql.Node {
 	j.relId = id
 	return j
 }
 
+// RelationalId implements sql.RelationalId
 func (j *InnerJoin) RelationalId() sql.RelId {
 	return j.relId
 }
@@ -208,11 +210,13 @@ func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	}
 }
 
+// WithRelationalId implements sql.RelationalNode
 func (j *LeftJoin) WithRelationalId(id sql.RelId) sql.Node {
 	j.relId = id
 	return j
 }
 
+// RelationalId implements sql.RelationalId
 func (j *LeftJoin) RelationalId() sql.RelId {
 	return j.relId
 }
@@ -296,11 +300,13 @@ type RightJoin struct {
 	joinStruct
 }
 
+// WithRelationalId implements sql.RelationalNode
 func (j *RightJoin) WithRelationalId(id sql.RelId) sql.Node {
 	j.relId = id
 	return j
 }
 
+// RelationalId implements sql.RelationalId
 func (j *RightJoin) RelationalId() sql.RelId {
 	return j.relId
 }

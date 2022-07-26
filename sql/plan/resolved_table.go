@@ -33,13 +33,14 @@ var _ sql.Node2 = (*ResolvedTable)(nil)
 
 var _ sql.RelationalNode = (*ResolvedTable)(nil)
 
-// IsRelational implements sql.RelationalNode
+// WithRelationalId implements sql.RelationalNode
 func (t *ResolvedTable) WithRelationalId(id sql.RelId) sql.Node {
 	nt := *t
 	nt.relId = id
 	return &nt
 }
 
+// RelationalId implements sql.RelationalId
 func (t *ResolvedTable) RelationalId() sql.RelId {
 	return t.relId
 }

@@ -35,11 +35,13 @@ type IndexedTableAccess struct {
 	relId         sql.RelId
 }
 
+// WithRelationalId implements sql.RelationalNode
 func (i *IndexedTableAccess) WithRelationalId(id sql.RelId) sql.Node {
 	i.relId = id
 	return i
 }
 
+// RelationalId implements sql.RelationalId
 func (i *IndexedTableAccess) RelationalId() sql.RelId {
 	return i.relId
 }
