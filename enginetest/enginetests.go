@@ -447,7 +447,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	}
 
 	for _, query := range writingQueries {
-		AssertErr(t, e, harness, query, sql.ErrNotAuthorized)
+		AssertErr(t, e, harness, query, sql.ErrReadOnly)
 	}
 }
 
