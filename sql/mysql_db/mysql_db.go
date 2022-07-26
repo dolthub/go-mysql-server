@@ -367,10 +367,19 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 
 // AuthMethod implements the interface mysql.AuthServer.
 func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return "", err
+	var host string
+	// TODO : need to check for network type instead of addr string if it's unix socket network,
+	//  macOS passes empty addr, but ubuntu returns "@" as addr for `localhost`
+	if addr == "@" || addr == "" {
+		host = "localhost"
+	} else {
+		splitHost, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return "", err
+		}
+		host = splitHost
 	}
+
 	u := db.GetUser(user, host, false)
 	if u == nil {
 		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
@@ -388,17 +397,19 @@ func (db *MySQLDb) Salt() ([]byte, error) {
 
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
 func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
-	if !db.Enabled {
-		host, _, err := net.SplitHostPort(addr.String())
+	var host string
+	var err error
+	if addr.Network() == "unix" {
+		host = "localhost"
+	} else {
+		host, _, err = net.SplitHostPort(addr.String())
 		if err != nil {
 			return nil, err
 		}
-		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
-	host, _, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return nil, err
+	if !db.Enabled {
+		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
 	userEntry := db.GetUser(user, host, false)
@@ -419,10 +430,17 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
 func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
-	host, _, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return nil, err
+	var host string
+	var err error
+	if addr.Network() == "unix" {
+		host = "localhost"
+	} else {
+		host, _, err = net.SplitHostPort(addr.String())
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	connUser := MysqlConnectionUser{User: user, Host: host}
 	if !db.Enabled {
 		return connUser, nil
