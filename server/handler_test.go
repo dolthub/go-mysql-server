@@ -202,7 +202,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			name:      "select statement returns non-nil schema",
 			statement: "select c1 from test where c1 > ?",
 			expected: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
 			},
 		},
 	} {
@@ -256,7 +256,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -335,7 +335,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -554,9 +554,9 @@ func TestSchemaToFields(t *testing.T) {
 	}
 
 	expected := []*query.Field{
-		{Name: "foo", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary},
-		{Name: "bar", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8},
-		{Name: "baz", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8},
+		{Name: "foo", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535},
+		{Name: "bar", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 262_140},
+		{Name: "baz", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
 	}
 
 	fields := schemaToFields(schema)

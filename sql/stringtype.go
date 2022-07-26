@@ -46,9 +46,9 @@ var (
 	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
 	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation")
 
-	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength())
-	Text       = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax/Collation_Default.CharacterSet().MaxLength())
-	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax/Collation_Default.CharacterSet().MaxLength())
+	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax)
+	Text       = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax)
+	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax)
 	LongText   = MustCreateStringWithDefaults(sqltypes.Text, longTextBlobMax)
 	TinyBlob   = MustCreateBinary(sqltypes.Blob, tinyTextBlobMax)
 	Blob       = MustCreateBinary(sqltypes.Blob, textBlobMax)
@@ -75,6 +75,7 @@ type StringType interface {
 type stringType struct {
 	baseType   query.Type
 	charLength int64
+	byteLength uint32
 	collation  CollationID
 }
 
@@ -148,7 +149,7 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		}
 	}
 
-	return stringType{baseType, length, collation}, nil
+	return stringType{baseType, length, uint32(byteLength), collation}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
@@ -202,7 +203,7 @@ func CreateLongText(collation CollationID) StringType {
 
 // MaxByteLength implements the Type interface
 func (t stringType) MaxByteLength() uint32 {
-	return uint32(t.charLength * t.CharacterSet().MaxLength())
+	return t.byteLength
 }
 
 func (t stringType) Length() int64 {
