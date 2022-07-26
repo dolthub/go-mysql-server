@@ -32,15 +32,16 @@ type indexAnalyzer struct {
 	registryIdxes  []sql.Index
 }
 
-func seeThroughDecoration(n sql.Node) (*plan.ResolvedTable, bool) {
+// seeThroughDecoration returns a *plan.ResolvedTable or nil
+func seeThroughDecoration(n sql.Node) *plan.ResolvedTable {
 	switch n := n.(type) {
 	case *plan.DecoratedNode:
-		rt, ok := n.Child.(*plan.ResolvedTable)
-		return rt, ok
+		rt, _ := n.Child.(*plan.ResolvedTable)
+		return rt
 	case *plan.ResolvedTable:
-		return n, true
+		return n
 	default:
-		return nil, false
+		return nil
 	}
 }
 
@@ -72,8 +73,8 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.TableAlias:
-				rt, ok := seeThroughDecoration(n.Child)
-				if !ok {
+				rt := seeThroughDecoration(n.Child)
+				if rt == nil {
 					return false
 				}
 

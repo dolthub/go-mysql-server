@@ -990,7 +990,7 @@ func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 func hasIndexableChild(node plan.JoinNode) bool {
 	switch n := node.Right().(type) {
 	case *plan.DecoratedNode:
-		if _, ok := seeThroughDecoration(n); ok {
+		if rt := seeThroughDecoration(n); rt != nil {
 			return true
 		}
 	case *plan.ResolvedTable, *plan.TableAlias:
@@ -1006,7 +1006,7 @@ func hasIndexableChild(node plan.JoinNode) bool {
 
 	switch n := node.Left().(type) {
 	case *plan.DecoratedNode:
-		if _, ok := seeThroughDecoration(n); ok {
+		if rt := seeThroughDecoration(n); rt != nil {
 			return true
 		}
 	case *plan.ResolvedTable, *plan.TableAlias:
