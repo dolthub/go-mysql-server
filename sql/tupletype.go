@@ -109,6 +109,12 @@ func (t TupleType) Equals(otherType Type) bool {
 	return false
 }
 
+// MaxByteLength implements the Type interface
+func (t TupleType) MaxByteLength() uint32 {
+	// TupleTypes are never actually sent over the wire directly
+	return 0
+}
+
 func (t TupleType) Promote() Type {
 	return t
 }
