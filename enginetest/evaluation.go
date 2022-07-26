@@ -69,7 +69,6 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			}
 			ctx := NewContext(harness)
 			RunQueryWithContext(t, e, harness, ctx, statement)
-			validateEngine(t, ctx, harness, e)
 		}
 
 		assertions := script.Assertions
@@ -103,7 +102,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			} else {
 				t.Run(assertion.Query, func(t *testing.T) {
 					ctx := NewContext(harness)
-					TestQueryWithContext(t, ctx, e, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
 				})
 			}
 		}
@@ -218,7 +217,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 			} else if assertion.SkipResultsCheck {
 				RunQueryWithContext(t, e, harness, clientSession, assertion.Query)
 			} else {
-				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
+				TestQueryWithContext(t, clientSession, e, harness, assertion.Query, assertion.Expected, nil, nil)
 			}
 		})
 	}
@@ -236,7 +235,7 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 		e := mustNewEngine(t, harness)
 		defer e.Close()
 		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, q, expected, expectedCols, bindings)
+		TestQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings)
 	})
 }
 
@@ -249,11 +248,11 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queri
 		}
 
 		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+		TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	})
 }
 
-func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -269,6 +268,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	checkResults(t, require, expected, expectedCols, sch, rows, q)
 
 	require.Equal(0, ctx.Memory.NumCaches())
+	validateEngine(t, ctx, harness, e)
 }
 
 // TestPreparedQuery runs a prepared query on the engine given and asserts that results are as expected.
@@ -721,8 +721,8 @@ func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest)
 		e := mustNewEngine(t, harness)
 		ctx := NewContext(harness)
 		defer e.Close()
-		TestQueryWithContext(t, ctx, e, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
-		TestQueryWithContext(t, ctx, e, tt.SelectQuery, tt.ExpectedSelect, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, tt.ExpectedSelect, nil, nil)
 	})
 }
 
