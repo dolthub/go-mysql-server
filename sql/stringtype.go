@@ -32,12 +32,12 @@ import (
 
 const (
 	charBinaryMax       = 255
-	varcharVarbinaryMax = 65535
+	varcharVarbinaryMax = 65_535
 
 	tinyTextBlobMax   = charBinaryMax
 	textBlobMax       = varcharVarbinaryMax
-	mediumTextBlobMax = 16777215
-	longTextBlobMax   = int64(4294967295)
+	mediumTextBlobMax = 16_777_215
+	longTextBlobMax   = int64(4_294_967_295)
 )
 
 var (
@@ -137,15 +137,29 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		if length > longTextBlobMax {
 			return nil, ErrLengthTooLarge.New(length, longTextBlobMax)
 		}
-		if byteLength <= tinyTextBlobMax {
+		if length <= tinyTextBlobMax {
 			length = tinyTextBlobMax / charsetMaxLength
-		} else if byteLength <= textBlobMax {
+			byteLength = tinyTextBlobMax
+
+			if baseType == sqltypes.Text {
+				byteLength = byteLength * charsetMaxLength
+			}
+		} else if length <= textBlobMax {
 			length = textBlobMax / charsetMaxLength
-		} else if byteLength <= mediumTextBlobMax {
+			byteLength = textBlobMax
+			if baseType == sqltypes.Text {
+				byteLength = byteLength * charsetMaxLength
+			}
+		} else if length <= mediumTextBlobMax {
 			length = mediumTextBlobMax / charsetMaxLength
+			byteLength = mediumTextBlobMax
+			if baseType == sqltypes.Text {
+				byteLength = byteLength * charsetMaxLength
+			}
 		} else {
 			// Unlike the others, we just limit on character length rather than byte length.
-			length = longTextBlobMax
+			length = longTextBlobMax / charsetMaxLength
+			byteLength = longTextBlobMax
 		}
 	}
 
