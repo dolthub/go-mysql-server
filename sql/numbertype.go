@@ -330,8 +330,8 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 	}
 }
 
-// MaxByteLength implements the Type interface
-func (t numberTypeImpl) MaxByteLength() uint32 {
+// MaxResponseByteLength implements the Type interface
+func (t numberTypeImpl) MaxResponseByteLength() uint32 {
 	// https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
 	switch t.baseType {
 	case sqltypes.Uint8:

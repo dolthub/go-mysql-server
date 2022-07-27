@@ -69,8 +69,8 @@ func MustCreateBitType(numOfBits uint8) BitType {
 	return bt
 }
 
-// MaxByteLength implements Type interface
-func (t bitType) MaxByteLength() uint32 {
+// MaxResponseByteLength implements Type interface
+func (t bitType) MaxResponseByteLength() uint32 {
 	return uint32(t.numOfBits)
 }
 

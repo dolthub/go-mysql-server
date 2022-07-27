@@ -140,8 +140,8 @@ func (t LineStringType) Equals(otherType Type) bool {
 	return ok
 }
 
-// MaxByteLength implements the Type interface
-func (t LineStringType) MaxByteLength() uint32 {
+// MaxResponseByteLength implements the Type interface
+func (t LineStringType) MaxResponseByteLength() uint32 {
 	return GeometryMaxByteLength
 }
 

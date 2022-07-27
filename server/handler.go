@@ -757,7 +757,7 @@ func schemaToFields(s sql.Schema) []*query.Field {
 			Name:         c.Name,
 			Type:         c.Type.Type(),
 			Charset:      charset,
-			ColumnLength: c.Type.MaxByteLength(),
+			ColumnLength: c.Type.MaxResponseByteLength(),
 		}
 	}
 

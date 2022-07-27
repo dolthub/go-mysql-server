@@ -229,8 +229,8 @@ func CreateLongText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
-// MaxByteLength implements the Type interface
-func (t stringType) MaxByteLength() uint32 {
+// MaxResponseByteLength implements the Type interface
+func (t stringType) MaxResponseByteLength() uint32 {
 	return t.byteLength
 }
 
@@ -360,7 +360,7 @@ func ConvertToString(v interface{}, t stringType) (string, error) {
 		//       in this check.
 		//       The following hack gets tests working, but it's not the right way
 		//       to fix this.
-		maxByteLength := int64(t.MaxByteLength()) / Collation_Default.CharacterSet().MaxLength()
+		maxByteLength := int64(t.MaxResponseByteLength()) / Collation_Default.CharacterSet().MaxLength()
 		if int64(len(val)) > maxByteLength {
 			return "", ErrLengthBeyondLimit.New(val, t.String())
 		}

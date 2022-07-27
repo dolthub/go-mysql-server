@@ -58,8 +58,8 @@ type Type interface {
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
 	Equals(otherType Type) bool
-	// MaxByteLength returns the maximum number of bytes needed to serialize an instance of this type over the wire for MySQL's text protocol.
-	MaxByteLength() uint32
+	// MaxResponseByteLength returns the maximum number of bytes needed to serialize an instance of this type in a response over the wire for MySQL's text protocol.
+	MaxResponseByteLength() uint32
 	// Promote will promote the current type to the largest representing type of the same kind, such as Int8 to Int64.
 	Promote() Type
 	// SQL returns the sqltypes.Value for the given value.

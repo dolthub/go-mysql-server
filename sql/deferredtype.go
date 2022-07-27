@@ -58,8 +58,8 @@ func (t deferredType) Convert(v interface{}) (interface{}, error) {
 	return nil, nil
 }
 
-// MaxByteLength implements the Type interface
-func (t deferredType) MaxByteLength() uint32 {
+// MaxResponseByteLength implements the Type interface
+func (t deferredType) MaxResponseByteLength() uint32 {
 	// deferredType is never actually sent over the wire
 	return 0
 }

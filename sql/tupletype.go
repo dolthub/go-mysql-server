@@ -109,8 +109,8 @@ func (t TupleType) Equals(otherType Type) bool {
 	return false
 }
 
-// MaxByteLength implements the Type interface
-func (t TupleType) MaxByteLength() uint32 {
+// MaxResponseByteLength implements the Type interface
+func (t TupleType) MaxResponseByteLength() uint32 {
 	// TupleTypes are never actually sent over the wire directly
 	return 0
 }

@@ -205,8 +205,8 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 	return uint64(0), ErrConvertingToSet.New(v)
 }
 
-// MaxByteLength implements the Type interface
-func (t setType) MaxByteLength() uint32 {
+// MaxResponseByteLength implements the Type interface
+func (t setType) MaxResponseByteLength() uint32 {
 	return t.maxByteLength
 }
 
