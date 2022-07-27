@@ -583,6 +583,17 @@ func TestUpdate(t *testing.T, harness Harness) {
 	}
 }
 
+func TestUpdateIgnore(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
+	for _, tt := range queries.UpdateIgnoreTests {
+		RunWriteQueryTest(t, harness, tt)
+	}
+
+	for _, script := range queries.UpdateIgnoreScripts {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestUpdateErrors(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.FloattableData, setup.TypestableData)
 	for _, expectedFailure := range queries.GenericUpdateErrorTests {

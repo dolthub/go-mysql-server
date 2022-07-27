@@ -710,14 +710,16 @@ func (w WrappedInsertError) Error() string {
 	return w.Cause.Error()
 }
 
-type ErrInsertIgnore struct {
+// IgnorableError is used propagate information about an error that needs to be ignore and does not interfere with
+// any update accumulators
+type IgnorableError struct {
 	OffendingRow Row
 }
 
-func NewErrInsertIgnore(row Row) ErrInsertIgnore {
-	return ErrInsertIgnore{OffendingRow: row}
+func NewIgnorableError(row Row) IgnorableError {
+	return IgnorableError{OffendingRow: row}
 }
 
-func (e ErrInsertIgnore) Error() string {
+func (e IgnorableError) Error() string {
 	return "Insert ignore error should never be printed"
 }

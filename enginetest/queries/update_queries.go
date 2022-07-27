@@ -532,6 +532,150 @@ var GenericUpdateErrorTests = []GenericErrorQueryTest{
 	},
 }
 
+var UpdateIgnoreTests = []WriteQueryTest{
+	{
+		WriteQuery:          "UPDATE IGNORE mytable SET i = 2 where i = 1",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
+		SelectQuery:         "SELECT * FROM mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
+	{
+		WriteQuery:          "UPDATE IGNORE mytable SET i = i+1 where i = 1",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
+		SelectQuery:         "SELECT * FROM mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
+}
+
+var UpdateIgnoreScripts = []ScriptTest{
+	{
+		Name: "UPDATE IGNORE with primary keys and indexes",
+		SetUpScript: []string{
+			"CREATE TABLE pkTable(pk int, val int, primary key(pk, val))",
+			"CREATE TABLE idxTable(pk int primary key, val int UNIQUE)",
+			"INSERT INTO pkTable VALUES (1, 1), (2, 2), (3, 3)",
+			"INSERT INTO idxTable VALUES (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE pkTable set pk = pk + 1, val = val + 1",
+				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}},
+			},
+			{
+				Query:    "UPDATE IGNORE idxTable set val = val + 1",
+				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM idxTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
+			},
+			{
+				Query:    "UPDATE IGNORE pkTable set val = val + 1 where pk = 2",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 3}, {4, 4}},
+			},
+		},
+	},
+	{
+		Name:        "UPDATE IGNORE with type conversions",
+		SetUpScript: []string{},
+		Assertions:  []ScriptTestAssertion{},
+	},
+	{
+		Name: "UPDATE IGNORE with foreign keys",
+		SetUpScript: []string{
+			"CREATE TABLE colors ( id INT NOT NULL, color VARCHAR(32) NOT NULL, PRIMARY KEY (id), INDEX color_index(color));",
+			"CREATE TABLE objects (id INT NOT NULL, name VARCHAR(64) NOT NULL,color VARCHAR(32), PRIMARY KEY(id),FOREIGN KEY (color) REFERENCES colors(color))",
+			"INSERT INTO colors (id,color) VALUES (1,'red'),(2,'green'),(3,'blue'),(4,'purple')",
+			"INSERT INTO objects (id,name,color) VALUES (1,'truck','red'),(2,'ball','green'),(3,'shoe','blue')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE objects SET color = 'orange' where id = 2",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "SELECT * FROM objects ORDER BY id",
+				Expected: []sql.Row{{1, "truck", "red"}, {2, "ball", "green"}, {3, "shoe", "blue"}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE IGNORE with check constraints",
+		SetUpScript: []string{
+			"CREATE TABLE checksTable(pk int)",
+			"ALTER TABLE checksTable ADD CONSTRAINT mycx CHECK (pk < 5)",
+			"INSERT INTO checksTable VALUES (1),(2),(3),(4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE checksTable SET pk = pk + 1",
+				Expected: []sql.Row{{newUpdateResult(4, 3)}},
+			},
+			{
+				Query:    "SELECT * from checksTable ORDER BY pk",
+				Expected: []sql.Row{{2}, {3}, {4}, {4}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE IGNORE keyless tables and secondary indexes",
+		SetUpScript: []string{
+			"CREATE TABLE keyless(pk int, val int)",
+			"INSERT INTO keyless VALUES (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "UPDATE IGNORE keyless SET val = 1 where pk = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:    "UPDATE IGNORE keyless SET val = val + 1",
+				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
+			},
+		},
+	},
+}
+
 var UpdateErrorTests = []QueryErrorTest{
 	{
 		Query:       `UPDATE keyless INNER JOIN one_pk on keyless.c0 = one_pk.pk SET keyless.c0 = keyless.c0 + 1`,

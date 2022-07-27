@@ -332,7 +332,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	if err != nil {
-		return i.ignoreOrClose(ctx, row, err)
+		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
@@ -343,12 +343,12 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	err = i.validateNullability(ctx, i.schema, row)
 	if err != nil {
-		return i.ignoreOrClose(ctx, row, err)
+		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 
 	err = i.evaluateChecks(ctx, row)
 	if err != nil {
-		return i.ignoreOrClose(ctx, row, err)
+		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Do any necessary type conversions to the target schema
@@ -409,7 +409,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	} else {
 		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
-				return i.ignoreOrClose(ctx, row, err)
+				return nil, i.ignoreOrClose(ctx, row, err)
 			}
 
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
@@ -453,12 +453,12 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpda
 	// Should revaluate the check conditions.
 	err = i.evaluateChecks(ctx, newRow)
 	if err != nil {
-		return i.ignoreOrClose(ctx, newRow, err)
+		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
 
 	err = i.updater.Update(ctx, rowToUpdate, newRow)
 	if err != nil {
-		return i.ignoreOrClose(ctx, newRow, err)
+		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
 
 	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
@@ -556,18 +556,12 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
-func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sql.Row, error) {
-	if i.ignore {
-		err = i.warnOnIgnorableError(ctx, row, err)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
-	} else {
-		i.rowSource.Close(ctx)
-		i.rowSource = nil
-		return nil, sql.NewWrappedInsertError(row, err)
+func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) error {
+	if !i.ignore {
+		return sql.NewWrappedInsertError(row, err)
 	}
+
+	return warnOnIgnorableError(ctx, row, err)
 }
 
 // convertDataAndWarn modifies a row with data conversion issues in INSERT IGNORE calls
@@ -593,11 +587,7 @@ func (i *insertIter) convertDataAndWarn(ctx *sql.Context, row sql.Row, columnIdx
 	return row, nil
 }
 
-func (i *insertIter) warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
-	if !i.ignore {
-		return err
-	}
-
+func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 	// Check that this error is a part of the list of Ignorable Errors and create the relevant warning
 	for _, ie := range IgnorableErrors {
 		if ie.Is(err) {
@@ -616,7 +606,7 @@ func (i *insertIter) warnOnIgnorableError(ctx *sql.Context, row sql.Row, err err
 			}
 
 			// Return the InsertIgnore err to ensure our accumulator doesn't count this row.
-			return sql.NewErrInsertIgnore(row)
+			return sql.NewIgnorableError(row)
 		}
 	}
 
@@ -737,7 +727,7 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if i.ignore {
 				row[count] = col.Type.Zero()
-				_ = i.warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+				_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 			} else {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}

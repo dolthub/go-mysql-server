@@ -158,7 +158,6 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
 	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
-		// TODO: we aren't enforcing other kinds of constraints here, like nullability
 		if !equals {
 			// apply check constraints
 			for _, check := range u.checks {
@@ -172,18 +171,18 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 
 				if sql.IsFalse(res) {
-					return nil, sql.ErrCheckConstraintViolated.New(check.Name)
+					return nil, u.ignoreOrError(ctx, newRow, sql.ErrCheckConstraintViolated.New(check.Name))
 				}
 			}
 
 			err := u.validateNullability(newRow, u.schema)
 			if err != nil {
-				return nil, err
+				return nil, u.ignoreOrError(ctx, newRow, err)
 			}
 
 			err = u.updater.Update(ctx, oldRow, newRow)
 			if err != nil {
-				return nil, err
+				return nil, u.ignoreOrError(ctx, newRow, err)
 			}
 		}
 	} else {
@@ -238,7 +237,7 @@ func (u *updateIter) ignoreOrError(ctx *sql.Context, row sql.Row, err error) err
 		return err
 	}
 
-	return nil
+	return warnOnIgnorableError(ctx, row, err)
 }
 
 func newUpdateIter(

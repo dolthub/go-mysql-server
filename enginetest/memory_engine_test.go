@@ -435,6 +435,10 @@ func TestUpdate(t *testing.T) {
 	enginetest.TestUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestUpdateIgnore(t *testing.T) {
+	enginetest.TestUpdateIgnore(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestUpdateErrors(t *testing.T) {
 	enginetest.TestUpdateErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }

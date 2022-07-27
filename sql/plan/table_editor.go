@@ -65,7 +65,7 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
 
 	err := s.errorEncountered
-	_, ok := err.(sql.ErrInsertIgnore)
+	_, ok := err.(sql.IgnorableError)
 
 	if err != nil && !ok {
 		err = s.editor.DiscardChanges(ctx, s.errorEncountered)
