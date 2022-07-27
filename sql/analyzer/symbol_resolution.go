@@ -16,11 +16,12 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"strings"
 )
 
 // findSubqueryExpr searches for a *plan.Subquery in a single node,
