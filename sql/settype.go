@@ -61,11 +61,11 @@ type SetType interface {
 }
 
 type setType struct {
-	collation         CollationID
-	compareToOriginal map[string]string
-	valToBit          map[string]uint64
-	bitToVal          map[uint64]string
-	maxByteLength     uint32
+	collation             CollationID
+	compareToOriginal     map[string]string
+	valToBit              map[string]uint64
+	bitToVal              map[uint64]string
+	maxResponseByteLength uint32
 }
 
 // CreateSetType creates a SetType.
@@ -113,11 +113,11 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 		}
 	}
 	return setType{
-		collation:         collation,
-		compareToOriginal: compareToOriginal,
-		valToBit:          valToBit,
-		bitToVal:          bitToVal,
-		maxByteLength:     maxByteLength,
+		collation:             collation,
+		compareToOriginal:     compareToOriginal,
+		valToBit:              valToBit,
+		bitToVal:              bitToVal,
+		maxResponseByteLength: maxByteLength,
 	}, nil
 }
 
@@ -207,7 +207,7 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 
 // MaxResponseByteLength implements the Type interface
 func (t setType) MaxResponseByteLength() uint32 {
-	return t.maxByteLength
+	return t.maxResponseByteLength
 }
 
 // MustConvert implements the Type interface.
