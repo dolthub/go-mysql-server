@@ -138,10 +138,10 @@ func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map
 			if err != nil {
 				return nil, err
 			}
-			ctes[strings.ToLower(cteName)] = plan.NewProject(
-				[]sql.Expression{expression.NewQualifiedStar(cte.Subquery.Name())},
+			ctes[strings.ToLower(cteName)] = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, plan.NewProject(
+				[]sql.Expression{expression.NewQualifiedStar(subquery.Name())},
 				rCte,
-			)
+			))
 		} else {
 			ctes[strings.ToLower(cteName)] = subquery
 		}

@@ -183,8 +183,6 @@ func (a availableNames) indexTable(alias, name string, nestingLevel int) {
 		a[nestingLevel] = newNestingLevelSymbols()
 	}
 	a[nestingLevel].availableTables[alias] = strings.ToLower(name)
-	l := a[nestingLevel]
-	l.lastRel = alias
 }
 
 // nesting levels returns all levels present, from inner to outer
@@ -245,6 +243,9 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
 		}
+		if _, ok := n.(*plan.RecursiveCte); ok {
+			return n, transform.SameTree, nil
+		}
 
 		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
 		nestingLevel++
@@ -272,7 +273,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames, nesti
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				names.indexTable(name, name, i)
 				return false
