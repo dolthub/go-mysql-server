@@ -172,11 +172,15 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 			charLength = longTextBlobMax / charsetMaxLength
 		}
 
-		if baseType == sqltypes.Text {
+		responseByteLength = byteLength
+		if baseType == sqltypes.Text && byteLength != longTextBlobMax {
 			// For TEXT types, MySQL returns the byteLength multiplied by the size of the largest
 			// multibyte character in the associated charset for the maximum field bytes in the response
 			// metadata. It seems like returning the byteLength would be sufficient, but we do this to
 			// emulate MySQL's behavior exactly.
+			// The one exception is LongText types, which cannot be multiplied by a multibyte char multiplier,
+			// since the max bytes field in a column definition response over the wire is a uint32 and multiplying
+			// longTextBlobMax by anything over 1 would cause it to overflow.
 			responseByteLength = byteLength * charsetMaxLength
 		}
 	}
