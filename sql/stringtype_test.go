@@ -360,28 +360,19 @@ func TestStringString(t *testing.T) {
 		{MustCreateString(sqltypes.Char, 10, Collation_Default), "CHAR(10)"},
 		{MustCreateString(sqltypes.Char, charBinaryMax, Collation_Default), fmt.Sprintf("CHAR(%v)", charBinaryMax)},
 		{MustCreateString(sqltypes.Text, 0, Collation_Default), "TINYTEXT"},
-		{MustCreateString(sqltypes.Text, tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "TINYTEXT"},
-
-		// TODO: Remove the *4
-		{MustCreateString(sqltypes.Text, tinyTextBlobMax*4, Collation_Default), "TEXT"},
-
-		{MustCreateString(sqltypes.Text, textBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "TEXT"},
-
-		// TODO: Remove the *4
-		{MustCreateString(sqltypes.Text, textBlobMax*4, Collation_Default), "MEDIUMTEXT"},
-
-		{MustCreateString(sqltypes.Text, mediumTextBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "MEDIUMTEXT"},
-
-		// TODO: Remove the *4
-		{MustCreateString(sqltypes.Text, mediumTextBlobMax*4, Collation_Default), "LONGTEXT"},
-		{MustCreateString(sqltypes.Text, longTextBlobMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default), "LONGTEXT"},
+		{MustCreateString(sqltypes.Text, tinyTextBlobMax, Collation_Default), "TINYTEXT"},
+		{MustCreateString(sqltypes.Text, tinyTextBlobMax+1, Collation_Default), "TEXT"},
+		{MustCreateString(sqltypes.Text, textBlobMax, Collation_Default), "TEXT"},
+		{MustCreateString(sqltypes.Text, textBlobMax+1, Collation_Default), "MEDIUMTEXT"},
+		{MustCreateString(sqltypes.Text, mediumTextBlobMax, Collation_Default), "MEDIUMTEXT"},
+		{MustCreateString(sqltypes.Text, mediumTextBlobMax+1, Collation_Default), "LONGTEXT"},
+		{MustCreateString(sqltypes.Text, longTextBlobMax-1, Collation_Default), "LONGTEXT"},
 		{MustCreateString(sqltypes.Text, longTextBlobMax, Collation_Default), "LONGTEXT"},
 		{MustCreateBinary(sqltypes.VarBinary, 10), "VARBINARY(10)"},
 		{MustCreateBinary(sqltypes.VarBinary, varcharVarbinaryMax), fmt.Sprintf("VARBINARY(%v)", varcharVarbinaryMax)},
 		{MustCreateString(sqltypes.VarChar, 10, Collation_Default), "VARCHAR(10)"},
-		{MustCreateString(sqltypes.VarChar, varcharVarbinaryMax/Collation_Default.CharacterSet().MaxLength(), Collation_Default),
-			fmt.Sprintf("VARCHAR(%v)", varcharVarbinaryMax/Collation_Default.CharacterSet().MaxLength())},
-
+		{MustCreateString(sqltypes.VarChar, varcharVarbinaryMax, Collation_Default),
+			fmt.Sprintf("VARCHAR(%v)", varcharVarbinaryMax)},
 		{MustCreateString(sqltypes.Char, 10, Collation_Default.CharacterSet().BinaryCollation()),
 			fmt.Sprintf("CHAR(10) COLLATE %v", Collation_Default.CharacterSet().BinaryCollation())},
 		{MustCreateString(sqltypes.Char, 10, Collation_tis620_thai_ci), "CHAR(10) CHARACTER SET tis620 COLLATE tis620_thai_ci"},
