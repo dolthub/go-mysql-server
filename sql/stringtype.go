@@ -68,15 +68,21 @@ type StringType interface {
 	Type
 	CharacterSet() CharacterSetID
 	Collation() CollationID
+	// MaxCharacterLength returns the maximum number of chars that can safely be stored in this type, based on
+	// the current character set.
 	MaxCharacterLength() int64
+	// MaxByteLength returns the maximum number of bytes that may be consumed by a value stored in this type.
+	MaxByteLength() int64
+	// Length returns the maximum length, in characters, allowed for this string type.
 	Length() int64
 }
 
 type stringType struct {
-	baseType   query.Type
-	charLength int64
-	byteLength uint32
-	collation  CollationID
+	baseType           query.Type
+	charLength         int64
+	byteLength         int64
+	responseByteLength uint32
+	collation          CollationID
 }
 
 // CreateString creates a new StringType based on the specified type, length, and collation. Length is interpreted as
@@ -125,6 +131,7 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Text, sqltypes.Blob:
 		charLength = length / charsetMaxLength
 	}
+	responseByteLength := byteLength
 
 	// Make sure that length is valid depending on the base type, since they each handle lengths differently
 	switch baseType {
@@ -154,30 +161,27 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		if byteLength <= tinyTextBlobMax {
 			byteLength = tinyTextBlobMax
 			charLength = tinyTextBlobMax / charsetMaxLength
-
-			if baseType == sqltypes.Text {
-				byteLength = byteLength * charsetMaxLength
-			}
 		} else if byteLength <= textBlobMax {
 			byteLength = textBlobMax
 			charLength = textBlobMax / charsetMaxLength
-			if baseType == sqltypes.Text {
-				byteLength = byteLength * charsetMaxLength
-			}
 		} else if byteLength <= mediumTextBlobMax {
 			byteLength = mediumTextBlobMax
 			charLength = mediumTextBlobMax / charsetMaxLength
-			if baseType == sqltypes.Text {
-				byteLength = byteLength * charsetMaxLength
-			}
 		} else {
-			// Unlike the others, we just limit on character length rather than byte length.
 			byteLength = longTextBlobMax
 			charLength = longTextBlobMax / charsetMaxLength
 		}
+
+		if baseType == sqltypes.Text {
+			// For TEXT types, MySQL returns the byteLength multiplied by the size of the largest
+			// multibyte character in the associated charset for the maximum field bytes in the response
+			// metadata. It seems like returning the byteLength would be sufficient, but we do this to
+			// emulate MySQL's behavior exactly.
+			responseByteLength = byteLength * charsetMaxLength
+		}
 	}
 
-	return stringType{baseType, charLength, uint32(byteLength), collation}, nil
+	return stringType{baseType, charLength, byteLength, uint32(responseByteLength), collation}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
@@ -231,7 +235,7 @@ func CreateLongText(collation CollationID) StringType {
 
 // MaxResponseByteLength implements the Type interface
 func (t stringType) MaxResponseByteLength() uint32 {
-	return t.byteLength
+	return t.responseByteLength
 }
 
 func (t stringType) Length() int64 {
@@ -515,6 +519,11 @@ func (t stringType) Collation() CollationID {
 // MaxCharacterLength is the maximum character length for this type.
 func (t stringType) MaxCharacterLength() int64 {
 	return t.charLength
+}
+
+// MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
+func (t stringType) MaxByteLength() int64 {
+	return t.byteLength
 }
 
 func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {
