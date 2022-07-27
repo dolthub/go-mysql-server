@@ -361,15 +361,7 @@ func ConvertToString(v interface{}, t stringType) (string, error) {
 
 	if t.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
-		// TODO: MaxByteLength should be 255 here in order for this check to
-		//       catch this condition and return an error, but instead... it's
-		//       set to 255*4=1020. That's the right max byte length to return
-		//       for the wire to match MySQL's behavior, but it doesn't work here
-		//       in this check.
-		//       The following hack gets tests working, but it's not the right way
-		//       to fix this.
-		maxByteLength := int64(t.MaxResponseByteLength()) / Collation_Default.CharacterSet().MaxLength()
-		if int64(len(val)) > maxByteLength {
+		if int64(len(val)) > t.maxByteLength {
 			return "", ErrLengthBeyondLimit.New(val, t.String())
 		}
 	} else {
