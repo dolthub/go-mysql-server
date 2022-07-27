@@ -62,10 +62,10 @@ type EnumType interface {
 }
 
 type enumType struct {
-	collation     CollationID
-	valToIndex    map[string]int
-	indexToVal    []string
-	maxByteLength uint32
+	collation             CollationID
+	valToIndex            map[string]int
+	indexToVal            []string
+	maxResponseByteLength uint32
 }
 
 // CreateEnumType creates a EnumType.
@@ -77,9 +77,9 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 		return nil, fmt.Errorf("number of values is too large")
 	}
 
-	// maxByteLength for an enum type is the bytes required to send back the largest enum value,
+	// maxResponseByteLength for an enum type is the bytes required to send back the largest enum value,
 	// including accounting for multibyte character representations.
-	var maxByteLength uint32
+	var maxResponseByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	valToIndex := make(map[string]int)
 	for i, value := range values {
@@ -95,15 +95,15 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 		valToIndex[value] = i + 1
 
 		byteLength := uint32(len([]rune(value)) * int(maxCharLength))
-		if byteLength > maxByteLength {
-			maxByteLength = byteLength
+		if byteLength > maxResponseByteLength {
+			maxResponseByteLength = byteLength
 		}
 	}
 	return enumType{
-		collation:     collation,
-		valToIndex:    valToIndex,
-		indexToVal:    values,
-		maxByteLength: maxByteLength,
+		collation:             collation,
+		valToIndex:            valToIndex,
+		indexToVal:            values,
+		maxResponseByteLength: maxResponseByteLength,
 	}, nil
 }
 
@@ -118,7 +118,7 @@ func MustCreateEnumType(values []string, collation CollationID) EnumType {
 
 // MaxResponseByteLength implements the Type interface
 func (t enumType) MaxResponseByteLength() uint32 {
-	return t.maxByteLength
+	return t.maxResponseByteLength
 }
 
 // Compare implements Type interface.
