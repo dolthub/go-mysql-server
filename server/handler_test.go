@@ -604,21 +604,21 @@ func TestSchemaToFields(t *testing.T) {
 
 	expected := []*query.Field{
 		// Blob, Text, and JSON Types
-		{Name: "tinyblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "tinyblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 255},
 		{Name: "blob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535},
-		{Name: "mediumblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
-		{Name: "longblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
-		{Name: "tinytext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "text", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "mediumtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "longtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "json", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "mediumblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 16_777_215},
+		{Name: "longblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
+		{Name: "tinytext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 1020},
+		{Name: "text", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 262_140},
+		{Name: "mediumtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 67_108_860},
+		{Name: "longtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "json", Type: query.Type_JSON, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
 
 		// Geometry Types
-		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
-		{Name: "point", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
-		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
-		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "point", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
 
 		// Integer Types
 		{Name: "uint8", Type: query.Type_UINT8, Charset: mysql.CharacterSetUtf8, ColumnLength: 3},
@@ -635,8 +635,8 @@ func TestSchemaToFields(t *testing.T) {
 		// Floating Point and Decimal Types
 		{Name: "float32", Type: query.Type_FLOAT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
 		{Name: "float64", Type: query.Type_FLOAT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 22},
-		{Name: "decimal10_0", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "decimal60_30", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "decimal10_0", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
+		{Name: "decimal60_30", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 62},
 
 		// Char, Binary, and Bit Types
 		{Name: "varchar50", Type: query.Type_VARCHAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 50 * 4},
@@ -646,10 +646,10 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "bit12", Type: query.Type_BIT, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
 
 		// Dates
-		{Name: "datetime", Type: query.Type_DATETIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "timestamp", Type: query.Type_TIMESTAMP, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "date", Type: query.Type_DATE, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
-		{Name: "time", Type: query.Type_TIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "datetime", Type: query.Type_DATETIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 26},
+		{Name: "timestamp", Type: query.Type_TIMESTAMP, Charset: mysql.CharacterSetUtf8, ColumnLength: 26},
+		{Name: "date", Type: query.Type_DATE, Charset: mysql.CharacterSetUtf8, ColumnLength: 10},
+		{Name: "time", Type: query.Type_TIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 17},
 		{Name: "year", Type: query.Type_YEAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 4},
 
 		// Set and Enum Types
