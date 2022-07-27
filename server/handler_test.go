@@ -548,19 +548,123 @@ func TestSchemaToFields(t *testing.T) {
 	require := require.New(t)
 
 	schema := sql.Schema{
-		{Name: "foo", Type: sql.Blob},
-		{Name: "bar", Type: sql.Text},
-		{Name: "baz", Type: sql.Int64},
+		// Blob, Text, and JSON Types
+		{Name: "tinyblob", Type: sql.TinyBlob},
+		{Name: "blob", Type: sql.Blob},
+		{Name: "mediumblob", Type: sql.MediumBlob},
+		{Name: "longblob", Type: sql.LongBlob},
+		{Name: "tinytext", Type: sql.TinyText},
+		{Name: "text", Type: sql.Text},
+		{Name: "mediumtext", Type: sql.MediumText},
+		{Name: "longtext", Type: sql.LongText},
+		{Name: "json", Type: sql.JSON},
+
+		// Geometry Types
+		{Name: "geometry", Type: sql.GeometryType{}},
+		{Name: "point", Type: sql.PointType{}},
+		{Name: "polygon", Type: sql.PolygonType{}},
+		{Name: "linestring", Type: sql.LineStringType{}},
+
+		// Integer Types
+		{Name: "uint8", Type: sql.Uint8},
+		{Name: "int8", Type: sql.Int8},
+		{Name: "uint16", Type: sql.Uint16},
+		{Name: "int16", Type: sql.Int16},
+		{Name: "uint24", Type: sql.Uint24},
+		{Name: "int24", Type: sql.Int24},
+		{Name: "uint32", Type: sql.Uint32},
+		{Name: "int32", Type: sql.Int32},
+		{Name: "uint64", Type: sql.Uint64},
+		{Name: "int64", Type: sql.Int64},
+
+		// Floating Point and Decimal Types
+		{Name: "float32", Type: sql.Float32},
+		{Name: "float64", Type: sql.Float64},
+		{Name: "decimal10_0", Type: sql.MustCreateDecimalType(10, 0)},
+		{Name: "decimal60_30", Type: sql.MustCreateDecimalType(60, 30)},
+
+		// Char, Binary, and Bit Types
+		{Name: "varchar50", Type: sql.MustCreateString(sqltypes.VarChar, 50, sql.Collation_Default)},
+		{Name: "varbinary12345", Type: sql.MustCreateBinary(sqltypes.VarBinary, 12345)},
+		{Name: "binary123", Type: sql.MustCreateBinary(sqltypes.Binary, 123)},
+		{Name: "char123", Type: sql.MustCreateString(sqltypes.Char, 123, sql.Collation_Default)},
+		{Name: "bit12", Type: sql.MustCreateBitType(12)},
+
+		// Dates
+		{Name: "datetime", Type: sql.MustCreateDatetimeType(sqltypes.Datetime)},
+		{Name: "timestamp", Type: sql.MustCreateDatetimeType(sqltypes.Timestamp)},
+		{Name: "date", Type: sql.MustCreateDatetimeType(sqltypes.Date)},
+		{Name: "time", Type: sql.Time},
+		{Name: "year", Type: sql.Year},
+
+		// Set and Enum Types
+		{Name: "set", Type: sql.MustCreateSetType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
+		{Name: "enum", Type: sql.MustCreateEnumType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
 	}
 
 	expected := []*query.Field{
-		{Name: "foo", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535},
-		{Name: "bar", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 262_140},
-		{Name: "baz", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
+		// Blob, Text, and JSON Types
+		{Name: "tinyblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "blob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535},
+		{Name: "mediumblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "longblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "tinytext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "text", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "mediumtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "longtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "json", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+
+		// Geometry Types
+		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "point", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetBinary, ColumnLength: 0},
+
+		// Integer Types
+		{Name: "uint8", Type: query.Type_UINT8, Charset: mysql.CharacterSetUtf8, ColumnLength: 3},
+		{Name: "int8", Type: query.Type_INT8, Charset: mysql.CharacterSetUtf8, ColumnLength: 4},
+		{Name: "uint16", Type: query.Type_UINT16, Charset: mysql.CharacterSetUtf8, ColumnLength: 5},
+		{Name: "int16", Type: query.Type_INT16, Charset: mysql.CharacterSetUtf8, ColumnLength: 6},
+		{Name: "uint24", Type: query.Type_UINT24, Charset: mysql.CharacterSetUtf8, ColumnLength: 8},
+		{Name: "int24", Type: query.Type_INT24, Charset: mysql.CharacterSetUtf8, ColumnLength: 9},
+		{Name: "uint32", Type: query.Type_UINT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 10},
+		{Name: "int32", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
+		{Name: "uint64", Type: query.Type_UINT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
+		{Name: "int64", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
+
+		// Floating Point and Decimal Types
+		{Name: "float32", Type: query.Type_FLOAT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
+		{Name: "float64", Type: query.Type_FLOAT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 22},
+		{Name: "decimal10_0", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "decimal60_30", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+
+		// Char, Binary, and Bit Types
+		{Name: "varchar50", Type: query.Type_VARCHAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 50 * 4},
+		{Name: "varbinary12345", Type: query.Type_VARBINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 12345},
+		{Name: "binary123", Type: query.Type_BINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 123},
+		{Name: "char123", Type: query.Type_CHAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 123 * 4},
+		{Name: "bit12", Type: query.Type_BIT, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
+
+		// Dates
+		{Name: "datetime", Type: query.Type_DATETIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "timestamp", Type: query.Type_TIMESTAMP, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "date", Type: query.Type_DATE, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "time", Type: query.Type_TIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 0},
+		{Name: "year", Type: query.Type_YEAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 4},
+
+		// Set and Enum Types
+		{Name: "set", Type: query.Type_SET, Charset: mysql.CharacterSetUtf8, ColumnLength: 72},
+		{Name: "enum", Type: query.Type_ENUM, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
 	}
 
+	require.Equal(len(schema), len(expected))
+
 	fields := schemaToFields(schema)
-	require.Equal(expected, fields)
+	for i := 0; i < len(fields); i++ {
+		t.Run(schema[i].Name, func(t *testing.T) {
+			assert.Equal(t, expected[i], fields[i])
+		})
+	}
 }
 
 func TestHandlerTimeout(t *testing.T) {
