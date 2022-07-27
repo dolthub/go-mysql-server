@@ -79,7 +79,10 @@ type stringType struct {
 	collation  CollationID
 }
 
-// CreateString creates a StringType.
+// CreateString creates a new StringType based on the specified type, length, and collation. Length is interpreted as
+// the length of bytes in the new StringType for SQL types that are based on bytes (i.e. TEXT, BLOB, BINARY, and
+// VARBINARY). For all other char-based SQL types, length is interpreted as the length of chars in the new
+// StringType (i.e. CHAR, and VARCHAR).
 func CreateString(baseType query.Type, length int64, collation CollationID) (StringType, error) {
 	// Check the base type first and fail immediately if it's unknown
 	switch baseType {
@@ -112,18 +115,30 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		}
 	}
 
-	// Make sure that length is valid depending on the base type, since they each handle lengths differently
+	// Determine the max byte length and max char length based on whether the base type is byte-based or char-based
 	charsetMaxLength := collation.CharacterSet().MaxLength()
-	byteLength := length * charsetMaxLength
+	charLength := length
+	byteLength := length
 	switch baseType {
-	case sqltypes.Char, sqltypes.Binary:
-		// We limit on length, so storage requirements are variable
-		if length > charBinaryMax {
+	case sqltypes.Char, sqltypes.VarChar:
+		byteLength = length * charsetMaxLength
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Text, sqltypes.Blob:
+		charLength = length / charsetMaxLength
+	}
+
+	// Make sure that length is valid depending on the base type, since they each handle lengths differently
+	switch baseType {
+	case sqltypes.Char:
+		if charLength > charBinaryMax {
 			return nil, ErrLengthTooLarge.New(length, charBinaryMax)
 		}
 	case sqltypes.VarChar:
-		if byteLength > varcharVarbinaryMax {
+		if charLength > varcharVarbinaryMax {
 			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax/charsetMaxLength)
+		}
+	case sqltypes.Binary:
+		if byteLength > charBinaryMax {
+			return nil, ErrLengthTooLarge.New(length, charBinaryMax)
 		}
 	case sqltypes.VarBinary:
 		// VarBinary fields transmitted over the wire could be for a VarBinary field,
@@ -133,37 +148,36 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength/charsetMaxLength)
 		}
 	case sqltypes.Text, sqltypes.Blob:
-		// We overall limit on character length, but determine tiny, medium, etc. based on byte length.
-		if length > longTextBlobMax {
+		if byteLength > longTextBlobMax {
 			return nil, ErrLengthTooLarge.New(length, longTextBlobMax)
 		}
-		if length <= tinyTextBlobMax {
-			length = tinyTextBlobMax / charsetMaxLength
+		if byteLength <= tinyTextBlobMax {
 			byteLength = tinyTextBlobMax
+			charLength = tinyTextBlobMax / charsetMaxLength
 
 			if baseType == sqltypes.Text {
 				byteLength = byteLength * charsetMaxLength
 			}
-		} else if length <= textBlobMax {
-			length = textBlobMax / charsetMaxLength
+		} else if byteLength <= textBlobMax {
 			byteLength = textBlobMax
+			charLength = textBlobMax / charsetMaxLength
 			if baseType == sqltypes.Text {
 				byteLength = byteLength * charsetMaxLength
 			}
-		} else if length <= mediumTextBlobMax {
-			length = mediumTextBlobMax / charsetMaxLength
+		} else if byteLength <= mediumTextBlobMax {
 			byteLength = mediumTextBlobMax
+			charLength = mediumTextBlobMax / charsetMaxLength
 			if baseType == sqltypes.Text {
 				byteLength = byteLength * charsetMaxLength
 			}
 		} else {
 			// Unlike the others, we just limit on character length rather than byte length.
-			length = longTextBlobMax / charsetMaxLength
 			byteLength = longTextBlobMax
+			charLength = longTextBlobMax / charsetMaxLength
 		}
 	}
 
-	return stringType{baseType, length, uint32(byteLength), collation}, nil
+	return stringType{baseType, charLength, uint32(byteLength), collation}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
