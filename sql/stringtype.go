@@ -427,7 +427,6 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t stringType) String() string {
-	byteLength := t.MaxByteLength()
 	var s string
 
 	switch t.baseType {
