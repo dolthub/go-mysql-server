@@ -1705,16 +1705,13 @@ CREATE TABLE t2
 		expression.NewLiteral("a", sql.LongText),
 		&expression.DefaultColumn{},
 	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
-	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
-		plan.NewFilter(
-			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
-			plan.NewUnresolvedTable("t1", ""),
-		),
-		[]sql.Expression{
-			expression.NewSetField(expression.NewUnresolvedColumn("col1"), expression.NewBindVar("v1")),
-			expression.NewSetField(expression.NewUnresolvedColumn("col2"), expression.NewBindVar("v2")),
-		},
-	),
+	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(plan.NewFilter(
+		expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
+		plan.NewUnresolvedTable("t1", ""),
+	), false, []sql.Expression{
+		expression.NewSetField(expression.NewUnresolvedColumn("col1"), expression.NewBindVar("v1")),
+		expression.NewSetField(expression.NewUnresolvedColumn("col2"), expression.NewBindVar("v2")),
+	}),
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("a", sql.LongText),
 		expression.NewLiteral(int8(1), sql.Int8),
@@ -3703,15 +3700,12 @@ var triggerFixtures = map[string]sql.Node{
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewBeginEndBlock(
 			plan.NewBlock([]sql.Node{
-				plan.NewUpdate(
-					plan.NewFilter(
-						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
-						plan.NewUnresolvedTable("bar", ""),
-					),
-					[]sql.Expression{
-						expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
-					},
-				),
+				plan.NewUpdate(plan.NewFilter(
+					expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
+					plan.NewUnresolvedTable("bar", ""),
+				), false, []sql.Expression{
+					expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
+				}),
 				plan.NewDeleteFrom(
 					plan.NewFilter(
 						expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),

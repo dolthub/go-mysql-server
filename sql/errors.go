@@ -719,5 +719,5 @@ func NewErrInsertIgnore(row Row) ErrInsertIgnore {
 }
 
 func (e ErrInsertIgnore) Error() string {
-	return "Insert ignore error shoudl never be printed"
+	return "Insert ignore error should never be printed"
 }

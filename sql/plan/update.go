@@ -30,17 +30,20 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 type Update struct {
 	UnaryNode
 	Checks sql.CheckConstraints
+	Ignore bool
 }
 
 var _ sql.Databaseable = (*Update)(nil)
 
 // NewUpdate creates an Update node.
-func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
+func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
 	return &Update{
 		UnaryNode: UnaryNode{NewUpdateSource(
 			n,
 			updateExprs,
-		)}}
+		)},
+		Ignore: ignore,
+	}
 }
 
 func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
@@ -144,6 +147,7 @@ type updateIter struct {
 	updater   sql.RowUpdater
 	checks    sql.CheckConstraints
 	closed    bool
+	ignore    bool
 }
 
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -229,18 +233,37 @@ func (u *updateIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
+func (u *updateIter) ignoreOrError(ctx *sql.Context, row sql.Row, err error) error {
+	if !u.ignore {
+		return err
+	}
+
+	return nil
+}
+
 func newUpdateIter(
 	childIter sql.RowIter,
 	schema sql.Schema,
 	updater sql.RowUpdater,
 	checks sql.CheckConstraints,
+	ignore bool,
 ) sql.RowIter {
-	return NewTableEditorIter(updater, &updateIter{
-		childIter: childIter,
-		updater:   updater,
-		schema:    schema,
-		checks:    checks,
-	})
+	if ignore {
+		return NewCheckpointingTableEditorIter(updater, &updateIter{
+			childIter: childIter,
+			updater:   updater,
+			schema:    schema,
+			checks:    checks,
+			ignore:    true,
+		})
+	} else {
+		return NewTableEditorIter(updater, &updateIter{
+			childIter: childIter,
+			updater:   updater,
+			schema:    schema,
+			checks:    checks,
+		})
+	}
 }
 
 // RowIter implements the Node interface.
@@ -256,7 +279,7 @@ func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return newUpdateIter(iter, updatable.Schema(), updater, u.Checks), nil
+	return newUpdateIter(iter, updatable.Schema(), updater, u.Checks, u.Ignore), nil
 }
 
 // WithChildren implements the Node interface.

@@ -63,6 +63,7 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
+		// TODO: Needs to support ignore syntax?
 		convertedVal, err := getField.fieldType.Convert(val)
 		if err != nil {
 			// Fill in error with information

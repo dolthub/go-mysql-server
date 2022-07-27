@@ -1909,7 +1909,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		}
 	}
 
-	return plan.NewUpdate(node, updateExprs), nil
+	return plan.NewUpdate(node, false, updateExprs), nil
 }
 
 func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
