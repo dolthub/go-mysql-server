@@ -62,7 +62,7 @@ const (
 
 	PointSize             = 16
 	CountSize             = 4
-	GeometryMaxByteLength = 4*(1024^3) - 1
+	GeometryMaxByteLength = 4*(1024*1024*1024) - 1
 )
 
 // Type IDs
