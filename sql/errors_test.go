@@ -16,7 +16,7 @@ func TestSQLErrorCast(t *testing.T) {
 		err  error
 		code int
 	}{
-		{ErrTableNotFound.New("table not found Err"), mysql.ERNoSuchTable},
+		{ErrTableNotFound.New("table not found err"), mysql.ERNoSuchTable},
 		{ErrInvalidType.New("unhandled mysql error"), mysql.ERUnknownError},
 		{fmt.Errorf("generic error"), mysql.ERUnknownError},
 		{nil, mysql.ERUnknownError},

@@ -93,7 +93,7 @@ func (doc JSONDocument) Extract(ctx *Context, path string) (JSONValue, error) {
 	}
 
 	// TODO(andy) handle error
-	val, _ := c.Lookup(doc.Val) // Err ignored
+	val, _ := c.Lookup(doc.Val) // err ignored
 
 	return JSONDocument{Val: val}, nil
 }

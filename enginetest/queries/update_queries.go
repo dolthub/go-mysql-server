@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -566,16 +568,18 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "UPDATE IGNORE pkTable set pk = pk + 1, val = val + 1",
-				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+				Query:           "UPDATE IGNORE pkTable set pk = pk + 1, val = val + 1",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM pkTable order by pk",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}},
 			},
 			{
-				Query:    "UPDATE IGNORE idxTable set val = val + 1",
-				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+				Query:           "UPDATE IGNORE idxTable set val = val + 1",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM idxTable order by pk",
@@ -589,6 +593,23 @@ var UpdateIgnoreScripts = []ScriptTest{
 				Query:    "SELECT * FROM pkTable order by pk",
 				Expected: []sql.Row{{1, 1}, {2, 3}, {4, 4}},
 			},
+			{
+				Query:           "UPDATE IGNORE pkTable SET pk = NULL",
+				Expected:        []sql.Row{{newUpdateResult(3, 3)}},
+				ExpectedWarning: mysql.ERBadNullError,
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{0, 1}, {0, 3}, {0, 4}},
+			},
+			{
+				Query:    "UPDATE IGNORE pkTable SET val = NULL",
+				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{0, 0}, {0, 3}, {0, 4}},
+			},
 		},
 	},
 	{
@@ -599,8 +620,9 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "UPDATE IGNORE t1 SET v1 = 'dsddads'",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Query:           "UPDATE IGNORE t1 SET v1 = 'dsddads'",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query:    "SELECT * FROM t1",
@@ -618,8 +640,9 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "UPDATE IGNORE objects SET color = 'orange' where id = 2",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Query:           "UPDATE IGNORE objects SET color = 'orange' where id = 2",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarning: mysql.ErNoReferencedRow2,
 			},
 			{
 				Query:    "SELECT * FROM objects ORDER BY id",
@@ -636,8 +659,9 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "UPDATE IGNORE checksTable SET pk = pk + 1",
-				Expected: []sql.Row{{newUpdateResult(4, 3)}},
+				Query:           "UPDATE IGNORE checksTable SET pk = pk + 1",
+				Expected:        []sql.Row{{newUpdateResult(4, 3)}},
+				ExpectedWarning: mysql.ERUnknownError,
 			},
 			{
 				Query:    "SELECT * from checksTable ORDER BY pk",
@@ -653,32 +677,36 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Query:           "UPDATE IGNORE keyless SET val = 2 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
 			},
 			{
 				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
 				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 			{
-				Query:    "UPDATE IGNORE keyless SET val = 1 where pk = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Query:           "UPDATE IGNORE keyless SET val = 1 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
 			},
 			{
 				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
-				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Query:           "UPDATE IGNORE keyless SET val = 2 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarning: mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
-				Query:    "UPDATE IGNORE keyless SET val = val + 1",
-				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+				Query:           "UPDATE IGNORE keyless SET val = val + 1",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
@@ -686,7 +714,6 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 		},
 	},
-	// TODO: Null
 }
 
 var UpdateErrorTests = []QueryErrorTest{

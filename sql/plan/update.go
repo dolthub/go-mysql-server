@@ -176,7 +176,7 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 			}
 
-			err := u.validateNullability(newRow, u.schema)
+			err := u.validateNullability(ctx, newRow, u.schema)
 			if err != nil {
 				return nil, u.ignoreOrError(ctx, newRow, err)
 			}
@@ -211,12 +211,18 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 	return prev, nil
 }
 
-func (u *updateIter) validateNullability(row sql.Row, schema sql.Schema) error {
+func (u *updateIter) validateNullability(ctx *sql.Context, row sql.Row, schema sql.Schema) error {
 	for idx := 0; idx < len(row); idx++ {
 		col := schema[idx]
 		if !col.Nullable && row[idx] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
-			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+			if u.ignore {
+				row[idx] = col.Type.Zero()
+				_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+			} else {
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+			}
+
 		}
 	}
 	return nil
