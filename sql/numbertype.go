@@ -332,7 +332,8 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 
 // MaxResponseByteLength implements the Type interface
 func (t numberTypeImpl) MaxResponseByteLength() uint32 {
-	// https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+	// MySQL integer type limits: https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+	// This is for a text response format, NOT a binary encoding
 	switch t.baseType {
 	case sqltypes.Uint8:
 		return 3
