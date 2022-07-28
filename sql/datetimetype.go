@@ -331,10 +331,6 @@ func (t datetimeType) MaxResponseByteLength() uint32 {
 	switch t.baseType {
 	case sqltypes.Date:
 		return uint32(len(DateLayout))
-	case sqltypes.Time:
-		return uint32(len("+123:00:00.999999"))
-	case sqltypes.Year:
-		return 4
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		return uint32(len(TimestampDatetimeLayout))
 	default:
