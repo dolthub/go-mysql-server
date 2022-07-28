@@ -32,12 +32,12 @@ import (
 
 const (
 	charBinaryMax       = 255
-	varcharVarbinaryMax = 65535
+	varcharVarbinaryMax = 65_535
 
 	tinyTextBlobMax   = charBinaryMax
 	textBlobMax       = varcharVarbinaryMax
-	mediumTextBlobMax = 16777215
-	longTextBlobMax   = int64(4294967295)
+	mediumTextBlobMax = 16_777_215
+	longTextBlobMax   = int64(4_294_967_295)
 )
 
 var (
@@ -46,9 +46,9 @@ var (
 	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
 	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation")
 
-	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength())
-	Text       = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax/Collation_Default.CharacterSet().MaxLength())
-	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax/Collation_Default.CharacterSet().MaxLength())
+	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, tinyTextBlobMax)
+	Text       = MustCreateStringWithDefaults(sqltypes.Text, textBlobMax)
+	MediumText = MustCreateStringWithDefaults(sqltypes.Text, mediumTextBlobMax)
 	LongText   = MustCreateStringWithDefaults(sqltypes.Text, longTextBlobMax)
 	TinyBlob   = MustCreateBinary(sqltypes.Blob, tinyTextBlobMax)
 	Blob       = MustCreateBinary(sqltypes.Blob, textBlobMax)
@@ -68,18 +68,27 @@ type StringType interface {
 	Type
 	CharacterSet() CharacterSetID
 	Collation() CollationID
+	// MaxCharacterLength returns the maximum number of chars that can safely be stored in this type, based on
+	// the current character set.
 	MaxCharacterLength() int64
+	// MaxByteLength returns the maximum number of bytes that may be consumed by a value stored in this type.
 	MaxByteLength() int64
+	// Length returns the maximum length, in characters, allowed for this string type.
 	Length() int64
 }
 
 type stringType struct {
-	baseType   query.Type
-	charLength int64
-	collation  CollationID
+	baseType              query.Type
+	maxCharLength         int64
+	maxByteLength         int64
+	maxResponseByteLength uint32
+	collation             CollationID
 }
 
-// CreateString creates a StringType.
+// CreateString creates a new StringType based on the specified type, length, and collation. Length is interpreted as
+// the length of bytes in the new StringType for SQL types that are based on bytes (i.e. TEXT, BLOB, BINARY, and
+// VARBINARY). For all other char-based SQL types, length is interpreted as the length of chars in the new
+// StringType (i.e. CHAR, and VARCHAR).
 func CreateString(baseType query.Type, length int64, collation CollationID) (StringType, error) {
 	// Check the base type first and fail immediately if it's unknown
 	switch baseType {
@@ -112,44 +121,71 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		}
 	}
 
-	// Make sure that length is valid depending on the base type, since they each handle lengths differently
+	// Determine the max byte length and max char length based on whether the base type is byte-based or char-based
 	charsetMaxLength := collation.CharacterSet().MaxLength()
-	byteLength := length * charsetMaxLength
+	maxCharLength := length
+	maxByteLength := length
 	switch baseType {
-	case sqltypes.Char, sqltypes.Binary:
-		// We limit on length, so storage requirements are variable
-		if length > charBinaryMax {
+	case sqltypes.Char, sqltypes.VarChar:
+		maxByteLength = length * charsetMaxLength
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Text, sqltypes.Blob:
+		maxCharLength = length / charsetMaxLength
+	}
+	maxResponseByteLength := maxByteLength
+
+	// Make sure that length is valid depending on the base type, since they each handle lengths differently
+	switch baseType {
+	case sqltypes.Char:
+		if maxCharLength > charBinaryMax {
 			return nil, ErrLengthTooLarge.New(length, charBinaryMax)
 		}
 	case sqltypes.VarChar:
-		if byteLength > varcharVarbinaryMax {
+		if maxCharLength > varcharVarbinaryMax {
 			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax/charsetMaxLength)
+		}
+	case sqltypes.Binary:
+		if maxByteLength > charBinaryMax {
+			return nil, ErrLengthTooLarge.New(length, charBinaryMax)
 		}
 	case sqltypes.VarBinary:
 		// VarBinary fields transmitted over the wire could be for a VarBinary field,
 		// or a JSON field, so we validate against JSON's larger limit (1GB)
 		// instead of VarBinary's smaller limit (65k).
-		if byteLength > MaxJsonFieldByteLength {
+		if maxByteLength > MaxJsonFieldByteLength {
 			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength/charsetMaxLength)
 		}
 	case sqltypes.Text, sqltypes.Blob:
-		// We overall limit on character length, but determine tiny, medium, etc. based on byte length.
-		if length > longTextBlobMax {
+		if maxByteLength > longTextBlobMax {
 			return nil, ErrLengthTooLarge.New(length, longTextBlobMax)
 		}
-		if byteLength <= tinyTextBlobMax {
-			length = tinyTextBlobMax / charsetMaxLength
-		} else if byteLength <= textBlobMax {
-			length = textBlobMax / charsetMaxLength
-		} else if byteLength <= mediumTextBlobMax {
-			length = mediumTextBlobMax / charsetMaxLength
+		if maxByteLength <= tinyTextBlobMax {
+			maxByteLength = tinyTextBlobMax
+			maxCharLength = tinyTextBlobMax / charsetMaxLength
+		} else if maxByteLength <= textBlobMax {
+			maxByteLength = textBlobMax
+			maxCharLength = textBlobMax / charsetMaxLength
+		} else if maxByteLength <= mediumTextBlobMax {
+			maxByteLength = mediumTextBlobMax
+			maxCharLength = mediumTextBlobMax / charsetMaxLength
 		} else {
-			// Unlike the others, we just limit on character length rather than byte length.
-			length = longTextBlobMax
+			maxByteLength = longTextBlobMax
+			maxCharLength = longTextBlobMax / charsetMaxLength
+		}
+
+		maxResponseByteLength = maxByteLength
+		if baseType == sqltypes.Text && maxByteLength != longTextBlobMax {
+			// For TEXT types, MySQL returns the maxByteLength multiplied by the size of the largest
+			// multibyte character in the associated charset for the maximum field bytes in the response
+			// metadata. It seems like returning the maxByteLength would be sufficient, but we do this to
+			// emulate MySQL's behavior exactly.
+			// The one exception is LongText types, which cannot be multiplied by a multibyte char multiplier,
+			// since the max bytes field in a column definition response over the wire is a uint32 and multiplying
+			// longTextBlobMax by anything over 1 would cause it to overflow.
+			maxResponseByteLength = maxByteLength * charsetMaxLength
 		}
 	}
 
-	return stringType{baseType, length, collation}, nil
+	return stringType{baseType, maxCharLength, maxByteLength, uint32(maxResponseByteLength), collation}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
@@ -201,8 +237,13 @@ func CreateLongText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t stringType) MaxTextResponseByteLength() uint32 {
+	return t.maxResponseByteLength
+}
+
 func (t stringType) Length() int64 {
-	return t.charLength
+	return t.maxCharLength
 }
 
 // Compare implements Type interface.
@@ -320,26 +361,26 @@ func ConvertToString(v interface{}, t stringType) (string, error) {
 
 	if t.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
-		if int64(len(val)) > t.MaxByteLength() {
+		if int64(len(val)) > t.maxByteLength {
 			return "", ErrLengthBeyondLimit.New(val, t.String())
 		}
 	} else {
 		if t.CharacterSet().MaxLength() == 1 {
 			// if the character set only has a max size of 1, we can just count the bytes
-			if int64(len(val)) > t.charLength {
+			if int64(len(val)) > t.maxCharLength {
 				return "", ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
 			//TODO: this should count the string's length properly according to the character set
 			//convert 'val' string to rune to count the character length, not byte length
-			if int64(len([]rune(val))) > t.charLength {
+			if int64(len([]rune(val))) > t.maxCharLength {
 				return "", ErrLengthBeyondLimit.New(val, t.String())
 			}
 		}
 	}
 
 	if t.baseType == sqltypes.Binary {
-		val += strings.Repeat(string([]byte{0}), int(t.charLength)-len(val))
+		val += strings.Repeat(string([]byte{0}), int(t.maxCharLength)-len(val))
 	}
 
 	return val, nil
@@ -357,7 +398,7 @@ func (t stringType) MustConvert(v interface{}) interface{} {
 // Equals implements the Type interface.
 func (t stringType) Equals(otherType Type) bool {
 	if ot, ok := otherType.(stringType); ok {
-		return t.baseType == ot.baseType && t.collation == ot.collation && t.charLength == ot.charLength
+		return t.baseType == ot.baseType && t.collation == ot.collation && t.maxCharLength == ot.maxCharLength
 	}
 	return false
 }
@@ -400,34 +441,33 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t stringType) String() string {
-	byteLength := t.MaxByteLength()
 	var s string
 
 	switch t.baseType {
 	case sqltypes.Char:
-		s = fmt.Sprintf("CHAR(%v)", t.charLength)
+		s = fmt.Sprintf("CHAR(%v)", t.maxCharLength)
 	case sqltypes.Binary:
-		s = fmt.Sprintf("BINARY(%v)", t.charLength)
+		s = fmt.Sprintf("BINARY(%v)", t.maxCharLength)
 	case sqltypes.VarChar:
-		s = fmt.Sprintf("VARCHAR(%v)", t.charLength)
+		s = fmt.Sprintf("VARCHAR(%v)", t.maxCharLength)
 	case sqltypes.VarBinary:
-		s = fmt.Sprintf("VARBINARY(%v)", t.charLength)
+		s = fmt.Sprintf("VARBINARY(%v)", t.maxCharLength)
 	case sqltypes.Text:
-		if byteLength <= tinyTextBlobMax {
+		if t.maxByteLength <= tinyTextBlobMax {
 			s = "TINYTEXT"
-		} else if byteLength <= textBlobMax {
+		} else if t.maxByteLength <= textBlobMax {
 			s = "TEXT"
-		} else if byteLength <= mediumTextBlobMax {
+		} else if t.maxByteLength <= mediumTextBlobMax {
 			s = "MEDIUMTEXT"
 		} else {
 			s = "LONGTEXT"
 		}
 	case sqltypes.Blob:
-		if byteLength <= tinyTextBlobMax {
+		if t.maxByteLength <= tinyTextBlobMax {
 			s = "TINYBLOB"
-		} else if byteLength <= textBlobMax {
+		} else if t.maxByteLength <= textBlobMax {
 			s = "BLOB"
-		} else if byteLength <= mediumTextBlobMax {
+		} else if t.maxByteLength <= mediumTextBlobMax {
 			s = "MEDIUMBLOB"
 		} else {
 			s = "LONGBLOB"
@@ -474,12 +514,12 @@ func (t stringType) Collation() CollationID {
 
 // MaxCharacterLength is the maximum character length for this type.
 func (t stringType) MaxCharacterLength() int64 {
-	return t.charLength
+	return t.maxCharLength
 }
 
 // MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
 func (t stringType) MaxByteLength() int64 {
-	return t.charLength * t.CharacterSet().MaxLength()
+	return t.maxByteLength
 }
 
 func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {

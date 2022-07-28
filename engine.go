@@ -85,11 +85,9 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	if cfg == nil {
 		cfg = &Config{}
 	}
+
 	if cfg.IncludeRootAccount {
 		a.Catalog.MySQLDb.AddRootAccount()
-	}
-	for _, tempUser := range cfg.TemporaryUsers {
-		a.Catalog.MySQLDb.AddSuperUser(tempUser.Username, tempUser.Password)
 	}
 
 	ls := sql.NewLockSubsystem()

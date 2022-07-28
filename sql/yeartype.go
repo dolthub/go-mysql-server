@@ -155,6 +155,11 @@ func (t yearType) Equals(otherType Type) bool {
 	return ok
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t yearType) MaxTextResponseByteLength() uint32 {
+	return 4
+}
+
 // Promote implements the Type interface.
 func (t yearType) Promote() Type {
 	return t

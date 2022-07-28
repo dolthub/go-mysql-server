@@ -330,6 +330,40 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 	}
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t numberTypeImpl) MaxTextResponseByteLength() uint32 {
+	// MySQL integer type limits: https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+	// This is for a text response format, NOT a binary encoding
+	switch t.baseType {
+	case sqltypes.Uint8:
+		return 3
+	case sqltypes.Int8:
+		return 4
+	case sqltypes.Uint16:
+		return 5
+	case sqltypes.Int16:
+		return 6
+	case sqltypes.Uint24:
+		return 8
+	case sqltypes.Int24:
+		return 9
+	case sqltypes.Uint32:
+		return 10
+	case sqltypes.Int32:
+		return 11
+	case sqltypes.Uint64:
+		return 20
+	case sqltypes.Int64:
+		return 20
+	case sqltypes.Float32:
+		return 12
+	case sqltypes.Float64:
+		return 22
+	default:
+		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
+	}
+}
+
 // MustConvert implements the Type interface.
 func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)

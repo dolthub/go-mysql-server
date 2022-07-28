@@ -140,6 +140,11 @@ func (t LineStringType) Equals(otherType Type) bool {
 	return ok
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t LineStringType) MaxTextResponseByteLength() uint32 {
+	return GeometryMaxByteLength
+}
+
 // Promote implements the Type interface.
 func (t LineStringType) Promote() Type {
 	return t
