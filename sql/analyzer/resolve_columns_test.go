@@ -207,7 +207,6 @@ func TestQualifyColumns(t *testing.T) {
 			err: sql.ErrTableNotFound,
 		},
 		{
-			//todo(max): need to rewrite aliases
 			name: "ambiguous column name",
 			node: plan.NewProject(
 				[]sql.Expression{

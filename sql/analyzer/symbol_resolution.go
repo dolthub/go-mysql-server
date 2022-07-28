@@ -24,6 +24,109 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// pruneTables removes unneeded columns from *plan.ResolvedTable nodes
+//
+// A preOrder walk constructs a new tree top-down. For every non-base
+// case node encountered:
+//   1) Collect outer tableCol dependencies for the node
+//   2) Apply the node's dependencies to |parentCols|, |parentStars|,
+//      and |unqualifiedStar|.
+//   3) Process the node's children with the new dependencies.
+//   4) Rewind the dependencies, resetting |parentCols|, |parentStars|,
+//      and |unqualifiedStar| to values when we entered this node.
+//   5) Return the node with its children to the parent.
+//
+// The base case prunes a *plan.ResolvedTable of parent dependencies.
+//
+// The dependencies considered are:
+//  - outerCols: columns used by filters or other expressions
+//    sourced from outside the node
+//  - aliasCols: a bridge between outside columns and an aliased
+//    data source.
+//  - subqueryCols: correlated subqueries have outside cols not
+//    satisfied by tablescans in the subquery
+//  - stars: a tablescan with a qualified star or cannot be pruned. An
+//    unqualified star prevents pruning every child tablescan.
+//
+func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// the same table can appear in multiple table scans,
+	// so we use a counter to pin references
+	parentCols := make(map[tableCol]int)
+	parentStars := make(map[string]struct{})
+	var unqualifiedStar bool
+
+	push := func(cols []tableCol, nodeStars []string, nodeUnq bool) {
+		for _, c := range cols {
+			parentCols[c]++
+		}
+		for _, c := range nodeStars {
+			parentStars[c] = struct{}{}
+		}
+		unqualifiedStar = unqualifiedStar || nodeUnq
+	}
+
+	pop := func(cols []tableCol, nodeStars []string, beforeUnq bool) {
+		for _, c := range cols {
+			parentCols[c]--
+		}
+		for _, c := range nodeStars {
+			delete(parentStars, c)
+		}
+		unqualifiedStar = beforeUnq
+	}
+
+	var pruneWalk func(n sql.Node) (sql.Node, transform.TreeIdentity, error)
+	pruneWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
+		case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin, *plan.Filter,
+			*plan.GroupBy, *plan.Project, *plan.TableAlias,
+			*plan.Window, *plan.Sort, *plan.Limit, *plan.RecursiveCte,
+			*plan.RecursiveTable, *plan.TopN, *plan.Offset:
+		default:
+			return n, transform.SameTree, nil
+		}
+		if sq := findSubqueryExpr(n); sq != nil {
+			return n, transform.SameTree, nil
+		}
+
+		beforeUnq := unqualifiedStar
+
+		//todo(max): outer and alias cols can have duplicates, as long as the pop
+		// is equal and opposite we are usually fine. In the cases we aren't, we
+		// already do not handle nested aliasing well.
+		outerCols, outerStars, outerUnq := gatherOuterCols(n)
+		aliasCols, aliasStars := gatherTableAlias(n, parentCols, parentStars, unqualifiedStar)
+		push(outerCols, outerStars, outerUnq)
+		push(aliasCols, aliasStars, false)
+
+		children := n.Children()
+		var newChildren []sql.Node
+		for i, c := range children {
+			child, same, _ := pruneWalk(c)
+			if !same {
+				if newChildren == nil {
+					newChildren = make([]sql.Node, len(children))
+					copy(newChildren, children)
+				}
+				newChildren[i] = child
+			}
+		}
+
+		pop(outerCols, outerStars, beforeUnq)
+		pop(aliasCols, aliasStars, beforeUnq)
+
+		if len(newChildren) == 0 {
+			return n, transform.SameTree, nil
+		}
+		ret, _ := n.WithChildren(newChildren...)
+		return ret, transform.NewTree, nil
+	}
+
+	return pruneWalk(n)
+}
+
 // findSubqueryExpr searches for a *plan.Subquery in a single node,
 // returning the subquery or nil
 func findSubqueryExpr(n sql.Node) *plan.Subquery {
@@ -48,11 +151,13 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 }
 
 // pruneTableCols uses a list of parent dependencies columns and stars
-// to prune the table schema
+// to prune and return a new table node. We prune a column if no
+// parent references the column, no parent projections this table as a
+// qualified star, and no parent projects an unqualified star.
 func pruneTableCols(
 	n *plan.ResolvedTable,
-	needed map[tableCol]int,
-	stars map[string]struct{},
+	parentCols map[tableCol]int,
+	parentStars map[string]struct{},
 	unqualifiedStar bool,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(n)
@@ -61,7 +166,7 @@ func pruneTableCols(
 		return n, transform.SameTree, nil
 	}
 
-	_, selectStar := stars[t.Name()]
+	_, selectStar := parentStars[t.Name()]
 	if unqualifiedStar {
 		selectStar = true
 	}
@@ -80,7 +185,7 @@ func pruneTableCols(
 	source := strings.ToLower(t.Name())
 	for _, col := range t.Schema() {
 		c := tableCol{table: source, col: strings.ToLower(col.Name)}
-		if selectStar || needed[c] > 0 {
+		if selectStar || parentCols[c] > 0 {
 			cols = append(cols, c.col)
 		}
 	}
@@ -142,15 +247,15 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 }
 
 // gatherTableAlias bridges two scopes: the parent scope with
-// its |needed| columns, and the child data source that is
+// its |parentCols|, and the child data source that is
 // accessed through this node's alias name. We return the
-// needed aliased columns qualified with the base table name,
+// aliased columns qualified with the base table name,
 // and stars if applicable.
 // TODO: we don't have any tests with the unqualified confition
 func gatherTableAlias(
 	n sql.Node,
-	needed map[tableCol]int,
-	stars map[string]struct{},
+	parentCols map[tableCol]int,
+	parentStars map[string]struct{},
 	unqualifiedStar bool,
 ) ([]tableCol, []string) {
 	var cols []tableCol
@@ -162,20 +267,20 @@ func gatherTableAlias(
 		if rt := seeThroughDecoration(n.Child); rt != nil {
 			base = rt.Name()
 		}
-		_, starred := stars[alias]
+		_, starred := parentStars[alias]
 		if unqualifiedStar {
 			starred = true
 		}
 		for _, col := range n.Schema() {
 			baseCol := tableCol{table: base, col: col.Name}
 			aliasCol := tableCol{table: alias, col: col.Name}
-			if starred || needed[aliasCol] > 0 {
+			if starred || parentCols[aliasCol] > 0 {
 				// if the outer scope requests an aliased column
 				// a table lower in the tree must provide the source
 				cols = append(cols, baseCol)
 			}
 		}
-		for t := range stars {
+		for t := range parentStars {
 			if t == alias {
 				nodeStars = append(nodeStars, base)
 			}
@@ -192,95 +297,4 @@ func gatherSubqueryExpression(n sql.Node) ([]tableCol, []string, bool) {
 		return gatherOuterCols(sq.Query)
 	}
 	return nil, nil, false
-}
-
-// pruneTables removes unneeded columns from *plan.ResolvedTable nodes
-func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	needed := make(map[tableCol]int)
-	var unqualifiedStar bool
-	stars := make(map[string]struct{})
-
-	push := func(cols []tableCol, nodeStars []string, nodeUnq bool) {
-		for _, c := range cols {
-			needed[c]++
-		}
-		for _, c := range nodeStars {
-			stars[c] = struct{}{}
-		}
-		unqualifiedStar = unqualifiedStar || nodeUnq
-	}
-
-	pop := func(cols []tableCol, nodeStars []string, beforeUnq bool) {
-		for _, c := range cols {
-			needed[c]--
-		}
-		for _, c := range nodeStars {
-			delete(stars, c)
-		}
-		unqualifiedStar = beforeUnq
-	}
-
-	// preOrder walk constructs a new tree. Nodes pass dependencies
-	// to children, and reset dependencies before returning to parent.
-	//
-	// The dependencies considered are:
-	//  - outerCols: columns used by filters or other expressions
-	//    sourced from outside the node
-	//  - aliasCols: a bridge between outside columns and an aliased
-	//    data source.
-	//  - subqueryCols: correlated subqueries have outside cols not
-	//    satisfied by tablescans in the subquery
-	//
-	// Stars are handled similarly, but with broader scoping authority.
-	var pruneWalk func(n sql.Node) (sql.Node, transform.TreeIdentity, error)
-	pruneWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.ResolvedTable:
-			return pruneTableCols(n, needed, stars, unqualifiedStar)
-		case sql.OpaqueNode, *plan.InsertInto, *plan.DeleteFrom, *plan.Update,
-			*plan.NaturalJoin, *plan.CreateCheck, *plan.CreateProcedure, *plan.AddColumn,
-			*plan.Call, *plan.Into, *plan.ShowCreateTable, *plan.Describe, *plan.DescribeQuery,
-			*plan.DropColumn, *plan.AlterPK, *plan.AlterIndex, *plan.AlterAutoIncrement,
-			*plan.ShowColumns, *plan.ShowCreateDatabase, *plan.ShowCreateTrigger,
-			*plan.ShowCreateProcedure:
-			return n, transform.SameTree, nil
-		}
-		if sq := findSubqueryExpr(n); sq != nil {
-			return n, transform.SameTree, nil
-		}
-
-		beforeUnq := unqualifiedStar
-
-		//todo(max): outer and alias cols can have duplicates, as long as the pop
-		// is equal and opposite we are usually fine. In the cases we aren't, we
-		// already do not handle nested aliasing well.
-		outerCols, outerStars, outerUnq := gatherOuterCols(n)
-		aliasCols, aliasStars := gatherTableAlias(n, needed, stars, unqualifiedStar)
-		push(outerCols, outerStars, outerUnq)
-		push(aliasCols, aliasStars, false)
-
-		children := n.Children()
-		var newChildren []sql.Node
-		for i, c := range children {
-			child, same, _ := pruneWalk(c)
-			if !same {
-				if newChildren == nil {
-					newChildren = make([]sql.Node, len(children))
-					copy(newChildren, children)
-				}
-				newChildren[i] = child
-			}
-		}
-
-		pop(outerCols, outerStars, beforeUnq)
-		pop(aliasCols, aliasStars, beforeUnq)
-
-		if len(newChildren) == 0 {
-			return n, transform.SameTree, nil
-		}
-		ret, _ := n.WithChildren(newChildren...)
-		return ret, transform.NewTree, nil
-	}
-
-	return pruneWalk(n)
 }

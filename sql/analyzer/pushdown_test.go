@@ -92,7 +92,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownProjectionsId))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pruneTablesId))
 }
 
 func TestPushdownFilterToTables(t *testing.T) {

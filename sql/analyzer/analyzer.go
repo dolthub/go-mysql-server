@@ -367,7 +367,7 @@ func DefaultRuleSelector(id RuleId) bool {
 
 func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
-		if id == pushdownProjectionsId {
+		if id == pruneTablesId {
 			return false
 		}
 		return sel(id)
@@ -394,7 +394,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		clearWarningsId,
 		stripDecorationsId,
 		reresolveTablesId,
-		pushdownProjectionsId,
+		pruneTablesId,
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,

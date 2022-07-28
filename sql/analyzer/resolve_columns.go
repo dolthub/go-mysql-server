@@ -121,7 +121,7 @@ func newNestingLevelSymbols() *nestingLevelSymbols {
 }
 
 // availableNames tracks available table and column name symbols at each nesting level for a query, where level 0
-// is the node being analyzed, and each additional level is one layer of query namespace outward.
+// is the node being analyzed, and each additional level is one layer of query scope outward.
 type availableNames map[int]*nestingLevelSymbols
 
 // indexColumn adds a column with the given table and column name at the given nesting level

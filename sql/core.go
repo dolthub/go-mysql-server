@@ -395,7 +395,7 @@ type FilteredTable interface {
 // that's more optimized given the columns that are projected.
 type ProjectedTable interface {
 	Table
-	WithProjections([]string) Table
+	WithProjections(colNames []string) Table
 	Projections() []string
 }
 
