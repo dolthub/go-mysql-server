@@ -39,6 +39,6 @@ func TestStoredProcedureNotFoundWithNoDatabaseSelected(t *testing.T) {
 	node, identity, err := applyProceduresCall(ctx, analyzer, call, scope, DefaultRuleSelector)
 	assert.Nil(t, node)
 	assert.Equal(t, transform.SameTree, identity)
-	assert.True(t, sql.ErrStoredProcedureDoesNotExist.Is(err))
+	assert.Contains(t, err.Error(), "stored procedure \"non_existent_procedure\" does not exist")
 	assert.Contains(t, err.Error(), "this might be because no database is selected")
 }
