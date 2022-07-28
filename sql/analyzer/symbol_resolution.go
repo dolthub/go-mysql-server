@@ -47,7 +47,14 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 	return nil
 }
 
-func pruneTableCols(n *plan.ResolvedTable, needed map[tableCol]int, stars map[string]struct{}, unqualifiedStar bool) (sql.Node, transform.TreeIdentity, error) {
+// pruneTableCols uses a list of parent dependencies columns and stars
+// to prune the table schema
+func pruneTableCols(
+	n *plan.ResolvedTable,
+	needed map[tableCol]int,
+	stars map[string]struct{},
+	unqualifiedStar bool,
+) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(n)
 	t, ok := table.(sql.ProjectedTable)
 	if !ok || t.Name() == sql.DualTableName {
@@ -89,86 +96,109 @@ func pruneTableCols(n *plan.ResolvedTable, needed map[tableCol]int, stars map[st
 	return plan.NewDecoratedNode(fmt.Sprintf("Projected table access on %v", cols), ret), transform.NewTree, nil
 }
 
-func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// gatherOuterCols searches a node'e expressions for column
+// references and stars.
+func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
+	ne, ok := n.(sql.Expressioner)
+	if !ok {
+		return nil, nil, false
+	}
+	var cols []tableCol
+	var nodeStars []string
+	var nodeUnqualifiedStar bool
+	for _, e := range ne.Expressions() {
+		transform.InspectExpr(e, func(e sql.Expression) bool {
+			var col tableCol
+			switch e := e.(type) {
+			case *expression.Alias:
+				switch e := e.Child.(type) {
+				case *expression.GetField:
+					col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+				case *expression.UnresolvedColumn:
+					col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+				default:
+				}
+			case *expression.GetField:
+				col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+			case *expression.UnresolvedColumn:
+				col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+			case *expression.Star:
+				if len(e.Table) > 0 {
+					nodeStars = append(nodeStars, strings.ToLower(e.Table))
+				} else {
+					nodeUnqualifiedStar = true
+				}
+			default:
+			}
+			if col.col != "" {
+				cols = append(cols, col)
+
+			}
+			return false
+		})
+	}
+
+	return cols, nodeStars, nodeUnqualifiedStar
+}
+
+// gatherTableAlias bridges two scopes: the parent scope with
+// its |needed| columns, and the child data source that is
+// accessed through this node's alias name. We return the
+// needed aliased columns qualified with the base table name,
+// and stars if applicable.
+// TODO: we don't have any tests with the unqualified confition
+func gatherTableAlias(
+	n sql.Node,
+	needed map[tableCol]int,
+	stars map[string]struct{},
+	unqualifiedStar bool,
+) ([]tableCol, []string) {
+	var cols []tableCol
+	var nodeStars []string
+	switch n := n.(type) {
+	case *plan.TableAlias:
+		alias := n.Name()
+		var base string
+		if rt := seeThroughDecoration(n.Child); rt != nil {
+			base = rt.Name()
+		}
+		_, starred := stars[alias]
+		if unqualifiedStar {
+			starred = true
+		}
+		for _, col := range n.Schema() {
+			baseCol := tableCol{table: base, col: col.Name}
+			aliasCol := tableCol{table: alias, col: col.Name}
+			if starred || needed[aliasCol] > 0 {
+				// if the outer scope requests an aliased column
+				// a table lower in the tree must provide the source
+				cols = append(cols, baseCol)
+			}
+		}
+		for t := range stars {
+			if t == alias {
+				nodeStars = append(nodeStars, base)
+			}
+		}
+		return cols, nodeStars
+	default:
+	}
+	return cols, nodeStars
+}
+
+// todo(max): implement this
+func gatherSubqueryExpression(n sql.Node) ([]tableCol, []string, bool) {
+	if sq := findSubqueryExpr(n); sq != nil {
+		return gatherOuterCols(sq.Query)
+	}
+	return nil, nil, false
+}
+
+// pruneTables removes unneeded columns from *plan.ResolvedTable nodes
+func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	needed := make(map[tableCol]int)
 	var unqualifiedStar bool
 	stars := make(map[string]struct{})
-
-	gatherOuterCols := func(n sql.Node) ([]tableCol, []string, bool) {
-		ne, ok := n.(sql.Expressioner)
-		if !ok {
-			return nil, nil, false
-		}
-		var cols []tableCol
-		var nodeStars []string
-		var nodeUnqualifiedStar bool
-		for _, e := range ne.Expressions() {
-			transform.InspectExpr(e, func(e sql.Expression) bool {
-				switch e := e.(type) {
-				case *expression.Alias:
-					switch e := e.Child.(type) {
-					case *expression.GetField:
-						cols = append(cols, tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())})
-					case *expression.UnresolvedColumn:
-						cols = append(cols, tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())})
-					default:
-					}
-				case *expression.GetField:
-					cols = append(cols, tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())})
-				case *expression.UnresolvedColumn:
-					cols = append(cols, tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())})
-				case *expression.Star:
-					if len(e.Table) > 0 {
-						nodeStars = append(nodeStars, strings.ToLower(e.Table))
-					} else {
-						nodeUnqualifiedStar = true
-					}
-				default:
-				}
-				return false
-			})
-		}
-
-		return cols, nodeStars, nodeUnqualifiedStar
-	}
-
-	gatherTableAlias := func(n sql.Node) ([]tableCol, []string) {
-		var cols []tableCol
-		var nodeStars []string
-		switch n := n.(type) {
-		case *plan.TableAlias:
-			alias := n.Name()
-			var base string
-			if rt := seeThroughDecoration(n.Child); rt != nil {
-				base = rt.Name()
-			}
-			_, starred := stars[alias]
-			for _, col := range n.Schema() {
-				baseCol := tableCol{table: base, col: col.Name}
-				aliasCol := tableCol{table: alias, col: col.Name}
-				if starred || needed[aliasCol] > 0 {
-					// if the outer scope requests an aliased column
-					// a table lower in the tree must provide the source
-					cols = append(cols, baseCol)
-				}
-			}
-			for t := range stars {
-				if t == alias {
-					nodeStars = append(nodeStars, base)
-				}
-			}
-			return cols, nodeStars
-		default:
-		}
-		return cols, nodeStars
-	}
-
-	//gatherSubqueryExpression := func(n sql.Node) ([]tableCol, []string, bool) {
-	//	if sq := findSubqueryExpr(n); sq != nil {
-	//		return gatherOuterCols(sq.Query)
-	//	}
-	//	return nil, nil, false
-	//}
 
 	push := func(cols []tableCol, nodeStars []string, nodeUnq bool) {
 		for _, c := range cols {
@@ -190,16 +220,29 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 		unqualifiedStar = beforeUnq
 	}
 
-	var preOrderWalk func(n sql.Node) (sql.Node, transform.TreeIdentity, error)
-	preOrderWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	// preOrder walk constructs a new tree. Nodes pass dependencies
+	// to children, and reset dependencies before returning to parent.
+	//
+	// The dependencies considered are:
+	//  - outerCols: columns used by filters or other expressions
+	//    sourced from outside the node
+	//  - aliasCols: a bridge between outside columns and an aliased
+	//    data source.
+	//  - subqueryCols: correlated subqueries have outside cols not
+	//    satisfied by tablescans in the subquery
+	//
+	// Stars are handled similarly, but with broader scoping authority.
+	var pruneWalk func(n sql.Node) (sql.Node, transform.TreeIdentity, error)
+	pruneWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, needed, stars, unqualifiedStar)
 		case sql.OpaqueNode, *plan.InsertInto, *plan.DeleteFrom, *plan.Update,
 			*plan.NaturalJoin, *plan.CreateCheck, *plan.CreateProcedure, *plan.AddColumn,
 			*plan.Call, *plan.Into, *plan.ShowCreateTable, *plan.Describe, *plan.DescribeQuery,
-			*plan.DropColumn, *plan.AlterPK, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.ShowColumns,
-			*plan.ShowCreateDatabase, *plan.ShowCreateTrigger, *plan.ShowCreateProcedure:
+			*plan.DropColumn, *plan.AlterPK, *plan.AlterIndex, *plan.AlterAutoIncrement,
+			*plan.ShowColumns, *plan.ShowCreateDatabase, *plan.ShowCreateTrigger,
+			*plan.ShowCreateProcedure:
 			return n, transform.SameTree, nil
 		}
 		if sq := findSubqueryExpr(n); sq != nil {
@@ -208,114 +251,36 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 
 		beforeUnq := unqualifiedStar
 
+		//todo(max): outer and alias cols can have duplicates, as long as the pop
+		// is equal and opposite we are usually fine. In the cases we aren't, we
+		// already do not handle nested aliasing well.
 		outerCols, outerStars, outerUnq := gatherOuterCols(n)
-		aliasCols, aliasStars := gatherTableAlias(n)
+		aliasCols, aliasStars := gatherTableAlias(n, needed, stars)
 		push(outerCols, outerStars, outerUnq)
 		push(aliasCols, aliasStars, false)
-		//push(sqCols, sqStars, sqUnq)
 
-		newChildren := make([]sql.Node, len(n.Children()))
-		var allSame = transform.SameTree
-		for i, c := range n.Children() {
-			child, same, _ := preOrderWalk(c)
+		children := n.Children()
+		var newChildren []sql.Node
+		for i, c := range children {
+			child, same, _ := pruneWalk(c)
 			if !same {
-				allSame = transform.NewTree
+				if newChildren == nil {
+					newChildren = make([]sql.Node, len(children))
+					copy(newChildren, children)
+				}
+				newChildren[i] = child
 			}
-			newChildren[i] = child
 		}
 
 		pop(outerCols, outerStars, beforeUnq)
 		pop(aliasCols, aliasStars, beforeUnq)
-		//pop(sqCols, sqStars, beforeUnq)
 
+		if len(newChildren) == 0 {
+			return n, transform.SameTree, nil
+		}
 		ret, _ := n.WithChildren(newChildren...)
-		return ret, allSame, nil
+		return ret, transform.NewTree, nil
 	}
-
-	return preOrderWalk(n)
-}
-
-func compareTableCol(i, j tableCol) int {
-	if i.table < j.table {
-		return -1
-	} else if i.table > j.table {
-		return 1
-	} else if i.col < j.col {
-		return -1
-	} else if i.col > j.col {
-		return 1
-	}
-	return 0
-}
-
-func mergeCols(x, y []tableCol) []tableCol {
-	if len(x) == 0 {
-		return y
-	} else if len(y) == 0 {
-		return x
-	}
-	ret := make([]tableCol, len(x)+len(y))
-	var i, j, k int
-	for i < len(x) && j < len(y) {
-		cmp := compareTableCol(x[i], y[j])
-		if cmp < 0 {
-			ret[k] = x[i]
-			i++
-		} else if cmp > 0 {
-			ret[k] = y[j]
-			j++
-		} else {
-			ret[k] = x[i]
-			i++
-			j++
-		}
-		k++
-	}
-	for i < len(x) {
-		ret[k] = x[i]
-		i++
-		k++
-	}
-	for j < len(y) {
-		ret[k] = y[j]
-		j++
-		k++
-	}
-	return ret[:k]
-}
-
-func mergeStars(x, y []string) []string {
-	if len(x) == 0 {
-		return y
-	} else if len(y) == 0 {
-		return x
-	}
-
-	ret := make([]string, len(x)+len(y))
-	var i, j, k int
-	for i < len(x) && j < len(y) {
-		if x[i] < y[j] {
-			ret[k] = x[i]
-			i++
-		} else if x[i] > y[j] {
-			ret[k] = y[j]
-			j++
-		} else {
-			ret[k] = x[i]
-			i++
-			j++
-		}
-		k++
-	}
-	for i < len(x) {
-		ret[k] = x[i]
-		i++
-		k++
-	}
-	for j < len(y) {
-		ret[k] = y[j]
-		j++
-		k++
-	}
-	return ret[:k]
+	
+	return pruneWalk(n)
 }
