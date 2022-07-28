@@ -25,25 +25,10 @@ type ResolvedTable struct {
 	sql.Table
 	Database sql.Database
 	AsOf     interface{}
-	relId    sql.RelId
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
-
-var _ sql.RelationalNode = (*ResolvedTable)(nil)
-
-// WithRelationalId implements sql.RelationalNode
-func (t *ResolvedTable) WithRelationalId(id sql.RelId) sql.Node {
-	nt := *t
-	nt.relId = id
-	return &nt
-}
-
-// RelationalId implements sql.RelationalId
-func (t *ResolvedTable) RelationalId() sql.RelId {
-	return t.relId
-}
 
 // Can't embed Table2 like we do Table1 as it's an extension not everyone implements
 var _ sql.Table2 = (*ResolvedTable)(nil)

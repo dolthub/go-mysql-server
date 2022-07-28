@@ -25,7 +25,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func not(e sql.Expression) sql.Expression {
@@ -171,8 +170,6 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 				expected = tt.node
 			}
 
-			result = clearCachedAttributes(result)
-
 			assertNodesEqualWithDiff(t, expected, result)
 		})
 	}
@@ -217,16 +214,4 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 		return false
 	}
 	return true
-}
-
-func clearCachedAttributes(n sql.Node) sql.Node {
-	n, _, _ = transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case sql.RelationalNode:
-			return n.WithRelationalId(0), transform.NewTree, nil
-		default:
-			return n, transform.SameTree, nil
-		}
-	})
-	return n
 }

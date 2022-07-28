@@ -76,7 +76,7 @@ func TestWriteQueryPlans(t *testing.T) {
 }
 
 func TestWriteIndexQueryPlans(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	harness := NewDefaultMemoryHarness()
 	harness.Setup(setup.ComplexIndexSetup...)

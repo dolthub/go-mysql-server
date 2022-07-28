@@ -24,7 +24,6 @@ type SubqueryAlias struct {
 	Columns        []string
 	name           string
 	TextDefinition string
-	relId          sql.RelId
 }
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
@@ -43,11 +42,6 @@ func (sq *SubqueryAlias) AsView() *sql.View {
 
 // Name implements the Table interface.
 func (sq *SubqueryAlias) Name() string { return sq.name }
-
-func (sq *SubqueryAlias) WithRelationalId(id sql.RelId) sql.Node {
-	sq.relId = id
-	return sq
-}
 
 // Schema implements the Node interface.
 func (sq *SubqueryAlias) Schema() sql.Schema {

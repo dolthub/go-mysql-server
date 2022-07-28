@@ -150,7 +150,6 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 					// if the outer scope requests an aliased column
 					// a table lower in the tree must provide the source
 					cols = append(cols, baseCol)
-					needed[baseCol]++
 				}
 			}
 			for t := range stars {
@@ -196,7 +195,7 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, needed, stars, unqualifiedStar)
-		case sql.OpaqueNode:
+		case sql.OpaqueNode, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.NaturalJoin:
 			return n, transform.SameTree, nil
 		}
 		if sq := findSubqueryExpr(n); sq != nil {
@@ -207,8 +206,6 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 
 		outerCols, outerStars, outerUnq := gatherOuterCols(n)
 		aliasCols, aliasStars := gatherTableAlias(n)
-		//sqCols, sqStars, sqUnq := gatherSubqueryExpression(n)
-
 		push(outerCols, outerStars, outerUnq)
 		push(aliasCols, aliasStars, false)
 		//push(sqCols, sqStars, sqUnq)
@@ -232,4 +229,89 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 	}
 
 	return inOrderWalk(n)
+}
+
+func compareTableCol(i, j tableCol) int {
+	if i.table < j.table {
+		return -1
+	} else if i.table > j.table {
+		return 1
+	} else if i.col < j.col {
+		return -1
+	} else if i.col > j.col {
+		return 1
+	}
+	return 0
+}
+
+func mergeCols(x, y []tableCol) []tableCol {
+	if len(x) == 0 {
+		return y
+	} else if len(y) == 0 {
+		return x
+	}
+	ret := make([]tableCol, len(x)+len(y))
+	var i, j, k int
+	for i < len(x) && j < len(y) {
+		cmp := compareTableCol(x[i], y[j])
+		if cmp < 0 {
+			ret[k] = x[i]
+			i++
+		} else if cmp > 0 {
+			ret[k] = y[j]
+			j++
+		} else {
+			ret[k] = x[i]
+			i++
+			j++
+		}
+		k++
+	}
+	for i < len(x) {
+		ret[k] = x[i]
+		i++
+		k++
+	}
+	for j < len(y) {
+		ret[k] = y[j]
+		j++
+		k++
+	}
+	return ret[:k]
+}
+
+func mergeStars(x, y []string) []string {
+	if len(x) == 0 {
+		return y
+	} else if len(y) == 0 {
+		return x
+	}
+
+	ret := make([]string, len(x)+len(y))
+	var i, j, k int
+	for i < len(x) && j < len(y) {
+		if x[i] < y[j] {
+			ret[k] = x[i]
+			i++
+		} else if x[i] > y[j] {
+			ret[k] = y[j]
+			j++
+		} else {
+			ret[k] = x[i]
+			i++
+			j++
+		}
+		k++
+	}
+	for i < len(x) {
+		ret[k] = x[i]
+		i++
+		k++
+	}
+	for j < len(y) {
+		ret[k] = y[j]
+		j++
+		k++
+	}
+	return ret[:k]
 }

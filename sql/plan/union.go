@@ -23,7 +23,6 @@ import (
 // Union is a node that returns everything in Left and then everything in Right
 type Union struct {
 	BinaryNode
-	relId sql.RelId
 }
 
 // NewUnion creates a new Union node with the given children.
@@ -45,11 +44,6 @@ func (u *Union) Schema() sql.Schema {
 		ret[i] = &c
 	}
 	return ret
-}
-
-func (u *Union) WithRelationalId(id sql.RelId) sql.Node {
-	u.relId = id
-	return u
 }
 
 // Opaque implements the sql.OpaqueNode interface.

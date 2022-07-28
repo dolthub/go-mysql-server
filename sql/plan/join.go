@@ -41,7 +41,6 @@ func shouldUseMemoryJoinsByEnv() bool {
 
 type JoinNode interface {
 	sql.Node
-	sql.RelationalNode
 	Left() sql.Node
 	Right() sql.Node
 	JoinCond() sql.Expression
@@ -58,7 +57,6 @@ type joinStruct struct {
 	CommentStr string
 	ScopeLen   int
 	JoinMode   joinMode
-	relId      sql.RelId
 }
 
 // Expressions implements sql.Expression
@@ -73,17 +71,6 @@ func (j joinStruct) JoinCond() sql.Expression {
 // Comment implements sql.CommentedNode
 func (j joinStruct) Comment() string {
 	return j.CommentStr
-}
-
-// WithRelationalId implements sql.RelationalNode
-func (j *InnerJoin) WithRelationalId(id sql.RelId) sql.Node {
-	j.relId = id
-	return j
-}
-
-// RelationalId implements sql.RelationalId
-func (j *InnerJoin) RelationalId() sql.RelId {
-	return j.relId
 }
 
 // InnerJoin is an inner join between two tables.
@@ -210,17 +197,6 @@ func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	}
 }
 
-// WithRelationalId implements sql.RelationalNode
-func (j *LeftJoin) WithRelationalId(id sql.RelId) sql.Node {
-	j.relId = id
-	return j
-}
-
-// RelationalId implements sql.RelationalId
-func (j *LeftJoin) RelationalId() sql.RelId {
-	return j.relId
-}
-
 // Schema implements the Node interface.
 func (j *LeftJoin) Schema() sql.Schema {
 	return append(j.left.Schema(), makeNullable(j.right.Schema())...)
@@ -298,17 +274,6 @@ func (j *LeftJoin) DebugString() string {
 // RightJoin is a left join between two tables.
 type RightJoin struct {
 	joinStruct
-}
-
-// WithRelationalId implements sql.RelationalNode
-func (j *RightJoin) WithRelationalId(id sql.RelId) sql.Node {
-	j.relId = id
-	return j
-}
-
-// RelationalId implements sql.RelationalId
-func (j *RightJoin) RelationalId() sql.RelId {
-	return j.relId
 }
 
 func (j *RightJoin) JoinType() JoinType {

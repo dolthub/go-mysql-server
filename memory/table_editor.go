@@ -145,7 +145,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.table.schema.Schema, row); err != nil {
+	if err := checkRow(t.table.Schema(), row); err != nil {
 		return err
 	}
 	t.table.verifyRowTypes(row)
@@ -160,10 +160,10 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 
 // Update the given row from the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	if err := checkRow(t.table.schema.Schema, oldRow); err != nil {
+	if err := checkRow(t.table.Schema(), oldRow); err != nil {
 		return err
 	}
-	if err := checkRow(t.table.schema.Schema, newRow); err != nil {
+	if err := checkRow(t.table.Schema(), newRow); err != nil {
 		return err
 	}
 	t.table.verifyRowTypes(oldRow)
@@ -460,7 +460,7 @@ func (pke *pkTableEditAccumulator) getRowKey(r sql.Row) string {
 
 // deleteHelper deletes the given row from the table.
 func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, row sql.Row) error {
-	if err := checkRow(table.schema.Schema, row); err != nil {
+	if err := checkRow(table.Schema(), row); err != nil {
 		return err
 	}
 
@@ -480,7 +480,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, 
 			}
 
 			var err error
-			matches, err = rowsAreEqual(ctx, table.schema.Schema, row, partitionRow)
+			matches, err = rowsAreEqual(ctx, table.Schema(), row, partitionRow)
 			if err != nil {
 				return err
 			}

@@ -245,7 +245,6 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 
-	result = clearCachedAttributes(result)
 	assertNodesEqualWithDiff(t, expected, result)
 }
 

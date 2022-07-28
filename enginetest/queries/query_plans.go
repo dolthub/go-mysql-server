@@ -502,7 +502,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Projected table access on [i s]\n" +
 			"     │           └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(NULL, ∞)}])\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [s]\n" +
 			"             └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
 	},
@@ -511,7 +511,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Projected table access on [i s]\n" +
+			"     │   └─ Projected table access on [s]\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     └─ Filter(NOT(a.s IS NULL))\n" +
 			"         └─ TableAlias(a)\n" +
@@ -528,7 +528,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Projected table access on [i s]\n" +
 			"     │           └─ IndexedTableAccess(mytable on [mytable.s] with ranges: [{(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}, {(NULL, 1)}])\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [s]\n" +
 			"             └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
 	},
@@ -541,7 +541,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Projected table access on [i s]\n" +
 			"     │           └─ IndexedTableAccess(mytable on [mytable.i] with ranges: [{[2, 2]}, {[3, 3]}, {[4, 4]}, {[1, 1]}])\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [s]\n" +
 			"             └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
 	},
@@ -671,7 +671,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Projected table access on [i s]\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [i]\n" +
 			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
@@ -683,7 +683,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Projected table access on [i s]\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [i]\n" +
 			"             └─ Table(mytable)\n" +
 			"",
 	},
@@ -719,7 +719,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Projected table access on [i s]\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [i]\n" +
 			"             └─ Table(mytable)\n" +
 			"",
 	},
@@ -732,8 +732,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Projected table access on [i s]\n" +
 			"     │           └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
-			"             └─ Table(mytable)\n" +
+			"         └─ Table(mytable)\n" +
 			"",
 	},
 	{
@@ -745,8 +744,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Projected table access on [i s]\n" +
 			"     │           └─ IndexedTableAccess(mytable on [mytable.i] with ranges: [{[432, 432]}, {[7, 7]}, {[2, 2]}])\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
-			"             └─ Table(mytable)\n" +
+			"         └─ Table(mytable)\n" +
 			"",
 	},
 	{
@@ -758,15 +756,15 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Table(mytable)\n" +
 			"     └─ IndexedJoin(b.i = c.i)\n" +
 			"         ├─ TableAlias(b)\n" +
-			"         │   └─ Projected table access on [i s]\n" +
+			"         │   └─ Projected table access on [i]\n" +
 			"         │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"         └─ IndexedJoin(c.i = d.i)\n" +
 			"             ├─ Filter(c.i = 2)\n" +
 			"             │   └─ TableAlias(c)\n" +
-			"             │       └─ Projected table access on [i s]\n" +
+			"             │       └─ Projected table access on [i]\n" +
 			"             │           └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"             └─ TableAlias(d)\n" +
-			"                 └─ Projected table access on [i s]\n" +
+			"                 └─ Projected table access on [i]\n" +
 			"                     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
@@ -780,13 +778,13 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   │   └─ Projected table access on [i s]\n" +
 			"     │   │   │       └─ Table(mytable)\n" +
 			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ Projected table access on [i s]\n" +
+			"     │   │       └─ Projected table access on [i]\n" +
 			"     │   │           └─ Table(mytable)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [i s]\n" +
+			"     │       └─ Projected table access on [i]\n" +
 			"     │           └─ Table(mytable)\n" +
 			"     └─ TableAlias(d)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [s]\n" +
 			"             └─ Table(mytable)\n" +
 			"",
 	},
@@ -800,14 +798,13 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   │   └─ Projected table access on [i s]\n" +
 			"     │   │   │       └─ Table(mytable)\n" +
 			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ Projected table access on [i s]\n" +
+			"     │   │       └─ Projected table access on [i]\n" +
 			"     │   │           └─ Table(mytable)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [i s]\n" +
+			"     │       └─ Projected table access on [i]\n" +
 			"     │           └─ Table(mytable)\n" +
 			"     └─ TableAlias(d)\n" +
-			"         └─ Projected table access on [i s]\n" +
-			"             └─ Table(mytable)\n" +
+			"         └─ Table(mytable)\n" +
 			"",
 	},
 	{
@@ -818,7 +815,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Projected table access on [i s]\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [i]\n" +
 			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
@@ -868,7 +865,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Projected table access on [i s]\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [i]\n" +
 			"             └─ Table(mytable)\n" +
 			"",
 	},
@@ -881,8 +878,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Projected table access on [i s]\n" +
 			"     │           └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
-			"             └─ Table(mytable)\n" +
+			"         └─ Table(mytable)\n" +
 			"",
 	},
 	{
@@ -894,15 +890,15 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Table(mytable)\n" +
 			"     └─ IndexedJoin(b.i = c.i)\n" +
 			"         ├─ TableAlias(b)\n" +
-			"         │   └─ Projected table access on [i s]\n" +
+			"         │   └─ Projected table access on [i]\n" +
 			"         │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"         └─ IndexedJoin(c.i = d.i)\n" +
 			"             ├─ Filter(c.i = 2)\n" +
 			"             │   └─ TableAlias(c)\n" +
-			"             │       └─ Projected table access on [i s]\n" +
+			"             │       └─ Projected table access on [i]\n" +
 			"             │           └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"             └─ TableAlias(d)\n" +
-			"                 └─ Projected table access on [i s]\n" +
+			"                 └─ Projected table access on [i]\n" +
 			"                     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
@@ -916,13 +912,13 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   │   └─ Projected table access on [i s]\n" +
 			"     │   │   │       └─ Table(mytable)\n" +
 			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ Projected table access on [i s]\n" +
+			"     │   │       └─ Projected table access on [i]\n" +
 			"     │   │           └─ Table(mytable)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [i s]\n" +
+			"     │       └─ Projected table access on [i]\n" +
 			"     │           └─ Table(mytable)\n" +
 			"     └─ TableAlias(d)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [s]\n" +
 			"             └─ Table(mytable)\n" +
 			"",
 	},
@@ -939,11 +935,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   │       └─ Projected table access on [i s]\n" +
 			"     │   │           └─ Table(mytable)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [i s]\n" +
+			"     │       └─ Projected table access on [s]\n" +
 			"     │           └─ Table(mytable)\n" +
 			"     └─ TableAlias(d)\n" +
-			"         └─ Projected table access on [i s]\n" +
-			"             └─ Table(mytable)\n" +
+			"         └─ Table(mytable)\n" +
 			"",
 	},
 	{
@@ -955,7 +950,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Projected table access on [i s]\n" +
 			"     │           └─ IndexedTableAccess(mytable on [mytable.i] with ranges: [{[10, 20]}])\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [i s]\n" +
+			"         └─ Projected table access on [s]\n" +
 			"             └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
 	},
@@ -1294,7 +1289,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(dt1.i)\n" +
 			"     └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"         ├─ TableAlias(dt2)\n" +
-			"         │   └─ Projected table access on [i date_col timestamp_col]\n" +
+			"         │   └─ Projected table access on [timestamp_col]\n" +
 			"         │       └─ Table(datetime_table)\n" +
 			"         └─ TableAlias(dt1)\n" +
 			"             └─ Projected table access on [i date_col]\n" +
@@ -1311,7 +1306,7 @@ var PlanTests = []QueryPlanTest{
 			"         └─ Project(dt1.i)\n" +
 			"             └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
-			"                 │   └─ Projected table access on [i date_col timestamp_col]\n" +
+			"                 │   └─ Projected table access on [timestamp_col]\n" +
 			"                 │       └─ Table(datetime_table)\n" +
 			"                 └─ TableAlias(dt1)\n" +
 			"                     └─ Projected table access on [i date_col]\n" +
@@ -1327,7 +1322,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Project(dt1.i)\n" +
 			"         └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"             ├─ TableAlias(dt2)\n" +
-			"             │   └─ Projected table access on [i date_col timestamp_col]\n" +
+			"             │   └─ Projected table access on [timestamp_col]\n" +
 			"             │       └─ Table(datetime_table)\n" +
 			"             └─ TableAlias(dt1)\n" +
 			"                 └─ Projected table access on [i date_col]\n" +
@@ -1592,7 +1587,7 @@ var PlanTests = []QueryPlanTest{
 			"         │   └─ Projected table access on [i i2]\n" +
 			"         │       └─ Table(niltable)\n" +
 			"         └─ TableAlias(r)\n" +
-			"             └─ Projected table access on [i i2]\n" +
+			"             └─ Projected table access on [i2]\n" +
 			"                 └─ IndexedTableAccess(niltable on [niltable.i2])\n" +
 			"",
 	},
@@ -2158,7 +2153,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
 			" └─ IndexedJoin(a.y = b.z)\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Projected table access on [x y z]\n" +
+			"     │   └─ Projected table access on [z]\n" +
 			"     │       └─ Table(invert_pk)\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ Projected table access on [x y z]\n" +
@@ -2170,7 +2165,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
 			" └─ IndexedJoin(a.y = b.z)\n" +
 			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Projected table access on [x y z]\n" +
+			"     │   └─ Projected table access on [z]\n" +
 			"     │       └─ Table(invert_pk)\n" +
 			"     └─ Filter(a.z = 2)\n" +
 			"         └─ TableAlias(a)\n" +
@@ -2211,10 +2206,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
 			"     │   │       └─ Table(one_pk)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ Projected table access on [pk]\n" +
 			"     │           └─ Table(one_pk)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ Projected table access on [pk]\n" +
 			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
@@ -2227,10 +2222,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
 			"     │   │       └─ Table(one_pk)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ Projected table access on [pk]\n" +
 			"     │           └─ Table(one_pk)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ Projected table access on [pk]\n" +
 			"             └─ Table(one_pk)\n" +
 			"",
 	},
@@ -2243,10 +2238,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
 			"     │   │       └─ Table(one_pk)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ Projected table access on [pk]\n" +
 			"     │           └─ Table(one_pk)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ Projected table access on [pk]\n" +
 			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
@@ -2260,13 +2255,13 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   │   └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
 			"     │   │   │       └─ Table(one_pk)\n" +
 			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     │   │       └─ Projected table access on [pk]\n" +
 			"     │   │           └─ Table(one_pk)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ Projected table access on [pk]\n" +
 			"     │           └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"     └─ TableAlias(d)\n" +
-			"         └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ Projected table access on [pk]\n" +
 			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
@@ -2279,7 +2274,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
 			"     │   │       └─ Table(one_pk)\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ Projected table access on [pk]\n" +
 			"     │           └─ Table(one_pk)\n" +
 			"     └─ HashLookup(child: (b.pk), lookup: (c.pk))\n" +
 			"         └─ CachedResults\n" +
@@ -2317,7 +2312,7 @@ var PlanTests = []QueryPlanTest{
 			"         │           └─ Table(one_pk_three_idx)\n" +
 			"         └─ Filter(c.v2 = 0)\n" +
 			"             └─ TableAlias(c)\n" +
-			"                 └─ Projected table access on [pk v1 v2]\n" +
+			"                 └─ Projected table access on [v1 v2]\n" +
 			"                     └─ Table(one_pk_three_idx)\n" +
 			"",
 	},
@@ -2332,10 +2327,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   │           └─ Table(one_pk_three_idx)\n" +
 			"     │   └─ Filter(b.pk = 0)\n" +
 			"     │       └─ TableAlias(b)\n" +
-			"     │           └─ Projected table access on [pk v2]\n" +
+			"     │           └─ Projected table access on [pk]\n" +
 			"     │               └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk] with ranges: [{[0, 0]}])\n" +
 			"     └─ TableAlias(c)\n" +
-			"         └─ Projected table access on [pk v1 v2]\n" +
+			"         └─ Projected table access on [v1 v2]\n" +
 			"             └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3])\n" +
 			"",
 	},
@@ -2354,8 +2349,7 @@ var PlanTests = []QueryPlanTest{
 			"                     │   └─ Projected table access on [i s]\n" +
 			"                     │       └─ Table(mytable)\n" +
 			"                     └─ TableAlias(b)\n" +
-			"                         └─ Projected table access on [i s]\n" +
-			"                             └─ Table(mytable)\n" +
+			"                         └─ Table(mytable)\n" +
 			"",
 	},
 	{
@@ -2363,18 +2357,18 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ RightIndexedJoin(b.i = d.i)\n" +
 			"     ├─ TableAlias(d)\n" +
-			"     │   └─ Projected table access on [i s]\n" +
+			"     │   └─ Projected table access on [i]\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     └─ LeftIndexedJoin(a.i = (c.i - 1))\n" +
 			"         ├─ RightIndexedJoin(a.i = (b.i + 1))\n" +
 			"         │   ├─ TableAlias(b)\n" +
-			"         │   │   └─ Projected table access on [i s]\n" +
+			"         │   │   └─ Projected table access on [i]\n" +
 			"         │   │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"         │   └─ TableAlias(a)\n" +
 			"         │       └─ Projected table access on [i s]\n" +
 			"         │           └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"         └─ TableAlias(c)\n" +
-			"             └─ Projected table access on [i s]\n" +
+			"             └─ Projected table access on [i]\n" +
 			"                 └─ Table(mytable)\n" +
 			"",
 	},
@@ -2391,10 +2385,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   │       └─ Projected table access on [i s]\n" +
 			"     │   │           └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"     │   └─ TableAlias(c)\n" +
-			"     │       └─ Projected table access on [i s]\n" +
+			"     │       └─ Projected table access on [i]\n" +
 			"     │           └─ Table(mytable)\n" +
 			"     └─ TableAlias(d)\n" +
-			"         └─ Projected table access on [s2 i2]\n" +
+			"         └─ Projected table access on [i2]\n" +
 			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
@@ -2404,7 +2398,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ LeftIndexedJoin(b.i2 = d.i2)\n" +
 			"     ├─ RightIndexedJoin(a.i = (c.i - 1))\n" +
 			"     │   ├─ TableAlias(c)\n" +
-			"     │   │   └─ Projected table access on [i s]\n" +
+			"     │   │   └─ Projected table access on [i]\n" +
 			"     │   │       └─ Table(mytable)\n" +
 			"     │   └─ RightIndexedJoin(a.i = (b.i2 + 1))\n" +
 			"     │       ├─ TableAlias(b)\n" +
@@ -2414,7 +2408,7 @@ var PlanTests = []QueryPlanTest{
 			"     │           └─ Projected table access on [i s]\n" +
 			"     │               └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"     └─ TableAlias(d)\n" +
-			"         └─ Projected table access on [s2 i2]\n" +
+			"         └─ Projected table access on [i2]\n" +
 			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
@@ -2497,7 +2491,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ RightIndexedJoin(a.pk = i.v1)\n" +
 			"     │   ├─ IndexedJoin(i.v1 = j.pk)\n" +
 			"     │   │   ├─ TableAlias(i)\n" +
-			"     │   │   │   └─ Projected table access on [pk v1 v2]\n" +
+			"     │   │   │   └─ Projected table access on [v1]\n" +
 			"     │   │   │       └─ Table(one_pk_two_idx)\n" +
 			"     │   │   └─ TableAlias(j)\n" +
 			"     │   │       └─ Projected table access on [pk]\n" +
@@ -2507,7 +2501,7 @@ var PlanTests = []QueryPlanTest{
 			"     │           └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.pk])\n" +
 			"     └─ IndexedJoin(k.v1 = l.pk)\n" +
 			"         ├─ TableAlias(k)\n" +
-			"         │   └─ Projected table access on [pk v1 v2]\n" +
+			"         │   └─ Projected table access on [v1]\n" +
 			"         │       └─ Table(one_pk_two_idx)\n" +
 			"         └─ TableAlias(l)\n" +
 			"             └─ Projected table access on [pk v2]\n" +
@@ -2520,7 +2514,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ RightIndexedJoin(a.v1 = l.v2)\n" +
 			"     ├─ IndexedJoin(k.v2 = l.v3)\n" +
 			"     │   ├─ TableAlias(k)\n" +
-			"     │   │   └─ Projected table access on [pk v1 v2]\n" +
+			"     │   │   └─ Projected table access on [v2]\n" +
 			"     │   │       └─ Table(one_pk_two_idx)\n" +
 			"     │   └─ TableAlias(l)\n" +
 			"     │       └─ Projected table access on [v2 v3]\n" +
@@ -2534,7 +2528,7 @@ var PlanTests = []QueryPlanTest{
 			"             │   └─ Projected table access on [v3]\n" +
 			"             │       └─ Table(one_pk_three_idx)\n" +
 			"             └─ TableAlias(i)\n" +
-			"                 └─ Projected table access on [pk v1 v2]\n" +
+			"                 └─ Projected table access on [pk]\n" +
 			"                     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.pk])\n" +
 			"",
 	},

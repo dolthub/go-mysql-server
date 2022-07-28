@@ -399,15 +399,6 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
-type RelId uint16
-
-// RelationalNode is a namespaced source of rows
-type RelationalNode interface {
-	Node
-	WithRelationalId(RelId) Node
-	RelationalId() RelId
-}
-
 // IndexUsing is the desired storage type.
 type IndexUsing byte
 
