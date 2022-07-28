@@ -35,7 +35,7 @@ var _ sql.Table2 = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
-	return &ResolvedTable{table, db, asOf}
+	return &ResolvedTable{Table: table, Database: db, AsOf: asOf}
 }
 
 // Resolved implements the Resolvable interface.

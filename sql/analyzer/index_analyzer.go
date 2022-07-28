@@ -32,6 +32,19 @@ type indexAnalyzer struct {
 	registryIdxes  []sql.Index
 }
 
+// seeThroughDecoration returns a *plan.ResolvedTable or nil
+func seeThroughDecoration(n sql.Node) *plan.ResolvedTable {
+	switch n := n.(type) {
+	case *plan.DecoratedNode:
+		rt, _ := n.Child.(*plan.ResolvedTable)
+		return rt
+	case *plan.ResolvedTable:
+		return n
+	default:
+		return nil
+	}
+}
+
 // newIndexAnalyzerForNode returns an analyzer for indexes available in the node given, keyed by the table name. These
 // might come from either the tables themselves natively, or else from an index driver that has indexes for the tables
 // included in the nodes. Indexes are keyed by the aliased name of the table, if applicable. These names must be
@@ -60,8 +73,8 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.TableAlias:
-				rt, ok := n.Child.(*plan.ResolvedTable)
-				if !ok {
+				rt := seeThroughDecoration(n.Child)
+				if rt == nil {
 					return false
 				}
 

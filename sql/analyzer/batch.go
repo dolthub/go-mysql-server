@@ -60,7 +60,6 @@ func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	if b.Iterations == 0 {
 		return n, transform.SameTree, nil
 	}
-
 	prev := n
 	a.PushDebugContext("0")
 	cur, _, err := b.evalOnce(ctx, a, n, scope, sel)

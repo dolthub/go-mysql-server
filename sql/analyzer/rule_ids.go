@@ -83,7 +83,7 @@ const (
 	pushdownFiltersId             // pushdownFilters
 	subqueryIndexesId             // subqueryIndexes
 	inSubqueryIndexesId           // inSubqueryIndexes
-	pushdownProjectionsId         // pushdownProjections
+	pruneTablesId                 // pruneTables
 	setJoinScopeLenId             // setJoinScopeLen
 	eraseProjectionId             // eraseProjection
 	replaceSortPkId               // replaceSortPk

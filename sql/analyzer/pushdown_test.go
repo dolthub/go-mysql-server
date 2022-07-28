@@ -71,7 +71,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewOr(
@@ -80,19 +80,19 @@ func TestPushdownProjectionToTables(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 						),
 					),
 					plan.NewCrossJoin(
 						plan.NewDecoratedNode("Projected table access on [f]", plan.NewResolvedTable(table.WithProjections([]string{"f"}), nil, nil)),
-						plan.NewDecoratedNode("Projected table access on [t2 i2]", plan.NewResolvedTable(table2.WithProjections([]string{"t2", "i2"}), nil, nil)),
+						plan.NewDecoratedNode("Projected table access on [i2 t2]", plan.NewResolvedTable(table2.WithProjections([]string{"i2", "t2"}), nil, nil)),
 					),
 				),
 			),
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownProjectionsId))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pruneTablesId))
 }
 
 func TestPushdownFilterToTables(t *testing.T) {
