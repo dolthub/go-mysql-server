@@ -358,17 +358,14 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 
 			return sql.NewRow(res), nil
 		} else if isIg {
-			ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler)
-			if !ok {
+			if ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler); ok {
+				err = ui.handleRowUpdateWithIgnore(igErr.OffendingRow, true)
+				if err != nil {
+					return nil, err
+				}
+
 				continue
 			}
-
-			err = ui.handleRowUpdateWithIgnore(igErr.OffendingRow, true)
-			if err != nil {
-				return nil, err
-			}
-
-			continue
 		} else if err != nil {
 			return nil, err
 		}
