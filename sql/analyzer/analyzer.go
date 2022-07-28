@@ -365,7 +365,7 @@ func DefaultRuleSelector(id RuleId) bool {
 	return true
 }
 
-func NewSubqueryRuleSelector(sel RuleSelector) RuleSelector {
+func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		if id == pushdownProjectionsId {
 			return false

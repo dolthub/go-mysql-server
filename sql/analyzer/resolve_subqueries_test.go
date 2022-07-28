@@ -93,9 +93,9 @@ func TestResolveSubqueries(t *testing.T) {
 							"t2", "",
 							plan.NewSubqueryAlias(
 								"t2alias", "",
-								plan.NewProject(
-									[]sql.Expression{gf(0, "bar", "b")},
-									plan.NewResolvedTable(bar, db, nil),
+								plan.NewDecoratedNode(
+									"Projected table access on [b]",
+									plan.NewResolvedTable(bar.WithProjections([]string{"b"}), db, nil),
 								),
 							),
 						),

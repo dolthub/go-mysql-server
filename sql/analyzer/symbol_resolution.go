@@ -196,7 +196,8 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, needed, stars, unqualifiedStar)
 		case sql.OpaqueNode, *plan.InsertInto, *plan.DeleteFrom, *plan.Update,
-			*plan.NaturalJoin, *plan.CreateCheck, *plan.CreateProcedure, *plan.AddColumn, *plan.Call:
+			*plan.NaturalJoin, *plan.CreateCheck, *plan.CreateProcedure, *plan.AddColumn,
+			*plan.Call, *plan.Into:
 			return n, transform.SameTree, nil
 		}
 		if sq := findSubqueryExpr(n); sq != nil {
