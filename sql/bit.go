@@ -69,6 +69,12 @@ func MustCreateBitType(numOfBits uint8) BitType {
 	return bt
 }
 
+// MaxTextResponseByteLength implements Type interface
+func (t bitType) MaxTextResponseByteLength() uint32 {
+	// Because this is a text serialization format, each bit requires one byte in the text response format
+	return uint32(t.numOfBits)
+}
+
 // Compare implements Type interface.
 func (t bitType) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := compareNulls(a, b); hasNulls {

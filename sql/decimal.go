@@ -263,6 +263,18 @@ func (t decimalType) Equals(otherType Type) bool {
 	return false
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t decimalType) MaxTextResponseByteLength() uint32 {
+	if t.scale == 0 {
+		// if no digits are reserved for the right-hand side of the decimal point,
+		// just return precision plus one byte for sign
+		return uint32(t.precision + 1)
+	} else {
+		// otherwise return precision plus one byte for sign plus one byte for the decimal point
+		return uint32(t.precision + 2)
+	}
+}
+
 // Promote implements the Type interface.
 func (t decimalType) Promote() Type {
 	return MustCreateDecimalType(DecimalTypeMaxPrecision, t.scale)

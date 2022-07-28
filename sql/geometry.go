@@ -60,8 +60,9 @@ const (
 	TypeSize       = 4
 	EWKBHeaderSize = SRIDSize + EndianSize + TypeSize
 
-	PointSize = 16
-	CountSize = 4
+	PointSize             = 16
+	CountSize             = 4
+	GeometryMaxByteLength = 4*(1024*1024*1024) - 1
 )
 
 // Type IDs
@@ -339,6 +340,11 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 func (t GeometryType) Equals(otherType Type) (ok bool) {
 	_, ok = otherType.(GeometryType)
 	return
+}
+
+// MaxTextResponseByteLength implements the Type interface
+func (t GeometryType) MaxTextResponseByteLength() uint32 {
+	return GeometryMaxByteLength
 }
 
 // Promote implements the Type interface.

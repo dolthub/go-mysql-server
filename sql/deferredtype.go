@@ -58,6 +58,12 @@ func (t deferredType) Convert(v interface{}) (interface{}, error) {
 	return nil, nil
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t deferredType) MaxTextResponseByteLength() uint32 {
+	// deferredType is never actually sent over the wire
+	return 0
+}
+
 // MustConvert implements the Type interface.
 func (t deferredType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)

@@ -50,6 +50,11 @@ func (t nullType) Convert(v interface{}) (interface{}, error) {
 	return nil, nil
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t nullType) MaxTextResponseByteLength() uint32 {
+	return 0
+}
+
 // MustConvert implements the Type interface.
 func (t nullType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
