@@ -281,6 +281,6 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 		ret, _ := n.WithChildren(newChildren...)
 		return ret, transform.NewTree, nil
 	}
-	
+
 	return pruneWalk(n)
 }
