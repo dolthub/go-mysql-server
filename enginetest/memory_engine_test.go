@@ -41,6 +41,8 @@ type indexBehaviorTestParams struct {
 	nativeIndexes     bool
 }
 
+const SkipPreparedsCount = 90
+
 const testNumPartitions = 5
 
 var numPartitionsVals = []int{

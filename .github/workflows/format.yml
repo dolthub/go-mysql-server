@@ -62,6 +62,7 @@ jobs:
         id: check_format
         run: |
           ./check_repo.sh
+          ./check_prepared_tests.sh
         env:
           BRANCH_NAME: ${{ github.head_ref }}
           CHANGE_TARGET: ${{ github.base_ref }}
@@ -84,6 +85,7 @@ jobs:
           if [ "$code" != 0 ]; then
             echo "Please run ./format_repo.sh to fix this pull request's formatting"
           fi
+          ./check_prepared_tests.sh
         env:
           BRANCH_NAME: ${{ github.head_ref }}
           CHANGE_TARGET: ${{ github.base_ref }}
