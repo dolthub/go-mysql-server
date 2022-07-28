@@ -380,8 +380,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	if procedure == nil {
 		err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
 		if ctx.GetCurrentDatabase() == "" {
-			cause := errors.NewKind("this might be because no database is selected")
-			err = sql.ErrStoredProcedureDoesNotExist.Wrap(cause.New(), call.Name)
+			return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
 		}
 		return nil, transform.SameTree, err
 	}
