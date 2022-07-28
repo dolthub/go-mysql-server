@@ -25,13 +25,15 @@ import (
 type UpdateSource struct {
 	UnaryNode
 	UpdateExprs []sql.Expression
+	Ignore      bool
 }
 
 // NewUpdateSource returns a new UpdateSource from the node and expressions given.
-func NewUpdateSource(node sql.Node, updateExprs []sql.Expression) *UpdateSource {
+func NewUpdateSource(node sql.Node, ignore bool, updateExprs []sql.Expression) *UpdateSource {
 	return &UpdateSource{
 		UnaryNode:   UnaryNode{node},
 		UpdateExprs: updateExprs,
+		Ignore:      ignore,
 	}
 }
 
@@ -45,7 +47,7 @@ func (u *UpdateSource) WithExpressions(newExprs ...sql.Expression) (sql.Node, er
 	if len(newExprs) != len(u.UpdateExprs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(u.UpdateExprs), 1)
 	}
-	return NewUpdateSource(u.Child, newExprs), nil
+	return NewUpdateSource(u.Child, u.Ignore, newExprs), nil
 }
 
 // Schema implements sql.Node. The schema of an update is a concatenation of the old and new rows.
@@ -92,6 +94,7 @@ type updateSourceIter struct {
 	childIter   sql.RowIter
 	updateExprs []sql.Expression
 	tableSchema sql.Schema
+	ignore      bool
 }
 
 func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -102,7 +105,14 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	newRow, err := applyUpdateExpressions(ctx, u.updateExprs, oldRow)
 	if err != nil {
-		return nil, err
+		wtce, ok := err.(sql.WrappedTypeConversionError)
+		if !ok || !u.ignore {
+			return nil, wtce.Err
+		}
+
+		cpy := oldRow.Copy()
+		cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
+		newRow = convertDataAndWarn(ctx, u.tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
 	}
 
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
@@ -134,6 +144,26 @@ func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
 	return table.Schema(), nil
 }
 
+func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
+	if sql.ErrLengthBeyondLimit.Is(err) {
+		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
+		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+	} else {
+		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
+	}
+
+	sqlerr, _, _ := sql.CastSQLError(err)
+
+	// Add a warning instead
+	ctx.Session.Warn(&sql.Warning{
+		Level:   "Note",
+		Code:    sqlerr.Num,
+		Message: err.Error(),
+	})
+
+	return row
+}
+
 func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	rowIter, err := u.Child.RowIter(ctx, row)
 	if err != nil {
@@ -149,6 +179,7 @@ func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		childIter:   rowIter,
 		updateExprs: u.UpdateExprs,
 		tableSchema: schema,
+		ignore:      u.Ignore,
 	}, nil
 }
 
@@ -156,7 +187,7 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
-	return NewUpdateSource(children[0], u.UpdateExprs), nil
+	return NewUpdateSource(children[0], u.Ignore, u.UpdateExprs), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

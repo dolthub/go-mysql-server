@@ -615,6 +615,10 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		return CastSQLError(w.Cause)
 	}
 
+	if wm, ok := err.(WrappedTypeConversionError); ok {
+		return CastSQLError(wm.Err)
+	}
+
 	switch {
 	case ErrTableNotFound.Is(err):
 		code = mysql.ERNoSuchTable
@@ -722,4 +726,18 @@ func NewIgnorableError(row Row) IgnorableError {
 
 func (e IgnorableError) Error() string {
 	return "Insert ignore error should never be printed"
+}
+
+type WrappedTypeConversionError struct {
+	OffendingVal interface{}
+	OffendingIdx int
+	Err          error
+}
+
+func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error) WrappedTypeConversionError {
+	return WrappedTypeConversionError{OffendingVal: offendingVal, OffendingIdx: idx, Err: err}
+}
+
+func (w WrappedTypeConversionError) Error() string {
+	return "Wrapped type conversion error should not be printed"
 }

@@ -592,9 +592,21 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 	},
 	{
-		Name:        "UPDATE IGNORE with type conversions",
-		SetUpScript: []string{},
-		Assertions:  []ScriptTestAssertion{},
+		Name: "UPDATE IGNORE with type conversions",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, v1 int)",
+			"INSERT INTO t1 VALUES (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE t1 SET v1 = 'dsddads'",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM t1",
+				Expected: []sql.Row{{1, 0}},
+			},
+		},
 	},
 	{
 		Name: "UPDATE IGNORE with foreign keys",
@@ -674,6 +686,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 		},
 	},
+	// TODO: Null
 }
 
 var UpdateErrorTests = []QueryErrorTest{

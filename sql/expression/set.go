@@ -63,14 +63,13 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		// TODO: Needs to support ignore syntax?
 		convertedVal, err := getField.fieldType.Convert(val)
 		if err != nil {
 			// Fill in error with information
 			if sql.ErrLengthBeyondLimit.Is(err) {
-				return nil, sql.ErrLengthBeyondLimit.New(val, getField.Name())
+				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, sql.ErrLengthBeyondLimit.New(val, getField.Name()))
 			}
-			return nil, err
+			return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, err)
 		}
 		val = convertedVal
 	}

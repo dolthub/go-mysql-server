@@ -1909,10 +1909,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		}
 	}
 
-	ignore := false
-	if d.Ignore != "" {
-		ignore = true
-	}
+	ignore := d.Ignore != ""
 
 	return plan.NewUpdate(node, ignore, updateExprs), nil
 }

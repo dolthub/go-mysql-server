@@ -40,6 +40,7 @@ func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
 	return &Update{
 		UnaryNode: UnaryNode{NewUpdateSource(
 			n,
+			ignore,
 			updateExprs,
 		)},
 		Ignore: ignore,
