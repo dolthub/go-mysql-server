@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/shopspring/decimal"
 
@@ -107,7 +108,7 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 		bit := uint64(1 << uint64(i))
 		valToBit[value] = bit
 		bitToVal[bit] = value
-		maxByteLength = maxByteLength + uint32((len([]rune(value)))*int(maxCharLength))
+		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
 		if i != 0 {
 			maxByteLength = maxByteLength + uint32(maxCharLength)
 		}

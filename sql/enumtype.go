@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/shopspring/decimal"
 
@@ -94,7 +95,7 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 		/// The elements listed in the column specification are assigned index numbers, beginning with 1.
 		valToIndex[value] = i + 1
 
-		byteLength := uint32(len([]rune(value)) * int(maxCharLength))
+		byteLength := uint32(utf8.RuneCountInString(value) * int(maxCharLength))
 		if byteLength > maxResponseByteLength {
 			maxResponseByteLength = byteLength
 		}
