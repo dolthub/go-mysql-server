@@ -67,8 +67,8 @@ type TimeType interface {
 
 type timespanType struct{}
 
-// MaxResponseByteLength implements the Type interface
-func (t timespanType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t timespanType) MaxTextResponseByteLength() uint32 {
 	// 10 digits are required for a text representation without microseconds, but with microseconds
 	// requires 17, so return 17 as an upper limit (i.e. len(+123:00:00.999999"))
 	return 17

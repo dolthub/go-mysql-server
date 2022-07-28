@@ -342,8 +342,8 @@ func (t GeometryType) Equals(otherType Type) (ok bool) {
 	return
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t GeometryType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t GeometryType) MaxTextResponseByteLength() uint32 {
 	return GeometryMaxByteLength
 }
 

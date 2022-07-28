@@ -50,8 +50,8 @@ func (t nullType) Convert(v interface{}) (interface{}, error) {
 	return nil, nil
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t nullType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t nullType) MaxTextResponseByteLength() uint32 {
 	return 0
 }
 

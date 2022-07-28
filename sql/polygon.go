@@ -140,8 +140,8 @@ func (t PolygonType) Equals(otherType Type) bool {
 	return ok
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t PolygonType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t PolygonType) MaxTextResponseByteLength() uint32 {
 	return GeometryMaxByteLength
 }
 

@@ -127,8 +127,8 @@ func (t PointType) Equals(otherType Type) bool {
 	return ok
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t PointType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t PointType) MaxTextResponseByteLength() uint32 {
 	return GeometryMaxByteLength
 }
 

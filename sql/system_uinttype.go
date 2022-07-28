@@ -126,8 +126,8 @@ func (t systemUintType) Equals(otherType Type) bool {
 	return false
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t systemUintType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t systemUintType) MaxTextResponseByteLength() uint32 {
 	// system types are not sent directly across the wire
 	return 0
 }

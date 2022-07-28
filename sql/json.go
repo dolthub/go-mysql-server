@@ -91,8 +91,8 @@ func (t jsonType) Equals(otherType Type) bool {
 	return ok
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t jsonType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t jsonType) MaxTextResponseByteLength() uint32 {
 	return uint32(MaxJsonFieldByteLength*Collation_Default.CharacterSet().MaxLength()) - 1
 }
 

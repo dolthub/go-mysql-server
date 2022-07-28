@@ -237,8 +237,8 @@ func CreateLongText(collation CollationID) StringType {
 	return MustCreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t stringType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t stringType) MaxTextResponseByteLength() uint32 {
 	return t.maxResponseByteLength
 }
 

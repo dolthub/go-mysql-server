@@ -69,8 +69,8 @@ func MustCreateBitType(numOfBits uint8) BitType {
 	return bt
 }
 
-// MaxResponseByteLength implements Type interface
-func (t bitType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements Type interface
+func (t bitType) MaxTextResponseByteLength() uint32 {
 	// Because this is a text serialization format, each bit requires one byte in the text response format
 	return uint32(t.numOfBits)
 }

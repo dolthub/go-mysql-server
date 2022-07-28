@@ -117,8 +117,8 @@ func MustCreateEnumType(values []string, collation CollationID) EnumType {
 	return et
 }
 
-// MaxResponseByteLength implements the Type interface
-func (t enumType) MaxResponseByteLength() uint32 {
+// MaxTextResponseByteLength implements the Type interface
+func (t enumType) MaxTextResponseByteLength() uint32 {
 	return t.maxResponseByteLength
 }
 
