@@ -193,15 +193,23 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return oldAndNewRow, nil
 }
 
-// Applies the update expressions given to the row given, returning the new resultant row.
+// Applies the update expressions given to the row given, returning the new resultant row. In the case that ignore is
+// provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
 // TODO: a set of update expressions should probably be its own expression type with an Eval method that does this
-func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row sql.Row) (sql.Row, error) {
+func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
 	var ok bool
 	prev := row
 	for _, updateExpr := range updateExprs {
 		val, err := updateExpr.Eval(ctx, prev)
 		if err != nil {
-			return nil, err
+			wtce, ok2 := err.(sql.WrappedTypeConversionError)
+			if !ok2 || !ignore {
+				return nil, err
+			}
+
+			cpy := prev.Copy()
+			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
+			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
 		}
 		prev, ok = val.(sql.Row)
 		if !ok {

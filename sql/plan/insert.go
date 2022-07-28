@@ -357,10 +357,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			converted, cErr := col.Type.Convert(row[idx]) // allows for better error handling
 			if cErr != nil {
 				if i.ignore {
-					row, err = i.convertDataAndWarn(ctx, row, idx, cErr)
-					if err != nil {
-						return nil, err
-					}
+					row = convertDataAndWarn(ctx, i.schema, row, idx, cErr)
 					continue
 				} else {
 					// Fill in error with information
@@ -438,10 +435,7 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpda
 					return nil, err
 				}
 
-				val, err = i.convertDataAndWarn(ctx, row, idx, err)
-				if err != nil {
-					return nil, err
-				}
+				val = convertDataAndWarn(ctx, i.schema, row, idx, err)
 			} else {
 				return nil, err
 			}
@@ -564,15 +558,15 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 	return warnOnIgnorableError(ctx, row, err)
 }
 
-// convertDataAndWarn modifies a row with data conversion issues in INSERT IGNORE calls
+// convertDataAndWarn modifies a row with data conversion issues in INSERT/UPDATE IGNORE calls
 // Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
-func (i *insertIter) convertDataAndWarn(ctx *sql.Context, row sql.Row, columnIdx int, err error) (sql.Row, error) {
+func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
 	if sql.ErrLengthBeyondLimit.Is(err) {
-		maxLength := i.schema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
+		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
 	} else {
-		row[columnIdx] = i.schema[columnIdx].Type.Zero()
+		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 	}
 
 	sqlerr, _, _ := sql.CastSQLError(err)
@@ -584,7 +578,7 @@ func (i *insertIter) convertDataAndWarn(ctx *sql.Context, row sql.Row, columnIdx
 		Message: err.Error(),
 	})
 
-	return row, nil
+	return row
 }
 
 func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {

@@ -89,6 +89,7 @@ type accumulatorRowHandler interface {
 	okResult() sql.OkResult
 }
 
+// TODO: Extend this to UPDATE IGNORE JOIN
 type updateIgnoreAccumulatorRowHandler interface {
 	accumulatorRowHandler
 	handleRowUpdateWithIgnore(row sql.Row, ignore bool) error
@@ -363,16 +364,14 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 				if err != nil {
 					return nil, err
 				}
-
-				continue
 			}
 		} else if err != nil {
 			return nil, err
-		}
-
-		err = a.updateRowHandler.handleRowUpdate(row)
-		if err != nil {
-			return nil, err
+		} else {
+			err = a.updateRowHandler.handleRowUpdate(row)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 }

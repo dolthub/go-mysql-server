@@ -610,13 +610,22 @@ var UpdateIgnoreScripts = []ScriptTest{
 				Query:    "SELECT * FROM pkTable order by pk",
 				Expected: []sql.Row{{0, 0}, {0, 3}, {0, 4}},
 			},
+			{
+				Query:           "UPDATE IGNORE idxTable set pk = pk + 1, val = val + 1", // two bad updates
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM idxTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 5}},
+			},
 		},
 	},
 	{
 		Name: "UPDATE IGNORE with type conversions",
 		SetUpScript: []string{
-			"CREATE TABLE t1 (pk int primary key, v1 int)",
-			"INSERT INTO t1 VALUES (1, 1)",
+			"CREATE TABLE t1 (pk int primary key, v1 int, v2 int)",
+			"INSERT INTO t1 VALUES (1, 1, 1)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -626,7 +635,16 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM t1",
-				Expected: []sql.Row{{1, 0}},
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:           "UPDATE IGNORE t1 SET pk = 'dasda', v2 = 'dsddads'",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+			{
+				Query:    "SELECT * FROM t1",
+				Expected: []sql.Row{{0, 0, 0}},
 			},
 		},
 	},

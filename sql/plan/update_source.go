@@ -103,16 +103,9 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressions(ctx, u.updateExprs, oldRow)
+	newRow, err := applyUpdateExpressionsWithIgnore(ctx, u.updateExprs, u.tableSchema, oldRow, u.ignore)
 	if err != nil {
-		wtce, ok := err.(sql.WrappedTypeConversionError)
-		if !ok || !u.ignore {
-			return nil, wtce.Err
-		}
-
-		cpy := oldRow.Copy()
-		cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
-		newRow = convertDataAndWarn(ctx, u.tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
+		return nil, err
 	}
 
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
@@ -142,26 +135,6 @@ func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
 	}
 
 	return table.Schema(), nil
-}
-
-func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
-	if sql.ErrLengthBeyondLimit.Is(err) {
-		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
-		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
-	} else {
-		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
-	}
-
-	sqlerr, _, _ := sql.CastSQLError(err)
-
-	// Add a warning instead
-	ctx.Session.Warn(&sql.Warning{
-		Level:   "Note",
-		Code:    sqlerr.Num,
-		Message: err.Error(),
-	})
-
-	return row
 }
 
 func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
