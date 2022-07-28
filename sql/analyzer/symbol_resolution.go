@@ -190,14 +190,16 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 		unqualifiedStar = beforeUnq
 	}
 
-	var inOrderWalk func(n sql.Node) (sql.Node, transform.TreeIdentity, error)
-	inOrderWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	var preOrderWalk func(n sql.Node) (sql.Node, transform.TreeIdentity, error)
+	preOrderWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, needed, stars, unqualifiedStar)
 		case sql.OpaqueNode, *plan.InsertInto, *plan.DeleteFrom, *plan.Update,
 			*plan.NaturalJoin, *plan.CreateCheck, *plan.CreateProcedure, *plan.AddColumn,
-			*plan.Call, *plan.Into:
+			*plan.Call, *plan.Into, *plan.ShowCreateTable, *plan.Describe, *plan.DescribeQuery,
+			*plan.DropColumn, *plan.AlterPK, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.ShowColumns,
+			*plan.ShowCreateDatabase, *plan.ShowCreateTrigger, *plan.ShowCreateProcedure:
 			return n, transform.SameTree, nil
 		}
 		if sq := findSubqueryExpr(n); sq != nil {
@@ -215,7 +217,7 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 		newChildren := make([]sql.Node, len(n.Children()))
 		var allSame = transform.SameTree
 		for i, c := range n.Children() {
-			child, same, _ := inOrderWalk(c)
+			child, same, _ := preOrderWalk(c)
 			if !same {
 				allSame = transform.NewTree
 			}
@@ -230,7 +232,7 @@ func pushdown2(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSele
 		return ret, allSame, nil
 	}
 
-	return inOrderWalk(n)
+	return preOrderWalk(n)
 }
 
 func compareTableCol(i, j tableCol) int {
