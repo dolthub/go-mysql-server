@@ -255,7 +255,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 		// is equal and opposite we are usually fine. In the cases we aren't, we
 		// already do not handle nested aliasing well.
 		outerCols, outerStars, outerUnq := gatherOuterCols(n)
-		aliasCols, aliasStars := gatherTableAlias(n, needed, stars)
+		aliasCols, aliasStars := gatherTableAlias(n, needed, stars, unqualifiedStar)
 		push(outerCols, outerStars, outerUnq)
 		push(aliasCols, aliasStars, false)
 
