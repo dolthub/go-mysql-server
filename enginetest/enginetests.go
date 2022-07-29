@@ -4648,7 +4648,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32", PrimaryKey: true},
 			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t32"},
 			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
-			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, true)},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, false, true)},
 			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
 		}, t32.Schema())
 
@@ -4821,8 +4821,8 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	})
 }
 
-func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
-	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {
+	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, isParenthesized, mayReturnNil)
 	if err != nil {
 		panic(err)
 	}
@@ -5126,7 +5126,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
 			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
-			{"v1_new", "timestamp", "YES", "", "NOW()", ""},
+			{"v1_new", "timestamp", "YES", "", "(NOW())", ""},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
 		}, nil, nil)
 	})
