@@ -5131,6 +5131,14 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		}, nil, nil)
 	})
 
+	t.Run("Function expressions must be enclosed in parens", func(t *testing.T) {
+		AssertErr(t, e, harness, "create table t0 (v0 varchar(100) default repeat(\"_\", 99));", sql.ErrSyntaxError)
+	})
+
+	t.Run("Column references must be enclosed in parens", func(t *testing.T) {
+		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrInvalidColumnDefaultValue)
+	})
+
 	t.Run("Invalid literal for column type", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT -1)", sql.ErrIncompatibleDefaultType)
 	})

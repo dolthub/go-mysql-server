@@ -744,7 +744,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 			err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 			return false
 		case *expression.GetField:
-			if newDefault.IsLiteral() {
+			if newDefault.IsParenthesized() == false {
 				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 				return false
 			} else {
