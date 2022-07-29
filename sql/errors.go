@@ -739,5 +739,5 @@ func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error)
 }
 
 func (w WrappedTypeConversionError) Error() string {
-	return "Wrapped type conversion error should not be printed"
+	return w.Err.Error()
 }

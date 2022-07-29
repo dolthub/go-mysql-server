@@ -671,64 +671,19 @@ var UpdateIgnoreScripts = []ScriptTest{
 	{
 		Name: "UPDATE IGNORE with check constraints",
 		SetUpScript: []string{
-			"CREATE TABLE checksTable(pk int)",
+			"CREATE TABLE checksTable(pk int primary key)",
 			"ALTER TABLE checksTable ADD CONSTRAINT mycx CHECK (pk < 5)",
 			"INSERT INTO checksTable VALUES (1),(2),(3),(4)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "UPDATE IGNORE checksTable SET pk = pk + 1",
-				Expected:        []sql.Row{{newUpdateResult(4, 3)}},
+				Query:           "UPDATE IGNORE checksTable SET pk = pk + 1 where pk = 4",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
 				ExpectedWarning: mysql.ERUnknownError,
 			},
 			{
 				Query:    "SELECT * from checksTable ORDER BY pk",
-				Expected: []sql.Row{{2}, {3}, {4}, {4}},
-			},
-		},
-	},
-	{
-		Name: "UPDATE IGNORE keyless tables and secondary indexes",
-		SetUpScript: []string{
-			"CREATE TABLE keyless(pk int, val int)",
-			"INSERT INTO keyless VALUES (1, 1), (2, 2), (3, 3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:           "UPDATE IGNORE keyless SET val = 2 where pk = 1",
-				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
-			},
-			{
-				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
-			},
-			{
-				Query:           "UPDATE IGNORE keyless SET val = 1 where pk = 1",
-				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
-			},
-			{
-				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
-			},
-			{
-				Query:           "UPDATE IGNORE keyless SET val = 2 where pk = 1",
-				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
-				ExpectedWarning: mysql.ERDupEntry,
-			},
-			{
-				Query:    "SELECT * FROM keyless ORDER BY pk",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
-			},
-			{
-				Query:           "UPDATE IGNORE keyless SET val = val + 1",
-				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
-			},
-			{
-				Query:    "SELECT * FROM keyless ORDER BY pk",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
 			},
 		},
 	},

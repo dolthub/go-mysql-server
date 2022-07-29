@@ -387,8 +387,8 @@ func TestInsertIgnoreInto(t *testing.T) {
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
-	enginetest.TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
+	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestInsertIntoErrors(t *testing.T) {

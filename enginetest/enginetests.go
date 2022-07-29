@@ -508,9 +508,9 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 }
 
 // todo: merge this into the above test when https://github.com/dolthub/dolt/issues/3836 is fixed
-func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
+func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts {
+	for _, script := range queries.IgnoreWithDuplicateUniqueKeyKeylessScripts {
 		TestScript(t, harness, script)
 	}
 

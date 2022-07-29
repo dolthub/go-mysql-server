@@ -1739,7 +1739,7 @@ var InsertIgnoreScripts = []ScriptTest{
 	},
 }
 
-var InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
+var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 	{
 		Name: "Test that INSERT IGNORE INTO works with unique keys on a keyless table",
 		SetUpScript: []string{
@@ -1774,6 +1774,84 @@ var InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
 				},
+			},
+		},
+	},
+	{
+		Name: "INSERT IGNORE INTO multiple violations of a unique secondary index",
+		SetUpScript: []string{
+			"CREATE TABLE keyless(pk int, val int)",
+			"INSERT INTO keyless values (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT IGNORE INTO keyless VALUES (1, 2);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "DELETE FROM keyless where pk = 1 and val = 2",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:           "INSERT IGNORE INTO keyless VALUES (1, 3)",
+				Expected:        []sql.Row{{sql.NewOkResult(0)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+		},
+	},
+	{
+		Name: "UPDATE IGNORE keyless tables and secondary indexes",
+		SetUpScript: []string{
+			"CREATE TABLE keyless(pk int, val int)",
+			"INSERT INTO keyless VALUES (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = 1 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = 3 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = val + 1",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
 			},
 		},
 	},
