@@ -1845,7 +1845,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
-				Query:           "UPDATE IGNORE keyless SET val = val + 1",
+				Query:           "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
 				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
 				ExpectedWarning: mysql.ERDupEntry,
 			},
