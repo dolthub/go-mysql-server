@@ -18,7 +18,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func NewJSONTable(data string, path string) (sql.Node, error) {
+func NewJSONTable(data string, path string, spec *TableSpec) (sql.Node, error) {
 	//jsonpath.Compile()
+
 	return nil, nil
 }

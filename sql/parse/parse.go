@@ -2613,7 +2613,7 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 	// TODO: digure out how to deal with table alias
 
 	// TODO: do I need any error checks here?
-	return nil, nil
+	return plan.NewJSONTable(t.Data, t.Path, t.Columns)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
