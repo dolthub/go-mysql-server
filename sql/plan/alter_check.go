@@ -63,6 +63,12 @@ func getCheckAlterable(node sql.Node) (sql.CheckAlterableTable, error) {
 		return node, nil
 	case *ResolvedTable:
 		return getCheckAlterableTable(node.Table)
+	case *DecoratedNode:
+		rt, ok := node.Child.(*ResolvedTable)
+		if !ok {
+			return nil, ErrNoCheckConstraintSupport.New(node.Child.String())
+		}
+		return getCheckAlterableTable(rt)
 	default:
 		return nil, ErrNoCheckConstraintSupport.New(node.String())
 	}

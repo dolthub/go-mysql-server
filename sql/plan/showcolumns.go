@@ -147,6 +147,18 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			} else if s.isFirstColInNonUniqueKey(col, table) {
 				key = "MUL"
 			}
+		case *DecoratedNode:
+			rt, ok := table.Child.(*ResolvedTable)
+			if !ok {
+				panic(fmt.Sprintf("unexpected type %T", table.Child))
+			}
+			if col.PrimaryKey {
+				key = "PRI"
+			} else if s.isFirstColInUniqueKey(col, rt) {
+				key = "UNI"
+			} else if s.isFirstColInNonUniqueKey(col, rt) {
+				key = "MUL"
+			}
 		case *SubqueryAlias:
 			// no key info for views
 		default:

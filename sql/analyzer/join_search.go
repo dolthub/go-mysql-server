@@ -437,6 +437,8 @@ func newJoinOrderNode(node sql.Node) (*joinOrderNode, int) {
 			}
 			return &joinOrderNode{commutes: commutes}, lcnt + rcnt
 		}
+	case *plan.DecoratedNode:
+		return newJoinOrderNode(node.Child)
 	default:
 		panic(fmt.Sprintf("unexpected node type: %t", node))
 	}
