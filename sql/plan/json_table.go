@@ -15,11 +15,28 @@
 package plan
 
 import (
+	"encoding/json"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/oliveagle/jsonpath"
 )
 
-func NewJSONTable(data string, path string, spec *TableSpec) (sql.Node, error) {
+// TODO: take a schema instead of a TableSpec?
+func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec) (sql.Node, error) {
 	//jsonpath.Compile()
+
+	var json_data interface{}
+	if err := json.Unmarshal(data, &json_data); err != nil {
+		return nil, err
+	}
+
+	res, err := jsonpath.JsonPathLookup(json_data, path)
+	if err != nil {
+		return nil, err
+	}
+
+	if res != nil {
+	}
 
 	return nil, nil
 }
