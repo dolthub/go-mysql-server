@@ -16,9 +16,11 @@ package plan
 
 import (
 	"encoding/json"
-	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/oliveagle/jsonpath"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // TODO: take a schema instead of a TableSpec?
