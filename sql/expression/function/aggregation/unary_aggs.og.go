@@ -177,17 +177,11 @@ func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
-	children := make([]sql.Expression, len(a.ChildExpressions))
-	for i, expr := range a.ChildExpressions {
-		child, err := transform.Clone(expr)
-		if err != nil {
-			return nil, err
-		}
-		children[i] = child
+	child, err := transform.Clone(a.ChildExpressions[0])
+	if err != nil {
+		return nil, err
 	}
-
-	// TODO
-	return NewCountDistinctAgg(children[0]).WithWindow(a.Window())
+	return NewCountDistinctAgg(child).WithWindow(a.Window())
 }
 
 type First struct {
