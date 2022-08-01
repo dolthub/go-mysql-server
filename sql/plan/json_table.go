@@ -21,21 +21,62 @@ import (
 	"github.com/oliveagle/jsonpath"
 )
 
-// TODO: take a schema instead of a TableSpec?
-func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec) (sql.Node, error) {
-	//jsonpath.Compile()
+type JSONTable struct {
+	name   string
+	schema sql.PrimaryKeySchema
+	data   map[string]interface{}
+	rowIdx uint64
+}
 
-	var json_data interface{}
-	if err := json.Unmarshal(data, &json_data); err != nil {
+var _ sql.Table = &JSONTable{}
+
+// Name implements the sql.Table interface
+func (t *JSONTable) Name() string {
+	return t.name
+}
+
+// String implements the sql.Table interface
+func (t *JSONTable) String() string {
+	return t.name
+}
+
+// Schema implements the sql.Table interface
+func (t *JSONTable) Schema() sql.Schema {
+	return t.schema.Schema
+}
+
+// Partitions implements the sql.Table interface
+func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	return nil, nil
+}
+
+// PartitionRows implements the sql.Table interface
+func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	return nil, nil
+}
+
+// TODO: maybe just use in-memory table?
+func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec) (sql.Node, error) {
+	var jsonData interface{}
+	if err := json.Unmarshal(data, &jsonData); err != nil {
 		return nil, err
 	}
 
-	res, err := jsonpath.JsonPathLookup(json_data, path)
+	// Get data specified from initial path
+	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, path)
 	if err != nil {
 		return nil, err
 	}
 
-	if res != nil {
+	// TODO: use this data to somehow create a table
+	// Do I create something in memory and have a RowIter?
+	for _, col := range spec.Columns {
+		res, err := jsonpath.JsonPathLookup(jsonPathData, col.Type.Path)
+		if err != nil {
+			return nil, err
+		}
+		if res != nil {
+		}
 	}
 
 	return nil, nil
