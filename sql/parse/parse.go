@@ -2610,10 +2610,12 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 
 func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, error) {
 	// TODO: figure out how to deal with nested
-	// TODO: digure out how to deal with table alias
-
-	// TODO: do I need any error checks here?
-	return plan.NewJSONTable(t.Data, t.Path, t.Columns)
+	// TODO: figure out how to deal with table alias
+	sch, err := TableSpecToSchema(ctx, t.Columns)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewJSONTable(t.Data, t.Path, t.Columns, t.Alias, sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
