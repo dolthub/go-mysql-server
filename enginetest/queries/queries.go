@@ -4829,6 +4829,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
+		Query:    `SELECT COUNT(DISTINCT t.i, t.s) FROM tabletest t, mytable t2`,
+		Expected: []sql.Row{{int64(3)}},
+	},
+	{
 		Query:    `SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
 		Expected: []sql.Row{{"no"}},
 	},
