@@ -596,7 +596,7 @@ func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword 
 
 // mustDefault enforces that no error occurred when constructing the column default value.
 func mustDefault(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
-	colDef, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+	colDef, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, !representsLiteral, mayReturnNil)
 	if err != nil {
 		panic(err)
 	}

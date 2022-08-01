@@ -1116,6 +1116,9 @@ var InsertScripts = []ScriptTest{
 			"CREATE TABLE t2(id varchar(100) DEFAULT (uuid()));",
 			"CREATE TABLE t3(a int DEFAULT '1', b int default (2 * a));",
 			"CREATE TABLE t4(c0 varchar(10) null default 'c0', c1 varchar(10) null default 'c1');",
+			// MySQL allows the current_timestamp() function to NOT be in parens when used as a default
+			// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
+			"CREATE TABLE t5(c0 varchar(100) DEFAULT (repeat('_', 100)), c1 datetime DEFAULT current_timestamp());",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1181,6 +1184,18 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "select * from t4",
 				Expected: []sql.Row{{nil, "c1"}},
+			},
+			{
+				Query:    "INSERT INTO T5 values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO T5 (c0, c1) values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO T5 (c1) values (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},
