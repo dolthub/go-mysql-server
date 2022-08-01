@@ -482,7 +482,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 }
 
 func TestQueryErrors(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.MyhistorytableData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.MyhistorytableData, setup.OthertableData, setup.SpecialtableData, setup.DatetimetableData, setup.NiltableData)
 	for _, tt := range queries.ErrorQueries {
 		runQueryErrorTest(t, harness, tt)
 	}
@@ -589,7 +589,7 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 		runGenericErrorTest(t, harness, expectedFailure)
 	}
 
-	harness.Setup(setup.MydbData, setup.KeylessData, setup.Keyless_idxData, setup.PeopleData)
+	harness.Setup(setup.MydbData, setup.KeylessData, setup.Keyless_idxData, setup.PeopleData, setup.Pk_tablesData)
 	for _, expectedFailure := range queries.UpdateErrorTests {
 		runQueryErrorTest(t, harness, expectedFailure)
 	}
@@ -4619,7 +4619,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			ExpectedErr: sql.ErrTableColumnNotFound,
 		},
 		{
-			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2",
+			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v4",
 			ExpectedErr: sql.ErrTableColumnNotFound,
 		},
 		{
@@ -4628,7 +4628,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		},
 	}
 
-	harness.Setup(setup.MydbData)
+	harness.Setup(setup.MydbData, setup.Pk_tablesData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range errorTests {
