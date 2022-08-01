@@ -124,17 +124,17 @@ func (a *Count) NewWindowFunction() (sql.WindowFunction, error) {
 }
 
 type CountDistinct struct {
-	unaryAggBase
+	naryAggBase
 }
 
 var _ sql.FunctionExpression = (*CountDistinct)(nil)
 var _ sql.Aggregation = (*CountDistinct)(nil)
 var _ sql.WindowAdaptableExpression = (*CountDistinct)(nil)
 
-func NewCountDistinct(e sql.Expression) *CountDistinct {
+func NewCountDistinct(exprs []sql.Expression) *CountDistinct {
 	return &CountDistinct{
-		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
+		naryAggBase{
+			NaryExpression: expression.NaryExpression{ChildExpressions: exprs},
 			functionName:    "CountDistinct",
 			description:     "returns the number of distinct values in a result set.",
 		},
@@ -150,33 +150,44 @@ func (a *CountDistinct) IsNullable() bool {
 }
 
 func (a *CountDistinct) String() string {
-	return fmt.Sprintf("COUNTDISTINCT(%s)", a.Child)
+	return fmt.Sprintf("COUNTDISTINCT(%s)", a.ChildExpressions)
 }
 
 func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &CountDistinct{unaryAggBase: *res.(*unaryAggBase)}, err
+	res, err := a.naryAggBase.WithWindow(window)
+	return &CountDistinct{naryAggBase: *res.(*naryAggBase)}, err
 }
 
 func (a *CountDistinct) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	res, err := a.unaryAggBase.WithChildren(children...)
-	return &CountDistinct{unaryAggBase: *res.(*unaryAggBase)}, err
+	res, err := a.naryAggBase.WithChildren(children...)
+	return &CountDistinct{naryAggBase: *res.(*naryAggBase)}, err
 }
 
 func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
-	if err != nil {
-		return nil, err
+	exprs := make([]sql.Expression, len(a.ChildExpressions))
+	for i, expr := range a.ChildExpressions {
+		child, err := transform.Clone(expr)
+		if err != nil {
+			return nil, err
+		}
+		exprs[i] = child
 	}
-	return NewCountDistinctBuffer(child), nil
+
+	return NewCountDistinctBuffer(exprs), nil
 }
 
 func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
-	if err != nil {
-		return nil, err
+	children := make([]sql.Expression, len(a.ChildExpressions))
+	for i, expr := range a.ChildExpressions {
+		child, err := transform.Clone(expr)
+		if err != nil {
+			return nil, err
+		}
+		children[i] = child
 	}
-	return NewCountDistinctAgg(child).WithWindow(a.Window())
+
+	// TODO
+	return NewCountDistinctAgg(children[0]).WithWindow(a.Window())
 }
 
 type First struct {

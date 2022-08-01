@@ -156,30 +156,32 @@ func (a *avgBuffer) Dispose() {
 }
 
 type countDistinctBuffer struct {
-	seen map[uint64]struct{}
-	expr sql.Expression
+	seen  map[uint64]struct{}
+	exprs []sql.Expression
 }
 
-func NewCountDistinctBuffer(child sql.Expression) *countDistinctBuffer {
-	return &countDistinctBuffer{make(map[uint64]struct{}), child}
+func NewCountDistinctBuffer(children []sql.Expression) *countDistinctBuffer {
+	return &countDistinctBuffer{make(map[uint64]struct{}), children}
 }
 
 // Update implements the AggregationBuffer interface.
 func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	var value interface{}
-	if _, ok := c.expr.(*expression.Star); ok {
+	if len(c.exprs) == 0 {
+		panic("TODO: not sure if this is possible")
+	}
+	if _, ok := c.exprs[0].(*expression.Star); ok {
 		value = row
 	} else {
-		v, err := c.expr.Eval(ctx, row)
-		if v == nil {
-			return nil
+		val := make([]interface{}, len(c.exprs))
+		for i, expr := range c.exprs {
+			v, err := expr.Eval(ctx, row)
+			if err != nil {
+				return err
+			}
+			val[i] = v
 		}
-
-		if err != nil {
-			return err
-		}
-
-		value = v
+		value = val
 	}
 
 	hash, err := hashstructure.Hash(value, nil)
@@ -198,7 +200,9 @@ func (c *countDistinctBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 func (c *countDistinctBuffer) Dispose() {
-	expression.Dispose(c.expr)
+	for _, e := range c.exprs {
+		expression.Dispose(e)
+	}
 }
 
 type countBuffer struct {

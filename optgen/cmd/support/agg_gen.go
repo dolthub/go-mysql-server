@@ -11,6 +11,7 @@ type AggDef struct {
 	SqlName  string
 	Desc     string
 	RetType  string // must be valid sql.Type
+	IsNary   bool
 	Nullable bool
 }
 
@@ -48,7 +49,12 @@ func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
 
 func (g *AggGen) genAggType(define AggDef) {
 	fmt.Fprintf(g.w, "type %s struct{\n", define.Name)
-	fmt.Fprintf(g.w, "    unaryAggBase\n")
+	if define.IsNary {
+		fmt.Fprintf(g.w, "    unaryAggBase\n")
+	} else {
+		fmt.Fprintf(g.w, "    naryAggBase\n")
+	}
+
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

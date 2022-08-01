@@ -2992,11 +2992,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 		// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
 		if v.Distinct && v.Name.Lowered() == "count" {
-			if len(exprs) != 1 {
-				return nil, sql.ErrUnsupportedSyntax.New("more than one expression in COUNT")
-			}
-
-			return aggregation.NewCountDistinct(exprs[0]), nil
+			return aggregation.NewCountDistinct(exprs), nil
 		}
 
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
