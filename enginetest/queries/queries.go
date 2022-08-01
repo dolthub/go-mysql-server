@@ -8586,12 +8586,12 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrFunctionNotFound,
 	},
 	{
-		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
-		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
+		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
 	},
 	{
-		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
-		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
+		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
