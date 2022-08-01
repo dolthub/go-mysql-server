@@ -5123,12 +5123,17 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "alter table t33 rename column v1 to v1_new")
 		RunQuery(t, e, harness, "alter table t33 rename column name to name2")
 		RunQuery(t, e, harness, "alter table t33 drop column name2")
+		RunQuery(t, e, harness, "alter table t33 add column v3 datetime default CURRENT_TIMESTAMP()")
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
 			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
 			{"v1_new", "timestamp", "YES", "", "(NOW())", ""},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
+			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", ""},
 		}, nil, nil)
+
+		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
+			"only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
 	})
 
 	t.Run("Function expressions must be enclosed in parens", func(t *testing.T) {
