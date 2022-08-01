@@ -135,8 +135,8 @@ func NewCountDistinct(exprs []sql.Expression) *CountDistinct {
 	return &CountDistinct{
 		naryAggBase{
 			NaryExpression: expression.NaryExpression{ChildExpressions: exprs},
-			functionName:    "CountDistinct",
-			description:     "returns the number of distinct values in a result set.",
+			functionName:   "CountDistinct",
+			description:    "returns the number of distinct values in a result set.",
 		},
 	}
 }
