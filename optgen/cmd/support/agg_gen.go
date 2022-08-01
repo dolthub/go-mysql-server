@@ -50,9 +50,9 @@ func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
 func (g *AggGen) genAggType(define AggDef) {
 	fmt.Fprintf(g.w, "type %s struct{\n", define.Name)
 	if define.IsNary {
-		fmt.Fprintf(g.w, "    unaryAggBase\n")
-	} else {
 		fmt.Fprintf(g.w, "    naryAggBase\n")
+	} else {
+		fmt.Fprintf(g.w, "    unaryAggBase\n")
 	}
 
 	fmt.Fprintf(g.w, "}\n\n")
@@ -68,10 +68,10 @@ func (g *AggGen) genAggInterfaces(define AggDef) {
 
 func (g *AggGen) genAggConstructor(define AggDef) {
 	if define.IsNary {
-		fmt.Fprintf(g.w, "func New%s(exprs []sql.Expression) *%s {\n", define.Name, define.Name)
+		fmt.Fprintf(g.w, "func New%s(exprs... sql.Expression) *%s {\n", define.Name, define.Name)
 		fmt.Fprintf(g.w, "    return &%s{\n", define.Name)
 		fmt.Fprintf(g.w, "        naryAggBase{\n")
-		fmt.Fprintf(g.w, "            UnaryExpression: expression.UnaryExpression{ChildExpressions: exprs},\n")
+		fmt.Fprintf(g.w, "            NaryExpression: expression.NaryExpression{ChildExpressions: exprs},\n")
 		fmt.Fprintf(g.w, "            functionName: \"%s\",\n", define.Name)
 		fmt.Fprintf(g.w, "            description: \"%s\",\n", define.Desc)
 		fmt.Fprintf(g.w, "        },\n")
@@ -144,7 +144,11 @@ func (g *AggGen) genAggWithWindow(define AggDef) {
 
 func (g *AggGen) genAggWindowConstructor(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) NewWindowFunction() (sql.WindowFunction, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.UnaryExpression.Child)\n")
+	if define.IsNary {
+		fmt.Fprintf(g.w, "    child, err := transform.Clone(a.NaryExpression.ChildExpressions[0])\n")
+	} else {
+		fmt.Fprintf(g.w, "    child, err := transform.Clone(a.UnaryExpression.Child)\n")
+	}
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")

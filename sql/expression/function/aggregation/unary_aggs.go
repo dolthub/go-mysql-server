@@ -4,7 +4,7 @@ import "github.com/dolthub/go-mysql-server/optgen/cmd/support"
 
 //go:generate optgen -out unary_aggs.og.go -pkg aggregation aggs unary_aggs.go
 
-var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
+var AggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{
 		Name:     "Avg",
 		Desc:     "returns the average value of expr in all rows.",
@@ -15,6 +15,12 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 		Name:    "Count",
 		Desc:    "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.",
 		RetType: "sql.Int64",
+	},
+	{
+		Name:    "CountDistinct",
+		Desc:    "returns the number of distinct values in a result set.",
+		RetType: "sql.Int64",
+		IsNary:  true,
 	},
 	{
 		Name: "First",

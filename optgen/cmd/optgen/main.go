@@ -37,8 +37,7 @@ func main() {
 
 	cmd := args[0]
 	switch cmd {
-	case "unaryAggs":
-	case "naryAggs":
+	case "aggs":
 	case "frame":
 	case "frameFactory":
 	case "framer":
@@ -75,10 +74,8 @@ func main() {
 
 	var err error
 	switch cmd {
-	case "unaryAggs":
-		err = generateUnaryAggs(aggregation.UnaryAggDefs, writer)
-	case "naryAggs":
-		err = generateNaryAggs(aggregation.NaryAggDefs, writer)
+	case "aggs":
+		err = generateAggs(aggregation.AggDefs, writer)
 	case "frame":
 		err = generateFrames(nil, writer)
 	case "frameFactory":
@@ -115,12 +112,7 @@ func exit(err error) {
 	os.Exit(2)
 }
 
-func generateUnaryAggs(defines support.GenDefs, w io.Writer) error {
-	var gen support.AggGen
-	return generate(defines, w, gen.Generate)
-}
-
-func generateNaryAggs(defines support.GenDefs, w io.Writer) error {
+func generateAggs(defines support.GenDefs, w io.Writer) error {
 	var gen support.AggGen
 	return generate(defines, w, gen.Generate)
 }

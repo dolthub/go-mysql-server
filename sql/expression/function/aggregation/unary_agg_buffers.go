@@ -179,6 +179,10 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 			if err != nil {
 				return err
 			}
+			// skip nil values
+			if v == nil {
+				return nil
+			}
 			val[i] = v
 		}
 		value = val

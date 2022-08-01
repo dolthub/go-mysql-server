@@ -4,11 +4,9 @@ package aggregation
 
 import (
 	"fmt"
-
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type Avg struct {
@@ -131,7 +129,7 @@ var _ sql.FunctionExpression = (*CountDistinct)(nil)
 var _ sql.Aggregation = (*CountDistinct)(nil)
 var _ sql.WindowAdaptableExpression = (*CountDistinct)(nil)
 
-func NewCountDistinct(exprs []sql.Expression) *CountDistinct {
+func NewCountDistinct(exprs ...sql.Expression) *CountDistinct {
 	return &CountDistinct{
 		naryAggBase{
 			NaryExpression: expression.NaryExpression{ChildExpressions: exprs},
@@ -172,12 +170,11 @@ func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 		}
 		exprs[i] = child
 	}
-
 	return NewCountDistinctBuffer(exprs), nil
 }
 
 func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.ChildExpressions[0])
+	child, err := transform.Clone(a.NaryExpression.ChildExpressions[0])
 	if err != nil {
 		return nil, err
 	}
