@@ -22,30 +22,30 @@ import (
 // and a default expression. A nil pointer of this type represents an implicit default value and is thus valid, so all
 // method calls will return without error.
 type ColumnDefaultValue struct {
-	Expression      // the expression representing this default value
-	outType    Type // if non-nil, converts the output of the expression into this type
-	literal    bool // whether the default value is a literal or expression
-	returnNil  bool // if the expression returns a nil value, then this determines whether the result is returned or an error is returned
+	// Expression is the expression representing this default value
+	Expression
+	// outType converts the output of the expression into this type, when not nil
+	outType Type
+	// literal indicates whether the default value is a literal value or expression
+	literal bool
+	// returnNil indicates whether a nil value from the default value expression is returned as null or an error
+	returnNil bool
+	// parenthesized indicates whether the value was specified in parens or not; this is typically the opposite of the literal field,
+	// but they can both be false in the case of now/current_timestamp for datetimes and timestamps.
+	parenthesized bool
 }
 
 var _ Expression = (*ColumnDefaultValue)(nil)
 
 // NewColumnDefaultValue returns a new ColumnDefaultValue expression.
-func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool, mayReturnNil bool) (*ColumnDefaultValue, error) {
+func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool, parenthesized bool, mayReturnNil bool) (*ColumnDefaultValue, error) {
 	return &ColumnDefaultValue{
-		Expression: expr,
-		outType:    outType,
-		literal:    representsLiteral,
-		returnNil:  mayReturnNil,
+		Expression:    expr,
+		outType:       outType,
+		literal:       representsLiteral,
+		returnNil:     mayReturnNil,
+		parenthesized: parenthesized,
 	}, nil
-}
-
-func MustNewNullDefault(expr Expression, outType Type, representsLiteral bool, mayReturnNil bool) *ColumnDefaultValue {
-	d, err := NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
-	if err != nil {
-		panic(err)
-	}
-	return d
 }
 
 // NewUnresolvedColumnDefaultValue returns a column default
@@ -93,6 +93,18 @@ func (e *ColumnDefaultValue) IsLiteral() bool {
 		return true // we return the literal nil, hence true
 	}
 	return e.literal
+}
+
+// IsParenthesized returns whether this column default was specified in parentheses, using the expression default value form.
+// It is almost always the opposite of IsLiteral, but there is one edge case where matching MySQL's behavior require that
+// we can distinguish between a non-literal value in parens and a non-literal value not in parens. The edge case is using
+// now/current_timestamp as a column default; now/current_timestamp can be specified without parens for datetime/timestamp
+// fields, but it must be enclosed in parens to be used as the default for other types.
+func (e *ColumnDefaultValue) IsParenthesized() bool {
+	if e == nil {
+		return false // we return the literal nil, hence false
+	}
+	return e.parenthesized
 }
 
 // IsNullable implements sql.Expression
@@ -166,9 +178,10 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 		return nil, ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
 	if e == nil {
-		return NewColumnDefaultValue(children[0], e.outType, len(children[0].Children()) == 0, true) //impossible to know, best guess
+		isLiteral := len(children[0].Children()) == 0 //impossible to know, best guess
+		return NewColumnDefaultValue(children[0], e.outType, isLiteral, !isLiteral, true)
 	} else {
-		return NewColumnDefaultValue(children[0], e.outType, e.literal, e.returnNil)
+		return NewColumnDefaultValue(children[0], e.outType, e.literal, e.parenthesized, e.returnNil)
 	}
 }
 

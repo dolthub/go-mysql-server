@@ -41,6 +41,10 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			return n, transform.SameTree, nil
 		}
 
+		if sort.Child == plan.EmptyTable {
+			return n, transform.SameTree, nil
+		}
+
 		childAliases := aliasesDefinedInNode(sort.Child)
 		var schemaCols []tableCol
 		for _, col := range sort.Child.Schema() {
