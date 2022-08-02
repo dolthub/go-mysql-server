@@ -55,6 +55,26 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	return &jsonTablePartition{key}, nil
 }
 
+type jsonTableRowIter struct {
+	rows []sql.Row
+	pos  int
+}
+
+var _ sql.RowIter = &jsonTableRowIter{}
+
+func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if j.pos >= len(j.rows) {
+		return nil, io.EOF
+	}
+	row := j.rows[j.pos]
+	j.pos++
+	return row, nil
+}
+
+func (j *jsonTableRowIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
 type JSONTable struct {
 	name   string
 	schema sql.PrimaryKeySchema
@@ -90,7 +110,9 @@ func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.Table interface
 func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return nil, nil
+	return &jsonTableRowIter{
+		rows: t.data,
+	}, nil
 }
 
 func (t *JSONTable) Resolved() bool {
@@ -136,26 +158,30 @@ func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sql
 	table := &JSONTable{
 		name:   alias.String(),
 		schema: schema,
-		data:   nil,
+	}
+
+	// Allocate number of rows, based off values in first column
+	if v, err := jsonpath.JsonPathLookup(jsonPathData, spec.Columns[0].Type.Path); err == nil {
+		if val, ok := v.([]interface{}); ok {
+			table.data = make([]sql.Row, len(val))
+		}
 	}
 
 	// TODO: use this data to somehow create a table
 	// Do I create something in memory and have a RowIter?
 	// Fill in "table" with data
 	for _, col := range spec.Columns {
-		colData, err := jsonpath.JsonPathLookup(jsonPathData, col.Type.Path)
+		v, err := jsonpath.JsonPathLookup(jsonPathData, col.Type.Path)
 		if err != nil {
 			return nil, err
 		}
-		colDataArr, ok := colData.([]interface{})
+		colData, ok := v.([]interface{})
 		if !ok {
 			panic("TODO: good error message")
 		}
-		for i, v := range colDataArr {
-
+		for i, val := range colData {
+			table.data[i] = append(table.data[i], val)
 		}
-		// TODO: worry about types later
-		//table.data[col.Name.String()] = res
 	}
 
 	return table, nil
