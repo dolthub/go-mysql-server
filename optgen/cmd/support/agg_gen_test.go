@@ -58,17 +58,17 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-            res, err := a.unaryAggBase.WithWindow(window)
+            res, err := a.WithWindow(window)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }
 
         func (a *Test) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-            res, err := a.unaryAggBase.WithChildren(children...)
+            res, err := a.WithChildren(children...)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }
 
         func (a *Test) NewBuffer() (sql.AggregationBuffer, error) {
-            child, err := transform.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.Child)
             if err != nil {
                 return nil, err
             }
@@ -76,7 +76,7 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) NewWindowFunction() (sql.WindowFunction, error) {
-            child, err := transform.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.Child)
             if err != nil {
                 return nil, err
             }
