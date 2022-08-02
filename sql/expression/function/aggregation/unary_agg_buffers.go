@@ -168,7 +168,7 @@ func NewCountDistinctBuffer(children []sql.Expression) *countDistinctBuffer {
 func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	var value interface{}
 	if len(c.exprs) == 0 {
-		panic("TODO: not sure if this is possible")
+		return fmt.Errorf("no expressions")
 	}
 	if _, ok := c.exprs[0].(*expression.Star); ok {
 		value = row
