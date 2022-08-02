@@ -508,9 +508,9 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 }
 
 // todo: merge this into the above test when https://github.com/dolthub/dolt/issues/3836 is fixed
-func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
+func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts {
+	for _, script := range queries.IgnoreWithDuplicateUniqueKeyKeylessScripts {
 		TestScript(t, harness, script)
 	}
 
@@ -580,6 +580,17 @@ func TestUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
 	for _, tt := range queries.UpdateTests {
 		RunWriteQueryTest(t, harness, tt)
+	}
+}
+
+func TestUpdateIgnore(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
+	for _, tt := range queries.UpdateIgnoreTests {
+		RunWriteQueryTest(t, harness, tt)
+	}
+
+	for _, script := range queries.UpdateIgnoreScripts {
+		TestScript(t, harness, script)
 	}
 }
 
@@ -4648,7 +4659,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32", PrimaryKey: true},
 			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t32"},
 			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
-			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, true)},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, false, true)},
 			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
 		}, t32.Schema())
 
@@ -4821,8 +4832,8 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	})
 }
 
-func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
-	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {
+	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, isParenthesized, mayReturnNil)
 	if err != nil {
 		panic(err)
 	}
@@ -5123,12 +5134,25 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "alter table t33 rename column v1 to v1_new")
 		RunQuery(t, e, harness, "alter table t33 rename column name to name2")
 		RunQuery(t, e, harness, "alter table t33 drop column name2")
+		RunQuery(t, e, harness, "alter table t33 add column v3 datetime default CURRENT_TIMESTAMP()")
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
 			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
-			{"v1_new", "timestamp", "YES", "", "NOW()", ""},
+			{"v1_new", "timestamp", "YES", "", "(NOW())", ""},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
+			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", ""},
 		}, nil, nil)
+
+		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
+			"only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
+	})
+
+	t.Run("Function expressions must be enclosed in parens", func(t *testing.T) {
+		AssertErr(t, e, harness, "create table t0 (v0 varchar(100) default repeat(\"_\", 99));", sql.ErrSyntaxError)
+	})
+
+	t.Run("Column references must be enclosed in parens", func(t *testing.T) {
+		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrInvalidColumnDefaultValue)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {

@@ -15,14 +15,10 @@
 package analyzer
 
 import (
-	errors "gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
-
-var errInvalidInRightEvaluation = errors.NewKind("expecting evaluation of IN expression right hand side to be a tuple, but it is %T")
 
 // indexLookup contains an sql.IndexLookup and all sql.Index that are involved
 // in it.
@@ -449,9 +445,12 @@ func getNegatedIndexes(
 					return nil, err
 				}
 
-				values, ok := value.([]interface{})
-				if !ok {
-					return nil, errInvalidInRightEvaluation.New(value)
+				var values []interface{}
+				switch v := value.(type) {
+				case []interface{}:
+					values = v
+				default:
+					values = []interface{}{v}
 				}
 
 				idxBuilder := sql.NewIndexBuilder(ctx, idx)

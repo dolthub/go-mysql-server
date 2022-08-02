@@ -36,6 +36,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 				expression.NewLiteral(int8(2), sql.Int8),
 				nil,
 				true,
+				false,
 				true,
 			),
 		},
@@ -45,6 +46,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 				expression.NewLiteral(int8(2), sql.Int8),
 				nil,
 				false,
+				true,
 				true,
 			),
 		},
@@ -59,6 +61,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 				nil,
 				false,
 				true,
+				true,
 			),
 		},
 		{
@@ -70,6 +73,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 				),
 				nil,
 				false,
+				true,
 				true,
 			),
 		},
@@ -111,8 +115,8 @@ func must(f interface{}, args ...interface{}) sql.Expression {
 	return out[0].Interface().(sql.Expression)
 }
 
-func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
-	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, isLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {
+	cdv, err := sql.NewColumnDefaultValue(expr, outType, isLiteral, isParenthesized, mayReturnNil)
 	if err != nil {
 		panic(err)
 	}

@@ -6786,6 +6786,10 @@ var QueryTests = []QueryTest{
 		Query:    `select * from mytable where 1 = 0 order by i asc`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query:    `select * from mytable where i not in (1)`,
+		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -8606,12 +8610,12 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrFunctionNotFound,
 	},
 	{
-		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
-		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
+		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
 	},
 	{
-		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
-		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
+		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",

@@ -57,7 +57,6 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
-	{stripDecorationsId, stripDecorations},
 }
 
 // DefaultRules to apply when analyzing nodes.

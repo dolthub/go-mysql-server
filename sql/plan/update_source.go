@@ -25,13 +25,15 @@ import (
 type UpdateSource struct {
 	UnaryNode
 	UpdateExprs []sql.Expression
+	Ignore      bool
 }
 
 // NewUpdateSource returns a new UpdateSource from the node and expressions given.
-func NewUpdateSource(node sql.Node, updateExprs []sql.Expression) *UpdateSource {
+func NewUpdateSource(node sql.Node, ignore bool, updateExprs []sql.Expression) *UpdateSource {
 	return &UpdateSource{
 		UnaryNode:   UnaryNode{node},
 		UpdateExprs: updateExprs,
+		Ignore:      ignore,
 	}
 }
 
@@ -45,7 +47,7 @@ func (u *UpdateSource) WithExpressions(newExprs ...sql.Expression) (sql.Node, er
 	if len(newExprs) != len(u.UpdateExprs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(u.UpdateExprs), 1)
 	}
-	return NewUpdateSource(u.Child, newExprs), nil
+	return NewUpdateSource(u.Child, u.Ignore, newExprs), nil
 }
 
 // Schema implements sql.Node. The schema of an update is a concatenation of the old and new rows.
@@ -92,6 +94,7 @@ type updateSourceIter struct {
 	childIter   sql.RowIter
 	updateExprs []sql.Expression
 	tableSchema sql.Schema
+	ignore      bool
 }
 
 func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -100,7 +103,7 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressions(ctx, u.updateExprs, oldRow)
+	newRow, err := applyUpdateExpressionsWithIgnore(ctx, u.updateExprs, u.tableSchema, oldRow, u.ignore)
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +152,7 @@ func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		childIter:   rowIter,
 		updateExprs: u.UpdateExprs,
 		tableSchema: schema,
+		ignore:      u.Ignore,
 	}, nil
 }
 
@@ -156,7 +160,7 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
-	return NewUpdateSource(children[0], u.UpdateExprs), nil
+	return NewUpdateSource(children[0], u.Ignore, u.UpdateExprs), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
