@@ -89,6 +89,12 @@ type accumulatorRowHandler interface {
 	okResult() sql.OkResult
 }
 
+// TODO: Extend this to UPDATE IGNORE JOIN
+type updateIgnoreAccumulatorRowHandler interface {
+	accumulatorRowHandler
+	handleRowUpdateWithIgnore(row sql.Row, ignore bool) error
+}
+
 type insertRowHandler struct {
 	rowsAffected int
 }
@@ -182,6 +188,15 @@ func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
 	} else {
 		return err
 	}
+	return nil
+}
+
+func (u *updateRowHandler) handleRowUpdateWithIgnore(row sql.Row, ignore bool) error {
+	if !ignore {
+		return u.handleRowUpdate(row)
+	}
+
+	u.rowsMatched++
 	return nil
 }
 
@@ -312,14 +327,14 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 
 	for {
 		row, err := a.iter.Next(ctx)
-		_, isIg := err.(sql.ErrInsertIgnore)
+		igErr, isIg := err.(sql.IgnorableError)
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
 		}
 		if err == io.EOF {
-			res := a.updateRowHandler.okResult()
+			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
 
 			// TODO: The information flow here is pretty gnarly. We
 			// set some session variables based on the result, and
@@ -344,14 +359,19 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 
 			return sql.NewRow(res), nil
 		} else if isIg {
-			continue
+			if ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler); ok {
+				err = ui.handleRowUpdateWithIgnore(igErr.OffendingRow, true)
+				if err != nil {
+					return nil, err
+				}
+			}
 		} else if err != nil {
 			return nil, err
-		}
-
-		err = a.updateRowHandler.handleRowUpdate(row)
-		if err != nil {
-			return nil, err
+		} else {
+			err = a.updateRowHandler.handleRowUpdate(row)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 }
