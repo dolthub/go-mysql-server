@@ -44,11 +44,27 @@ func (*ResolvedTable) Resolved() bool {
 }
 
 func (t *ResolvedTable) String() string {
-	return fmt.Sprintf("Table(%s)", t.Table.Name())
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("Table(%s)", t.Table.Name())
+	table := seethroughTableWrapper(t)
+	if pt, ok := table.(sql.ProjectedTable); ok {
+		if len(pt.Projections()) > 0 {
+			pr.WriteChildren(fmt.Sprintf("columns: %v", pt.Projections()))
+		}
+	}
+	return pr.String()
 }
 
 func (t *ResolvedTable) DebugString() string {
-	return fmt.Sprintf("Table(%s)", sql.DebugString(t.Table))
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("Table(%s)", sql.DebugString(t.Table))
+	table := seethroughTableWrapper(t)
+	if pt, ok := table.(sql.ProjectedTable); ok {
+		if len(pt.Projections()) > 0 {
+			pr.WriteChildren(fmt.Sprintf("columns: %v", pt.Projections()))
+		}
+	}
+	return pr.String()
 }
 
 // Children implements the Node interface.
@@ -114,4 +130,12 @@ func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
 	nt := *t
 	nt.Table = table
 	return &nt, nil
+}
+
+func seethroughTableWrapper(n *ResolvedTable) sql.Table {
+	if tw, ok := n.Table.(sql.TableWrapper); ok {
+		return tw.Underlying()
+	} else {
+		return n.Table
+	}
 }

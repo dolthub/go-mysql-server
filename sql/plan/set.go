@@ -215,3 +215,20 @@ func (s *Set) DebugString() string {
 	}
 	return strings.Join(children, ", ")
 }
+
+// Applies the update expressions given to the row given, returning the new resultant row.
+func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row sql.Row) (sql.Row, error) {
+	var ok bool
+	prev := row
+	for _, updateExpr := range updateExprs {
+		val, err := updateExpr.Eval(ctx, prev)
+		if err != nil {
+			return nil, err
+		}
+		prev, ok = val.(sql.Row)
+		if !ok {
+			return nil, ErrUpdateUnexpectedSetResult.New(val)
+		}
+	}
+	return prev, nil
+}

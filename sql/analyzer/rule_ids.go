@@ -41,7 +41,6 @@ const (
 	validateReadOnlyTransactionId               // validateReadOnlyTransaction
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePriviledgesId                       // validatePriviledges
-	stripDecorationsId                          // stripDecorations
 	reresolveTablesId                           // reresolveTables
 	validateJoinComplexityId                    // validateJoinComplexity
 

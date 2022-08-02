@@ -508,9 +508,9 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 }
 
 // todo: merge this into the above test when https://github.com/dolthub/dolt/issues/3836 is fixed
-func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
+func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts {
+	for _, script := range queries.IgnoreWithDuplicateUniqueKeyKeylessScripts {
 		TestScript(t, harness, script)
 	}
 
@@ -580,6 +580,17 @@ func TestUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
 	for _, tt := range queries.UpdateTests {
 		RunWriteQueryTest(t, harness, tt)
+	}
+}
+
+func TestUpdateIgnore(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
+	for _, tt := range queries.UpdateIgnoreTests {
+		RunWriteQueryTest(t, harness, tt)
+	}
+
+	for _, script := range queries.UpdateIgnoreScripts {
+		TestScript(t, harness, script)
 	}
 }
 

@@ -6766,6 +6766,10 @@ var QueryTests = []QueryTest{
 		Query:    `select * from mytable where 1 = 0 order by i asc`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query:    `select * from mytable where i not in (1)`,
+		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{

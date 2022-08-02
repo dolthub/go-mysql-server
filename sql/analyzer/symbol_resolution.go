@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -198,7 +197,7 @@ func pruneTableCols(
 	if err != nil {
 		return n, transform.SameTree, nil
 	}
-	return plan.NewDecoratedNode(fmt.Sprintf("Projected table access on %v", cols), ret), transform.NewTree, nil
+	return ret, transform.NewTree, nil
 }
 
 // gatherOuterCols searches a node'e expressions for column
@@ -264,7 +263,7 @@ func gatherTableAlias(
 	case *plan.TableAlias:
 		alias := n.Name()
 		var base string
-		if rt := seeThroughDecoration(n.Child); rt != nil {
+		if rt, ok := n.Child.(*plan.ResolvedTable); ok {
 			base = rt.Name()
 		}
 		_, starred := parentStars[alias]
