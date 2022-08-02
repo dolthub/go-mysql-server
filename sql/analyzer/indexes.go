@@ -449,9 +449,12 @@ func getNegatedIndexes(
 					return nil, err
 				}
 
-				values, ok := value.([]interface{})
-				if !ok {
-					return nil, errInvalidInRightEvaluation.New(value)
+				var values []interface{}
+				switch v := value.(type) {
+				case []interface{}:
+					values = v
+				default:
+					values = []interface{}{v}
 				}
 
 				idxBuilder := sql.NewIndexBuilder(ctx, idx)
