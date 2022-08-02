@@ -190,8 +190,9 @@ func (i *IndexedTableAccess) String() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
 	var children []string
+	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if i.lookup != nil {
-		children = append(children, fmt.Sprintf("ranges: %s", i.lookup.Ranges().DebugString()))
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges().DebugString()))
 	}
 	if pt, ok := seethroughTableWrapper(i.ResolvedTable).(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
@@ -214,12 +215,12 @@ func (i *IndexedTableAccess) DebugString() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("IndexedTableAccess(%s)", sql.DebugString(i.ResolvedTable))
 	var children []string
+	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if i.lookup != nil {
-		children = append(children, fmt.Sprintf("ranges: %s", i.lookup.Ranges().DebugString()))
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges().DebugString()))
 		children = append(children, fmt.Sprintf("lookup: STATIC LOOKUP(%s)", sql.DebugString(i.lookup)))
 	} else {
 		children = append(children, fmt.Sprintf("lookup: %s", sql.DebugString(i.lb)))
-
 	}
 	if pt, ok := seethroughTableWrapper(i.ResolvedTable).(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
@@ -228,11 +229,6 @@ func (i *IndexedTableAccess) DebugString() string {
 	}
 	pr.WriteChildren(children...)
 	return pr.String()
-	if i.lookup != nil {
-		filters := fmt.Sprintf(" with ranges: %s,", i.lookup.Ranges().DebugString())
-		return fmt.Sprintf("IndexedTableAccess(%s on %s,%s using fields %s)", i.ResolvedTable.Name(), formatIndexDecoratorString(i.Index()), filters, "STATIC LOOKUP("+sql.DebugString(i.lookup)+")")
-	}
-	return fmt.Sprintf("IndexedTableAccess(%s %s)", i.Name(), sql.DebugString(i.lb))
 }
 
 // Expressions implements sql.Expressioner

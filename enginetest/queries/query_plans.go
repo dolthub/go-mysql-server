@@ -26,21 +26,24 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT * FROM one_pk ORDER BY pk`,
 		ExpectedPlan: "IndexedTableAccess(one_pk)\n" +
-			" ├─ ranges: [{[NULL, ∞)}]\n" +
+			" ├─ index: [one_pk.pk]\n" +
+			" ├─ filters: [{[NULL, ∞)}]\n" +
 			" └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM two_pk ORDER BY pk1, pk2`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
-			" ├─ ranges: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM two_pk ORDER BY pk1`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
-			" ├─ ranges: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -48,7 +51,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY pk1, pk2`,
 		ExpectedPlan: "Project(two_pk.pk1 as one, two_pk.pk2 as two)\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ ranges: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -56,7 +60,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY one, two`,
 		ExpectedPlan: "Project(two_pk.pk1 as one, two_pk.pk2 as two)\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ ranges: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -67,11 +72,13 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[1, 1]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter(t1.i = 2)\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
 			"                 └─ columns: [i]\n" +
 			"",
 	},
@@ -85,6 +92,7 @@ var PlanTests = []QueryPlanTest{
 			"             ├─ Table(mytable)\n" +
 			"             │   └─ columns: [i]\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
 			"                 └─ columns: [i2]\n" +
 			"",
 	},
@@ -92,7 +100,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM one_pk_two_idx WHERE v1 < 2 AND v2 IS NOT NULL`,
 		ExpectedPlan: "Filter(NOT(one_pk_two_idx.v2 IS NULL))\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     ├─ ranges: [{(NULL, 2), (NULL, ∞)}]\n" +
+			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     ├─ filters: [{(NULL, 2), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
 	},
@@ -100,14 +109,16 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM one_pk_two_idx WHERE v1 IN (1, 2) AND v2 <= 2`,
 		ExpectedPlan: "Filter(one_pk_two_idx.v1 HASH IN (1, 2))\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     ├─ ranges: [{[2, 2], (NULL, 2]}, {[1, 1], (NULL, 2]}]\n" +
+			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     ├─ filters: [{[2, 2], (NULL, 2]}, {[1, 1], (NULL, 2]}]\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM one_pk_three_idx WHERE v1 > 2 AND v2 = 3`,
 		ExpectedPlan: "IndexedTableAccess(one_pk_three_idx)\n" +
-			" ├─ ranges: [{(2, ∞), [3, 3], [NULL, ∞)}]\n" +
+			" ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			" ├─ filters: [{(2, ∞), [3, 3], [NULL, ∞)}]\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -115,7 +126,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM one_pk_three_idx WHERE v1 > 2 AND v3 = 3`,
 		ExpectedPlan: "Filter(one_pk_three_idx.v3 = 3)\n" +
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     ├─ ranges: [{(2, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ filters: [{(2, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -129,9 +141,11 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i as i2)\n" +
 			"         └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
-			"             │   ├─ ranges: [{[2, 2]}]\n" +
+			"             │   ├─ index: [mytable.i]\n" +
+			"             │   ├─ filters: [{[2, 2]}]\n" +
 			"             │   └─ columns: [i]\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
 			"                 └─ columns: [i2]\n" +
 			"",
 	},
@@ -145,11 +159,13 @@ var PlanTests = []QueryPlanTest{
 			"             ├─ Filter(t2.i = 1)\n" +
 			"             │   └─ TableAlias(t2)\n" +
 			"             │       └─ IndexedTableAccess(mytable)\n" +
-			"             │           ├─ ranges: [{[1, 1]}]\n" +
+			"             │           ├─ index: [mytable.i]\n" +
+			"             │           ├─ filters: [{[1, 1]}]\n" +
 			"             │           └─ columns: [i]\n" +
 			"             └─ Filter(t1.i = 2)\n" +
 			"                 └─ TableAlias(t1)\n" +
 			"                     └─ IndexedTableAccess(mytable)\n" +
+			"                         ├─ index: [mytable.i]\n" +
 			"                         └─ columns: [i]\n" +
 			"",
 	},
@@ -160,12 +176,14 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(t1.i = 2)\n" +
 			"     │   └─ TableAlias(t1)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[2, 2]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[2, 2]}]\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter(t2.i = 1)\n" +
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ ranges: [{[1, 1]}]\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ filters: [{[1, 1]}]\n" +
 			"                 └─ columns: [i]\n" +
 			"",
 	},
@@ -176,11 +194,13 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[1, 1]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter(t1.i = 2)\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
 			"                 └─ columns: [i]\n" +
 			"",
 	},
@@ -191,11 +211,13 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[1, 1]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter(t1.i = 2)\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
 			"                 └─ columns: [i]\n" +
 			"",
 	},
@@ -206,11 +228,13 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[1, 1]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter(t1.i = 2)\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
 			"                 └─ columns: [i]\n" +
 			"",
 	},
@@ -221,6 +245,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -232,8 +257,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ columns: [i s]\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(othertable)\n" +
+			"         │   ├─ index: [othertable.i2]\n" +
 			"         │   └─ columns: [s2 i2]\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -246,8 +273,10 @@ var PlanTests = []QueryPlanTest{
 			"     └─ TableAlias(ot)\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(othertable)\n" +
+			"             │   ├─ index: [othertable.i2]\n" +
 			"             │   └─ columns: [s2 i2]\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.s2]\n" +
 			"                 └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -259,8 +288,10 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ columns: [i s]\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(othertable)\n" +
+			"         │   ├─ index: [othertable.i2]\n" +
 			"         │   └─ columns: [s2 i2]\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -273,10 +304,13 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Concat\n" +
 			"         ├─ Concat\n" +
 			"         │   ├─ IndexedTableAccess(othertable)\n" +
+			"         │   │   ├─ index: [othertable.i2]\n" +
 			"         │   │   └─ columns: [s2 i2]\n" +
 			"         │   └─ IndexedTableAccess(othertable)\n" +
+			"         │       ├─ index: [othertable.s2]\n" +
 			"         │       └─ columns: [s2 i2]\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -289,12 +323,14 @@ var PlanTests = []QueryPlanTest{
 			"     │       ├─ Table(mytable)\n" +
 			"     │       │   └─ columns: [i]\n" +
 			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
 			"     │           └─ columns: [s2 i2]\n" +
 			"     └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
 			"         └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"             ├─ Table(mytable)\n" +
 			"             │   └─ columns: [i]\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
 			"                 └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -308,9 +344,11 @@ var PlanTests = []QueryPlanTest{
 			"     │           ├─ Table(mytable)\n" +
 			"     │           │   └─ columns: [i]\n" +
 			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ TableAlias(ot)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -324,9 +362,11 @@ var PlanTests = []QueryPlanTest{
 			"     │           ├─ Table(mytable)\n" +
 			"     │           │   └─ columns: [i]\n" +
 			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ TableAlias(ot)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -337,7 +377,8 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(ot.i2 > 0)\n" +
 			"     │   └─ TableAlias(ot)\n" +
 			"     │       └─ IndexedTableAccess(othertable)\n" +
-			"     │           ├─ ranges: [{(0, ∞)}]\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ filters: [{(0, ∞)}]\n" +
 			"     │           └─ columns: [s2 i2]\n" +
 			"     └─ HashLookup(child: (sub.i), lookup: (ot.i2))\n" +
 			"         └─ CachedResults\n" +
@@ -348,6 +389,7 @@ var PlanTests = []QueryPlanTest{
 			"                         │   └─ columns: [i]\n" +
 			"                         └─ Filter(NOT((convert(othertable.s2, signed) = 0)))\n" +
 			"                             └─ IndexedTableAccess(othertable)\n" +
+			"                                 ├─ index: [othertable.i2]\n" +
 			"                                 └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -360,6 +402,7 @@ var PlanTests = []QueryPlanTest{
 			" │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			" │   └─ TableAlias(k)\n" +
 			" │       └─ IndexedTableAccess(one_pk)\n" +
+			" │           ├─ index: [one_pk.pk]\n" +
 			" │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			" └─ HashLookup(child: (j.pk), lookup: (i.pk))\n" +
 			"     └─ CachedResults\n" +
@@ -382,9 +425,11 @@ var PlanTests = []QueryPlanTest{
 			"             │           ├─ Table(mytable)\n" +
 			"             │           │   └─ columns: [i]\n" +
 			"             │           └─ IndexedTableAccess(othertable)\n" +
+			"             │               ├─ index: [othertable.i2]\n" +
 			"             │               └─ columns: [s2 i2]\n" +
 			"             └─ TableAlias(ot)\n" +
 			"                 └─ IndexedTableAccess(othertable)\n" +
+			"                     ├─ index: [othertable.i2]\n" +
 			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -398,6 +443,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(mytable)\n" +
 			"         └─ TableAlias(selfjoin)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 └─ index: [mytable.i]\n" +
 			"",
 	},
 	{
@@ -407,6 +453,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -417,6 +464,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(othertable)\n" +
 			"     │   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
 			"         └─ columns: [i]\n" +
 			"",
 	},
@@ -426,6 +474,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(othertable)\n" +
 			" │   └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
 			"     └─ columns: [i]\n" +
 			"",
 	},
@@ -435,6 +484,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(othertable)\n" +
 			" │   └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
 			"     └─ columns: [i]\n" +
 			"",
 	},
@@ -445,6 +495,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(othertable)\n" +
 			"     │   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
 			"         └─ columns: [i]\n" +
 			"",
 	},
@@ -455,6 +506,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -465,6 +517,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -474,6 +527,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(mytable)\n" +
 			" │   └─ columns: [i s]\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -483,6 +537,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(mytable)\n" +
 			" │   └─ columns: [i s]\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -492,6 +547,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(mytable)\n" +
 			" │   └─ columns: [i s]\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -558,7 +614,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(NOT(a.s IS NULL))\n" +
 			" └─ TableAlias(a)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ ranges: [{(NULL, ∞)}]\n" +
+			"         ├─ index: [mytable.s]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 	},
@@ -569,10 +626,12 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(NOT(a.s IS NULL))\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{(NULL, ∞)}]\n" +
+			"     │           ├─ index: [mytable.s]\n" +
+			"     │           ├─ filters: [{(NULL, ∞)}]\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
 			"             └─ columns: [s]\n" +
 			"",
 	},
@@ -586,6 +645,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Filter(NOT(a.s IS NULL))\n" +
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
 			"                 └─ columns: [i s]\n" +
 			"",
 	},
@@ -596,10 +656,12 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(NOT((a.s HASH IN ('1', '2', '3', '4'))))\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}, {(NULL, 1)}]\n" +
+			"     │           ├─ index: [mytable.s]\n" +
+			"     │           ├─ filters: [{(1, 2)}, {(2, 3)}, {(3, 4)}, {(4, ∞)}, {(NULL, 1)}]\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
 			"             └─ columns: [s]\n" +
 			"",
 	},
@@ -610,10 +672,12 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(a.i HASH IN (1, 2, 3, 4))\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[2, 2]}, {[3, 3]}, {[4, 4]}, {[1, 1]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[2, 2]}, {[3, 3]}, {[4, 4]}, {[1, 1]}]\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
 			"             └─ columns: [s]\n" +
 			"",
 	},
@@ -621,7 +685,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM mytable WHERE i in (1, 2, 3, 4)`,
 		ExpectedPlan: "Filter(mytable.i HASH IN (1, 2, 3, 4))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ ranges: [{[2, 2]}, {[3, 3]}, {[4, 4]}, {[1, 1]}]\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ filters: [{[2, 2]}, {[3, 3]}, {[4, 4]}, {[1, 1]}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
@@ -629,14 +694,16 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
 		ExpectedPlan: "Filter(mytable.i HASH IN (NULL, 2, 3, 4))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ ranges: [{[3, 3]}, {[4, 4]}, {[2, 2]}]\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ filters: [{[3, 3]}, {[4, 4]}, {[2, 2]}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1+2)`,
 		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
-			" ├─ ranges: [{[3, 3]}]\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ filters: [{[3, 3]}]\n" +
 			" └─ columns: [i s]\n" +
 			"",
 	},
@@ -721,7 +788,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))`,
 		ExpectedPlan: "Filter(mytable.s HASH IN ('first row'))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ ranges: [{[first row, first row]}]\n" +
+			"     ├─ index: [mytable.s]\n" +
+			"     ├─ filters: [{[first row, first row]}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
@@ -729,7 +797,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')`,
 		ExpectedPlan: "Filter(mytable.s HASH IN ('second row', 'FIRST ROW'))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ ranges: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
+			"     ├─ index: [mytable.s]\n" +
+			"     ├─ filters: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
@@ -749,6 +818,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
 			"             └─ columns: [i]\n" +
 			"",
 	},
@@ -819,7 +889,8 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(a.i HASH IN (2, 432, 7))\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[432, 432]}, {[7, 7]}, {[2, 2]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[432, 432]}, {[7, 7]}, {[2, 2]}]\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table(mytable)\n" +
@@ -835,14 +906,17 @@ var PlanTests = []QueryPlanTest{
 			"     └─ IndexedJoin(b.i = c.i)\n" +
 			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i]\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ IndexedJoin(c.i = d.i)\n" +
 			"             ├─ Filter(c.i = 2)\n" +
 			"             │   └─ TableAlias(c)\n" +
 			"             │       └─ IndexedTableAccess(mytable)\n" +
+			"             │           ├─ index: [mytable.i]\n" +
 			"             │           └─ columns: [i]\n" +
 			"             └─ TableAlias(d)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
+			"                     ├─ index: [mytable.i]\n" +
 			"                     └─ columns: [i]\n" +
 			"",
 	},
@@ -894,6 +968,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
 			"             └─ columns: [i]\n" +
 			"",
 	},
@@ -907,8 +982,10 @@ var PlanTests = []QueryPlanTest{
 			"     └─ TableAlias(b)\n" +
 			"         └─ Concat\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i]\n" +
 			"             │   └─ columns: [i s]\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.s]\n" +
 			"                 └─ columns: [i s]\n" +
 			"",
 	},
@@ -970,14 +1047,17 @@ var PlanTests = []QueryPlanTest{
 			"     └─ IndexedJoin(b.i = c.i)\n" +
 			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i]\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ IndexedJoin(c.i = d.i)\n" +
 			"             ├─ Filter(c.i = 2)\n" +
 			"             │   └─ TableAlias(c)\n" +
 			"             │       └─ IndexedTableAccess(mytable)\n" +
+			"             │           ├─ index: [mytable.i]\n" +
 			"             │           └─ columns: [i]\n" +
 			"             └─ TableAlias(d)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
+			"                     ├─ index: [mytable.i]\n" +
 			"                     └─ columns: [i]\n" +
 			"",
 	},
@@ -1027,10 +1107,12 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(a.i BETWEEN 10 AND 20)\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ ranges: [{[10, 20]}]\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{[10, 20]}]\n" +
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
 			"             └─ columns: [s]\n" +
 			"",
 	},
@@ -1061,6 +1143,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Table(othertable)\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
 			"         └─ columns: [i]\n" +
 			"",
 	},
@@ -1071,6 +1154,7 @@ var PlanTests = []QueryPlanTest{
 			" │   └─ Table(othertable)\n" +
 			" │       └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
 			"     └─ columns: [i]\n" +
 			"",
 	},
@@ -1079,7 +1163,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
 			" └─ Filter(othertable.s2 = 'a')\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ ranges: [{[a, a]}]\n" +
+			"         ├─ index: [othertable.s2]\n" +
+			"         ├─ filters: [{[a, a]}]\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -1090,7 +1175,8 @@ var PlanTests = []QueryPlanTest{
 			"     └─ SubqueryAlias(othertable_one)\n" +
 			"         └─ Filter(othertable.s2 = 'a')\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ ranges: [{[a, a]}]\n" +
+			"                 ├─ index: [othertable.s2]\n" +
+			"                 ├─ filters: [{[a, a]}]\n" +
 			"                 └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -1100,9 +1186,11 @@ var PlanTests = []QueryPlanTest{
 			" ├─ SubqueryAlias(othertable)\n" +
 			" │   └─ Filter(othertable.s2 > 'a')\n" +
 			" │       └─ IndexedTableAccess(othertable)\n" +
-			" │           ├─ ranges: [{(a, ∞)}]\n" +
+			" │           ├─ index: [othertable.s2]\n" +
+			" │           ├─ filters: [{(a, ∞)}]\n" +
 			" │           └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
 			"     └─ columns: [i]\n" +
 			"",
 	},
@@ -1113,6 +1201,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ columns: [i2]\n" +
 			")))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
+			"     └─ index: [mytable.i]\n" +
 			"",
 	},
 	{
@@ -1121,12 +1210,14 @@ var PlanTests = []QueryPlanTest{
 			" └─ columns: [i2]\n" +
 			")))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
+			"     └─ index: [mytable.i]\n" +
 			"",
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable WHERE mytable.i = othertable.i2)`,
 		ExpectedPlan: "Filter(mytable.i IN (Filter(mytable.i = othertable.i2)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
 			"     └─ columns: [i2]\n" +
 			"))\n" +
 			" └─ Table(mytable)\n" +
@@ -1138,10 +1229,12 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Filter(mt.i > 2)\n" +
 			" │   └─ TableAlias(mt)\n" +
 			" │       └─ IndexedTableAccess(mytable)\n" +
-			" │           ├─ ranges: [{(2, ∞)}]\n" +
+			" │           ├─ index: [mytable.i]\n" +
+			" │           ├─ filters: [{(2, ∞)}]\n" +
 			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -1153,6 +1246,7 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ columns: [i s]\n" +
 			" └─ TableAlias(o)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
 			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -1163,6 +1257,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(othertable)\n" +
 			"     │   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
 			"         └─ columns: [i]\n" +
 			"",
 	},
@@ -1177,6 +1272,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(ot)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -1188,6 +1284,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Table(reservedWordsTable)\n" +
 			"     └─ TableAlias(t2)\n" +
 			"         └─ IndexedTableAccess(reservedWordsTable)\n" +
+			"             └─ index: [reservedWordsTable.Timestamp]\n" +
 			"",
 	},
 	{
@@ -1196,6 +1293,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(one_pk)\n" +
 			" │   └─ columns: [pk]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1217,6 +1315,7 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ columns: [pk]\n" +
 			" └─ TableAlias(tpk)\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1226,6 +1325,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(one_pk)\n" +
 			" │   └─ columns: [pk]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1236,6 +1336,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1246,6 +1347,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1256,6 +1358,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1266,6 +1369,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(two_pk)\n" +
 			"     │   └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
 			"         └─ columns: [pk]\n" +
 			"",
 	},
@@ -1273,7 +1377,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM (SELECT * FROM othertable) othertable_alias WHERE othertable_alias.i2 = 1`,
 		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
-			"     ├─ ranges: [{[1, 1]}]\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[1, 1]}]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -1281,7 +1386,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM (SELECT * FROM othertable WHERE i2 = 1) othertable_alias WHERE othertable_alias.i2 = 1`,
 		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
-			"     ├─ ranges: [{[1, 1]}]\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[1, 1]}]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -1313,7 +1419,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.date_col = '2020-01-01')\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
-			"     ├─ ranges: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ index: [datetime_table.date_col]\n" +
+			"     ├─ filters: [{[2020-01-01, 2020-01-01]}]\n" +
 			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1321,7 +1428,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM datetime_table where date_col > '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.date_col > '2020-01-01')\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
-			"     ├─ ranges: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ index: [datetime_table.date_col]\n" +
+			"     ├─ filters: [{(2020-01-01, ∞)}]\n" +
 			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1329,7 +1437,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM datetime_table where datetime_col = '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.datetime_col = '2020-01-01')\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
-			"     ├─ ranges: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ index: [datetime_table.datetime_col]\n" +
+			"     ├─ filters: [{[2020-01-01, 2020-01-01]}]\n" +
 			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1337,7 +1446,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM datetime_table where datetime_col > '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.datetime_col > '2020-01-01')\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
-			"     ├─ ranges: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ index: [datetime_table.datetime_col]\n" +
+			"     ├─ filters: [{(2020-01-01, ∞)}]\n" +
 			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1345,7 +1455,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM datetime_table where timestamp_col = '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.timestamp_col = '2020-01-01')\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
-			"     ├─ ranges: [{[2020-01-01, 2020-01-01]}]\n" +
+			"     ├─ index: [datetime_table.timestamp_col]\n" +
+			"     ├─ filters: [{[2020-01-01, 2020-01-01]}]\n" +
 			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1353,7 +1464,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM datetime_table where timestamp_col > '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.timestamp_col > '2020-01-01')\n" +
 			" └─ IndexedTableAccess(datetime_table)\n" +
-			"     ├─ ranges: [{(2020-01-01, ∞)}]\n" +
+			"     ├─ index: [datetime_table.timestamp_col]\n" +
+			"     ├─ filters: [{(2020-01-01, ∞)}]\n" +
 			"     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1365,6 +1477,7 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			" └─ TableAlias(dt2)\n" +
 			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1376,6 +1489,7 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			" └─ TableAlias(dt2)\n" +
 			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1387,6 +1501,7 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			" └─ TableAlias(dt2)\n" +
 			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
 			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
@@ -1402,6 +1517,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [timestamp_col]\n" +
 			"         └─ TableAlias(dt1)\n" +
 			"             └─ IndexedTableAccess(datetime_table)\n" +
+			"                 ├─ index: [datetime_table.date_col]\n" +
 			"                 └─ columns: [i date_col]\n" +
 			"",
 	},
@@ -1419,6 +1535,7 @@ var PlanTests = []QueryPlanTest{
 			"                 │       └─ columns: [timestamp_col]\n" +
 			"                 └─ TableAlias(dt1)\n" +
 			"                     └─ IndexedTableAccess(datetime_table)\n" +
+			"                         ├─ index: [datetime_table.date_col]\n" +
 			"                         └─ columns: [i date_col]\n" +
 			"",
 	},
@@ -1435,6 +1552,7 @@ var PlanTests = []QueryPlanTest{
 			"             │       └─ columns: [timestamp_col]\n" +
 			"             └─ TableAlias(dt1)\n" +
 			"                 └─ IndexedTableAccess(datetime_table)\n" +
+			"                     ├─ index: [datetime_table.date_col]\n" +
 			"                     └─ columns: [i date_col]\n" +
 			"",
 	},
@@ -1449,9 +1567,11 @@ var PlanTests = []QueryPlanTest{
 			"     └─ IndexedJoin((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"         ├─ TableAlias(tpk)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │       └─ columns: [pk1 pk2]\n" +
 			"         └─ TableAlias(tpk2)\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1467,9 +1587,11 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ Table(two_pk)\n" +
 			"     │   │       └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1485,9 +1607,11 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ Table(two_pk)\n" +
 			"     │   │       └─ columns: [pk1 pk2]\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1504,9 +1628,11 @@ var PlanTests = []QueryPlanTest{
 			"         │   │   └─ columns: [pk]\n" +
 			"         │   └─ TableAlias(tpk)\n" +
 			"         │       └─ IndexedTableAccess(two_pk)\n" +
+			"         │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │           └─ columns: [pk1 pk2]\n" +
 			"         └─ TableAlias(tpk2)\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1521,9 +1647,11 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(tpk)\n" +
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1538,9 +1666,11 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(tpk)\n" +
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1555,9 +1685,11 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(tpk)\n" +
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1573,8 +1705,10 @@ var PlanTests = []QueryPlanTest{
 			"     └─ RightIndexedJoin((one_pk.pk = tpk.pk1) AND (one_pk.pk = tpk.pk2))\n" +
 			"         ├─ TableAlias(tpk)\n" +
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │       └─ columns: [pk1 pk2]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -1584,6 +1718,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(mytable)\n" +
 			" │   └─ columns: [i]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1594,6 +1729,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1604,6 +1740,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -1614,6 +1751,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(niltable)\n" +
 			"     │   └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
 			"         └─ columns: [pk]\n" +
 			"",
 	},
@@ -1631,6 +1769,7 @@ var PlanTests = []QueryPlanTest{
 			"         │   └─ Table(niltable)\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -1641,6 +1780,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -1661,6 +1801,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
 			"             └─ columns: [i f]\n" +
 			"",
 	},
@@ -1672,6 +1813,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
 			"             └─ columns: [i i2 f]\n" +
 			"",
 	},
@@ -1683,6 +1825,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
 			"             └─ columns: [i f]\n" +
 			"",
 	},
@@ -1694,6 +1837,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Table(one_pk)\n" +
 			"     │       └─ columns: [pk c1]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -1705,6 +1849,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Table(niltable)\n" +
 			"     │       └─ columns: [i f]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
 			"         └─ columns: [pk]\n" +
 			"",
 	},
@@ -1713,9 +1858,11 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ IndexedTableAccess(one_pk)\n" +
-			"     │   ├─ ranges: [{(1, ∞)}]\n" +
+			"     │   ├─ index: [one_pk.pk]\n" +
+			"     │   ├─ filters: [{(1, ∞)}]\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
 			"         └─ columns: [i f]\n" +
 			"",
 	},
@@ -1729,6 +1876,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [i i2]\n" +
 			"         └─ TableAlias(r)\n" +
 			"             └─ IndexedTableAccess(niltable)\n" +
+			"                 ├─ index: [niltable.i2]\n" +
 			"                 └─ columns: [i2]\n" +
 			"",
 	},
@@ -1740,6 +1888,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(niltable)\n" +
 			"         │   └─ columns: [i f]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -1749,6 +1898,7 @@ var PlanTests = []QueryPlanTest{
 			" ├─ Table(one_pk)\n" +
 			" │   └─ columns: [pk]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1759,6 +1909,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(two_pk)\n" +
 			"     │   └─ columns: [pk1 pk2]\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
 			"         └─ columns: [pk]\n" +
 			"",
 	},
@@ -1771,6 +1922,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1783,6 +1935,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1795,6 +1948,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1807,6 +1961,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1819,6 +1974,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1831,6 +1987,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1842,6 +1999,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk c5]\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1855,6 +2013,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [pk c5]\n" +
 			"         └─ TableAlias(tpk)\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1868,6 +2027,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [pk c5]\n" +
 			"         └─ TableAlias(tpk)\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1881,6 +2041,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [pk c5]\n" +
 			"         └─ TableAlias(tpk)\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1892,6 +2053,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk c5]\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -1899,7 +2061,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM niltable WHERE i2 = NULL`,
 		ExpectedPlan: "Filter(niltable.i2 = NULL)\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
-			"     ├─ ranges: [{(∞, ∞)}]\n" +
+			"     ├─ index: [niltable.i2]\n" +
+			"     ├─ filters: [{(∞, ∞)}]\n" +
 			"     └─ columns: [i i2 b f]\n" +
 			"",
 	},
@@ -1907,7 +2070,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM niltable WHERE i2 <> NULL`,
 		ExpectedPlan: "Filter(NOT((niltable.i2 = NULL)))\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
-			"     ├─ ranges: [{(∞, ∞)}]\n" +
+			"     ├─ index: [niltable.i2]\n" +
+			"     ├─ filters: [{(∞, ∞)}]\n" +
 			"     └─ columns: [i i2 b f]\n" +
 			"",
 	},
@@ -1915,7 +2079,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM niltable WHERE i2 > NULL`,
 		ExpectedPlan: "Filter(niltable.i2 > NULL)\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
-			"     ├─ ranges: [{(∞, ∞)}]\n" +
+			"     ├─ index: [niltable.i2]\n" +
+			"     ├─ filters: [{(∞, ∞)}]\n" +
 			"     └─ columns: [i i2 b f]\n" +
 			"",
 	},
@@ -1923,7 +2088,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM niltable WHERE i2 <=> NULL`,
 		ExpectedPlan: "Filter(niltable.i2 <=> NULL)\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
-			"     ├─ ranges: [{[NULL, NULL]}]\n" +
+			"     ├─ index: [niltable.i2]\n" +
+			"     ├─ filters: [{[NULL, NULL]}]\n" +
 			"     └─ columns: [i i2 b f]\n" +
 			"",
 	},
@@ -1935,6 +2101,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
 			"             └─ columns: [i f]\n" +
 			"",
 	},
@@ -1947,6 +2114,7 @@ var PlanTests = []QueryPlanTest{
 			"             ├─ Table(one_pk)\n" +
 			"             │   └─ columns: [pk]\n" +
 			"             └─ IndexedTableAccess(niltable)\n" +
+			"                 ├─ index: [niltable.i]\n" +
 			"                 └─ columns: [i f]\n" +
 			"",
 	},
@@ -1956,9 +2124,11 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ IndexedTableAccess(one_pk)\n" +
-			"         │   ├─ ranges: [{(1, ∞)}]\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ filters: [{(1, ∞)}]\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
 			"             └─ columns: [i f]\n" +
 			"",
 	},
@@ -1970,6 +2140,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(niltable)\n" +
 			"         │   └─ columns: [i f]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -1982,6 +2153,7 @@ var PlanTests = []QueryPlanTest{
 			"         │   └─ Table(niltable)\n" +
 			"         │       └─ columns: [i f]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -1994,6 +2166,7 @@ var PlanTests = []QueryPlanTest{
 			"             ├─ Table(niltable)\n" +
 			"             │   └─ columns: [i f]\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
 			"                 └─ columns: [pk]\n" +
 			"",
 	},
@@ -2014,6 +2187,7 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -2045,6 +2219,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -2056,6 +2231,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -2067,6 +2243,7 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(two_pk)\n" +
 			"         │   └─ columns: [pk1 pk2]\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -2079,6 +2256,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -2091,6 +2269,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk]\n" +
 			"     └─ TableAlias(tpk)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -2134,7 +2313,8 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(t1.pk = 1)\n" +
 			"     │   └─ TableAlias(t1)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
-			"     │           ├─ ranges: [{[1, 1]}]\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ Filter(t2.pk2 = 1)\n" +
 			"         └─ TableAlias(t2)\n" +
@@ -2149,12 +2329,14 @@ var PlanTests = []QueryPlanTest{
 			"     ├─ Filter(t1.pk = 1)\n" +
 			"     │   └─ TableAlias(t1)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
-			"     │           ├─ ranges: [{[1, 1]}]\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ Filter((t2.pk2 = 1) AND (t2.pk1 = 1))\n" +
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(two_pk)\n" +
-			"                 ├─ ranges: [{[1, 1], [NULL, ∞)}]\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -2165,10 +2347,12 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(mt.i)\n" +
 			" └─ Filter((NOT((Filter(mytable.i = mt.i)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ ranges: [{(2, ∞)}]\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{(2, ∞)}]\n" +
 			"         └─ columns: [i]\n" +
 			"    ) IS NULL)) AND (NOT((Filter(othertable.i2 = mt.i)\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         └─ columns: [i2]\n" +
 			"    ) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
@@ -2182,9 +2366,11 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(mt.i)\n" +
 			" └─ Filter((NOT((Filter(mytable.i = mt.i)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
 			"         └─ columns: [i]\n" +
 			"    ) IS NULL)) AND (NOT((Filter((othertable.i2 = mt.i) AND (mt.i > 2))\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         └─ columns: [i2]\n" +
 			"    ) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
@@ -2196,14 +2382,16 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
 			" └─ Project(t1.pk, t2.pk2, (Limit(1)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ ranges: [{[1, 1]}]\n" +
+			"         ├─ index: [one_pk.pk]\n" +
+			"         ├─ filters: [{[1, 1]}]\n" +
 			"         └─ columns: [pk]\n" +
 			"    ) as (SELECT pk from one_pk where pk = 1 limit 1))\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +
 			"         │   └─ TableAlias(t1)\n" +
 			"         │       └─ IndexedTableAccess(one_pk)\n" +
-			"         │           └─ ranges: [{[1, 1]}]\n" +
+			"         │           ├─ index: [one_pk.pk]\n" +
+			"         │           └─ filters: [{[1, 1]}]\n" +
 			"         └─ Filter(t2.pk2 = 1)\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table(two_pk)\n" +
@@ -2216,7 +2404,8 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
 			"         └─ Filter(NOT((othertable.s2 = 'second')))\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ ranges: [{(second, ∞)}, {(NULL, second)}]\n" +
+			"                 ├─ index: [othertable.s2]\n" +
+			"                 ├─ filters: [{(second, ∞)}, {(NULL, second)}]\n" +
 			"                 └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -2237,7 +2426,8 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2)\n" +
 			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ ranges: [{(NULL, 2)}, {(2, ∞)}]\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ filters: [{(NULL, 2)}, {(2, ∞)}]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -2287,7 +2477,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `DELETE FROM two_pk WHERE pk1 = 1 AND pk2 = 2`,
 		ExpectedPlan: "Delete\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
-			"     └─ ranges: [{[1, 1], [2, 2]}]\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     └─ filters: [{[1, 1], [2, 2]}]\n" +
 			"",
 	},
 	{
@@ -2303,7 +2494,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Update\n" +
 			" └─ UpdateSource(SET two_pk.c1 = 1)\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         └─ ranges: [{[1, 1], [2, 2]}]\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[1, 1], [2, 2]}]\n" +
 			"",
 	},
 	{
@@ -2315,6 +2507,7 @@ var PlanTests = []QueryPlanTest{
 			"             └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"                 ├─ Table(two_pk)\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
+			"                     └─ index: [one_pk.pk]\n" +
 			"",
 	},
 	{
@@ -2328,6 +2521,7 @@ var PlanTests = []QueryPlanTest{
 			"                 │   └─ Table(two_pk)\n" +
 			"                 │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
+			"                     └─ index: [one_pk.pk]\n" +
 			"",
 	},
 	{
@@ -2339,6 +2533,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [z]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(invert_pk)\n" +
+			"             ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			"             └─ columns: [x y z]\n" +
 			"",
 	},
@@ -2352,34 +2547,39 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Filter(a.z = 2)\n" +
 			"         └─ TableAlias(a)\n" +
 			"             └─ IndexedTableAccess(invert_pk)\n" +
+			"                 ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
 			"                 └─ columns: [x y z]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y = 0`,
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
-			" ├─ ranges: [{[0, 0], [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
+			" ├─ filters: [{[0, 0], [NULL, ∞), [NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
-			" ├─ ranges: [{[0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
+			" ├─ filters: [{[0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
-			" ├─ ranges: [{[0, ∞), (NULL, 1), [NULL, ∞)}]\n" +
+			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
+			" ├─ filters: [{[0, ∞), (NULL, 1), [NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM one_pk WHERE pk IN (1)`,
 		ExpectedPlan: "IndexedTableAccess(one_pk)\n" +
-			" ├─ ranges: [{[1, 1]}]\n" +
+			" ├─ index: [one_pk.pk]\n" +
+			" ├─ filters: [{[1, 1]}]\n" +
 			" └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -2396,6 +2596,7 @@ var PlanTests = []QueryPlanTest{
 			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -2428,6 +2629,7 @@ var PlanTests = []QueryPlanTest{
 			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -2445,9 +2647,11 @@ var PlanTests = []QueryPlanTest{
 			"     │   │           └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
 			"             └─ columns: [pk]\n" +
 			"",
 	},
@@ -2481,6 +2685,7 @@ var PlanTests = []QueryPlanTest{
 			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(ot)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -2514,10 +2719,12 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Filter(b.pk = 0)\n" +
 			"     │       └─ TableAlias(b)\n" +
 			"     │           └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │               ├─ ranges: [{[0, 0]}]\n" +
+			"     │               ├─ index: [one_pk_three_idx.pk]\n" +
+			"     │               ├─ filters: [{[0, 0]}]\n" +
 			"     │               └─ columns: [pk]\n" +
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			"             └─ columns: [v1 v2]\n" +
 			"",
 	},
@@ -2550,9 +2757,11 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ RightIndexedJoin(a.i = (b.i + 1))\n" +
 			"         │   ├─ TableAlias(b)\n" +
 			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i]\n" +
 			"         │   │       └─ columns: [i]\n" +
 			"         │   └─ TableAlias(a)\n" +
 			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
 			"         │           └─ columns: [i s]\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ Table(mytable)\n" +
@@ -2570,12 +2779,14 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   │       └─ columns: [s2 i2]\n" +
 			"     │   │   └─ TableAlias(a)\n" +
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
+			"     │   │           ├─ index: [mytable.i]\n" +
 			"     │   │           └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ Table(mytable)\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             └─ columns: [i2]\n" +
 			"",
 	},
@@ -2593,9 +2804,11 @@ var PlanTests = []QueryPlanTest{
 			"     │       │       └─ columns: [s2 i2]\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
+			"     │               ├─ index: [mytable.i]\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             └─ columns: [i2]\n" +
 			"",
 	},
@@ -2608,6 +2821,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(j)\n" +
 			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             └─ columns: [pk v3]\n" +
 			"",
 	},
@@ -2624,6 +2838,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [pk v1]\n" +
 			"         └─ TableAlias(j)\n" +
 			"             └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                 ├─ index: [one_pk_three_idx.pk]\n" +
 			"                 └─ columns: [pk v3]\n" +
 			"",
 	},
@@ -2636,6 +2851,7 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ columns: [pk v1]\n" +
 			"     └─ TableAlias(j)\n" +
 			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             └─ columns: [pk v3]\n" +
 			"",
 	},
@@ -2652,6 +2868,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [pk v1]\n" +
 			"         └─ TableAlias(j)\n" +
 			"             └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                 ├─ index: [one_pk_three_idx.pk]\n" +
 			"                 └─ columns: [pk v3]\n" +
 			"",
 	},
@@ -2668,6 +2885,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [pk v1]\n" +
 			"         └─ TableAlias(j)\n" +
 			"             └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                 ├─ index: [one_pk_three_idx.pk]\n" +
 			"                 └─ columns: [pk v3]\n" +
 			"",
 	},
@@ -2682,9 +2900,11 @@ var PlanTests = []QueryPlanTest{
 			"     │   │   │       └─ columns: [v1]\n" +
 			"     │   │   └─ TableAlias(j)\n" +
 			"     │   │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │   │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │           └─ columns: [pk]\n" +
 			"     │   └─ TableAlias(a)\n" +
 			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │           ├─ index: [one_pk_two_idx.pk]\n" +
 			"     │           └─ columns: [pk v1 v2]\n" +
 			"     └─ IndexedJoin(k.v1 = l.pk)\n" +
 			"         ├─ TableAlias(k)\n" +
@@ -2692,6 +2912,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ columns: [v1]\n" +
 			"         └─ TableAlias(l)\n" +
 			"             └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                 ├─ index: [one_pk_three_idx.pk]\n" +
 			"                 └─ columns: [pk v2]\n" +
 			"",
 	},
@@ -2709,6 +2930,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ LeftIndexedJoin(a.pk = i.pk)\n" +
 			"         ├─ TableAlias(a)\n" +
 			"         │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"         │       ├─ index: [one_pk_two_idx.v1]\n" +
 			"         │       └─ columns: [pk v1 v2]\n" +
 			"         └─ IndexedJoin(i.pk = j.v3)\n" +
 			"             ├─ TableAlias(j)\n" +
@@ -2716,6 +2938,7 @@ var PlanTests = []QueryPlanTest{
 			"             │       └─ columns: [v3]\n" +
 			"             └─ TableAlias(i)\n" +
 			"                 └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"                     ├─ index: [one_pk_two_idx.pk]\n" +
 			"                     └─ columns: [pk]\n" +
 			"",
 	},
