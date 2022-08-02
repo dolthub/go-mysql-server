@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -470,17 +468,13 @@ func pushdownFiltersToTable(
 	}
 
 	table = ft.WithFilters(ctx, handledFilters)
-	newTableNode := plan.NewDecoratedNode(
-		fmt.Sprintf("Filtered table access on %v", handledFilters),
-		tableNode)
-
 	a.Log(
 		"table %q transformed with pushdown of filters, %d filters handled of %d",
 		tableNode.Name(),
 		len(handledFilters),
 		len(tableFilters),
 	)
-	return withTable(newTableNode, table)
+	return withTable(tableNode, table)
 }
 
 // getHandledFilters returns the filter expressions that the specified table can handle. This
@@ -700,20 +694,6 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	return indexes, nil
 }
 
-// stripDecorations removes *plan.DecoratedNode that wrap plan.ResolvedTable instances.
-// Without this step, some prepared statement reanalysis rules fail to identify
-// filter-table relationships.
-func stripDecorations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := node.(type) {
-		case *plan.DecoratedNode:
-			return n.Child, transform.NewTree, nil
-		default:
-			return node, transform.SameTree, nil
-		}
-	})
-}
-
 func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		n := tc.Node
@@ -738,11 +718,6 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		var decoratingParent sql.Node
 		if ok {
 			n := pj.Child
-			// If there is a projection, its immediate child must be ResolvedTable
-			if dn, ok := n.(*plan.DecoratedNode); ok {
-				decoratingParent = dn
-				n = dn.Child
-			}
 			if rs, ok = n.(*plan.ResolvedTable); !ok {
 				return s, transform.SameTree, nil
 			}
@@ -754,11 +729,6 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 		} else {
 			n := s.Child
-			// If there is a projection, its immediate child must be ResolvedTable
-			if dn, ok := n.(*plan.DecoratedNode); ok {
-				decoratingParent = dn
-				n = dn.Child
-			}
 			// Otherwise, sorts immediate child must be ResolvedTable
 			if rs, ok = n.(*plan.ResolvedTable); !ok {
 				return s, transform.SameTree, nil

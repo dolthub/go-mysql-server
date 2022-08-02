@@ -357,8 +357,7 @@ func SelectAllBatches(string) bool { return true }
 func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
-	case stripDecorationsId,
-		reresolveTablesId,
+	case reresolveTablesId,
 		resolvePreparedInsertId:
 		return false
 	}
@@ -392,7 +391,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId,
-		stripDecorationsId,
 		reresolveTablesId,
 		pruneTablesId,
 		validateResolvedId,
@@ -429,7 +427,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveTablesId,
 		reresolveTablesId,
 		setTargetSchemasId,
-		stripDecorationsId,
 		parseColumnDefaultsId,
 
 		// DefaultRules
@@ -465,9 +462,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 // after bindvars are applied
 func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 	switch id {
-	case stripDecorationsId,
-		reresolveTablesId,
-
+	case reresolveTablesId,
 		expandStarsId,
 		resolveFunctionsId,
 		flattenTableAliasesId,
