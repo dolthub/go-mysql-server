@@ -4,7 +4,6 @@ package aggregation
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -120,66 +119,6 @@ func (a *Count) NewWindowFunction() (sql.WindowFunction, error) {
 		return nil, err
 	}
 	return NewCountAgg(child).WithWindow(a.Window())
-}
-
-type CountDistinct struct {
-	naryAggBase
-}
-
-var _ sql.FunctionExpression = (*CountDistinct)(nil)
-var _ sql.Aggregation = (*CountDistinct)(nil)
-var _ sql.WindowAdaptableExpression = (*CountDistinct)(nil)
-
-func NewCountDistinct(exprs ...sql.Expression) *CountDistinct {
-	return &CountDistinct{
-		naryAggBase{
-			NaryExpression: expression.NaryExpression{ChildExpressions: exprs},
-			functionName:   "CountDistinct",
-			description:    "returns the number of distinct values in a result set.",
-		},
-	}
-}
-
-func (a *CountDistinct) Type() sql.Type {
-	return sql.Int64
-}
-
-func (a *CountDistinct) IsNullable() bool {
-	return false
-}
-
-func (a *CountDistinct) String() string {
-	return fmt.Sprintf("COUNTDISTINCT(%s)", a.ChildExpressions)
-}
-
-func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.naryAggBase.WithWindow(window)
-	return &CountDistinct{naryAggBase: *res.(*naryAggBase)}, err
-}
-
-func (a *CountDistinct) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	res, err := a.naryAggBase.WithChildren(children...)
-	return &CountDistinct{naryAggBase: *res.(*naryAggBase)}, err
-}
-
-func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
-	exprs := make([]sql.Expression, len(a.ChildExpressions))
-	for i, expr := range a.ChildExpressions {
-		child, err := transform.Clone(expr)
-		if err != nil {
-			return nil, err
-		}
-		exprs[i] = child
-	}
-	return NewCountDistinctBuffer(exprs), nil
-}
-
-func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.NaryExpression.ChildExpressions[0])
-	if err != nil {
-		return nil, err
-	}
-	return NewCountDistinctAgg(child).WithWindow(a.Window())
 }
 
 type First struct {

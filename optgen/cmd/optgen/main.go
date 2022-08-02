@@ -75,7 +75,7 @@ func main() {
 	var err error
 	switch cmd {
 	case "aggs":
-		err = generateAggs(aggregation.AggDefs, writer)
+		err = generateAggs(aggregation.UnaryAggDefs, writer)
 	case "frame":
 		err = generateFrames(nil, writer)
 	case "frameFactory":

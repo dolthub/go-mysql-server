@@ -11,7 +11,6 @@ type AggDef struct {
 	SqlName  string
 	Desc     string
 	RetType  string // must be valid sql.Type
-	IsNary   bool
 	Nullable bool
 }
 
@@ -49,12 +48,7 @@ func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
 
 func (g *AggGen) genAggType(define AggDef) {
 	fmt.Fprintf(g.w, "type %s struct{\n", define.Name)
-	if define.IsNary {
-		fmt.Fprintf(g.w, "    naryAggBase\n")
-	} else {
-		fmt.Fprintf(g.w, "    unaryAggBase\n")
-	}
-
+	fmt.Fprintf(g.w, "    unaryAggBase\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
@@ -67,27 +61,15 @@ func (g *AggGen) genAggInterfaces(define AggDef) {
 }
 
 func (g *AggGen) genAggConstructor(define AggDef) {
-	if define.IsNary {
-		fmt.Fprintf(g.w, "func New%s(exprs... sql.Expression) *%s {\n", define.Name, define.Name)
-		fmt.Fprintf(g.w, "    return &%s{\n", define.Name)
-		fmt.Fprintf(g.w, "        naryAggBase{\n")
-		fmt.Fprintf(g.w, "            NaryExpression: expression.NaryExpression{ChildExpressions: exprs},\n")
-		fmt.Fprintf(g.w, "            functionName: \"%s\",\n", define.Name)
-		fmt.Fprintf(g.w, "            description: \"%s\",\n", define.Desc)
-		fmt.Fprintf(g.w, "        },\n")
-		fmt.Fprintf(g.w, "    }\n")
-		fmt.Fprintf(g.w, "}\n\n")
-	} else {
-		fmt.Fprintf(g.w, "func New%s(e sql.Expression) *%s {\n", define.Name, define.Name)
-		fmt.Fprintf(g.w, "    return &%s{\n", define.Name)
-		fmt.Fprintf(g.w, "        unaryAggBase{\n")
-		fmt.Fprintf(g.w, "            UnaryExpression: expression.UnaryExpression{Child: e},\n")
-		fmt.Fprintf(g.w, "            functionName: \"%s\",\n", define.Name)
-		fmt.Fprintf(g.w, "            description: \"%s\",\n", define.Desc)
-		fmt.Fprintf(g.w, "        },\n")
-		fmt.Fprintf(g.w, "    }\n")
-		fmt.Fprintf(g.w, "}\n\n")
-	}
+	fmt.Fprintf(g.w, "func New%s(e sql.Expression) *%s {\n", define.Name, define.Name)
+	fmt.Fprintf(g.w, "    return &%s{\n", define.Name)
+	fmt.Fprintf(g.w, "        unaryAggBase{\n")
+	fmt.Fprintf(g.w, "            UnaryExpression: expression.UnaryExpression{Child: e},\n")
+	fmt.Fprintf(g.w, "            functionName: \"%s\",\n", define.Name)
+	fmt.Fprintf(g.w, "            description: \"%s\",\n", define.Desc)
+	fmt.Fprintf(g.w, "        },\n")
+	fmt.Fprintf(g.w, "    }\n")
+	fmt.Fprintf(g.w, "}\n\n")
 }
 
 func (g *AggGen) genAggPropAccessors(define AggDef) {
@@ -110,45 +92,27 @@ func (g *AggGen) genAggStringer(define AggDef) {
 		sqlName = define.SqlName
 	}
 	fmt.Fprintf(g.w, "func (a *%s)  String() string {\n", define.Name)
-	if define.IsNary {
-		fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s(%%s)\", a.ChildExpressions)\n", strings.ToUpper(sqlName))
-	} else {
-		fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s(%%s)\", a.Child)\n", strings.ToUpper(sqlName))
-	}
+	fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s(%%s)\", a.Child)\n", strings.ToUpper(sqlName))
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
 func (g *AggGen) genAggWithChildren(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) WithChildren(children ...sql.Expression) (sql.Expression, error) {\n", define.Name)
-	if define.IsNary {
-		fmt.Fprintf(g.w, "    res, err := a.naryAggBase.WithChildren(children...)\n")
-		fmt.Fprintf(g.w, "    return &%s{naryAggBase: *res.(*naryAggBase)}, err\n", define.Name)
-	} else {
-		fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithChildren(children...)\n")
-		fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
-	}
+	fmt.Fprintf(g.w, "    res, err := a.WithChildren(children...)\n")
+	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
 func (g *AggGen) genAggWithWindow(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {\n", define.Name)
-	if define.IsNary {
-		fmt.Fprintf(g.w, "    res, err := a.naryAggBase.WithWindow(window)\n")
-		fmt.Fprintf(g.w, "    return &%s{naryAggBase: *res.(*naryAggBase)}, err\n", define.Name)
-	} else {
-		fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithWindow(window)\n")
-		fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
-	}
+	fmt.Fprintf(g.w, "    res, err := a.WithWindow(window)\n")
+	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
 func (g *AggGen) genAggWindowConstructor(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) NewWindowFunction() (sql.WindowFunction, error) {\n", define.Name)
-	if define.IsNary {
-		fmt.Fprintf(g.w, "    child, err := transform.Clone(a.NaryExpression.ChildExpressions[0])\n")
-	} else {
-		fmt.Fprintf(g.w, "    child, err := transform.Clone(a.UnaryExpression.Child)\n")
-	}
+	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.Child)\n")
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")
@@ -157,25 +121,11 @@ func (g *AggGen) genAggWindowConstructor(define AggDef) {
 }
 
 func (g *AggGen) genAggNewBuffer(define AggDef) {
-	if define.IsNary {
-		fmt.Fprintf(g.w, "func (a *%s) NewBuffer() (sql.AggregationBuffer, error) {\n", define.Name)
-		fmt.Fprintf(g.w, "    exprs := make([]sql.Expression, len(a.ChildExpressions))\n")
-		fmt.Fprintf(g.w, "    for i, expr := range a.ChildExpressions {\n")
-		fmt.Fprintf(g.w, "        child, err := transform.Clone(expr)\n")
-		fmt.Fprintf(g.w, "        if err != nil {\n")
-		fmt.Fprintf(g.w, "            return nil, err\n")
-		fmt.Fprintf(g.w, "        }\n")
-		fmt.Fprintf(g.w, "        exprs[i] = child\n")
-		fmt.Fprintf(g.w, "    }\n")
-		fmt.Fprintf(g.w, "    return New%sBuffer(exprs), nil\n", define.Name)
-		fmt.Fprintf(g.w, "}\n\n")
-	} else {
-		fmt.Fprintf(g.w, "func (a *%s) NewBuffer() (sql.AggregationBuffer, error) {\n", define.Name)
-		fmt.Fprintf(g.w, "    child, err := transform.Clone(a.UnaryExpression.Child)\n")
-		fmt.Fprintf(g.w, "    if err != nil {\n")
-		fmt.Fprintf(g.w, "        return nil, err\n")
-		fmt.Fprintf(g.w, "    }\n")
-		fmt.Fprintf(g.w, "    return New%sBuffer(child), nil\n", define.Name)
-		fmt.Fprintf(g.w, "}\n\n")
-	}
+	fmt.Fprintf(g.w, "func (a *%s) NewBuffer() (sql.AggregationBuffer, error) {\n", define.Name)
+	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.Child)\n")
+	fmt.Fprintf(g.w, "    if err != nil {\n")
+	fmt.Fprintf(g.w, "        return nil, err\n")
+	fmt.Fprintf(g.w, "    }\n")
+	fmt.Fprintf(g.w, "    return New%sBuffer(child), nil\n", define.Name)
+	fmt.Fprintf(g.w, "}\n\n")
 }
