@@ -187,11 +187,19 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.Ind
 }
 
 func (i *IndexedTableAccess) String() string {
-	var filters string
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
+	var children []string
 	if i.lookup != nil {
-		filters = fmt.Sprintf(" with ranges: %s", i.lookup.Ranges().DebugString())
+		children = append(children, fmt.Sprintf("ranges: %s", i.lookup.Ranges().DebugString()))
 	}
-	return fmt.Sprintf("IndexedTableAccess(%s on %s%s)", i.ResolvedTable.Name(), formatIndexDecoratorString(i.Index()), filters)
+	if pt, ok := seethroughTableWrapper(i.ResolvedTable).(sql.ProjectedTable); ok {
+		if len(pt.Projections()) > 0 {
+			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
+		}
+	}
+	pr.WriteChildren(children...)
+	return pr.String()
 }
 
 func formatIndexDecoratorString(idx sql.Index) string {
@@ -203,6 +211,23 @@ func formatIndexDecoratorString(idx sql.Index) string {
 }
 
 func (i *IndexedTableAccess) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("IndexedTableAccess(%s)", sql.DebugString(i.ResolvedTable))
+	var children []string
+	if i.lookup != nil {
+		children = append(children, fmt.Sprintf("ranges: %s", i.lookup.Ranges().DebugString()))
+		children = append(children, fmt.Sprintf("lookup: STATIC LOOKUP(%s)", sql.DebugString(i.lookup)))
+	} else {
+		children = append(children, fmt.Sprintf("lookup: %s", sql.DebugString(i.lb)))
+
+	}
+	if pt, ok := seethroughTableWrapper(i.ResolvedTable).(sql.ProjectedTable); ok {
+		if len(pt.Projections()) > 0 {
+			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
+		}
+	}
+	pr.WriteChildren(children...)
+	return pr.String()
 	if i.lookup != nil {
 		filters := fmt.Sprintf(" with ranges: %s,", i.lookup.Ranges().DebugString())
 		return fmt.Sprintf("IndexedTableAccess(%s on %s,%s using fields %s)", i.ResolvedTable.Name(), formatIndexDecoratorString(i.Index()), filters, "STATIC LOOKUP("+sql.DebugString(i.lookup)+")")
