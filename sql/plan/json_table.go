@@ -102,7 +102,7 @@ func (t *JSONTable) Schema() sql.Schema {
 
 // Partitions implements the sql.Table interface
 func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	// TODO: just have one partition for now
+	// TODO: this does nothing
 	return &jsonTablePartitionIter{
 		keys: [][]byte{{0}},
 	}, nil
@@ -132,15 +132,10 @@ func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// TODO: this
 	return true
 }
 
-// TODO: do I need this? just make JSONTable have everything
-type JSONTableNode struct {
-}
-
-// TODO: maybe just use in-memory table?
+// NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
 func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sqlparser.TableIdent, schema sql.PrimaryKeySchema) (sql.Node, error) {
 	// Parse data as JSON
 	var jsonData interface{}
@@ -167,9 +162,7 @@ func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sql
 		}
 	}
 
-	// TODO: use this data to somehow create a table
-	// Do I create something in memory and have a RowIter?
-	// Fill in "table" with data
+	// Fill in table with data
 	for _, col := range spec.Columns {
 		v, err := jsonpath.JsonPathLookup(jsonPathData, col.Type.Path)
 		if err != nil {
