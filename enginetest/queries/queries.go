@@ -8633,7 +8633,6 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 JSON DEFAULT JSON_ARRAY(1,2));",
 		ExpectedErr: sql.ErrSyntaxError,
 	},
-
 	{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, j JSON DEFAULT '{}');",
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
