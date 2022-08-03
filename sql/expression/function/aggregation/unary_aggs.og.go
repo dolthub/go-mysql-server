@@ -5,10 +5,9 @@ package aggregation
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type Avg struct {
@@ -121,62 +120,6 @@ func (a *Count) NewWindowFunction() (sql.WindowFunction, error) {
 		return nil, err
 	}
 	return NewCountAgg(child).WithWindow(a.Window())
-}
-
-type CountDistinct struct {
-	unaryAggBase
-}
-
-var _ sql.FunctionExpression = (*CountDistinct)(nil)
-var _ sql.Aggregation = (*CountDistinct)(nil)
-var _ sql.WindowAdaptableExpression = (*CountDistinct)(nil)
-
-func NewCountDistinct(e sql.Expression) *CountDistinct {
-	return &CountDistinct{
-		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "CountDistinct",
-			description:     "returns the number of distinct values in a result set.",
-		},
-	}
-}
-
-func (a *CountDistinct) Type() sql.Type {
-	return sql.Int64
-}
-
-func (a *CountDistinct) IsNullable() bool {
-	return false
-}
-
-func (a *CountDistinct) String() string {
-	return fmt.Sprintf("COUNTDISTINCT(%s)", a.Child)
-}
-
-func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &CountDistinct{unaryAggBase: *res.(*unaryAggBase)}, err
-}
-
-func (a *CountDistinct) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	res, err := a.unaryAggBase.WithChildren(children...)
-	return &CountDistinct{unaryAggBase: *res.(*unaryAggBase)}, err
-}
-
-func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
-	if err != nil {
-		return nil, err
-	}
-	return NewCountDistinctBuffer(child), nil
-}
-
-func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
-	if err != nil {
-		return nil, err
-	}
-	return NewCountDistinctAgg(child).WithWindow(a.Window())
 }
 
 type First struct {

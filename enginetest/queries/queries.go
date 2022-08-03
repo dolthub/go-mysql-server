@@ -4829,6 +4829,26 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
+		Query:    `SELECT COUNT(DISTINCT t.i, t.s) FROM tabletest t, mytable t2`,
+		Expected: []sql.Row{{int64(3)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT gender) FROM people`,
+		Expected: []sql.Row{{int64(3)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT height_inches, gender) FROM people`,
+		Expected: []sql.Row{{int64(5)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT height_inches, gender) FROM people where gender = 0`,
+		Expected: []sql.Row{{int64(2)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT height_inches - 100 < 0, gender < 0) FROM people`,
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
 		Query:    `SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
 		Expected: []sql.Row{{"no"}},
 	},
