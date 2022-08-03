@@ -121,7 +121,7 @@ var (
 	ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
 
 	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
-	ErrInvalidTextBlobColumnDefault = errors.NewKind("text/blob types may only have expression default values")
+	ErrInvalidTextBlobColumnDefault = errors.NewKind("TEXT, BLOB, GEOMETRY, and JSON types may only have expression default values")
 
 	// ErrInvalidColumnDefaultFunction is returned when an invalid function is used in a default value.
 	ErrInvalidColumnDefaultFunction = errors.NewKind("function `%s` on column `%s` is not valid for usage in a default value")

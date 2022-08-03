@@ -588,9 +588,20 @@ func IsInteger(t Type) bool {
 	return IsSigned(t) || IsUnsigned(t)
 }
 
+// IsJSON returns true if the specified type is a JSON type.
 func IsJSON(t Type) bool {
 	_, ok := t.(jsonType)
 	return ok
+}
+
+// IsGeometry returns true if the specified type is a Geometry type.
+func IsGeometry(t Type) bool {
+	switch t.(type) {
+	case GeometryType, PointType, LineStringType, PolygonType:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsNull returns true if expression is nil or is Null Type, otherwise false.

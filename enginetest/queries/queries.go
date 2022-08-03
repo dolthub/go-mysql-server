@@ -8633,6 +8633,23 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 JSON DEFAULT JSON_ARRAY(1,2));",
 		ExpectedErr: sql.ErrSyntaxError,
 	},
+
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, j JSON DEFAULT '{}');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, g GEOMETRY DEFAULT '');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, t TEXT DEFAULT '');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, b BLOB DEFAULT '');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
