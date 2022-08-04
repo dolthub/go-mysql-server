@@ -952,6 +952,105 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "show user with no grants",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT USAGE ON *.* TO `tester`@`localhost`"},
+				},
+			},
+		},
+	},
+	{
+		Name: "show grants with multiple global grants",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON *.* to tester@localhost",
+			"GRANT INSERT ON *.* to tester@localhost",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT, INSERT ON *.* TO `tester`@`localhost`"},
+				},
+			},
+		},
+	},
+	{
+		Name: "show grants at various scopes",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON *.* to tester@localhost",
+			"GRANT SELECT ON db.* to tester@localhost",
+			"GRANT SELECT ON db.tbl to tester@localhost",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT ON *.* TO `tester`@`localhost`"},
+					{"GRANT SELECT ON `db`.* TO `tester`@`localhost`"},
+					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`localhost`"},
+				},
+			},
+		},
+	},
+	{
+		Name: "show grants at only some scopes",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON *.* to tester@localhost",
+			"GRANT SELECT ON db.tbl to tester@localhost",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT ON *.* TO `tester`@`localhost`"},
+					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`localhost`"},
+				},
+			},
+		},
+	},
+	{
+		Name: "show always shows global USAGE priv regardless of other privs",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON db.* to tester@localhost",
+			"GRANT INSERT ON db1.* to tester@localhost",
+			"GRANT DELETE ON db2.* to tester@localhost",
+			"GRANT SELECT ON db.tbl to tester@localhost",
+			"GRANT INSERT ON db.tbl to tester@localhost",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT USAGE ON *.* TO `tester`@`localhost`"},
+					{"GRANT SELECT ON `db`.* TO `tester`@`localhost`"},
+					{"GRANT INSERT ON `db1`.* TO `tester`@`localhost`"},
+					{"GRANT DELETE ON `db2`.* TO `tester`@`localhost`"},
+					{"GRANT SELECT, INSERT ON `db`.`tbl` TO `tester`@`localhost`"},
+				},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
