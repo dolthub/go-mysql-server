@@ -751,7 +751,7 @@ func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 
 // validateSem is a way to add validation logic for
 // specific expression types.
-//todo(max): Refactor and consolidate validation so it can
+// todo(max): Refactor and consolidate validation so it can
 // run before the rest of analysis. Add more expression types.
 // Add node equivalent.
 func validateSem(e sql.Expression) error {
@@ -780,7 +780,7 @@ func logicalSem(e expression.BinaryExpression) error {
 }
 
 // fds counts the functional dependencies of an expression.
-//todo(max): input/output fd's should be part of the expression
+// todo(max): input/output fd's should be part of the expression
 // interface.
 func fds(e sql.Expression) int {
 	switch e.(type) {

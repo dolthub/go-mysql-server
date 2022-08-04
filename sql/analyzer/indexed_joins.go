@@ -127,7 +127,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 // countTableFactors uses a naive algorithm to count
 // the number of join leaves in a query.
-//todo(max): recursive ctes with joins might be double counted,
+// todo(max): recursive ctes with joins might be double counted,
 // tricky to test
 func countTableFactors(n sql.Node) int {
 	var cnt int
