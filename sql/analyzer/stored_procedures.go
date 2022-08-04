@@ -58,6 +58,12 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 				if err != nil {
 					return nil, err
 				}
+				if externalProcedure.WorksWithoutDatabase {
+					err = scope.procedures.Register("", procedure)
+					if err != nil {
+						return nil, err
+					}
+				}
 			}
 		}
 	}

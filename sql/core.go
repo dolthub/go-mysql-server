@@ -1048,6 +1048,10 @@ type ExternalStoredProcedureDetails struct {
 	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
 	// The type of the variadic parameter may not have a pointer type.
 	Function interface{}
+	// WorksWithoutDatabase indicates that this stored procedure should be accessible when no database is selected.
+	// This is false by default, meaning all stored procedures require a database to be selected unless they override
+	// this value.
+	WorksWithoutDatabase bool
 }
 
 // Comment returns a comment stating that this is an external stored procedure, which is defined by the given database.
