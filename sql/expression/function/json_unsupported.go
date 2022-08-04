@@ -401,13 +401,13 @@ func (j JSONInsert) IsUnsupported() bool {
 //	   with the second argument.
 //   - If the second argument is not an object, the result of the merge is the second argument.
 //   - If both arguments are objects, the result of the merge is an object with the following members:
-//     - All members of the first object which do not have a corresponding member with the same key in the second
-//       object.
-//     - All members of the second object which do not have a corresponding key in the first object, and whose value is
-//       not the JSON null literal.
-//     - All members with a key that exists in both the first and the second object, and whose value in the second
-//       object is not the JSON null literal. The values of these members are the results of recursively merging the
-//       value in the first object with the value in the second object.
+//       - All members of the first object which do not have a corresponding member with the same key in the second
+//         object.
+//       - All members of the second object which do not have a corresponding key in the first object, and whose value is
+//         not the JSON null literal.
+//       - All members with a key that exists in both the first and the second object, and whose value in the second
+//         object is not the JSON null literal. The values of these members are the results of recursively merging the
+//         value in the first object with the value in the second object.
 //
 // The behavior of JSONMergePatch is the same as that of JSONMergePreserve, with the following two exceptions:
 //   - JSONMergePatch removes any member in the first object with a matching key in the second object, provided that
