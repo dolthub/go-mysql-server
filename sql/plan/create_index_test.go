@@ -400,7 +400,7 @@ func (i *mockIndex) NewSecondaryLookup(c *sql.Context, key sql.LookupBuilderKey)
 	panic("unimplemented")
 }
 
-func (i *mockIndex) WithConditionalRanges(ranges ...sql.Range) sql.Index {
+func (i *mockIndex) WithConditionalRanges(ranges ...sql.ConditionalRange) sql.Index {
 	panic("unimplemented")
 }
 

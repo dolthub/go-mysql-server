@@ -51,6 +51,10 @@ type LookupBuilderKey []interface{}
 // inner join table (left table / primary table)-provided LookupBuilderKey.
 type LookupPlaceholder int
 
+// ConditionalRange is a Range whose literal bound values are replaced
+// with LookupPlaceholder
+type ConditionalRange Range
+
 type LookupIndex interface {
 	// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns. Each Range
 	// is ordered by the column expressions (as returned by Expressions) with the RangeColumnExpr representing the
@@ -61,9 +65,11 @@ type LookupIndex interface {
 	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
 	// WithConditionalRanges passes a set of range conditions for an IndexLookup
 	// whose literal values have been replaced with LookupPlaceholder.
-	WithConditionalRanges(ranges ...Range) Index
+	WithConditionalRanges(ranges ...ConditionalRange) Index
 	// NewSecondaryLookup returns an IndexLookup constructed from a LookupBuilderKey
 	// from an inner join table and a previously cached conditional range.
+	//TODO: lookups do not currently support ranges, but if we do this may return
+	// an index with an invalid range lookup
 	NewSecondaryLookup(*Context, LookupBuilderKey) (IndexLookup, error)
 }
 

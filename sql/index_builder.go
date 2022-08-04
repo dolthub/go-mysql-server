@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -273,8 +274,20 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	return ranges
 }
 
+func (b *IndexBuilder) ConditionalRanges(ctx *Context) []ConditionalRange {
+	ranges := b.Ranges(ctx)
+	condRanges := make([]ConditionalRange, len(ranges))
+	for i := range ranges {
+		condRanges[i] = ConditionalRange(ranges[i])
+	}
+	return condRanges
+}
+
 // Build constructs a new IndexLookup based on the ranges that have been built internally by this builder.
 func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
+	if b.placeholderMode {
+		return nil, fmt.Errorf("tried building an IndexLookup in placeholder mode")
+	}
 	if b.err != nil {
 		return nil, b.err
 	} else {

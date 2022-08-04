@@ -156,6 +156,6 @@ func (i dummyIdx) NewSecondaryLookup(context *sql.Context, key sql.LookupBuilder
 	panic("not implemented")
 }
 
-func (i dummyIdx) WithConditionalRanges(ranges ...sql.Range) sql.Index {
+func (i dummyIdx) WithConditionalRanges(ranges ...sql.ConditionalRange) sql.Index {
 	panic("not implemented")
 }

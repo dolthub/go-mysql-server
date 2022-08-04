@@ -409,7 +409,7 @@ func (lb LookupBuilder) WithConditionalRanges(ctx *sql.Context) LookupBuilder {
 			ib = ib.Equals(ctx, iexprs[i], sql.LookupPlaceholder(i))
 		}
 	}
-	ranges := ib.Ranges(ctx)
+	ranges := ib.ConditionalRanges(ctx)
 	lb.index = lb.index.WithConditionalRanges(ranges...)
 	return lb
 }

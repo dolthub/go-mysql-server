@@ -162,7 +162,7 @@ func (i testIndex) NewSecondaryLookup(c *Context, builderKey LookupBuilderKey) (
 	return nil, errors.New("unexpected NewSecondaryLookup called on testIndex")
 }
 
-func (i testIndex) WithConditionalRanges(ranges ...Range) Index {
+func (i testIndex) WithConditionalRanges(ranges ...ConditionalRange) Index {
 	panic("unexpected WithConditionalRanges called on testIndex")
 }
 

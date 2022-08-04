@@ -173,8 +173,12 @@ func convertSqlRangesToMemoryRanges(idx *Index, ranges []sql.Range) sql.Expressi
 
 // WithConditionalRanges returns an Index with a cached conditional range
 // that can quickly generate secondary IndexLookups
-func (idx *Index) WithConditionalRanges(ranges ...sql.Range) sql.Index {
+func (idx *Index) WithConditionalRanges(condRanges ...sql.ConditionalRange) sql.Index {
 	ret := *idx
+	ranges := make([]sql.Range, len(condRanges))
+	for i := range condRanges {
+		ranges[i] = sql.Range(condRanges[i])
+	}
 	ret.conditionalRanges = convertSqlRangesToMemoryRanges(idx, ranges)
 	return &ret
 }

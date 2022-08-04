@@ -455,7 +455,7 @@ func (i dummyIdx) NewSecondaryLookup(context *Context, builderKey LookupBuilderK
 	panic("not implemented")
 }
 
-func (i dummyIdx) WithConditionalRanges(ranges ...Range) Index {
+func (i dummyIdx) WithConditionalRanges(ranges ...ConditionalRange) Index {
 	panic("not implemented")
 }
 
