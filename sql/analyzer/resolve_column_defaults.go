@@ -480,9 +480,15 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				// Instead of grabbing the schema from TargetSchema(), use the Destination node
 				sch := node.Destination.Schema()
 
-				// InsertInto.Source can contain multiple rows, so loop over the columns in the schema
-				colIndex = colIndex % len(sch)
-				col := sch[colIndex]
+				// InsertInto.Source can contain multiple rows, so loop over the included columns
+				colIndex = colIndex % len(node.ColumnNames)
+
+				// Columns can be specified in any order, so use the order from the InsertInto statement
+				schemaIndex := sch.IndexOfColName(node.ColumnNames[colIndex])
+				if schemaIndex == -1 {
+					return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnNames[colIndex])
+				}
+				col := sch[schemaIndex]
 				colIndex++
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
@@ -697,7 +703,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		return e, transform.SameTree, nil
 	}
 
-	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
+	if (sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
 		return nil, transform.SameTree, sql.ErrInvalidTextBlobColumnDefault.New()
 	}
 

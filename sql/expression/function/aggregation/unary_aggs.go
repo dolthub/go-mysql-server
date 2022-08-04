@@ -17,11 +17,6 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 		RetType: "sql.Int64",
 	},
 	{
-		Name:    "CountDistinct",
-		Desc:    "returns the number of distinct values in a result set.",
-		RetType: "sql.Int64",
-	},
-	{
 		Name: "First",
 		Desc: "returns the first value in a sequence of elements of an aggregation.",
 	},

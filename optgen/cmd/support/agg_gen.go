@@ -98,21 +98,21 @@ func (g *AggGen) genAggStringer(define AggDef) {
 
 func (g *AggGen) genAggWithChildren(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) WithChildren(children ...sql.Expression) (sql.Expression, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithChildren(children...)\n")
+	fmt.Fprintf(g.w, "    res, err := a.WithChildren(children...)\n")
 	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
 func (g *AggGen) genAggWithWindow(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithWindow(window)\n")
+	fmt.Fprintf(g.w, "    res, err := a.WithWindow(window)\n")
 	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
 func (g *AggGen) genAggWindowConstructor(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) NewWindowFunction() (sql.WindowFunction, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.UnaryExpression.Child)\n")
+	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.Child)\n")
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")
@@ -122,7 +122,7 @@ func (g *AggGen) genAggWindowConstructor(define AggDef) {
 
 func (g *AggGen) genAggNewBuffer(define AggDef) {
 	fmt.Fprintf(g.w, "func (a *%s) NewBuffer() (sql.AggregationBuffer, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.UnaryExpression.Child)\n")
+	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.Child)\n")
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")
