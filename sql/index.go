@@ -20,6 +20,7 @@ import (
 
 // Index is the representation of an index, and also creates an IndexLookup when given a collection of ranges.
 type Index interface {
+	LookupIndex
 	// ID returns the identifier of the index.
 	ID() string
 	// Database returns the database name this index belongs to.
@@ -39,6 +40,16 @@ type Index interface {
 	// IsGenerated returns whether this index was generated. Generated indexes
 	// are used for index access, but are not displayed (such as with SHOW INDEXES).
 	IsGenerated() bool
+	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
+	// match the string returned from Index.Expressions().
+	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
+}
+
+type LookupBuilderKey []interface{}
+
+type LookupPlaceholder int
+
+type LookupIndex interface {
 	// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns. Each Range
 	// is ordered by the column expressions (as returned by Expressions) with the RangeColumnExpr representing the
 	// searchable area for each column expression. Each Range given will not overlap with any other ranges. Additionally,
@@ -46,9 +57,8 @@ type Index interface {
 	// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
 	// returned only in the event that an error occurred.
 	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
-	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
-	// match the string returned from Index.Expressions().
-	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
+	NewSecondaryLookup(*Context, LookupBuilderKey) (IndexLookup, error)
+	WithConditionalRanges(ranges ...Range) Index
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,

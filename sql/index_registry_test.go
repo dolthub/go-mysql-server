@@ -451,6 +451,14 @@ func (i dummyIdx) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {
 	panic("not implemented")
 }
 
+func (i dummyIdx) NewSecondaryLookup(context *Context, builderKey LookupBuilderKey) (IndexLookup, error) {
+	panic("not implemented")
+}
+
+func (i dummyIdx) WithConditionalRanges(ranges ...Range) Index {
+	panic("not implemented")
+}
+
 type dummyExpr struct {
 	index   int
 	colName string

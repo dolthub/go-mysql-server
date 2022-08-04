@@ -396,6 +396,14 @@ func (*mockIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpression
 	panic("unimplemented")
 }
 
+func (i *mockIndex) NewSecondaryLookup(c *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
+	panic("unimplemented")
+}
+
+func (i *mockIndex) WithConditionalRanges(ranges ...sql.Range) sql.Index {
+	panic("unimplemented")
+}
+
 func (*mockIndex) Build(ctx *sql.Context) (sql.IndexLookup, error) { panic("unimplemented") }
 func (*mockIndex) Driver() string                                  { return "mock" }
 

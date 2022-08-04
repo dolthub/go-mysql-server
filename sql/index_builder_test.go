@@ -158,6 +158,16 @@ type testIndex struct {
 	numcols int
 }
 
+func (i testIndex) NewSecondaryLookup(c *Context, builderKey LookupBuilderKey) (IndexLookup, error) {
+	return nil, errors.New("unexpected NewSecondaryLookup called on testIndex")
+}
+
+func (i testIndex) WithConditionalRanges(ranges ...Range) Index {
+	panic("unexpected WithConditionalRanges called on testIndex")
+}
+
+var _ Index = (*testIndex)(nil)
+
 func (testIndex) ID() string {
 	return "test_index"
 }

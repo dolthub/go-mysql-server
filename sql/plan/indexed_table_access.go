@@ -42,10 +42,12 @@ var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
-func NewIndexedTableAccess(resolvedTable *ResolvedTable, lb LookupBuilder) *IndexedTableAccess {
+func NewIndexedTableAccess(ctx *sql.Context, resolvedTable *ResolvedTable, lb LookupBuilder) *IndexedTableAccess {
+	// TODO make conditional ranges
+	// pass conditional ranges to the index
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
-		lb:            lb,
+		lb:            lb.WithConditionalRanges(ctx),
 	}
 }
 
@@ -165,7 +167,6 @@ func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	if i.lookup != nil {
 		return i.lookup, nil
 	}
-
 	key, err := i.lb.GetKey(ctx, row)
 	if err != nil {
 		return nil, err
@@ -335,23 +336,11 @@ func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMas
 	}
 }
 
-func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.IndexLookup, error) {
-	ib := sql.NewIndexBuilder(ctx, lb.index)
-	iexprs := lb.index.Expressions()
-	for i := range key {
-		if key[i] == nil && lb.matchesNullMask[i] {
-			ib = ib.IsNull(ctx, iexprs[i])
-		} else {
-			ib = ib.Equals(ctx, iexprs[i], key[i])
-		}
-	}
-	lookup, err := ib.Build(ctx)
-	return lookup, err
+func (lb LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
+	return lb.index.NewSecondaryLookup(ctx, key)
 }
 
-type LookupBuilderKey []interface{}
-
-func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (LookupBuilderKey, error) {
+func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (sql.LookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -363,7 +352,7 @@ func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (LookupBuilderKey,
 	return key, nil
 }
 
-func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (LookupBuilderKey, error) {
+func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (sql.LookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -375,8 +364,8 @@ func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (LookupBuilderKe
 	return key, nil
 }
 
-func (lb LookupBuilder) GetZeroKey() LookupBuilderKey {
-	key := make(LookupBuilderKey, len(lb.keyExprs))
+func (lb LookupBuilder) GetZeroKey() sql.LookupBuilderKey {
+	key := make(sql.LookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
 		key[i] = keyExpr.Type().Zero()
 	}
@@ -408,4 +397,22 @@ func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) 
 		index:           lb.index,
 		matchesNullMask: lb.matchesNullMask,
 	}, nil
+}
+
+func (lb LookupBuilder) WithConditionalRanges(ctx *sql.Context) LookupBuilder {
+	// TODO make range collection
+	ib := sql.NewConditionalIndexBuilder(ctx, lb.index)
+	iexprs := lb.index.Expressions()
+	for i := range lb.keyExprs {
+		// we make index builder with all of the possible matches -- must prune nulls later
+		if lb.matchesNullMask[i] {
+			ib = ib.IsNull(ctx, iexprs[i])
+		} else {
+			ib = ib.Equals(ctx, iexprs[i], sql.LookupPlaceholder(i))
+		}
+	}
+	ranges := ib.Ranges(ctx)
+	//return sql.RangeCollection{}
+	lb.index = lb.index.WithConditionalRanges(ranges...)
+	return lb
 }

@@ -68,12 +68,12 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				return n, transform.SameTree, nil
 			case *plan.TableAlias:
 				if strings.ToLower(n.Name()) == idxLookup.table {
-					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
+					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
 			case *plan.ResolvedTable:
 				if strings.ToLower(n.Name()) == idxLookup.table {
-					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
+					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
 			default:
@@ -91,7 +91,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
-func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
+func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
@@ -101,7 +101,7 @@ func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, 
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				return plan.NewIndexedTableAccess(n, plan.NewLookupBuilder(index, keyExpr, nullmask)), transform.NewTree, nil
+				return plan.NewIndexedTableAccess(ctx, n, plan.NewLookupBuilder(index, keyExpr, nullmask)), transform.NewTree, nil
 			}
 		}
 		return n, transform.SameTree, nil

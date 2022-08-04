@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 	"time"
 
@@ -26,14 +27,15 @@ import (
 const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
 
 type Index struct {
-	DB         string // required for engine tests with driver
-	DriverName string // required for engine tests with driver
-	Tbl        *Table // required for engine tests with driver
-	TableName  string
-	Exprs      []sql.Expression
-	Name       string
-	Unique     bool
-	CommentStr string
+	DB                string // required for engine tests with driver
+	DriverName        string // required for engine tests with driver
+	Tbl               *Table // required for engine tests with driver
+	TableName         string
+	Exprs             []sql.Expression
+	Name              string
+	Unique            bool
+	CommentStr        string
+	conditionalRanges sql.Expression
 }
 
 var _ sql.Index = (*Index)(nil)
@@ -81,6 +83,11 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 		return nil, fmt.Errorf("expected different key count: %s=>%d/%d", idx.Name, len(idx.Exprs), len(ranges[0]))
 	}
 
+	rangeCollectionExpr := convertSqlRangesToMemoryRanges(idx, ranges)
+	return NewIndexLookup(ctx, idx, rangeCollectionExpr, ranges...), nil
+}
+
+func convertSqlRangesToMemoryRanges(idx *Index, ranges []sql.Range) sql.Expression {
 	var rangeCollectionExpr sql.Expression
 	for _, rang := range ranges {
 		var rangeExpr sql.Expression
@@ -118,11 +125,14 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 					expression.NewIsNull(idx.Exprs[i]),
 				)
 			case sql.RangeType_ClosedClosed:
-				lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
-				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
+				lowLit := sql.GetRangeCutKey(rce.LowerBound)
+				upLit := sql.GetRangeCutKey(rce.UpperBound)
+
+				//lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
+				//upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
 				rangeColumnExpr = and(
-					expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(upLit, upTyp)),
+					expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(lowLit, rce.Typ)),
+					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(upLit, rce.Typ)),
 				)
 			case sql.RangeType_OpenOpen:
 				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
@@ -160,8 +170,50 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 		}
 		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
 	}
+	return rangeCollectionExpr
+}
 
-	return NewIndexLookup(ctx, idx, rangeCollectionExpr, ranges...), nil
+func (idx *Index) WithConditionalRanges(ranges ...sql.Range) sql.Index {
+	ret := *idx
+	ret.conditionalRanges = convertSqlRangesToMemoryRanges(idx, ranges)
+	return &ret
+}
+
+func (idx *Index) NewSecondaryLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
+	//TODO condition the saved ranges on the key seen
+	// - delete nil ranges that do not apply
+	// - replace the bindings with the key values
+	rangeCollectionExpr := conditionMemoryRangeExpr(idx.conditionalRanges, idx.Exprs, key)
+	// TODO why do we need the old ranges?
+	// TODO 	is converting back to the original format on demand more expensive than doing the conversion everytime?
+	return NewIndexLookup(ctx, idx, rangeCollectionExpr, nil), nil
+}
+
+func conditionMemoryRangeExpr(e sql.Expression, exprs []sql.Expression, key sql.LookupBuilderKey) sql.Expression {
+	ret, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *expression.Literal:
+			if idx, ok := e.Value().(sql.LookupPlaceholder); ok {
+				return expression.NewLiteral(key[int(idx)], e.Type()), transform.NewTree, nil
+			}
+		case *expression.IsNull:
+			// If the primary field is not null, invert into an IsNotNull.
+			// Expression tree could be simplified, in that case.
+			if gf, ok := e.Child.(*expression.GetField); ok {
+				for i, idxGf := range exprs {
+					if idxGf.(*expression.GetField).Name() == gf.Name() {
+						if key[i] != nil {
+							return expression.NewNot(e), transform.SameTree, nil
+						}
+					}
+				}
+			}
+		//TODO check whether key is null or not
+		default:
+		}
+		return e, transform.SameTree, nil
+	})
+	return ret
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.

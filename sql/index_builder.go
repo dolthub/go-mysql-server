@@ -32,6 +32,8 @@ type IndexBuilder struct {
 	err          error
 	colExprTypes map[string]Type
 	ranges       map[string][]RangeColumnExpr
+
+	placeholderMode bool
 }
 
 // NewIndexBuilder returns a new IndexBuilder. Used internally to construct a range that will later be passed to
@@ -50,6 +52,12 @@ func NewIndexBuilder(ctx *Context, idx Index) *IndexBuilder {
 		colExprTypes: colExprTypes,
 		ranges:       ranges,
 	}
+}
+
+func NewConditionalIndexBuilder(ctx *Context, idx Index) *IndexBuilder {
+	ib := NewIndexBuilder(ctx, idx)
+	ib.placeholderMode = true
+	return ib
 }
 
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
@@ -83,6 +91,9 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 		return b
 	}
 	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, typ), LessThanRangeColumnExpr(key, typ))
+	if b.placeholderMode {
+		return b
+	}
 	if !b.isInvalid {
 		ranges, err := SimplifyRangeColumn(b.ranges[colExpr]...)
 		if err != nil {
@@ -238,6 +249,10 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		for colIdx, exprIdx := range permutation {
 			currentRange[colIdx] = allColumns[colIdx][exprIdx]
 		}
+		if b.placeholderMode {
+			ranges = append(ranges, currentRange)
+			continue
+		}
 		isempty, err := currentRange.IsEmpty()
 		if err != nil {
 			b.err = err
@@ -278,7 +293,14 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 	if len(potentialRanges) == 0 {
 		return
 	}
-
+	if b.placeholderMode {
+		if IsAllRange(b.ranges[colExpr][0]) {
+			b.ranges[colExpr] = potentialRanges
+		} else {
+			b.ranges[colExpr] = append(b.ranges[colExpr], potentialRanges...)
+		}
+		return
+	}
 	currentRanges, ok := b.ranges[colExpr]
 	if !ok {
 		b.ranges[colExpr] = potentialRanges

@@ -151,3 +151,11 @@ func (i *dummyIdx) NewLookup(*sql.Context, ...sql.Range) (sql.IndexLookup, error
 func (i *dummyIdx) ColumnExpressionTypes(*sql.Context) []sql.ColumnExpressionType {
 	panic("not implemented")
 }
+
+func (i dummyIdx) NewSecondaryLookup(context *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
+	panic("not implemented")
+}
+
+func (i dummyIdx) WithConditionalRanges(ranges ...sql.Range) sql.Index {
+	panic("not implemented")
+}

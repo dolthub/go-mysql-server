@@ -178,6 +178,10 @@ func NotNullRangeColumnExpr(typ Type) RangeColumnExpr {
 	}
 }
 
+func IsAllRange(r RangeColumnExpr) bool {
+	return r.LowerBound == BelowNull{} && r.UpperBound == AboveAll{}
+}
+
 // Equals checks for equality with the given RangeColumnExpr.
 func (r RangeColumnExpr) Equals(other RangeColumnExpr) (bool, error) {
 	cmpLower, err := r.LowerBound.Compare(other.LowerBound, r.Typ)

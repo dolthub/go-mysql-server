@@ -1166,6 +1166,9 @@ func TypesEqual(a, b Type) bool {
 		return false
 	} else if _, ok := b.(TupleType); ok {
 		return false
+	} else if _, ok := a.(EnumType); ok {
+		_, ok := b.(EnumType)
+		return ok
 	}
 	return a == b
 }

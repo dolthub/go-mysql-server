@@ -1201,14 +1201,11 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewResolvedTable(table, nil, nil),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewIndexedTableAccess(
-								plan.NewResolvedTable(table2, nil, nil),
-								plan.NewLookupBuilder(
-									idxTable2I2,
-									[]sql.Expression{gf(0, "t1", "i")},
-									[]bool{false},
-								),
-							),
+							plan.NewIndexedTableAccess(ctx, plan.NewResolvedTable(table2, nil, nil), plan.NewLookupBuilder(
+								idxTable2I2,
+								[]sql.Expression{gf(0, "t1", "i")},
+								[]bool{false},
+							)),
 						),
 						plan.JoinTypeInner,
 						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
@@ -1245,14 +1242,11 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewIndexedTableAccess(
-								plan.NewResolvedTable(table2, nil, nil),
-								plan.NewLookupBuilder(
-									idxTable2I2,
-									[]sql.Expression{gf(0, "t1", "i")},
-									[]bool{false},
-								),
-							),
+							plan.NewIndexedTableAccess(ctx, plan.NewResolvedTable(table2, nil, nil), plan.NewLookupBuilder(
+								idxTable2I2,
+								[]sql.Expression{gf(0, "t1", "i")},
+								[]bool{false},
+							)),
 						),
 					),
 					plan.JoinTypeInner,
