@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+
 	"gopkg.in/src-d/go-errors.v1"
 )
 
