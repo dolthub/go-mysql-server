@@ -47,6 +47,8 @@ type Index interface {
 
 type LookupBuilderKey []interface{}
 
+// LookupPlaceholder is an integer corresponding to an index field in the
+// inner join table (left table / primary table)-provided LookupBuilderKey.
 type LookupPlaceholder int
 
 type LookupIndex interface {
@@ -57,8 +59,12 @@ type LookupIndex interface {
 	// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
 	// returned only in the event that an error occurred.
 	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
-	NewSecondaryLookup(*Context, LookupBuilderKey) (IndexLookup, error)
+	// WithConditionalRanges passes a set of range conditions for an IndexLookup
+	// whose literal values have been replaced with LookupPlaceholder.
 	WithConditionalRanges(ranges ...Range) Index
+	// NewSecondaryLookup returns an IndexLookup constructed from a LookupBuilderKey
+	// from an inner join table and a previously cached conditional range.
+	NewSecondaryLookup(*Context, LookupBuilderKey) (IndexLookup, error)
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,

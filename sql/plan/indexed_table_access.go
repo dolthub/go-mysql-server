@@ -43,8 +43,6 @@ var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
 func NewIndexedTableAccess(ctx *sql.Context, resolvedTable *ResolvedTable, lb LookupBuilder) *IndexedTableAccess {
-	// TODO make conditional ranges
-	// pass conditional ranges to the index
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
 		lb:            lb.WithConditionalRanges(ctx),
@@ -400,11 +398,11 @@ func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) 
 }
 
 func (lb LookupBuilder) WithConditionalRanges(ctx *sql.Context) LookupBuilder {
-	// TODO make range collection
 	ib := sql.NewConditionalIndexBuilder(ctx, lb.index)
 	iexprs := lb.index.Expressions()
 	for i := range lb.keyExprs {
-		// we make index builder with all of the possible matches -- must prune nulls later
+		// we provide all possible null matches -- must prune nulls later
+		// given the primary table's lookup key
 		if lb.matchesNullMask[i] {
 			ib = ib.IsNull(ctx, iexprs[i])
 		} else {
@@ -412,7 +410,6 @@ func (lb LookupBuilder) WithConditionalRanges(ctx *sql.Context) LookupBuilder {
 		}
 	}
 	ranges := ib.Ranges(ctx)
-	//return sql.RangeCollection{}
 	lb.index = lb.index.WithConditionalRanges(ranges...)
 	return lb
 }

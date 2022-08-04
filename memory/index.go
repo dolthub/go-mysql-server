@@ -16,9 +16,10 @@ package memory
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -127,9 +128,6 @@ func convertSqlRangesToMemoryRanges(idx *Index, ranges []sql.Range) sql.Expressi
 			case sql.RangeType_ClosedClosed:
 				lowLit := sql.GetRangeCutKey(rce.LowerBound)
 				upLit := sql.GetRangeCutKey(rce.UpperBound)
-
-				//lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
-				//upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
 				rangeColumnExpr = and(
 					expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(lowLit, rce.Typ)),
 					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(upLit, rce.Typ)),
@@ -173,19 +171,17 @@ func convertSqlRangesToMemoryRanges(idx *Index, ranges []sql.Range) sql.Expressi
 	return rangeCollectionExpr
 }
 
+// WithConditionalRanges returns an Index with a cached conditional range
+// that can quickly generate secondary IndexLookups
 func (idx *Index) WithConditionalRanges(ranges ...sql.Range) sql.Index {
 	ret := *idx
 	ret.conditionalRanges = convertSqlRangesToMemoryRanges(idx, ranges)
 	return &ret
 }
 
+// NewSecondaryLookup returns an IndexLookup given a primary row key
 func (idx *Index) NewSecondaryLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
-	//TODO condition the saved ranges on the key seen
-	// - delete nil ranges that do not apply
-	// - replace the bindings with the key values
 	rangeCollectionExpr := conditionMemoryRangeExpr(idx.conditionalRanges, idx.Exprs, key)
-	// TODO why do we need the old ranges?
-	// TODO 	is converting back to the original format on demand more expensive than doing the conversion everytime?
 	return NewIndexLookup(ctx, idx, rangeCollectionExpr, nil), nil
 }
 
@@ -198,7 +194,7 @@ func conditionMemoryRangeExpr(e sql.Expression, exprs []sql.Expression, key sql.
 			}
 		case *expression.IsNull:
 			// If the primary field is not null, invert into an IsNotNull.
-			// Expression tree could be simplified, in that case.
+			// TODO Expression tree could be simplified, in that case.
 			if gf, ok := e.Child.(*expression.GetField); ok {
 				for i, idxGf := range exprs {
 					if idxGf.(*expression.GetField).Name() == gf.Name() {
@@ -208,7 +204,6 @@ func conditionMemoryRangeExpr(e sql.Expression, exprs []sql.Expression, key sql.
 					}
 				}
 			}
-		//TODO check whether key is null or not
 		default:
 		}
 		return e, transform.SameTree, nil
