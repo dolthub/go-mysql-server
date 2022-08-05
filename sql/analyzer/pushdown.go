@@ -301,8 +301,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
 // TODO: this function doesn't actually remove filters that have been converted to index lookups,
-//
-//	that optimization is handled in transformPushdownFilters.
+// that optimization is handled in transformPushdownFilters.
 func convertFiltersToIndexedAccess(
 	ctx *sql.Context,
 	a *Analyzer,
