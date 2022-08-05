@@ -14,7 +14,7 @@
 
 // Package driver implements a driver for Go's database/sql support.
 //
-// Caveats
+// # Caveats
 //
 // Transactions have no effect.
 //

@@ -22,7 +22,7 @@ import (
 )
 
 // ShowVariables is a node that shows the global and session variables
-//TODO: implement the GLOBAL and SESSION distinction
+// TODO: implement the GLOBAL and SESSION distinction
 type ShowVariables struct {
 	filter sql.Expression
 }

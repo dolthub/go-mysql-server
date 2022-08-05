@@ -159,9 +159,10 @@ func containsJSONBool(a bool, b interface{}) (bool, error) {
 // in some element of the target."
 //
 // Examples:
-//   select json_contains('[1, [1, 2, 3], 10]', '[1, 10]'); => true
-//   select json_contains('[1, [1, 2, 3, 10]]', '[1, 10]'); => true
-//   select json_contains('[1, [1, 2, 3], [10]]', '[1, [10]]'); => true
+//
+//	select json_contains('[1, [1, 2, 3], 10]', '[1, 10]'); => true
+//	select json_contains('[1, [1, 2, 3, 10]]', '[1, 10]'); => true
+//	select json_contains('[1, [1, 2, 3], [10]]', '[1, [10]]'); => true
 func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 	if _, ok := b.([]interface{}); ok {
 		for _, bb := range b.([]interface{}) {
@@ -197,13 +198,14 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 // the target key."
 //
 // Examples:
-//   select json_contains('{"b": {"a": [1, 2, 3]}}', '{"a": [1]}'); => false
-//   select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": [1]}'); => true
-//   select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": []}'); => true
-//   select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": {}}'); => false
-//   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '{"a": [2, 4]}'); => true
-//   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '[2]'); => false
-//   select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '2'); => false
+//
+//	select json_contains('{"b": {"a": [1, 2, 3]}}', '{"a": [1]}'); => false
+//	select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": [1]}'); => true
+//	select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": []}'); => true
+//	select json_contains('{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}', '{"a": {}}'); => false
+//	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '{"a": [2, 4]}'); => true
+//	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '[2]'); => false
+//	select json_contains('{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}', '2'); => false
 func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
 	_, isMap := b.(map[string]interface{})
 	if !isMap {
@@ -258,50 +260,57 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 // returned by the JSON_TYPE() function.) Types shown together on a line have the same precedence. Any value having a
 // JSON type listed earlier in the list compares greater than any value having a JSON type listed later in the list.
 //
-// 		BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, BOOLEAN, ARRAY, OBJECT, STRING, INTEGER, DOUBLE, NULL
-// 		TODO(andy): implement BLOB BIT OPAQUE DATETIME TIME DATE
-//      current precedence: BOOLEAN, ARRAY, OBJECT, STRING, DOUBLE, NULL
+//			BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, BOOLEAN, ARRAY, OBJECT, STRING, INTEGER, DOUBLE, NULL
+//			TODO(andy): implement BLOB BIT OPAQUE DATETIME TIME DATE
+//	     current precedence: BOOLEAN, ARRAY, OBJECT, STRING, DOUBLE, NULL
 //
 // For JSON values of the same precedence, the comparison rules are type specific:
 //
 //   - ARRAY
-//       Two JSON arrays are equal if they have the same length and values in corresponding positions in the arrays are
-//       equal. If the arrays are not equal, their order is determined by the elements in the first position where there
-//       is a difference. The array with the smaller value in that position is ordered first. If all values of the
-//       shorter array are equal to the corresponding values in the longer array, the shorter array is ordered first.
-//         e.g.    [] < ["a"] < ["ab"] < ["ab", "cd", "ef"] < ["ab", "ef"]
-//   - BOOLEAN
-//       The JSON false literal is less than the JSON true literal.
-//   - OBJECT
-//	     Two JSON objects are equal if they have the same set of keys, and each key has the same value in both objects.
-//       The order of two objects that are not equal is unspecified but deterministic.
-//         e.g.   {"a": 1, "b": 2} = {"b": 2, "a": 1}
-//   - STRING
-//       Strings are ordered lexically on the first N bytes of the utf8mb4 representation of the two strings being
-//       compared, where N is the length of the shorter string. If the first N bytes of the two strings are identical,
-//       the shorter string is considered smaller than the longer string.
-//         e.g.   "a" < "ab" < "b" < "bc"
-//       This ordering is equivalent to the ordering of SQL strings with collation utf8mb4_bin. Because utf8mb4_bin is a
-//       binary collation, comparison of JSON values is case-sensitive:
-//         e.g.   "A" < "a"
-//   - DOUBLE
-//       JSON values can contain exact-value numbers and approximate-value numbers. For a general discussion of these
-//       types of numbers, see Section 9.1.2, “Numeric Literals”. The rules for comparing native MySQL numeric types are
-//       discussed in Section 12.3, “Type Conversion in Expression Evaluation”, but the rules for comparing numbers
-//       within JSON values differ somewhat:
-//         - In a comparison between two columns that use the native MySQL INT and DOUBLE numeric types, respectively,
-//           it is known that all comparisons involve an integer and a double, so the integer is converted to double for
-//           all rows. That is, exact-value numbers are converted to approximate-value numbers.
-//         - On the other hand, if the query compares two JSON columns containing numbers, it cannot be known in advance
-//           whether numbers are integer or double. To provide the most consistent behavior across all rows, MySQL
-//           converts approximate-value numbers to exact-value numbers. The resulting ordering is consistent and does
-//           not lose precision for the exact-value numbers.
-//             e.g.   9223372036854775805 < 9223372036854775806 < 9223372036854775807 < 9.223372036854776e18
-//                    = 9223372036854776000 < 9223372036854776001
-//   - NULL
-//       For comparison of any JSON value to SQL NULL, the result is UNKNOWN.
+//     Two JSON arrays are equal if they have the same length and values in corresponding positions in the arrays are
+//     equal. If the arrays are not equal, their order is determined by the elements in the first position where there
+//     is a difference. The array with the smaller value in that position is ordered first. If all values of the
+//     shorter array are equal to the corresponding values in the longer array, the shorter array is ordered first.
+//     e.g.    [] < ["a"] < ["ab"] < ["ab", "cd", "ef"] < ["ab", "ef"]
 //
-//   TODO(andy): BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, INTEGER
+//   - BOOLEAN
+//     The JSON false literal is less than the JSON true literal.
+//
+//   - OBJECT
+//     Two JSON objects are equal if they have the same set of keys, and each key has the same value in both objects.
+//     The order of two objects that are not equal is unspecified but deterministic.
+//     e.g.   {"a": 1, "b": 2} = {"b": 2, "a": 1}
+//
+//   - STRING
+//     Strings are ordered lexically on the first N bytes of the utf8mb4 representation of the two strings being
+//     compared, where N is the length of the shorter string. If the first N bytes of the two strings are identical,
+//     the shorter string is considered smaller than the longer string.
+//     e.g.   "a" < "ab" < "b" < "bc"
+//     This ordering is equivalent to the ordering of SQL strings with collation utf8mb4_bin. Because utf8mb4_bin is a
+//     binary collation, comparison of JSON values is case-sensitive:
+//     e.g.   "A" < "a"
+//
+//   - DOUBLE
+//     JSON values can contain exact-value numbers and approximate-value numbers. For a general discussion of these
+//     types of numbers, see Section 9.1.2, “Numeric Literals”. The rules for comparing native MySQL numeric types are
+//     discussed in Section 12.3, “Type Conversion in Expression Evaluation”, but the rules for comparing numbers
+//     within JSON values differ somewhat:
+//
+//   - In a comparison between two columns that use the native MySQL INT and DOUBLE numeric types, respectively,
+//     it is known that all comparisons involve an integer and a double, so the integer is converted to double for
+//     all rows. That is, exact-value numbers are converted to approximate-value numbers.
+//
+//   - On the other hand, if the query compares two JSON columns containing numbers, it cannot be known in advance
+//     whether numbers are integer or double. To provide the most consistent behavior across all rows, MySQL
+//     converts approximate-value numbers to exact-value numbers. The resulting ordering is consistent and does
+//     not lose precision for the exact-value numbers.
+//     e.g.   9223372036854775805 < 9223372036854775806 < 9223372036854775807 < 9.223372036854776e18
+//     = 9223372036854776000 < 9223372036854776001
+//
+//   - NULL
+//     For comparison of any JSON value to SQL NULL, the result is UNKNOWN.
+//
+//     TODO(andy): BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, INTEGER
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func compareJSON(a, b interface{}) (int, error) {

@@ -31,7 +31,8 @@ import (
 // ALTER TABLE statements.
 //
 // TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
-//       checks that will never evaluate correctly.
+//
+//	checks that will never evaluate correctly.
 func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:

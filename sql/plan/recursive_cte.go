@@ -26,19 +26,21 @@ const cteRecursionLimit = 1000
 
 // RecursiveCte is defined by two subqueries
 // connected with a union:
-//   ex => WITH RECURSIVE [name]([Columns]) as ([Init] UNION [Rec]) ...
+//
+//	ex => WITH RECURSIVE [name]([Columns]) as ([Init] UNION [Rec]) ...
+//
 // [Init] is a non-recursive select statement, and [Rec] selects from
 // the recursive relation [name] until exhaustion. Note that if [Rec] is
 // not recursive, the optimizer will fold the RecursiveCte into a
 // SubqueryAlias.
 //
 // The node is executed as follows:
-//   1. First, iterate the [Init] subquery.
-//   2. Collect the outputs of [Init] in a [temporary] buffer.
-//   3. When the iterator is exhausted, populate the recursive
-//      [working] table with the [temporary] buffer.
-//   4. Iterate [Rec], collecting outputs in the [temporary] buffer.
-//   5. Repeat steps (3) and (4) until [temporary] is empty.
+//  1. First, iterate the [Init] subquery.
+//  2. Collect the outputs of [Init] in a [temporary] buffer.
+//  3. When the iterator is exhausted, populate the recursive
+//     [working] table with the [temporary] buffer.
+//  4. Iterate [Rec], collecting outputs in the [temporary] buffer.
+//  5. Repeat steps (3) and (4) until [temporary] is empty.
 //
 // A RecursiveCte, its [Init], and its [Rec] have the same
 // projection count and types. [Init] will be resolved before
