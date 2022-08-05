@@ -87,6 +87,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 
 		// If this view is being asked for with an AS OF clause, then attempt to apply it to every table in the view.
 		if urt.AsOf() != nil {
+			a.Log("applying AS OF clause to view definition")
 			query, _, err = applyAsOfToView(query, a, urt.AsOf())
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -109,28 +110,57 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	})
 }
 
+// applyAsOfToView transforms the nodes in the view's execution plan to apply the asOf expression to every
+// individual table involved in the view.
 func applyAsOfToView(n sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, transform.TreeIdentity, error) {
-	a.Log("applying AS OF clause to view definition")
-
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		urt, ok := n.(*plan.UnresolvedTable)
-		if !ok {
+		switch nn := n.(type) {
+		case *plan.Union:
+			// plan.Union is an opaque node, so it won't get processed automatically by transform.Node
+			return applyAsOfToUnion(nn, a, asOf)
+		case *plan.UnresolvedTable:
+			return applyAsOfToUnresolvedTable(nn, a, asOf)
+		default:
 			return n, transform.SameTree, nil
 		}
-
-		a.Log("applying AS OF clause to view " + urt.Name())
-		if urt.AsOf() != nil {
-			return nil, transform.SameTree, sql.ErrIncompatibleAsOf.New(
-				fmt.Sprintf("cannot combine AS OF clauses %s and %s",
-					asOf.String(), urt.AsOf().String()))
-		}
-
-		n, err := urt.WithAsOf(asOf)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		return n, transform.NewTree, nil
 	})
+}
+
+// applyAsOfToUnresolvedTable transforms an UnresolvedTable node to apply the specified asOf expression. If
+// the UnresolvedTable already has an asOf expression applied, an error is returned.
+func applyAsOfToUnresolvedTable(urt *plan.UnresolvedTable, a *Analyzer, asOf sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	a.Log("applying AS OF clause to view " + urt.Name())
+	if urt.AsOf() != nil {
+		return nil, transform.SameTree, sql.ErrIncompatibleAsOf.New(
+			fmt.Sprintf("cannot combine AS OF clauses %s and %s",
+				asOf.String(), urt.AsOf().String()))
+	}
+
+	n, err := urt.WithAsOf(asOf)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	return n, transform.NewTree, nil
+}
+
+// applyAsOfToUnion transforms a Union node to apply the specified asOf expression to every table involved in
+// either side of the union statement.
+func applyAsOfToUnion(union *plan.Union, a *Analyzer, asOf sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	newLeft, leftIdentity, err := applyAsOfToView(union.Left(), a, asOf)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	newRight, rightIdentity, err := applyAsOfToView(union.Right(), a, asOf)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	if leftIdentity == transform.NewTree || rightIdentity == transform.NewTree {
+		return plan.NewUnion(newLeft, newRight), transform.NewTree, nil
+	} else {
+		return union, transform.SameTree, nil
+	}
 }
 
 func applyDatabaseQualifierToView(n sql.Node, a *Analyzer, dbName string) (sql.Node, transform.TreeIdentity, error) {
