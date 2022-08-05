@@ -1051,6 +1051,51 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "with grant option works at every scope",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON *.* to tester@localhost WITH GRANT OPTION",
+			"GRANT SELECT ON db.* to tester@localhost WITH GRANT OPTION",
+			"GRANT SELECT ON db.tbl to tester@localhost WITH GRANT OPTION",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
+					{"GRANT SELECT ON `db`.* TO `tester`@`localhost` WITH GRANT OPTION"},
+					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`localhost` WITH GRANT OPTION"},
+				},
+			},
+		},
+	},
+	{
+		Name: "adding with grant option applies to existing privileges",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON *.* to tester@localhost",
+			"GRANT INSERT ON *.* to tester@localhost WITH GRANT OPTION",
+			"GRANT SELECT ON db.* to tester@localhost",
+			"GRANT INSERT ON db.* to tester@localhost WITH GRANT OPTION",
+			"GRANT SELECT ON db.tbl to tester@localhost",
+			"GRANT INSERT ON db.tbl to tester@localhost WITH GRANT OPTION",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT, INSERT ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
+					{"GRANT SELECT, INSERT ON `db`.* TO `tester`@`localhost` WITH GRANT OPTION"},
+					{"GRANT SELECT, INSERT ON `db`.`tbl` TO `tester`@`localhost` WITH GRANT OPTION"},
+				},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
