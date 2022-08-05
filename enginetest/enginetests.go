@@ -2090,7 +2090,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	})
 }
 
-//todo(max): convert to WriteQueryTest
+// todo(max): convert to WriteQueryTest
 func TestAddColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -2256,7 +2256,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	})
 }
 
-//todo(max): convert to WriteQueryTest
+// todo(max): convert to WriteQueryTest
 func TestModifyColumn(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData)
 	e := mustNewEngine(t, harness)

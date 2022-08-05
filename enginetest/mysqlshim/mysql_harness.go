@@ -35,7 +35,7 @@ type MySQLHarness struct {
 	session        sql.Session
 }
 
-//TODO: refactor to remove enginetest cycle
+// TODO: refactor to remove enginetest cycle
 var _ enginetest.Harness = (*MySQLHarness)(nil)
 var _ enginetest.IndexHarness = (*MySQLHarness)(nil)
 var _ enginetest.ForeignKeyHarness = (*MySQLHarness)(nil)
