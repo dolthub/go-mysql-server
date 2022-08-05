@@ -114,8 +114,8 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	}
 }
 
-// generatePrivStrings gathers all the privileges and if with grant option should be printed
-func generatePrivStrings(privs []sql.PrivilegeType) (string, string) {
+// generatePrivStrings creates a formatted GRANT <privilege_list> on <global/database/table> to <user@host> string
+func generatePrivStrings(db, tbl, user string, privs []sql.PrivilegeType) string {
 	sb := strings.Builder{}
 	withGrantOption := ""
 	for i, priv := range privs {
@@ -129,7 +129,16 @@ func generatePrivStrings(privs []sql.PrivilegeType) (string, string) {
 			sb.WriteString(privStr)
 		}
 	}
-	return sb.String(), withGrantOption
+	// handle special case for empty global and database privileges
+	privStr := sb.String()
+	if len(privStr) == 0 {
+		if db == "*" {
+			privStr = "USAGE"
+		} else {
+			return ""
+		}
+	}
+	return fmt.Sprintf("GRANT %s ON %s.%s TO %s%s", privStr, db, tbl, user, withGrantOption)
 }
 
 // RowIter implements the interface sql.Node.
@@ -152,24 +161,24 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 	//TODO: implement USING, perhaps by creating a new context with the chosen roles set as the active roles
 	var rows []sql.Row
-	privs, withGrantOption := generatePrivStrings(user.PrivilegeSet.ToSortedSlice())
-	if len(privs) == 0 {
-		privs = "USAGE"
-	}
-	rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s%s", privs, user.UserHostToString("`"), withGrantOption)})
+	userStr := user.UserHostToString("`")
+	privStr := generatePrivStrings("*", "*", userStr, user.PrivilegeSet.ToSortedSlice())
+	rows = append(rows, sql.Row{privStr})
 
 	for _, db := range user.PrivilegeSet.GetDatabases() {
-		if privs, withGrantOption := generatePrivStrings(db.ToSortedSlice()); len(privs) != 0 {
-			rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON `%s`.* TO %s%s", privs, db.Name(), user.UserHostToString("`"), withGrantOption)})
+		dbStr := fmt.Sprintf("`%s`", db.Name())
+		if privStr = generatePrivStrings(dbStr, "*", userStr, db.ToSortedSlice()); len(privStr) != 0 {
+			rows = append(rows, sql.Row{privStr})
 		}
 
 		for _, tbl := range db.GetTables() {
-			privs, withGrantOption := generatePrivStrings(tbl.ToSortedSlice())
-			rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON `%s`.`%s` TO %s%s", privs, db.Name(), tbl.Name(), user.UserHostToString("`"), withGrantOption)})
+			tblStr := fmt.Sprintf("`%s`", tbl.Name())
+			privStr = generatePrivStrings(dbStr, tblStr, userStr, tbl.ToSortedSlice())
+			rows = append(rows, sql.Row{privStr})
 		}
 	}
 
-	//TODO: display column privileges
+	// TODO: display column privileges
 
 	sb := strings.Builder{}
 	roleEdges := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
