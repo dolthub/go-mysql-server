@@ -7825,6 +7825,13 @@ var InfoSchemaQueries = []QueryTest{
 	},
 }
 
+var SkippedInfoSchemaQueries = []QueryTest{
+	{
+		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
+		Expected: []sql.Row{{3}},
+	},
+}
+
 var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.table_constraints ignores non-unique indexes",

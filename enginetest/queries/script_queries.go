@@ -2710,4 +2710,18 @@ var BrokenScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Drop a column with a check constraint",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable DROP COLUMN col2",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
 }
