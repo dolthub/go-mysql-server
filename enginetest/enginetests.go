@@ -1691,6 +1691,11 @@ func initializeViewsForVersionedViewsTests(t *testing.T, harness Harness, e *sql
 	_, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
 	require.NoError(err)
 	iter.Close(ctx)
+
+	// views with a subquery alias
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
+	require.NoError(err)
+	iter.Close(ctx)
 }
 
 func TestVersionedViews(t *testing.T, harness Harness) {
