@@ -220,14 +220,14 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		},
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
-				plan.NewDecoratedNode("Projected table access on [i f t]", plan.NewResolvedTable(table.WithProjections([]string{"i", "f", "t"}), db, nil)),
-				plan.NewDecoratedNode("Projected table access on [f2 i2 t2]", plan.NewResolvedTable(table2.WithProjections([]string{"f2", "i2", "t2"}), db, nil)),
+				plan.NewResolvedTable(table.WithProjections([]string{"i", "f", "t"}), db, nil),
+				plan.NewResolvedTable(table2.WithProjections([]string{"i2", "f2", "t2"}), db, nil),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
 				),
 			),
-			plan.NewDecoratedNode("Projected table access on [t3 i f2]", plan.NewResolvedTable(table3.WithProjections([]string{"t3", "i", "f2"}), db, nil)),
+			plan.NewResolvedTable(table3.WithProjections([]string{"i", "f2", "t3"}), db, nil),
 			expression.NewAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
@@ -242,8 +242,6 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
-	a.Debug = true
-	a.Verbose = true
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 

@@ -96,11 +96,11 @@ func TestAddColumnToSchema(t *testing.T) {
 				Name:    "i2",
 				Type:    sql.Int64,
 				Source:  "mytable",
-				Default: mustDefault(expression.NewGetField(1, sql.Int64, "i", false), sql.Int64, false, true),
+				Default: mustDefault(expression.NewGetField(1, sql.Int64, "i", false), sql.Int64, false, true, true),
 			},
 			order: &sql.ColumnOrder{First: true},
 			newSchema: sql.Schema{
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true)},
+				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true, true)},
 				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
@@ -109,7 +109,7 @@ func TestAddColumnToSchema(t *testing.T) {
 					Name:    "i2",
 					Type:    sql.Int64,
 					Source:  "mytable",
-					Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true),
+					Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true, true),
 				}},
 				expression.NewGetField(0, sql.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
@@ -138,12 +138,12 @@ func TestAddColumnToSchema(t *testing.T) {
 				Name:    "i2",
 				Type:    sql.Int64,
 				Source:  "mytable",
-				Default: mustDefault(expression.NewGetField(2, sql.Int64, "s", false), sql.Int64, false, true),
+				Default: mustDefault(expression.NewGetField(2, sql.Int64, "s", false), sql.Int64, false, true, true),
 			},
 			order: &sql.ColumnOrder{AfterColumn: "i"},
 			newSchema: sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true)},
+				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true, true)},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
@@ -152,7 +152,7 @@ func TestAddColumnToSchema(t *testing.T) {
 					Name:    "i2",
 					Type:    sql.Int64,
 					Source:  "mytable",
-					Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true),
+					Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true, true),
 				}},
 				expression.NewGetField(1, varchar20, "s", false),
 			},
@@ -333,24 +333,24 @@ func TestModifyColumnInSchema(t *testing.T) {
 				{Name: "two", Type: sql.Int64, Source: "mytable"},
 				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
 					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "two", false),
-					sql.Int64, false, false),
+					sql.Int64, false, true, false),
 				},
 			},
 			colName: "two",
 			order:   &sql.ColumnOrder{First: true},
 			newColumn: &sql.Column{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "one", false),
-				sql.Int64, false, false),
+				sql.Int64, false, true, false),
 			},
 			newSchema: sql.Schema{
 				{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
 					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "one", false),
-					sql.Int64, false, false),
+					sql.Int64, false, true, false),
 				},
 				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
 					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "two", false),
-					sql.Int64, false, false),
+					sql.Int64, false, true, false),
 				},
 			},
 			projections: []sql.Expression{
@@ -375,8 +375,8 @@ func TestModifyColumnInSchema(t *testing.T) {
 }
 
 // mustDefault enforces that no error occurred when constructing the column default value.
-func mustDefault(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
-	colDef, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+func mustDefault(expr sql.Expression, outType sql.Type, representsLiteral bool, parenthesized bool, mayReturnNil bool) *sql.ColumnDefaultValue {
+	colDef, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, parenthesized, mayReturnNil)
 	if err != nil {
 		panic(err)
 	}

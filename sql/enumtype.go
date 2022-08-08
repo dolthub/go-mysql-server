@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/shopspring/decimal"
 
@@ -62,9 +63,10 @@ type EnumType interface {
 }
 
 type enumType struct {
-	collation  CollationID
-	valToIndex map[string]int
-	indexToVal []string
+	collation             CollationID
+	valToIndex            map[string]int
+	indexToVal            []string
+	maxResponseByteLength uint32
 }
 
 // CreateEnumType creates a EnumType.
@@ -75,6 +77,11 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 	if len(values) > EnumTypeMaxElements {
 		return nil, fmt.Errorf("number of values is too large")
 	}
+
+	// maxResponseByteLength for an enum type is the bytes required to send back the largest enum value,
+	// including accounting for multibyte character representations.
+	var maxResponseByteLength uint32
+	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	valToIndex := make(map[string]int)
 	for i, value := range values {
 		if !collation.Equals(Collation_binary) {
@@ -87,11 +94,17 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 		}
 		/// The elements listed in the column specification are assigned index numbers, beginning with 1.
 		valToIndex[value] = i + 1
+
+		byteLength := uint32(utf8.RuneCountInString(value) * int(maxCharLength))
+		if byteLength > maxResponseByteLength {
+			maxResponseByteLength = byteLength
+		}
 	}
 	return enumType{
-		collation:  collation,
-		valToIndex: valToIndex,
-		indexToVal: values,
+		collation:             collation,
+		valToIndex:            valToIndex,
+		indexToVal:            values,
+		maxResponseByteLength: maxResponseByteLength,
 	}, nil
 }
 
@@ -102,6 +115,11 @@ func MustCreateEnumType(values []string, collation CollationID) EnumType {
 		panic(err)
 	}
 	return et
+}
+
+// MaxTextResponseByteLength implements the Type interface
+func (t enumType) MaxTextResponseByteLength() uint32 {
+	return t.maxResponseByteLength
 }
 
 // Compare implements Type interface.

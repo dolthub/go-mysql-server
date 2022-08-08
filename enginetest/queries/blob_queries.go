@@ -188,7 +188,7 @@ var BlobErrors = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 	{
-		Query:       "alter table textt add index tidx (i, b)",
+		Query:       "alter table blobt add index tidx (i, b)",
 		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 	{
@@ -196,36 +196,36 @@ var BlobErrors = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
 	},
 	{
-		Query:       "alter table text add index tidx (t)",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		Query:       "alter table textt add index tidx (t)",
+		ExpectedErr: sql.ErrInvalidTextIndex,
 	},
 	{
 		Query:       "alter table textt add column t2 text default '1'",
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
 	},
 	{
-		Query:       "alter table text add index tidx (i, t)",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		Query:       "alter table textt add index tidx (i, t)",
+		ExpectedErr: sql.ErrInvalidTextIndex,
 	},
 	{
 		Query:       "create table b (b blob primary key)",
 		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
 	},
 	{
-		Query:       "create table b (b smallblob primary key)",
+		Query:       "create table b (b tinyblob primary key)",
 		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
 	},
 	{
 		Query:       "create table t (t text primary key)",
-		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+		ExpectedErr: sql.ErrInvalidTextIndex,
 	},
 	{
 		Query:       "create table t (t text, primary key (t))",
-		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+		ExpectedErr: sql.ErrInvalidTextIndex,
 	},
 	{
 		Query:       "create table b (b blob, primary key (b))",
-		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+		ExpectedErr: sql.ErrInvalidByteIndex,
 	},
 	{
 		Query:       "create table b (i int primary key, b blob, index bidx(b))",
@@ -233,11 +233,11 @@ var BlobErrors = []QueryErrorTest{
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TEXT, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidTextIndex,
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TINYTEXT, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidTextIndex,
 	},
 }
 

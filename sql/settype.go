@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/shopspring/decimal"
 
@@ -61,10 +62,11 @@ type SetType interface {
 }
 
 type setType struct {
-	collation         CollationID
-	compareToOriginal map[string]string
-	valToBit          map[string]uint64
-	bitToVal          map[uint64]string
+	collation             CollationID
+	compareToOriginal     map[string]string
+	valToBit              map[string]uint64
+	bitToVal              map[uint64]string
+	maxResponseByteLength uint32
 }
 
 // CreateSetType creates a SetType.
@@ -79,6 +81,8 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 	compareToOriginal := make(map[string]string)
 	valToBit := make(map[string]uint64)
 	bitToVal := make(map[uint64]string)
+	var maxByteLength uint32
+	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
 		/// ...SET member values should not themselves contain commas.
 		if strings.Contains(value, ",") {
@@ -104,12 +108,17 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 		bit := uint64(1 << uint64(i))
 		valToBit[value] = bit
 		bitToVal[bit] = value
+		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
+		if i != 0 {
+			maxByteLength = maxByteLength + uint32(maxCharLength)
+		}
 	}
 	return setType{
-		collation:         collation,
-		compareToOriginal: compareToOriginal,
-		valToBit:          valToBit,
-		bitToVal:          bitToVal,
+		collation:             collation,
+		compareToOriginal:     compareToOriginal,
+		valToBit:              valToBit,
+		bitToVal:              bitToVal,
+		maxResponseByteLength: maxByteLength,
 	}, nil
 }
 
@@ -195,6 +204,11 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 	}
 
 	return uint64(0), ErrConvertingToSet.New(v)
+}
+
+// MaxTextResponseByteLength implements the Type interface
+func (t setType) MaxTextResponseByteLength() uint32 {
+	return t.maxResponseByteLength
 }
 
 // MustConvert implements the Type interface.

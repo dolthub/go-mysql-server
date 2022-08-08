@@ -117,7 +117,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `CREATE TABLE test (blob_col BLOB, INDEX(blob_col(10)));`,
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
 		Expected: []sql.Row{
 			{1, 2},
 		},
@@ -387,8 +387,8 @@ func TestInsertIgnoreInto(t *testing.T) {
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
-	enginetest.TestInsertIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
+	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestInsertIntoErrors(t *testing.T) {
@@ -433,6 +433,10 @@ func TestReplaceIntoErrors(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	enginetest.TestUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestUpdateIgnore(t *testing.T) {
+	enginetest.TestUpdateIgnore(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestUpdateErrors(t *testing.T) {

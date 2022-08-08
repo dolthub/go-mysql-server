@@ -134,6 +134,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 	children := node.Children()
 	newChildren := make([]sql.Node, len(children))
 	var err error
+	procSel := NewSkipPruneRuleSelector(sel)
 	for i, child := range children {
 		var newChild sql.Node
 		switch child := child.(type) {
@@ -144,10 +145,10 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			if skipCall {
 				newChild = child
 			} else {
-				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, sel)
+				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel)
 			}
 		default:
-			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, sel)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel)
 		}
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -377,7 +378,11 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 
 	procedure := scope.procedures.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
 	if procedure == nil {
-		return nil, transform.SameTree, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+		err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+		if ctx.GetCurrentDatabase() == "" {
+			return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
+		}
+		return nil, transform.SameTree, err
 	}
 	if procedure.HasVariadicParameter() {
 		procedure = procedure.ExtendVariadic(ctx, len(call.Params))

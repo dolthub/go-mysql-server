@@ -121,7 +121,7 @@ var (
 	ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
 
 	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
-	ErrInvalidTextBlobColumnDefault = errors.NewKind("text/blob types may only have expression default values")
+	ErrInvalidTextBlobColumnDefault = errors.NewKind("TEXT, BLOB, GEOMETRY, and JSON types may only have expression default values")
 
 	// ErrInvalidColumnDefaultFunction is returned when an invalid function is used in a default value.
 	ErrInvalidColumnDefaultFunction = errors.NewKind("function `%s` on column `%s` is not valid for usage in a default value")
@@ -615,6 +615,10 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		return CastSQLError(w.Cause)
 	}
 
+	if wm, ok := err.(WrappedTypeConversionError); ok {
+		return CastSQLError(wm.Err)
+	}
+
 	switch {
 	case ErrTableNotFound.Is(err):
 		code = mysql.ERNoSuchTable
@@ -710,14 +714,30 @@ func (w WrappedInsertError) Error() string {
 	return w.Cause.Error()
 }
 
-type ErrInsertIgnore struct {
+// IgnorableError is used propagate information about an error that needs to be ignored and does not interfere with
+// any update accumulators
+type IgnorableError struct {
 	OffendingRow Row
 }
 
-func NewErrInsertIgnore(row Row) ErrInsertIgnore {
-	return ErrInsertIgnore{OffendingRow: row}
+func NewIgnorableError(row Row) IgnorableError {
+	return IgnorableError{OffendingRow: row}
 }
 
-func (e ErrInsertIgnore) Error() string {
-	return "Insert ignore error shoudl never be printed"
+func (e IgnorableError) Error() string {
+	return "An ignorable error should never be printed"
+}
+
+type WrappedTypeConversionError struct {
+	OffendingVal interface{}
+	OffendingIdx int
+	Err          error
+}
+
+func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error) WrappedTypeConversionError {
+	return WrappedTypeConversionError{OffendingVal: offendingVal, OffendingIdx: idx, Err: err}
+}
+
+func (w WrappedTypeConversionError) Error() string {
+	return w.Err.Error()
 }

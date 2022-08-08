@@ -258,7 +258,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 // reresolveTables is a quick and dirty way to make prepared statement reanalysis
 // resolve the most up-to-date table roots while preserving projections folded into
 // table scans.
-//TODO this is racy, alter statements can change a table's schema in-between
+// TODO this is racy, alter statements can change a table's schema in-between
 // prepare and execute
 func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {

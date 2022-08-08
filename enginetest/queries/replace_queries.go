@@ -21,7 +21,7 @@ import (
 )
 
 // TODO: none of these tests insert into tables without primary key columns, which have different semantics for
-//  REPLACE INTO queries. Add some tables / data without primary keys.
+// REPLACE INTO queries. Add some tables / data without primary keys.
 var ReplaceQueries = []WriteQueryTest{
 	{
 		WriteQuery:          "REPLACE INTO mytable VALUES (1, 'first row');",

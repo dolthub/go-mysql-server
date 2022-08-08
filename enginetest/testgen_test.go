@@ -79,9 +79,8 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 	t.Skip()
 
 	harness := NewDefaultMemoryHarness()
+	harness.Setup(setup.ComplexIndexSetup...)
 	engine := mustNewEngine(t, harness)
-
-	CreateIndexes(t, harness, engine)
 
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {

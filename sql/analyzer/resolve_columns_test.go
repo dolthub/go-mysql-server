@@ -55,8 +55,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 	expected := plan.NewProject(
 		[]sql.Expression{
 			uqc("foo", "a"),
-			// b is not qualified because it's not projected
-			uc("b"),
+			uqc("foo", "b"),
 		},
 		plan.NewProject(
 			[]sql.Expression{

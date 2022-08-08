@@ -1112,10 +1112,15 @@ var InsertScripts = []ScriptTest{
 	{
 		Name: "explicit DEFAULT",
 		SetUpScript: []string{
-			"CREATE TABLE t1(id int DEFAULT '2', vc varchar(255) DEFAULT '2');",
+			"CREATE TABLE t1(id int DEFAULT '2', dt datetime DEFAULT now());",
 			"CREATE TABLE t2(id varchar(100) DEFAULT (uuid()));",
 			"CREATE TABLE t3(a int DEFAULT '1', b int default (2 * a));",
 			"CREATE TABLE t4(c0 varchar(10) null default 'c0', c1 varchar(10) null default 'c1');",
+			// MySQL allows the current_timestamp() function to NOT be in parens when used as a default
+			// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
+			"CREATE TABLE t5(c0 varchar(100) DEFAULT (repeat('_', 100)), c1 datetime DEFAULT current_timestamp());",
+			// Regression test case for custom column ordering: https://github.com/dolthub/dolt/issues/4004
+			"create table t6 (color enum('red', 'blue', 'green') default 'blue', createdAt timestamp default (current_timestamp()));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1123,11 +1128,11 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query:    "INSERT INTO t1 (id, VC) values (DEFAULT, DEFAULT)",
+				Query:    "INSERT INTO t1 (id, dt) values (DEFAULT, DEFAULT)",
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query:    "INSERT INTO t1 (vc, ID) values (DEFAULT, DEFAULT)",
+				Query:    "INSERT INTO t1 (dt, ID) values (DEFAULT, DEFAULT)",
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 			{
@@ -1135,15 +1140,15 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
 			},
 			{
-				Query:    "INSERT INTO t1 (vc) values (DEFAULT), ('3')",
+				Query:    "INSERT INTO t1 (dt) values (DEFAULT), ('1981-02-16 00:00:00')",
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
 			},
 			{
-				Query:    "INSERT INTO t1 values (100, '100'), (DEFAULT, DEFAULT)",
+				Query:    "INSERT INTO t1 values (100, '2000-01-01 12:34:56'), (DEFAULT, DEFAULT)",
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
 			},
 			{
-				Query:    "INSERT INTO t1 (id, vc) values (100, '100'), (DEFAULT, DEFAULT)",
+				Query:    "INSERT INTO t1 (id, dt) values (100, '2022-01-01 01:01:01'), (DEFAULT, DEFAULT)",
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
 			},
 			{
@@ -1151,7 +1156,7 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
 			},
 			{
-				Query:    "INSERT INTO t1 (VC) values ('10'), (DEFAULT)",
+				Query:    "INSERT INTO t1 (DT) values ('2022-02-02 02:02:02'), (DEFAULT)",
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
 			},
 			{
@@ -1181,6 +1186,23 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "select * from t4",
 				Expected: []sql.Row{{nil, "c1"}},
+			},
+			{
+				Query:    "INSERT INTO T5 values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO T5 (c0, c1) values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO T5 (c1) values (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// Custom column order should use the correct column defaults
+				Query:    "insert into T6(createdAt, color) values (DEFAULT, DEFAULT);",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},
@@ -1739,7 +1761,7 @@ var InsertIgnoreScripts = []ScriptTest{
 	},
 }
 
-var InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
+var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 	{
 		Name: "Test that INSERT IGNORE INTO works with unique keys on a keyless table",
 		SetUpScript: []string{
@@ -1774,6 +1796,84 @@ var InsertIgnoreIntoWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
 				},
+			},
+		},
+	},
+	{
+		Name: "INSERT IGNORE INTO multiple violations of a unique secondary index",
+		SetUpScript: []string{
+			"CREATE TABLE keyless(pk int, val int)",
+			"INSERT INTO keyless values (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT IGNORE INTO keyless VALUES (1, 2);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "DELETE FROM keyless where pk = 1 and val = 2",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:           "INSERT IGNORE INTO keyless VALUES (1, 3)",
+				Expected:        []sql.Row{{sql.NewOkResult(0)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+		},
+	},
+	{
+		Name: "UPDATE IGNORE keyless tables and secondary indexes",
+		SetUpScript: []string{
+			"CREATE TABLE keyless(pk int, val int)",
+			"INSERT INTO keyless VALUES (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = 1 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = 3 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
 			},
 		},
 	},

@@ -138,10 +138,10 @@ func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map
 			if err != nil {
 				return nil, err
 			}
-			ctes[strings.ToLower(cteName)] = plan.NewProject(
-				[]sql.Expression{expression.NewQualifiedStar(cte.Subquery.Name())},
+			ctes[strings.ToLower(cteName)] = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, plan.NewProject(
+				[]sql.Expression{expression.NewQualifiedStar(subquery.Name())},
 				rCte,
-			)
+			))
 		} else {
 			ctes[strings.ToLower(cteName)] = subquery
 		}
@@ -189,7 +189,9 @@ func schemaLength(node sql.Node) int {
 // Union.
 //
 // This will have surprising behavior in the case of something like:
-//   (WITH t AS SELECT ... SELECT ...) UNION ...
+//
+//	(WITH t AS SELECT ... SELECT ...) UNION ...
+//
 // where the CTE will be visible on the second half of the UNION. We live with
 // it for now.
 func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

@@ -80,9 +80,10 @@ type Table struct {
 	pkIndexesEnabled bool
 
 	// pushdown info
-	filters    []sql.Expression // currently unused, filter pushdown is significantly broken right now
-	projection []string
-	columns    []int
+	filters         []sql.Expression // currently unused, filter pushdown is significantly broken right now
+	projection      []string
+	projectedSchema sql.Schema
+	columns         []int
 
 	// Data storage
 	partitions    map[string][]sql.Row
@@ -169,6 +170,9 @@ func (t Table) Name() string {
 
 // Schema implements the sql.Table interface.
 func (t *Table) Schema() sql.Schema {
+	if t.projectedSchema != nil {
+		return t.projectedSchema
+	}
 	return t.schema.Schema
 }
 
@@ -362,14 +366,14 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	resultRow := make(sql.Row, len(row))
-	for j := range row {
-		if len(i.columns) == 0 || i.colIsProjected(j) {
-			resultRow[j] = row[j]
+	if len(i.columns) > 0 {
+		resultRow := make(sql.Row, len(i.columns))
+		for i, j := range i.columns {
+			resultRow[i] = row[j]
 		}
+		return resultRow, nil
 	}
-
-	return resultRow, nil
+	return row, nil
 }
 
 func (i *tableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
@@ -973,8 +977,8 @@ func (t *FilteredTable) WithFilters(ctx *sql.Context, filters []sql.Expression) 
 }
 
 // WithProjections implements sql.ProjectedTable
-func (t *FilteredTable) WithProjections(colNames []string) sql.Table {
-	table := t.Table.WithProjections(colNames)
+func (t *FilteredTable) WithProjections(schema []string) sql.Table {
+	table := t.Table.WithProjections(schema)
 
 	nt := *t
 	nt.Table = table.(*Table)
@@ -987,19 +991,25 @@ func (t *FilteredTable) Projections() []string {
 }
 
 // WithProjections implements sql.ProjectedTable
-func (t *Table) WithProjections(colNames []string) sql.Table {
-	if len(colNames) == 0 {
+func (t *Table) WithProjections(cols []string) sql.Table {
+	if len(cols) == 0 {
 		return t
 	}
 
 	nt := *t
-	columns, err := nt.columnIndexes(colNames)
+	columns, err := nt.columnIndexes(cols)
 	if err != nil {
 		panic(err)
 	}
 
 	nt.columns = columns
-	nt.projection = colNames
+
+	projectedSchema := make(sql.Schema, len(columns))
+	for i, j := range columns {
+		projectedSchema[i] = nt.schema.Schema[j]
+	}
+	nt.projectedSchema = projectedSchema
+	nt.projection = cols
 
 	return &nt
 }

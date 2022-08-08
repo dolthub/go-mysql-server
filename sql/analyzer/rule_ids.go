@@ -41,7 +41,6 @@ const (
 	validateReadOnlyTransactionId               // validateReadOnlyTransaction
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePriviledgesId                       // validatePriviledges
-	stripDecorationsId                          // stripDecorations
 	reresolveTablesId                           // reresolveTables
 	validateJoinComplexityId                    // validateJoinComplexity
 
@@ -83,7 +82,7 @@ const (
 	pushdownFiltersId             // pushdownFilters
 	subqueryIndexesId             // subqueryIndexes
 	inSubqueryIndexesId           // inSubqueryIndexes
-	pushdownProjectionsId         // pushdownProjections
+	pruneTablesId                 // pruneTables
 	setJoinScopeLenId             // setJoinScopeLen
 	eraseProjectionId             // eraseProjection
 	replaceSortPkId               // replaceSortPk

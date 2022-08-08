@@ -57,7 +57,6 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
-	{stripDecorationsId, stripDecorations},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -70,6 +69,7 @@ var DefaultRules = []Rule{
 	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{qualifyColumnsId, qualifyColumns},
+	{pruneTablesId, pruneTables},
 	{resolveColumnsId, resolveColumns},
 	{resolveColumnDefaultsId, resolveColumnDefaults},
 	{validateCheckConstraintId, validateCheckConstraints},
@@ -101,7 +101,6 @@ var OnceAfterDefault = []Rule{
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{replaceSortPkId, replacePkSort},
-	{pushdownProjectionsId, pushdownProjections},
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},

@@ -84,18 +84,13 @@ func TestResolveSubqueries(t *testing.T) {
 					plan.NewCrossJoin(
 						plan.NewSubqueryAlias(
 							"t1", "",
-							plan.NewDecoratedNode("Projected table access on [a]",
-								plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil)),
+							plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil),
 						),
 						plan.NewSubqueryAlias(
 							"t2", "",
 							plan.NewSubqueryAlias(
 								"t2alias", "",
-								plan.NewProject(
-									[]sql.Expression{gf(0, "bar", "b")},
-									plan.NewDecoratedNode("Projected table access on [b]",
-										plan.NewResolvedTable(bar.WithProjections([]string{"b"}), db, nil)),
-								),
+								plan.NewResolvedTable(bar.WithProjections([]string{"b"}), db, nil),
 							),
 						),
 					),
@@ -173,9 +168,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 									gf(1, "mytable", "x"),
 									gf(2, "mytable2", "i"),
 								),
-								plan.NewDecoratedNode("Projected table access on [y i]",
-									plan.NewResolvedTable(table2.WithProjections([]string{"y", "i"}), db, nil),
-								),
+								plan.NewResolvedTable(table2.WithProjections([]string{"i", "y"}), db, nil),
 							),
 						),
 						""),
@@ -209,19 +202,12 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 				[]sql.Expression{
 					uc("i"),
 					plan.NewSubquery(
-						plan.NewProject(
-							[]sql.Expression{
-								gf(3, "mytable2", "y"),
-							},
-							plan.NewFilter(
-								gt(
-									gf(1, "mytable", "x"),
-									gf(0, "mytable", "i"),
-								),
-								plan.NewDecoratedNode("Projected table access on [y]",
-									plan.NewResolvedTable(table2.WithProjections([]string{"y"}), db, nil),
-								),
+						plan.NewFilter(
+							gt(
+								gf(1, "mytable", "x"),
+								gf(0, "mytable", "i"),
 							),
+							plan.NewResolvedTable(table2.WithProjections([]string{"y"}), db, nil),
 						),
 						""),
 				},
@@ -354,9 +340,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 									gf(1, "mytable", "x"),
 									gf(2, "mytable2", "i"),
 								),
-								plan.NewDecoratedNode("Projected table access on [i]",
-									plan.NewResolvedTable(table2.WithProjections([]string{"i"}), db, nil),
-								),
+								plan.NewResolvedTable(table2.WithProjections([]string{"i"}), db, nil),
 							),
 						),
 						""),
@@ -420,9 +404,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 													gf(1, "mytable", "x"),
 													gf(4, "mytable2", "i"),
 												),
-												plan.NewDecoratedNode("Projected table access on [y i]",
-													plan.NewResolvedTable(table2.WithProjections([]string{"y", "i"}), db, nil),
-												),
+												plan.NewResolvedTable(table2.WithProjections([]string{"i", "y"}), db, nil),
 											),
 										),
 										""),

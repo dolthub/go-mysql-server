@@ -480,9 +480,15 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				// Instead of grabbing the schema from TargetSchema(), use the Destination node
 				sch := node.Destination.Schema()
 
-				// InsertInto.Source can contain multiple rows, so loop over the columns in the schema
-				colIndex = colIndex % len(sch)
-				col := sch[colIndex]
+				// InsertInto.Source can contain multiple rows, so loop over the included columns
+				colIndex = colIndex % len(node.ColumnNames)
+
+				// Columns can be specified in any order, so use the order from the InsertInto statement
+				schemaIndex := sch.IndexOfColName(node.ColumnNames[colIndex])
+				if schemaIndex == -1 {
+					return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnNames[colIndex])
+				}
+				col := sch[schemaIndex]
 				colIndex++
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
@@ -697,7 +703,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		return e, transform.SameTree, nil
 	}
 
-	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
+	if (sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
 		return nil, transform.SameTree, sql.ErrInvalidTextBlobColumnDefault.New()
 	}
 
@@ -723,8 +729,11 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 				err = sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)
 				return false
 			}
-			if newDefault.IsLiteral() {
+			if newDefault.IsParenthesized() == false {
 				if funcName == "now" || funcName == "current_timestamp" {
+					// now and current_timestamps are the only functions that don't have to be enclosed in
+					// parens when used as a column default value, but ONLY when they are used with a
+					// datetime or timestamp column, otherwise it's invalid.
 					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
 						return true
 					} else {
@@ -732,10 +741,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 						return false
 					}
 				}
-				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
-				return false
 			}
-
 			return true
 		case *plan.Subquery:
 			err = sql.ErrColumnDefaultSubquery.New(col.Name)
@@ -744,7 +750,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 			err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 			return false
 		case *expression.GetField:
-			if newDefault.IsLiteral() {
+			if newDefault.IsParenthesized() == false {
 				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 				return false
 			} else {
@@ -773,7 +779,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		}
 	}
 
-	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
+	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, newDefault.IsParenthesized(), col.Nullable)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}

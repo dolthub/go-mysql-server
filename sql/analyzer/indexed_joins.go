@@ -127,7 +127,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 // countTableFactors uses a naive algorithm to count
 // the number of join leaves in a query.
-//todo(max): recursive ctes with joins might be double counted,
+// todo(max): recursive ctes with joins might be double counted,
 // tricky to test
 func countTableFactors(n sql.Node) int {
 	var cnt int
@@ -287,15 +287,16 @@ func replaceTableAccessWithIndexedAccess(
 			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 
-		if sameL && sameR {
-			return node, transform.SameTree, nil
-		}
-
 		// the condition's field indexes might need adjusting if the order of tables changed
-		cond, _, err := FixFieldIndexes(ctx, scope, a, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
+		cond, sameC, err := FixFieldIndexes(ctx, scope, a, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		if sameL && sameR && sameC {
+			return node, transform.SameTree, nil
+		}
+
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond, len(scope.Schema())), transform.NewTree, nil
 	case *plan.Limit:
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
@@ -738,7 +739,7 @@ func joinCondPresent(e sql.Expression, jcs []*joinCond) bool {
 // getJoinIndexes examines the join condition expression given and returns it mapped by table name with
 // potential indexes assigned. Only = and AND expressions composed solely of = predicates are supported.
 // TODO: any conjunctions will only get an index applied if their terms correspond 1:1 with the columns of an index on
-//  that table. We could also attempt to apply subsets of the terms of such conjunctions to indexes.
+// that table. We could also attempt to apply subsets of the terms of such conjunctions to indexes.
 func getJoinIndexes(
 	ctx *sql.Context,
 	a *Analyzer,

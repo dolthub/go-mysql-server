@@ -768,7 +768,7 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 		}
 		e := mustNewEngine(t, h)
 		defer e.Close()
-		AssertErr(t, e, h, tt.Query, nil)
+		AssertErr(t, e, h, tt.Query, tt.ExpectedErr)
 	})
 }
 

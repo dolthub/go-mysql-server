@@ -357,12 +357,20 @@ func SelectAllBatches(string) bool { return true }
 func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
-	case stripDecorationsId,
-		reresolveTablesId,
+	case reresolveTablesId,
 		resolvePreparedInsertId:
 		return false
 	}
 	return true
+}
+
+func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		if id == pruneTablesId {
+			return false
+		}
+		return sel(id)
+	}
 }
 
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
@@ -383,8 +391,8 @@ func prePrepareRuleSelector(id RuleId) bool {
 		TrackProcessId,
 		parallelizeId,
 		clearWarningsId,
-		stripDecorationsId,
 		reresolveTablesId,
+		pruneTablesId,
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,
@@ -419,7 +427,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveTablesId,
 		reresolveTablesId,
 		setTargetSchemasId,
-		stripDecorationsId,
 		parseColumnDefaultsId,
 
 		// DefaultRules
@@ -455,9 +462,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 // after bindvars are applied
 func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 	switch id {
-	case stripDecorationsId,
-		reresolveTablesId,
-
+	case reresolveTablesId,
 		expandStarsId,
 		resolveFunctionsId,
 		flattenTableAliasesId,

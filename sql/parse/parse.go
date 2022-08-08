@@ -1909,7 +1909,9 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		}
 	}
 
-	return plan.NewUpdate(node, updateExprs), nil
+	ignore := d.Ignore != ""
+
+	return plan.NewUpdate(node, ignore, updateExprs), nil
 }
 
 func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
@@ -2051,23 +2053,30 @@ func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sq
 	if err != nil {
 		return nil, err
 	}
-	// The literal and function expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
-	_, isExpr := defaultExpr.(*sqlparser.ParenExpr)
+
+	// Function expressions must be enclosed in parentheses (except for current_timestamp() and now())
+	_, isParenthesized := defaultExpr.(*sqlparser.ParenExpr)
+	isLiteral := !isParenthesized
+
 	// A literal will never have children, thus we can also check for that.
 	if unaryExpr, is := defaultExpr.(*sqlparser.UnaryExpr); is {
 		if _, lit := unaryExpr.Expr.(*sqlparser.SQLVal); lit {
-			isExpr = false
+			isLiteral = true
 		}
-	} else if !isExpr && len(parsedExpr.Children()) != 0 {
+	} else if !isParenthesized {
 		if f, ok := parsedExpr.(*expression.UnresolvedFunction); ok {
-			// This will be resolved accordingly in analyzer for column type of Datetime or Timestamp
-			if f.Name() != "now" && f.Name() != "timestamp" {
+			// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
+			// but they still need to be treated as function expressions
+			if f.Name() == "now" || f.Name() == "current_timestamp" {
+				isLiteral = false
+			} else {
+				// All other functions must *always* be enclosed in parens
 				return nil, sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
 			}
 		}
 	}
 
-	return ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
+	return ExpressionToColumnDefaultValue(ctx, parsedExpr, isLiteral, isParenthesized)
 }
 
 func convertAccountName(names ...sqlparser.AccountName) []plan.UserName {
@@ -2874,28 +2883,28 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	if err != nil {
 		return nil, err
 	}
-	// The literal and function expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
-	// 2+2 would evaluate to a literal under the parentheses check, but will have children due to being an Arithmetic expression, thus we check for children.
+	// The literal and function expression distinction is based primarily on the presence of parentheses,
+	// with the exception that now/current_timestamp are not literal expressions but can be used without
+	// parens
+	_, isParenthesized := aliasedExpr.Expr.(*sqlparser.ParenExpr)
 
 	var isLiteral bool
 	switch e := parsedExpr.(type) {
 	case *expression.UnaryMinus:
 		_, isLiteral = e.Child.(*expression.Literal)
 	case *expression.UnresolvedFunction:
-		if !strings.HasPrefix(exprStr, "(") && (e.Name() == "now" || e.Name() == "current_timestamp") {
-			isLiteral = true
-		}
+		isLiteral = false
 	default:
 		isLiteral = len(parsedExpr.Children()) == 0 && !strings.HasPrefix(exprStr, "(")
 	}
-	return ExpressionToColumnDefaultValue(ctx, parsedExpr, isLiteral)
+	return ExpressionToColumnDefaultValue(ctx, parsedExpr, isLiteral, isParenthesized)
 }
 
 // ExpressionToColumnDefaultValue takes in an Expression and returns the equivalent ColumnDefaultValue if the expression
 // is valid for a default value. If the expression represents a literal (and not an expression that returns a literal, so "5"
 // rather than "(5)"), then the parameter "isLiteral" should be true.
-func ExpressionToColumnDefaultValue(ctx *sql.Context, inputExpr sql.Expression, isLiteral bool) (*sql.ColumnDefaultValue, error) {
-	return sql.NewColumnDefaultValue(inputExpr, nil, isLiteral, true)
+func ExpressionToColumnDefaultValue(_ *sql.Context, inputExpr sql.Expression, isLiteral, isParenthesized bool) (*sql.ColumnDefaultValue, error) {
+	return sql.NewColumnDefaultValue(inputExpr, nil, isLiteral, isParenthesized, true)
 }
 
 // MustStringToColumnDefaultValue is used for creating default values on tables that do not go through the analyzer. Does not handle
@@ -2905,7 +2914,7 @@ func MustStringToColumnDefaultValue(ctx *sql.Context, exprStr string, outType sq
 	if err != nil {
 		panic(err)
 	}
-	expr, err = sql.NewColumnDefaultValue(expr.Expression, outType, expr.IsLiteral(), nullable)
+	expr, err = sql.NewColumnDefaultValue(expr.Expression, outType, expr.IsLiteral(), !expr.IsLiteral(), nullable)
 	if err != nil {
 		panic(err)
 	}
@@ -2992,11 +3001,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 		// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
 		if v.Distinct && v.Name.Lowered() == "count" {
-			if len(exprs) != 1 {
-				return nil, sql.ErrUnsupportedSyntax.New("more than one expression in COUNT")
-			}
-
-			return aggregation.NewCountDistinct(exprs[0]), nil
+			return aggregation.NewCountDistinct(exprs...), nil
 		}
 
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw

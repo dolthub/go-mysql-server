@@ -86,6 +86,12 @@ func (t systemStringType) Equals(otherType Type) bool {
 	return false
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t systemStringType) MaxTextResponseByteLength() uint32 {
+	// system types are not sent directly across the wire
+	return 0
+}
+
 // Promote implements the Type interface.
 func (t systemStringType) Promote() Type {
 	return t
