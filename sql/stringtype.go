@@ -303,7 +303,7 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 	return val, nil
 }
 
-func ConvertToString(v interface{}, t stringType) (string, error) {
+func ConvertToString(v interface{}, t StringType) (string, error) {
 	var val string
 	switch s := v.(type) {
 	case bool:
@@ -359,28 +359,29 @@ func ConvertToString(v interface{}, t stringType) (string, error) {
 		return "", ErrConvertToSQL.New(t)
 	}
 
-	if t.baseType == sqltypes.Text {
+	s := t.(stringType)
+	if s.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
-		if int64(len(val)) > t.maxByteLength {
+		if int64(len(val)) > s.maxByteLength {
 			return "", ErrLengthBeyondLimit.New(val, t.String())
 		}
 	} else {
 		if t.CharacterSet().MaxLength() == 1 {
 			// if the character set only has a max size of 1, we can just count the bytes
-			if int64(len(val)) > t.maxCharLength {
+			if int64(len(val)) > s.maxCharLength {
 				return "", ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
 			//TODO: this should count the string's length properly according to the character set
 			//convert 'val' string to rune to count the character length, not byte length
-			if int64(len([]rune(val))) > t.maxCharLength {
+			if int64(len([]rune(val))) > s.maxCharLength {
 				return "", ErrLengthBeyondLimit.New(val, t.String())
 			}
 		}
 	}
 
-	if t.baseType == sqltypes.Binary {
-		val += strings.Repeat(string([]byte{0}), int(t.maxCharLength)-len(val))
+	if s.baseType == sqltypes.Binary {
+		val += strings.Repeat(string([]byte{0}), int(s.maxCharLength)-len(val))
 	}
 
 	return val, nil

@@ -6790,6 +6790,26 @@ var QueryTests = []QueryTest{
 		Query:    `select * from mytable where i not in (1)`,
 		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
 	},
+	{
+		Query:    "select GET_LOCK('10', 10)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select IS_FREE_LOCK('10')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "Select IS_USED_LOCK('10')",
+		Expected: []sql.Row{{uint64(1)}},
+	},
+	{
+		Query:    "Select RELEASE_LOCK('10')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select RELEASE_ALL_LOCKS()",
+		Expected: []sql.Row{{0}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
