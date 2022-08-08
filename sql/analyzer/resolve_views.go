@@ -153,7 +153,8 @@ func applyAsOfToViewSubqueries(n sql.Node, a *Analyzer, asOf sql.Expression) (sq
 	})
 }
 
-// applyAsOfToViewTables transforms the specified node by
+// applyAsOfToViewTables transforms the specified node tree by finding all UnresolvedTable nodes
+// and setting their AsOf expression to the value specified.
 func applyAsOfToViewTables(newNode sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithOpaque(newNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		urt, ok := n.(*plan.UnresolvedTable)
