@@ -45,11 +45,14 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 				continue
 			}
 			constraint := sql.IndexConstraint_None
-			if index.ID() == "PRIMARY" {
-				constraint = sql.IndexConstraint_Primary
-			} else {
-				constraint = sql.IndexConstraint_Unique
+			if index.IsUnique() {
+				if index.ID() == "PRIMARY" {
+					constraint = sql.IndexConstraint_Primary
+				} else {
+					constraint = sql.IndexConstraint_Unique
+				}
 			}
+
 			columns := make([]sql.IndexColumn, len(index.Expressions()))
 			for i, col := range index.Expressions() {
 				//TODO: find a better way to get only the column name if the table is present
