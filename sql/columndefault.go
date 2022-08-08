@@ -197,7 +197,7 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		}
 		_, err = e.outType.Convert(val)
 		if err != nil {
-			return ErrIncompatibleDefaultType.New()
+			return ErrIncompatibleDefaultType.Wrap(err)
 		}
 	}
 	return nil

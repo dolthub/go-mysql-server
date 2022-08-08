@@ -189,7 +189,9 @@ func schemaLength(node sql.Node) int {
 // Union.
 //
 // This will have surprising behavior in the case of something like:
-//   (WITH t AS SELECT ... SELECT ...) UNION ...
+//
+//	(WITH t AS SELECT ... SELECT ...) UNION ...
+//
 // where the CTE will be visible on the second half of the UNION. We live with
 // it for now.
 func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
