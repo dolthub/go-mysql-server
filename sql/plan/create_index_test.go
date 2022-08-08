@@ -389,7 +389,7 @@ func (i *mockIndex) Expressions() []string {
 	return exprs
 }
 
-func (*mockIndex) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
+func (*mockIndex) NewLookup(ctx *sql.Context, ranges sql.RangeCollection) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }
 func (*mockIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {

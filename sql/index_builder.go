@@ -267,7 +267,7 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 		if len(ranges) == 0 {
 			return nil, nil
 		}
-		return b.idx.NewLookup(ctx, ranges...)
+		return b.idx.NewLookup(ctx, ranges)
 	}
 }
 

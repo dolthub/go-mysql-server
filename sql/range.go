@@ -23,6 +23,13 @@ import (
 // RangeCollection is a collection of ranges that represent different (non-overlapping) filter expressions.
 type RangeCollection []Range
 
+//	Ranges []Range
+//	Exprs
+//	Key          sql.Row
+//	EqualityKeys []string
+//	NullKeys     []string
+//}
+
 // Range is a collection of RangeColumns that are ordered by the column expressions as returned by their parent
 // index. A single range represents a set of values intended for iteration by an integrator's index.
 type Range []RangeColumnExpr

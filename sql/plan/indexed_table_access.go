@@ -325,6 +325,8 @@ type LookupBuilder struct {
 	matchesNullMask []bool
 
 	index sql.Index
+
+	template, ranges []sql.Range
 }
 
 func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
@@ -332,21 +334,81 @@ func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMas
 		index:           index,
 		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
+		ranges:          make([]sql.Range, 0, len(index.Expressions())),
 	}
 }
 
-func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.IndexLookup, error) {
-	ib := sql.NewIndexBuilder(ctx, lb.index)
-	iexprs := lb.index.Expressions()
+func (lb LookupBuilder) NewTemplate(ctx *sql.Context, key LookupBuilderKey) []sql.Range {
+	// indices in ranges can be null
+	//ranges = make([]sql.Range, len(key))
+	template := make([]sql.Range, len(key))
+	cets := lb.index.ColumnExpressionTypes(ctx)
 	for i := range key {
 		if key[i] == nil && lb.matchesNullMask[i] {
-			ib = ib.IsNull(ctx, iexprs[i])
+			//ranges[i] = []sql.RangeColumnExpr{{
+			//	LowerBound: sql.BelowNull{},
+			//	UpperBound: sql.AboveNull{},
+			//	Typ:        cets[i].Type,
+			//}}
+			template[i] = []sql.RangeColumnExpr{{
+				LowerBound: sql.BelowNull{},
+				UpperBound: sql.AboveNull{},
+				Typ:        cets[i].Type,
+			}}
+		} else if lb.matchesNullMask[i] {
+			template[i] = []sql.RangeColumnExpr{{
+				LowerBound: sql.BelowNull{},
+				UpperBound: sql.AboveNull{},
+				Typ:        cets[i].Type,
+			}}
 		} else {
-			ib = ib.Equals(ctx, iexprs[i], key[i])
+			//template[i] = []sql.RangeColumnExpr{{
+			//	LowerBound: sql.Below{Key: key[i]},
+			//	UpperBound: sql.Above{Key: key[i]},
+			//	Typ:        cets[i].Type,
+			//}}
+			template[i] = []sql.RangeColumnExpr{{
+				LowerBound: sql.Below{Key: sql.LookupPlaceholder(i)},
+				UpperBound: sql.Above{Key: sql.LookupPlaceholder(i)},
+				Typ:        cets[i].Type,
+			}}
 		}
 	}
-	lookup, err := ib.Build(ctx)
-	return lookup, err
+	return template
+}
+
+func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.IndexLookup, error) {
+	//ib := sql.NewIndexBuilder(ctx, lb.index)
+	// fast track make ranges, directly call newLookpu
+	//iexprs := lb.index.Expressions()
+	if len(lb.template) == 0 {
+		lb.template = lb.NewTemplate(ctx, key)
+	}
+	lb.ranges = lb.ranges[:0]
+	var j int
+	for i := range key {
+		if lb.matchesNullMask[i] {
+			if key[i] != nil {
+				// remove
+			}
+		} else {
+			// subsitute placeholder
+			lb.template[i][0].LowerBound = sql.Below{Key: key[i]}
+			lb.template[i][0].UpperBound = sql.Above{Key: key[i]}
+			lb.ranges[j] = lb.template[i]
+		}
+	}
+	return lb.index.NewLookup(ctx, lb.ranges)
+	//iexprs := lb.index.Expressions()
+	//for i := range key {
+	//	if key[i] == nil && lb.matchesNullMask[i] {
+	//ib = ib.IsNull(ctx, iexprs[i])
+	//	} else {
+	//		ib = ib.Equals(ctx, iexprs[i], key[i])
+	//	}
+	//}
+	//lookup, err := ib.Build(ctx)
+	//return lookup, err
 }
 
 type LookupBuilderKey []interface{}
