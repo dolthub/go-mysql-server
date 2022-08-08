@@ -2624,6 +2624,16 @@ var BrokenScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "ALTER TABLE RENAME on column x when another column has a default dependency on it",
+		SetUpScript: []string{"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));"},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table test rename column v2 to mycol",
+				ExpectedErr: sql.ErrAlterTableNotSupported, // Not the correct error. The point is that this query needs to fail.
+			},
+		},
+	},
 	// TODO: We should implement unique indexes with GMS
 	{
 		Name: "Keyless Table with Unique Index",
@@ -2684,6 +2694,19 @@ var BrokenScriptTests = []ScriptTest{
 					{"v6", "int", "NO", "", "", ""},
 					{"v7", "int", "NO", "", "", ""},
 				},
+			},
+		},
+	},
+	{
+		Name: "REGEXP operator",
+		SetUpScript: []string{
+			"CREATE TABLE IF NOT EXISTS `person` (`id` INTEGER AUTO_INCREMENT NOT NULL PRIMARY KEY, `name` VARCHAR(255) NOT NULL);",
+			"INSERT INTO `person` (`name`) VALUES ('n1'), ('n2'), ('n3')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT `t1`.`id`, `t1`.`name` FROM `person` AS `t1` WHERE (`t1`.`name` REGEXP 'N[1,3]') ORDER BY `t1`.`name`;",
+				Expected: []sql.Row{{1, "n1"}, {3, "n3"}},
 			},
 		},
 	},

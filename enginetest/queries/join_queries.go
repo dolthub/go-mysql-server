@@ -318,3 +318,21 @@ var SkippedJoinQueryTests = []QueryTest{
 		},
 	},
 }
+
+var SkippedJoinScripts = []ScriptTest{
+	{
+		Name: "Complex join query currently returning a planning error",
+		SetUpScript: []string{
+			"CREATE TABLE `tweet` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `content` text NOT NULL,\n  `timestamp` bigint NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `tweet_user_id` (`user_id`),\n  CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727), (2,1,'purr',1647463727), (3,2,'hiss',1647463727), (4,3,'woof',1647463727)",
+			"CREATE TABLE `users` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `username` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n);",
+			"INSERT INTO `users` (`id`,`username`) VALUES (1,'huey'), (2,'zaizee'), (3,'mickey')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    " SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = 'u3')) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN ('u2', 'u4')))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+}

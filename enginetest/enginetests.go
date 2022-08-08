@@ -126,6 +126,10 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
+
+	for _, ts := range queries.SkippedJoinScripts {
+		TestScript(t, harness, ts)
+	}
 }
 
 // TestInfoSchemaPrepared runs tests of the information_schema database

@@ -7162,6 +7162,10 @@ var BrokenQueries = []QueryTest{
 		`,
 		Expected: nil,
 	},
+	{
+		Query:    "(SELECT * FROM tabletest) UNION (SELECT * FROM empty table) LIMIT 1", // Union does not respect limit or order by
+		Expected: []sql.Row{{1}},
+	},
 }
 
 var VersionedQueries = []QueryTest{
