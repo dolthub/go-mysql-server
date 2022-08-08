@@ -74,11 +74,11 @@ func (nl *NamedLockFunction) GetLockName(ctx *sql.Context, row sql.Row) (*string
 
 	s, ok := nl.Child.Type().(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type().String())
+		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName)
 	}
 	lockName, err := sql.ConvertToString(val, s)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type().String(), "get_lock"), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName), err)
 	}
 
 	return &lockName, nil
@@ -305,12 +305,12 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	s, ok := gl.Left.Type().(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(gl.Left.Type().String())
+		return nil, ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName())
 	}
 
 	lockName, err := sql.ConvertToString(leftVal, s)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.Left.Type().String(), "get_lock"), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName()), err)
 	}
 
 	timeout, err := sql.Int64.Convert(rightVal)
