@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/assert"
@@ -5490,6 +5491,38 @@ func TestPrepared(t *testing.T, harness Harness) {
 				"v2": expression.NewLiteral("1", sql.TinyText),
 			},
 			Expected: []sql.Row{{"1"}},
+		},
+		{
+			Query: "SELECT GET_LOCK(?, 10)",
+			Bindings: map[string]sql.Expression{
+				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			},
+			Expected: []sql.Row{{1}},
+		},
+		{
+			Query: "Select IS_FREE_LOCK(?)",
+			Bindings: map[string]sql.Expression{
+				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			},
+			Expected: []sql.Row{{0}},
+		},
+		{
+			Query: "Select IS_USED_LOCK(?)",
+			Bindings: map[string]sql.Expression{
+				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			},
+			Expected: []sql.Row{{uint64(1)}},
+		},
+		{
+			Query: "Select RELEASE_LOCK(?)",
+			Bindings: map[string]sql.Expression{
+				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+			},
+			Expected: []sql.Row{{1}},
+		},
+		{
+			Query:    "Select RELEASE_ALL_LOCKS()",
+			Expected: []sql.Row{{0}},
 		},
 	}
 
