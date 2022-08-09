@@ -622,29 +622,29 @@ var InsertQueries = []WriteQueryTest{
 			{1, 1},
 		},
 	},
-	// {
-	// 	WriteQuery:          "with t (i2,s2) as (select 4,'fourth row' from dual) insert into mytable select i,f from t",
-	// 	ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
-	// 	SelectQuery:         "select * from mytable order by i",
-	// 	ExpectedSelect: []sql.Row{
-	// 		sql.NewRow(1, "first row"),
-	// 		sql.NewRow(2, "second row"),
-	// 		sql.NewRow(3, "third row"),
-	// 		sql.NewRow(4, "fourth row"),
-	// 	},
-	// },
-	// {
-	// 	WriteQuery:          "with recursive t (i,f) as (select 1,1 from dual union all select i + 1, i + 1 from t where i < 3) replace into mytable select i,f from t" +
-	// 		"",
-	// 	ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
-	// 	SelectQuery:         "select * from mytable order by i",
-	// 	ExpectedSelect: []sql.Row{
-	// 		sql.NewRow(1, "1"),
-	// 		sql.NewRow(2, "3"),
-	// 		sql.NewRow(3, "3"),
-	// 		sql.NewRow(4, "4"),
-	// 	},
-	// },
+	{
+		WriteQuery:          "with t (i,f) as (select 4,'fourth row' from dual) insert into mytable select i,f from t",
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+			sql.NewRow(4, "fourth row"),
+		},
+	},
+	{
+		WriteQuery:          "with recursive t (i,f) as (select 4,4 from dual union all select i + 1, i + 1 from t where i < 5) insert into mytable select i,f from t",
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+			sql.NewRow(4, "4"),
+			sql.NewRow(5, "5"),
+		},
+	},
 }
 
 var SpatialInsertQueries = []WriteQueryTest{
