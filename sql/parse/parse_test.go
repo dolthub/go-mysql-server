@@ -3682,6 +3682,59 @@ CREATE TABLE t2
 			),
 		),
 	),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4 LIMIT 10`: plan.NewLimit(
+		expression.NewLiteral(int8(10), sql.Int8),
+		plan.NewDistinct(
+			plan.NewUnion(
+				plan.NewDistinct(
+					plan.NewUnion(
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+					),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+			),
+		),
+	),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4 ORDER BY 2`: plan.NewSort(
+		[]sql.SortField{
+			{
+				Column:       expression.NewLiteral(int8(2), sql.Int8),
+				Column2:      expression.NewLiteral(int8(2), sql.Int8),
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsFirst,
+			},
+		},
+		plan.NewDistinct(
+			plan.NewUnion(
+				plan.NewDistinct(
+					plan.NewUnion(
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+					),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+			),
+		),
+	),
 	`CREATE DATABASE test`:               plan.NewCreateDatabase("test", false),
 	`CREATE DATABASE IF NOT EXISTS test`: plan.NewCreateDatabase("test", true),
 	`DROP DATABASE test`:                 plan.NewDropDatabase("test", false),
