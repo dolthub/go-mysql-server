@@ -1064,15 +1064,10 @@ type ExternalStoredProcedureDetails struct {
 	Function interface{}
 }
 
-// Comment returns a comment stating that this is an external stored procedure, which is defined by the given database.
-func (espd ExternalStoredProcedureDetails) Comment(dbName string) string {
-	return fmt.Sprintf("External stored procedure defined by %s", dbName)
-}
-
 // FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some
 // tools (such as Java's JDBC connector) require a valid statement in some situations.
 func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt() string {
-	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT '1';", espd.Name)
+	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT 'External stored procedure';", espd.Name)
 }
 
 // StoredProcedureDatabase is a database that supports the creation and execution of stored procedures. The engine will
