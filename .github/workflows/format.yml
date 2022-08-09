@@ -12,7 +12,7 @@ jobs:
   format:
     name: Format PR
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup Go 1.x
         uses: actions/setup-go@v2
@@ -48,7 +48,7 @@ jobs:
   verify:
     needs: format
     name: Verify format
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup Go 1.x
         uses: actions/setup-go@v2
@@ -68,7 +68,7 @@ jobs:
   alt-verify:
     if: github.event.pull_request.head.repo.full_name != github.repository
     name: Verify format
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup Go 1.x
         uses: actions/setup-go@v2

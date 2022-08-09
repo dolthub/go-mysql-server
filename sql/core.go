@@ -281,7 +281,7 @@ func DebugString(nodeOrExpression interface{}) string {
 }
 
 // OpaqueNode is a node that doesn't allow transformations to its children and
-// acts a a black box.
+// acts as a black box.
 type OpaqueNode interface {
 	Node
 	// Opaque reports whether the node is opaque or not.
