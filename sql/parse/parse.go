@@ -836,15 +836,19 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 		return nil, err
 	}
 
+	var node sql.Node
 	if u.Type == sqlparser.UnionAllStr {
-		return plan.NewUnion(left, right), nil
+		node = plan.NewUnion(left, right)
 	} else { // default is DISTINCT (either explicit or implicit)
 		// TODO: this creates redundant Distinct nodes that we can't easily remove after the fact. With this construct,
 		//  we can't in all cases tell the difference between `union distinct (select ...)` and
 		//  `union (select distinct ...)`. We need something like a Distinct property on Union nodes to be able to prune
 		//  redundant Distinct nodes and thereby avoid doing extra work.
-		return plan.NewDistinct(plan.NewUnion(left, right)), nil
+		node = plan.NewDistinct(plan.NewUnion(left, right))
 	}
+
+	// TODO: CalcFoundRows?
+	return nodeWithLimitAndOrderBy(ctx, node, u.OrderBy, u.Limit, false)
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -888,33 +892,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		node = plan.NewDistinct(node)
 	}
 
-	if len(s.OrderBy) != 0 {
-		node, err = orderByToSort(ctx, s.OrderBy, node)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
-	if s.Limit != nil && s.Limit.Offset != nil {
-		node, err = offsetToOffset(ctx, s.Limit.Offset, node)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if s.Limit != nil {
-		node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
-		if err != nil {
-			return nil, err
-		}
-
-		if s.CalcFoundRows {
-			node.(*plan.Limit).CalcFoundRows = true
-		}
-	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
-		limit := mustCastNumToInt64(val)
-		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
+	node, err = nodeWithLimitAndOrderBy(ctx, node, s.OrderBy, s.Limit, s.CalcFoundRows)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build With node if provided
@@ -923,6 +903,43 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	return node, nil
+}
+
+func nodeWithLimitAndOrderBy(ctx *sql.Context, node sql.Node, orderby sqlparser.OrderBy, limit *sqlparser.Limit, calcfoundrows bool) (sql.Node, error) {
+	var err error
+
+	if len(orderby) != 0 {
+		node, err = orderByToSort(ctx, orderby, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil && limit.Offset != nil {
+		node, err = offsetToOffset(ctx, limit.Offset, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if limit != nil {
+		l, err := limitToLimit(ctx, limit.Rowcount, node)
+		if err != nil {
+			return nil, err
+		}
+
+		if calcfoundrows {
+			l.CalcFoundRows = true
+		}
+
+		node = l
+	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
+		limit := mustCastNumToInt64(val)
+		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
 	}
 
 	return node, nil

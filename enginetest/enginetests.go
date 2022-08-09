@@ -1674,15 +1674,11 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-func TestVersionedViews(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
+// initializeViewsForVersionedViewsTests creates the test views used by the TestVersionedViews and
+// TestVersionedViewsPrepared functions.
+func initializeViewsForVersionedViewsTests(t *testing.T, harness Harness, e *sqle.Engine) {
 	require := require.New(t)
 
-	e := NewEngine(t, harness)
-	defer e.Close()
 	ctx := NewContext(harness)
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
@@ -1693,9 +1689,36 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 	require.NoError(err)
 	iter.Close(ctx)
 
+	// views with unions
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
+	require.NoError(err)
+	iter.Close(ctx)
+
+	// views with subqueries
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
+	require.NoError(err)
+	iter.Close(ctx)
+
+	// views with a subquery alias
+	_, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
+	require.NoError(err)
+	iter.Close(ctx)
+}
+
+func TestVersionedViews(t *testing.T, harness Harness) {
+	if _, ok := harness.(VersionedDBHarness); !ok {
+		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
+	}
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	initializeViewsForVersionedViewsTests(t, harness, e)
 	for _, testCase := range queries.VersionedViewTests {
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, testCase.Query, testCase.Expected, testCase.ExpectedColumns, nil)
+		t.Run(testCase.Query, func(t *testing.T) {
+			ctx := NewContext(harness)
+			TestQueryWithContext(t, ctx, e, harness, testCase.Query, testCase.Expected, testCase.ExpectedColumns, nil)
+		})
 	}
 }
 
@@ -1704,20 +1727,10 @@ func TestVersionedViewsPrepared(t *testing.T, harness Harness) {
 		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
 	}
 
-	require := require.New(t)
-
 	e := NewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
-	require.NoError(err)
-	iter.Close(ctx)
 
-	// nested views
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
-	require.NoError(err)
-	iter.Close(ctx)
-
+	initializeViewsForVersionedViewsTests(t, harness, e)
 	for _, testCase := range queries.VersionedViewTests {
 		TestPreparedQueryWithEngine(t, harness, e, testCase)
 	}
@@ -1799,6 +1812,23 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t_blob_default_null VALUES ()")
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t_blob_default_null",
 			[]sql.Row{{nil}}, nil, nil)
+	})
+
+	t.Run("create table like works and can have keys removed", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)")
+
+		RunQuery(t, e, harness, "CREATE TABLE test2 like test")
+
+		RunQuery(t, e, harness, "ALTER TABLE test2 modify pk int")
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "PRI", "NULL", ""},
+			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
+
+		RunQuery(t, e, harness, "ALTER TABLE test2 drop primary key")
+
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "", "NULL", ""},
+			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
 	})
 }
 
@@ -4451,126 +4481,128 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
+	t.Run("Drop Primary key for table with multiple primary keys", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 
-	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
 
-	// Assert the table is still queryable
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
+		// Assert the table is still queryable
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 
-	// Assert that the table is insertable
-	TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
-		{sql.OkResult{RowsAffected: 1}},
-	}, nil, nil)
+		// Assert that the table is insertable
+		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-		{"a1", "a2"},
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `DELETE FROM t1 WHERE pk = "a1" LIMIT 1`, []sql.Row{
-		{sql.OkResult{RowsAffected: 1}},
-	}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, `DELETE FROM t1 WHERE pk = "a1" LIMIT 1`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 
-	// Add back a new primary key and assert the table is queryable
-	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
+		// Add back a new primary key and assert the table is queryable
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 
-	// Drop the original Pk, create an index, create a new primary key
-	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
-	RunQuery(t, e, harness, `ALTER TABLE t1 ADD INDEX myidx (v)`)
-	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`)
+		// Drop the original Pk, create an index, create a new primary key
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD INDEX myidx (v)`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`)
 
-	// Assert the table is insertable
-	TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a4", "a3")`, []sql.Row{
-		{sql.OkResult{RowsAffected: 1}},
-	}, nil, nil)
+		// Assert the table is insertable
+		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a4", "a3")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
 
-	// Assert that an indexed based query still functions appropriately
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
-		{"a2", "a3"},
-		{"a4", "a3"},
-	}, nil, nil)
+		// Assert that an indexed based query still functions appropriately
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
+			{"a2", "a3"},
+			{"a4", "a3"},
+		}, nil, nil)
 
-	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
 
-	// Assert that the table is insertable
-	TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
-		{sql.OkResult{RowsAffected: 1}},
-	}, nil, nil)
+		// Assert that the table is insertable
+		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-		{"a1", "a2"},
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-		{"a4", "a3"},
-	}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+			{"a4", "a3"},
+		}, nil, nil)
 
-	// Assert that a duplicate row causes an alter table error
-	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
+		// Assert that a duplicate row causes an alter table error
+		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
 
-	// Assert that the schema of t1 is unchanged
-	TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
-		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "MUL", "(concat(pk, '-foo'))", ""},
-	}, nil, nil)
-	// Assert that adding a primary key with an unknown column causes an error
-	AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
+		// Assert that the schema of t1 is unchanged
+		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
+			{"pk", "varchar(20)", "NO", "", "NULL", ""},
+			{"v", "varchar(20)", "NO", "MUL", "(concat(pk, '-foo'))", ""},
+		}, nil, nil)
+		// Assert that adding a primary key with an unknown column causes an error
+		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
 
-	// Truncate the table and re-add rows
-	RunQuery(t, e, harness, "TRUNCATE t1")
-	RunQuery(t, e, harness, "ALTER TABLE t1 DROP INDEX myidx")
-	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
-	RunQuery(t, e, harness, `INSERT INTO t1 values ("a1","a2"),("a2","a3"),("a3","a4")`)
+		// Truncate the table and re-add rows
+		RunQuery(t, e, harness, "TRUNCATE t1")
+		RunQuery(t, e, harness, "ALTER TABLE t1 DROP INDEX myidx")
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
+		RunQuery(t, e, harness, `INSERT INTO t1 values ("a1","a2"),("a2","a3"),("a3","a4")`)
 
-	// Execute a MultiDDL Alter Statement
-	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
-	TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
-		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "PRI", "(concat(pk, '-foo'))", ""},
-	}, nil, nil)
-	AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
+		// Execute a MultiDDL Alter Statement
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
+		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
+			{"pk", "varchar(20)", "NO", "", "NULL", ""},
+			{"v", "varchar(20)", "NO", "PRI", "(concat(pk, '-foo'))", ""},
+		}, nil, nil)
+		AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
-	RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
 
-	// Technically the query beneath errors in MySQL but I'm pretty sure it's a bug cc:
-	// https://stackoverflow.com/questions/8301744/mysql-reports-a-primary-key-but-can-not-drop-it-from-the-table
-	RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
-	TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
-		{"pk", "varchar(20)", "NO", "", "NULL", ""},
-		{"v", "varchar(20)", "NO", "", "(concat(pk, '-foo'))", ""},
-	}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
+		// Technically the query beneath errors in MySQL but I'm pretty sure it's a bug cc:
+		// https://stackoverflow.com/questions/8301744/mysql-reports-a-primary-key-but-can-not-drop-it-from-the-table
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
+		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
+			{"pk", "varchar(20)", "NO", "", "NULL", ""},
+			{"v", "varchar(20)", "NO", "", "(concat(pk, '-foo'))", ""},
+		}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+	})
 
 	t.Run("No database selected", func(t *testing.T) {
 		// Create new database and table and alter the table in other database
@@ -4589,6 +4621,33 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		// Assert that NOT NULL constraint is kept
 		TestQueryWithContext(t, ctx, e, harness, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
 			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+		}, nil, nil)
+	})
+
+	t.Run("Drop primary key with auto increment", func(t *testing.T) {
+		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)")
+
+		AssertErr(t, e, harness, "ALTER TABLE test DROP PRIMARY KEY", sql.ErrWrongAutoKey)
+
+		RunQuery(t, e, harness, "ALTER TABLE test modify pk int, drop primary key")
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test", []sql.Row{{"pk", "int", "NO", "", "NULL", ""},
+			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
+
+		// Get rid of not null constraint
+		// TODO: Support ALTER TABLE test drop primary key modify pk int
+		RunQuery(t, e, harness, "ALTER TABLE test modify pk int")
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test", []sql.Row{{"pk", "int", "YES", "", "NULL", ""},
+			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
+
+		// Ensure that the autoincrement functionality is all gone and that null does not get misinterpreted
+		TestQueryWithContext(t, ctx, e, harness, `INSERT INTO test VALUES (1, 1), (NULL, 1)`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 2}},
+		}, nil, nil)
+
+		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM test ORDER BY pk`, []sql.Row{
+			{nil, 1},
+			{1, 1},
 		}, nil, nil)
 	})
 }
@@ -4836,6 +4895,26 @@ func TestAlterTable(t *testing.T, harness Harness) {
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 		}
 		TestQueryWithEngine(t, harness, e, tt)
+	})
+
+	t.Run("ALTER TABLE remove AUTO_INCREMENT", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
+		RunQuery(t, e, harness, "INSERT into t40 VALUES (1, 1), (NULL, 2), (NULL, 3)")
+
+		RunQuery(t, e, harness, "ALTER TABLE t40 MODIFY COLUMN pk int")
+		ctx := harness.NewContext()
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE t40", []sql.Row{
+			{"pk", "int", "NO", "PRI", "NULL", ""},
+			{"val", "int", "YES", "", "NULL", ""}},
+			nil, nil)
+
+		AssertErr(t, e, harness, "INSERT INTO t40 VALUES (NULL, 4)", sql.ErrInsertIntoNonNullableProvidedNull)
+		RunQuery(t, e, harness, "DROP TABLE t40")
+
+		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
+		RunQuery(t, e, harness, "INSERT into t40 VALUES (NULL, 1)")
+
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t40", []sql.Row{{1, 1}}, nil, nil)
 	})
 }
 

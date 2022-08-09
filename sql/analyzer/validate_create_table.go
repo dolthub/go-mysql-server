@@ -411,7 +411,12 @@ func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Sche
 			// Some information about the column is not specified in a MODIFY COLUMN statement, such as being a key
 			cc.PrimaryKey = sch[i].PrimaryKey
 			cc.Source = sch[i].Source
+			if cc.PrimaryKey {
+				cc.Nullable = false
+			}
+
 			schCopy[i] = &cc
+
 		} else {
 			cc := *sch[i]
 			schCopy[i] = &cc
