@@ -181,9 +181,7 @@ func (f *GroupByFramer) SlidingInterval(ctx sql.Context) (sql.WindowInterval, sq
 // framer implementation, one start and one end bound.
 //
 // Ex: startCurrentRow = true; endNFollowing = 1;
-//
-//	buffer = [0, 1, 2, 3, 4, 5];
-//
+// buffer = [0, 1, 2, 3, 4, 5];
 // =>
 // pos:    0->0   1->1   2->2   3->3   4->4   5->5
 // frame:  {0,2}, {1,3}, {2,4}, {3,5}, {4,6}, {4,5}
@@ -307,10 +305,8 @@ func (f *rowFramerBase) Interval() (sql.WindowInterval, error) {
 // one start and one end bound.
 //
 // Ex: startCurrentRow = true; endNFollowing = 2; orderBy = x;
-//
-//	-> startInclusion = (x), endInclusion = (x+2)
-//	   buffer = [0, 1, 2, 4, 4, 5];
-//
+// -> startInclusion = (x), endInclusion = (x+2)
+// buffer = [0, 1, 2, 4, 4, 5];
 // =>
 // pos:    0->0     1->1   2->2   3->4     4->4     5->5
 // frame:  {0,3},   {1,3}, {2,3}, {3,5},   {3,5},   {4,5}

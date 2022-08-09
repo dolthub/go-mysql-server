@@ -3348,6 +3348,91 @@ CREATE TABLE t2
 		},
 		false,
 	),
+	`with cte1 as (select a from b) update c set d = e where f in (select * from cte1)`: plan.NewWith(
+		plan.NewUpdate(
+			plan.NewFilter(
+				plan.NewInSubquery(
+					expression.NewUnresolvedColumn("f"),
+					plan.NewSubquery(plan.NewProject(
+						[]sql.Expression{expression.NewStar()},
+						plan.NewUnresolvedTable("cte1", ""),
+					), "select * from cte1"),
+				),
+				plan.NewUnresolvedTable("c", ""),
+			),
+			false,
+			[]sql.Expression{
+				expression.NewSetField(expression.NewUnresolvedColumn("d"), expression.NewUnresolvedColumn("e")),
+			},
+		),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+		false,
+	),
+	`with cte1 as (select a from b) delete from c where d in (select * from cte1)`: plan.NewWith(
+		plan.NewDeleteFrom(
+			plan.NewFilter(
+				plan.NewInSubquery(
+					expression.NewUnresolvedColumn("d"),
+					plan.NewSubquery(plan.NewProject(
+						[]sql.Expression{expression.NewStar()},
+						plan.NewUnresolvedTable("cte1", ""),
+					), "select * from cte1"),
+				),
+				plan.NewUnresolvedTable("c", ""),
+			),
+		),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+		false,
+	),
+	`with cte1 as (select a from b) insert into c (select * from cte1)`: plan.NewWith(
+		plan.NewInsertInto(
+			sql.UnresolvedDatabase(""),
+			plan.NewUnresolvedTable("c", ""),
+			plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewUnresolvedTable("cte1", ""),
+			),
+			false, []string{}, []sql.Expression{}, false,
+		),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+		false,
+	),
 	`with recursive cte1 as (select 1 union select n+1 from cte1 where n < 10) select * from cte1`: plan.NewWith(
 		plan.NewProject(
 			[]sql.Expression{
@@ -3679,6 +3764,59 @@ CREATE TABLE t2
 			plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
 				plan.NewUnresolvedTable("dual", ""),
+			),
+		),
+	),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4 LIMIT 10`: plan.NewLimit(
+		expression.NewLiteral(int8(10), sql.Int8),
+		plan.NewDistinct(
+			plan.NewUnion(
+				plan.NewDistinct(
+					plan.NewUnion(
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+					),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+			),
+		),
+	),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4 ORDER BY 2`: plan.NewSort(
+		[]sql.SortField{
+			{
+				Column:       expression.NewLiteral(int8(2), sql.Int8),
+				Column2:      expression.NewLiteral(int8(2), sql.Int8),
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsFirst,
+			},
+		},
+		plan.NewDistinct(
+			plan.NewUnion(
+				plan.NewDistinct(
+					plan.NewUnion(
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+					),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
 			),
 		),
 	),

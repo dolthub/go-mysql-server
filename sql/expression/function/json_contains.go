@@ -38,11 +38,9 @@ import (
 //     some element of the target.
 //   - A candidate non-array is contained in a target array if and only if the candidate is contained in some element
 //     of the target.
-//
-// /   - A candidate object is contained in a target object if and only if for each key in the candidate there is a key
-//
-//	with the same name in the target and the value associated with the candidate key is contained in the value
-//	associated with the target key.
+//   - A candidate object is contained in a target object if and only if for each key in the candidate there is a key
+//     with the same name in the target and the value associated with the candidate key is contained in the value
+//     associated with the target key.
 //
 // Otherwise, the candidate value is not contained in the target document.
 //

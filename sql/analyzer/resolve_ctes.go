@@ -86,6 +86,14 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 					return ctes[lowerName], transform.NewTree, nil
 				}
 				return n, transform.SameTree, nil
+			case *plan.InsertInto:
+				insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
+				if err != nil {
+					return nil, false, err
+				}
+
+				node := n.WithSource(insertRowSource)
+				return node, transform.NewTree, nil
 			case *plan.SubqueryAlias:
 				newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
 				if err != nil {

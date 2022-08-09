@@ -921,6 +921,30 @@ var TransactionTests = []TransactionTest{
 				Query:    "/* client a */ select * from t2 order by x",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
+			{
+				Query:    "/* client a */ alter table t2 modify column x int",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0}}},
+			},
+			{
+				Query:       "/* client a */ INSERT INTO t2 values (NULL, 3)",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query:    "/* client a */ DROP TABLE t2",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0}}},
+			},
+			{
+				Query:    "/* client a */ CREATE table t2 (x int PRIMARY KEY AUTO_INCREMENT, y int)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0}}},
+			},
+			{
+				Query:    "/* client a */ insert into t2 (y) values (4)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "/* client a */ SELECT * FROM t2",
+				Expected: []sql.Row{{1, 4}},
+			},
 		},
 	},
 	{

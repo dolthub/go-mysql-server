@@ -43,12 +43,6 @@ var (
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
-
-	ErrInvalidFrameUnit = errors.NewKind("invalid frame unit")
-
-	ErrFrameEndUnboundedPreceding = errors.NewKind("frame end cannot be unbounded preceding")
-
-	ErrFrameStartUnboundedFollowing = errors.NewKind("frame start cannot be unbounded following")
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -366,6 +360,7 @@ func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql
 	case *sqlparser.Select:
 		return convertSelect(ctx, n)
 	case *sqlparser.Union:
+		// TODO: support for WITH
 		return convertUnion(ctx, n)
 	case *sqlparser.ParenSelect:
 		return convertSelectStatement(ctx, n.Select)
@@ -836,15 +831,19 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 		return nil, err
 	}
 
+	var node sql.Node
 	if u.Type == sqlparser.UnionAllStr {
-		return plan.NewUnion(left, right), nil
+		node = plan.NewUnion(left, right)
 	} else { // default is DISTINCT (either explicit or implicit)
 		// TODO: this creates redundant Distinct nodes that we can't easily remove after the fact. With this construct,
 		//  we can't in all cases tell the difference between `union distinct (select ...)` and
 		//  `union (select distinct ...)`. We need something like a Distinct property on Union nodes to be able to prune
 		//  redundant Distinct nodes and thereby avoid doing extra work.
-		return plan.NewDistinct(plan.NewUnion(left, right)), nil
+		node = plan.NewDistinct(plan.NewUnion(left, right))
 	}
+
+	// TODO: CalcFoundRows?
+	return nodeWithLimitAndOrderBy(ctx, node, u.OrderBy, u.Limit, false)
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -888,33 +887,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		node = plan.NewDistinct(node)
 	}
 
-	if len(s.OrderBy) != 0 {
-		node, err = orderByToSort(ctx, s.OrderBy, node)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
-	if s.Limit != nil && s.Limit.Offset != nil {
-		node, err = offsetToOffset(ctx, s.Limit.Offset, node)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if s.Limit != nil {
-		node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
-		if err != nil {
-			return nil, err
-		}
-
-		if s.CalcFoundRows {
-			node.(*plan.Limit).CalcFoundRows = true
-		}
-	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
-		limit := mustCastNumToInt64(val)
-		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
+	node, err = nodeWithLimitAndOrderBy(ctx, node, s.OrderBy, s.Limit, s.CalcFoundRows)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build With node if provided
@@ -923,6 +898,43 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	return node, nil
+}
+
+func nodeWithLimitAndOrderBy(ctx *sql.Context, node sql.Node, orderby sqlparser.OrderBy, limit *sqlparser.Limit, calcfoundrows bool) (sql.Node, error) {
+	var err error
+
+	if len(orderby) != 0 {
+		node, err = orderByToSort(ctx, orderby, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil && limit.Offset != nil {
+		node, err = offsetToOffset(ctx, limit.Offset, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if limit != nil {
+		l, err := limitToLimit(ctx, limit.Rowcount, node)
+		if err != nil {
+			return nil, err
+		}
+
+		if calcfoundrows {
+			l.CalcFoundRows = true
+		}
+
+		node = l
+	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
+		limit := mustCastNumToInt64(val)
+		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
 	}
 
 	return node, nil
@@ -1822,7 +1834,20 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 
 	var columns = columnsToStrings(i.Columns)
 
-	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columns, onDupExprs, ignore), nil
+	var node sql.Node
+	node, err = plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columns, onDupExprs, ignore), nil
+	if err != nil {
+		return nil, err
+	}
+
+	if i.With != nil {
+		node, err = ctesToWith(ctx, i.With, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return node, nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
@@ -1860,58 +1885,79 @@ func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
 		}
 	}
 
-	return plan.NewDeleteFrom(node), nil
-}
+	node = plan.NewDeleteFrom(node)
 
-func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
-	node, err := tableExprsToTable(ctx, d.TableExprs)
-	if err != nil {
-		return nil, err
-	}
-
-	// If the top level node can store comments and one was provided, store it.
-	if cn, ok := node.(sql.CommentedNode); ok && len(d.Comments) > 0 {
-		node = cn.WithComment(string(d.Comments[0]))
-	}
-
-	updateExprs, err := assignmentExprsToExpressions(ctx, d.Exprs)
-	if err != nil {
-		return nil, err
-	}
-
-	if d.Where != nil {
-		node, err = whereToFilter(ctx, d.Where, node)
+	if d.With != nil {
+		node, err = ctesToWith(ctx, d.With, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if len(d.OrderBy) != 0 {
-		node, err = orderByToSort(ctx, d.OrderBy, node)
+	return node, nil
+}
+
+func convertUpdate(ctx *sql.Context, u *sqlparser.Update) (sql.Node, error) {
+	node, err := tableExprsToTable(ctx, u.TableExprs)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the top level node can store comments and one was provided, store it.
+	if cn, ok := node.(sql.CommentedNode); ok && len(u.Comments) > 0 {
+		node = cn.WithComment(string(u.Comments[0]))
+	}
+
+	updateExprs, err := assignmentExprsToExpressions(ctx, u.Exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.Where != nil {
+		node, err = whereToFilter(ctx, u.Where, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(u.OrderBy) != 0 {
+		node, err = orderByToSort(ctx, u.OrderBy, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
-	if d.Limit != nil && d.Limit.Offset != nil {
-		node, err = offsetToOffset(ctx, d.Limit.Offset, node)
+	if u.Limit != nil && u.Limit.Offset != nil {
+		node, err = offsetToOffset(ctx, u.Limit.Offset, node)
 		if err != nil {
 			return nil, err
 		}
 
 	}
 
-	if d.Limit != nil {
-		node, err = limitToLimit(ctx, d.Limit.Rowcount, node)
+	if u.Limit != nil {
+		node, err = limitToLimit(ctx, u.Limit.Rowcount, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	ignore := d.Ignore != ""
+	ignore := u.Ignore != ""
 
-	return plan.NewUpdate(node, ignore, updateExprs), nil
+	node, err = plan.NewUpdate(node, ignore, updateExprs), nil
+	if err != nil {
+		return nil, err
+	}
+
+	if u.With != nil {
+		node, err = ctesToWith(ctx, u.With, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return node, nil
 }
 
 func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {

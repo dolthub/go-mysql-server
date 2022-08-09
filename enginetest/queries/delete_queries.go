@@ -127,6 +127,23 @@ var DeleteTests = []WriteQueryTest{
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
+	{
+		WriteQuery:          "with t (n) as (select (1) from dual) delete from mytable where i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
+	{
+		WriteQuery:          "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 2) delete from mytable where i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(3, "third row"),
+		},
+	},
 }
 
 var SpatialDeleteTests = []WriteQueryTest{
