@@ -16,6 +16,8 @@ package memory
 
 import (
 	"fmt"
+	"math"
+	"reflect"
 	"strings"
 	"time"
 
@@ -33,102 +35,162 @@ var (
 		Name: "a",
 		Type: sql.LongText,
 	}}
-)
-
-// ExternalStoredProcedureDatabase is an implementation of sql.ExternalStoredProcedureDatabase for the memory db.
-type ExternalStoredProcedureDatabase struct {
-	*HistoryDatabase
-}
-
-var _ sql.ExternalStoredProcedureDatabase = ExternalStoredProcedureDatabase{}
-
-// NewExternalStoredProcedureDatabase returns a new ExternalStoredProcedureDatabase.
-func NewExternalStoredProcedureDatabase(name string) ExternalStoredProcedureDatabase {
-	return ExternalStoredProcedureDatabase{NewHistoryDatabase(name)}
-}
-
-// GetExternalStoredProcedures implements the interface sql.ExternalStoredProcedureDatabase.
-func (e ExternalStoredProcedureDatabase) GetExternalStoredProcedures(ctx *sql.Context) ([]sql.ExternalStoredProcedureDetails, error) {
-	return []sql.ExternalStoredProcedureDetails{
+	externalStoredProcedures = []sql.ExternalStoredProcedureDetails{
 		{
 			Name:     "memory_inout_add",
 			Schema:   nil,
-			Function: e.inout_add,
+			Function: inout_add,
 		},
 		{
 			Name:     "memory_overloaded_mult",
 			Schema:   externalSPSchemaInt,
-			Function: e.overloaded_mult1,
+			Function: overloaded_mult1,
 		},
 		{
 			Name:     "memory_overloaded_mult",
 			Schema:   externalSPSchemaInt,
-			Function: e.overloaded_mult2,
+			Function: overloaded_mult2,
 		},
 		{
 			Name:     "memory_overloaded_mult",
 			Schema:   externalSPSchemaInt,
-			Function: e.overloaded_mult3,
+			Function: overloaded_mult3,
 		},
 		{
 			Name:     "memory_overloaded_type_test",
 			Schema:   externalSPSchemaInt,
-			Function: e.overloaded_type_test1,
+			Function: overloaded_type_test1,
 		},
 		{
 			Name:     "memory_overloaded_type_test",
 			Schema:   externalSPSchemaText,
-			Function: e.overloaded_type_test2,
+			Function: overloaded_type_test2,
 		},
 		{
 			Name:     "memory_inout_bool_byte",
 			Schema:   nil,
-			Function: e.inout_bool_byte,
+			Function: inout_bool_byte,
 		},
 		{
 			Name:     "memory_error_table_not_found",
 			Schema:   nil,
-			Function: e.error_table_not_found,
+			Function: error_table_not_found,
 		},
 		{
 			Name:     "memory_variadic_add",
 			Schema:   externalSPSchemaInt,
-			Function: e.variadic_add,
+			Function: variadic_add,
 		},
 		{
 			Name:     "memory_variadic_byte_slice",
 			Schema:   externalSPSchemaText,
-			Function: e.variadic_byte_slice,
+			Function: variadic_byte_slice,
 		},
 		{
 			Name:     "memory_variadic_overload",
 			Schema:   externalSPSchemaText,
-			Function: e.variadic_overload1,
+			Function: variadic_overload1,
 		},
 		{
 			Name:     "memory_variadic_overload",
 			Schema:   externalSPSchemaText,
-			Function: e.variadic_overload2,
+			Function: variadic_overload2,
 		},
-	}, nil
+	}
+)
+
+// ExternalStoredProcedureProvider is an implementation of sql.ExternalStoredProcedureProvider for the memory db.
+type ExternalStoredProcedureProvider struct {
+	procedures map[string]map[int]sql.ExternalStoredProcedureDetails
 }
 
-func (e ExternalStoredProcedureDatabase) inout_add(ctx *sql.Context, a *int64, b int64) (sql.RowIter, error) {
+var _ sql.ExternalStoredProcedureProvider = (*ExternalStoredProcedureProvider)(nil)
+
+// NewExternalStoredProcedureProvider returns a new ExternalStoredProcedureProvider.
+func NewExternalStoredProcedureProvider() ExternalStoredProcedureProvider {
+	procedures := make(map[string]map[int]sql.ExternalStoredProcedureDetails)
+	for _, esp := range externalStoredProcedures {
+		numOfParams := countNumberOfParams(esp)
+
+		if _, ok := procedures[esp.Name]; !ok {
+			procedures[esp.Name] = make(map[int]sql.ExternalStoredProcedureDetails)
+		}
+		procedures[esp.Name][numOfParams] = esp
+	}
+
+	return ExternalStoredProcedureProvider{
+		procedures: procedures,
+	}
+}
+
+func countNumberOfParams(externalProcedure sql.ExternalStoredProcedureDetails) int {
+	funcVal := reflect.ValueOf(externalProcedure.Function)
+	funcType := funcVal.Type()
+
+	// Return MaxInt for variadic types, since they can accommodate any number of params
+	if funcVal.Type().IsVariadic() {
+		return math.MaxInt
+	}
+
+	// We subtract one because ctx is required to always be the first parameter to a function, but
+	// customers won't actually pass that in to the stored procedure.
+	// TODO: Should we keep the ctx check in here?
+	return funcType.NumIn() - 1
+}
+
+func (e ExternalStoredProcedureProvider) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	procedureVariants, ok := e.procedures[strings.ToLower(name)]
+	if !ok {
+		return nil, sql.ErrStoredProcedureDoesNotExist.New(name)
+	}
+
+	// If we find an exact match, go ahead and return that stored procedure
+	procedure, ok := procedureVariants[numOfParams]
+	if ok {
+		return &procedure, nil
+	}
+
+	// Otherwise, find the largest param length and return that stored procedure
+	var largestParamLen int
+	var largestParamProc *sql.ExternalStoredProcedureDetails
+	for paramLen, procedure := range procedureVariants {
+		if largestParamProc == nil || largestParamLen < paramLen {
+			largestParamProc = &procedure
+			largestParamLen = paramLen
+		}
+	}
+	return largestParamProc, nil
+}
+
+func (e ExternalStoredProcedureProvider) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	procedureVariants, ok := e.procedures[strings.ToLower(name)]
+	if !ok {
+		return nil, sql.ErrStoredProcedureDoesNotExist.New(name)
+	}
+
+	procedures := make([]sql.ExternalStoredProcedureDetails, 0, len(procedureVariants))
+	for _, procedure := range procedureVariants {
+		procedures = append(procedures, procedure)
+	}
+	return procedures, nil
+}
+
+func inout_add(_ *sql.Context, a *int64, b int64) (sql.RowIter, error) {
 	*a = *a + b
 	return sql.RowsToRowIter(), nil
 }
 
-func (e ExternalStoredProcedureDatabase) overloaded_mult1(ctx *sql.Context, a int8) (sql.RowIter, error) {
+func overloaded_mult1(_ *sql.Context, a int8) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{int64(a)}), nil
 }
-func (e ExternalStoredProcedureDatabase) overloaded_mult2(ctx *sql.Context, a int16, b int32) (sql.RowIter, error) {
+func overloaded_mult2(_ *sql.Context, a int16, b int32) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{int64(a) * int64(b)}), nil
 }
-func (e ExternalStoredProcedureDatabase) overloaded_mult3(ctx *sql.Context, a int8, b int32, c int64) (sql.RowIter, error) {
+func overloaded_mult3(_ *sql.Context, a int8, b int32, c int64) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{int64(a) * int64(b) * c}), nil
 }
 
-func (e ExternalStoredProcedureDatabase) overloaded_type_test1(
+func overloaded_type_test1(
 	ctx *sql.Context,
 	aa int8, ab int16, ac int, ad int32, ae int64, af float32, ag float64,
 	ba *int8, bb *int16, bc *int, bd *int32, be *int64, bf *float32, bg *float64,
@@ -138,8 +200,8 @@ func (e ExternalStoredProcedureDatabase) overloaded_type_test1(
 			int64(*ba) + int64(*bb) + int64(*bc) + int64(*bd) + int64(*be) + int64(*bf) + int64(*bg),
 	}), nil
 }
-func (e ExternalStoredProcedureDatabase) overloaded_type_test2(
-	ctx *sql.Context,
+func overloaded_type_test2(
+	_ *sql.Context,
 	aa bool, ab string, ac []byte, ad time.Time, ae decimal.Decimal,
 	ba *bool, bb *string, bc *[]byte, bd *time.Time, be *decimal.Decimal,
 ) (sql.RowIter, error) {
@@ -149,7 +211,7 @@ func (e ExternalStoredProcedureDatabase) overloaded_type_test2(
 	}), nil
 }
 
-func (e ExternalStoredProcedureDatabase) inout_bool_byte(ctx *sql.Context, a bool, b *bool, c []byte, d *[]byte) (sql.RowIter, error) {
+func inout_bool_byte(_ *sql.Context, a bool, b *bool, c []byte, d *[]byte) (sql.RowIter, error) {
 	a = !a
 	*b = !*b
 	for i := range c {
@@ -161,11 +223,11 @@ func (e ExternalStoredProcedureDatabase) inout_bool_byte(ctx *sql.Context, a boo
 	return nil, nil
 }
 
-func (e ExternalStoredProcedureDatabase) error_table_not_found(ctx *sql.Context) (sql.RowIter, error) {
+func error_table_not_found(_ *sql.Context) (sql.RowIter, error) {
 	return nil, sql.ErrTableNotFound.New("non_existent_table")
 }
 
-func (e ExternalStoredProcedureDatabase) variadic_add(ctx *sql.Context, vals ...int) (sql.RowIter, error) {
+func variadic_add(_ *sql.Context, vals ...int) (sql.RowIter, error) {
 	sum := int64(0)
 	for _, val := range vals {
 		sum += int64(val)
@@ -173,7 +235,7 @@ func (e ExternalStoredProcedureDatabase) variadic_add(ctx *sql.Context, vals ...
 	return sql.RowsToRowIter(sql.Row{sum}), nil
 }
 
-func (e ExternalStoredProcedureDatabase) variadic_byte_slice(ctx *sql.Context, vals ...[]byte) (sql.RowIter, error) {
+func variadic_byte_slice(_ *sql.Context, vals ...[]byte) (sql.RowIter, error) {
 	sb := strings.Builder{}
 	for _, val := range vals {
 		sb.Write(val)
@@ -181,10 +243,10 @@ func (e ExternalStoredProcedureDatabase) variadic_byte_slice(ctx *sql.Context, v
 	return sql.RowsToRowIter(sql.Row{sb.String()}), nil
 }
 
-func (e ExternalStoredProcedureDatabase) variadic_overload1(ctx *sql.Context, a string, b string) (sql.RowIter, error) {
+func variadic_overload1(_ *sql.Context, a string, b string) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{fmt.Sprintf("%s-%s", a, b)}), nil
 }
 
-func (e ExternalStoredProcedureDatabase) variadic_overload2(ctx *sql.Context, a string, b string, vals ...uint8) (sql.RowIter, error) {
+func variadic_overload2(_ *sql.Context, a string, b string, vals ...uint8) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{fmt.Sprintf("%s,%s,%v", a, b, vals)}), nil
 }

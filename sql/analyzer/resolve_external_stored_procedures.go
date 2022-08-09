@@ -86,7 +86,7 @@ func init() {
 
 // resolveExternalStoredProcedure resolves external stored procedures, converting them to the format expected of
 // normal stored procedures.
-func resolveExternalStoredProcedure(ctx *sql.Context, dbName string, externalProcedure sql.ExternalStoredProcedureDetails) (*plan.Procedure, error) {
+func resolveExternalStoredProcedure(_ *sql.Context, externalProcedure sql.ExternalStoredProcedureDetails) (*plan.Procedure, error) {
 	funcVal := reflect.ValueOf(externalProcedure.Function)
 	funcType := funcVal.Type()
 	if funcType.Kind() != reflect.Func {
@@ -149,9 +149,9 @@ func resolveExternalStoredProcedure(ctx *sql.Context, dbName string, externalPro
 		"root",
 		paramDefinitions,
 		plan.ProcedureSecurityContext_Definer,
-		externalProcedure.Comment(dbName),
+		"",
 		nil,
-		externalProcedure.FakeCreateProcedureStmt(dbName),
+		externalProcedure.FakeCreateProcedureStmt(),
 		&plan.ExternalProcedure{
 			ExternalStoredProcedureDetails: externalProcedure,
 			ParamDefinitions:               paramDefinitions,
