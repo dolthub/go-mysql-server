@@ -458,7 +458,7 @@ func exprListsEqual(a, b []string) bool {
 	return true
 }
 
-//TODO: move this somewhere so that it's not super public but doesn't create an import cycle
+// TODO: move this somewhere so that it's not super public but doesn't create an import cycle
 // exprsAreIndexSubset returns whether exprs are a subset of indexExprs. If they are a subset, then also returns how
 // many expressions are the prefix to the index expressions. If the first index expression is not present, then the scan
 // is equivalent to a table scan (which may have special optimizations that do not apply to an index scan). With at

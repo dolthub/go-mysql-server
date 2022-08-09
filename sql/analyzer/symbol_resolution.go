@@ -27,26 +27,25 @@ import (
 //
 // A preOrder walk constructs a new tree top-down. For every non-base
 // case node encountered:
-//   1) Collect outer tableCol dependencies for the node
-//   2) Apply the node's dependencies to |parentCols|, |parentStars|,
-//      and |unqualifiedStar|.
-//   3) Process the node's children with the new dependencies.
-//   4) Rewind the dependencies, resetting |parentCols|, |parentStars|,
-//      and |unqualifiedStar| to values when we entered this node.
-//   5) Return the node with its children to the parent.
+//  1. Collect outer tableCol dependencies for the node
+//  2. Apply the node's dependencies to |parentCols|, |parentStars|,
+//     and |unqualifiedStar|.
+//  3. Process the node's children with the new dependencies.
+//  4. Rewind the dependencies, resetting |parentCols|, |parentStars|,
+//     and |unqualifiedStar| to values when we entered this node.
+//  5. Return the node with its children to the parent.
 //
 // The base case prunes a *plan.ResolvedTable of parent dependencies.
 //
 // The dependencies considered are:
-//  - outerCols: columns used by filters or other expressions
-//    sourced from outside the node
-//  - aliasCols: a bridge between outside columns and an aliased
-//    data source.
-//  - subqueryCols: correlated subqueries have outside cols not
-//    satisfied by tablescans in the subquery
-//  - stars: a tablescan with a qualified star or cannot be pruned. An
-//    unqualified star prevents pruning every child tablescan.
-//
+//   - outerCols: columns used by filters or other expressions
+//     sourced from outside the node
+//   - aliasCols: a bridge between outside columns and an aliased
+//     data source.
+//   - subqueryCols: correlated subqueries have outside cols not
+//     satisfied by tablescans in the subquery
+//   - stars: a tablescan with a qualified star or cannot be pruned. An
+//     unqualified star prevents pruning every child tablescan.
 func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// the same table can appear in multiple table scans,
 	// so we use a counter to pin references

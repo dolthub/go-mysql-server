@@ -328,7 +328,7 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 	return nil
 }
 
-//todo(max): if availableSchemaForKeys was a bitmap/fastintmap, 50% of the join
+// todo(max): if availableSchemaForKeys was a bitmap/fastintmap, 50% of the join
 // search CPU time would be O(1)
 func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64, availableSchemaForKeys map[tableCol]struct{}) (uint64, error) {
 	cost := uint64(1)

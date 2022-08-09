@@ -363,6 +363,7 @@ func (j JSONArrayInsert) IsUnsupported() bool {
 //   - A member not present in an existing object. The member is added to the object and associated with the new value.
 //   - A position past the end of an existing array. The array is extended with the new value. If the existing value is
 //     not an array, it is autowrapped as an array, then extended with the new value.
+//
 // Otherwise, a path-value pair for a nonexisting path in the document is ignored and has no effect.
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-insert
@@ -398,16 +399,16 @@ func (j JSONInsert) IsUnsupported() bool {
 // without preserving members having duplicate keys. Raises an error if at least one of the documents passed as arguments
 // to this function is not valid. JSONMergePatch performs a merge as follows:
 //   - If the first argument is not an object, the result of the merge is the same as if an empty object had been merged
-//	   with the second argument.
+//     with the second argument.
 //   - If the second argument is not an object, the result of the merge is the second argument.
 //   - If both arguments are objects, the result of the merge is an object with the following members:
-//     - All members of the first object which do not have a corresponding member with the same key in the second
-//       object.
-//     - All members of the second object which do not have a corresponding key in the first object, and whose value is
-//       not the JSON null literal.
-//     - All members with a key that exists in both the first and the second object, and whose value in the second
-//       object is not the JSON null literal. The values of these members are the results of recursively merging the
-//       value in the first object with the value in the second object.
+//   - All members of the first object which do not have a corresponding member with the same key in the second
+//     object.
+//   - All members of the second object which do not have a corresponding key in the first object, and whose value is
+//     not the JSON null literal.
+//   - All members with a key that exists in both the first and the second object, and whose value in the second
+//     object is not the JSON null literal. The values of these members are the results of recursively merging the
+//     value in the first object with the value in the second object.
 //
 // The behavior of JSONMergePatch is the same as that of JSONMergePreserve, with the following two exceptions:
 //   - JSONMergePatch removes any member in the first object with a matching key in the second object, provided that
@@ -536,6 +537,7 @@ func (j JSONReplace) IsUnsupported() bool {
 //   - A member not present in an existing object. The member is added to the object and associated with the new value.
 //   - A position past the end of an existing array. The array is extended with the new value. If the existing value is
 //     not an array, it is auto-wrapped as an array, then extended with the new value.
+//
 // Otherwise, a path-value pair for a non-existing path in the document is ignored and has no effect.
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-set

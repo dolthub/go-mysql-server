@@ -12,7 +12,6 @@ import (
 // Reference the MySQL docs for valid format specifiers.
 // This implementation attempts to match the spec to the extent possible.
 //
-//
 // More info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
 //
 // Even more info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date
