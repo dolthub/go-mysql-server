@@ -6794,6 +6794,26 @@ var QueryTests = []QueryTest{
 		Query:    "(SELECT '1', 'first row' FROM dual) UNION (SELECT '6', 'sixth row' FROM dual) LIMIT 1",
 		Expected: []sql.Row{{"1", "first row"}},
 	},
+	{
+		Query:    "select GET_LOCK('10', 10)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select IS_FREE_LOCK('10')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "Select IS_USED_LOCK('10')",
+		Expected: []sql.Row{{uint64(1)}},
+	},
+	{
+		Query:    "Select RELEASE_LOCK('10')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select RELEASE_ALL_LOCKS()",
+		Expected: []sql.Row{{0}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
