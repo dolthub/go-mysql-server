@@ -31,7 +31,7 @@ const (
 	stringDate = "2007-01-02 14:15:16"
 )
 
-//TODO: look over all of the "invalid type" tests later, ignoring them for now since they're unlikely to be hit
+// TODO: look over all of the "invalid type" tests later, ignoring them for now since they're unlikely to be hit
 func TestTime_Year(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewYear(expression.NewGetField(0, sql.LongText, "foo", false))

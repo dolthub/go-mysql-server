@@ -625,7 +625,8 @@ type Closer interface {
 
 // RowReplacer is a combination of RowDeleter and RowInserter.
 // TODO: We can't embed those interfaces because go 1.13 doesn't allow for overlapping interfaces (they both declare
-//  Close). Go 1.14 fixes this problem, but we aren't ready to drop support for 1.13 yet.
+//
+//	Close). Go 1.14 fixes this problem, but we aren't ready to drop support for 1.13 yet.
 type RowReplacer interface {
 	TableEditor
 	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process

@@ -22,8 +22,9 @@ import (
 
 // Column is the definition of a table column.
 // As SQL:2016 puts it:
-//   A column is a named component of a table. It has a data type, a default,
-//   and a nullability characteristic.
+//
+//	A column is a named component of a table. It has a data type, a default,
+//	and a nullability characteristic.
 type Column struct {
 	// Name is the name of the column.
 	Name string
