@@ -3415,7 +3415,7 @@ CREATE TABLE t2
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("cte1", ""),
-				),
+			),
 			false, []string{}, []sql.Expression{}, false,
 		),
 		[]*plan.CommonTableExpression{
