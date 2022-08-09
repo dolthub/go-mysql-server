@@ -413,6 +413,26 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(3, "third row"),
 		},
 	},
+	{
+		WriteQuery:          "with t (n) as (select (1) from dual) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "updated 1"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
+	{
+		WriteQuery:          "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 2) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "updated 1"),
+			sql.NewRow(2, "updated 2"),
+			sql.NewRow(3, "third row"),
+		},
+	},
 }
 
 var SpatialUpdateTests = []WriteQueryTest{

@@ -43,12 +43,6 @@ var (
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
-
-	ErrInvalidFrameUnit = errors.NewKind("invalid frame unit")
-
-	ErrFrameEndUnboundedPreceding = errors.NewKind("frame end cannot be unbounded preceding")
-
-	ErrFrameStartUnboundedFollowing = errors.NewKind("frame start cannot be unbounded following")
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -366,6 +360,7 @@ func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql
 	case *sqlparser.Select:
 		return convertSelect(ctx, n)
 	case *sqlparser.Union:
+		// TODO: support for WITH
 		return convertUnion(ctx, n)
 	case *sqlparser.ParenSelect:
 		return convertSelectStatement(ctx, n.Select)
@@ -1839,7 +1834,20 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 
 	var columns = columnsToStrings(i.Columns)
 
-	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columns, onDupExprs, ignore), nil
+	var node sql.Node
+	node, err = plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columns, onDupExprs, ignore), nil
+	if err != nil {
+		return nil, err
+	}
+
+	if i.With != nil {
+		node, err = ctesToWith(ctx, i.With, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return node, nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
@@ -1877,58 +1885,79 @@ func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
 		}
 	}
 
-	return plan.NewDeleteFrom(node), nil
-}
+	node = plan.NewDeleteFrom(node)
 
-func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
-	node, err := tableExprsToTable(ctx, d.TableExprs)
-	if err != nil {
-		return nil, err
-	}
-
-	// If the top level node can store comments and one was provided, store it.
-	if cn, ok := node.(sql.CommentedNode); ok && len(d.Comments) > 0 {
-		node = cn.WithComment(string(d.Comments[0]))
-	}
-
-	updateExprs, err := assignmentExprsToExpressions(ctx, d.Exprs)
-	if err != nil {
-		return nil, err
-	}
-
-	if d.Where != nil {
-		node, err = whereToFilter(ctx, d.Where, node)
+	if d.With != nil {
+		node, err = ctesToWith(ctx, d.With, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if len(d.OrderBy) != 0 {
-		node, err = orderByToSort(ctx, d.OrderBy, node)
+	return node, nil
+}
+
+func convertUpdate(ctx *sql.Context, u *sqlparser.Update) (sql.Node, error) {
+	node, err := tableExprsToTable(ctx, u.TableExprs)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the top level node can store comments and one was provided, store it.
+	if cn, ok := node.(sql.CommentedNode); ok && len(u.Comments) > 0 {
+		node = cn.WithComment(string(u.Comments[0]))
+	}
+
+	updateExprs, err := assignmentExprsToExpressions(ctx, u.Exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.Where != nil {
+		node, err = whereToFilter(ctx, u.Where, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(u.OrderBy) != 0 {
+		node, err = orderByToSort(ctx, u.OrderBy, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
-	if d.Limit != nil && d.Limit.Offset != nil {
-		node, err = offsetToOffset(ctx, d.Limit.Offset, node)
+	if u.Limit != nil && u.Limit.Offset != nil {
+		node, err = offsetToOffset(ctx, u.Limit.Offset, node)
 		if err != nil {
 			return nil, err
 		}
 
 	}
 
-	if d.Limit != nil {
-		node, err = limitToLimit(ctx, d.Limit.Rowcount, node)
+	if u.Limit != nil {
+		node, err = limitToLimit(ctx, u.Limit.Rowcount, node)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	ignore := d.Ignore != ""
+	ignore := u.Ignore != ""
 
-	return plan.NewUpdate(node, ignore, updateExprs), nil
+	node, err = plan.NewUpdate(node, ignore, updateExprs), nil
+	if err != nil {
+		return nil, err
+	}
+
+	if u.With != nil {
+		node, err = ctesToWith(ctx, u.With, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return node, nil
 }
 
 func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
