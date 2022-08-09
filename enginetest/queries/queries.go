@@ -6790,6 +6790,10 @@ var QueryTests = []QueryTest{
 		Query:    `select * from mytable where i not in (1)`,
 		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
 	},
+	{
+		Query:    "(SELECT '1', 'first row' FROM dual) UNION (SELECT '6', 'sixth row' FROM dual) LIMIT 1",
+		Expected: []sql.Row{{"1", "first row"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -7161,10 +7165,6 @@ var BrokenQueries = []QueryTest{
 		AND TABLE_NAME = 'mytable'
 		`,
 		Expected: nil,
-	},
-	{
-		Query:    "(SELECT * FROM tabletest) UNION (SELECT * FROM empty table) LIMIT 1", // Union does not respect limit or order by
-		Expected: []sql.Row{{1}},
 	},
 }
 
