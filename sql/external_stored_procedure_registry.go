@@ -77,14 +77,14 @@ func (epd *ExternalStoredProcedureRegistry) LookupByNameAndParamCount(name strin
 
 	// Otherwise, find the largest param length and return that stored procedure
 	var largestParamLen int
-	var largestParamProc *ExternalStoredProcedureDetails
+	var largestParamProc ExternalStoredProcedureDetails
 	for paramLen, procedure := range procedureVariants {
-		if largestParamProc == nil || largestParamLen < paramLen {
-			largestParamProc = &procedure
+		if largestParamLen < paramLen {
+			largestParamProc = procedure
 			largestParamLen = paramLen
 		}
 	}
-	return largestParamProc, nil
+	return &largestParamProc, nil
 }
 
 // countNumberOfParams returns the number of parameters accepted by the specified external stored
