@@ -135,8 +135,9 @@ func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, db string, table string,
 //
 // 1. Expressions exactly match the index
 // 2. Expressions match as much of the index prefix as possible
-// 3. Largest index by expression count
-// 4. Index ID in ascending order
+// 3. Primary Key index ordered before secondary indexes
+// 4. Largest index by expression count
+// 5. Index ID in ascending order
 //
 // It is worth noting that all returned indexes will have at least the first index expression satisfied (creating a
 // partial index), as otherwise the index would be no better than a table scan (for which integrators may have
@@ -189,6 +190,8 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 			return false
 		} else if idxI.prefixCount != idxJ.prefixCount {
 			return idxI.prefixCount > idxJ.prefixCount
+		} else if idxI.ID() == "PRIMARY" || idxJ.ID() == "PRIMARY" {
+			return idxI.ID() == "PRIMARY"
 		} else if idxI.exprLen != idxJ.exprLen {
 			return idxI.exprLen > idxJ.exprLen
 		} else {
