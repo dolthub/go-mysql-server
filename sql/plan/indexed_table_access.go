@@ -326,7 +326,7 @@ type LookupBuilder struct {
 
 	index sql.Index
 
-	template, ranges []sql.Range
+	template, ranges *sql.RangeCollection
 }
 
 func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
@@ -334,68 +334,69 @@ func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMas
 		index:           index,
 		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
-		ranges:          make([]sql.Range, 0, len(index.Expressions())),
+		ranges:          &sql.RangeCollection{Ranges: make([]sql.Range, 0, len(index.Expressions()))},
 	}
 }
 
-func (lb LookupBuilder) NewTemplate(ctx *sql.Context, key LookupBuilderKey) []sql.Range {
-	// indices in ranges can be null
-	//ranges = make([]sql.Range, len(key))
-	template := make([]sql.Range, len(key))
+func (lb LookupBuilder) NewTemplate(ctx *sql.Context, key sql.LookupBuilderKey) *sql.RangeCollection {
+	// A range collection is naturally N x N, where N = number of index
+	// columns. A specific lookup might only use a subset M (prefix) of those
+	// columns for the filter. The range for a given lookup, then, will
+	// be M x N. Non-diagonal range expressions will be default, filtering
+	// no rows.
+	template := &sql.RangeCollection{Ranges: make([]sql.Range, 0, len(key))}
 	cets := lb.index.ColumnExpressionTypes(ctx)
 	for i := range key {
+		def := sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: cets[i].Type}
+		rang := make([]sql.RangeColumnExpr, len(cets))
+		for i := range rang {
+			rang[i] = def
+		}
 		if key[i] == nil && lb.matchesNullMask[i] {
-			//ranges[i] = []sql.RangeColumnExpr{{
-			//	LowerBound: sql.BelowNull{},
-			//	UpperBound: sql.AboveNull{},
-			//	Typ:        cets[i].Type,
-			//}}
-			template[i] = []sql.RangeColumnExpr{{
+			rang[i] = sql.RangeColumnExpr{
 				LowerBound: sql.BelowNull{},
 				UpperBound: sql.AboveNull{},
 				Typ:        cets[i].Type,
-			}}
+			}
 		} else if lb.matchesNullMask[i] {
-			template[i] = []sql.RangeColumnExpr{{
+			rang[i] = sql.RangeColumnExpr{
 				LowerBound: sql.BelowNull{},
 				UpperBound: sql.AboveNull{},
 				Typ:        cets[i].Type,
-			}}
+			}
 		} else {
-			//template[i] = []sql.RangeColumnExpr{{
-			//	LowerBound: sql.Below{Key: key[i]},
-			//	UpperBound: sql.Above{Key: key[i]},
-			//	Typ:        cets[i].Type,
-			//}}
-			template[i] = []sql.RangeColumnExpr{{
+			rang[i] = sql.RangeColumnExpr{
 				LowerBound: sql.Below{Key: sql.LookupPlaceholder(i)},
 				UpperBound: sql.Above{Key: sql.LookupPlaceholder(i)},
 				Typ:        cets[i].Type,
-			}}
+			}
 		}
+		template.Ranges = append(template.Ranges, rang)
 	}
 	return template
 }
 
-func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.IndexLookup, error) {
-	//ib := sql.NewIndexBuilder(ctx, lb.index)
-	// fast track make ranges, directly call newLookpu
-	//iexprs := lb.index.Expressions()
-	if len(lb.template) == 0 {
+func (lb LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
+	if lb.template == nil {
 		lb.template = lb.NewTemplate(ctx, key)
+		if lb.ranges == nil {
+			lb.ranges = &sql.RangeCollection{}
+		}
+		lb.ranges.Template = lb.template.Ranges
 	}
-	lb.ranges = lb.ranges[:0]
-	var j int
+	lb.ranges.Key = key
+	lb.ranges.NullMask = lb.matchesNullMask
+	lb.ranges.Ranges = lb.ranges.Ranges[:0]
 	for i := range key {
 		if lb.matchesNullMask[i] {
-			if key[i] != nil {
-				// remove
+			if key[i] == nil {
+				lb.ranges.Ranges = append(lb.ranges.Ranges, lb.template.Ranges[i])
 			}
 		} else {
-			// subsitute placeholder
-			lb.template[i][0].LowerBound = sql.Below{Key: key[i]}
-			lb.template[i][0].UpperBound = sql.Above{Key: key[i]}
-			lb.ranges[j] = lb.template[i]
+			// non-default filters lie on diagonal
+			lb.template.Ranges[i][i].LowerBound = sql.Below{Key: key[i]}
+			lb.template.Ranges[i][i].UpperBound = sql.Above{Key: key[i]}
+			lb.ranges.Ranges = append(lb.ranges.Ranges, lb.template.Ranges[i])
 		}
 	}
 	return lb.index.NewLookup(ctx, lb.ranges)
@@ -411,9 +412,7 @@ func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.I
 	//return lookup, err
 }
 
-type LookupBuilderKey []interface{}
-
-func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (LookupBuilderKey, error) {
+func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (sql.LookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -425,7 +424,7 @@ func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (LookupBuilderKey,
 	return key, nil
 }
 
-func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (LookupBuilderKey, error) {
+func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (sql.LookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -437,8 +436,8 @@ func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (LookupBuilderKe
 	return key, nil
 }
 
-func (lb LookupBuilder) GetZeroKey() LookupBuilderKey {
-	key := make(LookupBuilderKey, len(lb.keyExprs))
+func (lb LookupBuilder) GetZeroKey() sql.LookupBuilderKey {
+	key := make(sql.LookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
 		key[i] = keyExpr.Type().Zero()
 	}

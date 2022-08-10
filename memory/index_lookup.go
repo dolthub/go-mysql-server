@@ -23,12 +23,12 @@ import (
 type IndexLookup struct {
 	Expr   sql.Expression
 	idx    ExpressionsIndex
-	ranges sql.RangeCollection
+	ranges *sql.RangeCollection
 }
 
 var _ sql.IndexLookup = (*IndexLookup)(nil)
 
-func NewIndexLookup(ctx *sql.Context, idx ExpressionsIndex, expr sql.Expression, ranges ...sql.Range) *IndexLookup {
+func NewIndexLookup(ctx *sql.Context, idx ExpressionsIndex, expr sql.Expression, ranges *sql.RangeCollection) *IndexLookup {
 	return &IndexLookup{
 		Expr:   expr,
 		idx:    idx,
@@ -62,7 +62,7 @@ func (eil *IndexLookup) Index() sql.Index {
 }
 
 // Ranges implements the interface sql.IndexLookup.
-func (eil *IndexLookup) Ranges() sql.RangeCollection {
+func (eil *IndexLookup) Ranges() *sql.RangeCollection {
 	return eil.ranges
 }
 

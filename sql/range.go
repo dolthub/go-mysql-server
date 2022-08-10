@@ -21,7 +21,12 @@ import (
 )
 
 // RangeCollection is a collection of ranges that represent different (non-overlapping) filter expressions.
-type RangeCollection []Range
+type RangeCollection struct {
+	Ranges   []Range
+	Template []Range
+	Key      LookupBuilderKey
+	NullMask []bool
+}
 
 //	Ranges []Range
 //	Exprs
@@ -36,12 +41,12 @@ type Range []RangeColumnExpr
 
 // Equals returns whether the given RangeCollection matches the calling RangeCollection. The order of each Range is
 // important, therefore it is recommended to sort two collections beforehand.
-func (ranges RangeCollection) Equals(otherCollection RangeCollection) (bool, error) {
-	if len(ranges) != len(otherCollection) {
+func (ranges *RangeCollection) Equals(otherCollection *RangeCollection) (bool, error) {
+	if len(ranges.Ranges) != len(otherCollection.Ranges) {
 		return false, nil
 	}
-	for i := range ranges {
-		if ok, err := ranges[i].Equals(otherCollection[i]); err != nil || !ok {
+	for i := range ranges.Ranges {
+		if ok, err := ranges.Ranges[i].Equals(otherCollection.Ranges[i]); err != nil || !ok {
 			return ok, err
 		}
 	}
@@ -51,34 +56,34 @@ func (ranges RangeCollection) Equals(otherCollection RangeCollection) (bool, err
 // Intersect attempts to intersect the given RangeCollection with the calling RangeCollection. This ensures that each
 // Range belonging to the same collection is treated as a union with respect to that same collection, rather than
 // attempting to intersect ranges that are a part of the same collection.
-func (ranges RangeCollection) Intersect(otherRanges RangeCollection) (RangeCollection, error) {
-	var newRanges RangeCollection
-	for _, rang := range ranges {
-		for _, otherRange := range otherRanges {
+func (ranges *RangeCollection) Intersect(otherRanges *RangeCollection) (*RangeCollection, error) {
+	newRanges := &RangeCollection{}
+	for _, rang := range ranges.Ranges {
+		for _, otherRange := range otherRanges.Ranges {
 			newRange, err := rang.Intersect(otherRange)
 			if err != nil {
 				return nil, err
 			}
 			if len(newRange) > 0 {
-				newRanges = append(newRanges, newRange)
+				newRanges.Ranges = append(newRanges.Ranges, newRange)
 			}
 		}
 	}
-	newRanges, err := RemoveOverlappingRanges(newRanges...)
+	newRanges, err := newRanges.RemoveOverlappingRanges()
 	if err != nil {
 		return nil, err
 	}
-	if len(newRanges) == 0 {
+	if len(newRanges.Ranges) == 0 {
 		return nil, nil
 	}
 	return newRanges, nil
 }
 
 // String returns this RangeCollection as a string for display purposes.
-func (ranges RangeCollection) String() string {
+func (ranges *RangeCollection) String() string {
 	sb := strings.Builder{}
 	sb.WriteByte('[')
-	for i, rang := range ranges {
+	for i, rang := range ranges.Ranges {
 		if i != 0 {
 			sb.WriteString(", ")
 		}
@@ -89,10 +94,10 @@ func (ranges RangeCollection) String() string {
 }
 
 // DebugString returns this RangeCollection as a string for debugging purposes.
-func (ranges RangeCollection) DebugString() string {
+func (ranges *RangeCollection) DebugString() string {
 	sb := strings.Builder{}
 	sb.WriteByte('[')
-	for i, rang := range ranges {
+	for i, rang := range ranges.Ranges {
 		if i != 0 {
 			sb.WriteString(", ")
 		}
@@ -100,6 +105,53 @@ func (ranges RangeCollection) DebugString() string {
 	}
 	sb.WriteByte(']')
 	return sb.String()
+}
+
+// RemoveOverlappingRanges removes all overlap between all ranges.
+func (ranges *RangeCollection) RemoveOverlappingRanges() (*RangeCollection, error) {
+	if len(ranges.Ranges) == 0 {
+		return nil, nil
+	}
+
+	colExprTypes := GetColExprTypes(ranges.Ranges)
+	rangeTree, err := NewRangeColumnExprTree(ranges.Ranges[0], colExprTypes)
+	if err != nil {
+		return nil, err
+	}
+	for i := 1; i < len(ranges.Ranges); i++ {
+		rang := ranges.Ranges[i]
+		connectingRanges, err := rangeTree.FindConnections(rang, 0)
+		if err != nil {
+			return nil, err
+		}
+		foundOverlap := false
+		for _, connectingRange := range connectingRanges.Ranges {
+			if connectingRange != nil {
+				newRanges, ok, err := connectingRange.RemoveOverlap(rang)
+				if err != nil {
+					return nil, err
+				}
+				if ok {
+					foundOverlap = true
+					err = rangeTree.Remove(connectingRange)
+					if err != nil {
+						return nil, err
+					}
+					// Not the best idea but it works, will change to some other strategy at another time
+					ranges.Ranges = append(ranges.Ranges, newRanges.Ranges...)
+					break
+				}
+			}
+		}
+		if !foundOverlap {
+			err = rangeTree.Insert(rang)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return rangeTree.GetRangeCollection()
 }
 
 // AsEmpty returns a Range full of empty RangeColumns with the same types as the calling Range.
@@ -295,7 +347,7 @@ func (rang Range) Overlaps(otherRange Range) (bool, error) {
 // one Range is returned. Otherwise, this returns a collection of ranges that do not overlap with each other, and covers
 // the entirety of the original ranges (and nothing more). If the two ranges do not overlap and are not mergeable then
 // false is returned, otherwise returns true.
-func (rang Range) RemoveOverlap(otherRange Range) (RangeCollection, bool, error) {
+func (rang Range) RemoveOverlap(otherRange Range) (*RangeCollection, bool, error) {
 	// An explanation on why overlapping ranges may return more than one range, and why they can't just be merged as-is.
 	// Let's start with a Range that has a single RangeColumnExpression (a one-dimensional range). Imagine this as a
 	// number line with contiguous sections defined as the range. If you have any two sections that overlap, then you
@@ -322,15 +374,15 @@ func (rang Range) RemoveOverlap(otherRange Range) (RangeCollection, bool, error)
 	if mergedRange, ok, err := rang.TryMerge(otherRange); err != nil {
 		return nil, false, err
 	} else if ok {
-		return []Range{mergedRange}, true, nil
+		return &RangeCollection{Ranges: []Range{mergedRange}}, true, nil
 	}
 	// We check for overlapping after checking for merge as two ranges may not overlap but may be mergeable.
 	// This would occur if all other columns are equivalent except for one column that is overlapping or adjacent.
 	if ok, err := rang.Overlaps(otherRange); err != nil || !ok {
-		return []Range{rang, otherRange}, false, err
+		return &RangeCollection{Ranges: []Range{rang, otherRange}}, false, err
 	}
 
-	var ranges []Range
+	var ranges *RangeCollection
 	for i := range rang {
 		if ok, err := rang[i].Equals(otherRange[i]); err != nil {
 			return nil, false, err
@@ -349,14 +401,14 @@ func (rang Range) RemoveOverlap(otherRange Range) (RangeCollection, bool, error)
 			return nil, false, err
 		}
 		for _, newColExpr := range range1Subtracted {
-			ranges = append(ranges, rang.replace(i, newColExpr))
+			ranges.Ranges = append(ranges.Ranges, rang.replace(i, newColExpr))
 		}
 		range2Subtracted, err := otherRange[i].Subtract(overlapExpr)
 		if err != nil {
 			return nil, false, err
 		}
 		for _, newColExpr := range range2Subtracted {
-			ranges = append(ranges, otherRange.replace(i, newColExpr))
+			ranges.Ranges = append(ranges.Ranges, otherRange.replace(i, newColExpr))
 		}
 		// Create two ranges that replace each respective RangeColumnExpr with the overlapping one, giving us two
 		// ranges that are guaranteed to overlap (and are a subset of the originals). We can then recursively call this
@@ -365,7 +417,7 @@ func (rang Range) RemoveOverlap(otherRange Range) (RangeCollection, bool, error)
 		if err != nil {
 			return nil, false, err
 		}
-		ranges = append(ranges, newRanges...)
+		ranges.Ranges = append(ranges.Ranges, newRanges.Ranges...)
 		break
 	}
 
@@ -444,53 +496,6 @@ func IntersectRanges(ranges ...Range) Range {
 		return nil
 	}
 	return rang
-}
-
-// RemoveOverlappingRanges removes all overlap between all ranges.
-func RemoveOverlappingRanges(ranges ...Range) (RangeCollection, error) {
-	if len(ranges) == 0 {
-		return nil, nil
-	}
-
-	colExprTypes := GetColExprTypes(ranges)
-	rangeTree, err := NewRangeColumnExprTree(ranges[0], colExprTypes)
-	if err != nil {
-		return nil, err
-	}
-	for i := 1; i < len(ranges); i++ {
-		rang := ranges[i]
-		connectingRanges, err := rangeTree.FindConnections(rang, 0)
-		if err != nil {
-			return nil, err
-		}
-		foundOverlap := false
-		for _, connectingRange := range connectingRanges {
-			if connectingRange != nil {
-				newRanges, ok, err := connectingRange.RemoveOverlap(rang)
-				if err != nil {
-					return nil, err
-				}
-				if ok {
-					foundOverlap = true
-					err = rangeTree.Remove(connectingRange)
-					if err != nil {
-						return nil, err
-					}
-					// Not the best idea but it works, will change to some other strategy at another time
-					ranges = append(ranges, newRanges...)
-					break
-				}
-			}
-		}
-		if !foundOverlap {
-			err = rangeTree.Insert(rang)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return rangeTree.GetRangeCollection()
 }
 
 // SortRanges sorts the given ranges, returning a new slice of ranges.

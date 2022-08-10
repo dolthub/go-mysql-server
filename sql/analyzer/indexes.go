@@ -71,10 +71,10 @@ func getIndexes(
 			foundRightIdx := false
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
-					var allRanges sql.RangeCollection
-					allRanges = append(sql.RangeCollection{}, leftIdx.lookup.Ranges()...)
-					allRanges = append(allRanges, rightIdx.lookup.Ranges()...)
-					newRanges, err := sql.RemoveOverlappingRanges(allRanges...)
+					allRanges := &sql.RangeCollection{}
+					allRanges.Ranges = append(allRanges.Ranges, leftIdx.lookup.Ranges().Ranges...)
+					allRanges.Ranges = append(allRanges.Ranges, rightIdx.lookup.Ranges().Ranges...)
+					newRanges, err := allRanges.RemoveOverlappingRanges()
 					if err != nil {
 						return nil, nil
 					}
