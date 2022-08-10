@@ -99,31 +99,31 @@ var (
 
 // ExternalStoredProcedureProvider is an implementation of sql.ExternalStoredProcedureProvider for the memory db.
 type ExternalStoredProcedureProvider struct {
-	procedureDirectory sql.ExternalStoredProcedureRegistry
+	procedureRegistry sql.ExternalStoredProcedureRegistry
 }
 
 var _ sql.ExternalStoredProcedureProvider = (*ExternalStoredProcedureProvider)(nil)
 
 // NewExternalStoredProcedureProvider returns a new ExternalStoredProcedureProvider.
 func NewExternalStoredProcedureProvider() ExternalStoredProcedureProvider {
-	procedureDirectory := sql.NewExternalStoredProcedureRegistry()
+	procedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range externalStoredProcedures {
-		procedureDirectory.Register(esp)
+		procedureRegistry.Register(esp)
 	}
 
 	return ExternalStoredProcedureProvider{
-		procedureDirectory: procedureDirectory,
+		procedureRegistry: procedureRegistry,
 	}
 }
 
 // ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface
 func (e ExternalStoredProcedureProvider) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	return e.procedureDirectory.LookupByNameAndParamCount(name, numOfParams)
+	return e.procedureRegistry.LookupByNameAndParamCount(name, numOfParams)
 }
 
 // ExternalStoredProcedures implements the sql.ExternalStoredProcedureProvider interface
 func (e ExternalStoredProcedureProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	return e.procedureDirectory.LookupByName(name)
+	return e.procedureRegistry.LookupByName(name)
 }
 
 func inout_add(_ *sql.Context, a *int64, b int64) (sql.RowIter, error) {
