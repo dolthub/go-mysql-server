@@ -32,19 +32,19 @@ const testNumPartitions = 5
 type IndexDriverInitalizer func([]sql.Database) sql.IndexDriver
 
 type MemoryHarness struct {
-	name                            string
-	parallelism                     int
-	numTablePartitions              int
-	indexDriverInitializer          IndexDriverInitalizer
-	driver                          sql.IndexDriver
-	nativeIndexSupport              bool
-	skippedQueries                  map[string]struct{}
-	session                         sql.Session
-	checkpointTables                []*memory.Table
-	dbOff                           []int
-	dbNames                         []string
-	setupData                       []setup.SetupScript
-	externalStoredProcedureProvider sql.ExternalStoredProcedureProvider
+	name                      string
+	parallelism               int
+	numTablePartitions        int
+	indexDriverInitializer    IndexDriverInitalizer
+	driver                    sql.IndexDriver
+	nativeIndexSupport        bool
+	skippedQueries            map[string]struct{}
+	session                   sql.Session
+	checkpointTables          []*memory.Table
+	dbOff                     []int
+	dbNames                   []string
+	setupData                 []setup.SetupScript
+	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 }
 
 var _ Harness = (*MemoryHarness)(nil)
@@ -58,14 +58,19 @@ var _ ClientHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer IndexDriverInitalizer) *MemoryHarness {
+	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
+	for _, esp := range memory.ExternalStoredProcedures {
+		externalProcedureRegistry.Register(esp)
+	}
+
 	return &MemoryHarness{
-		name:                            name,
-		numTablePartitions:              numTablePartitions,
-		indexDriverInitializer:          indexDriverInitalizer,
-		parallelism:                     parallelism,
-		nativeIndexSupport:              useNativeIndexes,
-		skippedQueries:                  make(map[string]struct{}),
-		externalStoredProcedureProvider: memory.NewExternalStoredProcedureProvider(),
+		name:                      name,
+		numTablePartitions:        numTablePartitions,
+		indexDriverInitializer:    indexDriverInitalizer,
+		parallelism:               parallelism,
+		nativeIndexSupport:        useNativeIndexes,
+		skippedQueries:            make(map[string]struct{}),
+		externalProcedureRegistry: externalProcedureRegistry,
 	}
 }
 
@@ -74,13 +79,13 @@ func NewDefaultMemoryHarness() *MemoryHarness {
 }
 
 // ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface
-func (m *MemoryHarness) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	return m.externalStoredProcedureProvider.ExternalStoredProcedure(ctx, name, numOfParams)
+func (m *MemoryHarness) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	return m.externalProcedureRegistry.LookupByNameAndParamCount(name, numOfParams)
 }
 
 // ExternalStoredProcedures implements the sql.ExternalStoredProcedureProvider interface
-func (m *MemoryHarness) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	return m.externalStoredProcedureProvider.ExternalStoredProcedures(ctx, name)
+func (m *MemoryHarness) ExternalStoredProcedures(_ *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	return m.externalProcedureRegistry.LookupByName(name)
 }
 
 func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {

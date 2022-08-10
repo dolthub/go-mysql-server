@@ -29,7 +29,7 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	}
 
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
-	for _, esp := range externalStoredProcedures {
+	for _, esp := range ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
 	}
 

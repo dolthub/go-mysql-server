@@ -33,7 +33,7 @@ var (
 		Name: "a",
 		Type: sql.LongText,
 	}}
-	externalStoredProcedures = []sql.ExternalStoredProcedureDetails{
+	ExternalStoredProcedures = []sql.ExternalStoredProcedureDetails{
 		{
 			Name:     "memory_inout_add",
 			Schema:   nil,
