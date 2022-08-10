@@ -181,4 +181,20 @@ var ExternalProcedureTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "show create procedure for external stored procedures",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create procedure memory_variadic_overload;",
+				Expected: []sql.Row{{
+					"memory_variadic_overload",
+					"",
+					"CREATE PROCEDURE memory_variadic_overload() SELECT 'External stored procedure';",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+					"utf8mb4_0900_bin",
+				}},
+			},
+		},
+	},
 }
