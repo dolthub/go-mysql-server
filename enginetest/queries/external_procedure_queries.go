@@ -18,6 +18,15 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 var ExternalProcedureTests = []ScriptTest{
 	{
+		Name: "call external stored procedure that does not exist",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL procedure_does_not_exist('foo');",
+				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+			},
+		},
+	},
+	{
 		Name: "INOUT on first param, IN on second param",
 		SetUpScript: []string{
 			"SET @outparam = 5;",
