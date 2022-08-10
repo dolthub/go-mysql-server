@@ -100,6 +100,5 @@ func (epd *ExternalStoredProcedureRegistry) countNumberOfParams(externalProcedur
 
 	// We subtract one because ctx is required to always be the first parameter to a function, but
 	// customers won't actually pass that in to the stored procedure.
-	// TODO: Should we keep the ctx check in here?
 	return funcType.NumIn() - 1
 }
