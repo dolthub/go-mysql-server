@@ -710,14 +710,17 @@ type MutableDatabaseProvider interface {
 // ExternalStoredProcedureProvider provides access to built-in stored procedures. These procedures are implemented
 // as functions, instead of as SQL statements. The returned stored procedures cannot be modified or deleted.
 type ExternalStoredProcedureProvider interface {
+	DatabaseProvider
+
 	// ExternalStoredProcedure returns the external stored procedure details for the procedure with the specified name
-	// that is able to accommodate the specified number of parameters. If no matching external stored procedure is found,
-	// an ErrStoredProcedureDoesNotExist error is returned.
+	// that is able to accept the specified number of parameters. If no matching external stored procedure is found,
+	// nil, nil is returned. If an unexpected error is encountered, it is returned as the error parameter.
 	ExternalStoredProcedure(ctx *Context, name string, numOfParams int) (*ExternalStoredProcedureDetails, error)
 	// ExternalStoredProcedures returns a slice of all external stored procedure details with the specified name. External
 	// stored procedures can overload the same name with different arguments, so this method enables a caller to see all
 	// available variants with the specified name. If no matching external stored procedures are found, an
-	// ErrStoredProcedureDoesNotExist error is returned.
+	// empty slice is returned, with a nil error. If an unexpected error is encountered, it is returned as the
+	// error parameter.
 	ExternalStoredProcedures(ctx *Context, name string) ([]ExternalStoredProcedureDetails, error)
 }
 

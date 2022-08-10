@@ -349,10 +349,13 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 			return applyProceduresCall(ctx, a, n, scope, sel)
 		case *plan.ShowCreateProcedure:
 			procedures, err := a.Catalog.ExternalStoredProcedures(ctx, n.ProcedureName)
-			if err != nil && sql.ErrStoredProcedureDoesNotExist.Is(err) {
-				return n, transform.SameTree, nil
-			} else if err != nil {
+			if err != nil {
 				return n, transform.SameTree, err
+			}
+			if len(procedures) == 0 {
+				// Not finding an external stored procedure is not an error, since we'll also later
+				// search for a user-defined stored procedure with this name.
+				return n, transform.SameTree, nil
 			}
 			return n.WithExternalStoredProcedure(procedures[0]), transform.NewTree, nil
 		default:
@@ -367,7 +370,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	call = call.WithParamReference(pRef)
 
 	esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
-	if err != nil && !sql.ErrStoredProcedureDoesNotExist.Is(err) {
+	if err != nil {
 		return nil, transform.SameTree, err
 	}
 

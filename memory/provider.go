@@ -16,10 +16,10 @@ var _ sql.ExternalStoredProcedureProvider = memoryDBProvider{}
 
 // memoryDBProvider is a collection of Database.
 type memoryDBProvider struct {
-	dbs                             map[string]sql.Database
-	mu                              *sync.RWMutex
-	tableFunctions                  map[string]sql.TableFunction
-	externalStoredProcedureProvider ExternalStoredProcedureProvider
+	dbs                       map[string]sql.Database
+	mu                        *sync.RWMutex
+	tableFunctions            map[string]sql.TableFunction
+	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 }
 
 func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
@@ -28,11 +28,16 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 		dbMap[strings.ToLower(db.Name())] = db
 	}
 
+	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
+	for _, esp := range externalStoredProcedures {
+		externalProcedureRegistry.Register(esp)
+	}
+
 	return memoryDBProvider{
-		dbs:                             dbMap,
-		mu:                              &sync.RWMutex{},
-		tableFunctions:                  make(map[string]sql.TableFunction),
-		externalStoredProcedureProvider: NewExternalStoredProcedureProvider(),
+		dbs:                       dbMap,
+		mu:                        &sync.RWMutex{},
+		tableFunctions:            make(map[string]sql.TableFunction),
+		externalProcedureRegistry: externalProcedureRegistry,
 	}
 }
 
@@ -102,13 +107,13 @@ func (d memoryDBProvider) DropDatabase(_ *sql.Context, name string) (err error) 
 }
 
 // ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider
-func (mdb memoryDBProvider) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	return mdb.externalStoredProcedureProvider.ExternalStoredProcedure(ctx, name, numOfParams)
+func (mdb memoryDBProvider) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	return mdb.externalProcedureRegistry.LookupByNameAndParamCount(name, numOfParams)
 }
 
 // ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
-func (mdb memoryDBProvider) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	return mdb.externalStoredProcedureProvider.ExternalStoredProcedures(ctx, name)
+func (mdb memoryDBProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	return mdb.externalProcedureRegistry.LookupByName(name)
 }
 
 // TableFunction implements sql.TableFunctionProvider

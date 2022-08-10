@@ -97,35 +97,6 @@ var (
 	}
 )
 
-// ExternalStoredProcedureProvider is an implementation of sql.ExternalStoredProcedureProvider for the memory db.
-type ExternalStoredProcedureProvider struct {
-	procedureRegistry sql.ExternalStoredProcedureRegistry
-}
-
-var _ sql.ExternalStoredProcedureProvider = (*ExternalStoredProcedureProvider)(nil)
-
-// NewExternalStoredProcedureProvider returns a new ExternalStoredProcedureProvider.
-func NewExternalStoredProcedureProvider() ExternalStoredProcedureProvider {
-	procedureRegistry := sql.NewExternalStoredProcedureRegistry()
-	for _, esp := range externalStoredProcedures {
-		procedureRegistry.Register(esp)
-	}
-
-	return ExternalStoredProcedureProvider{
-		procedureRegistry: procedureRegistry,
-	}
-}
-
-// ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface
-func (e ExternalStoredProcedureProvider) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	return e.procedureRegistry.LookupByNameAndParamCount(name, numOfParams)
-}
-
-// ExternalStoredProcedures implements the sql.ExternalStoredProcedureProvider interface
-func (e ExternalStoredProcedureProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	return e.procedureRegistry.LookupByName(name)
-}
-
 func inout_add(_ *sql.Context, a *int64, b int64) (sql.RowIter, error) {
 	*a = *a + b
 	return sql.RowsToRowIter(), nil

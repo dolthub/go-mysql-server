@@ -149,7 +149,7 @@ func resolveExternalStoredProcedure(_ *sql.Context, externalProcedure sql.Extern
 		"root",
 		paramDefinitions,
 		plan.ProcedureSecurityContext_Definer,
-		"",
+		"External stored procedure",
 		nil,
 		externalProcedure.FakeCreateProcedureStmt(),
 		&plan.ExternalProcedure{

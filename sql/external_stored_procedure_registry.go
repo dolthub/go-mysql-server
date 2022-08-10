@@ -45,11 +45,12 @@ func (epd *ExternalStoredProcedureRegistry) Register(procedureDetails ExternalSt
 
 // LookupByName returns all stored procedure variants registered with the specified name, no matter
 // how many parameters they require. If no external stored procedures are registered with the specified
-// name, an ErrStoredProcedureDoesNotExist error is returned.
+// name, nil is returned, with no error. If an unexpected error occurs, it is returned as the error
+// parameter.
 func (epd *ExternalStoredProcedureRegistry) LookupByName(name string) ([]ExternalStoredProcedureDetails, error) {
 	procedureVariants, ok := epd.procedures[strings.ToLower(name)]
 	if !ok {
-		return nil, ErrStoredProcedureDoesNotExist.New(name)
+		return nil, nil
 	}
 
 	procedures := make([]ExternalStoredProcedureDetails, 0, len(procedureVariants))
@@ -61,12 +62,12 @@ func (epd *ExternalStoredProcedureRegistry) LookupByName(name string) ([]Externa
 
 // LookupByNameAndParamCount returns the external stored procedure registered with the specified name
 // and able to accept the specified number of parameters. If no external stored procedures are
-// registered with the specified name and able to accept the specified number of parameters, an
-// ErrStoredProcedureDoesNotExist error is returned.
+// registered with the specified name and able to accept the specified number of parameters, nil
+// is returned with no error. If an unexpected error occurs, it is returned as the error param.
 func (epd *ExternalStoredProcedureRegistry) LookupByNameAndParamCount(name string, numOfParams int) (*ExternalStoredProcedureDetails, error) {
 	procedureVariants, ok := epd.procedures[strings.ToLower(name)]
 	if !ok {
-		return nil, ErrStoredProcedureDoesNotExist.New(name)
+		return nil, nil
 	}
 
 	// If we find an exact match on param count, return that stored procedure

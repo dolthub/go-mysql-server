@@ -248,7 +248,7 @@ func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfPa
 		}
 	}
 
-	return nil, sql.ErrStoredProcedureDoesNotExist.New(name)
+	return nil, nil
 }
 
 // ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
@@ -262,7 +262,7 @@ func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql
 		}
 	}
 
-	return nil, sql.ErrStoredProcedureDoesNotExist.New(name)
+	return nil, nil
 }
 
 // TableFunction implements the TableFunctionProvider interface
