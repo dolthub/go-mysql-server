@@ -70,19 +70,19 @@ func (idx *Index) IndexType() string {
 }
 
 // NewLookup implements the interface sql.Index.
-func (idx *Index) NewLookup(ctx *sql.Context, ranges *sql.RangeCollection) (sql.IndexLookup, error) {
+func (idx *Index) NewLookup(ctx *sql.Context, ranges sql.RangeCollection) (sql.IndexLookup, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}
-	if len(ranges.Ranges) == 0 {
+	if len(ranges) == 0 {
 		return nil, nil
 	}
-	if len(ranges.Ranges[0]) != len(idx.Exprs) {
-		return nil, fmt.Errorf("expected different key count: %s=>%d/%d", idx.Name, len(idx.Exprs), len(ranges.Ranges[0]))
+	if len(ranges[0]) != len(idx.Exprs) {
+		return nil, fmt.Errorf("expected different key count: %s=>%d/%d", idx.Name, len(idx.Exprs), len(ranges[0]))
 	}
 
 	var rangeCollectionExpr sql.Expression
-	for _, rang := range ranges.Ranges {
+	for _, rang := range ranges {
 		var rangeExpr sql.Expression
 		for i, rce := range rang {
 			var rangeColumnExpr sql.Expression
@@ -161,7 +161,7 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges *sql.RangeCollection) (sql.
 		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
 	}
 
-	return NewIndexLookup(ctx, idx, rangeCollectionExpr, ranges), nil
+	return NewIndexLookup(ctx, idx, rangeCollectionExpr, ranges...), nil
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.

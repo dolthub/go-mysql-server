@@ -136,7 +136,7 @@ func NewRangeColumnExprTree(initialRange Range, columnExprTypes []Type) (*RangeC
 }
 
 // FindConnections returns all connecting Ranges found in the tree. They may or may not be mergeable or overlap.
-func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (*RangeCollection, error) {
+func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (RangeCollection, error) {
 	// Some potential optimizations that may significantly reduce the number of comparisons in a worst-case scenario:
 	// 1) Rewrite this function to return a single Range that is guaranteed to either merge or overlap, rather than
 	//    a slice of ranges that are all connected (either overlapping or adjacent) but may not be mergeable.
@@ -146,7 +146,7 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (*R
 	if tree.root == nil {
 		return nil, nil
 	}
-	rangeCollection := &RangeCollection{}
+	var rangeCollection RangeCollection
 	colExpr := rang[colExprIdx]
 	stack := []*rangeColumnExprTreeNode{tree.root}
 	for len(stack) > 0 {
@@ -172,13 +172,13 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (*R
 				Typ:        typ,
 			}
 			if node.Inner == nil {
-				rangeCollection.Ranges = append(rangeCollection.Ranges, Range{connectedColExpr})
+				rangeCollection = append(rangeCollection, Range{connectedColExpr})
 			} else if connectedRanges, err := node.Inner.FindConnections(rang, colExprIdx+1); err != nil {
 				return nil, err
 			} else if connectedRanges != nil {
-				for _, connectedRange := range connectedRanges.Ranges {
+				for _, connectedRange := range connectedRanges {
 					rang := append(Range{connectedColExpr}, connectedRange...)
-					rangeCollection.Ranges = append(rangeCollection.Ranges, rang)
+					rangeCollection = append(rangeCollection, rang)
 				}
 			}
 		}
@@ -368,8 +368,8 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 }
 
 // GetRangeCollection returns every Range that this tree contains.
-func (tree *RangeColumnExprTree) GetRangeCollection() (*RangeCollection, error) {
-	rangeCollection := &RangeCollection{}
+func (tree *RangeColumnExprTree) GetRangeCollection() (RangeCollection, error) {
+	var rangeCollection RangeCollection
 	var emptyRange Range
 	iterStack := []*rangeTreeIter{tree.Iterator()}
 	rangeStack := Range{RangeColumnExpr{}}
@@ -396,18 +396,18 @@ func (tree *RangeColumnExprTree) GetRangeCollection() (*RangeCollection, error) 
 					return nil, err
 				}
 				if !isempty {
-					if len(rangeCollection.Ranges) > 0 {
-						merged, ok, err := rangeCollection.Ranges[len(rangeCollection.Ranges)-1].TryMerge(rang)
+					if len(rangeCollection) > 0 {
+						merged, ok, err := rangeCollection[len(rangeCollection)-1].TryMerge(rang)
 						if err != nil {
 							return nil, err
 						}
 						if ok {
-							rangeCollection.Ranges[len(rangeCollection.Ranges)-1] = merged
+							rangeCollection[len(rangeCollection)-1] = merged
 						} else {
-							rangeCollection.Ranges = append(rangeCollection.Ranges, rang)
+							rangeCollection = append(rangeCollection, rang)
 						}
 					} else {
-						rangeCollection.Ranges = append(rangeCollection.Ranges, rang)
+						rangeCollection = append(rangeCollection, rang)
 					}
 				} else {
 					emptyRange = rang
@@ -418,8 +418,8 @@ func (tree *RangeColumnExprTree) GetRangeCollection() (*RangeCollection, error) 
 			rangeStack = rangeStack[:len(rangeStack)-1]
 		}
 	}
-	if len(rangeCollection.Ranges) == 0 {
-		return &RangeCollection{Ranges: []Range{emptyRange}}, nil
+	if len(rangeCollection) == 0 {
+		return RangeCollection{emptyRange}, nil
 	}
 	return rangeCollection, nil
 }

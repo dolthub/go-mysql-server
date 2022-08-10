@@ -326,7 +326,7 @@ type LookupBuilder struct {
 
 	index sql.Index
 
-	template, ranges *sql.RangeCollection
+	template, ranges sql.RangeCollection
 }
 
 func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
@@ -334,17 +334,18 @@ func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMas
 		index:           index,
 		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
-		ranges:          &sql.RangeCollection{Ranges: make([]sql.Range, 0, len(index.Expressions()))},
+		ranges:          make(sql.RangeCollection, 0, len(index.Expressions())),
 	}
 }
 
-func (lb LookupBuilder) NewTemplate(ctx *sql.Context, key sql.LookupBuilderKey) *sql.RangeCollection {
+func (lb LookupBuilder) NewTemplate(ctx *sql.Context, key sql.LookupBuilderKey) sql.RangeCollection {
 	// A range collection is naturally N x N, where N = number of index
 	// columns. A specific lookup might only use a subset M (prefix) of those
 	// columns for the filter. The range for a given lookup, then, will
 	// be M x N. Non-diagonal range expressions will be default, filtering
 	// no rows.
-	template := &sql.RangeCollection{Ranges: make([]sql.Range, 0, len(key))}
+	//template := &sql.RangeCollection{Ranges: make([]sql.Range, 0, len(key))}
+	template := make(sql.RangeCollection, len(key))
 	cets := lb.index.ColumnExpressionTypes(ctx)
 	for i := range key {
 		def := sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: cets[i].Type}
@@ -371,7 +372,8 @@ func (lb LookupBuilder) NewTemplate(ctx *sql.Context, key sql.LookupBuilderKey) 
 				Typ:        cets[i].Type,
 			}
 		}
-		template.Ranges = append(template.Ranges, rang)
+		//template = append(template, rang)
+		template[i] = rang
 	}
 	return template
 }
@@ -380,23 +382,23 @@ func (lb LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (s
 	if lb.template == nil {
 		lb.template = lb.NewTemplate(ctx, key)
 		if lb.ranges == nil {
-			lb.ranges = &sql.RangeCollection{}
+			lb.ranges = sql.RangeCollection{}
 		}
-		lb.ranges.Template = lb.template.Ranges
+		lb.ranges = lb.template
 	}
-	lb.ranges.Key = key
-	lb.ranges.NullMask = lb.matchesNullMask
-	lb.ranges.Ranges = lb.ranges.Ranges[:0]
+	//lb.ranges.Key = key
+	//lb.ranges.NullMask = lb.matchesNullMask
+	lb.ranges = lb.ranges[:0]
 	for i := range key {
 		if lb.matchesNullMask[i] {
 			if key[i] == nil {
-				lb.ranges.Ranges = append(lb.ranges.Ranges, lb.template.Ranges[i])
+				lb.ranges = append(lb.ranges, lb.template[i])
 			}
 		} else {
 			// non-default filters lie on diagonal
-			lb.template.Ranges[i][i].LowerBound = sql.Below{Key: key[i]}
-			lb.template.Ranges[i][i].UpperBound = sql.Above{Key: key[i]}
-			lb.ranges.Ranges = append(lb.ranges.Ranges, lb.template.Ranges[i])
+			lb.template[i][i].LowerBound = sql.Below{Key: key[i]}
+			lb.template[i][i].UpperBound = sql.Above{Key: key[i]}
+			lb.ranges = append(lb.ranges, lb.template[i])
 		}
 	}
 	return lb.index.NewLookup(ctx, lb.ranges)

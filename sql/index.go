@@ -45,15 +45,14 @@ type Index interface {
 	// all ranges will have the same length, and may represent a partial index (matching a prefix rather than the entire
 	// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
 	// returned only in the event that an error occurred.
-	NewLookup(ctx *Context, ranges *RangeCollection) (IndexLookup, error)
+	NewLookup(ctx *Context, ranges RangeCollection) (IndexLookup, error)
 	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
 	// match the string returned from Index.Expressions().
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
-type LookupBuilderKey []interface{}
-
 type LookupPlaceholder int
+type LookupBuilderKey []interface{}
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
 // allowing them to be removed from the overall plan for greater execution efficiency
@@ -88,7 +87,7 @@ type IndexLookup interface {
 	// Index returns the index that created this IndexLookup.
 	Index() Index
 	// Ranges returns each Range that created this IndexLookup.
-	Ranges() *RangeCollection
+	Ranges() RangeCollection
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

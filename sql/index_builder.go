@@ -192,7 +192,7 @@ func (b *IndexBuilder) IsNotNull(ctx *Context, colExpr string) *IndexBuilder {
 }
 
 // Ranges returns all ranges for this index builder. If the builder is in an error state then this returns nil.
-func (b *IndexBuilder) Ranges(ctx *Context) *RangeCollection {
+func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	if b.err != nil {
 		return nil
 	}
@@ -203,7 +203,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) *RangeCollection {
 		for i, cet := range cets {
 			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
 		}
-		return &RangeCollection{Ranges: []Range{emptyRange}}
+		return RangeCollection{emptyRange}
 	}
 	var allColumns [][]RangeColumnExpr
 	for _, colExpr := range b.idx.Expressions() {
@@ -253,9 +253,9 @@ func (b *IndexBuilder) Ranges(ctx *Context) *RangeCollection {
 		for i, cet := range cets {
 			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
 		}
-		return &RangeCollection{Ranges: []Range{emptyRange}}
+		return RangeCollection{emptyRange}
 	}
-	return &RangeCollection{Ranges: ranges}
+	return ranges
 }
 
 // Build constructs a new IndexLookup based on the ranges that have been built internally by this builder.
@@ -264,7 +264,7 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 		return nil, b.err
 	} else {
 		ranges := b.Ranges(ctx)
-		if len(ranges.Ranges) == 0 {
+		if len(ranges) == 0 {
 			return nil, nil
 		}
 		return b.idx.NewLookup(ctx, ranges)
