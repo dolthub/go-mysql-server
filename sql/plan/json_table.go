@@ -148,6 +148,7 @@ func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sql
 	if err != nil {
 		return nil, err
 	}
+	// TODO: something different
 	jsonPathData, ok := tmp.([]interface{})
 	if !ok {
 		panic("TODO: json data didn't parse as an array")
@@ -160,17 +161,13 @@ func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sql
 		data:   make([]sql.Row, 0),
 	}
 
-	// Need to pad missing values, so iterate over data one object at a time
-	//for _, obj := range jsonPathData {
-	//	v, err := jsonpath.JsonPathLookup(obj, col.Type.Path)
-	//}
-
 	// Fill in table with data
 	for _, col := range spec.Columns {
 		for i, obj := range jsonPathData {
-			v, err := jsonpath.JsonPathLookup(obj, col.Type.Path)
-			if err != nil {
-				return nil, err
+			// TODO: want to only ignore "key error: column not found"
+			v, _ := jsonpath.JsonPathLookup(obj, col.Type.Path)
+			if i >= len(table.data) {
+				table.data = append(table.data, sql.Row{})
 			}
 			table.data[i] = append(table.data[i], v)
 		}

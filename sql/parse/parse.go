@@ -2670,6 +2670,9 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 	if err != nil {
 		return nil, err
 	}
+
+	//paths := []string{}
+
 	return plan.NewJSONTable(t.Data, t.Path, t.Columns, t.Alias, sch)
 }
 
