@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
