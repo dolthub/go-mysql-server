@@ -303,10 +303,30 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 	return ita.lookup
 }
 
-// LookupBuilder abstracts getting equality index lookups for something like an
-// indexed join, where a Row that has been sourced from somewhere is turned
-// into an IndexLookup against a particular index based on some expressions
-// that extract values out of the Row.
+// LookupBuilder abstracts secondary table access for an IndexedJoin.
+// A row from the primary table is first evaluated on the secondary index's
+// expressions (columns) to produce a sql.LookupBuilderKey. Consider the
+// query below, assuming B has an index `xy (x,y)`:
+//
+// select * from A join B on a.x = b.x AND a.y = b.y
+//
+// Assume we choose A as the primary row source and B as a secondary lookup
+// on `xy`. For every row in A, we will produce a sql.LookupBuilderKey on B
+// using the join condition. For the A row (x=1,y=2), the lookup key into B
+// will be (1,2) to reflect the B-xy index access.
+//
+// Then we construct a sql.RangeCollection to represent the (1,2) point
+// lookup into B-xy. The collection will always be a single range, because
+// a point lookup cannot be a disjoint set of ranges. The range will also
+// have the same dimension as the index itself. If the join condition is
+// a partial prefix on the index (ex: IDEX x (x)), the unfiltered columns
+// are padded.
+//
+// The <=> filter is a special case for two reasons. 1) It is not a point
+// lookup, the corresponding range will either be IsNull or IsNotNull
+// depending on whether the primary row key column is nil or not,
+// respectfully. 2) The format of the output range is variable, while
+// equality ranges are identical except for bound values.
 //
 // Currently the analyzer constructs one of these and uses it for the
 // IndexedTableAccess nodes below an indexed join, for example. This struct is
@@ -326,65 +346,49 @@ type LookupBuilder struct {
 
 	index sql.Index
 
-	cets           []sql.ColumnExpressionType
-	template, rang sql.Range
+	rang sql.Range
+	cets []sql.ColumnExpressionType
 }
 
 func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
 	cets := index.ColumnExpressionTypes(ctx)
-	rang := make(sql.Range, len(cets))
-	for i := range rang {
-		rang[i] = sql.AllRangeColumnExpr(cets[i].Type)
-	}
 	return &LookupBuilder{
 		index:           index,
 		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
-		rang:            rang,
 		cets:            cets,
 	}
 }
 
-func (lb *LookupBuilder) NewTemplate(ctx *sql.Context, key sql.LookupBuilderKey) sql.Range {
-	// A range collection is naturally N x N, where N = number of index
-	// columns. A specific lookup might only use a subset M (prefix) of those
-	// columns for the filter. The range for a given lookup, then, will
-	// be M x N. Non-diagonal range expressions will be default, filtering
-	// no rows.
-	//template := &sql.RangeCollection{Ranges: make([]sql.Range, 1)}
-	rang := make([]sql.RangeColumnExpr, len(key))
-	for i := range key {
-		//def := sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: cets[i].Type}
-		//for i := range rang {
-		//	rang[i] = def
-		//}
-		if key[i] == nil && lb.matchesNullMask[i] {
-			rang[i] = sql.RangeColumnExpr{
-				LowerBound: sql.BelowNull{},
-				UpperBound: sql.AboveNull{},
-				Typ:        lb.cets[i].Type,
-			}
-		} else if lb.matchesNullMask[i] {
-			rang[i] = sql.RangeColumnExpr{
-				LowerBound: sql.BelowNull{},
-				UpperBound: sql.AboveNull{},
-				Typ:        lb.cets[i].Type,
+func (lb *LookupBuilder) initializeRange(key sql.LookupBuilderKey) {
+	lb.rang = make(sql.Range, len(lb.cets))
+	var i int
+	for i < len(key) {
+		if lb.matchesNullMask[i] {
+			if key[i] == nil {
+				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
+
+			} else {
+				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
 			}
 		} else {
-			rang[i] = sql.RangeColumnExpr{
-				LowerBound: sql.Below{Key: sql.LookupPlaceholder(i)},
-				UpperBound: sql.Above{Key: sql.LookupPlaceholder(i)},
-				Typ:        lb.cets[i].Type,
-			}
+			lb.rang[i] = sql.ClosedRangeColumnExpr(key[i], key[i], lb.cets[i].Type)
 		}
+		i++
 	}
-	return rang
+	for i < len(lb.cets) {
+		lb.rang[i] = sql.AllRangeColumnExpr(lb.cets[i].Type)
+		i++
+	}
+	return
 }
 
 func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
-	if lb.template == nil {
-		lb.template = lb.NewTemplate(ctx, key)
+	if lb.rang == nil {
+		lb.initializeRange(key)
+		return lb.index.NewLookup(ctx, lb.rang)
 	}
+
 	for i := range key {
 		if lb.matchesNullMask[i] {
 			if key[i] == nil {
@@ -394,13 +398,11 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (
 				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
 			}
 		} else {
-			// non-default filters lie on diagonal
-			lb.template[i].LowerBound = sql.Below{Key: key[i]}
-			lb.template[i].UpperBound = sql.Above{Key: key[i]}
-			lb.rang[i] = lb.template[i]
+			lb.rang[i].LowerBound = sql.Below{Key: key[i]}
+			lb.rang[i].UpperBound = sql.Above{Key: key[i]}
 		}
 	}
-
+	
 	return lb.index.NewLookup(ctx, lb.rang)
 }
 
