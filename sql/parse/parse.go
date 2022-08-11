@@ -2673,7 +2673,12 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 
 	//paths := []string{}
 
-	return plan.NewJSONTable(t.Data, t.Path, t.Columns, t.Alias, sch)
+	data, err := ExprToExpression(ctx, t.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewJSONTable(ctx, data, t.Path, t.Columns, t.Alias, sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {

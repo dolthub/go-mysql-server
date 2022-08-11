@@ -16,6 +16,7 @@ package plan
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -136,22 +137,33 @@ func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 }
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
-func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sqlparser.TableIdent, schema sql.PrimaryKeySchema) (sql.Node, error) {
+func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, spec *sqlparser.TableSpec, alias sqlparser.TableIdent, schema sql.PrimaryKeySchema) (sql.Node, error) {
+	// data must evaluate to JSON string
+	data, err := dataExpr.Eval(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	strData, ok := data.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
+	}
+
 	// Parse data as JSON
 	var jsonData interface{}
-	if err := json.Unmarshal(data, &jsonData); err != nil {
+	if err := json.Unmarshal([]byte(strData), &jsonData); err != nil {
 		return nil, err
 	}
 
 	// Get data specified from initial path
-	tmp, err := jsonpath.JsonPathLookup(jsonData, path)
-	if err != nil {
+	var jsonPathData []interface{}
+	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, path); err == nil {
+		if data, ok := rootJSONData.([]interface{}); ok {
+			jsonPathData = data
+		} else {
+			jsonPathData = []interface{}{rootJSONData}
+		}
+	} else {
 		return nil, err
-	}
-	// TODO: something different
-	jsonPathData, ok := tmp.([]interface{})
-	if !ok {
-		panic("TODO: json data didn't parse as an array")
 	}
 
 	// Create new JSONTable node
@@ -164,12 +176,17 @@ func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sql
 	// Fill in table with data
 	for _, col := range spec.Columns {
 		for i, obj := range jsonPathData {
-			// TODO: want to only ignore "key error: column not found"
-			v, _ := jsonpath.JsonPathLookup(obj, col.Type.Path)
+			// TODO: make sure replacing "key error" with default is sufficient
+			var val any
+			if v, err := jsonpath.JsonPathLookup(obj, col.Type.Path); err == nil {
+				val = v
+			} else {
+				val = nil
+			}
 			if i >= len(table.data) {
 				table.data = append(table.data, sql.Row{})
 			}
-			table.data[i] = append(table.data[i], v)
+			table.data[i] = append(table.data[i], val)
 		}
 	}
 
