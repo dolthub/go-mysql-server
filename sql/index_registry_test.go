@@ -444,7 +444,7 @@ func (i dummyIdx) Comment() string   { return "" }
 func (i dummyIdx) IsGenerated() bool { return false }
 func (i dummyIdx) IndexType() string { return "BTREE" }
 
-func (i dummyIdx) NewLookup(ctx *Context, ranges RangeCollection) (IndexLookup, error) {
+func (i dummyIdx) NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error) {
 	panic("not implemented")
 }
 func (i dummyIdx) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {

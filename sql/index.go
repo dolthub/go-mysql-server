@@ -45,7 +45,7 @@ type Index interface {
 	// all ranges will have the same length, and may represent a partial index (matching a prefix rather than the entire
 	// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
 	// returned only in the event that an error occurred.
-	NewLookup(ctx *Context, ranges RangeCollection) (IndexLookup, error)
+	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
 	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
 	// match the string returned from Index.Expressions().
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType

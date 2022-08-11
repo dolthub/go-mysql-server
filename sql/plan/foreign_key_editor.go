@@ -442,7 +442,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row) (sql.R
 		rang[i+len(mapper.IndexPositions)] = sql.AllRangeColumnExpr(appendType)
 	}
 
-	lookup, err := mapper.Index.NewLookup(ctx, sql.RangeCollection{rang})
+	lookup, err := mapper.Index.NewLookup(ctx, rang)
 	if err != nil {
 		return nil, err
 	}

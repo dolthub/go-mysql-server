@@ -226,7 +226,7 @@ func replaceTableAccessWithIndexedAccess(
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return plan.NewIndexedTableAccess(node, plan.NewLookupBuilder(indexToApply.index, keyExprs, matchesNullMask)), transform.NewTree, nil
+			return plan.NewIndexedTableAccess(node, plan.NewLookupBuilder(ctx, indexToApply.index, keyExprs, matchesNullMask)), transform.NewTree, nil
 		} else {
 			ln, sameL, lerr := toIndexedTableAccess(node, indexToApply.disjunction[0])
 			if lerr != nil {

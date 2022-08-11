@@ -78,7 +78,7 @@ func getIndexes(
 					if err != nil {
 						return nil, nil
 					}
-					newLookup, err := leftIdx.lookup.Index().NewLookup(ctx, newRanges)
+					newLookup, err := leftIdx.lookup.Index().NewLookup(ctx, newRanges...)
 					if err != nil {
 						return nil, err
 					}
@@ -534,7 +534,7 @@ func indexesIntersection(ctx *sql.Context, left, right indexLookupsByTable) (ind
 			if err != nil || newRangeCollections == nil {
 				continue
 			}
-			idx.lookup, err = idx.lookup.Index().NewLookup(ctx, newRangeCollections)
+			idx.lookup, err = idx.lookup.Index().NewLookup(ctx, newRangeCollections...)
 			if err != nil {
 				return nil, err
 			}

@@ -30,7 +30,7 @@ var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, co
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
 	ResolvedTable *ResolvedTable
-	lb            LookupBuilder
+	lb            *LookupBuilder
 	lookup        sql.IndexLookup
 }
 
@@ -42,7 +42,7 @@ var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
-func NewIndexedTableAccess(resolvedTable *ResolvedTable, lb LookupBuilder) *IndexedTableAccess {
+func NewIndexedTableAccess(resolvedTable *ResolvedTable, lb *LookupBuilder) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
 		lb:            lb,
@@ -326,95 +326,85 @@ type LookupBuilder struct {
 
 	index sql.Index
 
-	template, ranges sql.RangeCollection
+	cets           []sql.ColumnExpressionType
+	template, rang sql.Range
 }
 
-func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
-	return LookupBuilder{
+func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
+	cets := index.ColumnExpressionTypes(ctx)
+	rang := make(sql.Range, len(cets))
+	for i := range rang {
+		rang[i] = sql.AllRangeColumnExpr(cets[i].Type)
+	}
+	return &LookupBuilder{
 		index:           index,
 		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
-		ranges:          make(sql.RangeCollection, 0, len(index.Expressions())),
+		rang:            rang,
+		cets:            cets,
 	}
 }
 
-func (lb LookupBuilder) NewTemplate(ctx *sql.Context, key sql.LookupBuilderKey) sql.RangeCollection {
+func (lb *LookupBuilder) NewTemplate(ctx *sql.Context, key sql.LookupBuilderKey) sql.Range {
 	// A range collection is naturally N x N, where N = number of index
 	// columns. A specific lookup might only use a subset M (prefix) of those
 	// columns for the filter. The range for a given lookup, then, will
 	// be M x N. Non-diagonal range expressions will be default, filtering
 	// no rows.
-	//template := &sql.RangeCollection{Ranges: make([]sql.Range, 0, len(key))}
-	template := make(sql.RangeCollection, len(key))
-	cets := lb.index.ColumnExpressionTypes(ctx)
+	//template := &sql.RangeCollection{Ranges: make([]sql.Range, 1)}
+	rang := make([]sql.RangeColumnExpr, len(key))
 	for i := range key {
-		def := sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: cets[i].Type}
-		rang := make([]sql.RangeColumnExpr, len(cets))
-		for i := range rang {
-			rang[i] = def
-		}
+		//def := sql.RangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: cets[i].Type}
+		//for i := range rang {
+		//	rang[i] = def
+		//}
 		if key[i] == nil && lb.matchesNullMask[i] {
 			rang[i] = sql.RangeColumnExpr{
 				LowerBound: sql.BelowNull{},
 				UpperBound: sql.AboveNull{},
-				Typ:        cets[i].Type,
+				Typ:        lb.cets[i].Type,
 			}
 		} else if lb.matchesNullMask[i] {
 			rang[i] = sql.RangeColumnExpr{
 				LowerBound: sql.BelowNull{},
 				UpperBound: sql.AboveNull{},
-				Typ:        cets[i].Type,
+				Typ:        lb.cets[i].Type,
 			}
 		} else {
 			rang[i] = sql.RangeColumnExpr{
 				LowerBound: sql.Below{Key: sql.LookupPlaceholder(i)},
 				UpperBound: sql.Above{Key: sql.LookupPlaceholder(i)},
-				Typ:        cets[i].Type,
+				Typ:        lb.cets[i].Type,
 			}
 		}
-		//template = append(template, rang)
-		template[i] = rang
 	}
-	return template
+	return rang
 }
 
-func (lb LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
+func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.template == nil {
 		lb.template = lb.NewTemplate(ctx, key)
-		if lb.ranges == nil {
-			lb.ranges = sql.RangeCollection{}
-		}
-		lb.ranges = lb.template
 	}
-	//lb.ranges.Key = key
-	//lb.ranges.NullMask = lb.matchesNullMask
-	lb.ranges = lb.ranges[:0]
 	for i := range key {
 		if lb.matchesNullMask[i] {
 			if key[i] == nil {
-				lb.ranges = append(lb.ranges, lb.template[i])
+				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
+
+			} else {
+				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
 			}
 		} else {
 			// non-default filters lie on diagonal
-			lb.template[i][i].LowerBound = sql.Below{Key: key[i]}
-			lb.template[i][i].UpperBound = sql.Above{Key: key[i]}
-			lb.ranges = append(lb.ranges, lb.template[i])
+			lb.template[i].LowerBound = sql.Below{Key: key[i]}
+			lb.template[i].UpperBound = sql.Above{Key: key[i]}
+			lb.rang[i] = lb.template[i]
 		}
 	}
-	return lb.index.NewLookup(ctx, lb.ranges)
-	//iexprs := lb.index.Expressions()
-	//for i := range key {
-	//	if key[i] == nil && lb.matchesNullMask[i] {
-	//ib = ib.IsNull(ctx, iexprs[i])
-	//	} else {
-	//		ib = ib.Equals(ctx, iexprs[i], key[i])
-	//	}
-	//}
-	//lookup, err := ib.Build(ctx)
-	//return lookup, err
+
+	return lb.index.NewLookup(ctx, lb.rang)
 }
 
-func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (sql.LookupBuilderKey, error) {
+func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (sql.LookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -426,7 +416,7 @@ func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (sql.LookupBuilder
 	return key, nil
 }
 
-func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (sql.LookupBuilderKey, error) {
+func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (sql.LookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -438,7 +428,7 @@ func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (sql.LookupBuild
 	return key, nil
 }
 
-func (lb LookupBuilder) GetZeroKey() sql.LookupBuilderKey {
+func (lb *LookupBuilder) GetZeroKey() sql.LookupBuilderKey {
 	key := make(sql.LookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
 		key[i] = keyExpr.Type().Zero()
@@ -446,15 +436,15 @@ func (lb LookupBuilder) GetZeroKey() sql.LookupBuilderKey {
 	return key
 }
 
-func (lb LookupBuilder) Index() sql.Index {
+func (lb *LookupBuilder) Index() sql.Index {
 	return lb.index
 }
 
-func (lb LookupBuilder) Expressions() []sql.Expression {
+func (lb *LookupBuilder) Expressions() []sql.Expression {
 	return lb.keyExprs
 }
 
-func (lb LookupBuilder) DebugString() string {
+func (lb *LookupBuilder) DebugString() string {
 	keyExprs := make([]string, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		keyExprs[i] = sql.DebugString(lb.keyExprs[i])
@@ -462,13 +452,16 @@ func (lb LookupBuilder) DebugString() string {
 	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
 }
 
-func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (LookupBuilder, error) {
+func (lb *LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (*LookupBuilder, error) {
 	if len(exprs) != len(lb.keyExprs) {
-		return LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
+		return &LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
 	}
-	return LookupBuilder{
+	return &LookupBuilder{
 		keyExprs:        exprs,
 		index:           lb.index,
 		matchesNullMask: lb.matchesNullMask,
+		rang:            lb.rang,
+		template:        lb.template,
+		cets:            lb.cets,
 	}, nil
 }

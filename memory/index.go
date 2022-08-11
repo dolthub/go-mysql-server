@@ -70,7 +70,7 @@ func (idx *Index) IndexType() string {
 }
 
 // NewLookup implements the interface sql.Index.
-func (idx *Index) NewLookup(ctx *sql.Context, ranges sql.RangeCollection) (sql.IndexLookup, error) {
+func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}

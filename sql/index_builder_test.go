@@ -194,7 +194,7 @@ func (testIndex) IsGenerated() bool {
 	return false
 }
 
-func (testIndex) NewLookup(ctx *Context, ranges RangeCollection) (IndexLookup, error) {
+func (testIndex) NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error) {
 	return nil, errors.New("unexpected NewLookup called on testIndex")
 }
 
