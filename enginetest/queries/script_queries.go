@@ -73,6 +73,96 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
+			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{sql.OkResult{3, 0, nil}}},
+			},
+			{
+				// enginetests returns the enum id, but the text representation is sent over the wire
+				Query:    "SELECT * FROM enumtest1;",
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}, {3, uint64(2)}},
+			},
+			{
+				// enum values must match EXACTLY for case-sensitive collations
+				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				ExpectedErrStr: "value ABC is not valid for this Enum",
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
+				Query: "SHOW CREATE TABLE enumtest2;",
+				Expected: []sql.Row{{
+					"enumtest2",
+					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('abc','XYZ')", "YES", "", "NULL", ""}},
+			},
+			{
+				Query: "DESCRIBE enumtest2;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('x','X','y','Y')", "YES", "", "NULL", ""}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
+				Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
+			},
+		},
+	},
+	{
+		Name: "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// TODO: When collation support lands, we need to add more tests for case-insensitive behavior:
+			//       - erroring when equivalent enum values (e.g. 'abc' and 'ABC') are specified in an enum definition
+			//       - successfully inserting when equivalent enum values are specified in an insert/update statement
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{sql.OkResult{3, 0, nil}}},
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", "NULL", ""}},
+			},
+			{
+				Query: "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{
+					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci",
+					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci"}},
+			},
+		},
+	},
+
+	{
 		Name: "failed statements data validation for INSERT, UPDATE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
@@ -1997,7 +2087,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) collate utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4 BINARY);",
@@ -2005,7 +2095,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SHOW CREATE TABLE test2;",
-				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) collate utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
