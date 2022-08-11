@@ -85,14 +85,15 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 	valToIndex := make(map[string]int)
 	for i, value := range values {
 		if !collation.Equals(Collation_binary) {
-			/// Trailing spaces are automatically deleted from ENUM member values in the table definition when a table is created.
+			// Trailing spaces are automatically deleted from ENUM member values in the table definition when a table
+			// is created, unless the binary charset and collation is in use
 			value = strings.TrimRight(value, " ")
 		}
 		values[i] = value
 		if _, ok := valToIndex[value]; ok {
 			return nil, fmt.Errorf("duplicate entry: %v", value)
 		}
-		/// The elements listed in the column specification are assigned index numbers, beginning with 1.
+		// The elements listed in the column specification are assigned index numbers, beginning with 1.
 		valToIndex[value] = i + 1
 
 		byteLength := uint32(utf8.RuneCountInString(value) * int(maxCharLength))
@@ -243,7 +244,7 @@ func (t enumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t enumType) String() string {
-	s := fmt.Sprintf("ENUM('%v')", strings.Join(t.indexToVal, `','`))
+	s := fmt.Sprintf("enum('%v')", strings.Join(t.indexToVal, `','`))
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
