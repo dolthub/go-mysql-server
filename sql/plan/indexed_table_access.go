@@ -30,7 +30,7 @@ var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, co
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
 	ResolvedTable *ResolvedTable
-	lb            LookupBuilder
+	lb            *LookupBuilder
 	lookup        sql.IndexLookup
 }
 
@@ -42,7 +42,7 @@ var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
-func NewIndexedTableAccess(resolvedTable *ResolvedTable, lb LookupBuilder) *IndexedTableAccess {
+func NewIndexedTableAccess(resolvedTable *ResolvedTable, lb *LookupBuilder) *IndexedTableAccess {
 	return &IndexedTableAccess{
 		ResolvedTable: resolvedTable,
 		lb:            lb,
@@ -303,10 +303,32 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 	return ita.lookup
 }
 
-// LookupBuilder abstracts getting equality index lookups for something like an
-// indexed join, where a Row that has been sourced from somewhere is turned
-// into an IndexLookup against a particular index based on some expressions
-// that extract values out of the Row.
+type lookupBuilderKey []interface{}
+
+// LookupBuilder abstracts secondary table access for an IndexedJoin.
+// A row from the primary table is first evaluated on the secondary index's
+// expressions (columns) to produce a lookupBuilderKey. Consider the
+// query below, assuming B has an index `xy (x,y)`:
+//
+// select * from A join B on a.x = b.x AND a.y = b.y
+//
+// Assume we choose A as the primary row source and B as a secondary lookup
+// on `xy`. For every row in A, we will produce a lookupBuilderKey on B
+// using the join condition. For the A row (x=1,y=2), the lookup key into B
+// will be (1,2) to reflect the B-xy index access.
+//
+// Then we construct a sql.RangeCollection to represent the (1,2) point
+// lookup into B-xy. The collection will always be a single range, because
+// a point lookup cannot be a disjoint set of ranges. The range will also
+// have the same dimension as the index itself. If the join condition is
+// a partial prefix on the index (ex: INDEX x (x)), the unfiltered columns
+// are padded.
+//
+// The <=> filter is a special case for two reasons. 1) It is not a point
+// lookup, the corresponding range will either be IsNull or IsNotNull
+// depending on whether the primary row key column is nil or not,
+// respectfully. 2) The format of the output range is variable, while
+// equality ranges are identical except for bound values.
 //
 // Currently the analyzer constructs one of these and uses it for the
 // IndexedTableAccess nodes below an indexed join, for example. This struct is
@@ -325,73 +347,113 @@ type LookupBuilder struct {
 	matchesNullMask []bool
 
 	index sql.Index
+
+	key  lookupBuilderKey
+	rang sql.Range
+	cets []sql.ColumnExpressionType
 }
 
-func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) LookupBuilder {
-	return LookupBuilder{
+func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
+	cets := index.ColumnExpressionTypes(ctx)
+	return &LookupBuilder{
 		index:           index,
 		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
+		cets:            cets,
 	}
 }
 
-func (lb LookupBuilder) GetLookup(ctx *sql.Context, key LookupBuilderKey) (sql.IndexLookup, error) {
-	ib := sql.NewIndexBuilder(ctx, lb.index)
-	iexprs := lb.index.Expressions()
-	for i := range key {
-		if key[i] == nil && lb.matchesNullMask[i] {
-			ib = ib.IsNull(ctx, iexprs[i])
+func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
+	lb.rang = make(sql.Range, len(lb.cets))
+	var i int
+	for i < len(key) {
+		if lb.matchesNullMask[i] {
+			if key[i] == nil {
+				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
+
+			} else {
+				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
+			}
 		} else {
-			ib = ib.Equals(ctx, iexprs[i], key[i])
+			lb.rang[i] = sql.ClosedRangeColumnExpr(key[i], key[i], lb.cets[i].Type)
 		}
+		i++
 	}
-	lookup, err := ib.Build(ctx)
-	return lookup, err
+	for i < len(lb.cets) {
+		lb.rang[i] = sql.AllRangeColumnExpr(lb.cets[i].Type)
+		i++
+	}
+	return
 }
 
-type LookupBuilderKey []interface{}
+func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
+	if lb.rang == nil {
+		lb.initializeRange(key)
+		return lb.index.NewLookup(ctx, lb.rang)
+	}
 
-func (lb LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (LookupBuilderKey, error) {
-	key := make([]interface{}, len(lb.keyExprs))
+	for i := range key {
+		if lb.matchesNullMask[i] {
+			if key[i] == nil {
+				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
+
+			} else {
+				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
+			}
+		} else {
+			lb.rang[i].LowerBound = sql.Below{Key: key[i]}
+			lb.rang[i].UpperBound = sql.Above{Key: key[i]}
+		}
+	}
+
+	return lb.index.NewLookup(ctx, lb.rang)
+}
+
+func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {
+	if lb.key == nil {
+		lb.key = make([]interface{}, len(lb.keyExprs))
+	}
 	for i := range lb.keyExprs {
 		var err error
-		key[i], err = lb.keyExprs[i].Eval(ctx, row)
+		lb.key[i], err = lb.keyExprs[i].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return key, nil
+	return lb.key, nil
 }
 
-func (lb LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (LookupBuilderKey, error) {
-	key := make([]interface{}, len(lb.keyExprs))
+func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (lookupBuilderKey, error) {
+	if lb.key == nil {
+		lb.key = make([]interface{}, len(lb.keyExprs))
+	}
 	for i := range lb.keyExprs {
 		var err error
-		key[i], err = lb.keyExprs2[i].Eval2(ctx, row)
+		lb.key[i], err = lb.keyExprs2[i].Eval2(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return key, nil
+	return lb.key, nil
 }
 
-func (lb LookupBuilder) GetZeroKey() LookupBuilderKey {
-	key := make(LookupBuilderKey, len(lb.keyExprs))
+func (lb *LookupBuilder) GetZeroKey() lookupBuilderKey {
+	key := make(lookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
 		key[i] = keyExpr.Type().Zero()
 	}
 	return key
 }
 
-func (lb LookupBuilder) Index() sql.Index {
+func (lb *LookupBuilder) Index() sql.Index {
 	return lb.index
 }
 
-func (lb LookupBuilder) Expressions() []sql.Expression {
+func (lb *LookupBuilder) Expressions() []sql.Expression {
 	return lb.keyExprs
 }
 
-func (lb LookupBuilder) DebugString() string {
+func (lb *LookupBuilder) DebugString() string {
 	keyExprs := make([]string, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		keyExprs[i] = sql.DebugString(lb.keyExprs[i])
@@ -399,13 +461,15 @@ func (lb LookupBuilder) DebugString() string {
 	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
 }
 
-func (lb LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (LookupBuilder, error) {
+func (lb *LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (*LookupBuilder, error) {
 	if len(exprs) != len(lb.keyExprs) {
-		return LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
+		return &LookupBuilder{}, sql.ErrInvalidChildrenNumber.New(node, len(exprs), len(lb.keyExprs))
 	}
-	return LookupBuilder{
+	return &LookupBuilder{
 		keyExprs:        exprs,
 		index:           lb.index,
 		matchesNullMask: lb.matchesNullMask,
+		rang:            lb.rang,
+		cets:            lb.cets,
 	}, nil
 }
