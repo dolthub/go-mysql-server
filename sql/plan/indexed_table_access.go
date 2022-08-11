@@ -402,7 +402,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (
 			lb.rang[i].UpperBound = sql.Above{Key: key[i]}
 		}
 	}
-	
+
 	return lb.index.NewLookup(ctx, lb.rang)
 }
 
