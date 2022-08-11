@@ -259,7 +259,7 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t setType) String() string {
-	s := fmt.Sprintf("SET('%v')", strings.Join(t.Values(), `','`))
+	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}

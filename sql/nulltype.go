@@ -82,7 +82,7 @@ func (t nullType) SQL([]byte, interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t nullType) String() string {
-	return "NULL"
+	return "null"
 }
 
 // Type implements Type interface.

@@ -185,7 +185,7 @@ func (t yearType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t yearType) String() string {
-	return "YEAR"
+	return "year"
 }
 
 // Type implements Type interface.
