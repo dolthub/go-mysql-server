@@ -51,9 +51,6 @@ type Index interface {
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
-type LookupPlaceholder int
-type LookupBuilderKey []interface{}
-
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
 // allowing them to be removed from the overall plan for greater execution efficiency
 type FilteredIndex interface {

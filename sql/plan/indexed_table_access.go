@@ -303,15 +303,17 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 	return ita.lookup
 }
 
+type lookupBuilderKey []interface{}
+
 // LookupBuilder abstracts secondary table access for an IndexedJoin.
 // A row from the primary table is first evaluated on the secondary index's
-// expressions (columns) to produce a sql.LookupBuilderKey. Consider the
+// expressions (columns) to produce a lookupBuilderKey. Consider the
 // query below, assuming B has an index `xy (x,y)`:
 //
 // select * from A join B on a.x = b.x AND a.y = b.y
 //
 // Assume we choose A as the primary row source and B as a secondary lookup
-// on `xy`. For every row in A, we will produce a sql.LookupBuilderKey on B
+// on `xy`. For every row in A, we will produce a lookupBuilderKey on B
 // using the join condition. For the A row (x=1,y=2), the lookup key into B
 // will be (1,2) to reflect the B-xy index access.
 //
@@ -319,7 +321,7 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 // lookup into B-xy. The collection will always be a single range, because
 // a point lookup cannot be a disjoint set of ranges. The range will also
 // have the same dimension as the index itself. If the join condition is
-// a partial prefix on the index (ex: IDEX x (x)), the unfiltered columns
+// a partial prefix on the index (ex: INDEX x (x)), the unfiltered columns
 // are padded.
 //
 // The <=> filter is a special case for two reasons. 1) It is not a point
@@ -360,7 +362,7 @@ func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expressi
 	}
 }
 
-func (lb *LookupBuilder) initializeRange(key sql.LookupBuilderKey) {
+func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	lb.rang = make(sql.Range, len(lb.cets))
 	var i int
 	for i < len(key) {
@@ -383,7 +385,7 @@ func (lb *LookupBuilder) initializeRange(key sql.LookupBuilderKey) {
 	return
 }
 
-func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (sql.IndexLookup, error) {
+func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
 		return lb.index.NewLookup(ctx, lb.rang)
@@ -402,11 +404,11 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key sql.LookupBuilderKey) (
 			lb.rang[i].UpperBound = sql.Above{Key: key[i]}
 		}
 	}
-	
+
 	return lb.index.NewLookup(ctx, lb.rang)
 }
 
-func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (sql.LookupBuilderKey, error) {
+func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -418,7 +420,7 @@ func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (sql.LookupBuilde
 	return key, nil
 }
 
-func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (sql.LookupBuilderKey, error) {
+func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (lookupBuilderKey, error) {
 	key := make([]interface{}, len(lb.keyExprs))
 	for i := range lb.keyExprs {
 		var err error
@@ -430,8 +432,8 @@ func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (sql.LookupBuil
 	return key, nil
 }
 
-func (lb *LookupBuilder) GetZeroKey() sql.LookupBuilderKey {
-	key := make(sql.LookupBuilderKey, len(lb.keyExprs))
+func (lb *LookupBuilder) GetZeroKey() lookupBuilderKey {
+	key := make(lookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
 		key[i] = keyExpr.Type().Zero()
 	}
@@ -463,7 +465,6 @@ func (lb *LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression)
 		index:           lb.index,
 		matchesNullMask: lb.matchesNullMask,
 		rang:            lb.rang,
-		template:        lb.template,
 		cets:            lb.cets,
 	}, nil
 }
