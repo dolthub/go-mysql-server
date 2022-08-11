@@ -144,36 +144,35 @@ func NewJSONTable(data []byte, path string, spec *sqlparser.TableSpec, alias sql
 	}
 
 	// Get data specified from initial path
-	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, path)
+	tmp, err := jsonpath.JsonPathLookup(jsonData, path)
 	if err != nil {
 		return nil, err
+	}
+	jsonPathData, ok := tmp.([]interface{})
+	if !ok {
+		panic("TODO: json data didn't parse as an array")
 	}
 
 	// Create new JSONTable node
 	table := &JSONTable{
 		name:   alias.String(),
 		schema: schema,
+		data:   make([]sql.Row, 0),
 	}
 
-	// Allocate number of rows, based off values in first column
-	if v, err := jsonpath.JsonPathLookup(jsonPathData, spec.Columns[0].Type.Path); err == nil {
-		if val, ok := v.([]interface{}); ok {
-			table.data = make([]sql.Row, len(val))
-		}
-	}
+	// Need to pad missing values, so iterate over data one object at a time
+	//for _, obj := range jsonPathData {
+	//	v, err := jsonpath.JsonPathLookup(obj, col.Type.Path)
+	//}
 
 	// Fill in table with data
 	for _, col := range spec.Columns {
-		v, err := jsonpath.JsonPathLookup(jsonPathData, col.Type.Path)
-		if err != nil {
-			return nil, err
-		}
-		colData, ok := v.([]interface{})
-		if !ok {
-			panic("TODO: good error message")
-		}
-		for i, val := range colData {
-			table.data[i] = append(table.data[i], val)
+		for i, obj := range jsonPathData {
+			v, err := jsonpath.JsonPathLookup(obj, col.Type.Path)
+			if err != nil {
+				return nil, err
+			}
+			table.data[i] = append(table.data[i], v)
 		}
 	}
 
