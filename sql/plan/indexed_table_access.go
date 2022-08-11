@@ -348,6 +348,7 @@ type LookupBuilder struct {
 
 	index sql.Index
 
+	key  lookupBuilderKey
 	rang sql.Range
 	cets []sql.ColumnExpressionType
 }
@@ -409,27 +410,31 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 }
 
 func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {
-	key := make([]interface{}, len(lb.keyExprs))
+	if lb.key == nil {
+		lb.key = make([]interface{}, len(lb.keyExprs))
+	}
 	for i := range lb.keyExprs {
 		var err error
-		key[i], err = lb.keyExprs[i].Eval(ctx, row)
+		lb.key[i], err = lb.keyExprs[i].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return key, nil
+	return lb.key, nil
 }
 
 func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (lookupBuilderKey, error) {
-	key := make([]interface{}, len(lb.keyExprs))
+	if lb.key == nil {
+		lb.key = make([]interface{}, len(lb.keyExprs))
+	}
 	for i := range lb.keyExprs {
 		var err error
-		key[i], err = lb.keyExprs2[i].Eval2(ctx, row)
+		lb.key[i], err = lb.keyExprs2[i].Eval2(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return key, nil
+	return lb.key, nil
 }
 
 func (lb *LookupBuilder) GetZeroKey() lookupBuilderKey {
