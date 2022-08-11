@@ -234,12 +234,12 @@ func TestSetString(t *testing.T) {
 		collation   CollationID
 		expectedStr string
 	}{
-		{[]string{"one"}, Collation_Default, "SET('one')"},
-		{[]string{"مرحبا", "こんにちは"}, Collation_Default, "SET('مرحبا','こんにちは')"},
-		{[]string{" hi ", "  lo  "}, Collation_Default, "SET(' hi','  lo')"},
-		{[]string{" hi ", "  lo  "}, Collation_binary, "SET(' hi ','  lo  ') CHARACTER SET binary COLLATE binary"},
+		{[]string{"one"}, Collation_Default, "set('one')"},
+		{[]string{"مرحبا", "こんにちは"}, Collation_Default, "set('مرحبا','こんにちは')"},
+		{[]string{" hi ", "  lo  "}, Collation_Default, "set(' hi','  lo')"},
+		{[]string{" hi ", "  lo  "}, Collation_binary, "set(' hi ','  lo  ') CHARACTER SET binary COLLATE binary"},
 		{[]string{"a"}, Collation_Default.CharacterSet().BinaryCollation(),
-			fmt.Sprintf("SET('a') COLLATE %v", Collation_Default.CharacterSet().BinaryCollation())},
+			fmt.Sprintf("set('a') COLLATE %v", Collation_Default.CharacterSet().BinaryCollation())},
 	}
 
 	for _, test := range tests {
