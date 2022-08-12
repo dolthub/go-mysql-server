@@ -19,27 +19,30 @@ import (
 )
 
 var JSONTableQueryTests = []QueryTest{
-	//{
-	//	Query: "SELECT * FROM JSON_TABLE('[{\"a\":1},{\"a\":2}]',\"$[*]\" COLUMNS(x varchar(100) path \"$.a\")) as tt;",
-	//	Expected: []sql.Row{
-	//		{"1"},
-	//		{"2"},
-	//	},
-	//},
-	//{
-	//	Query: "SELECT * FROM JSON_TABLE('[{\"a\":1, \"b\":2},{\"a\":3, \"b\":4}]',\"$[*]\" COLUMNS(x int path \"$.a\", y int path \"$.b\")) as tt;",
-	//	Expected: []sql.Row{
-	//		{1, 2},
-	//		{3, 4},
-	//	},
-	//},
-	//{
-	//	Query: "SELECT * FROM JSON_TABLE('[{\"a\":1.123, \"b\":2.234},{\"a\":3.345, \"b\":4.456}]',\"$[*]\" COLUMNS(x float path \"$.a\", y float path \"$.b\")) as tt;",
-	//	Expected: []sql.Row{
-	//		{1.123, 2.234},
-	//		{3.345, 4.456},
-	//	},
-	//},
+	{
+		Query: "SELECT * FROM JSON_TABLE('[{\"a\":1},{\"a\":2}]',\"$[*]\" COLUMNS(x varchar(100) path \"$.a\")) as tt;",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+		},
+	},
+	{
+		Query: "SELECT * FROM JSON_TABLE('[{\"a\":1, \"b\":2},{\"a\":3, \"b\":4}]',\"$[*]\" COLUMNS(x int path \"$.a\", y int path \"$.b\")) as tt;",
+		Expected: []sql.Row{
+			{1, 2},
+			{3, 4},
+		},
+	},
+	{
+		Query: "SELECT * FROM JSON_TABLE('[{\"a\":1.123, \"b\":2.234},{\"a\":3.345, \"b\":4.456}]',\"$[*]\" COLUMNS(x float path \"$.a\", y float path \"$.b\")) as tt;",
+		Expected: []sql.Row{
+			{1.123, 2.234},
+			{3.345, 4.456},
+		},
+	},
+}
+
+var BrokenJSONTableQueryTests = []QueryTest{
 	{
 		Query: "SELECT * FROM JSON_TABLE(concat('[{},','{}]'),\"$[*]\" COLUMNS(x varchar(100) path \"$.a\",y varchar(100) path \"$.b\")) as t;",
 		Expected: []sql.Row{
