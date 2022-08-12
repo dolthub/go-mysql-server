@@ -69,6 +69,27 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
+func pruneEmptyRanges(sqlRanges []sql.Range) (pruned []sql.Range, err error) {
+	pruned = make([]sql.Range, 0, len(sqlRanges))
+	for _, sr := range sqlRanges {
+		empty := false
+		for _, colExpr := range sr {
+			empty, err = colExpr.IsEmpty()
+			if err != nil {
+				return nil, err
+			} else if empty {
+				// one of the RangeColumnExprs in |sr|
+				// is empty: prune the entire range
+				break
+			}
+		}
+		if !empty {
+			pruned = append(pruned, sr)
+		}
+	}
+	return pruned, nil
+}
+
 // NewLookup implements the interface sql.Index.
 func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
@@ -81,8 +102,12 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 		return nil, fmt.Errorf("expected different key count: %s=>%d/%d", idx.Name, len(idx.Exprs), len(ranges[0]))
 	}
 
+	pruned, err := pruneEmptyRanges(ranges)
+	if err != nil {
+		return nil, err
+	}
 	var rangeCollectionExpr sql.Expression
-	for _, rang := range ranges {
+	for _, rang := range pruned {
 		var rangeExpr sql.Expression
 		for i, rce := range rang {
 			var rangeColumnExpr sql.Expression
@@ -161,7 +186,7 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
 	}
 
-	return NewIndexLookup(ctx, idx, rangeCollectionExpr, ranges...), nil
+	return NewIndexLookup(ctx, idx, rangeCollectionExpr, pruned...), nil
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.

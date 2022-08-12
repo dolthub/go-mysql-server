@@ -2062,7 +2062,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(niltable.i2 = NULL)\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
-			"     ├─ filters: [{(∞, ∞)}]\n" +
+			"     ├─ filters: []\n" +
 			"     └─ columns: [i i2 b f]\n" +
 			"",
 	},
@@ -2071,7 +2071,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(NOT((niltable.i2 = NULL)))\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
-			"     ├─ filters: [{(∞, ∞)}]\n" +
+			"     ├─ filters: []\n" +
 			"     └─ columns: [i i2 b f]\n" +
 			"",
 	},
@@ -2080,7 +2080,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(niltable.i2 > NULL)\n" +
 			" └─ IndexedTableAccess(niltable)\n" +
 			"     ├─ index: [niltable.i2]\n" +
-			"     ├─ filters: [{(∞, ∞)}]\n" +
+			"     ├─ filters: []\n" +
 			"     └─ columns: [i i2 b f]\n" +
 			"",
 	},
