@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/oliveagle/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -137,7 +136,7 @@ func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 }
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
-func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, spec *sqlparser.TableSpec, alias sqlparser.TableIdent, schema sql.PrimaryKeySchema) (sql.Node, error) {
+func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
 	// data must evaluate to JSON string
 	data, err := dataExpr.Eval(ctx, nil)
 	if err != nil {
@@ -168,17 +167,17 @@ func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, spec *
 
 	// Create new JSONTable node
 	table := &JSONTable{
-		name:   alias.String(),
+		name:   alias,
 		schema: schema,
 		data:   make([]sql.Row, 0),
 	}
 
 	// Fill in table with data
-	for _, col := range spec.Columns {
+	for _, p := range colPaths {
 		for i, obj := range jsonPathData {
 			// TODO: make sure replacing "key error" with default is sufficient
 			var val any
-			if v, err := jsonpath.JsonPathLookup(obj, col.Type.Path); err == nil {
+			if v, err := jsonpath.JsonPathLookup(obj, p); err == nil {
 				val = v
 			} else {
 				val = nil
