@@ -1092,6 +1092,9 @@ type StoredProcedureDatabase interface {
 // EvaluateCondition evaluates a condition, which is an expression whose value
 // will be nil or coerced boolean.
 func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, error) {
+	if cond == nil {
+		return nil, nil
+	}
 	v, err := cond.Eval(ctx, row)
 	if err != nil {
 		return false, err

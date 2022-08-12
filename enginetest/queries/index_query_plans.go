@@ -225,7 +225,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1=78 AND v2=87) OR (v1 BETWEEN 37 AND 58 AND v2>=30)) AND (v1=86 AND v2 BETWEEN 0 AND 70);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
 			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
@@ -558,7 +558,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE (v1 BETWEEN 11 AND 18) AND (v1>31 AND v2 BETWEEN 38 AND 88);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
 			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
@@ -1099,7 +1099,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1 BETWEEN 21 AND 44 AND v2 BETWEEN 18 AND 88 AND v3=42) AND (v1>=52 AND v2>37 AND v3 BETWEEN 26 AND 91);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -1224,7 +1224,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1>=17 AND v2 BETWEEN 17 AND 78 AND v3=10) AND (v1<=67) AND (v1>=81 AND v2<=88 AND v3>=70);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -1365,7 +1365,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1 BETWEEN 36 AND 67 AND v3<74 AND v2=26) AND (v1 BETWEEN 9 AND 10 AND v2=96) AND (v1<=11 AND v2<>63 AND v3>=62);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -1473,7 +1473,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1<64 AND v2>=90 AND v3>41) AND (v1>=14 AND v2 BETWEEN 30 AND 70 AND v3>=25);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -1519,10 +1519,11 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1 BETWEEN 55 AND 59) OR (v1<=10 AND v2>=24)) AND (v1>93 AND v3<70 AND v2 BETWEEN 44 AND 79) AND (v1>=22 AND v2=27);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
-			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedPlan: "Filter(((((comp_index_t1.v1 > 93) AND (comp_index_t1.v3 < 70)) AND (comp_index_t1.v2 BETWEEN 44 AND 79)) AND (comp_index_t1.v1 >= 22)) AND (comp_index_t1.v2 = 27))\n" +
+			" └─ IndexedTableAccess(comp_index_t1)\n" +
+			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			"     ├─ filters: [{(NULL, 10], [24, ∞), [NULL, ∞)}, {[55, 59], [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -1882,7 +1883,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1>=19 AND v2<2) AND (v1<4 AND v3>23 AND v2<>53);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -1890,7 +1891,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1 BETWEEN 34 AND 40) OR (v1<=80 AND v2<>53)) AND (v1=81 AND v2=17 AND v3<>12);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -1913,10 +1914,11 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1<=48) OR (v1<38 AND v2>=26)) AND (v1<=45 AND v2>21) AND (v1=83 AND v2=20);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
-			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedPlan: "Filter((((comp_index_t1.v1 <= 45) AND (comp_index_t1.v2 > 21)) AND (comp_index_t1.v1 = 83)) AND (comp_index_t1.v2 = 20))\n" +
+			" └─ IndexedTableAccess(comp_index_t1)\n" +
+			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			"     ├─ filters: [{(NULL, 48], [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -1947,7 +1949,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1>4) AND (v1=3 AND v2 BETWEEN 4 AND 34 AND v3<=40);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -2113,7 +2115,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1=99 AND v2<=41 AND v3>=61) AND (v1=34 AND v2>68 AND v3<=42);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -2341,7 +2343,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1 BETWEEN 3 AND 19 AND v2<=57 AND v3>61) OR (v1<=58 AND v2>=36 AND v3=31)) AND (v1>94);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -2695,7 +2697,7 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(comp_index_t2.v4 BETWEEN 44 AND 50)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			"     ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			"     ├─ filters: []\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -2832,7 +2834,7 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(((((comp_index_t2.v1 = 31) AND (comp_index_t2.v2 > 44)) OR ((((comp_index_t2.v1 < 44) AND (NOT((comp_index_t2.v4 = 6)))) AND (NOT((comp_index_t2.v2 = 10)))) AND (NOT((comp_index_t2.v3 = 14))))) AND (comp_index_t2.v3 > 25)) AND (NOT((comp_index_t2.v4 = 32))))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			"     ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			"     ├─ filters: []\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -2909,7 +2911,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1>83 AND v2<>16 AND v3=22) AND (v1=34) AND (v1=79 AND v2<=45 AND v3=49);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -3092,7 +3094,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1>30 AND v2 BETWEEN 20 AND 64) AND (v1<=29) AND (v1>=25 AND v2<>0);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -3331,7 +3333,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1<17 AND v2<54) AND (v1>=70 AND v2 BETWEEN 53 AND 53 AND v3>10 AND v4=17);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -3660,7 +3662,7 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(((((NOT((comp_index_t2.v1 = 46))) AND (comp_index_t2.v2 > 93)) AND (comp_index_t2.v3 > 19)) AND ((comp_index_t2.v1 < 51) AND (comp_index_t2.v2 = 39))) OR (comp_index_t2.v1 < 61))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			"     ├─ filters: [{(NULL, 22), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(22, 61), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, 22), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(22, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -3727,7 +3729,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<=5 AND v2<65 AND v3<64 AND v4=81) OR (v1<=75)) AND (v1=87);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -3762,7 +3764,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1>=41 AND v2<13 AND v3 BETWEEN 62 AND 87) AND (v1<=67 AND v2>68 AND v3=56 AND v4>28);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -3829,16 +3831,17 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1=78 AND v2>28 AND v3<=47) AND (v1<35 AND v2=69 AND v3>16);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1 BETWEEN 31 AND 49 AND v2=20 AND v3 BETWEEN 8 AND 46) AND (v1<>57 AND v2<5);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
-			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedPlan: "Filter((((comp_index_t2.v1 BETWEEN 31 AND 49) AND (comp_index_t2.v2 = 20)) AND (comp_index_t2.v3 BETWEEN 8 AND 46)) AND ((NOT((comp_index_t2.v1 = 57))) AND (comp_index_t2.v2 < 5)))\n" +
+			" └─ IndexedTableAccess(comp_index_t2)\n" +
+			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			"     ├─ filters: [{(57, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(NULL, 57), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -4099,7 +4102,7 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter((((NOT((comp_index_t2.v1 = 50))) AND (comp_index_t2.v2 >= 46)) AND (((NOT((comp_index_t2.v1 = 17))) AND (comp_index_t2.v2 = 45)) AND (comp_index_t2.v3 <= 79))) OR ((comp_index_t2.v1 = 10) AND (comp_index_t2.v2 >= 35)))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			"     ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			"     ├─ filters: [{[44, 44], [38, 38], [NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -4252,7 +4255,7 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter(comp_index_t2.v4 >= 4)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			"     ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			"     ├─ filters: []\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -4300,10 +4303,11 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1<>37 AND v2>67 AND v3>52) AND (v1<48 AND v2<>73 AND v3=25 AND v4=22);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
-			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedPlan: "Filter((((NOT((comp_index_t2.v1 = 37))) AND (comp_index_t2.v2 > 67)) AND (comp_index_t2.v3 > 52)) AND ((((comp_index_t2.v1 < 48) AND (NOT((comp_index_t2.v2 = 73)))) AND (comp_index_t2.v3 = 25)) AND (comp_index_t2.v4 = 22)))\n" +
+			" └─ IndexedTableAccess(comp_index_t2)\n" +
+			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			"     ├─ filters: [{(37, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(NULL, 37), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -4462,7 +4466,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1 BETWEEN 33 AND 71 AND v2<=61 AND v3<=32 AND v4 BETWEEN 18 AND 73) AND (v1<3) AND (v1<=59 AND v2=47 AND v3<49 AND v4>36);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -4714,10 +4718,11 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1>=69 AND v2 BETWEEN 38 AND 45) AND (v1<>35 AND v2<28 AND v3>14);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
-			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedPlan: "Filter(((comp_index_t2.v1 >= 69) AND (comp_index_t2.v2 BETWEEN 38 AND 45)) AND (((NOT((comp_index_t2.v1 = 35))) AND (comp_index_t2.v2 < 28)) AND (comp_index_t2.v3 > 14)))\n" +
+			" └─ IndexedTableAccess(comp_index_t2)\n" +
+			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			"     ├─ filters: [{(35, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(NULL, 35), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -4725,7 +4730,7 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter((((((comp_index_t2.v1 >= 93) AND (comp_index_t2.v2 <= 10)) AND (comp_index_t2.v3 BETWEEN 21 AND 83)) AND (((NOT((comp_index_t2.v1 = 5))) AND (comp_index_t2.v2 > 59)) AND (NOT((comp_index_t2.v3 = 17))))) OR ((((comp_index_t2.v1 < 69) AND (NOT((comp_index_t2.v3 = 65)))) AND (comp_index_t2.v4 >= 51)) AND (comp_index_t2.v2 <= 48))) OR ((((comp_index_t2.v1 BETWEEN 37 AND 57) AND (comp_index_t2.v2 BETWEEN 44 AND 57)) AND (comp_index_t2.v3 < 40)) AND (comp_index_t2.v4 = 98)))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			"     ├─ filters: [{(NULL, 69), (NULL, 48], (NULL, 65), [51, ∞)}, {(NULL, 69), (NULL, 48], (65, ∞), [51, ∞)}, {[37, 57], (48, 57], (NULL, 40), [98, 98]}]\n" +
+			"     ├─ filters: [{(NULL, 5), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[5, 5], (NULL, 48], (NULL, 65), [51, ∞)}, {[5, 5], (NULL, 48], (65, ∞), [51, ∞)}, {(5, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -5074,7 +5079,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1>=34 AND v2<>61 AND v3<>3) AND (v1 BETWEEN 69 AND 93) AND (v1=36 AND v2>14);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -5150,7 +5155,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1 BETWEEN 13 AND 77 AND v2>75 AND v3<73 AND v4>=6) AND (v1<=58 AND v2=48 AND v3 BETWEEN 33 AND 73);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -5174,10 +5179,11 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1>=99 AND v3<=41) AND (v1<>38 AND v2<94 AND v3 BETWEEN 83 AND 95 AND v4>=86);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
-			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedPlan: "Filter(((comp_index_t2.v1 >= 99) AND (comp_index_t2.v3 <= 41)) AND ((((NOT((comp_index_t2.v1 = 38))) AND (comp_index_t2.v2 < 94)) AND (comp_index_t2.v3 BETWEEN 83 AND 95)) AND (comp_index_t2.v4 >= 86)))\n" +
+			" └─ IndexedTableAccess(comp_index_t2)\n" +
+			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			"     ├─ filters: [{(38, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(NULL, 38), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -5190,10 +5196,11 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1<>3 AND v2=26 AND v3=22 AND v4<=76) AND (v1 BETWEEN 59 AND 92 AND v2 BETWEEN 36 AND 80);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
-			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedPlan: "Filter(((((NOT((comp_index_t2.v1 = 3))) AND (comp_index_t2.v2 = 26)) AND (comp_index_t2.v3 = 22)) AND (comp_index_t2.v4 <= 76)) AND ((comp_index_t2.v1 BETWEEN 59 AND 92) AND (comp_index_t2.v2 BETWEEN 36 AND 80)))\n" +
+			" └─ IndexedTableAccess(comp_index_t2)\n" +
+			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			"     ├─ filters: [{(3, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(NULL, 3), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -5234,7 +5241,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1>48 AND v2 BETWEEN 4 AND 84 AND v3<=3 AND v4<>31) AND (v1 BETWEEN 2 AND 15 AND v3>75);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -5252,7 +5259,7 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter((((comp_index_t2.v1 > 20) OR ((((comp_index_t2.v1 >= 71) AND (comp_index_t2.v4 BETWEEN 12 AND 20)) AND (comp_index_t2.v2 <= 30)) AND (comp_index_t2.v3 BETWEEN 14 AND 44))) AND (((comp_index_t2.v1 > 97) AND (comp_index_t2.v2 = 91)) AND (comp_index_t2.v3 >= 5))) OR ((((comp_index_t2.v1 > 7) AND (comp_index_t2.v2 < 34)) AND (comp_index_t2.v3 < 55)) AND (comp_index_t2.v4 BETWEEN 88 AND 97)))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			"     ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			"     ├─ filters: []\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -5428,7 +5435,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1=46) AND (v1>=93 AND v3<>51 AND v4=93 AND v2=8);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
+			" ├─ filters: []\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -5605,10 +5612,11 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1=23 AND v4>=52 AND v2>=61) AND (v1<>85 AND v3>2 AND v4<15);`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
-			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ filters: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
-			" └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedPlan: "Filter((((comp_index_t2.v1 = 23) AND (comp_index_t2.v4 >= 52)) AND (comp_index_t2.v2 >= 61)) AND (((NOT((comp_index_t2.v1 = 85))) AND (comp_index_t2.v3 > 2)) AND (comp_index_t2.v4 < 15)))\n" +
+			" └─ IndexedTableAccess(comp_index_t2)\n" +
+			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			"     ├─ filters: [{(85, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(NULL, 85), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
