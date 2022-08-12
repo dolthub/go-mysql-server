@@ -64,10 +64,13 @@ type EnumType interface {
 
 type enumType struct {
 	collation             CollationID
-	valToIndex            map[string]int
+	hashedValToIndex      map[uint64]int
 	indexToVal            []string
 	maxResponseByteLength uint32
 }
+
+var _ EnumType = enumType{}
+var _ TypeWithCollation = enumType{}
 
 // CreateEnumType creates a EnumType.
 func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
@@ -82,18 +85,22 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 	// including accounting for multibyte character representations.
 	var maxResponseByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
-	valToIndex := make(map[string]int)
+	valToIndex := make(map[uint64]int)
 	for i, value := range values {
 		if !collation.Equals(Collation_binary) {
-			/// Trailing spaces are automatically deleted from ENUM member values in the table definition when a table is created.
+			// Trailing spaces are automatically deleted from ENUM member values in the table definition when a table is created.
 			value = strings.TrimRight(value, " ")
 		}
 		values[i] = value
-		if _, ok := valToIndex[value]; ok {
+		hashedVal, err := collation.HashToUint(value)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := valToIndex[hashedVal]; ok {
 			return nil, fmt.Errorf("duplicate entry: %v", value)
 		}
-		/// The elements listed in the column specification are assigned index numbers, beginning with 1.
-		valToIndex[value] = i + 1
+		// The elements listed in the column specification are assigned index numbers, beginning with 1.
+		valToIndex[hashedVal] = i + 1
 
 		byteLength := uint32(utf8.RuneCountInString(value) * int(maxCharLength))
 		if byteLength > maxResponseByteLength {
@@ -102,7 +109,7 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 	}
 	return enumType{
 		collation:             collation,
-		valToIndex:            valToIndex,
+		hashedValToIndex:      valToIndex,
 		indexToVal:            values,
 		maxResponseByteLength: maxResponseByteLength,
 	}, nil
@@ -291,16 +298,17 @@ func (t enumType) Collation() CollationID {
 
 // IndexOf implements EnumType interface.
 func (t enumType) IndexOf(v string) int {
-	if index, ok := t.valToIndex[v]; ok {
-		return index
+	hashedVal, err := t.collation.HashToUint(v)
+	if err == nil {
+		if index, ok := t.hashedValToIndex[hashedVal]; ok {
+			return index
+		}
 	}
 	/// ENUM('0','1','2')
 	/// If you store '3', it does not match any enumeration value, so it is treated as an index and becomes '2' (the value with index 3).
 	if parsedIndex, err := strconv.ParseInt(v, 10, 32); err == nil {
-		if realV, ok := t.At(int(parsedIndex)); ok {
-			if index, ok := t.valToIndex[realV]; ok {
-				return index
-			}
+		if _, ok := t.At(int(parsedIndex)); ok {
+			return int(parsedIndex)
 		}
 	}
 	return -1

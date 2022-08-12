@@ -198,15 +198,28 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 }
 
 func hashOfSimple(i interface{}, t sql.Type) (uint64, error) {
-	hash := xxhash.New()
-	x, err := t.Promote().Convert(i)
-	if err != nil {
-		return 0, sql.ErrInvalidType.New(i)
+	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
+	if sql.IsTextOnly(t) {
+		if str, ok := i.(string); ok {
+			return t.(sql.StringType).Collation().HashToUint(str)
+		} else {
+			i, err := t.Convert(i)
+			if err != nil {
+				return 0, err
+			}
+			return t.(sql.StringType).Collation().HashToUint(i.(string))
+		}
+	} else {
+		hash := xxhash.New()
+		x, err := t.Promote().Convert(i)
+		if err != nil {
+			return 0, sql.ErrInvalidType.New(i)
+		}
+		if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
+			return 0, err
+		}
+		return hash.Sum64(), nil
 	}
-	if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
-		return 0, err
-	}
-	return hash.Sum64(), nil
 }
 
 // Eval implements the Expression interface.

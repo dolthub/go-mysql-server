@@ -38,8 +38,10 @@ const (
 )
 
 const (
-	CurrentDBSessionVar  = "current_database"
-	AutoCommitSessionVar = "autocommit"
+	CurrentDBSessionVar              = "current_database"
+	AutoCommitSessionVar             = "autocommit"
+	characterSetConnectionSysVarName = "character_set_connection"
+	collationConnectionSysVarName    = "collation_connection"
 )
 
 var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/dolthub/go-mysql-server/sql")
@@ -128,8 +130,12 @@ type Session interface {
 	// SetViewRegistry sets the view registry for this session. Integrators should set a view registry if their database
 	// doesn't implement ViewDatabase and they want views created to persist across sessions.
 	SetViewRegistry(*ViewRegistry)
-	// WithConnectionId sets this sessions unique ID
+	// SetConnectionId sets this sessions unique ID
 	SetConnectionId(connId uint32)
+	// GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
+	GetCharacterSet() CharacterSetID
+	// GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
+	GetCollation() CollationID
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -307,6 +313,31 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 		return Null, nil, nil
 	}
 	return ApproximateTypeFromValue(val), val, nil
+}
+
+// GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
+func (s *BaseSession) GetCharacterSet() CharacterSetID {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	val, _ := s.systemVars[characterSetConnectionSysVarName]
+	charSet, err := ParseCharacterSet(val.(string))
+	if err != nil {
+		panic(err) // shouldn't happen
+	}
+	return charSet
+}
+
+// GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
+func (s *BaseSession) GetCollation() CollationID {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	val, _ := s.systemVars[collationConnectionSysVarName]
+	valStr := val.(string)
+	collation, err := ParseCollation(nil, &valStr, false)
+	if err != nil {
+		panic(err) // shouldn't happen
+	}
+	return collation
 }
 
 // GetCurrentDatabase gets the current database for this session
