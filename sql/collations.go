@@ -17,10 +17,12 @@ package sql
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
+	"github.com/cespare/xxhash"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/internal/regex"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 var ErrCollationNotSupported = errors.NewKind("Unknown collation: %v")
@@ -34,31 +36,13 @@ type Collation struct {
 	IsCompiled   bool
 	SortLength   uint8
 	PadAttribute string
-	compare      collationCompare
-	like         collationLike
+	Sorter       func(r rune) int32
 }
 
 // CollationsIterator iterates over every collation available, ordered by their ID (ascending).
 type CollationsIterator struct {
 	idx int
 }
-
-type insensitiveMatcher struct {
-	regex.DisposableMatcher
-}
-
-type collationCompare byte
-type collationLike byte
-
-const (
-	collationCompareInsensitive collationCompare = iota
-	collationCompareSensitive
-)
-
-const (
-	collationLikeInsensitive collationLike = iota
-	collationLikeSensitive
-)
 
 var collationStringToID = map[string]CollationID{}
 
@@ -372,7 +356,8 @@ const (
 	Collation_utf8_vietnamese_ci       = Collation_utf8mb3_vietnamese_ci
 	Collation_utf8_general_mysql500_ci = Collation_utf8mb3_general_mysql500_ci
 
-	Collation_Default = Collation_utf8mb4_0900_bin
+	Collation_Default             = Collation_utf8mb4_0900_bin
+	Collation_Invalid CollationID = 0 // This represents a NULL collation.
 )
 
 // collationArray contains the details of every collation, indexed by their ID. This allows for collations to be
@@ -381,157 +366,157 @@ const (
 // gaps in the array.
 var collationArray = [310]Collation{
 	/*000*/ {},
-	/*001*/ {Collation_big5_chinese_ci, "big5_chinese_ci", CharacterSet_big5, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*002*/ {Collation_latin2_czech_cs, "latin2_czech_cs", CharacterSet_latin2, false, true, 4, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*003*/ {Collation_dec8_swedish_ci, "dec8_swedish_ci", CharacterSet_dec8, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*004*/ {Collation_cp850_general_ci, "cp850_general_ci", CharacterSet_cp850, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*005*/ {Collation_latin1_german1_ci, "latin1_german1_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*006*/ {Collation_hp8_english_ci, "hp8_english_ci", CharacterSet_hp8, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*007*/ {Collation_koi8r_general_ci, "koi8r_general_ci", CharacterSet_koi8r, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*008*/ {Collation_latin1_swedish_ci, "latin1_swedish_ci", CharacterSet_latin1, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*009*/ {Collation_latin2_general_ci, "latin2_general_ci", CharacterSet_latin2, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*010*/ {Collation_swe7_swedish_ci, "swe7_swedish_ci", CharacterSet_swe7, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*011*/ {Collation_ascii_general_ci, "ascii_general_ci", CharacterSet_ascii, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*012*/ {Collation_ujis_japanese_ci, "ujis_japanese_ci", CharacterSet_ujis, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*013*/ {Collation_sjis_japanese_ci, "sjis_japanese_ci", CharacterSet_sjis, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*014*/ {Collation_cp1251_bulgarian_ci, "cp1251_bulgarian_ci", CharacterSet_cp1251, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*015*/ {Collation_latin1_danish_ci, "latin1_danish_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*016*/ {Collation_hebrew_general_ci, "hebrew_general_ci", CharacterSet_hebrew, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
+	/*001*/ {Collation_big5_chinese_ci, "big5_chinese_ci", CharacterSet_big5, true, true, 1, "PAD SPACE", nil},
+	/*002*/ {Collation_latin2_czech_cs, "latin2_czech_cs", CharacterSet_latin2, false, true, 4, "PAD SPACE", nil},
+	/*003*/ {Collation_dec8_swedish_ci, "dec8_swedish_ci", CharacterSet_dec8, true, true, 1, "PAD SPACE", nil},
+	/*004*/ {Collation_cp850_general_ci, "cp850_general_ci", CharacterSet_cp850, true, true, 1, "PAD SPACE", nil},
+	/*005*/ {Collation_latin1_german1_ci, "latin1_german1_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*006*/ {Collation_hp8_english_ci, "hp8_english_ci", CharacterSet_hp8, true, true, 1, "PAD SPACE", nil},
+	/*007*/ {Collation_koi8r_general_ci, "koi8r_general_ci", CharacterSet_koi8r, true, true, 1, "PAD SPACE", nil},
+	/*008*/ {Collation_latin1_swedish_ci, "latin1_swedish_ci", CharacterSet_latin1, true, true, 1, "PAD SPACE", nil},
+	/*009*/ {Collation_latin2_general_ci, "latin2_general_ci", CharacterSet_latin2, true, true, 1, "PAD SPACE", nil},
+	/*010*/ {Collation_swe7_swedish_ci, "swe7_swedish_ci", CharacterSet_swe7, true, true, 1, "PAD SPACE", nil},
+	/*011*/ {Collation_ascii_general_ci, "ascii_general_ci", CharacterSet_ascii, true, true, 1, "PAD SPACE", encodings.Ascii_general_ci_RuneWeight},
+	/*012*/ {Collation_ujis_japanese_ci, "ujis_japanese_ci", CharacterSet_ujis, true, true, 1, "PAD SPACE", nil},
+	/*013*/ {Collation_sjis_japanese_ci, "sjis_japanese_ci", CharacterSet_sjis, true, true, 1, "PAD SPACE", nil},
+	/*014*/ {Collation_cp1251_bulgarian_ci, "cp1251_bulgarian_ci", CharacterSet_cp1251, false, true, 1, "PAD SPACE", nil},
+	/*015*/ {Collation_latin1_danish_ci, "latin1_danish_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*016*/ {Collation_hebrew_general_ci, "hebrew_general_ci", CharacterSet_hebrew, true, true, 1, "PAD SPACE", nil},
 	/*017*/ {},
-	/*018*/ {Collation_tis620_thai_ci, "tis620_thai_ci", CharacterSet_tis620, true, true, 4, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*019*/ {Collation_euckr_korean_ci, "euckr_korean_ci", CharacterSet_euckr, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*020*/ {Collation_latin7_estonian_cs, "latin7_estonian_cs", CharacterSet_latin7, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*021*/ {Collation_latin2_hungarian_ci, "latin2_hungarian_ci", CharacterSet_latin2, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*022*/ {Collation_koi8u_general_ci, "koi8u_general_ci", CharacterSet_koi8u, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*023*/ {Collation_cp1251_ukrainian_ci, "cp1251_ukrainian_ci", CharacterSet_cp1251, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*024*/ {Collation_gb2312_chinese_ci, "gb2312_chinese_ci", CharacterSet_gb2312, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*025*/ {Collation_greek_general_ci, "greek_general_ci", CharacterSet_greek, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*026*/ {Collation_cp1250_general_ci, "cp1250_general_ci", CharacterSet_cp1250, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*027*/ {Collation_latin2_croatian_ci, "latin2_croatian_ci", CharacterSet_latin2, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*028*/ {Collation_gbk_chinese_ci, "gbk_chinese_ci", CharacterSet_gbk, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*029*/ {Collation_cp1257_lithuanian_ci, "cp1257_lithuanian_ci", CharacterSet_cp1257, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*030*/ {Collation_latin5_turkish_ci, "latin5_turkish_ci", CharacterSet_latin5, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*031*/ {Collation_latin1_german2_ci, "latin1_german2_ci", CharacterSet_latin1, false, true, 2, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*032*/ {Collation_armscii8_general_ci, "armscii8_general_ci", CharacterSet_armscii8, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*033*/ {Collation_utf8mb3_general_ci, "utf8mb3_general_ci", CharacterSet_utf8mb3, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*034*/ {Collation_cp1250_czech_cs, "cp1250_czech_cs", CharacterSet_cp1250, false, true, 2, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*035*/ {Collation_ucs2_general_ci, "ucs2_general_ci", CharacterSet_ucs2, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*036*/ {Collation_cp866_general_ci, "cp866_general_ci", CharacterSet_cp866, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*037*/ {Collation_keybcs2_general_ci, "keybcs2_general_ci", CharacterSet_keybcs2, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*038*/ {Collation_macce_general_ci, "macce_general_ci", CharacterSet_macce, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*039*/ {Collation_macroman_general_ci, "macroman_general_ci", CharacterSet_macroman, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*040*/ {Collation_cp852_general_ci, "cp852_general_ci", CharacterSet_cp852, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*041*/ {Collation_latin7_general_ci, "latin7_general_ci", CharacterSet_latin7, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*042*/ {Collation_latin7_general_cs, "latin7_general_cs", CharacterSet_latin7, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*043*/ {Collation_macce_bin, "macce_bin", CharacterSet_macce, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*044*/ {Collation_cp1250_croatian_ci, "cp1250_croatian_ci", CharacterSet_cp1250, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*045*/ {Collation_utf8mb4_general_ci, "utf8mb4_general_ci", CharacterSet_utf8mb4, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*046*/ {Collation_utf8mb4_bin, "utf8mb4_bin", CharacterSet_utf8mb4, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*047*/ {Collation_latin1_bin, "latin1_bin", CharacterSet_latin1, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*048*/ {Collation_latin1_general_ci, "latin1_general_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*049*/ {Collation_latin1_general_cs, "latin1_general_cs", CharacterSet_latin1, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*050*/ {Collation_cp1251_bin, "cp1251_bin", CharacterSet_cp1251, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*051*/ {Collation_cp1251_general_ci, "cp1251_general_ci", CharacterSet_cp1251, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*052*/ {Collation_cp1251_general_cs, "cp1251_general_cs", CharacterSet_cp1251, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*053*/ {Collation_macroman_bin, "macroman_bin", CharacterSet_macroman, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*054*/ {Collation_utf16_general_ci, "utf16_general_ci", CharacterSet_utf16, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*055*/ {Collation_utf16_bin, "utf16_bin", CharacterSet_utf16, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*056*/ {Collation_utf16le_general_ci, "utf16le_general_ci", CharacterSet_utf16le, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*057*/ {Collation_cp1256_general_ci, "cp1256_general_ci", CharacterSet_cp1256, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*058*/ {Collation_cp1257_bin, "cp1257_bin", CharacterSet_cp1257, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*059*/ {Collation_cp1257_general_ci, "cp1257_general_ci", CharacterSet_cp1257, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*060*/ {Collation_utf32_general_ci, "utf32_general_ci", CharacterSet_utf32, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*061*/ {Collation_utf32_bin, "utf32_bin", CharacterSet_utf32, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*062*/ {Collation_utf16le_bin, "utf16le_bin", CharacterSet_utf16le, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*063*/ {Collation_binary, "binary", CharacterSet_binary, true, true, 1, "NO PAD", collationCompareSensitive, collationLikeSensitive},
-	/*064*/ {Collation_armscii8_bin, "armscii8_bin", CharacterSet_armscii8, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*065*/ {Collation_ascii_bin, "ascii_bin", CharacterSet_ascii, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*066*/ {Collation_cp1250_bin, "cp1250_bin", CharacterSet_cp1250, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*067*/ {Collation_cp1256_bin, "cp1256_bin", CharacterSet_cp1256, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*068*/ {Collation_cp866_bin, "cp866_bin", CharacterSet_cp866, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*069*/ {Collation_dec8_bin, "dec8_bin", CharacterSet_dec8, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*070*/ {Collation_greek_bin, "greek_bin", CharacterSet_greek, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*071*/ {Collation_hebrew_bin, "hebrew_bin", CharacterSet_hebrew, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*072*/ {Collation_hp8_bin, "hp8_bin", CharacterSet_hp8, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*073*/ {Collation_keybcs2_bin, "keybcs2_bin", CharacterSet_keybcs2, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*074*/ {Collation_koi8r_bin, "koi8r_bin", CharacterSet_koi8r, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*075*/ {Collation_koi8u_bin, "koi8u_bin", CharacterSet_koi8u, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*076*/ {Collation_utf8mb3_tolower_ci, "utf8mb3_tolower_ci", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*077*/ {Collation_latin2_bin, "latin2_bin", CharacterSet_latin2, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*078*/ {Collation_latin5_bin, "latin5_bin", CharacterSet_latin5, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*079*/ {Collation_latin7_bin, "latin7_bin", CharacterSet_latin7, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*080*/ {Collation_cp850_bin, "cp850_bin", CharacterSet_cp850, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*081*/ {Collation_cp852_bin, "cp852_bin", CharacterSet_cp852, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*082*/ {Collation_swe7_bin, "swe7_bin", CharacterSet_swe7, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*083*/ {Collation_utf8mb3_bin, "utf8mb3_bin", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*084*/ {Collation_big5_bin, "big5_bin", CharacterSet_big5, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*085*/ {Collation_euckr_bin, "euckr_bin", CharacterSet_euckr, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*086*/ {Collation_gb2312_bin, "gb2312_bin", CharacterSet_gb2312, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*087*/ {Collation_gbk_bin, "gbk_bin", CharacterSet_gbk, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*088*/ {Collation_sjis_bin, "sjis_bin", CharacterSet_sjis, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*089*/ {Collation_tis620_bin, "tis620_bin", CharacterSet_tis620, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*090*/ {Collation_ucs2_bin, "ucs2_bin", CharacterSet_ucs2, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*091*/ {Collation_ujis_bin, "ujis_bin", CharacterSet_ujis, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*092*/ {Collation_geostd8_general_ci, "geostd8_general_ci", CharacterSet_geostd8, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*093*/ {Collation_geostd8_bin, "geostd8_bin", CharacterSet_geostd8, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*094*/ {Collation_latin1_spanish_ci, "latin1_spanish_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*095*/ {Collation_cp932_japanese_ci, "cp932_japanese_ci", CharacterSet_cp932, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*096*/ {Collation_cp932_bin, "cp932_bin", CharacterSet_cp932, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*097*/ {Collation_eucjpms_japanese_ci, "eucjpms_japanese_ci", CharacterSet_eucjpms, true, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*098*/ {Collation_eucjpms_bin, "eucjpms_bin", CharacterSet_eucjpms, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*099*/ {Collation_cp1250_polish_ci, "cp1250_polish_ci", CharacterSet_cp1250, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
+	/*018*/ {Collation_tis620_thai_ci, "tis620_thai_ci", CharacterSet_tis620, true, true, 4, "PAD SPACE", nil},
+	/*019*/ {Collation_euckr_korean_ci, "euckr_korean_ci", CharacterSet_euckr, true, true, 1, "PAD SPACE", nil},
+	/*020*/ {Collation_latin7_estonian_cs, "latin7_estonian_cs", CharacterSet_latin7, false, true, 1, "PAD SPACE", nil},
+	/*021*/ {Collation_latin2_hungarian_ci, "latin2_hungarian_ci", CharacterSet_latin2, false, true, 1, "PAD SPACE", nil},
+	/*022*/ {Collation_koi8u_general_ci, "koi8u_general_ci", CharacterSet_koi8u, true, true, 1, "PAD SPACE", nil},
+	/*023*/ {Collation_cp1251_ukrainian_ci, "cp1251_ukrainian_ci", CharacterSet_cp1251, false, true, 1, "PAD SPACE", nil},
+	/*024*/ {Collation_gb2312_chinese_ci, "gb2312_chinese_ci", CharacterSet_gb2312, true, true, 1, "PAD SPACE", nil},
+	/*025*/ {Collation_greek_general_ci, "greek_general_ci", CharacterSet_greek, true, true, 1, "PAD SPACE", nil},
+	/*026*/ {Collation_cp1250_general_ci, "cp1250_general_ci", CharacterSet_cp1250, true, true, 1, "PAD SPACE", nil},
+	/*027*/ {Collation_latin2_croatian_ci, "latin2_croatian_ci", CharacterSet_latin2, false, true, 1, "PAD SPACE", nil},
+	/*028*/ {Collation_gbk_chinese_ci, "gbk_chinese_ci", CharacterSet_gbk, true, true, 1, "PAD SPACE", nil},
+	/*029*/ {Collation_cp1257_lithuanian_ci, "cp1257_lithuanian_ci", CharacterSet_cp1257, false, true, 1, "PAD SPACE", nil},
+	/*030*/ {Collation_latin5_turkish_ci, "latin5_turkish_ci", CharacterSet_latin5, true, true, 1, "PAD SPACE", nil},
+	/*031*/ {Collation_latin1_german2_ci, "latin1_german2_ci", CharacterSet_latin1, false, true, 2, "PAD SPACE", nil},
+	/*032*/ {Collation_armscii8_general_ci, "armscii8_general_ci", CharacterSet_armscii8, true, true, 1, "PAD SPACE", nil},
+	/*033*/ {Collation_utf8mb3_general_ci, "utf8mb3_general_ci", CharacterSet_utf8mb3, true, true, 1, "PAD SPACE", encodings.Utf8mb3_general_ci_RuneWeight},
+	/*034*/ {Collation_cp1250_czech_cs, "cp1250_czech_cs", CharacterSet_cp1250, false, true, 2, "PAD SPACE", nil},
+	/*035*/ {Collation_ucs2_general_ci, "ucs2_general_ci", CharacterSet_ucs2, true, true, 1, "PAD SPACE", nil},
+	/*036*/ {Collation_cp866_general_ci, "cp866_general_ci", CharacterSet_cp866, true, true, 1, "PAD SPACE", nil},
+	/*037*/ {Collation_keybcs2_general_ci, "keybcs2_general_ci", CharacterSet_keybcs2, true, true, 1, "PAD SPACE", nil},
+	/*038*/ {Collation_macce_general_ci, "macce_general_ci", CharacterSet_macce, true, true, 1, "PAD SPACE", nil},
+	/*039*/ {Collation_macroman_general_ci, "macroman_general_ci", CharacterSet_macroman, true, true, 1, "PAD SPACE", nil},
+	/*040*/ {Collation_cp852_general_ci, "cp852_general_ci", CharacterSet_cp852, true, true, 1, "PAD SPACE", nil},
+	/*041*/ {Collation_latin7_general_ci, "latin7_general_ci", CharacterSet_latin7, true, true, 1, "PAD SPACE", nil},
+	/*042*/ {Collation_latin7_general_cs, "latin7_general_cs", CharacterSet_latin7, false, true, 1, "PAD SPACE", nil},
+	/*043*/ {Collation_macce_bin, "macce_bin", CharacterSet_macce, false, true, 1, "PAD SPACE", nil},
+	/*044*/ {Collation_cp1250_croatian_ci, "cp1250_croatian_ci", CharacterSet_cp1250, false, true, 1, "PAD SPACE", nil},
+	/*045*/ {Collation_utf8mb4_general_ci, "utf8mb4_general_ci", CharacterSet_utf8mb4, false, true, 1, "PAD SPACE", encodings.Utf8mb4_general_ci_RuneWeight},
+	/*046*/ {Collation_utf8mb4_bin, "utf8mb4_bin", CharacterSet_utf8mb4, false, true, 1, "PAD SPACE", encodings.Utf8mb4_bin_RuneWeight},
+	/*047*/ {Collation_latin1_bin, "latin1_bin", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*048*/ {Collation_latin1_general_ci, "latin1_general_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*049*/ {Collation_latin1_general_cs, "latin1_general_cs", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*050*/ {Collation_cp1251_bin, "cp1251_bin", CharacterSet_cp1251, false, true, 1, "PAD SPACE", nil},
+	/*051*/ {Collation_cp1251_general_ci, "cp1251_general_ci", CharacterSet_cp1251, true, true, 1, "PAD SPACE", nil},
+	/*052*/ {Collation_cp1251_general_cs, "cp1251_general_cs", CharacterSet_cp1251, false, true, 1, "PAD SPACE", nil},
+	/*053*/ {Collation_macroman_bin, "macroman_bin", CharacterSet_macroman, false, true, 1, "PAD SPACE", nil},
+	/*054*/ {Collation_utf16_general_ci, "utf16_general_ci", CharacterSet_utf16, true, true, 1, "PAD SPACE", nil},
+	/*055*/ {Collation_utf16_bin, "utf16_bin", CharacterSet_utf16, false, true, 1, "PAD SPACE", nil},
+	/*056*/ {Collation_utf16le_general_ci, "utf16le_general_ci", CharacterSet_utf16le, true, true, 1, "PAD SPACE", nil},
+	/*057*/ {Collation_cp1256_general_ci, "cp1256_general_ci", CharacterSet_cp1256, true, true, 1, "PAD SPACE", nil},
+	/*058*/ {Collation_cp1257_bin, "cp1257_bin", CharacterSet_cp1257, false, true, 1, "PAD SPACE", nil},
+	/*059*/ {Collation_cp1257_general_ci, "cp1257_general_ci", CharacterSet_cp1257, true, true, 1, "PAD SPACE", nil},
+	/*060*/ {Collation_utf32_general_ci, "utf32_general_ci", CharacterSet_utf32, true, true, 1, "PAD SPACE", encodings.Utf32_general_ci_RuneWeight},
+	/*061*/ {Collation_utf32_bin, "utf32_bin", CharacterSet_utf32, false, true, 1, "PAD SPACE", nil},
+	/*062*/ {Collation_utf16le_bin, "utf16le_bin", CharacterSet_utf16le, false, true, 1, "PAD SPACE", nil},
+	/*063*/ {Collation_binary, "binary", CharacterSet_binary, true, true, 1, "NO PAD", encodings.Binary_RuneWeight},
+	/*064*/ {Collation_armscii8_bin, "armscii8_bin", CharacterSet_armscii8, false, true, 1, "PAD SPACE", nil},
+	/*065*/ {Collation_ascii_bin, "ascii_bin", CharacterSet_ascii, false, true, 1, "PAD SPACE", encodings.Ascii_bin_RuneWeight},
+	/*066*/ {Collation_cp1250_bin, "cp1250_bin", CharacterSet_cp1250, false, true, 1, "PAD SPACE", nil},
+	/*067*/ {Collation_cp1256_bin, "cp1256_bin", CharacterSet_cp1256, false, true, 1, "PAD SPACE", nil},
+	/*068*/ {Collation_cp866_bin, "cp866_bin", CharacterSet_cp866, false, true, 1, "PAD SPACE", nil},
+	/*069*/ {Collation_dec8_bin, "dec8_bin", CharacterSet_dec8, false, true, 1, "PAD SPACE", nil},
+	/*070*/ {Collation_greek_bin, "greek_bin", CharacterSet_greek, false, true, 1, "PAD SPACE", nil},
+	/*071*/ {Collation_hebrew_bin, "hebrew_bin", CharacterSet_hebrew, false, true, 1, "PAD SPACE", nil},
+	/*072*/ {Collation_hp8_bin, "hp8_bin", CharacterSet_hp8, false, true, 1, "PAD SPACE", nil},
+	/*073*/ {Collation_keybcs2_bin, "keybcs2_bin", CharacterSet_keybcs2, false, true, 1, "PAD SPACE", nil},
+	/*074*/ {Collation_koi8r_bin, "koi8r_bin", CharacterSet_koi8r, false, true, 1, "PAD SPACE", nil},
+	/*075*/ {Collation_koi8u_bin, "koi8u_bin", CharacterSet_koi8u, false, true, 1, "PAD SPACE", nil},
+	/*076*/ {Collation_utf8mb3_tolower_ci, "utf8mb3_tolower_ci", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", nil},
+	/*077*/ {Collation_latin2_bin, "latin2_bin", CharacterSet_latin2, false, true, 1, "PAD SPACE", nil},
+	/*078*/ {Collation_latin5_bin, "latin5_bin", CharacterSet_latin5, false, true, 1, "PAD SPACE", nil},
+	/*079*/ {Collation_latin7_bin, "latin7_bin", CharacterSet_latin7, false, true, 1, "PAD SPACE", nil},
+	/*080*/ {Collation_cp850_bin, "cp850_bin", CharacterSet_cp850, false, true, 1, "PAD SPACE", nil},
+	/*081*/ {Collation_cp852_bin, "cp852_bin", CharacterSet_cp852, false, true, 1, "PAD SPACE", nil},
+	/*082*/ {Collation_swe7_bin, "swe7_bin", CharacterSet_swe7, false, true, 1, "PAD SPACE", nil},
+	/*083*/ {Collation_utf8mb3_bin, "utf8mb3_bin", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", encodings.Utf8mb3_bin_RuneWeight},
+	/*084*/ {Collation_big5_bin, "big5_bin", CharacterSet_big5, false, true, 1, "PAD SPACE", nil},
+	/*085*/ {Collation_euckr_bin, "euckr_bin", CharacterSet_euckr, false, true, 1, "PAD SPACE", nil},
+	/*086*/ {Collation_gb2312_bin, "gb2312_bin", CharacterSet_gb2312, false, true, 1, "PAD SPACE", nil},
+	/*087*/ {Collation_gbk_bin, "gbk_bin", CharacterSet_gbk, false, true, 1, "PAD SPACE", nil},
+	/*088*/ {Collation_sjis_bin, "sjis_bin", CharacterSet_sjis, false, true, 1, "PAD SPACE", nil},
+	/*089*/ {Collation_tis620_bin, "tis620_bin", CharacterSet_tis620, false, true, 1, "PAD SPACE", nil},
+	/*090*/ {Collation_ucs2_bin, "ucs2_bin", CharacterSet_ucs2, false, true, 1, "PAD SPACE", nil},
+	/*091*/ {Collation_ujis_bin, "ujis_bin", CharacterSet_ujis, false, true, 1, "PAD SPACE", nil},
+	/*092*/ {Collation_geostd8_general_ci, "geostd8_general_ci", CharacterSet_geostd8, true, true, 1, "PAD SPACE", nil},
+	/*093*/ {Collation_geostd8_bin, "geostd8_bin", CharacterSet_geostd8, false, true, 1, "PAD SPACE", nil},
+	/*094*/ {Collation_latin1_spanish_ci, "latin1_spanish_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*095*/ {Collation_cp932_japanese_ci, "cp932_japanese_ci", CharacterSet_cp932, true, true, 1, "PAD SPACE", nil},
+	/*096*/ {Collation_cp932_bin, "cp932_bin", CharacterSet_cp932, false, true, 1, "PAD SPACE", nil},
+	/*097*/ {Collation_eucjpms_japanese_ci, "eucjpms_japanese_ci", CharacterSet_eucjpms, true, true, 1, "PAD SPACE", nil},
+	/*098*/ {Collation_eucjpms_bin, "eucjpms_bin", CharacterSet_eucjpms, false, true, 1, "PAD SPACE", nil},
+	/*099*/ {Collation_cp1250_polish_ci, "cp1250_polish_ci", CharacterSet_cp1250, false, true, 1, "PAD SPACE", nil},
 	/*100*/ {},
-	/*101*/ {Collation_utf16_unicode_ci, "utf16_unicode_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*102*/ {Collation_utf16_icelandic_ci, "utf16_icelandic_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*103*/ {Collation_utf16_latvian_ci, "utf16_latvian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*104*/ {Collation_utf16_romanian_ci, "utf16_romanian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*105*/ {Collation_utf16_slovenian_ci, "utf16_slovenian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*106*/ {Collation_utf16_polish_ci, "utf16_polish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*107*/ {Collation_utf16_estonian_ci, "utf16_estonian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*108*/ {Collation_utf16_spanish_ci, "utf16_spanish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*109*/ {Collation_utf16_swedish_ci, "utf16_swedish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*110*/ {Collation_utf16_turkish_ci, "utf16_turkish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*111*/ {Collation_utf16_czech_ci, "utf16_czech_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*112*/ {Collation_utf16_danish_ci, "utf16_danish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*113*/ {Collation_utf16_lithuanian_ci, "utf16_lithuanian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*114*/ {Collation_utf16_slovak_ci, "utf16_slovak_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*115*/ {Collation_utf16_spanish2_ci, "utf16_spanish2_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*116*/ {Collation_utf16_roman_ci, "utf16_roman_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*117*/ {Collation_utf16_persian_ci, "utf16_persian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*118*/ {Collation_utf16_esperanto_ci, "utf16_esperanto_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*119*/ {Collation_utf16_hungarian_ci, "utf16_hungarian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*120*/ {Collation_utf16_sinhala_ci, "utf16_sinhala_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*121*/ {Collation_utf16_german2_ci, "utf16_german2_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*122*/ {Collation_utf16_croatian_ci, "utf16_croatian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*123*/ {Collation_utf16_unicode_520_ci, "utf16_unicode_520_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*124*/ {Collation_utf16_vietnamese_ci, "utf16_vietnamese_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
+	/*101*/ {Collation_utf16_unicode_ci, "utf16_unicode_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", encodings.Utf16_unicode_ci_RuneWeight},
+	/*102*/ {Collation_utf16_icelandic_ci, "utf16_icelandic_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*103*/ {Collation_utf16_latvian_ci, "utf16_latvian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*104*/ {Collation_utf16_romanian_ci, "utf16_romanian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*105*/ {Collation_utf16_slovenian_ci, "utf16_slovenian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*106*/ {Collation_utf16_polish_ci, "utf16_polish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*107*/ {Collation_utf16_estonian_ci, "utf16_estonian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*108*/ {Collation_utf16_spanish_ci, "utf16_spanish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*109*/ {Collation_utf16_swedish_ci, "utf16_swedish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*110*/ {Collation_utf16_turkish_ci, "utf16_turkish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*111*/ {Collation_utf16_czech_ci, "utf16_czech_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*112*/ {Collation_utf16_danish_ci, "utf16_danish_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*113*/ {Collation_utf16_lithuanian_ci, "utf16_lithuanian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*114*/ {Collation_utf16_slovak_ci, "utf16_slovak_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*115*/ {Collation_utf16_spanish2_ci, "utf16_spanish2_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*116*/ {Collation_utf16_roman_ci, "utf16_roman_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*117*/ {Collation_utf16_persian_ci, "utf16_persian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*118*/ {Collation_utf16_esperanto_ci, "utf16_esperanto_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*119*/ {Collation_utf16_hungarian_ci, "utf16_hungarian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*120*/ {Collation_utf16_sinhala_ci, "utf16_sinhala_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*121*/ {Collation_utf16_german2_ci, "utf16_german2_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*122*/ {Collation_utf16_croatian_ci, "utf16_croatian_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*123*/ {Collation_utf16_unicode_520_ci, "utf16_unicode_520_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
+	/*124*/ {Collation_utf16_vietnamese_ci, "utf16_vietnamese_ci", CharacterSet_utf16, false, true, 8, "PAD SPACE", nil},
 	/*125*/ {},
 	/*126*/ {},
 	/*127*/ {},
-	/*128*/ {Collation_ucs2_unicode_ci, "ucs2_unicode_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*129*/ {Collation_ucs2_icelandic_ci, "ucs2_icelandic_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*130*/ {Collation_ucs2_latvian_ci, "ucs2_latvian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*131*/ {Collation_ucs2_romanian_ci, "ucs2_romanian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*132*/ {Collation_ucs2_slovenian_ci, "ucs2_slovenian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*133*/ {Collation_ucs2_polish_ci, "ucs2_polish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*134*/ {Collation_ucs2_estonian_ci, "ucs2_estonian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*135*/ {Collation_ucs2_spanish_ci, "ucs2_spanish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*136*/ {Collation_ucs2_swedish_ci, "ucs2_swedish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*137*/ {Collation_ucs2_turkish_ci, "ucs2_turkish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*138*/ {Collation_ucs2_czech_ci, "ucs2_czech_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*139*/ {Collation_ucs2_danish_ci, "ucs2_danish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*140*/ {Collation_ucs2_lithuanian_ci, "ucs2_lithuanian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*141*/ {Collation_ucs2_slovak_ci, "ucs2_slovak_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*142*/ {Collation_ucs2_spanish2_ci, "ucs2_spanish2_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*143*/ {Collation_ucs2_roman_ci, "ucs2_roman_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*144*/ {Collation_ucs2_persian_ci, "ucs2_persian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*145*/ {Collation_ucs2_esperanto_ci, "ucs2_esperanto_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*146*/ {Collation_ucs2_hungarian_ci, "ucs2_hungarian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*147*/ {Collation_ucs2_sinhala_ci, "ucs2_sinhala_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*148*/ {Collation_ucs2_german2_ci, "ucs2_german2_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*149*/ {Collation_ucs2_croatian_ci, "ucs2_croatian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*150*/ {Collation_ucs2_unicode_520_ci, "ucs2_unicode_520_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*151*/ {Collation_ucs2_vietnamese_ci, "ucs2_vietnamese_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
+	/*128*/ {Collation_ucs2_unicode_ci, "ucs2_unicode_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*129*/ {Collation_ucs2_icelandic_ci, "ucs2_icelandic_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*130*/ {Collation_ucs2_latvian_ci, "ucs2_latvian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*131*/ {Collation_ucs2_romanian_ci, "ucs2_romanian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*132*/ {Collation_ucs2_slovenian_ci, "ucs2_slovenian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*133*/ {Collation_ucs2_polish_ci, "ucs2_polish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*134*/ {Collation_ucs2_estonian_ci, "ucs2_estonian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*135*/ {Collation_ucs2_spanish_ci, "ucs2_spanish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*136*/ {Collation_ucs2_swedish_ci, "ucs2_swedish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*137*/ {Collation_ucs2_turkish_ci, "ucs2_turkish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*138*/ {Collation_ucs2_czech_ci, "ucs2_czech_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*139*/ {Collation_ucs2_danish_ci, "ucs2_danish_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*140*/ {Collation_ucs2_lithuanian_ci, "ucs2_lithuanian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*141*/ {Collation_ucs2_slovak_ci, "ucs2_slovak_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*142*/ {Collation_ucs2_spanish2_ci, "ucs2_spanish2_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*143*/ {Collation_ucs2_roman_ci, "ucs2_roman_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*144*/ {Collation_ucs2_persian_ci, "ucs2_persian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*145*/ {Collation_ucs2_esperanto_ci, "ucs2_esperanto_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*146*/ {Collation_ucs2_hungarian_ci, "ucs2_hungarian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*147*/ {Collation_ucs2_sinhala_ci, "ucs2_sinhala_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*148*/ {Collation_ucs2_german2_ci, "ucs2_german2_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*149*/ {Collation_ucs2_croatian_ci, "ucs2_croatian_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*150*/ {Collation_ucs2_unicode_520_ci, "ucs2_unicode_520_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
+	/*151*/ {Collation_ucs2_vietnamese_ci, "ucs2_vietnamese_ci", CharacterSet_ucs2, false, true, 8, "PAD SPACE", nil},
 	/*152*/ {},
 	/*153*/ {},
 	/*154*/ {},
@@ -539,31 +524,31 @@ var collationArray = [310]Collation{
 	/*156*/ {},
 	/*157*/ {},
 	/*158*/ {},
-	/*159*/ {Collation_ucs2_general_mysql500_ci, "ucs2_general_mysql500_ci", CharacterSet_ucs2, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*160*/ {Collation_utf32_unicode_ci, "utf32_unicode_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*161*/ {Collation_utf32_icelandic_ci, "utf32_icelandic_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*162*/ {Collation_utf32_latvian_ci, "utf32_latvian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*163*/ {Collation_utf32_romanian_ci, "utf32_romanian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*164*/ {Collation_utf32_slovenian_ci, "utf32_slovenian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*165*/ {Collation_utf32_polish_ci, "utf32_polish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*166*/ {Collation_utf32_estonian_ci, "utf32_estonian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*167*/ {Collation_utf32_spanish_ci, "utf32_spanish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*168*/ {Collation_utf32_swedish_ci, "utf32_swedish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*169*/ {Collation_utf32_turkish_ci, "utf32_turkish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*170*/ {Collation_utf32_czech_ci, "utf32_czech_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*171*/ {Collation_utf32_danish_ci, "utf32_danish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*172*/ {Collation_utf32_lithuanian_ci, "utf32_lithuanian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*173*/ {Collation_utf32_slovak_ci, "utf32_slovak_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*174*/ {Collation_utf32_spanish2_ci, "utf32_spanish2_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*175*/ {Collation_utf32_roman_ci, "utf32_roman_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*176*/ {Collation_utf32_persian_ci, "utf32_persian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*177*/ {Collation_utf32_esperanto_ci, "utf32_esperanto_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*178*/ {Collation_utf32_hungarian_ci, "utf32_hungarian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*179*/ {Collation_utf32_sinhala_ci, "utf32_sinhala_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*180*/ {Collation_utf32_german2_ci, "utf32_german2_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*181*/ {Collation_utf32_croatian_ci, "utf32_croatian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*182*/ {Collation_utf32_unicode_520_ci, "utf32_unicode_520_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*183*/ {Collation_utf32_vietnamese_ci, "utf32_vietnamese_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
+	/*159*/ {Collation_ucs2_general_mysql500_ci, "ucs2_general_mysql500_ci", CharacterSet_ucs2, false, true, 1, "PAD SPACE", nil},
+	/*160*/ {Collation_utf32_unicode_ci, "utf32_unicode_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*161*/ {Collation_utf32_icelandic_ci, "utf32_icelandic_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*162*/ {Collation_utf32_latvian_ci, "utf32_latvian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*163*/ {Collation_utf32_romanian_ci, "utf32_romanian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*164*/ {Collation_utf32_slovenian_ci, "utf32_slovenian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*165*/ {Collation_utf32_polish_ci, "utf32_polish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*166*/ {Collation_utf32_estonian_ci, "utf32_estonian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*167*/ {Collation_utf32_spanish_ci, "utf32_spanish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*168*/ {Collation_utf32_swedish_ci, "utf32_swedish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*169*/ {Collation_utf32_turkish_ci, "utf32_turkish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*170*/ {Collation_utf32_czech_ci, "utf32_czech_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*171*/ {Collation_utf32_danish_ci, "utf32_danish_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*172*/ {Collation_utf32_lithuanian_ci, "utf32_lithuanian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*173*/ {Collation_utf32_slovak_ci, "utf32_slovak_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*174*/ {Collation_utf32_spanish2_ci, "utf32_spanish2_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*175*/ {Collation_utf32_roman_ci, "utf32_roman_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*176*/ {Collation_utf32_persian_ci, "utf32_persian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*177*/ {Collation_utf32_esperanto_ci, "utf32_esperanto_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*178*/ {Collation_utf32_hungarian_ci, "utf32_hungarian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*179*/ {Collation_utf32_sinhala_ci, "utf32_sinhala_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*180*/ {Collation_utf32_german2_ci, "utf32_german2_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*181*/ {Collation_utf32_croatian_ci, "utf32_croatian_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*182*/ {Collation_utf32_unicode_520_ci, "utf32_unicode_520_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
+	/*183*/ {Collation_utf32_vietnamese_ci, "utf32_vietnamese_ci", CharacterSet_utf32, false, true, 8, "PAD SPACE", nil},
 	/*184*/ {},
 	/*185*/ {},
 	/*186*/ {},
@@ -572,30 +557,30 @@ var collationArray = [310]Collation{
 	/*189*/ {},
 	/*190*/ {},
 	/*191*/ {},
-	/*192*/ {Collation_utf8mb3_unicode_ci, "utf8mb3_unicode_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*193*/ {Collation_utf8mb3_icelandic_ci, "utf8mb3_icelandic_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*194*/ {Collation_utf8mb3_latvian_ci, "utf8mb3_latvian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*195*/ {Collation_utf8mb3_romanian_ci, "utf8mb3_romanian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*196*/ {Collation_utf8mb3_slovenian_ci, "utf8mb3_slovenian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*197*/ {Collation_utf8mb3_polish_ci, "utf8mb3_polish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*198*/ {Collation_utf8mb3_estonian_ci, "utf8mb3_estonian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*199*/ {Collation_utf8mb3_spanish_ci, "utf8mb3_spanish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*200*/ {Collation_utf8mb3_swedish_ci, "utf8mb3_swedish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*201*/ {Collation_utf8mb3_turkish_ci, "utf8mb3_turkish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*202*/ {Collation_utf8mb3_czech_ci, "utf8mb3_czech_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*203*/ {Collation_utf8mb3_danish_ci, "utf8mb3_danish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*204*/ {Collation_utf8mb3_lithuanian_ci, "utf8mb3_lithuanian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*205*/ {Collation_utf8mb3_slovak_ci, "utf8mb3_slovak_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*206*/ {Collation_utf8mb3_spanish2_ci, "utf8mb3_spanish2_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*207*/ {Collation_utf8mb3_roman_ci, "utf8mb3_roman_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*208*/ {Collation_utf8mb3_persian_ci, "utf8mb3_persian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*209*/ {Collation_utf8mb3_esperanto_ci, "utf8mb3_esperanto_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*210*/ {Collation_utf8mb3_hungarian_ci, "utf8mb3_hungarian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*211*/ {Collation_utf8mb3_sinhala_ci, "utf8mb3_sinhala_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*212*/ {Collation_utf8mb3_german2_ci, "utf8mb3_german2_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*213*/ {Collation_utf8mb3_croatian_ci, "utf8mb3_croatian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*214*/ {Collation_utf8mb3_unicode_520_ci, "utf8mb3_unicode_520_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*215*/ {Collation_utf8mb3_vietnamese_ci, "utf8mb3_vietnamese_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
+	/*192*/ {Collation_utf8mb3_unicode_ci, "utf8mb3_unicode_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*193*/ {Collation_utf8mb3_icelandic_ci, "utf8mb3_icelandic_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*194*/ {Collation_utf8mb3_latvian_ci, "utf8mb3_latvian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*195*/ {Collation_utf8mb3_romanian_ci, "utf8mb3_romanian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*196*/ {Collation_utf8mb3_slovenian_ci, "utf8mb3_slovenian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*197*/ {Collation_utf8mb3_polish_ci, "utf8mb3_polish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*198*/ {Collation_utf8mb3_estonian_ci, "utf8mb3_estonian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*199*/ {Collation_utf8mb3_spanish_ci, "utf8mb3_spanish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*200*/ {Collation_utf8mb3_swedish_ci, "utf8mb3_swedish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*201*/ {Collation_utf8mb3_turkish_ci, "utf8mb3_turkish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*202*/ {Collation_utf8mb3_czech_ci, "utf8mb3_czech_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*203*/ {Collation_utf8mb3_danish_ci, "utf8mb3_danish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*204*/ {Collation_utf8mb3_lithuanian_ci, "utf8mb3_lithuanian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*205*/ {Collation_utf8mb3_slovak_ci, "utf8mb3_slovak_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*206*/ {Collation_utf8mb3_spanish2_ci, "utf8mb3_spanish2_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*207*/ {Collation_utf8mb3_roman_ci, "utf8mb3_roman_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*208*/ {Collation_utf8mb3_persian_ci, "utf8mb3_persian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*209*/ {Collation_utf8mb3_esperanto_ci, "utf8mb3_esperanto_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*210*/ {Collation_utf8mb3_hungarian_ci, "utf8mb3_hungarian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*211*/ {Collation_utf8mb3_sinhala_ci, "utf8mb3_sinhala_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*212*/ {Collation_utf8mb3_german2_ci, "utf8mb3_german2_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*213*/ {Collation_utf8mb3_croatian_ci, "utf8mb3_croatian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*214*/ {Collation_utf8mb3_unicode_520_ci, "utf8mb3_unicode_520_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*215*/ {Collation_utf8mb3_vietnamese_ci, "utf8mb3_vietnamese_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
 	/*216*/ {},
 	/*217*/ {},
 	/*218*/ {},
@@ -603,93 +588,93 @@ var collationArray = [310]Collation{
 	/*220*/ {},
 	/*221*/ {},
 	/*222*/ {},
-	/*223*/ {Collation_utf8mb3_general_mysql500_ci, "utf8mb3_general_mysql500_ci", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*224*/ {Collation_utf8mb4_unicode_ci, "utf8mb4_unicode_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*225*/ {Collation_utf8mb4_icelandic_ci, "utf8mb4_icelandic_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*226*/ {Collation_utf8mb4_latvian_ci, "utf8mb4_latvian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*227*/ {Collation_utf8mb4_romanian_ci, "utf8mb4_romanian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*228*/ {Collation_utf8mb4_slovenian_ci, "utf8mb4_slovenian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*229*/ {Collation_utf8mb4_polish_ci, "utf8mb4_polish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*230*/ {Collation_utf8mb4_estonian_ci, "utf8mb4_estonian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*231*/ {Collation_utf8mb4_spanish_ci, "utf8mb4_spanish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*232*/ {Collation_utf8mb4_swedish_ci, "utf8mb4_swedish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*233*/ {Collation_utf8mb4_turkish_ci, "utf8mb4_turkish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*234*/ {Collation_utf8mb4_czech_ci, "utf8mb4_czech_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*235*/ {Collation_utf8mb4_danish_ci, "utf8mb4_danish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*236*/ {Collation_utf8mb4_lithuanian_ci, "utf8mb4_lithuanian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*237*/ {Collation_utf8mb4_slovak_ci, "utf8mb4_slovak_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*238*/ {Collation_utf8mb4_spanish2_ci, "utf8mb4_spanish2_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*239*/ {Collation_utf8mb4_roman_ci, "utf8mb4_roman_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*240*/ {Collation_utf8mb4_persian_ci, "utf8mb4_persian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*241*/ {Collation_utf8mb4_esperanto_ci, "utf8mb4_esperanto_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*242*/ {Collation_utf8mb4_hungarian_ci, "utf8mb4_hungarian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*243*/ {Collation_utf8mb4_sinhala_ci, "utf8mb4_sinhala_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*244*/ {Collation_utf8mb4_german2_ci, "utf8mb4_german2_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*245*/ {Collation_utf8mb4_croatian_ci, "utf8mb4_croatian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*246*/ {Collation_utf8mb4_unicode_520_ci, "utf8mb4_unicode_520_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*247*/ {Collation_utf8mb4_vietnamese_ci, "utf8mb4_vietnamese_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*248*/ {Collation_gb18030_chinese_ci, "gb18030_chinese_ci", CharacterSet_gb18030, true, true, 2, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*249*/ {Collation_gb18030_bin, "gb18030_bin", CharacterSet_gb18030, false, true, 1, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
-	/*250*/ {Collation_gb18030_unicode_520_ci, "gb18030_unicode_520_ci", CharacterSet_gb18030, false, true, 8, "PAD SPACE", collationCompareInsensitive, collationLikeInsensitive},
+	/*223*/ {Collation_utf8mb3_general_mysql500_ci, "utf8mb3_general_mysql500_ci", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", nil},
+	/*224*/ {Collation_utf8mb4_unicode_ci, "utf8mb4_unicode_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", encodings.Utf8mb4_unicode_ci_RuneWeight},
+	/*225*/ {Collation_utf8mb4_icelandic_ci, "utf8mb4_icelandic_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*226*/ {Collation_utf8mb4_latvian_ci, "utf8mb4_latvian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*227*/ {Collation_utf8mb4_romanian_ci, "utf8mb4_romanian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*228*/ {Collation_utf8mb4_slovenian_ci, "utf8mb4_slovenian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*229*/ {Collation_utf8mb4_polish_ci, "utf8mb4_polish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*230*/ {Collation_utf8mb4_estonian_ci, "utf8mb4_estonian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*231*/ {Collation_utf8mb4_spanish_ci, "utf8mb4_spanish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*232*/ {Collation_utf8mb4_swedish_ci, "utf8mb4_swedish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*233*/ {Collation_utf8mb4_turkish_ci, "utf8mb4_turkish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*234*/ {Collation_utf8mb4_czech_ci, "utf8mb4_czech_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*235*/ {Collation_utf8mb4_danish_ci, "utf8mb4_danish_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*236*/ {Collation_utf8mb4_lithuanian_ci, "utf8mb4_lithuanian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*237*/ {Collation_utf8mb4_slovak_ci, "utf8mb4_slovak_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*238*/ {Collation_utf8mb4_spanish2_ci, "utf8mb4_spanish2_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*239*/ {Collation_utf8mb4_roman_ci, "utf8mb4_roman_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*240*/ {Collation_utf8mb4_persian_ci, "utf8mb4_persian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*241*/ {Collation_utf8mb4_esperanto_ci, "utf8mb4_esperanto_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*242*/ {Collation_utf8mb4_hungarian_ci, "utf8mb4_hungarian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*243*/ {Collation_utf8mb4_sinhala_ci, "utf8mb4_sinhala_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*244*/ {Collation_utf8mb4_german2_ci, "utf8mb4_german2_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*245*/ {Collation_utf8mb4_croatian_ci, "utf8mb4_croatian_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*246*/ {Collation_utf8mb4_unicode_520_ci, "utf8mb4_unicode_520_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*247*/ {Collation_utf8mb4_vietnamese_ci, "utf8mb4_vietnamese_ci", CharacterSet_utf8mb4, false, true, 8, "PAD SPACE", nil},
+	/*248*/ {Collation_gb18030_chinese_ci, "gb18030_chinese_ci", CharacterSet_gb18030, true, true, 2, "PAD SPACE", nil},
+	/*249*/ {Collation_gb18030_bin, "gb18030_bin", CharacterSet_gb18030, false, true, 1, "PAD SPACE", nil},
+	/*250*/ {Collation_gb18030_unicode_520_ci, "gb18030_unicode_520_ci", CharacterSet_gb18030, false, true, 8, "PAD SPACE", nil},
 	/*251*/ {},
 	/*252*/ {},
 	/*253*/ {},
 	/*254*/ {},
-	/*255*/ {Collation_utf8mb4_0900_ai_ci, "utf8mb4_0900_ai_ci", CharacterSet_utf8mb4, true, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*256*/ {Collation_utf8mb4_de_pb_0900_ai_ci, "utf8mb4_de_pb_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*257*/ {Collation_utf8mb4_is_0900_ai_ci, "utf8mb4_is_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*258*/ {Collation_utf8mb4_lv_0900_ai_ci, "utf8mb4_lv_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*259*/ {Collation_utf8mb4_ro_0900_ai_ci, "utf8mb4_ro_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*260*/ {Collation_utf8mb4_sl_0900_ai_ci, "utf8mb4_sl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*261*/ {Collation_utf8mb4_pl_0900_ai_ci, "utf8mb4_pl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*262*/ {Collation_utf8mb4_et_0900_ai_ci, "utf8mb4_et_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*263*/ {Collation_utf8mb4_es_0900_ai_ci, "utf8mb4_es_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*264*/ {Collation_utf8mb4_sv_0900_ai_ci, "utf8mb4_sv_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*265*/ {Collation_utf8mb4_tr_0900_ai_ci, "utf8mb4_tr_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*266*/ {Collation_utf8mb4_cs_0900_ai_ci, "utf8mb4_cs_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*267*/ {Collation_utf8mb4_da_0900_ai_ci, "utf8mb4_da_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*268*/ {Collation_utf8mb4_lt_0900_ai_ci, "utf8mb4_lt_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*269*/ {Collation_utf8mb4_sk_0900_ai_ci, "utf8mb4_sk_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*270*/ {Collation_utf8mb4_es_trad_0900_ai_ci, "utf8mb4_es_trad_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*271*/ {Collation_utf8mb4_la_0900_ai_ci, "utf8mb4_la_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
+	/*255*/ {Collation_utf8mb4_0900_ai_ci, "utf8mb4_0900_ai_ci", CharacterSet_utf8mb4, true, true, 0, "NO PAD", encodings.Utf8mb4_0900_ai_ci_RuneWeight},
+	/*256*/ {Collation_utf8mb4_de_pb_0900_ai_ci, "utf8mb4_de_pb_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*257*/ {Collation_utf8mb4_is_0900_ai_ci, "utf8mb4_is_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*258*/ {Collation_utf8mb4_lv_0900_ai_ci, "utf8mb4_lv_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*259*/ {Collation_utf8mb4_ro_0900_ai_ci, "utf8mb4_ro_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*260*/ {Collation_utf8mb4_sl_0900_ai_ci, "utf8mb4_sl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*261*/ {Collation_utf8mb4_pl_0900_ai_ci, "utf8mb4_pl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*262*/ {Collation_utf8mb4_et_0900_ai_ci, "utf8mb4_et_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*263*/ {Collation_utf8mb4_es_0900_ai_ci, "utf8mb4_es_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*264*/ {Collation_utf8mb4_sv_0900_ai_ci, "utf8mb4_sv_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*265*/ {Collation_utf8mb4_tr_0900_ai_ci, "utf8mb4_tr_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*266*/ {Collation_utf8mb4_cs_0900_ai_ci, "utf8mb4_cs_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*267*/ {Collation_utf8mb4_da_0900_ai_ci, "utf8mb4_da_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*268*/ {Collation_utf8mb4_lt_0900_ai_ci, "utf8mb4_lt_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*269*/ {Collation_utf8mb4_sk_0900_ai_ci, "utf8mb4_sk_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*270*/ {Collation_utf8mb4_es_trad_0900_ai_ci, "utf8mb4_es_trad_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*271*/ {Collation_utf8mb4_la_0900_ai_ci, "utf8mb4_la_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*272*/ {},
-	/*273*/ {Collation_utf8mb4_eo_0900_ai_ci, "utf8mb4_eo_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*274*/ {Collation_utf8mb4_hu_0900_ai_ci, "utf8mb4_hu_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*275*/ {Collation_utf8mb4_hr_0900_ai_ci, "utf8mb4_hr_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
+	/*273*/ {Collation_utf8mb4_eo_0900_ai_ci, "utf8mb4_eo_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*274*/ {Collation_utf8mb4_hu_0900_ai_ci, "utf8mb4_hu_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*275*/ {Collation_utf8mb4_hr_0900_ai_ci, "utf8mb4_hr_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*276*/ {},
-	/*277*/ {Collation_utf8mb4_vi_0900_ai_ci, "utf8mb4_vi_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*278*/ {Collation_utf8mb4_0900_as_cs, "utf8mb4_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*279*/ {Collation_utf8mb4_de_pb_0900_as_cs, "utf8mb4_de_pb_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*280*/ {Collation_utf8mb4_is_0900_as_cs, "utf8mb4_is_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*281*/ {Collation_utf8mb4_lv_0900_as_cs, "utf8mb4_lv_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*282*/ {Collation_utf8mb4_ro_0900_as_cs, "utf8mb4_ro_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*283*/ {Collation_utf8mb4_sl_0900_as_cs, "utf8mb4_sl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*284*/ {Collation_utf8mb4_pl_0900_as_cs, "utf8mb4_pl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*285*/ {Collation_utf8mb4_et_0900_as_cs, "utf8mb4_et_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*286*/ {Collation_utf8mb4_es_0900_as_cs, "utf8mb4_es_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*287*/ {Collation_utf8mb4_sv_0900_as_cs, "utf8mb4_sv_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*288*/ {Collation_utf8mb4_tr_0900_as_cs, "utf8mb4_tr_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*289*/ {Collation_utf8mb4_cs_0900_as_cs, "utf8mb4_cs_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*290*/ {Collation_utf8mb4_da_0900_as_cs, "utf8mb4_da_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*291*/ {Collation_utf8mb4_lt_0900_as_cs, "utf8mb4_lt_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*292*/ {Collation_utf8mb4_sk_0900_as_cs, "utf8mb4_sk_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*293*/ {Collation_utf8mb4_es_trad_0900_as_cs, "utf8mb4_es_trad_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*294*/ {Collation_utf8mb4_la_0900_as_cs, "utf8mb4_la_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
+	/*277*/ {Collation_utf8mb4_vi_0900_ai_ci, "utf8mb4_vi_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*278*/ {Collation_utf8mb4_0900_as_cs, "utf8mb4_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*279*/ {Collation_utf8mb4_de_pb_0900_as_cs, "utf8mb4_de_pb_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*280*/ {Collation_utf8mb4_is_0900_as_cs, "utf8mb4_is_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*281*/ {Collation_utf8mb4_lv_0900_as_cs, "utf8mb4_lv_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*282*/ {Collation_utf8mb4_ro_0900_as_cs, "utf8mb4_ro_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*283*/ {Collation_utf8mb4_sl_0900_as_cs, "utf8mb4_sl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*284*/ {Collation_utf8mb4_pl_0900_as_cs, "utf8mb4_pl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*285*/ {Collation_utf8mb4_et_0900_as_cs, "utf8mb4_et_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*286*/ {Collation_utf8mb4_es_0900_as_cs, "utf8mb4_es_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*287*/ {Collation_utf8mb4_sv_0900_as_cs, "utf8mb4_sv_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*288*/ {Collation_utf8mb4_tr_0900_as_cs, "utf8mb4_tr_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*289*/ {Collation_utf8mb4_cs_0900_as_cs, "utf8mb4_cs_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*290*/ {Collation_utf8mb4_da_0900_as_cs, "utf8mb4_da_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*291*/ {Collation_utf8mb4_lt_0900_as_cs, "utf8mb4_lt_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*292*/ {Collation_utf8mb4_sk_0900_as_cs, "utf8mb4_sk_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*293*/ {Collation_utf8mb4_es_trad_0900_as_cs, "utf8mb4_es_trad_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*294*/ {Collation_utf8mb4_la_0900_as_cs, "utf8mb4_la_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*295*/ {},
-	/*296*/ {Collation_utf8mb4_eo_0900_as_cs, "utf8mb4_eo_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*297*/ {Collation_utf8mb4_hu_0900_as_cs, "utf8mb4_hu_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*298*/ {Collation_utf8mb4_hr_0900_as_cs, "utf8mb4_hr_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
+	/*296*/ {Collation_utf8mb4_eo_0900_as_cs, "utf8mb4_eo_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*297*/ {Collation_utf8mb4_hu_0900_as_cs, "utf8mb4_hu_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*298*/ {Collation_utf8mb4_hr_0900_as_cs, "utf8mb4_hr_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*299*/ {},
-	/*300*/ {Collation_utf8mb4_vi_0900_as_cs, "utf8mb4_vi_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
+	/*300*/ {Collation_utf8mb4_vi_0900_as_cs, "utf8mb4_vi_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*301*/ {},
 	/*302*/ {},
-	/*303*/ {Collation_utf8mb4_ja_0900_as_cs, "utf8mb4_ja_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*304*/ {Collation_utf8mb4_ja_0900_as_cs_ks, "utf8mb4_ja_0900_as_cs_ks", CharacterSet_utf8mb4, false, true, 24, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*305*/ {Collation_utf8mb4_0900_as_ci, "utf8mb4_0900_as_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*306*/ {Collation_utf8mb4_ru_0900_ai_ci, "utf8mb4_ru_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*307*/ {Collation_utf8mb4_ru_0900_as_cs, "utf8mb4_ru_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*308*/ {Collation_utf8mb4_zh_0900_as_cs, "utf8mb4_zh_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
-	/*309*/ {Collation_utf8mb4_0900_bin, "utf8mb4_0900_bin", CharacterSet_utf8mb4, false, true, 1, "NO PAD", collationCompareInsensitive, collationLikeInsensitive},
+	/*303*/ {Collation_utf8mb4_ja_0900_as_cs, "utf8mb4_ja_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*304*/ {Collation_utf8mb4_ja_0900_as_cs_ks, "utf8mb4_ja_0900_as_cs_ks", CharacterSet_utf8mb4, false, true, 24, "NO PAD", nil},
+	/*305*/ {Collation_utf8mb4_0900_as_ci, "utf8mb4_0900_as_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*306*/ {Collation_utf8mb4_ru_0900_ai_ci, "utf8mb4_ru_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*307*/ {Collation_utf8mb4_ru_0900_as_cs, "utf8mb4_ru_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*308*/ {Collation_utf8mb4_zh_0900_as_cs, "utf8mb4_zh_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*309*/ {Collation_utf8mb4_0900_bin, "utf8mb4_0900_bin", CharacterSet_utf8mb4, false, true, 1, "NO PAD", encodings.Utf8mb4_0900_bin_RuneWeight},
 }
 
 func init() {
@@ -745,11 +730,11 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 			}
 			return collation, nil
 		}
-		return Collation_Default, ErrCollationNotSupported.New(*collationStr)
+		return Collation_Invalid, ErrCollationNotSupported.New(*collationStr)
 	} else {
 		characterSet, err := ParseCharacterSet(*characterSetStr)
 		if err != nil {
-			return Collation_Default, err
+			return Collation_Invalid, err
 		}
 		if collationStr == nil || len(*collationStr) == 0 {
 			if binaryAttribute {
@@ -759,10 +744,10 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 		}
 		collation, exists := collationStringToID[*collationStr]
 		if !exists {
-			return Collation_Default, ErrCollationNotSupported.New(*collationStr)
+			return Collation_Invalid, ErrCollationNotSupported.New(*collationStr)
 		}
 		if !collation.WorksWithCharacterSet(characterSet) {
-			return Collation_Default, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)
+			return Collation_Invalid, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)
 		}
 		return collation, nil
 	}
@@ -824,6 +809,68 @@ func (c CollationID) Collation() Collation {
 	return collationArray[c]
 }
 
+// HashToUint returns a hash of the given decoded string based on the collation. Collations take each rune's weight into
+// account, therefore two strings with technically different contents may hash to the same value, as the collation
+// considers them the same string.
+func (c CollationID) HashToUint(str string) (uint64, error) {
+	hash := xxhash.New()
+	if c == Collation_binary {
+		// Binary strings are almost always malformed due to their usage, therefore we treat them differently
+		_, err := hash.Write(encodings.StringToBytes(str))
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		getRuneWeight := collationArray[c].Sorter
+		for len(str) > 0 {
+			// All strings (should) have been decoded at this point, so we can rely on Go's internal string encoding
+			runeFromString, strRead := utf8.DecodeRuneInString(str)
+			if strRead == 0 || strRead == utf8.RuneError {
+				//TODO: return a real error
+				return 0, fmt.Errorf("malformed string encountered while hashing")
+			}
+			runeWeight := getRuneWeight(runeFromString)
+			_, err := hash.Write([]byte{
+				byte(runeWeight),
+				byte(runeWeight >> 8),
+				byte(runeWeight >> 16),
+				byte(runeWeight >> 24),
+			})
+			if err != nil {
+				return 0, err
+			}
+			str = str[strRead:]
+		}
+	}
+	return hash.Sum64(), nil
+}
+
+// HashToBytes returns a hash of the given decoded string based on the collation. Collations take each rune's weight
+// into account, therefore two strings with technically different contents may hash to the same value, as the collation
+// considers them the same string. This is equivalent to HashToUint, except that it converts the uint64 to a byte slice.
+func (c CollationID) HashToBytes(str string) ([]byte, error) {
+	hash, err := c.HashToUint(str)
+	if err != nil {
+		return nil, err
+	}
+	return []byte{
+		byte(hash),
+		byte(hash >> 8),
+		byte(hash >> 16),
+		byte(hash >> 24),
+		byte(hash >> 32),
+		byte(hash >> 40),
+		byte(hash >> 48),
+		byte(hash >> 56),
+	}, nil
+}
+
+// Sorter returns this collation's sort function. As collations are a work-in-progress, it is recommended to avoid
+// using any collations that return a nil sort function.
+func (c CollationID) Sorter() func(r rune) int32 {
+	return collationArray[c].Sorter
+}
+
 // NewCollationsIterator returns a new CollationsIterator.
 func NewCollationsIterator() *CollationsIterator {
 	return &CollationsIterator{0}
@@ -846,17 +893,7 @@ func (im *insensitiveMatcher) Match(matchStr string) bool {
 	return im.DisposableMatcher.Match(lower)
 }
 
-func insensitiveLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	lower := strings.ToLower(likeStr)
-	dm, err := regex.NewDisposableMatcher("go", lower)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &insensitiveMatcher{dm}, nil
-}
-
-func sensitiveLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	return regex.NewDisposableMatcher("go", likeStr)
+// TypeWithCollation is implemented on all types that may return a collation.
+type TypeWithCollation interface {
+	Collation() CollationID
 }

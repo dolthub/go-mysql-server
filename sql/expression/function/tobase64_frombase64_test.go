@@ -35,16 +35,16 @@ func TestBase64(t *testing.T) {
 	}{
 		// Use a MySQL server to get expected values if updating/adding to this!
 		{"null input", sql.NewRow(nil), nil, false},
-		{"single_line", sql.NewRow("foo"), string("Zm9v"), false},
+		{"single_line", sql.NewRow([]byte("foo")), string("Zm9v"), false},
 		{"multi_line", sql.NewRow(
-			"Gallia est omnis divisa in partes tres, quarum unam " +
+			[]byte("Gallia est omnis divisa in partes tres, quarum unam " +
 				"incolunt Belgae, aliam Aquitani, tertiam qui ipsorum lingua Celtae, " +
-				"nostra Galli appellantur"),
+				"nostra Galli appellantur")),
 			"R2FsbGlhIGVzdCBvbW5pcyBkaXZpc2EgaW4gcGFydGVzIHRyZXMsIHF1YXJ1bSB1bmFtIGluY29s\n" +
 				"dW50IEJlbGdhZSwgYWxpYW0gQXF1aXRhbmksIHRlcnRpYW0gcXVpIGlwc29ydW0gbGluZ3VhIENl\n" +
 				"bHRhZSwgbm9zdHJhIEdhbGxpIGFwcGVsbGFudHVy", false},
-		{"empty_input", sql.NewRow(""), string(""), false},
-		{"symbols", sql.NewRow("!@#$% %^&*()_+\r\n\t{};"), string("IUAjJCUgJV4mKigpXysNCgl7fTs="),
+		{"empty_input", sql.NewRow([]byte{}), string(""), false},
+		{"symbols", sql.NewRow([]byte("!@#$% %^&*()_+\r\n\t{};")), string("IUAjJCUgJV4mKigpXysNCgl7fTs="),
 			false},
 	}
 

@@ -25,6 +25,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 // Ascii implements the sql function "ascii" which returns the numeric value of the leftmost character
@@ -114,7 +115,18 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// TODO: add cases for geometry, point, linestring, and polygon
 	switch val := arg.(type) {
 	case string:
-		return hexForString(val), nil
+		childType := h.Child.Type()
+		if sql.IsTextOnly(childType) {
+			// For string types we need to re-encode the internal string so that we get the correct hex output
+			encoder := childType.(sql.StringType).Collation().CharacterSet().Encoder()
+			encodedBytes, ok := encoder.Encode(encodings.StringToBytes(val))
+			if !ok {
+				return nil, fmt.Errorf("unable to re-encode string for HEX function")
+			}
+			return hexForString(encodings.BytesToString(encodedBytes)), nil
+		} else {
+			return hexForString(val), nil
+		}
 
 	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
 		n, err := sql.Int64.Convert(arg)

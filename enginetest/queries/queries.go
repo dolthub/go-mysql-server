@@ -3760,11 +3760,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT s FROM mytable WHERE s LIKE '%D ROW'`,
-		Expected: []sql.Row{
-			{"second row"},
-			{"third row"},
-		},
+		Query:    `SELECT s FROM mytable WHERE s LIKE '%D ROW'`,
+		Expected: []sql.Row{}, // default collation of `utf8mb4_0900_bin` is case-sensitive
 	},
 	{
 		Query: `SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
@@ -4330,7 +4327,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT FROM_BASE64('YmFy')",
-		Expected: []sql.Row{{string("bar")}},
+		Expected: []sql.Row{{[]byte("bar")}},
 	},
 	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
