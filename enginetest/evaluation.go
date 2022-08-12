@@ -495,6 +495,8 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 			vw = uint64(x)
 		case float32:
 			vw = float64(x)
+		case float64:
+			vw = float64(float32(x))
 		default:
 			vw = v
 		}

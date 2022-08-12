@@ -76,10 +76,11 @@ func (j *jsonTableRowIter) Close(ctx *sql.Context) error {
 }
 
 type JSONTable struct {
-	name   string
-	schema sql.PrimaryKeySchema
-	data   []sql.Row
-	rowIdx uint64
+	name     string
+	dataExpr sql.Expression
+	path     string
+	schema   sql.PrimaryKeySchema
+	colPaths []string
 }
 
 var _ sql.Table = &JSONTable{}
@@ -110,13 +111,11 @@ func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.Table interface
 func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return &jsonTableRowIter{
-		rows: t.data,
-	}, nil
+	return t.RowIter(ctx, nil)
 }
 
 func (t *JSONTable) Resolved() bool {
-	return true
+	return t.dataExpr.Resolved()
 }
 
 func (t *JSONTable) Children() []sql.Node {
@@ -124,21 +123,9 @@ func (t *JSONTable) Children() []sql.Node {
 }
 
 func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, nil
-}
-
-func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return t, nil
-}
-
-func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
-func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
+	// TODO: need to resolve function calls like concat()
 	// data must evaluate to JSON string
-	data, err := dataExpr.Eval(ctx, nil)
+	data, err := t.dataExpr.Eval(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +142,7 @@ func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPat
 
 	// Get data specified from initial path
 	var jsonPathData []interface{}
-	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, path); err == nil {
+	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, t.path); err == nil {
 		if data, ok := rootJSONData.([]interface{}); ok {
 			jsonPathData = data
 		} else {
@@ -165,15 +152,13 @@ func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPat
 		return nil, err
 	}
 
-	// Create new JSONTable node
-	table := &JSONTable{
-		name:   alias,
-		schema: schema,
-		data:   make([]sql.Row, 0),
+	// Create new RowIter
+	itr := &jsonTableRowIter{
+		rows: []sql.Row{},
 	}
 
 	// Fill in table with data
-	for _, p := range colPaths {
+	for colIdx, p := range t.colPaths {
 		for i, obj := range jsonPathData {
 			// TODO: make sure replacing "key error" with default is sufficient
 			var val any
@@ -182,12 +167,39 @@ func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPat
 			} else {
 				val = nil
 			}
-			if i >= len(table.data) {
-				table.data = append(table.data, sql.Row{})
+
+			// convert into right type
+			value, err := t.schema.Schema[colIdx].Type.Convert(val)
+			if err != nil {
+				return nil, err
 			}
-			table.data[i] = append(table.data[i], val)
+
+			// insert into table
+			if i >= len(itr.rows) {
+				itr.rows = append(itr.rows, sql.Row{})
+			}
+			itr.rows[i] = append(itr.rows[i], value)
 		}
 	}
 
-	return table, nil
+	return itr, nil
+}
+
+func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return t, nil
+}
+
+func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
+// NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
+func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
+	return &JSONTable{
+		name:     alias,
+		dataExpr: dataExpr,
+		path:     path,
+		schema:   schema,
+		colPaths: colPaths,
+	}, nil
 }
