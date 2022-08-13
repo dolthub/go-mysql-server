@@ -659,6 +659,18 @@ func IsTime(t Type) bool {
 	return ok
 }
 
+// IsEnum checks if t is a enum
+func IsEnum(t Type) bool {
+	_, ok := t.(enumType)
+	return ok
+}
+
+// IsEnum checks if t is a set
+func IsSet(t Type) bool {
+	_, ok := t.(setType)
+	return ok
+}
+
 // IsTuple checks if t is a tuple type.
 // Note that TupleType instances with just 1 value are not considered
 // as a tuple, but a parenthesized value.

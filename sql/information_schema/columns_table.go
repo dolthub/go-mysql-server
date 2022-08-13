@@ -321,6 +321,10 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 		return fmt.Sprint(defStr)
 	}
 
+	if sql.IsEnum(cd.Type()) || sql.IsSet(cd.Type()) {
+		return strings.Trim(defStr, "'")
+	}
+
 	v, err := cd.Eval(ctx, nil)
 	if err != nil {
 		return nil
