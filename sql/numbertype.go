@@ -100,6 +100,7 @@ type NumberType interface {
 
 type numberTypeImpl struct {
 	baseType query.Type
+	length   int64
 }
 
 var _ Type = numberTypeImpl{}
@@ -609,11 +610,16 @@ func (t numberTypeImpl) SQL2(v Value) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t numberTypeImpl) String() string {
+	sizeInfo := ""
+	if t.length > 0 {
+		sizeInfo = fmt.Sprintf("(%d)", t.length)
+	}
+
 	switch t.baseType {
 	case sqltypes.Int8:
-		return "TINYINT"
+		return "TINYINT" + sizeInfo
 	case sqltypes.Uint8:
-		return "TINYINT UNSIGNED"
+		return "TINYINT UNSIGNED" + sizeInfo
 	case sqltypes.Int16:
 		return "SMALLINT"
 	case sqltypes.Uint16:
