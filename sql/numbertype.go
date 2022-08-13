@@ -118,6 +118,19 @@ func CreateNumberType(baseType query.Type) (NumberType, error) {
 	return nil, fmt.Errorf("%v is not a valid number base type", baseType.String())
 }
 
+// CreateNumberTypeWithLength creates a NumberType with length
+func CreateNumberTypeWithLength(baseType query.Type, length int64) (NumberType, error) {
+	switch baseType {
+	case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16, sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
+		sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64, sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64:
+		return numberTypeImpl{
+			baseType: baseType,
+			length:   length,
+		}, nil
+	}
+	return nil, fmt.Errorf("%v is not a valid number base type", baseType.String())
+}
+
 // MustCreateNumberType is the same as CreateNumberType except it panics on errors.
 func MustCreateNumberType(baseType query.Type) NumberType {
 	nt, err := CreateNumberType(baseType)

@@ -248,14 +248,30 @@ func AreComparable(types ...Type) bool {
 
 // ColumnTypeToType gets the column type using the column definition.
 func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
+	var length int64
+	if ct.Length != nil {
+		var err2 error
+		length, err2 = strconv.ParseInt(string(ct.Length.Val), 10, 64)
+		if err2 != nil {
+			return nil, err2
+		}
+	}
+
 	switch strings.ToLower(ct.Type) {
 	case "boolean", "bool":
 		return Int8, nil
 	case "tinyint":
-		if ct.Unsigned {
-			return Uint8, nil
+		if length == 0 {
+			if ct.Unsigned {
+				return Uint8, nil
+			}
+			return Int8, nil
 		}
-		return Int8, nil
+
+		if ct.Unsigned {
+			return CreateNumberTypeWithLength(sqltypes.Uint8, length)
+		}
+		return CreateNumberTypeWithLength(sqltypes.Int8, length)
 	case "smallint":
 		if ct.Unsigned {
 			return Uint16, nil
