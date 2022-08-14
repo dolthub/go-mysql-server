@@ -40,9 +40,6 @@ var JSONTableQueryTests = []QueryTest{
 			{3.345, 4.456},
 		},
 	},
-}
-
-var BrokenJSONTableQueryTests = []QueryTest{
 	{
 		Query: "SELECT * FROM JSON_TABLE(concat('[{},','{}]'),\"$[*]\" COLUMNS(x varchar(100) path \"$.a\",y varchar(100) path \"$.b\")) as t;",
 		Expected: []sql.Row{

@@ -85,6 +85,7 @@ type JSONTable struct {
 
 var _ sql.Table = &JSONTable{}
 var _ sql.Node = &JSONTable{}
+var _ sql.Expressioner = &JSONTable{}
 
 // Name implements the sql.Table interface
 func (t *JSONTable) Name() string {
@@ -114,14 +115,17 @@ func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sq
 	return t.RowIter(ctx, nil)
 }
 
+// Resolved implements the sql.Resolvable interface
 func (t *JSONTable) Resolved() bool {
 	return t.dataExpr.Resolved()
 }
 
+// Children implements the sql.Node interface
 func (t *JSONTable) Children() []sql.Node {
 	return nil
 }
 
+// RowIter implements the sql.Node interface
 func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// TODO: need to resolve function calls like concat()
 	// data must evaluate to JSON string
@@ -185,12 +189,29 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	return itr, nil
 }
 
+// WithChildren implements the sql.Node interface
 func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
+// CheckPrivileges implements the sql.Node interface
 func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// Expressions implements the sql.Expressioner interface
+func (t *JSONTable) Expressions() []sql.Expression {
+	return []sql.Expression{t.dataExpr}
+}
+
+// WithExpressions implements the sql.Expressioner interface
+func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
+	if len(expression) != 1 {
+		return nil, sql.ErrInvalidExpressionNumber.New(t, len(expression), 1)
+	}
+	nt := *t
+	nt.dataExpr = expression[0]
+	return &nt, nil
 }
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
