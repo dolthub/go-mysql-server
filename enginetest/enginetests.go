@@ -5603,6 +5603,123 @@ func TestPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestCharsetCollationEngine(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.CharsetCollationEngineTests {
+		t.Run(script.Name, func(t *testing.T) {
+			ctx := harness.NewContext()
+			ctx.SetCurrentDatabase("mydb")
+			engine := mustNewEngine(t, harness)
+			defer engine.Close()
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, harness, ctx, statement)
+			}
+
+			for _, query := range script.Queries {
+				t.Run(query.Query, func(t *testing.T) {
+					sch, iter, err := engine.Query(ctx, query.Query)
+					if query.Error {
+						if err == nil {
+							_, err := sql.RowIterToRows(ctx, sch, iter)
+							require.Error(t, err)
+						} else {
+							require.Error(t, err)
+						}
+					} else {
+						require.NoError(t, err)
+						rows, err := sql.RowIterToRows(ctx, sch, iter)
+						require.NoError(t, err)
+						require.Equal(t, query.Expected, rows)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestCharsetCollationWire as the harness must implement ClientHarness")
+	}
+	harness.Setup(setup.MydbData)
+
+	port := getEmptyPort(t)
+	for _, script := range queries.CharsetCollationWireTests {
+		t.Run(script.Name, func(t *testing.T) {
+			ctx := NewContextWithClient(harness, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			serverConfig := server.Config{
+				Protocol:       "tcp",
+				Address:        fmt.Sprintf("localhost:%d", port),
+				MaxConnections: 1000,
+			}
+
+			engine := mustNewEngine(t, harness)
+			defer engine.Close()
+			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, harness, ctx, statement)
+			}
+
+			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
+			require.NoError(t, err)
+			go func() {
+				err := s.Start()
+				require.NoError(t, err)
+			}()
+			defer func() {
+				require.NoError(t, s.Close())
+			}()
+
+			conn, err := dbr.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/", port), nil)
+			require.NoError(t, err)
+			_, err = conn.Exec("USE mydb;")
+			require.NoError(t, err)
+			for _, query := range script.Queries {
+				t.Run(query.Query, func(t *testing.T) {
+					r, err := conn.Query(query.Query)
+					if assert.NoError(t, err) {
+						rowIdx := -1
+						for r.Next() {
+							rowIdx++
+							connRow := make([]*string, len(query.Expected[rowIdx]))
+							interfaceRow := make([]any, len(connRow))
+							for i := range connRow {
+								interfaceRow[i] = &connRow[i]
+							}
+							err = r.Scan(interfaceRow...)
+							require.NoError(t, err)
+							outRow := make(sql.Row, len(connRow))
+							for i, str := range connRow {
+								if str == nil {
+									outRow[i] = nil
+								} else {
+									outRow[i] = *str
+								}
+							}
+							assert.Equal(t, query.Expected[rowIdx], outRow)
+						}
+					}
+				})
+			}
+			require.NoError(t, conn.Close())
+		})
+	}
+}
+
 func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
 	harness, ok := h.(ClientHarness)
 	if !ok {

@@ -100,7 +100,7 @@ func TestSetCreate(t *testing.T) {
 		{[]string{}, Collation_Default, nil, true},
 		{[]string{"one", "one"}, Collation_Default, nil, true},
 		{[]string{"one", "one"}, Collation_binary, nil, true},
-		{[]string{"one", "One"}, Collation_Default, nil, true},
+		{[]string{"one", "One"}, Collation_utf8mb4_general_ci, nil, true},
 		{[]string{"one", "one "}, Collation_Default, nil, true},
 		{[]string{"one", "two,"}, Collation_Default, nil, true},
 	}
@@ -167,8 +167,8 @@ func TestSetConvert(t *testing.T) {
 		{[]string{"one", "two"}, Collation_binary, "two,one,two", "one,two", false},
 		{[]string{"one", "two"}, Collation_Default, "two,one,two", "one,two", false},
 		{[]string{"a", "b", "c"}, Collation_Default, "b,c  ,a", "a,b,c", false},
-		{[]string{"one", "two"}, Collation_Default, "ONE", "one", false},
-		{[]string{"ONE", "two"}, Collation_Default, "one", "ONE", false},
+		{[]string{"one", "two"}, Collation_utf8mb4_general_ci, "ONE", "one", false},
+		{[]string{"ONE", "two"}, Collation_utf8mb4_general_ci, "one", "ONE", false},
 
 		{[]string{"one", "two"}, Collation_Default, 4, nil, true},
 		{[]string{"one", "two"}, Collation_Default, "three", nil, true},

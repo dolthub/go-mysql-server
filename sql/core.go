@@ -1154,18 +1154,51 @@ func IsTrue(val interface{}) bool {
 // TypesEqual compares two Types and returns whether they are equivalent.
 func TypesEqual(a, b Type) bool {
 	//TODO: replace all of the Type() == Type() calls with TypesEqual
-	if tupA, ok := a.(TupleType); ok {
-		if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
-			for i := range tupA {
-				if !TypesEqual(tupA[i], tupB[i]) {
-					return false
-				}
-			}
-			return true
-		}
-		return false
-	} else if _, ok := b.(TupleType); ok {
+
+	// We can assume they have the same implementing type if this passes, so we have to check the parameters
+	if a.Type() != b.Type() {
 		return false
 	}
-	return a == b
+	// Some types cannot be compared structurally as they contain non-comparable types (such as slices), so we handle
+	// those separately.
+	switch at := a.(type) {
+	case enumType:
+		aEnumType := at
+		bEnumType := b.(enumType)
+		if len(aEnumType.indexToVal) != len(bEnumType.indexToVal) {
+			return false
+		}
+		for i := 0; i < len(aEnumType.indexToVal); i++ {
+			if aEnumType.indexToVal[i] != bEnumType.indexToVal[i] {
+				return false
+			}
+		}
+		return aEnumType.collation == bEnumType.collation
+	case setType:
+		aSetType := at
+		bSetType := b.(setType)
+		if len(aSetType.bitToVal) != len(bSetType.bitToVal) {
+			return false
+		}
+		for bit, aVal := range aSetType.bitToVal {
+			if bVal, ok := bSetType.bitToVal[bit]; ok && aVal != bVal {
+				return false
+			}
+		}
+		return aSetType.collation == bSetType.collation
+	case TupleType:
+		if tupA, ok := a.(TupleType); ok {
+			if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
+				for i := range tupA {
+					if !TypesEqual(tupA[i], tupB[i]) {
+						return false
+					}
+				}
+				return true
+			}
+		}
+		return false
+	default:
+		return a == b
+	}
 }

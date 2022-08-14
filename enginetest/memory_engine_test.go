@@ -771,6 +771,14 @@ func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestCharsetCollationEngine(t *testing.T) {
+	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestCharsetCollationWire(t *testing.T) {
+	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+}
+
 func TestTypesOverWire(t *testing.T) {
 	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }

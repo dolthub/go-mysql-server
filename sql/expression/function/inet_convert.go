@@ -74,13 +74,12 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect to receive an IP address, so convert val into string
-	val, err = sql.LongText.Convert(val)
+	ipstr, err := sql.ConvertToString(val, sql.LongText)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 	}
 
 	// Parse IP address
-	ipstr := val.(string)
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
