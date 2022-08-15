@@ -104,4 +104,13 @@ var JSONTableQueryTests = []QueryTest{
 			{1},
 		},
 	},
+	{
+		Query: "SELECT * FROM JSON_TABLE((select t from json_table_tables),\"$[*]\" COLUMNS(i int path \"$.a\", j int path \"$.b\", k int path \"$.c\", l int path \"$.d\")) as tt;",
+		Expected: []sql.Row{
+			{1, nil, nil, nil},
+			{nil, 2, nil, nil},
+			{nil, nil, 3, nil},
+			{nil, nil, nil, 4},
+		},
+	},
 }
