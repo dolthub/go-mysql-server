@@ -81,7 +81,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{sql.OkResult{3, 0, nil}}},
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
 			},
 			{
 				// enginetests returns the enum id, but the text representation is sent over the wire
@@ -139,7 +139,7 @@ var ScriptTests = []ScriptTest{
 			//       - successfully inserting when equivalent enum values are specified in an insert/update statement
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{sql.OkResult{3, 0, nil}}},
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
