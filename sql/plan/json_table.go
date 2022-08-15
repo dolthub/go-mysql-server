@@ -129,7 +129,7 @@ func (t *JSONTable) Children() []sql.Node {
 func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// TODO: need to resolve function calls like concat()
 	// data must evaluate to JSON string
-	data, err := t.dataExpr.Eval(ctx, nil)
+	data, err := t.dataExpr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
