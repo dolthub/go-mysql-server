@@ -130,7 +130,6 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 }
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData)
 	for _, tt := range queries.JSONTableQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
