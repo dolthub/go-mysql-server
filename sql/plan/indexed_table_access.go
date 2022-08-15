@@ -92,8 +92,8 @@ func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.Pri
 }
 
 func (i *IndexedTableAccess) Index() sql.Index {
-	if i.lookup != nil {
-		return i.lookup.Index()
+	if !i.lookup.IsEmpty() {
+		return i.lookup.Index
 	}
 	return i.lb.index
 }
@@ -117,13 +117,12 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, err
 	}
 
-	indexedTable := indexAddressableTable.WithIndexLookup(lookup)
-	partIter, err := indexedTable.Partitions(ctx)
+	partIter, err := indexAddressableTable.IndexedPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, indexedTable, partIter)), nil
+	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, indexAddressableTable, partIter)), nil
 }
 
 func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
@@ -137,51 +136,48 @@ func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.Ro
 		return nil, err
 	}
 
-	indexedTable := resolvedTable.WithIndexLookup(lookup)
-
-	partIter, err := indexedTable.Partitions(ctx)
+	partIter, err := resolvedTable.IndexedPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}
-
-	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
+	return sql.NewTableRowIter(ctx, resolvedTable, partIter), nil
 }
 
 // CanBuildIndex returns whether an index lookup on this table can be successfully built for a zero-valued key. For a
 // static lookup, no lookup needs to be built, so returns true.
 func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	// If the lookup was provided at analysis time (static evaluation), then an index was already built
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return true, nil
 	}
 
 	key := i.lb.GetZeroKey()
 	lookup, err := i.lb.GetLookup(ctx, key)
-	return err == nil && lookup != nil, nil
+	return err == nil && !lookup.IsEmpty(), nil
 }
 
 func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return i.lookup, nil
 	}
 
 	key, err := i.lb.GetKey(ctx, row)
 	if err != nil {
-		return nil, err
+		return sql.IndexLookup{}, err
 	}
 	return i.lb.GetLookup(ctx, key)
 }
 
 func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return i.lookup, nil
 	}
 
 	key, err := i.lb.GetKey2(ctx, row)
 	if err != nil {
-		return nil, err
+		return sql.IndexLookup{}, err
 	}
 	return i.lb.GetLookup(ctx, key)
 }
@@ -191,8 +187,8 @@ func (i *IndexedTableAccess) String() string {
 	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
-	if i.lookup != nil {
-		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges().DebugString()))
+	if !i.lookup.IsEmpty() {
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
 	}
 	if pt, ok := seethroughTableWrapper(i.ResolvedTable).(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
@@ -216,8 +212,8 @@ func (i *IndexedTableAccess) DebugString() string {
 	pr.WriteNode("IndexedTableAccess(%s)", sql.DebugString(i.ResolvedTable))
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
-	if i.lookup != nil {
-		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges().DebugString()))
+	if !i.lookup.IsEmpty() {
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
 		children = append(children, fmt.Sprintf("lookup: STATIC LOOKUP(%s)", sql.DebugString(i.lookup)))
 	} else {
 		children = append(children, fmt.Sprintf("lookup: %s", sql.DebugString(i.lb)))
@@ -233,7 +229,7 @@ func (i *IndexedTableAccess) DebugString() string {
 
 // Expressions implements sql.Expressioner
 func (i *IndexedTableAccess) Expressions() []sql.Expression {
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return nil
 	}
 	return i.lb.Expressions()
@@ -241,7 +237,7 @@ func (i *IndexedTableAccess) Expressions() []sql.Expression {
 
 // WithExpressions implements sql.Expressioner
 func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), 0)
 		}
@@ -270,12 +266,17 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 
 // Partitions implements sql.Table
 func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	if i.lookup == nil {
+	if !i.lookup.IsEmpty() {
 		return i.ResolvedTable.Partitions(ctx)
 	}
 
 	table := i.baseTable()
-	return table.Partitions(ctx)
+	idt, ok := table.(sql.IndexAddressableTable)
+	if !ok {
+		return i.ResolvedTable.Partitions(ctx)
+	}
+	return idt.IndexedPartitions(ctx, i.lookup)
+	//return table.Partitions(ctx)
 }
 
 // baseTable returns the underlying sql.Table with any static index lookup applied
@@ -286,9 +287,9 @@ func (i *IndexedTableAccess) baseTable() sql.Table {
 		table = tw.Underlying()
 	}
 
-	if indexAddressableTable, ok := table.(sql.IndexAddressable); ok {
-		table = indexAddressableTable.WithIndexLookup(i.lookup)
-	}
+	//if indexAddressableTable, ok := table.(sql.IndexAddressable); ok {
+	//	table = indexAddressableTable.WithIndexLookup(i.lookup)
+	//}
 	return table
 }
 
@@ -389,7 +390,8 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
-		return lb.index.NewLookup(ctx, lb.rang)
+		//return lb.index.NewLookup(ctx, lb.rang)
+		return sql.IndexLookup{Index: lb.index, Ranges: []sql.Range{lb.rang}}, nil
 	}
 
 	for i := range key {
@@ -406,7 +408,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 		}
 	}
 
-	return lb.index.NewLookup(ctx, lb.rang)
+	return sql.IndexLookup{Index: lb.index, Ranges: []sql.Range{lb.rang}}, nil
 }
 
 func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {

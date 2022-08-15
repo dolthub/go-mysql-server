@@ -36,6 +36,41 @@ var _ sql.RowDeleter = (*tableEditor)(nil)
 var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
 
+func (t *tableEditor) Name() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *tableEditor) String() string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *tableEditor) Schema() sql.Schema {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *tableEditor) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *tableEditor) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *tableEditor) IndexedPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // StatementBegin implements the interface sql.TableEditor.
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
 	err := t.table.db.shim.Exec(t.table.db.name, "BEGIN;")

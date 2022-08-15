@@ -16,7 +16,6 @@ package sql
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -158,6 +157,10 @@ type testIndex struct {
 	numcols int
 }
 
+func (i testIndex) SupportsLookup(ctx *Context, lookup IndexLookup) (bool, error) {
+	return false, nil
+}
+
 func (testIndex) ID() string {
 	return "test_index"
 }
@@ -192,10 +195,6 @@ func (testIndex) IndexType() string {
 
 func (testIndex) IsGenerated() bool {
 	return false
-}
-
-func (testIndex) NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error) {
-	return nil, errors.New("unexpected NewLookup called on testIndex")
 }
 
 func (i testIndex) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {

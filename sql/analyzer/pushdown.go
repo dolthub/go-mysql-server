@@ -160,7 +160,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return n, samePred && sameFix, nil
 			case *plan.IndexedTableAccess:
-				if plan.GetIndexLookup(node) == nil {
+				if plan.GetIndexLookup(node).IsEmpty() {
 					// Index without lookup has no filters to mark/push.
 					// Relevant for IndexJoin, which has more restrictive
 					// rules for lookup expressions.
@@ -736,7 +736,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		// Extract primary key columns from index to maintain order
-		idxTbl, ok := rs.Table.(sql.IndexedTable)
+		idxTbl, ok := rs.Table.(sql.IndexAddressable)
 		if !ok {
 			return s, transform.SameTree, nil
 		}

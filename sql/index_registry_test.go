@@ -428,6 +428,10 @@ type dummyIdx struct {
 
 var _ DriverIndex = (*dummyIdx)(nil)
 
+func (i dummyIdx) SupportsLookup(ctx *Context, lookup IndexLookup) (bool, error) {
+	return false, nil
+}
+
 func (i dummyIdx) Expressions() []string {
 	var exprs []string
 	for _, e := range i.expr {

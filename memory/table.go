@@ -93,7 +93,7 @@ type Table struct {
 	insertPartIdx int
 
 	// Indexed lookups
-	lookup sql.IndexLookup
+	lookup sql.DriverIndexLookup
 
 	// AUTO_INCREMENT bookkeeping
 	autoIncVal uint64
@@ -112,7 +112,8 @@ var _ sql.TruncateableTable = (*Table)(nil)
 var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
-var _ sql.IndexedTable = (*Table)(nil)
+
+// var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
@@ -196,6 +197,58 @@ func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return &partitionIter{keys: keys}, nil
 }
 
+// Partitions implements the sql.Table interface.
+func (t *Table) IndexedPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	//todo new partitionIter for lookup
+	// there is only ever 1 partition, intermediary for rowIter
+	// need to create range expression for iter and apply it (we must already do this somewhere)
+	ranges, err := lookup.Index.(*Index).rangeFilterExpr(lookup.Ranges...)
+	if err != nil {
+		return nil, err
+	}
+
+	child, err := t.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rangePartitionIter{
+		child:  child.(*partitionIter),
+		ranges: ranges,
+	}, nil
+}
+
+// rangePartitionIter returns a partition that has range and table data access
+// cheat and only do one partition
+type rangePartitionIter struct {
+	child  *partitionIter
+	ranges sql.Expression
+}
+
+var _ sql.PartitionIter = (*rangePartitionIter)(nil)
+
+func (i rangePartitionIter) Close(ctx *sql.Context) error {
+	return i.child.Close(ctx)
+}
+
+func (i rangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
+	part, err := i.child.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &rangePartition{
+		Partition: part.(*Partition),
+		rang:      i.ranges,
+	}, nil
+}
+
+type rangePartition struct {
+	*Partition
+	rang sql.Expression
+}
+
+//TODO IndexedDoltTable
+
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(t.partitions)), nil
@@ -203,30 +256,25 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	// rangePartition will apply the range filter to individual partitions
+	filters := t.filters
+	if r, ok := partition.(*rangePartition); ok {
+		filters = append(t.filters, r.rang)
+	}
+
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
-
-	var values sql.IndexValueIter
-	if t.lookup != nil {
-		var err error
-		values, err = t.lookup.(sql.DriverIndexLookup).Values(partition)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// The slice could be altered by other operations taking place during iteration (such as deletion or insertion), so
 	// make a copy of the values as they exist when execution begins.
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
 
 	return &tableIter{
-		rows:        rowsCopy,
-		indexValues: values,
-		columns:     t.columns,
-		filters:     t.filters,
+		rows:    rowsCopy,
+		columns: t.columns,
+		filters: filters,
 	}, nil
 }
 
@@ -1311,9 +1359,9 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 	return nil
 }
 
-// WithIndexLookup implements the sql.IndexAddressableTable interface.
-func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	if lookup == nil {
+// WithDriverIndexLookup implements the sql.IndexAddressableTable interface.
+func (t *Table) WithDriverIndexLookup(lookup sql.DriverIndexLookup) sql.Table {
+	if t.lookup != nil {
 		return t
 	}
 

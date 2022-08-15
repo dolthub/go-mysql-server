@@ -1776,7 +1776,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		t9TableIndexable, ok := t12Table.(sql.IndexedTable)
+		t9TableIndexable, ok := t12Table.(sql.IndexAddressable)
 		require.True(t, ok)
 		t9Indexes, err := t9TableIndexable.GetIndexes(ctx)
 		require.NoError(t, err)

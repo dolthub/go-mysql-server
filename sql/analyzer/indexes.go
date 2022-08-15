@@ -72,13 +72,13 @@ func getIndexes(
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
 					var allRanges sql.RangeCollection
-					allRanges = append(sql.RangeCollection{}, leftIdx.lookup.Ranges()...)
-					allRanges = append(allRanges, rightIdx.lookup.Ranges()...)
+					allRanges = append(sql.RangeCollection{}, leftIdx.lookup.Ranges...)
+					allRanges = append(allRanges, rightIdx.lookup.Ranges...)
 					newRanges, err := sql.RemoveOverlappingRanges(allRanges...)
 					if err != nil {
 						return nil, nil
 					}
-					newLookup, err := leftIdx.lookup.Index().NewLookup(ctx, newRanges...)
+					newLookup := sql.IndexLookup{Index: leftIdx.lookup.Index, Ranges: newRanges}
 					if err != nil {
 						return nil, err
 					}
@@ -142,7 +142,7 @@ func getIndexes(
 						return nil, err
 					}
 				}
-				if lookup == nil {
+				if lookup.IsEmpty() {
 					return nil, nil
 				}
 
@@ -210,7 +210,7 @@ func getIndexes(
 
 				lookup, err := sql.NewIndexBuilder(ctx, idx).GreaterOrEqual(ctx, normalizedExpressions[0].String(), lower).
 					LessOrEqual(ctx, normalizedExpressions[0].String(), upper).Build(ctx)
-				if err != nil || lookup == nil {
+				if err != nil || lookup.IsEmpty() {
 					return nil, err
 				}
 
@@ -323,7 +323,7 @@ func getComparisonIndexLookup(
 	default:
 		return nil, nil
 	}
-	if err != nil || lookup == nil {
+	if err != nil || lookup.IsEmpty() {
 		return nil, err
 	}
 
@@ -408,7 +408,7 @@ func getNegatedIndexes(
 		} else {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 		}
-		if err != nil || lookup == nil {
+		if err != nil || lookup.IsEmpty() {
 			return nil, err
 		}
 
@@ -530,11 +530,11 @@ func indexesIntersection(ctx *sql.Context, left, right indexLookupsByTable) (ind
 
 	for table, idx := range left {
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
-			newRangeCollections, err := idx.lookup.Ranges().Intersect(idx2.lookup.Ranges())
+			newRangeCollections, err := idx.lookup.Ranges.Intersect(idx2.lookup.Ranges)
 			if err != nil || newRangeCollections == nil {
 				continue
 			}
-			idx.lookup, err = idx.lookup.Index().NewLookup(ctx, newRangeCollections...)
+			idx.lookup = sql.IndexLookup{Index: idx.lookup.Index, Ranges: newRangeCollections}
 			if err != nil {
 				return nil, err
 			}
@@ -754,7 +754,7 @@ func getMultiColumnIndexForExpressions(
 	if err != nil {
 		return nil, err
 	}
-	if lookup == nil {
+	if lookup.IsEmpty() {
 		return nil, nil
 	}
 	var lookupExpr sql.Expression
@@ -1046,11 +1046,11 @@ func canMergeIndexLookups(leftIndexes, rightIndexes indexLookupsByTable) bool {
 }
 
 func canMergeIndexes(a, b sql.IndexLookup) bool {
-	if a == nil || b == nil {
+	if a.IsEmpty() || b.IsEmpty() {
 		return false
 	}
-	ai := a.Index()
-	bi := b.Index()
+	ai := a.Index
+	bi := b.Index
 	if ai.Database() != bi.Database() || ai.Table() != bi.Table() {
 		return false
 	}

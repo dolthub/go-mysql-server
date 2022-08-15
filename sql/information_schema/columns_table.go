@@ -147,7 +147,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 			var columnKeyMap = make(map[string]string)
 			// Get UNIQUEs, PRIMARY KEYs
 			hasPK := false
-			if indexTable, ok := t.(sql.IndexedTable); ok {
+			if indexTable, ok := t.(sql.IndexAddressable); ok {
 				indexes, iErr := indexTable.GetIndexes(ctx)
 				if iErr != nil {
 					return false, iErr

@@ -30,6 +30,32 @@ type tableEditor struct {
 	initialInsert     int
 	// array of key ordinals for each unique index defined on the table
 	uniqueIdxCols [][]int
+	fkTable       *Table
+}
+
+func (t *tableEditor) Name() string {
+	return t.table.name
+}
+
+func (t *tableEditor) String() string {
+	return t.table.String()
+
+}
+
+func (t *tableEditor) Schema() sql.Schema {
+	return t.table.Schema()
+
+}
+
+func (t *tableEditor) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	return t.table.Partitions(ctx)
+}
+
+func (t *tableEditor) PartitionRows(ctx *sql.Context, part sql.Partition) (sql.RowIter, error) {
+	if t.fkTable != nil {
+		return t.fkTable.PartitionRows(ctx, part)
+	}
+	return t.table.PartitionRows(ctx, part)
 }
 
 var _ sql.RowReplacer = (*tableEditor)(nil)
@@ -37,6 +63,67 @@ var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
 var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
+
+func (t *tableEditor) IndexedPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	// copy table, apply the edits, set as the fkTab reference, return fkTable part iter
+	var newTab *Table
+	var err error
+	switch t := t.ea.(type) {
+	case *pkTableEditAccumulator:
+		newTab, err = newTable(t.table, t.table.schema)
+		if err != nil {
+			panic(err)
+		}
+		adds := make(map[string]sql.Row)
+		deletes := make(map[string]sql.Row)
+		for key, val := range t.adds {
+			adds[key] = val
+		}
+		for key, val := range t.deletes {
+			deletes[key] = val
+		}
+		err = (&pkTableEditAccumulator{
+			table:   newTab,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+	case *keylessTableEditAccumulator:
+		newTab, err = newTable(t.table, t.table.schema)
+		if err != nil {
+			panic(err)
+		}
+		adds := make([]sql.Row, len(t.adds))
+		deletes := make([]sql.Row, len(t.deletes))
+		for i, val := range t.adds {
+			adds[i] = val
+		}
+		for i, val := range t.deletes {
+			deletes[i] = val
+		}
+		err = (&keylessTableEditAccumulator{
+			table:   newTab,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+	default:
+		panic("unknown editor")
+	}
+	if newTab == nil {
+		panic("nil foreign key table")
+	}
+	t.fkTable = newTab
+	return newTab.IndexedPartitions(ctx, lookup)
+}
+
+func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	return t.table.GetIndexes(ctx)
+}
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
 	// Checkpointing is equivalent to flushing for tableEditor
@@ -220,63 +307,63 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 }
 
 // WithIndexLookup returns
-func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
-	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
-		newTable, err := newTable(pkTea.table, pkTea.table.schema)
-		if err != nil {
-			panic(err)
-		}
-		adds := make(map[string]sql.Row)
-		deletes := make(map[string]sql.Row)
-		for key, val := range pkTea.adds {
-			adds[key] = val
-		}
-		for key, val := range pkTea.deletes {
-			deletes[key] = val
-		}
-		err = (&pkTableEditAccumulator{
-			table:   newTable,
-			adds:    adds,
-			deletes: deletes,
-		}).ApplyEdits(sql.NewEmptyContext())
-		if err != nil {
-			panic(err)
-		}
-		memoryLookup := lookup.(*IndexLookup)
-		lookupIndex := *memoryLookup.idx.(*Index)
-		lookupIndex.Tbl = newTable
-		memoryLookup.idx = &lookupIndex
-		return newTable.WithIndexLookup(memoryLookup)
-	} else {
-		nonPkTea := t.ea.(*keylessTableEditAccumulator)
-		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
-		if err != nil {
-			panic(err)
-		}
-		adds := make([]sql.Row, len(nonPkTea.adds))
-		deletes := make([]sql.Row, len(nonPkTea.deletes))
-		for i, val := range nonPkTea.adds {
-			adds[i] = val
-		}
-		for i, val := range nonPkTea.deletes {
-			deletes[i] = val
-		}
-		err = (&keylessTableEditAccumulator{
-			table:   newTable,
-			adds:    adds,
-			deletes: deletes,
-		}).ApplyEdits(sql.NewEmptyContext())
-		if err != nil {
-			panic(err)
-		}
-		memoryLookup := lookup.(*IndexLookup)
-		lookupIndex := *memoryLookup.idx.(*Index)
-		lookupIndex.Tbl = newTable
-		memoryLookup.idx = &lookupIndex
-		return newTable.WithIndexLookup(memoryLookup)
-	}
-}
+//func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+//  //TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
+//	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
+//		newTable, err := newTable(pkTea.table, pkTea.table.schema)
+//		if err != nil {
+//			panic(err)
+//		}
+//		adds := make(map[string]sql.Row)
+//		deletes := make(map[string]sql.Row)
+//		for key, val := range pkTea.adds {
+//			adds[key] = val
+//		}
+//		for key, val := range pkTea.deletes {
+//			deletes[key] = val
+//		}
+//		err = (&pkTableEditAccumulator{
+//			table:   newTable,
+//			adds:    adds,
+//			deletes: deletes,
+//		}).ApplyEdits(sql.NewEmptyContext())
+//		if err != nil {
+//			panic(err)
+//		}
+//		memoryLookup := lookup.(*IndexLookup)
+//		lookupIndex := *memoryLookup.idx.(*Index)
+//		lookupIndex.Tbl = newTable
+//		memoryLookup.idx = &lookupIndex
+//		return newTable.WithIndexLookup(memoryLookup)
+//	} else {
+//		nonPkTea := t.ea.(*keylessTableEditAccumulator)
+//		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
+//		if err != nil {
+//			panic(err)
+//		}
+//		adds := make([]sql.Row, len(nonPkTea.adds))
+//		deletes := make([]sql.Row, len(nonPkTea.deletes))
+//		for i, val := range nonPkTea.adds {
+//			adds[i] = val
+//		}
+//		for i, val := range nonPkTea.deletes {
+//			deletes[i] = val
+//		}
+//		err = (&keylessTableEditAccumulator{
+//			table:   newTable,
+//			adds:    adds,
+//			deletes: deletes,
+//		}).ApplyEdits(sql.NewEmptyContext())
+//		if err != nil {
+//			panic(err)
+//		}
+//		memoryLookup := lookup.(*IndexLookup)
+//		lookupIndex := *memoryLookup.idx.(*Index)
+//		lookupIndex.Tbl = newTable
+//		memoryLookup.idx = &lookupIndex
+//		return newTable.WithIndexLookup(memoryLookup)
+//	}
+//}
 
 func (t *tableEditor) pkColumnIndexes() []int {
 	var pkColIdxes []int

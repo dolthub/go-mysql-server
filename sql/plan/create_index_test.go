@@ -389,9 +389,10 @@ func (i *mockIndex) Expressions() []string {
 	return exprs
 }
 
-func (*mockIndex) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
+func (i *mockIndex) SupportsLookup(ctx *sql.Context, lookup sql.IndexLookup) (bool, error) {
 	panic("unimplemented")
 }
+
 func (*mockIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
 	panic("unimplemented")
 }
