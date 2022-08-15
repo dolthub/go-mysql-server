@@ -23,11 +23,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 const (
@@ -247,7 +248,11 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, value)
+	encodedBytes, ok := t.collation.CharacterSet().Encoder().Encode(encodings.StringToBytes(value))
+	if !ok {
+		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+	}
+	val := appendAndSliceBytes(dest, encodedBytes)
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
@@ -308,6 +313,11 @@ func (t setType) Values() []string {
 		valArray[i] = t.bitToVal[bit]
 	}
 	return valArray
+}
+
+// WithNewCollation implements TypeWithCollation interface.
+func (t setType) WithNewCollation(collation CollationID) Type {
+	return MustCreateSetType(t.Values(), collation)
 }
 
 // allValuesBitField returns a bit field that references every value that the set contains.

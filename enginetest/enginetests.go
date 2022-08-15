@@ -5684,7 +5684,9 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					r, err := conn.Query(query.Query)
-					if assert.NoError(t, err) {
+					if query.Error {
+						require.Error(t, err)
+					} else if assert.NoError(t, err) {
 						rowIdx := -1
 						for r.Next() {
 							rowIdx++
