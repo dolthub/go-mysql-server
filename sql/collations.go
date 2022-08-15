@@ -826,8 +826,7 @@ func (c CollationID) HashToUint(str string) (uint64, error) {
 			// All strings (should) have been decoded at this point, so we can rely on Go's internal string encoding
 			runeFromString, strRead := utf8.DecodeRuneInString(str)
 			if strRead == 0 || strRead == utf8.RuneError {
-				//TODO: return a real error
-				return 0, fmt.Errorf("malformed string encountered while hashing")
+				return 0, ErrCollationMalformedString.New("hashing")
 			}
 			runeWeight := getRuneWeight(runeFromString)
 			_, err := hash.Write([]byte{
@@ -896,4 +895,5 @@ func (im *insensitiveMatcher) Match(matchStr string) bool {
 // TypeWithCollation is implemented on all types that may return a collation.
 type TypeWithCollation interface {
 	Collation() CollationID
+	WithNewCollation(collation CollationID) Type
 }

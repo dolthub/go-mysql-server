@@ -64,7 +64,7 @@ func (ce *CollatedExpression) Type() sql.Type {
 // Eval implements the sql.Expression interface.
 func (ce *CollatedExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if !sql.IsText(ce.expr.Type()) {
-		return nil, fmt.Errorf("wrong type in collated expression") //TODO: actual error
+		return nil, sql.ErrCollatedExprWrongType.New()
 	}
 	return ce.expr.Eval(ctx, row)
 }
