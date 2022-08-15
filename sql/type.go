@@ -611,11 +611,12 @@ func IsNull(ex Expression) bool {
 
 // IsNumber checks if t is a number type
 func IsNumber(t Type) bool {
-	_, ok := t.(numberTypeImpl)
-	if !ok {
-		_, ok = t.(decimalType)
+	switch t.(type) {
+	case numberTypeImpl, decimalType, bitType, yearType:
+		return true
+	default:
+		return false
 	}
-	return ok
 }
 
 // IsSigned checks if t is a signed type.
@@ -623,7 +624,7 @@ func IsSigned(t Type) bool {
 	return t == Int8 || t == Int16 || t == Int32 || t == Int64
 }
 
-// IsText checks if t is a text type.
+// IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
 func IsText(t Type) bool {
 	_, ok := t.(stringType)
 	return ok
@@ -641,6 +642,9 @@ func IsTextBlob(t Type) bool {
 
 // IsTextOnly checks if t is CHAR, VARCHAR, or one of the TEXTs.
 func IsTextOnly(t Type) bool {
+	if t == nil {
+		return false
+	}
 	switch t.Type() {
 	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
 		return true

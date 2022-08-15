@@ -92,7 +92,8 @@ func TestLike(t *testing.T) {
 		{"a%b", "ab", "", true},
 		{"a%b", "a", "", false},
 		{"a_b", "ab", "", false},
-		{"aa:%", "AA:BB:CC:DD:EE:FF", "", true},
+		{"aa:%", "aa:bb:cc:dd:ee:ff", "", true},
+		//TODO: test a case-insensitive collation
 	}
 
 	for _, tt := range testCases {

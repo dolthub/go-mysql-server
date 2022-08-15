@@ -376,6 +376,42 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
+		Name: "user creation no host",
+		SetUpScript: []string{
+			"CREATE USER testuser;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query: "SELECT user, host from mysql.user",
+				Expected: []sql.Row{
+					{"root", "localhost"},
+					{"testuser", "%"},
+				},
+			},
+		},
+	},
+	{
+		Name: "grants at various scopes no host",
+		SetUpScript: []string{
+			"CREATE USER tester;",
+			"GRANT SELECT ON *.* to tester",
+			"GRANT SELECT ON db.* to tester",
+			"GRANT SELECT ON db.tbl to tester",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT ON *.* TO `tester`@`%`"},
+					{"GRANT SELECT ON `db`.* TO `tester`@`%`"},
+					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`%`"},
+				},
+			},
+		},
+	},
+	{
 		Name: "Valid users without privileges may use the dual table",
 		SetUpScript: []string{
 			"CREATE USER tester@localhost;",

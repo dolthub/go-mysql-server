@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
 	istrings "github.com/dolthub/go-mysql-server/internal/strings"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 const (
@@ -84,6 +86,9 @@ type stringType struct {
 	maxResponseByteLength uint32
 	collation             CollationID
 }
+
+var _ StringType = stringType{}
+var _ TypeWithCollation = stringType{}
 
 // CreateString creates a new StringType based on the specified type, length, and collation. Length is interpreted as
 // the length of bytes in the new StringType for SQL types that are based on bytes (i.e. TEXT, BLOB, BINARY, and
@@ -261,7 +266,7 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 			return 0, err
 		}
 		if IsBinaryType(t) {
-			as = string(ai.([]byte))
+			as = encodings.BytesToString(ai.([]byte))
 		} else {
 			as = ai.(string)
 		}
@@ -272,18 +277,40 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 			return 0, err
 		}
 		if IsBinaryType(t) {
-			bs = string(bi.([]byte))
+			bs = encodings.BytesToString(bi.([]byte))
 		} else {
 			bs = bi.(string)
 		}
 	}
 
-	// TODO: should be comparing based on the collation for many cases, but the way this function is used throughout the
-	// codebase causes problems if made case insensitive.  Need to revisit usings strings.Compare for now.
-	//
-	// return Collations[t.collationName].Compare(as, bs), nil
+	encoder := t.collation.CharacterSet().Encoder()
+	getRuneWeight := t.collation.Sorter()
+	for len(as) > 0 && len(bs) > 0 {
+		ar, aRead := encoder.NextRune(as)
+		br, bRead := encoder.NextRune(bs)
+		if aRead == 0 || bRead == 0 || aRead == utf8.RuneError || bRead == utf8.RuneError {
+			//TODO: return a real error
+			return 0, fmt.Errorf("malformed string encountered while comparing")
+		}
+		aWeight := getRuneWeight(ar)
+		bWeight := getRuneWeight(br)
+		if aWeight < bWeight {
+			return -1, nil
+		} else if aWeight > bWeight {
+			return 1, nil
+		}
+		as = as[aRead:]
+		bs = bs[bRead:]
+	}
 
-	return strings.Compare(as, bs), nil
+	// Strings are equal up to the compared length, so shorter strings sort before longer strings
+	if len(as) < len(bs) {
+		return -1, nil
+	} else if len(as) > len(bs) {
+		return 1, nil
+	} else {
+		return 0, nil
+	}
 }
 
 // Convert implements Type interface.
@@ -387,6 +414,40 @@ func ConvertToString(v interface{}, t StringType) (string, error) {
 	return val, nil
 }
 
+// ConvertToCollatedString returns the given interface as a string, along with its collation. If the Type possess a
+// collation, then that collation is returned. If the Type does not possess a collation (such as an integer), then the
+// value is converted to a string and the default collation is used. If the value is already a string then no additional
+// conversions are made. If the value is a byte slice then a non-copying conversion is made, which means that the
+// original byte slice MUST NOT be modified after being passed to this function. If modifications need to be made, then
+// you must allocate a new byte slice and pass that new one in.
+func ConvertToCollatedString(val interface{}, typ Type) (string, CollationID, error) {
+	var content string
+	var collation CollationID
+	var err error
+	if typeWithCollation, ok := typ.(TypeWithCollation); ok {
+		collation = typeWithCollation.Collation()
+		if strVal, ok := val.(string); ok {
+			content = strVal
+		} else if byteVal, ok := val.([]byte); ok {
+			content = encodings.BytesToString(byteVal)
+		} else {
+			val, err = LongText.Convert(val)
+			if err != nil {
+				return "", Collation_Invalid, err
+			}
+			content = val.(string)
+		}
+	} else {
+		collation = Collation_Default
+		val, err = LongText.Convert(val)
+		if err != nil {
+			return "", Collation_Invalid, err
+		}
+		content = val.(string)
+	}
+	return content, collation, nil
+}
+
 // MustConvert implements the Type interface.
 func (t stringType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
@@ -434,7 +495,11 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		if err != nil {
 			return sqltypes.Value{}, err
 		}
-		val = appendAndSliceString(dest, v)
+		encodedBytes, ok := t.collation.CharacterSet().Encoder().Encode(encodings.StringToBytes(v))
+		if !ok {
+			return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+		}
+		val = appendAndSliceBytes(dest, encodedBytes)
 	}
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
@@ -513,6 +578,11 @@ func (t stringType) Collation() CollationID {
 	return t.collation
 }
 
+// WithNewCollation implements TypeWithCollation interface.
+func (t stringType) WithNewCollation(collation CollationID) Type {
+	return MustCreateString(t.baseType, t.maxCharLength, collation)
+}
+
 // MaxCharacterLength is the maximum character length for this type.
 func (t stringType) MaxCharacterLength() int64 {
 	return t.maxCharLength
@@ -524,15 +594,31 @@ func (t stringType) MaxByteLength() int64 {
 }
 
 func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	c := t.Collation().Collation()
-	switch c.like {
-	case collationLikeSensitive:
-		return sensitiveLikeMatcher(likeStr)
-	case collationLikeInsensitive:
+	//TODO: regular expressions do not currently work properly with collations, needs to be fixed
+	if strings.HasSuffix(t.Collation().Name(), "_ci") {
 		return insensitiveLikeMatcher(likeStr)
-	default:
-		panic(fmt.Errorf("unexpected value for like: %v", c.like))
+	} else {
+		return sensitiveLikeMatcher(likeStr)
 	}
+}
+
+type insensitiveMatcher struct {
+	regex.DisposableMatcher
+}
+
+func insensitiveLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
+	lower := strings.ToLower(likeStr)
+	dm, err := regex.NewDisposableMatcher("go", lower)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &insensitiveMatcher{dm}, nil
+}
+
+func sensitiveLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
+	return regex.NewDisposableMatcher("go", likeStr)
 }
 
 func appendAndSliceString(buffer []byte, addition string) (slice []byte) {

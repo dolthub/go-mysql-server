@@ -23,11 +23,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 const (
@@ -63,50 +64,46 @@ type SetType interface {
 
 type setType struct {
 	collation             CollationID
-	compareToOriginal     map[string]string
-	valToBit              map[string]uint64
+	hashedValToBit        map[uint64]uint64
 	bitToVal              map[uint64]string
 	maxResponseByteLength uint32
 }
+
+var _ SetType = setType{}
+var _ TypeWithCollation = setType{}
 
 // CreateSetType creates a SetType.
 func CreateSetType(values []string, collation CollationID) (SetType, error) {
 	if len(values) == 0 {
 		return nil, fmt.Errorf("number of values may not be zero")
 	}
-	/// A SET column can have a maximum of 64 distinct members.
+	// A SET column can have a maximum of 64 distinct members.
 	if len(values) > SetTypeMaxElements {
 		return nil, fmt.Errorf("number of values is too large")
 	}
-	compareToOriginal := make(map[string]string)
-	valToBit := make(map[string]uint64)
+	hashedValToBit := make(map[uint64]uint64)
 	bitToVal := make(map[uint64]string)
 	var maxByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
-		/// ...SET member values should not themselves contain commas.
+		// ...SET member values should not themselves contain commas.
 		if strings.Contains(value, ",") {
 			return nil, fmt.Errorf("values cannot contain a comma")
 		}
-		/// For binary or case-sensitive collations, lettercase is taken into account when assigning values to the column.
-		//TODO: add the other case-sensitive collations
-		switch collation {
-		case Collation_binary:
-			if _, ok := compareToOriginal[value]; ok {
-				return nil, ErrDuplicateEntrySet.New(value)
-			}
-			compareToOriginal[value] = value
-		default:
-			/// Trailing spaces are automatically deleted from SET member values in the table definition when a table is created.
+		if collation != Collation_binary {
+			// Trailing spaces are automatically deleted from SET member values in the table definition when a table is created.
 			value = strings.TrimRight(value, " ")
-			lowercaseValue := strings.ToLower(value)
-			if _, ok := compareToOriginal[lowercaseValue]; ok {
-				return nil, ErrDuplicateEntrySet.New(value)
-			}
-			compareToOriginal[lowercaseValue] = value
+		}
+
+		hashedVal, err := collation.HashToUint(value)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := hashedValToBit[hashedVal]; ok {
+			return nil, ErrDuplicateEntrySet.New(value)
 		}
 		bit := uint64(1 << uint64(i))
-		valToBit[value] = bit
+		hashedValToBit[hashedVal] = bit
 		bitToVal[bit] = value
 		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
 		if i != 0 {
@@ -115,8 +112,7 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 	}
 	return setType{
 		collation:             collation,
-		compareToOriginal:     compareToOriginal,
-		valToBit:              valToBit,
+		hashedValToBit:        hashedValToBit,
 		bitToVal:              bitToVal,
 		maxResponseByteLength: maxByteLength,
 	}, nil
@@ -252,7 +248,11 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, value)
+	encodedBytes, ok := t.collation.CharacterSet().Encoder().Encode(encodings.StringToBytes(value))
+	if !ok {
+		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+	}
+	val := appendAndSliceBytes(dest, encodedBytes)
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
@@ -296,7 +296,7 @@ func (t setType) Collation() CollationID {
 
 // NumberOfElements implements EnumType interface.
 func (t setType) NumberOfElements() uint16 {
-	return uint16(len(t.valToBit))
+	return uint16(len(t.hashedValToBit))
 }
 
 // BitsToString implements EnumType interface.
@@ -315,9 +315,14 @@ func (t setType) Values() []string {
 	return valArray
 }
 
+// WithNewCollation implements TypeWithCollation interface.
+func (t setType) WithNewCollation(collation CollationID) Type {
+	return MustCreateSetType(t.Values(), collation)
+}
+
 // allValuesBitField returns a bit field that references every value that the set contains.
 func (t setType) allValuesBitField() uint64 {
-	valCount := uint64(len(t.valToBit))
+	valCount := uint64(len(t.hashedValToBit))
 	if valCount == 64 {
 		return math.MaxUint64
 	}
@@ -360,28 +365,29 @@ func (t setType) convertStringToBitField(str string) (uint64, error) {
 	var bitField uint64
 	vals := strings.Split(str, ",")
 	for _, val := range vals {
-		var compareVal string
-		switch t.collation {
-		case Collation_binary:
-			compareVal = val
-		default:
-			compareVal = strings.ToLower(strings.TrimRight(val, " "))
+		compareVal := val
+		if t.collation != Collation_binary {
+			compareVal = strings.TrimRight(compareVal, " ")
 		}
-		if originalVal, ok := t.compareToOriginal[compareVal]; ok {
-			bitField |= t.valToBit[originalVal]
-		} else {
-			asUint, err := strconv.ParseUint(val, 10, 64)
-			if err == nil {
-				if asUint == 0 {
-					continue
-				}
-				if _, ok := t.bitToVal[asUint]; ok {
-					bitField |= asUint
-					continue
-				}
+		hashedVal, err := t.collation.HashToUint(compareVal)
+		if err == nil {
+			if bit, ok := t.hashedValToBit[hashedVal]; ok {
+				bitField |= bit
+				continue
 			}
-			return 0, ErrInvalidSetValue.New(val)
 		}
+
+		asUint, err := strconv.ParseUint(val, 10, 64)
+		if err == nil {
+			if asUint == 0 {
+				continue
+			}
+			if _, ok := t.bitToVal[asUint]; ok {
+				bitField |= asUint
+				continue
+			}
+		}
+		return 0, ErrInvalidSetValue.New(val)
 	}
 	return bitField, nil
 }

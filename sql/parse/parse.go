@@ -30,6 +30,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
@@ -1391,7 +1392,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.RenameStr:
 			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
 		case sqlparser.ModifyStr, sqlparser.ChangeStr:
-			sch, err := TableSpecToSchema(nil, ddl.TableSpec)
+			sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
 			if err != nil {
 				return nil, err
 			}
@@ -3026,7 +3027,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 		return expression.NewNot(c), nil
 	case *sqlparser.SQLVal:
-		return convertVal(v)
+		return convertVal(ctx, v)
 	case sqlparser.BoolVal:
 		return expression.NewLiteral(bool(v), sql.Boolean), nil
 	case *sqlparser.NullVal:
@@ -3187,8 +3188,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	case *sqlparser.IntervalExpr:
 		return intervalExprToExpression(ctx, v)
 	case *sqlparser.CollateExpr:
-		// TODO: handle collation
-		return ExprToExpression(ctx, v.Expr)
+		return handleCollateExpr(ctx, ctx.GetCharacterSet(), v)
 	case *sqlparser.ValuesFuncExpr:
 		col, err := ExprToExpression(ctx, v.Name)
 		if err != nil {
@@ -3221,6 +3221,29 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 		return nil, nil
 	}
+}
+
+// handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
+func handleCollateExpr(ctx *sql.Context, charSet sql.CharacterSetID, expr *sqlparser.CollateExpr) (sql.Expression, error) {
+	//TODO: rename this from Charset to Collation
+	collation, err := sql.ParseCollation(nil, &expr.Charset, false)
+	if err != nil {
+		return nil, err
+	}
+	// This is a temporary measure while all of the collations are being added. We could maintain a public list/enum of
+	// which collations are unsupported, however since this logic is temporary anyway it is easier to do this check.
+	// Once all of the collations have been added, this `if` statement will be removed.
+	if collation.Sorter() == nil {
+		return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
+	}
+	if collation.CharacterSet() != charSet {
+		return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
+	}
+	innerExpr, err := ExprToExpression(ctx, expr.Expr)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewCollatedExpression(innerExpr, collation), nil
 }
 
 func windowDefToWindow(ctx *sql.Context, def *sqlparser.WindowDef) (*sql.WindowDefinition, error) {
@@ -3294,10 +3317,10 @@ func convertInt(value string, base int) (sql.Expression, error) {
 	return expression.NewLiteral(uint64(ui64), sql.Uint64), nil
 }
 
-func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
+func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 	switch v.Type {
 	case sqlparser.StrVal:
-		return expression.NewLiteral(string(v.Val), sql.LongText), nil
+		return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
 	case sqlparser.IntVal:
 		return convertInt(string(v.Val), 10)
 	case sqlparser.FloatVal:
@@ -3307,6 +3330,7 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 		}
 		return expression.NewLiteral(val, sql.Float64), nil
 	case sqlparser.HexNum:
+		//TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
 		if strings.HasPrefix(v, "0x") {
 			v = v[2:]
@@ -3322,6 +3346,7 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 		}
 		return expression.NewLiteral(dst, sql.LongBlob), nil
 	case sqlparser.HexVal:
+		//TODO: binary collation?
 		val, err := v.HexDecode()
 		if err != nil {
 			return nil, err
@@ -3516,30 +3541,67 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			return nil, err
 		}
 		return expression.NewBinary(expr), nil
-	case "_binary ":
-		// Charset introducers do not operate as CONVERT, they just state how a string should be interpreted.
-		// TODO: if we encounter a non-string, do something other than just return
-		expr, err := ExprToExpression(ctx, e.Expr)
-		if err != nil {
-			return nil, err
-		}
-		if exprLiteral, ok := expr.(*expression.Literal); ok && sql.IsTextOnly(exprLiteral.Type()) {
-			return expression.NewLiteral(exprLiteral.Value(), sql.LongBlob), nil
-		}
-		return expr, nil
-	case "_utf8mb4 ", "_utf8mb3 ", "_utf8 ":
-		expr, err := ExprToExpression(ctx, e.Expr)
-		if err != nil {
-			return nil, err
-		}
-		// must be string type
-		if !sql.IsText(expr.Type()) {
-			return nil, sql.ErrInvalidType.New(expr.Type().String() + " after character set introducer")
-		}
-		return expr, nil
 	default:
-		if strings.HasPrefix(strings.ToLower(e.Operator), "_") {
-			return nil, sql.ErrUnsupportedFeature.New("unsupported character set: " + e.Operator)
+		lowerOperator := strings.TrimSpace(strings.ToLower(e.Operator))
+		if strings.HasPrefix(lowerOperator, "_") {
+			// This is a character set introducer, so we need to decode the string to our internal encoding (`utf8mb4`)
+			charSet, err := sql.ParseCharacterSet(lowerOperator[1:])
+			if err != nil {
+				return nil, err
+			}
+			if charSet.Encoder() == nil {
+				return nil, sql.ErrUnsupportedFeature.New("unsupported character set: " + charSet.Name())
+			}
+
+			// Due to how vitess orders expressions, COLLATE is a child rather than a parent, so we need to handle it in a special way
+			collation := charSet.DefaultCollation()
+			if collateExpr, ok := e.Expr.(*sqlparser.CollateExpr); ok {
+				// We extract the expression out of CollateExpr as we're only concerned about the collation string
+				e.Expr = collateExpr.Expr
+				//TODO: rename this from Charset to Collation
+				collation, err = sql.ParseCollation(nil, &collateExpr.Charset, false)
+				if err != nil {
+					return nil, err
+				}
+				if collation.Sorter() == nil {
+					return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
+				}
+				if collation.CharacterSet() != charSet {
+					return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
+				}
+			}
+
+			// Character set introducers only work on string literals
+			expr, err := ExprToExpression(ctx, e.Expr)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := expr.(*expression.Literal); !ok || !sql.IsText(expr.Type()) {
+				return nil, sql.ErrCharSetIntroducer.New()
+			}
+			literal, err := expr.Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			// Internally all strings are `utf8mb4`, so we need to decode the string (which applies the introducer)
+			if strLiteral, ok := literal.(string); ok {
+				decodedLiteral, ok := charSet.Encoder().Decode(encodings.StringToBytes(strLiteral))
+				if !ok {
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
+				}
+				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), sql.CreateLongText(collation)), nil
+			} else if byteLiteral, ok := literal.([]byte); ok {
+				decodedLiteral, ok := charSet.Encoder().Decode(byteLiteral)
+				if !ok {
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
+				}
+				return expression.NewLiteral(decodedLiteral, sql.CreateLongText(collation)), nil
+			} else {
+				// Should not be possible
+				return nil, fmt.Errorf("expression literal returned type `%s` but literal value had type `%T`",
+					expr.Type().String(), literal)
+			}
 		}
 		return nil, sql.ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}
