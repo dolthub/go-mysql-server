@@ -18,6 +18,15 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 var ExternalProcedureTests = []ScriptTest{
 	{
+		Name: "call external stored procedure that does not exist",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL procedure_does_not_exist('foo');",
+				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+			},
+		},
+	},
+	{
 		Name: "INOUT on first param, IN on second param",
 		SetUpScript: []string{
 			"SET @outparam = 5;",
@@ -178,6 +187,22 @@ var ExternalProcedureTests = []ScriptTest{
 			{
 				Query:    "CALL memory_variadic_overload('A', 'B', 5);",
 				Expected: []sql.Row{{"A,B,[5]"}},
+			},
+		},
+	},
+	{
+		Name: "show create procedure for external stored procedures",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create procedure memory_variadic_overload;",
+				Expected: []sql.Row{{
+					"memory_variadic_overload",
+					"",
+					"CREATE PROCEDURE memory_variadic_overload() SELECT 'External stored procedure';",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+					"utf8mb4_0900_bin",
+				}},
 			},
 		},
 	},

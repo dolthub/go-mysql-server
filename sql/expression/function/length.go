@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	"github.com/dolthub/go-mysql-server/sql/encodings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -110,27 +112,28 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	var content string
-	switch l.Child.Type() {
-	case sql.TinyBlob, sql.Blob, sql.MediumBlob, sql.LongBlob:
-		val, err = sql.LongBlob.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-
-		content = string(val.([]byte))
-	default:
-		val, err = sql.LongText.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-
-		content = val.(string)
+	content, collation, err := sql.ConvertToCollatedString(val, l.Child.Type())
+	if err != nil {
+		return nil, err
 	}
-
+	charSetEncoder := collation.CharacterSet().Encoder()
 	if l.CountType == NumBytes {
-		return int32(len(content)), nil
+		encodedContent, ok := charSetEncoder.Encode(encodings.StringToBytes(content))
+		if !ok {
+			return nil, fmt.Errorf("unable to re-encode string for LENGTH function")
+		}
+		return int32(len(encodedContent)), nil
+	} else {
+		contentLen := int32(0)
+		for len(content) > 0 {
+			cr, cRead := charSetEncoder.NextRune(content)
+			if cRead == 0 || cr == utf8.RuneError {
+				//TODO: return a real error
+				return 0, fmt.Errorf("malformed string encountered while checking length")
+			}
+			content = content[cRead:]
+			contentLen++
+		}
+		return contentLen, nil
 	}
-
-	return int32(utf8.RuneCountInString(content)), nil
 }

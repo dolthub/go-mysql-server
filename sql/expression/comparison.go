@@ -94,13 +94,20 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
 	// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
 	var compareType sql.Type
+	collationPreference := sql.Collation_Default
 	switch c.Left().(type) {
 	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
 		compareType = c.Left().Type()
+		if twc, ok := compareType.(sql.TypeWithCollation); ok {
+			collationPreference = twc.Collation()
+		}
 	default:
 		switch c.Right().(type) {
 		case *GetField, *UserVar, *SystemVar, *ProcedureParam:
 			compareType = c.Right().Type()
+			if twc, ok := compareType.(sql.TypeWithCollation); ok {
+				collationPreference = twc.Collation()
+			}
 		}
 	}
 	if compareType != nil {
@@ -116,6 +123,10 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		if err != nil {
 			return 0, err
 		}
+	}
+	if sql.IsTextOnly(compareType) {
+		stringCompareType := compareType.(sql.StringType)
+		compareType = sql.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 
 	return compareType.Compare(left, right)
@@ -209,12 +220,12 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 }
 
 func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	l, err := convertValue(left, convertTo)
+	l, err := convertValue(left, convertTo, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := convertValue(right, convertTo)
+	r, err := convertValue(right, convertTo, nil)
 	if err != nil {
 		return nil, nil, err
 	}

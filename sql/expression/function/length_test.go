@@ -78,7 +78,7 @@ func TestLength(t *testing.T) {
 			[]byte("fóo"),
 			sql.Blob,
 			NewCharLength,
-			int32(3),
+			int32(4),
 		},
 		{
 			"char_length empty",

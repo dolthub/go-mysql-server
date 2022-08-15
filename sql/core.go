@@ -707,6 +707,21 @@ type MutableDatabaseProvider interface {
 	DropDatabase(ctx *Context, name string) error
 }
 
+// ExternalStoredProcedureProvider provides access to built-in stored procedures. These procedures are implemented
+// as functions, instead of as SQL statements. The returned stored procedures cannot be modified or deleted.
+type ExternalStoredProcedureProvider interface {
+	// ExternalStoredProcedure returns the external stored procedure details for the procedure with the specified name
+	// that is able to accept the specified number of parameters. If no matching external stored procedure is found,
+	// nil, nil is returned. If an unexpected error is encountered, it is returned as the error parameter.
+	ExternalStoredProcedure(ctx *Context, name string, numOfParams int) (*ExternalStoredProcedureDetails, error)
+	// ExternalStoredProcedures returns a slice of all external stored procedure details with the specified name. External
+	// stored procedures can overload the same name with different arguments, so this method enables a caller to see all
+	// available variants with the specified name. If no matching external stored procedures are found, an
+	// empty slice is returned, with a nil error. If an unexpected error is encountered, it is returned as the
+	// error parameter.
+	ExternalStoredProcedures(ctx *Context, name string) ([]ExternalStoredProcedureDetails, error)
+}
+
 // FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
 type FunctionProvider interface {
 	// Function returns the function with the name provided, case-insensitive
@@ -1050,15 +1065,10 @@ type ExternalStoredProcedureDetails struct {
 	Function interface{}
 }
 
-// Comment returns a comment stating that this is an external stored procedure, which is defined by the given database.
-func (espd ExternalStoredProcedureDetails) Comment(dbName string) string {
-	return fmt.Sprintf("External stored procedure defined by %s", dbName)
-}
-
 // FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some
 // tools (such as Java's JDBC connector) require a valid statement in some situations.
-func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt(dbName string) string {
-	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT '%s';", espd.Name, espd.Comment(dbName))
+func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt() string {
+	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT 'External stored procedure';", espd.Name)
 }
 
 // StoredProcedureDatabase is a database that supports the creation and execution of stored procedures. The engine will
@@ -1077,16 +1087,6 @@ type StoredProcedureDatabase interface {
 
 	// DropStoredProcedure removes the StoredProcedureDetails with the matching name from the database.
 	DropStoredProcedure(ctx *Context, name string) error
-}
-
-// ExternalStoredProcedureDatabase is a database that implements its own stored procedures as a function, rather than as
-// a SQL statement. The returned stored procedures are treated as "built-in", in that they cannot be modified nor
-// deleted.
-type ExternalStoredProcedureDatabase interface {
-	StoredProcedureDatabase
-
-	// GetExternalStoredProcedures returns all ExternalStoredProcedureDetails for the database.
-	GetExternalStoredProcedures(ctx *Context) ([]ExternalStoredProcedureDetails, error)
 }
 
 // EvaluateCondition evaluates a condition, which is an expression whose value
@@ -1154,18 +1154,51 @@ func IsTrue(val interface{}) bool {
 // TypesEqual compares two Types and returns whether they are equivalent.
 func TypesEqual(a, b Type) bool {
 	//TODO: replace all of the Type() == Type() calls with TypesEqual
-	if tupA, ok := a.(TupleType); ok {
-		if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
-			for i := range tupA {
-				if !TypesEqual(tupA[i], tupB[i]) {
-					return false
-				}
-			}
-			return true
-		}
-		return false
-	} else if _, ok := b.(TupleType); ok {
+
+	// We can assume they have the same implementing type if this passes, so we have to check the parameters
+	if a.Type() != b.Type() {
 		return false
 	}
-	return a == b
+	// Some types cannot be compared structurally as they contain non-comparable types (such as slices), so we handle
+	// those separately.
+	switch at := a.(type) {
+	case enumType:
+		aEnumType := at
+		bEnumType := b.(enumType)
+		if len(aEnumType.indexToVal) != len(bEnumType.indexToVal) {
+			return false
+		}
+		for i := 0; i < len(aEnumType.indexToVal); i++ {
+			if aEnumType.indexToVal[i] != bEnumType.indexToVal[i] {
+				return false
+			}
+		}
+		return aEnumType.collation == bEnumType.collation
+	case setType:
+		aSetType := at
+		bSetType := b.(setType)
+		if len(aSetType.bitToVal) != len(bSetType.bitToVal) {
+			return false
+		}
+		for bit, aVal := range aSetType.bitToVal {
+			if bVal, ok := bSetType.bitToVal[bit]; ok && aVal != bVal {
+				return false
+			}
+		}
+		return aSetType.collation == bSetType.collation
+	case TupleType:
+		if tupA, ok := a.(TupleType); ok {
+			if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
+				for i := range tupA {
+					if !TypesEqual(tupA[i], tupB[i]) {
+						return false
+					}
+				}
+				return true
+			}
+		}
+		return false
+	default:
+		return a == b
+	}
 }

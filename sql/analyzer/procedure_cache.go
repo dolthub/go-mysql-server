@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// ProcedureCache contains all of the stored procedures for each database.
+// ProcedureCache contains all non-built-in stored procedures for each database.
 type ProcedureCache struct {
 	dbToProcedureMap map[string]map[string]map[int]*plan.Procedure
 	IsPopulating     bool
@@ -67,7 +67,7 @@ func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *pl
 	return nil
 }
 
-// AllForDatabase returns all of the stored procedures for the given database, sorted by name and parameter count
+// AllForDatabase returns all stored procedures for the given database, sorted by name and parameter count
 // ascending. The database name is case-insensitive.
 func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
 	dbName = strings.ToLower(dbName)

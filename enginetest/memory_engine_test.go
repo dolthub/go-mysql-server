@@ -556,7 +556,7 @@ func TestStoredProcedures(t *testing.T) {
 }
 
 func TestExternalProcedures(t *testing.T) {
-	harness := enginetest.NewExternalStoredProcedureMemoryHarness()
+	harness := enginetest.NewDefaultMemoryHarness()
 	for _, script := range queries.ExternalProcedureTests {
 		myDb := harness.NewDatabase("mydb")
 		databases := []sql.Database{myDb}
@@ -764,6 +764,14 @@ func TestPrepared(t *testing.T) {
 
 func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestCharsetCollationEngine(t *testing.T) {
+	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestCharsetCollationWire(t *testing.T) {
+	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
 func TestTypesOverWire(t *testing.T) {

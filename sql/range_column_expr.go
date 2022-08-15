@@ -52,8 +52,8 @@ func OpenRangeColumnExpr(lower, upper interface{}, typ Type) RangeColumnExpr {
 		return EmptyRangeColumnExpr(typ)
 	}
 	return RangeColumnExpr{
-		Above{key: lower},
-		Below{key: upper},
+		Above{Key: lower},
+		Below{Key: upper},
 		typ,
 	}
 }
@@ -64,8 +64,8 @@ func ClosedRangeColumnExpr(lower, upper interface{}, typ Type) RangeColumnExpr {
 		return EmptyRangeColumnExpr(typ)
 	}
 	return RangeColumnExpr{
-		Below{key: lower},
-		Above{key: upper},
+		Below{Key: lower},
+		Above{Key: upper},
 		typ,
 	}
 }
@@ -78,14 +78,14 @@ func CustomRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound Rang
 	var lCut RangeCut
 	var uCut RangeCut
 	if lowerBound == Open {
-		lCut = Above{key: lower}
+		lCut = Above{Key: lower}
 	} else {
-		lCut = Below{key: lower}
+		lCut = Below{Key: lower}
 	}
 	if upperBound == Open {
-		uCut = Below{key: upper}
+		uCut = Below{Key: upper}
 	} else {
-		uCut = Above{key: upper}
+		uCut = Above{Key: upper}
 	}
 	return RangeColumnExpr{
 		lCut,
@@ -101,7 +101,7 @@ func LessThanRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 	}
 	return RangeColumnExpr{
 		AboveNull{},
-		Below{key: upper},
+		Below{Key: upper},
 		typ,
 	}
 }
@@ -113,7 +113,7 @@ func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) RangeColumnExpr {
 	}
 	return RangeColumnExpr{
 		AboveNull{},
-		Above{key: upper},
+		Above{Key: upper},
 		typ,
 	}
 }
@@ -124,7 +124,7 @@ func GreaterThanRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr {
 		return EmptyRangeColumnExpr(typ)
 	}
 	return RangeColumnExpr{
-		Above{key: lower},
+		Above{Key: lower},
 		AboveAll{},
 		typ,
 	}
@@ -136,7 +136,7 @@ func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) RangeColumnExpr 
 		return EmptyRangeColumnExpr(typ)
 	}
 	return RangeColumnExpr{
-		Below{key: lower},
+		Below{Key: lower},
 		AboveAll{},
 		typ,
 	}

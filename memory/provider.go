@@ -12,12 +12,14 @@ import (
 var _ sql.DatabaseProvider = memoryDBProvider{}
 var _ sql.MutableDatabaseProvider = memoryDBProvider{}
 var _ sql.TableFunctionProvider = memoryDBProvider{}
+var _ sql.ExternalStoredProcedureProvider = memoryDBProvider{}
 
 // memoryDBProvider is a collection of Database.
 type memoryDBProvider struct {
-	dbs            map[string]sql.Database
-	mu             *sync.RWMutex
-	tableFunctions map[string]sql.TableFunction
+	dbs                       map[string]sql.Database
+	mu                        *sync.RWMutex
+	tableFunctions            map[string]sql.TableFunction
+	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 }
 
 func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
@@ -25,10 +27,17 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db
 	}
+
+	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
+	for _, esp := range ExternalStoredProcedures {
+		externalProcedureRegistry.Register(esp)
+	}
+
 	return memoryDBProvider{
-		dbs:            dbMap,
-		mu:             &sync.RWMutex{},
-		tableFunctions: make(map[string]sql.TableFunction),
+		dbs:                       dbMap,
+		mu:                        &sync.RWMutex{},
+		tableFunctions:            make(map[string]sql.TableFunction),
+		externalProcedureRegistry: externalProcedureRegistry,
 	}
 }
 
@@ -95,6 +104,16 @@ func (d memoryDBProvider) DropDatabase(_ *sql.Context, name string) (err error) 
 
 	delete(d.dbs, strings.ToLower(name))
 	return
+}
+
+// ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider
+func (mdb memoryDBProvider) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	return mdb.externalProcedureRegistry.LookupByNameAndParamCount(name, numOfParams)
+}
+
+// ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
+func (mdb memoryDBProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	return mdb.externalProcedureRegistry.LookupByName(name)
 }
 
 // TableFunction implements sql.TableFunctionProvider
