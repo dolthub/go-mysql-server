@@ -1656,6 +1656,31 @@ func TestViews(t *testing.T, harness Harness) {
 	})
 }
 
+func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+
+	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+	require.NoError(t, err)
+
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
+	vdb, ok := db.(sql.ViewDatabase)
+	require.True(t, ok, "expected sql.ViewDatabase")
+
+	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView")
+	require.NoError(t, err)
+
+	// e.Analyzer.Debug = false
+	// e.Analyzer.Verbose = true
+
+	AssertErr(t, e, harness, "select * from recursiveView", analyzer.ErrMaxAnalysisIters)
+}
+
 func TestViewsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
