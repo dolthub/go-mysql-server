@@ -598,6 +598,24 @@ var (
 	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server
 	ErrDatabaseWriteLocked = errors.NewKind("database is locked to writes")
+
+	// ErrCollationMalformedString is returned when a malformed string is encountered during a collation-related operation.
+	ErrCollationMalformedString = errors.NewKind("malformed string encountered while %s")
+
+	// ErrCollatedExprWrongType is returned when the wrong type is given to a CollatedExpression.
+	ErrCollatedExprWrongType = errors.NewKind("wrong type in collated expression")
+
+	// ErrCollationInvalidForCharSet is returned when the wrong collation is given for the character set when parsing.
+	ErrCollationInvalidForCharSet = errors.NewKind("COLLATION '%s' is not valid for CHARACTER SET '%s'")
+
+	// ErrCharSetIntroducer is returned when a character set introducer is not attached to a string
+	ErrCharSetIntroducer = errors.NewKind("CHARACTER SET introducer must be attached to a string")
+
+	// ErrCharSetInvalidString is returned when an invalid string is given for a character set.
+	ErrCharSetInvalidString = errors.NewKind("invalid string for character set `%s`: \"%s\"")
+
+	// ErrCharSetFailedToEncode is returned when a character set fails encoding
+	ErrCharSetFailedToEncode = errors.NewKind("failed to encode `%s`")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

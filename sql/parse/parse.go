@@ -3259,8 +3259,7 @@ func handleCollateExpr(ctx *sql.Context, charSet sql.CharacterSetID, expr *sqlpa
 		return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
 	}
 	if collation.CharacterSet() != charSet {
-		//TODO: actual error
-		return nil, fmt.Errorf("COLLATION '%s' is not valid for CHARACTER SET '%s'", collation.Name(), charSet.Name())
+		return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
 	}
 	innerExpr, err := ExprToExpression(ctx, expr.Expr)
 	if err != nil {
@@ -3590,8 +3589,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 					return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
 				}
 				if collation.CharacterSet() != charSet {
-					//TODO: actual error
-					return nil, fmt.Errorf("COLLATION '%s' is not valid for CHARACTER SET '%s'", collation.Name(), charSet.Name())
+					return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
 				}
 			}
 
@@ -3601,8 +3599,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 				return nil, err
 			}
 			if _, ok := expr.(*expression.Literal); !ok || !sql.IsText(expr.Type()) {
-				//TODO: return actual error
-				return nil, fmt.Errorf("CHARACTER SET introducer must be attached to a string")
+				return nil, sql.ErrCharSetIntroducer.New()
 			}
 			literal, err := expr.Eval(ctx, nil)
 			if err != nil {
@@ -3613,15 +3610,13 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			if strLiteral, ok := literal.(string); ok {
 				decodedLiteral, ok := charSet.Encoder().Decode(encodings.StringToBytes(strLiteral))
 				if !ok {
-					//TODO: return actual error
-					return nil, fmt.Errorf("invalid string for character set `%s`: \"%s\"", charSet.Name(), strLiteral)
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
 				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), sql.CreateLongText(collation)), nil
 			} else if byteLiteral, ok := literal.([]byte); ok {
 				decodedLiteral, ok := charSet.Encoder().Decode(byteLiteral)
 				if !ok {
-					//TODO: return actual error
-					return nil, fmt.Errorf("invalid string for character set `%s`: \"%s\"", charSet.Name(), strLiteral)
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
 				return expression.NewLiteral(decodedLiteral, sql.CreateLongText(collation)), nil
 			} else {
