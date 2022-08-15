@@ -56,7 +56,15 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	return b.EvalWithSelector(ctx, a, n, scope, sel)
 }
 
+// Every time we recursively invoke the analyzer we add a memo node to avoid analyzing queries that could cause
+// infinite recursion. This limit is high but arbitrary
+const maxBatchRecursion = 100
+
 func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if (len(scope.MemoNodes())) > maxBatchRecursion {
+		return n, transform.SameTree, ErrMaxAnalysisIters.New(b.Iterations)
+	}
+
 	if b.Iterations == 0 {
 		return n, transform.SameTree, nil
 	}
