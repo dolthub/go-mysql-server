@@ -103,7 +103,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	userTableData := mysqlDb.UserTable().Data()
 	for _, user := range n.Users {
 		// replace empty host with any host
-		if user.UserName.Host == "%" {
+		if user.UserName.Host == "" {
 			user.UserName.Host = "%"
 		}
 
