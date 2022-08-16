@@ -58,12 +58,12 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-            res, err := a.WithWindow(window)
+            res, err := a.unaryAggBase.WithWindow(window)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }
 
         func (a *Test) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-            res, err := a.WithChildren(children...)
+            res, err := a.unaryAggBase.WithChildren(children...)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }
 
