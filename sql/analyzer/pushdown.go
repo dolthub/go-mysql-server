@@ -604,7 +604,11 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 				indexLookup, ok := indexes[tableNode.Name()]
 				if ok {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
-					return plan.NewStaticIndexedTableAccess(n, indexLookup.lookup), transform.NewTree, nil
+					ret, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					return ret, transform.NewTree, nil
 				}
 			}
 		}
@@ -736,7 +740,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		// Extract primary key columns from index to maintain order
-		idxTbl, ok := rs.Table.(sql.IndexAddressable)
+		idxTbl, ok := rs.Table.(sql.IndexAddressableTable)
 		if !ok {
 			return s, transform.SameTree, nil
 		}
@@ -798,7 +802,10 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newNode := plan.NewStaticIndexedTableAccess(rs, lookup)
+		newNode, err := plan.NewStaticIndexedAccessForResolvedTable(rs, lookup)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
 
 		var resNode sql.Node = newNode
 		if decoratingParent != nil {

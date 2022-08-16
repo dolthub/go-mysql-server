@@ -932,7 +932,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return nil, err
 			}
 
-			indexTable, ok := tbl.(IndexAddressable)
+			indexTable, ok := tbl.(IndexAddressableTable)
 			if ok {
 				indexes, iErr := indexTable.GetIndexes(ctx)
 				if iErr != nil {
@@ -1262,7 +1262,7 @@ func tableConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 			// Get UNIQUEs, PRIMARY KEYs
 			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
-			indexTable, ok := tbl.(IndexAddressable)
+			indexTable, ok := tbl.(IndexAddressableTable)
 			if ok {
 				indexes, err := indexTable.GetIndexes(ctx)
 				if err != nil {
@@ -1331,7 +1331,7 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 			// Get UNIQUEs, PRIMARY KEYs
 			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
-			indexTable, ok := tbl.(IndexAddressable)
+			indexTable, ok := tbl.(IndexAddressableTable)
 			if ok {
 				indexes, err := indexTable.GetIndexes(ctx)
 				if err != nil {

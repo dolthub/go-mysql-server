@@ -442,23 +442,14 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row) (sql.R
 		rang[i+len(mapper.IndexPositions)] = sql.AllRangeColumnExpr(appendType)
 	}
 
-	//lookup, err := mapper.Index.NewLookup(ctx, rang)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//editorData := mapper.Updater.WithIndexLookup(lookup)
-	////TODO: profile this, may need to redesign this or add a fast path
-	//partIter, err := editorData.Partitions(ctx)
-	partIter, err := mapper.Updater.IndexedPartitions(ctx, sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index})
+	//TODO: profile this, may need to redesign this or add a fast path
+	editorData := mapper.Updater.AsIndexedAccess()
+	lookup := sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index}
+	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}
-	// TODO updater is the wrong table
-	// indexpartitions creates a new table currently
-	// if we give the wrong table to NeWTableRowIter, we won't find the rows we expect
-	// TODO updater should have an interface for returning an updated table,
-	// separately from performing an index lookup on the table. they shouldn't be combined
-	return sql.NewTableRowIter(ctx, mapper.Updater, partIter), nil
+	return sql.NewTableRowIter(ctx, editorData, partIter), nil
 }
 
 // GetKeyString returns a string representing the key used to access the index.

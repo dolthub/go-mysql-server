@@ -1038,6 +1038,29 @@ func (t *FilteredTable) Projections() []string {
 	return t.projection
 }
 
+// IndexedTable is a table that expects to return one or more partitions
+// for range lookups.
+type IndexedTable struct {
+	*Table
+}
+
+func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	filter, err := lookup.Index.(*Index).rangeFilterExpr(lookup.Ranges...)
+	if err != nil {
+		return nil, err
+	}
+	child, err := t.Table.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
+}
+
+func (t *Table) AsIndexedAccess() sql.IndexedTable {
+	return &IndexedTable{Table: t}
+}
+
 // WithProjections implements sql.ProjectedTable
 func (t *Table) WithProjections(cols []string) sql.Table {
 	if len(cols) == 0 {

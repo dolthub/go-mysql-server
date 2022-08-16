@@ -45,6 +45,10 @@ var _ sql.CheckTable = Table{}
 var _ sql.StatisticsTable = Table{}
 var _ sql.PrimaryKeyAlterableTable = Table{}
 
+func (t Table) AsIndexedAccess() sql.IndexedTable {
+	panic("not implemented")
+}
+
 func (t Table) IndexedPartitions(ctx *sql.Context, _ sql.IndexLookup) (sql.PartitionIter, error) {
 	return t.Partitions(ctx)
 }

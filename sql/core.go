@@ -435,24 +435,41 @@ type IndexColumn struct {
 //	GetIndexes(ctx *Context) ([]Index, error)
 //}
 
-// IndexAddressable provides a Table that has its row iteration restricted to only the rows that match the given index
-// lookup.
-type IndexAddressable interface {
-	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
-	// which was in turn created by a call to Index.Get() for a set of keys for this table.
-	//WithIndexLookup(IndexLookup) Table
-	//IndexAddressableTable
-
-	IndexedPartitions(*Context, IndexLookup) (PartitionIter, error)
+type IndexAddressableTable interface {
+	Table
+	AsIndexedAccess() IndexedTable
 	GetIndexes(ctx *Context) ([]Index, error)
 }
 
+type RowSource interface {
+	PartitionRows(ctx *Context) (RowIter, error)
+}
+
+type IndexedTable interface {
+	Table
+	//PartitionRows(ctx *Context) (RowIter, error)
+	// LookupPartitions returns partitions scanned by the given IndexLookup
+	LookupPartitions(*Context, IndexLookup) (PartitionIter, error)
+}
+
+// IndexAddressable provides a Table that has its row iteration restricted to only the rows that match the given index
+// lookup.
+//type IndexAddressable interface {
+//	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
+//	// which was in turn created by a call to Index.Get() for a set of keys for this table.
+//	//WithIndexLookup(IndexLookup) Table
+//	//IndexAddressableTable
+//
+//	IndexedPartitions(*Context, IndexLookup) (PartitionIter, error)
+//	GetIndexes(ctx *Context) ([]Index, error)
+//}
+
 // IndexAddressableTable is a table that can restrict its row iteration to only the rows that match the given index
 // lookup.
-type IndexAddressableTable interface {
-	Table
-	IndexAddressable
-}
+//type IndexAddressableTable interface {
+//	Table
+//	IndexAddressable
+//}
 
 type ParallelizedIndexAddressableTable interface {
 	IndexAddressableTable
