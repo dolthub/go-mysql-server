@@ -12,6 +12,12 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 		Nullable: true,
 	},
 	{
+		Name:     "BitXOR",
+		Desc:     "returns the bitwise xor value of expr in all rows.",
+		RetType:  "sql.Int64",
+		Nullable: true,
+	},
+	{
 		Name:    "Count",
 		Desc:    "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.",
 		RetType: "sql.Int64",
@@ -19,6 +25,12 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{
 		Name: "First",
 		Desc: "returns the first value in a sequence of elements of an aggregation.",
+	},
+	{
+		Name:    "JsonArray",
+		SqlName: "json_arrayagg",
+		Desc:    "returns result set as a single JSON array.",
+		RetType: "sql.JSON",
 	},
 	{
 		Name: "Last",
@@ -37,11 +49,5 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 		Desc:     "returns the sum of expr in all rows",
 		RetType:  "sql.Float64",
 		Nullable: false,
-	},
-	{
-		Name:    "JsonArray",
-		SqlName: "json_arrayagg",
-		Desc:    "returns result set as a single JSON array.",
-		RetType: "sql.JSON",
 	},
 }

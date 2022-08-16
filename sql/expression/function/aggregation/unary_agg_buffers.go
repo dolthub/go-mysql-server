@@ -155,6 +155,62 @@ func (a *avgBuffer) Dispose() {
 	expression.Dispose(a.expr)
 }
 
+type bitXORBuffer struct {
+	res  int64
+	rows int64
+	expr sql.Expression
+}
+
+func NewBitXORBuffer(child sql.Expression) *bitXORBuffer {
+	const (
+		res  = int64(0)
+		rows = int64(0)
+	)
+
+	return &bitXORBuffer{res, rows, child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (b *bitXORBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := b.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	if v == nil {
+		return nil
+	}
+
+	v, err = sql.Int64.Convert(v)
+	if err != nil {
+		v = float64(0)
+	}
+
+	b.res ^= v.(int64)
+	b.rows += 1
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (b *bitXORBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	// This case is triggered when no rows exist.
+	if b.res == 0 && b.rows == 0 {
+		return nil, nil
+	}
+
+	if b.rows == 0 {
+		return int64(0), nil
+	}
+
+	return b.res, nil
+}
+
+// Dispose implements the Disposable interface.
+func (b *bitXORBuffer) Dispose() {
+	expression.Dispose(b.expr)
+}
+
 type countDistinctBuffer struct {
 	seen  map[uint64]struct{}
 	exprs []sql.Expression

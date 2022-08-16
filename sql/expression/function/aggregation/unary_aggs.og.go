@@ -4,7 +4,6 @@ package aggregation
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -51,7 +50,7 @@ func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +58,67 @@ func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Avg) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
 	return NewAvgAgg(child).WithWindow(a.Window())
+}
+
+type BitXOR struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*BitXOR)(nil)
+var _ sql.Aggregation = (*BitXOR)(nil)
+var _ sql.WindowAdaptableExpression = (*BitXOR)(nil)
+
+func NewBitXOR(e sql.Expression) *BitXOR {
+	return &BitXOR{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "BitXOR",
+			description:     "returns the bitwise xor value of expr in all rows.",
+		},
+	}
+}
+
+func (a *BitXOR) Type() sql.Type {
+	return sql.Int64
+}
+
+func (a *BitXOR) IsNullable() bool {
+	return true
+}
+
+func (a *BitXOR) String() string {
+	return fmt.Sprintf("BITXOR(%s)", a.Child)
+}
+
+func (a *BitXOR) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+	res, err := a.unaryAggBase.WithWindow(window)
+	return &BitXOR{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *BitXOR) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &BitXOR{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *BitXOR) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewBitXORBuffer(child), nil
+}
+
+func (a *BitXOR) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewBitXORAgg(child).WithWindow(a.Window())
 }
 
 type Count struct {
@@ -107,7 +162,7 @@ func (a *Count) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 func (a *Count) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +170,7 @@ func (a *Count) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Count) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +218,7 @@ func (a *First) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 func (a *First) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -171,11 +226,67 @@ func (a *First) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *First) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
 	return NewFirstAgg(child).WithWindow(a.Window())
+}
+
+type JsonArray struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*JsonArray)(nil)
+var _ sql.Aggregation = (*JsonArray)(nil)
+var _ sql.WindowAdaptableExpression = (*JsonArray)(nil)
+
+func NewJsonArray(e sql.Expression) *JsonArray {
+	return &JsonArray{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "JsonArray",
+			description:     "returns result set as a single JSON array.",
+		},
+	}
+}
+
+func (a *JsonArray) Type() sql.Type {
+	return sql.JSON
+}
+
+func (a *JsonArray) IsNullable() bool {
+	return false
+}
+
+func (a *JsonArray) String() string {
+	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
+}
+
+func (a *JsonArray) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+	res, err := a.unaryAggBase.WithWindow(window)
+	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *JsonArray) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *JsonArray) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewJsonArrayBuffer(child), nil
+}
+
+func (a *JsonArray) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewJsonArrayAgg(child).WithWindow(a.Window())
 }
 
 type Last struct {
@@ -219,7 +330,7 @@ func (a *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 }
 
 func (a *Last) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +338,7 @@ func (a *Last) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Last) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +386,7 @@ func (a *Max) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Max) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +394,7 @@ func (a *Max) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Max) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +442,7 @@ func (a *Min) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Min) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +450,7 @@ func (a *Min) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Min) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +498,7 @@ func (a *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Sum) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -395,65 +506,9 @@ func (a *Sum) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Sum) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
+	child, err := transform.Clone(a.Child)
 	if err != nil {
 		return nil, err
 	}
 	return NewSumAgg(child).WithWindow(a.Window())
-}
-
-type JsonArray struct {
-	unaryAggBase
-}
-
-var _ sql.FunctionExpression = (*JsonArray)(nil)
-var _ sql.Aggregation = (*JsonArray)(nil)
-var _ sql.WindowAdaptableExpression = (*JsonArray)(nil)
-
-func NewJsonArray(e sql.Expression) *JsonArray {
-	return &JsonArray{
-		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "JsonArray",
-			description:     "returns result set as a single JSON array.",
-		},
-	}
-}
-
-func (a *JsonArray) Type() sql.Type {
-	return sql.JSON
-}
-
-func (a *JsonArray) IsNullable() bool {
-	return false
-}
-
-func (a *JsonArray) String() string {
-	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
-}
-
-func (a *JsonArray) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
-}
-
-func (a *JsonArray) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	res, err := a.unaryAggBase.WithChildren(children...)
-	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
-}
-
-func (a *JsonArray) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
-	if err != nil {
-		return nil, err
-	}
-	return NewJsonArrayBuffer(child), nil
-}
-
-func (a *JsonArray) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := transform.Clone(a.UnaryExpression.Child)
-	if err != nil {
-		return nil, err
-	}
-	return NewJsonArrayAgg(child).WithWindow(a.Window())
 }

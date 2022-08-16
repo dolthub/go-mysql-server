@@ -206,6 +206,74 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt)
 }
 
+type BitXORAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+}
+
+func NewBitXORAgg(e sql.Expression) *BitXORAgg {
+	return &BitXORAgg{
+		expr: e,
+	}
+}
+
+func (b *BitXORAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *b
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
+}
+
+func (b *BitXORAgg) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (b *BitXORAgg) DefaultFramer() sql.WindowFramer {
+	if b.framer != nil {
+		return b.framer
+	}
+	return NewPartitionFramer()
+}
+
+func (b *BitXORAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	b.Dispose()
+	return nil
+}
+
+func (b *BitXORAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+	panic("sliding window interface not implemented yet")
+}
+
+func (b *BitXORAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	var res uint64
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		v, err := b.expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+
+		if v == nil {
+			continue
+		}
+
+		// TODO: handle strings
+		val, err := sql.Uint64.Convert(v)
+		if err != nil {
+			return 0
+		}
+
+		res ^= val.(uint64)
+	}
+	return res
+}
+
 type MaxAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
