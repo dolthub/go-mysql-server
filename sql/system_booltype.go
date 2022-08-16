@@ -168,7 +168,7 @@ func (t systemBoolType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 
 // String implements Type interface.
 func (t systemBoolType) String() string {
-	return "SYSTEM_BOOL"
+	return "system_bool"
 }
 
 // Type implements Type interface.

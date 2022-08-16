@@ -251,19 +251,19 @@ func TestNumberString(t *testing.T) {
 		typ         Type
 		expectedStr string
 	}{
-		{Boolean, "TINYINT"},
-		{Int8, "TINYINT"},
-		{Int16, "SMALLINT"},
-		{Int24, "MEDIUMINT"},
-		{Int32, "INT"},
-		{Int64, "BIGINT"},
-		{Uint8, "TINYINT UNSIGNED"},
-		{Uint16, "SMALLINT UNSIGNED"},
-		{Uint24, "MEDIUMINT UNSIGNED"},
-		{Uint32, "INT UNSIGNED"},
-		{Uint64, "BIGINT UNSIGNED"},
-		{Float32, "FLOAT"},
-		{Float64, "DOUBLE"},
+		{Boolean, "tinyint"},
+		{Int8, "tinyint"},
+		{Int16, "smallint"},
+		{Int24, "mediumint"},
+		{Int32, "int"},
+		{Int64, "bigint"},
+		{Uint8, "tinyint unsigned"},
+		{Uint16, "smallint unsigned"},
+		{Uint24, "mediumint unsigned"},
+		{Uint32, "int unsigned"},
+		{Uint64, "bigint unsigned"},
+		{Float32, "float"},
+		{Float64, "double"},
 	}
 
 	for _, test := range tests {

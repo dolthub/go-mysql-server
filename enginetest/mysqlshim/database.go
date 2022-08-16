@@ -80,7 +80,7 @@ func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryK
 	colStmts := make([]string, len(schema.Schema))
 	var primaryKeyCols []string
 	for i, col := range schema.Schema {
-		stmt := fmt.Sprintf("  `%s` %s", col.Name, strings.ToLower(col.Type.String()))
+		stmt := fmt.Sprintf("  `%s` %s", col.Name, col.Type.String())
 		if !col.Nullable {
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)
 		}

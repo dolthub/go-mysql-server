@@ -186,7 +186,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					columnKey  string
 					nullable   = "NO"
 					ordinalPos = uint32(i + 1)
-					colType    = strings.ToLower(c.Type.String())
+					colType    = c.Type.String()
 					dataType   = colType
 					srsId      interface{}
 				)
