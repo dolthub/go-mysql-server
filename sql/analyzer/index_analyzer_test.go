@@ -130,10 +130,6 @@ type dummyIdx struct {
 
 var _ sql.Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) SupportsLookup(ctx *sql.Context, lookup sql.IndexLookup) (bool, error) {
-	return false, nil
-}
-
 func (i dummyIdx) Expressions() []string {
 	var exprs []string
 	for _, e := range i.expr {

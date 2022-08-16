@@ -113,7 +113,6 @@ var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 
-// var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
@@ -197,29 +196,7 @@ func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return &partitionIter{keys: keys}, nil
 }
 
-// Partitions implements the sql.Table interface.
-func (t *Table) IndexedPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	//todo new partitionIter for lookup
-	// there is only ever 1 partition, intermediary for rowIter
-	// need to create range expression for iter and apply it (we must already do this somewhere)
-	ranges, err := lookup.Index.(*Index).rangeFilterExpr(lookup.Ranges...)
-	if err != nil {
-		return nil, err
-	}
-
-	child, err := t.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &rangePartitionIter{
-		child:  child.(*partitionIter),
-		ranges: ranges,
-	}, nil
-}
-
 // rangePartitionIter returns a partition that has range and table data access
-// cheat and only do one partition
 type rangePartitionIter struct {
 	child  *partitionIter
 	ranges sql.Expression
@@ -247,8 +224,6 @@ type rangePartition struct {
 	rang sql.Expression
 }
 
-//TODO IndexedDoltTable
-
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(t.partitions)), nil
@@ -256,9 +231,9 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	// rangePartition will apply the range filter to individual partitions
 	filters := t.filters
 	if r, ok := partition.(*rangePartition); ok {
+		// index lookup is currently a single filter applied to a full table scan
 		filters = append(t.filters, r.rang)
 	}
 

@@ -426,50 +426,21 @@ type IndexColumn struct {
 	Length int64
 }
 
-// IndexedTable represents a table that has one or more native indexes on its columns, and can use those indexes to
-// speed up execution of queries that reference those columns. Unlike DriverIndexableTable, IndexedTable doesn't need a
-// separate index driver to function.
-//type IndexedTable interface {
-//	IndexAddressableTable
-//	// GetIndexes returns all indexes on this table.
-//	GetIndexes(ctx *Context) ([]Index, error)
-//}
-
-type IndexAddressableTable interface {
-	Table
+type IndexAddressable interface {
 	AsIndexedAccess() IndexedTable
 	GetIndexes(ctx *Context) ([]Index, error)
 }
 
-type RowSource interface {
-	PartitionRows(ctx *Context) (RowIter, error)
+type IndexAddressableTable interface {
+	Table
+	IndexAddressable
 }
 
 type IndexedTable interface {
 	Table
-	//PartitionRows(ctx *Context) (RowIter, error)
 	// LookupPartitions returns partitions scanned by the given IndexLookup
 	LookupPartitions(*Context, IndexLookup) (PartitionIter, error)
 }
-
-// IndexAddressable provides a Table that has its row iteration restricted to only the rows that match the given index
-// lookup.
-//type IndexAddressable interface {
-//	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
-//	// which was in turn created by a call to Index.Get() for a set of keys for this table.
-//	//WithIndexLookup(IndexLookup) Table
-//	//IndexAddressableTable
-//
-//	IndexedPartitions(*Context, IndexLookup) (PartitionIter, error)
-//	GetIndexes(ctx *Context) ([]Index, error)
-//}
-
-// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match the given index
-// lookup.
-//type IndexAddressableTable interface {
-//	Table
-//	IndexAddressable
-//}
 
 type ParallelizedIndexAddressableTable interface {
 	IndexAddressableTable
@@ -518,7 +489,7 @@ type ForeignKeyUpdater interface {
 	RowInserter
 	RowUpdater
 	RowDeleter
-	IndexAddressableTable
+	IndexAddressable
 }
 
 // CheckTable is a table that can declare its check constraints.

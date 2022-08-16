@@ -157,10 +157,6 @@ type testIndex struct {
 	numcols int
 }
 
-func (i testIndex) SupportsLookup(ctx *Context, lookup IndexLookup) (bool, error) {
-	return false, nil
-}
-
 func (testIndex) ID() string {
 	return "test_index"
 }

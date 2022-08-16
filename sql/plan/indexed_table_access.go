@@ -51,6 +51,8 @@ func NewIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lb *LookupBuil
 	}
 }
 
+// NewIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// an IndexAddressableTable, otherwise returns an error.
 func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*IndexedTableAccess, error) {
 	var table = rt.Table
 	if t, ok := table.(sql.TableWrapper); ok {
@@ -79,6 +81,8 @@ func NewStaticIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lookup s
 	}
 }
 
+// NewStaticIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// an IndexAddressableTable, otherwise returns an error.
 func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table = rt.Table
 	if t, ok := table.(sql.TableWrapper); ok {
@@ -299,36 +303,11 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 
 // Partitions implements sql.Table
 func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	//if !i.lookup.IsEmpty() {
-	//	return i.ResolvedTable.Partitions(ctx)
-	//}
-	//
-	//table := i.baseTable()
-	//idt, ok := table.(sql.IndexAddressableTable)
-	//if !ok {
-	//	return i.ResolvedTable.Partitions(ctx)
-	//}
 	return i.Table.LookupPartitions(ctx, i.lookup)
-	//return table.Partitions(ctx)
 }
-
-// baseTable returns the underlying sql.Table with any static index lookup applied
-//func (i *IndexedTableAccess) baseTable() sql.Table {
-//	table := i.ResolvedTable.Table
-//	// This won't work if we add another layer of wrapping on top
-//	if tw, ok := table.(sql.TableWrapper); ok {
-//		table = tw.Underlying()
-//	}
-//
-//	if indexAddressableTable, ok := table.(sql.IndexAddressable); ok {
-//		table = indexAddressableTable.WithIndexLookup(i.lookup)
-//	}
-//	return table
-//}
 
 // PartitionRows implements sql.Table
 func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	//return i.baseTable().PartitionRows(ctx, partition)
 	return i.Table.PartitionRows(ctx, partition)
 }
 
@@ -424,7 +403,6 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
-		//return lb.index.NewLookup(ctx, lb.rang)
 		return sql.IndexLookup{Index: lb.index, Ranges: []sql.Range{lb.rang}}, nil
 	}
 

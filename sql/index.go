@@ -39,18 +39,8 @@ type Index interface {
 	// IsGenerated returns whether this index was generated. Generated indexes
 	// are used for index access, but are not displayed (such as with SHOW INDEXES).
 	IsGenerated() bool
-	//// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns. Each Range
-	//// is ordered by the column expressions (as returned by Expressions) with the RangeColumnExpr representing the
-	//// searchable area for each column expression. Each Range given will not overlap with any other ranges. Additionally,
-	//// all ranges will have the same length, and may represent a partial index (matching a prefix rather than the entire
-	//// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
-	//// returned only in the event that an error occurred.
-	//NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
 	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
 	// match the string returned from Index.Expressions().
-
-	// SupportsLookup returns true if the Index supports |lookup|.
-	SupportsLookup(ctx *Context, lookup IndexLookup) (bool, error)
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 

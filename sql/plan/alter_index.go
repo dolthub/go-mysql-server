@@ -159,7 +159,7 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 			// If we can get the other indexes declared on this table then we can ensure that we're creating a unique
 			// index name. In either case, we retain the map search to simplify the logic (it will either be populated
 			// or empty).
-			if indexedTable, ok := indexable.(sql.IndexAddressableTable); ok {
+			if indexedTable, ok := indexable.(sql.IndexAddressable); ok {
 				indexes, err := indexedTable.GetIndexes(ctx)
 				if err != nil {
 					return err

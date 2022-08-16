@@ -41,36 +41,6 @@ func (t *tableEditor) AsIndexedAccess() sql.IndexedTable {
 	panic("implement me")
 }
 
-func (t *tableEditor) Name() string {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *tableEditor) String() string {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *tableEditor) Schema() sql.Schema {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *tableEditor) Partitions(context *sql.Context) (sql.PartitionIter, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *tableEditor) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *tableEditor) IndexedPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	//TODO implement me
 	panic("implement me")
@@ -128,12 +98,6 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 		sb.WriteString(fmt.Sprintf(" `%s` = %s", t.sch[i].Name, t.rowValToString(val)))
 	}
 	return t.table.db.shim.Exec(t.table.db.name, fmt.Sprintf("DELETE FROM `%s` WHERE%s;", t.table.name, sb.String()))
-}
-
-// WithIndexLookup implements the interface sql.ForeignKeyUpdater.
-func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	// Not sure what to do here, will worry about that when the shim fully supports foreign keys
-	return nil
 }
 
 // Close implements the interface sql.TableEditor.
