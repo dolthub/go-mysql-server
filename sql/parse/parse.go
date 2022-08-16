@@ -2255,12 +2255,10 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 				authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
 			} else if len(user.Auth1.Plugin) > 0 {
 				authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
-			} else if user.Auth1.Plugin == "" && len(user.Auth1.Password) > 0 {
-				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			} else {
-				return nil, fmt.Errorf(`the given authentication format is not yet supported`)
+				// We default to using the password, even if it's empty
+				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			}
-
 		}
 		if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
 			return nil, fmt.Errorf(`multi-factor authentication is not yet supported`)

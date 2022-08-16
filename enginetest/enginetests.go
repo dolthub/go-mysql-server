@@ -1240,13 +1240,16 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true",
 					assertion.Username, assertion.Password, port), nil)
 				require.NoError(t, err)
-				if assertion.ExpectedErr {
-					r, err := conn.Query(assertion.Query)
+				r, err := conn.Query(assertion.Query)
+				if assertion.ExpectedErr || len(assertion.ExpectedErrStr) > 0 || assertion.ExpectedErrKind != nil {
 					if !assert.Error(t, err) {
 						require.NoError(t, r.Close())
+					} else if len(assertion.ExpectedErrStr) > 0 {
+						assert.Equal(t, assertion.ExpectedErrStr, err.Error())
+					} else if assertion.ExpectedErrKind != nil {
+						assert.True(t, assertion.ExpectedErrKind.Is(err))
 					}
 				} else {
-					r, err := conn.Query(assertion.Query)
 					if assert.NoError(t, err) {
 						require.NoError(t, r.Close())
 					}

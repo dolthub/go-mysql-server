@@ -314,7 +314,10 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	if parsed == nil {
-		parsed, _ = parse.Parse(ctx, query)
+		parsed, err = parse.Parse(ctx, query)
+	}
+	if err != nil {
+		return "", err
 	}
 
 	ctx.GetLogger().Tracef("beginning execution")

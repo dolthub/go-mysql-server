@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -689,7 +690,8 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = mysql.ERUnknownError
 	}
 
-	return mysql.NewSQLError(code, sqlState, err.Error()), err, false // return the original error as well
+	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
+	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1)), err, false // return the original error as well
 }
 
 type UniqueKeyError struct {

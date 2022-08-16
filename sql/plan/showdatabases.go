@@ -57,6 +57,9 @@ func (p *ShowDatabases) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	for _, db := range dbs {
 		rows = append(rows, sql.Row{db.Name()})
 	}
+	if _, err := p.Catalog.Database(ctx, "mysql"); err == nil {
+		rows = append(rows, sql.Row{"mysql"})
+	}
 
 	sort.Slice(rows, func(i, j int) bool {
 		return strings.Compare(rows[i][0].(string), rows[j][0].(string)) < 0
