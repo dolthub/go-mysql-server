@@ -427,7 +427,9 @@ type IndexColumn struct {
 }
 
 type IndexAddressable interface {
+	// AsIndexedAccess returns a table that can perform scans constrained to an IndexLookup
 	AsIndexedAccess() IndexedTable
+	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
 }
 

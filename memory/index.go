@@ -54,10 +54,6 @@ func (idx *Index) Expressions() []string {
 	return exprs
 }
 
-func (idx *Index) SupportsLookup(ctx *sql.Context, lookup sql.IndexLookup) (bool, error) {
-	return true, nil
-}
-
 func (idx *Index) IsUnique() bool {
 	return idx.Unique
 }

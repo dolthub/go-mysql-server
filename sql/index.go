@@ -49,7 +49,6 @@ type Index interface {
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
 type IndexLookup struct {
 	fmt.Stringer
-	// Index returns the index that created this IndexLookup.
 	Index  Index
 	Ranges RangeCollection
 }
