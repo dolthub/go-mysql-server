@@ -155,16 +155,110 @@ func (a *avgBuffer) Dispose() {
 	expression.Dispose(a.expr)
 }
 
+type bitANDBuffer struct {
+	res  uint64
+	rows uint64
+	expr sql.Expression
+}
+
+func NewBitANDBuffer(child sql.Expression) *bitANDBuffer {
+	const (
+		res  = ^uint64(0) // bitwise not xor, so 0xffff...
+		rows = uint64(0)
+	)
+
+	return &bitANDBuffer{res, rows, child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (b *bitANDBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := b.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	if v == nil {
+		return nil
+	}
+
+	v, err = sql.Uint64.Convert(v)
+	if err != nil {
+		v = uint64(0)
+	}
+
+	b.res &= v.(uint64)
+	b.rows += 1
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (b *bitANDBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return b.res, nil
+}
+
+// Dispose implements the Disposable interface.
+func (b *bitANDBuffer) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+type bitORBuffer struct {
+	res  uint64
+	rows uint64
+	expr sql.Expression
+}
+
+func NewBitORBuffer(child sql.Expression) *bitORBuffer {
+	const (
+		res  = uint64(0)
+		rows = uint64(0)
+	)
+
+	return &bitORBuffer{res, rows, child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (b *bitORBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := b.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	if v == nil {
+		return nil
+	}
+
+	v, err = sql.Int64.Convert(v)
+	if err != nil {
+		v = uint64(0)
+	}
+
+	b.res |= v.(uint64)
+	b.rows += 1
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (b *bitORBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return b.res, nil
+}
+
+// Dispose implements the Disposable interface.
+func (b *bitORBuffer) Dispose() {
+	expression.Dispose(b.expr)
+}
+
 type bitXORBuffer struct {
-	res  int64
-	rows int64
+	res  uint64
+	rows uint64
 	expr sql.Expression
 }
 
 func NewBitXORBuffer(child sql.Expression) *bitXORBuffer {
 	const (
-		res  = int64(0)
-		rows = int64(0)
+		res  = uint64(0)
+		rows = uint64(0)
 	)
 
 	return &bitXORBuffer{res, rows, child}
@@ -181,12 +275,12 @@ func (b *bitXORBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = sql.Int64.Convert(v)
+	v, err = sql.Uint64.Convert(v)
 	if err != nil {
-		v = float64(0)
+		v = uint64(0)
 	}
 
-	b.res ^= v.(int64)
+	b.res ^= v.(uint64)
 	b.rows += 1
 
 	return nil
@@ -196,11 +290,11 @@ func (b *bitXORBuffer) Update(ctx *sql.Context, row sql.Row) error {
 func (b *bitXORBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	// This case is triggered when no rows exist.
 	if b.res == 0 && b.rows == 0 {
-		return nil, nil
+		return uint64(0), nil
 	}
 
 	if b.rows == 0 {
-		return int64(0), nil
+		return uint64(0), nil
 	}
 
 	return b.res, nil
