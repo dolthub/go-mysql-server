@@ -56,18 +56,36 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 }
 
 type jsonTableRowIter struct {
-	rows []sql.Row
-	pos  int
+	colPaths []string
+	schema   sql.Schema
+	data     []interface{}
+	pos      int
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}
 
 func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if j.pos >= len(j.rows) {
+	if j.pos >= len(j.data) {
 		return nil, io.EOF
 	}
-	row := j.rows[j.pos]
+	obj := j.data[j.pos]
 	j.pos++
+
+	row := make(sql.Row, len(j.colPaths))
+	for i, p := range j.colPaths {
+		var val interface{}
+		if v, err := jsonpath.JsonPathLookup(obj, p); err == nil {
+			val = v
+		}
+
+		value, err := j.schema[i].Type.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+
+		row[i] = value
+	}
+
 	return row, nil
 }
 
@@ -132,15 +150,13 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	if err != nil {
 		return nil, err
 	}
-
-	strData, ok := data.(string)
-	if !ok {
+	strData, err := sql.LongBlob.Convert(data)
+	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}
 
-	// Parse data as JSON
 	var jsonData interface{}
-	if err := json.Unmarshal([]byte(strData), &jsonData); err != nil {
+	if err := json.Unmarshal(strData.([]byte), &jsonData); err != nil {
 		return nil, err
 	}
 
@@ -156,37 +172,11 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, err
 	}
 
-	// Create new RowIter
-	itr := &jsonTableRowIter{
-		rows: []sql.Row{},
-	}
-
-	// Fill in table with data
-	for colIdx, p := range t.colPaths {
-		for i, obj := range jsonPathData {
-			// TODO: make sure replacing "key error" with default is sufficient
-			var val any
-			if v, err := jsonpath.JsonPathLookup(obj, p); err == nil {
-				val = v
-			} else {
-				val = nil
-			}
-
-			// convert into right type
-			value, err := t.schema.Schema[colIdx].Type.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			// insert into table
-			if i >= len(itr.rows) {
-				itr.rows = append(itr.rows, sql.Row{})
-			}
-			itr.rows[i] = append(itr.rows[i], value)
-		}
-	}
-
-	return itr, nil
+	return &jsonTableRowIter{
+		colPaths: t.colPaths,
+		schema:   t.schema.Schema,
+		data:     jsonPathData,
+	}, nil
 }
 
 // WithChildren implements the sql.Node interface
