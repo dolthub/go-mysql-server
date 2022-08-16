@@ -127,12 +127,12 @@ func (t *JSONTable) Children() []sql.Node {
 
 // RowIter implements the sql.Node interface
 func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// TODO: need to resolve function calls like concat()
 	// data must evaluate to JSON string
 	data, err := t.dataExpr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+
 	strData, ok := data.(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
