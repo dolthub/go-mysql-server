@@ -155,6 +155,10 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}
 
+	if strData == nil {
+		return &jsonTableRowIter{}, nil
+	}
+
 	var jsonData interface{}
 	if err := json.Unmarshal(strData.([]byte), &jsonData); err != nil {
 		return nil, err

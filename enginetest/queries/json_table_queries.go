@@ -20,6 +20,10 @@ import (
 
 var JSONTableQueryTests = []QueryTest{
 	{
+		Query:    "SELECT * FROM JSON_TABLE(NULL,\"$[*]\" COLUMNS(x int path \"$.a\")) as t;",
+		Expected: []sql.Row{},
+	},
+	{
 		Query: "SELECT * FROM JSON_TABLE('[{\"a\":1},{\"a\":2}]',\"$[*]\" COLUMNS(x varchar(100) path \"$.a\")) as tt;",
 		Expected: []sql.Row{
 			{"1"},
