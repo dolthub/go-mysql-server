@@ -426,6 +426,7 @@ type IndexColumn struct {
 	Length int64
 }
 
+// IndexAddressable is a table that can be scanned through a primary index
 type IndexAddressable interface {
 	// AsIndexedAccess returns a table that can perform scans constrained to an IndexLookup
 	AsIndexedAccess(Index) IndexedTable
@@ -438,6 +439,7 @@ type IndexAddressableTable interface {
 	IndexAddressable
 }
 
+// IndexedTable is a table with an index chosen for range scans
 type IndexedTable interface {
 	Table
 	// LookupPartitions returns partitions scanned by the given IndexLookup
