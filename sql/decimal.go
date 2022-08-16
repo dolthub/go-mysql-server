@@ -297,7 +297,7 @@ func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t decimalType) String() string {
-	return fmt.Sprintf("DECIMAL(%v,%v)", t.precision, t.scale)
+	return fmt.Sprintf("decimal(%v,%v)", t.precision, t.scale)
 }
 
 // ValueType implements Type interface.

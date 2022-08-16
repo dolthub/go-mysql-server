@@ -85,7 +85,7 @@ func (t deferredType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t deferredType) String() string {
-	return "DEFERRED"
+	return "deferred"
 }
 
 // Type implements Type interface.

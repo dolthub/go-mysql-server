@@ -166,11 +166,11 @@ func TestEnumString(t *testing.T) {
 		collation   CollationID
 		expectedStr string
 	}{
-		{[]string{"one"}, Collation_Default, "ENUM('one')"},
-		{[]string{"مرحبا", "こんにちは"}, Collation_Default, "ENUM('مرحبا','こんにちは')"},
-		{[]string{" hi ", "  lo  "}, Collation_Default, "ENUM(' hi','  lo')"},
+		{[]string{"one"}, Collation_Default, "enum('one')"},
+		{[]string{"مرحبا", "こんにちは"}, Collation_Default, "enum('مرحبا','こんにちは')"},
+		{[]string{" hi ", "  lo  "}, Collation_Default, "enum(' hi','  lo')"},
 		{[]string{"a"}, Collation_Default.CharacterSet().BinaryCollation(),
-			fmt.Sprintf("ENUM('a') COLLATE %v", Collation_Default.CharacterSet().BinaryCollation())},
+			fmt.Sprintf("enum('a') COLLATE %v", Collation_Default.CharacterSet().BinaryCollation())},
 	}
 
 	for _, test := range tests {

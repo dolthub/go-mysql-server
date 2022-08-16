@@ -511,32 +511,32 @@ func (t stringType) String() string {
 
 	switch t.baseType {
 	case sqltypes.Char:
-		s = fmt.Sprintf("CHAR(%v)", t.maxCharLength)
+		s = fmt.Sprintf("char(%v)", t.maxCharLength)
 	case sqltypes.Binary:
-		s = fmt.Sprintf("BINARY(%v)", t.maxCharLength)
+		s = fmt.Sprintf("binary(%v)", t.maxCharLength)
 	case sqltypes.VarChar:
-		s = fmt.Sprintf("VARCHAR(%v)", t.maxCharLength)
+		s = fmt.Sprintf("varchar(%v)", t.maxCharLength)
 	case sqltypes.VarBinary:
-		s = fmt.Sprintf("VARBINARY(%v)", t.maxCharLength)
+		s = fmt.Sprintf("varbinary(%v)", t.maxCharLength)
 	case sqltypes.Text:
 		if t.maxByteLength <= tinyTextBlobMax {
-			s = "TINYTEXT"
+			s = "tinytext"
 		} else if t.maxByteLength <= textBlobMax {
-			s = "TEXT"
+			s = "text"
 		} else if t.maxByteLength <= mediumTextBlobMax {
-			s = "MEDIUMTEXT"
+			s = "mediumtext"
 		} else {
-			s = "LONGTEXT"
+			s = "longtext"
 		}
 	case sqltypes.Blob:
 		if t.maxByteLength <= tinyTextBlobMax {
-			s = "TINYBLOB"
+			s = "tinyblob"
 		} else if t.maxByteLength <= textBlobMax {
-			s = "BLOB"
+			s = "blob"
 		} else if t.maxByteLength <= mediumTextBlobMax {
-			s = "MEDIUMBLOB"
+			s = "mediumblob"
 		} else {
-			s = "LONGBLOB"
+			s = "longblob"
 		}
 	}
 

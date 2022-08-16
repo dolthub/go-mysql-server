@@ -128,7 +128,7 @@ func (t TupleType) String() string {
 	for i, el := range t {
 		elems[i] = el.String()
 	}
-	return fmt.Sprintf("TUPLE(%s)", strings.Join(elems, ", "))
+	return fmt.Sprintf("tuple(%s)", strings.Join(elems, ", "))
 }
 
 func (t TupleType) Type() query.Type {

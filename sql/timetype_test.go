@@ -215,5 +215,5 @@ func TestTimeConvertToTimeDuration(t *testing.T) {
 }
 
 func TestTimeString(t *testing.T) {
-	require.Equal(t, "TIME(6)", Time.String())
+	require.Equal(t, "time(6)", Time.String())
 }
