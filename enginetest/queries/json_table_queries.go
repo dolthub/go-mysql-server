@@ -34,10 +34,10 @@ var JSONTableQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT * FROM JSON_TABLE('[{\"a\":1.123, \"b\":2.234},{\"a\":3.345, \"b\":4.456}]',\"$[*]\" COLUMNS(x float path \"$.a\", y float path \"$.b\")) as tt;",
+		Query: "SELECT * FROM JSON_TABLE('[{\"a\":1.5, \"b\":2.25},{\"a\":3.125, \"b\":4.0625}]',\"$[*]\" COLUMNS(x float path \"$.a\", y float path \"$.b\")) as tt;",
 		Expected: []sql.Row{
-			{1.123, 2.234},
-			{3.345, 4.456},
+			{1.5, 2.25},
+			{3.125, 4.0625},
 		},
 	},
 	{
