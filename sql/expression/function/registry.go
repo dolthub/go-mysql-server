@@ -48,6 +48,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "concat", Fn: NewConcat},
 	sql.FunctionN{Name: "concat_ws", Fn: NewConcatWithSeparator},
 	sql.NewFunction0("connection_id", NewConnectionID),
+	sql.Function3{Name: "conv", Fn: NewConv},
 	sql.Function1{Name: "cos", Fn: NewCos},
 	sql.Function1{Name: "cot", Fn: NewCot},
 	sql.Function3{Name: "convert_tz", Fn: NewConvertTz},
