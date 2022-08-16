@@ -39,8 +39,11 @@ func TestConv(t *testing.T) {
 		{"invalid fromBase", sql.LongText, sql.NewRow(2, 37, 2), nil, nil},
 		{"invalid toBase", sql.LongText, sql.NewRow(2, 16, 37), nil, nil},
 		{"base 16 to base 2", sql.LongText, sql.NewRow("a", 16, 2), "1010", nil},
+		{"base 2 to base 16", sql.LongText, sql.NewRow(1010, 2, 16), "A", nil},
 		{"base 18 to base 8", sql.LongText, sql.NewRow("6E", 18, 8), "172", nil},
+		{"base 8 to base 18", sql.LongText, sql.NewRow("172", 8, 18), "6E", nil},
 		{"base 10 to base -18", sql.LongText, sql.NewRow("-17", 10, -18), "-H", nil},
+		{"base -18 to base 10", sql.LongText, sql.NewRow("-H", -18, 10), "-17", nil},
 		{"n as hex", sql.LongText, sql.NewRow(0x0a, 10, 10), "10", nil},
 	}
 
