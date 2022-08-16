@@ -22,6 +22,170 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+func TestBitAND_String(t *testing.T) {
+	assert := require.New(t)
+	m := NewBitAND(expression.NewGetField(0, sql.Int32, "field", true))
+	assert.Equal("BITAND(field)", m.String())
+}
+
+func TestBitAND_Eval_Int(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitAND(expression.NewGetField(0, sql.Int64, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow(1))
+	b.Update(ctx, sql.NewRow(3))
+	b.Update(ctx, sql.NewRow(7))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(1), v)
+}
+
+func TestBitAND_Eval_Float64(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitAND(expression.NewGetField(0, sql.Float64, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow(1.123123))
+	b.Update(ctx, sql.NewRow(3.3452345))
+	b.Update(ctx, sql.NewRow(7.1123123))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(1), v)
+}
+
+func TestBitAND_Eval_Text(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitAND(expression.NewGetField(0, sql.Text, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow("a"))
+	b.Update(ctx, sql.NewRow("A"))
+	b.Update(ctx, sql.NewRow("b"))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(0), v)
+}
+
+func TestBitAND_Eval_NULL(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitAND(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(^uint64(0), v)
+}
+
+func TestBitAND_Eval_Empty(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitAND(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := m.NewBuffer()
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(^uint64(0), v)
+}
+
+func TestBitOR_String(t *testing.T) {
+	assert := require.New(t)
+	m := NewBitOR(expression.NewGetField(0, sql.Int32, "field", true))
+	assert.Equal("BITOR(field)", m.String())
+}
+
+func TestBitOR_Eval_Int(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitOR(expression.NewGetField(0, sql.Int64, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow(1))
+	b.Update(ctx, sql.NewRow(2))
+	b.Update(ctx, sql.NewRow(4))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(7), v)
+}
+
+func TestBitOR_Eval_Float64(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitOR(expression.NewGetField(0, sql.Float64, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow(1.123123))
+	b.Update(ctx, sql.NewRow(2.3452345))
+	b.Update(ctx, sql.NewRow(4.1123123))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(7), v)
+}
+
+func TestBitOR_Eval_Text(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitOR(expression.NewGetField(0, sql.Text, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow("a"))
+	b.Update(ctx, sql.NewRow("A"))
+	b.Update(ctx, sql.NewRow("b"))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(0), v)
+}
+
+func TestBitOR_Eval_NULL(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitOR(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := m.NewBuffer()
+
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(0), v)
+}
+
+func TestBitOR_Eval_Empty(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewBitOR(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := m.NewBuffer()
+
+	v, err := b.Eval(ctx)
+	assert.NoError(err)
+	assert.Equal(uint64(0), v)
+}
+
 func TestBitXOR_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewBitXOR(expression.NewGetField(0, sql.Int32, "field", true))
@@ -37,11 +201,11 @@ func TestBitXOR_Eval_Int(t *testing.T) {
 
 	b.Update(ctx, sql.NewRow(1))
 	b.Update(ctx, sql.NewRow(2))
-	b.Update(ctx, sql.NewRow(4))
+	b.Update(ctx, sql.NewRow(5))
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
-	assert.Equal(uint64(7), v)
+	assert.Equal(uint64(6), v)
 }
 
 func TestBitXOR_Eval_Float64(t *testing.T) {
@@ -53,11 +217,11 @@ func TestBitXOR_Eval_Float64(t *testing.T) {
 
 	b.Update(ctx, sql.NewRow(1.123123))
 	b.Update(ctx, sql.NewRow(2.3452345))
-	b.Update(ctx, sql.NewRow(4.1123123))
+	b.Update(ctx, sql.NewRow(5.1123123))
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
-	assert.Equal(uint64(7), v)
+	assert.Equal(uint64(6), v)
 }
 
 func TestBitXOR_Eval_Text(t *testing.T) {

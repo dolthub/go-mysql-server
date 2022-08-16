@@ -228,7 +228,7 @@ func (b *bitORBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = sql.Int64.Convert(v)
+	v, err = sql.Uint64.Convert(v)
 	if err != nil {
 		v = uint64(0)
 	}

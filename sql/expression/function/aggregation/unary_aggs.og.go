@@ -4,7 +4,6 @@ package aggregation
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -66,6 +65,118 @@ func (a *Avg) NewWindowFunction() (sql.WindowFunction, error) {
 	return NewAvgAgg(child).WithWindow(a.Window())
 }
 
+type BitAND struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*BitAND)(nil)
+var _ sql.Aggregation = (*BitAND)(nil)
+var _ sql.WindowAdaptableExpression = (*BitAND)(nil)
+
+func NewBitAND(e sql.Expression) *BitAND {
+	return &BitAND{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "BitAND",
+			description:     "returns the bitwise and value of expr in all rows.",
+		},
+	}
+}
+
+func (a *BitAND) Type() sql.Type {
+	return sql.Uint64
+}
+
+func (a *BitAND) IsNullable() bool {
+	return false
+}
+
+func (a *BitAND) String() string {
+	return fmt.Sprintf("BITAND(%s)", a.Child)
+}
+
+func (a *BitAND) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+	res, err := a.unaryAggBase.WithWindow(window)
+	return &BitAND{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *BitAND) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &BitAND{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *BitAND) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewBitANDBuffer(child), nil
+}
+
+func (a *BitAND) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewBitANDAgg(child).WithWindow(a.Window())
+}
+
+type BitOR struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*BitOR)(nil)
+var _ sql.Aggregation = (*BitOR)(nil)
+var _ sql.WindowAdaptableExpression = (*BitOR)(nil)
+
+func NewBitOR(e sql.Expression) *BitOR {
+	return &BitOR{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "BitOR",
+			description:     "returns the bitwise or value of expr in all rows.",
+		},
+	}
+}
+
+func (a *BitOR) Type() sql.Type {
+	return sql.Uint64
+}
+
+func (a *BitOR) IsNullable() bool {
+	return false
+}
+
+func (a *BitOR) String() string {
+	return fmt.Sprintf("BITOR(%s)", a.Child)
+}
+
+func (a *BitOR) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+	res, err := a.unaryAggBase.WithWindow(window)
+	return &BitOR{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *BitOR) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &BitOR{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *BitOR) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewBitORBuffer(child), nil
+}
+
+func (a *BitOR) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewBitORAgg(child).WithWindow(a.Window())
+}
+
 type BitXOR struct {
 	unaryAggBase
 }
@@ -85,11 +196,11 @@ func NewBitXOR(e sql.Expression) *BitXOR {
 }
 
 func (a *BitXOR) Type() sql.Type {
-	return sql.Int64
+	return sql.Uint64
 }
 
 func (a *BitXOR) IsNullable() bool {
-	return true
+	return false
 }
 
 func (a *BitXOR) String() string {
