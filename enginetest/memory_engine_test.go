@@ -111,6 +111,11 @@ func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJSONQueries runs the canonical test queries against a single threaded index enabled harness.
+func TestJSONTableQueries(t *testing.T) {
+	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	t.Skip()

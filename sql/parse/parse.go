@@ -2605,6 +2605,9 @@ func tableExprToTable(
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)
 
+	case *sqlparser.JSONTableExpr:
+		return jsonTableExpr(ctx, t)
+
 	case *sqlparser.ParenTableExpr:
 		if len(t.Exprs) == 1 {
 			switch j := t.Exprs[0].(type) {
@@ -2659,6 +2662,25 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 	default:
 		return nil, sql.ErrUnsupportedFeature.New("Join type " + t.Join)
 	}
+}
+
+func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, error) {
+	data, err := ExprToExpression(ctx, t.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	paths := make([]string, len(t.Spec.Columns))
+	for i, col := range t.Spec.Columns {
+		paths[i] = col.Type.Path
+	}
+
+	sch, err := TableSpecToSchema(ctx, t.Spec)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewJSONTable(ctx, data, t.Path, paths, t.Alias.String(), sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
