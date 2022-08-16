@@ -96,7 +96,7 @@ func TestBitXOR_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewBitXOR(expression.NewGetField(0, sql.Int32, "field", true))
 	b, _ := m.NewBuffer()
 
 	v, err := b.Eval(ctx)
