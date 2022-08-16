@@ -1032,7 +1032,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
 }
 
-func (t *Table) AsIndexedAccess() sql.IndexedTable {
+func (t *Table) AsIndexedAccess(sql.Index) sql.IndexedTable {
 	return &IndexedTable{Table: t}
 }
 

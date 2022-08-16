@@ -66,7 +66,7 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 	return &IndexedTableAccess{
 		ResolvedTable: rt,
 		lb:            lb,
-		Table:         iaTable.AsIndexedAccess(),
+		Table:         iaTable.AsIndexedAccess(lb.index),
 	}, nil
 }
 
@@ -96,7 +96,7 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 	return &IndexedTableAccess{
 		ResolvedTable: rt,
 		lookup:        lookup,
-		Table:         iaTable.AsIndexedAccess(),
+		Table:         iaTable.AsIndexedAccess(lookup.Index),
 	}, nil
 }
 
@@ -296,7 +296,7 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 	if !ok {
 		return nil, fmt.Errorf("table does not support indexed access")
 	}
-	i.Table = iat.AsIndexedAccess()
+	i.Table = iat.AsIndexedAccess(i.Index())
 
 	return &i, nil
 }
