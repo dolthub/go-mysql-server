@@ -1675,9 +1675,6 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView")
 	require.NoError(t, err)
 
-	// e.Analyzer.Debug = false
-	// e.Analyzer.Verbose = true
-
 	AssertErr(t, e, harness, "select * from recursiveView", analyzer.ErrMaxAnalysisIters)
 }
 
