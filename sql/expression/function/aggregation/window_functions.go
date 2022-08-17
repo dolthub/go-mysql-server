@@ -1009,6 +1009,138 @@ func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 	}
 }
 
+type Rank struct {
+	partitionStart, partitionEnd int
+
+	// orderBy tracks peer group increments
+	orderBy []sql.Expression
+	// pos increments every iteration
+	pos int
+	// peerGroup tracks value increments
+	peerGroup sql.WindowInterval
+}
+
+func NewRank(orderBy []sql.Expression) *Rank {
+	return &Rank{
+		partitionStart: -1,
+		partitionEnd:   -1,
+		pos:            -1,
+		orderBy:        orderBy,
+	}
+}
+
+func (a *Rank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	na.orderBy = w.OrderBy.ToExpressions()
+	return &na, nil
+}
+
+func (a *Rank) Dispose() {
+	return
+}
+
+// DefaultFramer returns a NewPartitionFramer
+func (a *Rank) DefaultFramer() sql.WindowFramer {
+	return NewPeerGroupFramer(a.orderBy)
+}
+
+func (a *Rank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
+	a.Dispose()
+	a.partitionStart, a.partitionEnd = interval.Start, interval.End
+	a.pos = a.partitionStart
+	a.peerGroup = sql.WindowInterval{}
+	return nil
+}
+
+func (a *Rank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+	panic("implement me")
+}
+
+// Compute returns the number of elements before the current peer group (rank),
+// and returns (rank - 1)/(rows - 1).
+// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
+// there are 4 values less than 3, and there are (10 - 1) total rows in the list.
+func (a *Rank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	if interval.End-interval.Start < 1 {
+		return nil
+	}
+	defer func() { a.pos++ }()
+	switch {
+	case a.pos == 0:
+		return 0
+	case a.partitionEnd-a.partitionStart == 1:
+		return 0
+	default:
+		return int64(interval.Start - a.partitionStart)
+	}
+}
+
+type DenseRank struct {
+	partitionStart, partitionEnd int
+
+	// orderBy tracks peer group increments
+	orderBy []sql.Expression
+	// pos increments every iteration
+	pos int
+	// peerGroup tracks value increments
+	peerGroup sql.WindowInterval
+}
+
+func NewDenseRank(orderBy []sql.Expression) *DenseRank {
+	return &DenseRank{
+		partitionStart: -1,
+		partitionEnd:   -1,
+		pos:            -1,
+		orderBy:        orderBy,
+	}
+}
+
+func (a *DenseRank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	na.orderBy = w.OrderBy.ToExpressions()
+	return &na, nil
+}
+
+func (a *DenseRank) Dispose() {
+	return
+}
+
+// DefaultFramer returns a NewPartitionFramer
+func (a *DenseRank) DefaultFramer() sql.WindowFramer {
+	return NewPeerGroupFramer(a.orderBy)
+}
+
+func (a *DenseRank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
+	a.Dispose()
+	a.partitionStart, a.partitionEnd = interval.Start, interval.End
+	a.pos = a.partitionStart
+	a.peerGroup = sql.WindowInterval{}
+	return nil
+}
+
+func (a *DenseRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+	panic("implement me")
+}
+
+// Compute returns the number of elements before the current peer group (rank),
+// and returns (rank - 1)/(rows - 1).
+// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
+// there are 4 values less than 3, and there are (10 - 1) total rows in the list.
+func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	if interval.End-interval.Start < 1 {
+		return nil
+	}
+	defer func() { a.pos++ }()
+	switch {
+	case a.pos == 0:
+		return float64(0)
+	case a.partitionEnd-a.partitionStart == 1:
+		return float64(0)
+	default:
+		return float64(interval.Start-a.partitionStart) / float64(a.partitionEnd-a.partitionStart-1)
+	}
+}
+
 type Lag struct {
 	leadLagBase
 }
