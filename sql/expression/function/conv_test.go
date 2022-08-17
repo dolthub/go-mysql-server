@@ -44,6 +44,9 @@ func TestConv(t *testing.T) {
 		{"base 8 to base 18", sql.LongText, sql.NewRow("172", 8, 18), "6E", nil},
 		{"base 10 to base -18", sql.LongText, sql.NewRow("-17", 10, -18), "-H", nil},
 		{"base -18 to base 10", sql.LongText, sql.NewRow("-H", -18, 10), "-17", nil},
+		{"base -18 to base 10", sql.LongText, sql.NewRow("5276", 8, 16), "ABE", nil},
+		{"base 10 to base 3", sql.LongText, sql.NewRow(123456, 10, 3), "20021100110", nil},
+		{"base 3 to base 10", sql.LongText, sql.NewRow(20021100110, 3, 10), "123456", nil},
 		{"n as hex", sql.LongText, sql.NewRow(0x0a, 10, 10), "10", nil},
 	}
 
