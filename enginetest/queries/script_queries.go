@@ -134,9 +134,6 @@ var ScriptTests = []ScriptTest{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
 		},
 		Assertions: []ScriptTestAssertion{
-			// TODO: When collation support lands, we need to add more tests for case-insensitive behavior:
-			//       - erroring when equivalent enum values (e.g. 'abc' and 'ABC') are specified in an enum definition
-			//       - successfully inserting when equivalent enum values are specified in an insert/update statement
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
 				Expected: []sql.Row{{sql.NewOkResult(3)}},
@@ -158,6 +155,14 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{
 					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci",
 					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci"}},
+			},
+			{
+				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
 			},
 		},
 	},
