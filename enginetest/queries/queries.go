@@ -3078,6 +3078,23 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `select pk,
+                       percent_rank() over(partition by v2 order by pk),
+                       dense_rank() over(partition by v2 order by pk),
+                       rank() over(partition by v2 order by pk),
+				from one_pk_three_idx order by pk`,
+		Expected: []sql.Row{
+			{0, float64(0), 1, 1},
+			{1, float64(1) / float64(3), 2, 2},
+			{2, float64(0), 1, 1},
+			{3, float64(0), 1, 1},
+			{4, float64(2) / float64(3), 2, 2},
+			{5, float64(1), 1, 1},
+			{6, float64(0), 1, 1},
+			{7, float64(0), 1, 1},
+		},
+	},
+	{
 		SkipPrepared: true,
 		Query: `select pk,
 					   first_value(pk) over (order by pk desc),

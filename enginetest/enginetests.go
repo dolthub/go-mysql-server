@@ -3630,6 +3630,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil)
 
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(3)},
+		{2, uint64(5)},
+		{3, uint64(1)},
+		{4, uint64(3)},
+		{5, uint64(6)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(3)},
+		{3, uint64(1)},
+		{4, uint64(2)},
+		{5, uint64(4)},
+	}, nil, nil)
+
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
 		{0, 0.8},
 		{1, 0.4},
@@ -3637,6 +3655,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.8},
 		{4, 0.4},
 		{5, 0.0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+		{0, uint64(5)},
+		{1, uint64(3)},
+		{2, uint64(2)},
+		{3, uint64(5)},
+		{4, uint64(3)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+		{0, uint64(4)},
+		{1, uint64(3)},
+		{2, uint64(2)},
+		{3, uint64(4)},
+		{4, uint64(3)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
@@ -3648,6 +3684,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil)
 
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(4)},
+		{3, uint64(1)},
+		{4, uint64(3)},
+		{5, uint64(5)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(3)},
+		{3, uint64(1)},
+		{4, uint64(2)},
+		{5, uint64(4)},
+	}, nil, nil)
+
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
 		{0, 0.0},
 		{1, 1.0},
@@ -3655,6 +3709,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.0},
 		{4, 0.0},
 		{5, 0.0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	// no order by clause -> all rows are peers
@@ -3665,6 +3737,26 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.0},
 		{4, 0.0},
 		{5, 0.0},
+	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
