@@ -94,6 +94,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
+
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -763,21 +764,22 @@ func getJoinIndexes(
 		return result
 	case *expression.And:
 		exprs := splitConjunction(jc.cond)
+		var eqs []sql.Expression
 		for _, expr := range exprs {
 			switch e := expr.(type) {
 			case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+				eqs = append(eqs, e)
 			case *expression.Not:
 				switch e.Child.(type) {
 				case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+					eqs = append(eqs, e)
 				default:
-					return nil
 				}
 			default:
-				return nil
 			}
 		}
 
-		return getJoinIndex(ctx, jc, exprs, ia, tableAliases)
+		return getJoinIndex(ctx, jc, eqs, ia, tableAliases)
 	case *expression.Or:
 		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable}
 		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable}

@@ -122,7 +122,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
+		Query: `SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 and pk > 0 ORDER BY 2,3`,
 		Expected: []sql.Row{
 			{1, 2},
 		},
@@ -130,7 +130,7 @@ func TestSingleQuery(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	harness.Setup(setup.Mytable...)
+	harness.Setup(setup.MydbData, setup.SpecialtableData, setup.Pk_tablesData, setup.NiltableData)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)

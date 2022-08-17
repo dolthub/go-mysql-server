@@ -553,19 +553,21 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND s > s2`,
-		ExpectedPlan: "InnerJoin((mytable.i = othertable.i2) AND (mytable.s > othertable.s2))\n" +
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (mytable.s > othertable.s2))\n" +
 			" ├─ Table(mytable)\n" +
 			" │   └─ columns: [i s]\n" +
-			" └─ Table(othertable)\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT(s > s2)`,
-		ExpectedPlan: "InnerJoin((mytable.i = othertable.i2) AND (NOT((mytable.s > othertable.s2))))\n" +
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (NOT((mytable.s > othertable.s2))))\n" +
 			" ├─ Table(mytable)\n" +
 			" │   └─ columns: [i s]\n" +
-			" └─ Table(othertable)\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
@@ -1786,11 +1788,13 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0`,
-		ExpectedPlan: "RightJoin((one_pk.pk = niltable.i) AND (one_pk.pk > 0))\n" +
-			" ├─ Table(one_pk)\n" +
-			" │   └─ columns: [pk]\n" +
-			" └─ Table(niltable)\n" +
-			"     └─ columns: [i f]\n" +
+		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ RightIndexedJoin((one_pk.pk = niltable.i) AND (one_pk.pk > 0))\n" +
+			"     ├─ Table(niltable)\n" +
+			"     │   └─ columns: [i f]\n" +
+			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
+			"         └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -2173,11 +2177,13 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3`,
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
-			" └─ RightJoin((one_pk.pk = niltable.i) AND (one_pk.pk > 0))\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     │   └─ columns: [pk]\n" +
-			"     └─ Table(niltable)\n" +
-			"         └─ columns: [i f]\n" +
+			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			"     └─ RightIndexedJoin((one_pk.pk = niltable.i) AND (one_pk.pk > 0))\n" +
+			"         ├─ Table(niltable)\n" +
+			"         │   └─ columns: [i f]\n" +
+			"         └─ IndexedTableAccess(one_pk)\n" +
+			"             ├─ index: [one_pk.pk]\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -2940,6 +2946,107 @@ var PlanTests = []QueryPlanTest{
 			"                 └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"                     ├─ index: [one_pk_two_idx.pk]\n" +
 			"                     └─ columns: [pk]\n" +
+			"",
+	},
+	{
+		Query: `select a.* from mytable a join mytable b on a.i = b.i and a.i > 2`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.i)\n" +
+			"     ├─ Filter(a.i > 2)\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{(2, ∞)}]\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `select a.* from mytable a join mytable b on a.i = b.i and now() >= coalesce(NULL, NULL, now())`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * from one_pk_three_idx where pk < 1 and v1 = 1 and v2 = 1`,
+		ExpectedPlan: "Filter(one_pk_three_idx.pk < 1)\n" +
+			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * from one_pk_three_idx where pk = 1 and v1 = 1 and v2 = 1`,
+		ExpectedPlan: "Filter(one_pk_three_idx.pk = 1)\n" +
+			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and b <=> NULL`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Filter(b.b <=> NULL)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and b IS NOT NULL`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Filter(NOT(b.b IS NULL))\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and b != 0`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Filter(NOT((b.b = 0)))\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and s IS NOT NULL`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ Filter(NOT(a.s IS NULL))\n" +
+			" │   └─ TableAlias(a)\n" +
+			" │       └─ IndexedTableAccess(mytable)\n" +
+			" │           ├─ index: [mytable.s]\n" +
+			" │           ├─ filters: [{(NULL, ∞)}]\n" +
+			" │           └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 }
