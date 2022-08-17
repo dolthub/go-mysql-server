@@ -6827,6 +6827,10 @@ var QueryTests = []QueryTest{
 		Query:    "SELECT CONV(HEX(SUBSTRING('127.0', 1, 3)), 16, 10)",
 		Expected: []sql.Row{{"3224119"}},
 	},
+	{
+		Query:    "SELECT CONV(i, 10, 2) FROM mytable",
+		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
