@@ -90,15 +90,16 @@ func (c *Conv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val := convertFromBase(n.(string), from)
-	switch val {
+	// valConvertedFrom is unsigned if n input is positive, signed if negative.
+	valConvertedFrom := convertFromBase(n.(string), from)
+	switch valConvertedFrom {
 	case nil:
 		return nil, nil
 	case 0:
 		return "0", nil
 	}
 
-	result := convertToBase(val, to)
+	result := convertToBase(valConvertedFrom, to)
 	if result == "" {
 		return nil, nil
 	}
@@ -124,13 +125,15 @@ func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewConv(children[0], children[1], children[2]), nil
 }
 
-func convertFromBase(str string, from interface{}) interface{} {
-	from, err := sql.Int64.Convert(from)
+// convertFromBase returns nil if fromBase input is invalid, 0 if n input is invalid and converted result if nVal and fromBase inputs are valid.
+// This conversion truncates nVal as its first subpart that is convertable.
+func convertFromBase(nVal string, fromBase interface{}) interface{} {
+	fromBase, err := sql.Int64.Convert(fromBase)
 	if err != nil {
 		return nil
 	}
 
-	fromVal := int(math.Abs(float64(from.(int64))))
+	fromVal := int(math.Abs(float64(fromBase.(int64))))
 	if fromVal < 2 || fromVal > 36 {
 		return nil
 	}
@@ -138,36 +141,37 @@ func convertFromBase(str string, from interface{}) interface{} {
 	negative := false
 	var upper string
 	var lower string
-	if str[0] == '-' {
+	if nVal[0] == '-' {
 		negative = true
-		str = str[1:]
-	} else if str[0] == '+' {
-		str = str[1:]
+		nVal = nVal[1:]
+	} else if nVal[0] == '+' {
+		nVal = nVal[1:]
 	}
 
+	// check for upper and lower bound for given fromBase
 	if negative {
 		upper = strconv.FormatInt(math.MaxInt64, fromVal)
 		lower = strconv.FormatInt(math.MinInt64, fromVal)
-		if len(str) > len(lower) {
-			str = lower
-		} else if len(str) > len(upper) {
-			str = upper
+		if len(nVal) > len(lower) {
+			nVal = lower
+		} else if len(nVal) > len(upper) {
+			nVal = upper
 		}
 	} else {
 		upper = strconv.FormatUint(math.MaxUint64, fromVal)
 		lower = "0"
-		if len(str) < len(lower) {
-			str = lower
-		} else if len(str) > len(upper) {
-			str = upper
+		if len(nVal) < len(lower) {
+			nVal = lower
+		} else if len(nVal) > len(upper) {
+			nVal = upper
 		}
 	}
 
 	truncate := false
 	result := uint64(0)
 	i := 1
-	for !truncate && i <= len(str) {
-		val, err := strconv.ParseUint(str[:i], fromVal, 64)
+	for !truncate && i <= len(nVal) {
+		val, err := strconv.ParseUint(nVal[:i], fromVal, 64)
 		if err != nil {
 			truncate = true
 			return result
@@ -181,16 +185,17 @@ func convertFromBase(str string, from interface{}) interface{} {
 	}
 
 	return result
-
 }
 
-func convertToBase(val interface{}, to interface{}) string {
-	to, err := sql.Int64.Convert(to)
+// convertToBase returns result of whole CONV function in string format, empty string if to input is invalid.
+// The sign of toBase decides whether result is formatted as signed or unsigned.
+func convertToBase(val interface{}, toBase interface{}) string {
+	toBase, err := sql.Int64.Convert(toBase)
 	if err != nil {
 		return ""
 	}
 
-	toVal := int(math.Abs(float64(to.(int64))))
+	toVal := int(math.Abs(float64(toBase.(int64))))
 	if toVal < 2 || toVal > 36 {
 		return ""
 	}
@@ -198,8 +203,7 @@ func convertToBase(val interface{}, to interface{}) string {
 	var result string
 	switch v := val.(type) {
 	case int64:
-
-		if to.(int64) < 0 {
+		if toBase.(int64) < 0 {
 			result = strconv.FormatInt(v, toVal)
 			if err != nil {
 				return ""
@@ -211,7 +215,7 @@ func convertToBase(val interface{}, to interface{}) string {
 			}
 		}
 	case uint64:
-		if to.(int64) < 0 {
+		if toBase.(int64) < 0 {
 			result = strconv.FormatInt(int64(v), toVal)
 			if err != nil {
 				return ""
