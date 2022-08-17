@@ -88,21 +88,12 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 				return nil, transform.SameTree, err
 			}
 
-			//var unhandled sql.Expression
 			joinIndexes, err = findJoinIndexesByTable(ctx, n, tableAliases, a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
-			//j, same, err := replanJoin(ctx, n, a, joinIndexes, scope)
-			//if err != nil {
-			//	return n, transform.SameTree, err
-			//}
-			//if !same && unhandled != nil {
-			//	return plan.NewFilter(unhandled, j), transform.NewTree, nil
-			//}
-			//return j, same, nil
 
 		default:
 			return n, transform.SameTree, nil
@@ -134,26 +125,6 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 	return withIndexedTableAccess, transform.NewTree, nil
 }
-
-//func addUnhandled(n sql.Node, unhandled sql.Expression) {
-// in order traversal to push filters below sided-joins
-
-//var recurse func(sql.Node) sql.Node
-//recurse = func(n sql.Node) sql.Node {
-//	// check node for handed join
-//	jn, ok := n.(plan.JoinNode)
-//	if !ok {
-//		return n
-//	}
-//	switch jn.JoinType() {
-//	case plan.JoinTypeLeft:
-//	case plan.JoinTypeRight:
-//	default:
-//	}
-//	return plan.NewFilter(unhandled, n)
-//	// recurse into children
-//}
-//}
 
 // countTableFactors uses a naive algorithm to count
 // the number of join leaves in a query.
@@ -709,10 +680,6 @@ func findJoinIndexesByTable(
 	return joinIndexesByTable, err
 }
 
-//func filterSidedJoinUnhandled(n sql.Node, e sql.Expression) sql.Expression {
-//	// if sided join, kill filters that don't apply
-//}
-
 // getJoinIndexesByTable returns a map of table name to a slice of joinIndex on that table
 func getJoinIndexesByTable(
 	ctx *sql.Context,
@@ -733,16 +700,6 @@ func getJoinIndexesByTable(
 	}
 
 	return result
-}
-
-func conjUnhandled(e1 sql.Expression, e2 sql.Expression) sql.Expression {
-	if e2 == nil {
-		return e1
-	}
-	if e1 == nil {
-		return e2
-	}
-	return expression.NewAnd(e1, e2)
 }
 
 // merge merges the indexes with the ones given
