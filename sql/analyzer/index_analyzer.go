@@ -192,6 +192,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 			return false
 		} else if idxI.prefixCount != idxJ.prefixCount {
 			return idxI.prefixCount > idxJ.prefixCount
+			// TODO: ID() == "PRIMARY" is purely convention
 		} else if idxI.ID() == "PRIMARY" || idxJ.ID() == "PRIMARY" {
 			return idxI.ID() == "PRIMARY"
 		} else if idxI.exprLen != idxJ.exprLen {
