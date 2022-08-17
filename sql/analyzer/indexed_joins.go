@@ -88,12 +88,21 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 				return nil, transform.SameTree, err
 			}
 
-			joinIndexes, err = findJoinIndexesByTable(ctx, n, tableAliases, a)
+			var unhandled sql.Expression
+			joinIndexes, unhandled, err = findJoinIndexesByTable(ctx, n, tableAliases, a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 
-			return replanJoin(ctx, n, a, joinIndexes, scope)
+			j, same, err := replanJoin(ctx, n, a, joinIndexes, scope)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			if !same && unhandled != nil {
+				return plan.NewFilter(unhandled, j), transform.NewTree, nil
+			}
+			return j, same, nil
+
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -637,7 +646,7 @@ func findJoinIndexesByTable(
 	node sql.Node,
 	tableAliases TableAliases,
 	a *Analyzer,
-) (joinIndexesByTable, error) {
+) (joinIndexesByTable, sql.Expression, error) {
 	indexSpan, ctx := ctx.Span("find_join_indexes")
 	defer indexSpan.End()
 
@@ -658,6 +667,7 @@ func findJoinIndexesByTable(
 	})
 
 	var joinIndexesByTable joinIndexesByTable
+	var unhandled sql.Expression
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
@@ -669,14 +679,14 @@ func findJoinIndexesByTable(
 			defer indexAnalyzer.releaseUsedIndexes()
 
 			// then get all possible indexes based on the conds for all tables (using the topmost table as a starting point)
-			joinIndexesByTable = getJoinIndexesByTable(ctx, a, indexAnalyzer, conds, tableAliases)
+			joinIndexesByTable, unhandled = getJoinIndexesByTable(ctx, a, indexAnalyzer, conds, tableAliases)
 			return false
 		}
 
 		return true
 	})
 
-	return joinIndexesByTable, err
+	return joinIndexesByTable, unhandled, err
 }
 
 // getJoinIndexesByTable returns a map of table name to a slice of joinIndex on that table
@@ -686,19 +696,31 @@ func getJoinIndexesByTable(
 	ia *indexAnalyzer,
 	joinConds []joinCond,
 	tableAliases TableAliases,
-) joinIndexesByTable {
+) (joinIndexesByTable, sql.Expression) {
 	//TODO add lookup filter
 	result := make(joinIndexesByTable)
+	var unhandled sql.Expression
 	for _, cond := range joinConds {
-		indexes := getJoinIndexes(ctx, a, ia, cond, tableAliases)
+		indexes, condUnhandled := getJoinIndexes(ctx, a, ia, cond, tableAliases)
+		unhandled = conjUnhandled(unhandled, condUnhandled)
 		// If we can't find a join index for any condition, abandon the optimization
 		if len(indexes) == 0 {
-			return nil
+			return nil, nil
 		}
 		result.merge(indexes)
 	}
 
-	return result
+	return result, unhandled
+}
+
+func conjUnhandled(e1 sql.Expression, e2 sql.Expression) sql.Expression {
+	if e2 == nil {
+		return e1
+	}
+	if e1 == nil {
+		return e2
+	}
+	return expression.NewAnd(e1, e2)
 }
 
 // merge merges the indexes with the ones given
@@ -746,7 +768,7 @@ func getJoinIndexes(
 	ia *indexAnalyzer,
 	jc joinCond,
 	tableAliases TableAliases,
-) joinIndexesByTable {
+) (joinIndexesByTable, sql.Expression) {
 
 	switch cond := jc.cond.(type) {
 	case *expression.Equals, *expression.NullSafeEquals:
@@ -755,34 +777,44 @@ func getJoinIndexes(
 
 		// If we can't identify a join index for this condition, return nothing.
 		if left == nil || right == nil {
-			return nil
+			return nil, nil
 		}
 
 		result[left.table] = append(result[left.table], left)
 		result[right.table] = append(result[right.table], right)
-		return result
+		return result, nil
 	case *expression.And:
 		exprs := splitConjunction(jc.cond)
+		var eqs []sql.Expression
+		var unhandled sql.Expression
 		for _, expr := range exprs {
 			switch e := expr.(type) {
 			case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+				eqs = append(eqs, e)
 			case *expression.Not:
 				switch e.Child.(type) {
 				case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+					eqs = append(eqs, e)
 				default:
-					return nil
+					unhandled = conjUnhandled(unhandled, e)
 				}
 			default:
-				return nil
+				unhandled = conjUnhandled(unhandled, e)
 			}
 		}
 
-		return getJoinIndex(ctx, jc, exprs, ia, tableAliases)
+		return getJoinIndex(ctx, jc, eqs, ia, tableAliases), unhandled
 	case *expression.Or:
 		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable}
 		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable}
-		leftIdxByTbl := getJoinIndexes(ctx, a, ia, leftCond, tableAliases)
-		rightIdxByTbl := getJoinIndexes(ctx, a, ia, rightCond, tableAliases)
+		leftIdxByTbl, rUnhandled := getJoinIndexes(ctx, a, ia, leftCond, tableAliases)
+		if rUnhandled != nil {
+			return nil, nil
+		}
+		rightIdxByTbl, lUnhandled := getJoinIndexes(ctx, a, ia, rightCond, tableAliases)
+		if lUnhandled != nil {
+			return nil, nil
+		}
 		result := make(joinIndexesByTable)
 		for table, lefts := range leftIdxByTbl {
 			if rights, ok := rightIdxByTbl[table]; ok {
@@ -822,11 +854,11 @@ func getJoinIndexes(
 				result[table] = v
 			}
 		}
-		return result
+		return result, nil
 	}
 	// TODO: handle additional kinds of expressions other than equality
 
-	return nil
+	return nil, nil
 }
 
 // getEqualityIndexes returns the left and right indexes for the two sides of the equality expression given.
