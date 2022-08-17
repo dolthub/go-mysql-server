@@ -12,17 +12,17 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 		Nullable: true,
 	},
 	{
-		Name:    "BitAND",
+		Name:    "BitAnd",
 		Desc:    "returns the bitwise and value of expr in all rows.",
 		RetType: "sql.Uint64",
 	},
 	{
-		Name:    "BitOR",
+		Name:    "BitOr",
 		Desc:    "returns the bitwise or value of expr in all rows.",
 		RetType: "sql.Uint64",
 	},
 	{
-		Name:    "BitXOR",
+		Name:    "BitXor",
 		Desc:    "returns the bitwise xor value of expr in all rows.",
 		RetType: "sql.Uint64",
 	},

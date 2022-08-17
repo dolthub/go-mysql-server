@@ -155,23 +155,23 @@ func (a *avgBuffer) Dispose() {
 	expression.Dispose(a.expr)
 }
 
-type bitANDBuffer struct {
+type bitAndBuffer struct {
 	res  uint64
 	rows uint64
 	expr sql.Expression
 }
 
-func NewBitANDBuffer(child sql.Expression) *bitANDBuffer {
+func NewBitAndBuffer(child sql.Expression) *bitAndBuffer {
 	const (
 		res  = ^uint64(0) // bitwise not xor, so 0xffff...
 		rows = uint64(0)
 	)
 
-	return &bitANDBuffer{res, rows, child}
+	return &bitAndBuffer{res, rows, child}
 }
 
 // Update implements the AggregationBuffer interface.
-func (b *bitANDBuffer) Update(ctx *sql.Context, row sql.Row) error {
+func (b *bitAndBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	v, err := b.expr.Eval(ctx, row)
 	if err != nil {
 		return err
@@ -193,32 +193,32 @@ func (b *bitANDBuffer) Update(ctx *sql.Context, row sql.Row) error {
 }
 
 // Eval implements the AggregationBuffer interface.
-func (b *bitANDBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+func (b *bitAndBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return b.res, nil
 }
 
 // Dispose implements the Disposable interface.
-func (b *bitANDBuffer) Dispose() {
+func (b *bitAndBuffer) Dispose() {
 	expression.Dispose(b.expr)
 }
 
-type bitORBuffer struct {
+type bitOrBuffer struct {
 	res  uint64
 	rows uint64
 	expr sql.Expression
 }
 
-func NewBitORBuffer(child sql.Expression) *bitORBuffer {
+func NewBitOrBuffer(child sql.Expression) *bitOrBuffer {
 	const (
 		res  = uint64(0)
 		rows = uint64(0)
 	)
 
-	return &bitORBuffer{res, rows, child}
+	return &bitOrBuffer{res, rows, child}
 }
 
 // Update implements the AggregationBuffer interface.
-func (b *bitORBuffer) Update(ctx *sql.Context, row sql.Row) error {
+func (b *bitOrBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	v, err := b.expr.Eval(ctx, row)
 	if err != nil {
 		return err
@@ -240,32 +240,32 @@ func (b *bitORBuffer) Update(ctx *sql.Context, row sql.Row) error {
 }
 
 // Eval implements the AggregationBuffer interface.
-func (b *bitORBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+func (b *bitOrBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return b.res, nil
 }
 
 // Dispose implements the Disposable interface.
-func (b *bitORBuffer) Dispose() {
+func (b *bitOrBuffer) Dispose() {
 	expression.Dispose(b.expr)
 }
 
-type bitXORBuffer struct {
+type bitXorBuffer struct {
 	res  uint64
 	rows uint64
 	expr sql.Expression
 }
 
-func NewBitXORBuffer(child sql.Expression) *bitXORBuffer {
+func NewBitXorBuffer(child sql.Expression) *bitXorBuffer {
 	const (
 		res  = uint64(0)
 		rows = uint64(0)
 	)
 
-	return &bitXORBuffer{res, rows, child}
+	return &bitXorBuffer{res, rows, child}
 }
 
 // Update implements the AggregationBuffer interface.
-func (b *bitXORBuffer) Update(ctx *sql.Context, row sql.Row) error {
+func (b *bitXorBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	v, err := b.expr.Eval(ctx, row)
 	if err != nil {
 		return err
@@ -287,7 +287,7 @@ func (b *bitXORBuffer) Update(ctx *sql.Context, row sql.Row) error {
 }
 
 // Eval implements the AggregationBuffer interface.
-func (b *bitXORBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+func (b *bitXorBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	// This case is triggered when no rows exist.
 	if b.res == 0 && b.rows == 0 {
 		return uint64(0), nil
@@ -301,7 +301,7 @@ func (b *bitXORBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (b *bitXORBuffer) Dispose() {
+func (b *bitXorBuffer) Dispose() {
 	expression.Dispose(b.expr)
 }
 

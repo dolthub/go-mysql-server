@@ -206,18 +206,18 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt)
 }
 
-type BitANDAgg struct {
+type BitAndAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
 }
 
-func NewBitANDAgg(e sql.Expression) *BitANDAgg {
-	return &BitANDAgg{
+func NewBitAndAgg(e sql.Expression) *BitAndAgg {
+	return &BitAndAgg{
 		expr: e,
 	}
 }
 
-func (b *BitANDAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (b *BitAndAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -229,28 +229,28 @@ func (b *BitANDAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, err
 	return &na, nil
 }
 
-func (b *BitANDAgg) Dispose() {
+func (b *BitAndAgg) Dispose() {
 	expression.Dispose(b.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (b *BitANDAgg) DefaultFramer() sql.WindowFramer {
+func (b *BitAndAgg) DefaultFramer() sql.WindowFramer {
 	if b.framer != nil {
 		return b.framer
 	}
 	return NewPartitionFramer()
 }
 
-func (b *BitANDAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+func (b *BitAndAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	b.Dispose()
 	return nil
 }
 
-func (b *BitANDAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+func (b *BitAndAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (b *BitANDAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	res := ^uint64(0) // bitwise not xor, so 0xffff...
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
@@ -273,18 +273,18 @@ func (b *BitANDAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 	return res
 }
 
-type BitORAgg struct {
+type BitOrAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
 }
 
-func NewBitORAgg(e sql.Expression) *BitORAgg {
-	return &BitORAgg{
+func NewBitOrAgg(e sql.Expression) *BitOrAgg {
+	return &BitOrAgg{
 		expr: e,
 	}
 }
 
-func (b *BitORAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (b *BitOrAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -296,28 +296,28 @@ func (b *BitORAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, erro
 	return &na, nil
 }
 
-func (b *BitORAgg) Dispose() {
+func (b *BitOrAgg) Dispose() {
 	expression.Dispose(b.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (b *BitORAgg) DefaultFramer() sql.WindowFramer {
+func (b *BitOrAgg) DefaultFramer() sql.WindowFramer {
 	if b.framer != nil {
 		return b.framer
 	}
 	return NewPartitionFramer()
 }
 
-func (b *BitORAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+func (b *BitOrAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	b.Dispose()
 	return nil
 }
 
-func (b *BitORAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+func (b *BitOrAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (b *BitORAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	var res uint64
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
@@ -340,18 +340,18 @@ func (b *BitORAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sq
 	return res
 }
 
-type BitXORAgg struct {
+type BitXorAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
 }
 
-func NewBitXORAgg(e sql.Expression) *BitXORAgg {
-	return &BitXORAgg{
+func NewBitXorAgg(e sql.Expression) *BitXorAgg {
+	return &BitXorAgg{
 		expr: e,
 	}
 }
 
-func (b *BitXORAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (b *BitXorAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -363,28 +363,28 @@ func (b *BitXORAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, err
 	return &na, nil
 }
 
-func (b *BitXORAgg) Dispose() {
+func (b *BitXorAgg) Dispose() {
 	expression.Dispose(b.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (b *BitXORAgg) DefaultFramer() sql.WindowFramer {
+func (b *BitXorAgg) DefaultFramer() sql.WindowFramer {
 	if b.framer != nil {
 		return b.framer
 	}
 	return NewPartitionFramer()
 }
 
-func (b *BitXORAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+func (b *BitXorAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	b.Dispose()
 	return nil
 }
 
-func (b *BitXORAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+func (b *BitXorAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (b *BitXORAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	var res uint64
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
