@@ -509,8 +509,16 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 	}, sel)
 }
 
+// Every time we recursively invoke the analyzer we increment a depth counter to avoid analyzing queries that could
+// cause infinite recursion. This limit is high but arbitrary
+const maxBatchRecursion = 100
+
 func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze")
+
+	if scope.RecursionDepth() > maxBatchRecursion {
+		return n, transform.SameTree, ErrMaxAnalysisIters.New(maxBatchRecursion)
+	}
 
 	var (
 		same    = transform.SameTree
