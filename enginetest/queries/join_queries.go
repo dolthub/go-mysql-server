@@ -308,6 +308,19 @@ var JoinQueryTests = []QueryTest{
 			{4, 4, 4},
 		},
 	},
+	{
+		Query: "select a.* from mytable a join mytable b on a.i = b.i and a.i > 2",
+		Expected: []sql.Row{
+			{3, "third row"},
+		},
+	},
+	{
+		Query: "select a.* from mytable a join mytable b on a.i = b.i and now() >= coalesce(NULL, NULL, now())",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"}},
+	},
 }
 
 var SkippedJoinQueryTests = []QueryTest{
