@@ -1283,6 +1283,10 @@ type DenseRank struct {
 	orderBy []sql.Expression
 	// pos increments every iteration
 	pos int
+	// prevRank tracks what the previous non-dense rank was
+	prevRank uint64
+	// denseRank tracks what the previous dense rank is
+	denseRank uint64
 	// peerGroup tracks value increments
 	peerGroup sql.WindowInterval
 }
@@ -1330,16 +1334,25 @@ func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 	if interval.End-interval.Start < 1 {
 		return nil
 	}
-	// TODO: need to actually count distinct values below
 	defer func() { a.pos++ }()
 	switch {
 	case a.pos == 0:
-		return uint64(1)
+		a.prevRank = 1
+		a.denseRank = 1
 	case a.partitionEnd-a.partitionStart == 1:
-		return uint64(1)
+		a.prevRank = 1
+		a.denseRank = 1
 	default:
-		return uint64(interval.Start-a.partitionStart) + 1
+		rank := uint64(interval.Start-a.partitionStart) + 1
+		if rank == 1 {
+			a.prevRank = 1
+			a.denseRank = 1
+		} else if rank != a.prevRank {
+			a.prevRank = rank
+			a.denseRank += 1
+		}
 	}
+	return a.denseRank
 }
 
 type Lag struct {
