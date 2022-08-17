@@ -3746,6 +3746,34 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", expression.ErrInvalidOffset)
 	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", expression.ErrInvalidOffset)
 
+	RunQuery(t, e, harness, "CREATE TABLE t2 (a int, b int, c int)")
+	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (1,1,1), (3,2,2), (7,4,5)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(a), bit_or(b), bit_xor(c) FROM t2`, []sql.Row{
+		{uint64(1), uint64(7), uint64(6)},
+	}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE t3 (x varchar(100))")
+	RunQuery(t, e, harness, "INSERT INTO t3 VALUES ('these'), ('are'), ('strings')")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t3`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t3`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t3`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE t4 (x int)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t4`, []sql.Row{
+		{^uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t4`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t4`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
 }
 
 func TestWindowRowFrames(t *testing.T, harness Harness) {
