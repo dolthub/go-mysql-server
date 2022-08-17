@@ -90,23 +90,16 @@ func (c *Conv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	fromValue := getIntValueForBase(from)
-	if fromValue == nil {
+	val := convertFromBase(n.(string), from)
+	switch val {
+	case nil:
 		return nil, nil
-	}
-
-	val, err := strconv.ParseInt(n.(string), fromValue.(int), 64)
-	if err != nil {
+	case 0:
 		return "0", nil
 	}
 
-	toValue := getIntValueForBase(to)
-	if toValue == nil {
-		return nil, nil
-	}
-
-	result := strconv.FormatInt(val, toValue.(int))
-	if err != nil {
+	result := convertToBase(val, to)
+	if result == "" {
 		return nil, nil
 	}
 
@@ -131,15 +124,105 @@ func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewConv(children[0], children[1], children[2]), nil
 }
 
-func getIntValueForBase(num interface{}) interface{} {
-	num, err := sql.Int64.Convert(num)
+func convertFromBase(str string, from interface{}) interface{} {
+	from, err := sql.Int64.Convert(from)
 	if err != nil {
 		return nil
 	}
-	numVal := int(math.Abs(float64(num.(int64))))
-	if numVal < 2 || numVal > 36 {
+
+	fromVal := int(math.Abs(float64(from.(int64))))
+	if fromVal < 2 || fromVal > 36 {
 		return nil
 	}
 
-	return numVal
+	negative := false
+	var upper string
+	var lower string
+	if str[0] == '-' {
+		negative = true
+		str = str[1:]
+	} else if str[0] == '+' {
+		str = str[1:]
+	}
+
+	if negative {
+		upper = strconv.FormatInt(math.MaxInt64, fromVal)
+		lower = strconv.FormatInt(math.MinInt64, fromVal)
+		if len(str) > len(lower) {
+			str = lower
+		} else if len(str) > len(upper) {
+			str = upper
+		}
+	} else {
+		upper = strconv.FormatUint(math.MaxUint64, fromVal)
+		lower = "0"
+		if len(str) < len(lower) {
+			str = lower
+		} else if len(str) > len(upper) {
+			str = upper
+		}
+	}
+
+	truncate := false
+	result := uint64(0)
+	i := 1
+	for !truncate && i <= len(str) {
+		val, err := strconv.ParseUint(str[:i], fromVal, 64)
+		if err != nil {
+			truncate = true
+			return result
+		}
+		result = val
+		i++
+	}
+
+	if negative {
+		return int64(result) * -1
+	}
+
+	return result
+
+}
+
+func convertToBase(val interface{}, to interface{}) string {
+	to, err := sql.Int64.Convert(to)
+	if err != nil {
+		return ""
+	}
+
+	toVal := int(math.Abs(float64(to.(int64))))
+	if toVal < 2 || toVal > 36 {
+		return ""
+	}
+
+	var result string
+	switch v := val.(type) {
+	case int64:
+
+		if to.(int64) < 0 {
+			result = strconv.FormatInt(v, toVal)
+			if err != nil {
+				return ""
+			}
+		} else {
+			result = strconv.FormatUint(uint64(v), toVal)
+			if err != nil {
+				return ""
+			}
+		}
+	case uint64:
+		if to.(int64) < 0 {
+			result = strconv.FormatInt(int64(v), toVal)
+			if err != nil {
+				return ""
+			}
+		} else {
+			result = strconv.FormatUint(v, toVal)
+			if err != nil {
+				return ""
+			}
+		}
+	}
+
+	return result
 }
