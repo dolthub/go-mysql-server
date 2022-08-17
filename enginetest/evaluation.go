@@ -169,6 +169,8 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 			})
+		} else if assertion.SkipResultsCheck {
+			runQueryPreparedWithCtx(t, ctx, e, assertion.Query)
 		} else {
 			TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil)
 		}
