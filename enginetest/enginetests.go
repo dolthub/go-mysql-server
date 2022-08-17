@@ -530,7 +530,7 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 }
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
-	for _, script := range queries.InsertScripts {
+	for _, script := range queries.InsertBrokenScripts {
 		t.Skip()
 		TestScript(t, harness, script)
 	}
@@ -4779,7 +4779,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 
 	t.Run("mix of alter column, add and drop constraints in one statement", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t33(pk BIGINT PRIMARY KEY, v1 int, v2 int)")
-		RunQuery(t, e, harness, `alter table t33 add column v4 int after pk, 
+		RunQuery(t, e, harness, `alter table t33 add column v4 int after pk,
 			drop column v2, add constraint v1gt0 check (v1 > 0)`)
 
 		ctx := NewContext(harness)

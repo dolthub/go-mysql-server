@@ -180,11 +180,11 @@ func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScr
 func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Row) {
 	sch, iter, err := e.Query(ctx, q)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("err running query %s: %s", q, err))
 	}
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("err running query %s: %s", q, err))
 	}
 	return sch, rows
 }
