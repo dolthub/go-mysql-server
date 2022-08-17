@@ -78,7 +78,7 @@ func NewBitAnd(e sql.Expression) *BitAnd {
 		unaryAggBase{
 			UnaryExpression: expression.UnaryExpression{Child: e},
 			functionName:    "BitAnd",
-			description:     "returns the bitwise and value of expr in all rows.",
+			description:     "returns the bitwise AND of all bits in expr.",
 		},
 	}
 }
@@ -134,7 +134,7 @@ func NewBitOr(e sql.Expression) *BitOr {
 		unaryAggBase{
 			UnaryExpression: expression.UnaryExpression{Child: e},
 			functionName:    "BitOr",
-			description:     "returns the bitwise or value of expr in all rows.",
+			description:     "returns the bitwise OR of all bits in expr.",
 		},
 	}
 }
@@ -190,7 +190,7 @@ func NewBitXor(e sql.Expression) *BitXor {
 		unaryAggBase{
 			UnaryExpression: expression.UnaryExpression{Child: e},
 			functionName:    "BitXor",
-			description:     "returns the bitwise xor value of expr in all rows.",
+			description:     "returns the bitwise XOR of all bits in expr.",
 		},
 	}
 }
