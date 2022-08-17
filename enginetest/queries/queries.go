@@ -1667,6 +1667,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    "SELECT 1 FROM DUAL WHERE 1 IN (SELECT '1' FROM DUAL)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE '1' IN (SELECT '1' FROM DUAL)",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "SELECT NULL IN (2,3,4)",
 		Expected: []sql.Row{{nil}},
 	},
