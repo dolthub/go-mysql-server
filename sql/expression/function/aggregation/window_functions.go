@@ -1056,10 +1056,9 @@ func (a *Rank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("implement me")
 }
 
-// Compute returns the number of elements before the current peer group (rank),
-// and returns (rank - 1)/(rows - 1).
-// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
-// there are 4 values less than 3, and there are (10 - 1) total rows in the list.
+// Compute returns the number of elements before the current peer group (rank) + 1.
+// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(5) because
+// there are 4 values less than 3
 func (a *Rank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	if interval.End-interval.Start < 1 {
 		return nil
@@ -1067,11 +1066,11 @@ func (a *Rank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.Wi
 	defer func() { a.pos++ }()
 	switch {
 	case a.pos == 0:
-		return 0
+		return uint64(1)
 	case a.partitionEnd-a.partitionStart == 1:
-		return 0
+		return uint64(1)
 	default:
-		return int64(interval.Start - a.partitionStart)
+		return uint64(interval.Start-a.partitionStart) + 1
 	}
 }
 
@@ -1122,22 +1121,22 @@ func (a *DenseRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("implement me")
 }
 
-// Compute returns the number of elements before the current peer group (rank),
-// and returns (rank - 1)/(rows - 1).
-// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
-// there are 4 values less than 3, and there are (10 - 1) total rows in the list.
+// Compute returns the number of unique elements before the current peer group (rank) + 1.
+// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(3) because
+// there are 2 unique values less than 3
 func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	if interval.End-interval.Start < 1 {
 		return nil
 	}
+	// TODO: need to actually count distinct values below
 	defer func() { a.pos++ }()
 	switch {
 	case a.pos == 0:
-		return float64(0)
+		return uint64(1)
 	case a.partitionEnd-a.partitionStart == 1:
-		return float64(0)
+		return uint64(1)
 	default:
-		return float64(interval.Start-a.partitionStart) / float64(a.partitionEnd-a.partitionStart-1)
+		return uint64(interval.Start-a.partitionStart) + 1
 	}
 }
 

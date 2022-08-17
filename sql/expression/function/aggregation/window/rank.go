@@ -36,7 +36,7 @@ func NewRank() sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (p *Rank) Description() string {
-	return "returns percentage rank value."
+	return "returns rank value."
 }
 
 // Window implements sql.WindowExpression
@@ -50,7 +50,7 @@ func (p *Rank) Resolved() bool {
 
 func (p *Rank) String() string {
 	sb := strings.Builder{}
-	sb.WriteString("percent_rank()")
+	sb.WriteString("rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(p.window.String())
@@ -60,7 +60,7 @@ func (p *Rank) String() string {
 
 func (p *Rank) DebugString() string {
 	sb := strings.Builder{}
-	sb.WriteString("percent_rank()")
+	sb.WriteString("rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(sql.DebugString(p.window))
@@ -70,12 +70,12 @@ func (p *Rank) DebugString() string {
 
 // FunctionName implements sql.FunctionExpression
 func (p *Rank) FunctionName() string {
-	return "PERCENT_RANK"
+	return "RANK"
 }
 
 // Type implements sql.Expression
 func (p *Rank) Type() sql.Type {
-	return sql.Int64
+	return sql.Uint64
 }
 
 // IsNullable implements sql.Expression

@@ -36,7 +36,7 @@ func NewDenseRank() sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (p *DenseRank) Description() string {
-	return "returns percentage rank value."
+	return "returns rank value without gaps."
 }
 
 // Window implements sql.WindowExpression
@@ -50,7 +50,7 @@ func (p *DenseRank) Resolved() bool {
 
 func (p *DenseRank) String() string {
 	sb := strings.Builder{}
-	sb.WriteString("percent_rank()")
+	sb.WriteString("dense_rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(p.window.String())
@@ -60,7 +60,7 @@ func (p *DenseRank) String() string {
 
 func (p *DenseRank) DebugString() string {
 	sb := strings.Builder{}
-	sb.WriteString("percent_rank()")
+	sb.WriteString("dense_rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(sql.DebugString(p.window))
@@ -70,12 +70,12 @@ func (p *DenseRank) DebugString() string {
 
 // FunctionName implements sql.FunctionExpression
 func (p *DenseRank) FunctionName() string {
-	return "PERCENT_RANK"
+	return "DENSE_RANK"
 }
 
 // Type implements sql.Expression
 func (p *DenseRank) Type() sql.Type {
-	return sql.Float64
+	return sql.Uint64
 }
 
 // IsNullable implements sql.Expression
