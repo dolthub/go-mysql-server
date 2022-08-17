@@ -2977,6 +2977,24 @@ var PlanTests = []QueryPlanTest{
 			"             └─ columns: [i]\n" +
 			"",
 	},
+	{
+		Query: `SELECT * from one_pk_three_idx where pk < 1 and v1 = 1 and v2 = 1`,
+		ExpectedPlan: "Filter(one_pk_three_idx.pk < 1)\n" +
+			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * from one_pk_three_idx where pk = 1 and v1 = 1 and v2 = 1`,
+		ExpectedPlan: "Filter(one_pk_three_idx.pk = 1)\n" +
+			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2 v3]\n" +
+			"",
+	},
 }
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.
