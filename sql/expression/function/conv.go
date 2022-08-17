@@ -125,8 +125,9 @@ func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewConv(children[0], children[1], children[2]), nil
 }
 
-// convertFromBase returns nil if fromBase input is invalid, 0 if n input is invalid and converted result if nVal and fromBase inputs are valid.
+// convertFromBase returns nil if fromBase input is invalid, 0 if nVal input is invalid and converted result if nVal and fromBase inputs are valid.
 // This conversion truncates nVal as its first subpart that is convertable.
+// nVal is treated as unsigned except nVal is negative.
 func convertFromBase(nVal string, fromBase interface{}) interface{} {
 	fromBase, err := sql.Int64.Convert(fromBase)
 	if err != nil {
