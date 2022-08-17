@@ -93,26 +93,6 @@ func TestInSubquery(t *testing.T) {
 			false,
 			nil,
 		},
-		{
-			"left is in right; left is int, right is string",
-			expression.NewGetField(0, sql.Int64, "foo", false),
-			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
-			),
-			sql.NewRow(4),
-			false,
-			nil,
-		},
-		{
-			"left is in right; left is string, right is int",
-			expression.NewGetField(0, sql.Text, "foo", false),
-			project(
-				expression.NewGetField(1, sql.Int64, "foo", false),
-			),
-			sql.NewRow("4"),
-			false,
-			nil,
-		},
 	}
 
 	for _, tt := range testCases {
