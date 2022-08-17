@@ -497,8 +497,7 @@ func (t stringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		}
 		encodedBytes, ok := t.collation.CharacterSet().Encoder().Encode(encodings.StringToBytes(v))
 		if !ok {
-			//TODO: return a real error
-			return sqltypes.Value{}, fmt.Errorf("failed to encode `%s`", t.collation.CharacterSet().Name())
+			return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
 		}
 		val = appendAndSliceBytes(dest, encodedBytes)
 	}
@@ -512,32 +511,32 @@ func (t stringType) String() string {
 
 	switch t.baseType {
 	case sqltypes.Char:
-		s = fmt.Sprintf("CHAR(%v)", t.maxCharLength)
+		s = fmt.Sprintf("char(%v)", t.maxCharLength)
 	case sqltypes.Binary:
-		s = fmt.Sprintf("BINARY(%v)", t.maxCharLength)
+		s = fmt.Sprintf("binary(%v)", t.maxCharLength)
 	case sqltypes.VarChar:
-		s = fmt.Sprintf("VARCHAR(%v)", t.maxCharLength)
+		s = fmt.Sprintf("varchar(%v)", t.maxCharLength)
 	case sqltypes.VarBinary:
-		s = fmt.Sprintf("VARBINARY(%v)", t.maxCharLength)
+		s = fmt.Sprintf("varbinary(%v)", t.maxCharLength)
 	case sqltypes.Text:
 		if t.maxByteLength <= tinyTextBlobMax {
-			s = "TINYTEXT"
+			s = "tinytext"
 		} else if t.maxByteLength <= textBlobMax {
-			s = "TEXT"
+			s = "text"
 		} else if t.maxByteLength <= mediumTextBlobMax {
-			s = "MEDIUMTEXT"
+			s = "mediumtext"
 		} else {
-			s = "LONGTEXT"
+			s = "longtext"
 		}
 	case sqltypes.Blob:
 		if t.maxByteLength <= tinyTextBlobMax {
-			s = "TINYBLOB"
+			s = "tinyblob"
 		} else if t.maxByteLength <= textBlobMax {
-			s = "BLOB"
+			s = "blob"
 		} else if t.maxByteLength <= mediumTextBlobMax {
-			s = "MEDIUMBLOB"
+			s = "mediumblob"
 		} else {
-			s = "LONGBLOB"
+			s = "longblob"
 		}
 	}
 
@@ -577,6 +576,11 @@ func (t stringType) CharacterSet() CharacterSetID {
 
 func (t stringType) Collation() CollationID {
 	return t.collation
+}
+
+// WithNewCollation implements TypeWithCollation interface.
+func (t stringType) WithNewCollation(collation CollationID) Type {
+	return MustCreateString(t.baseType, t.maxCharLength, collation)
 }
 
 // MaxCharacterLength is the maximum character length for this type.

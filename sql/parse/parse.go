@@ -2255,12 +2255,10 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 				authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
 			} else if len(user.Auth1.Plugin) > 0 {
 				authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
-			} else if user.Auth1.Plugin == "" && len(user.Auth1.Password) > 0 {
-				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			} else {
-				return nil, fmt.Errorf(`the given authentication format is not yet supported`)
+				// We default to using the password, even if it's empty
+				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			}
-
 		}
 		if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
 			return nil, fmt.Errorf(`multi-factor authentication is not yet supported`)
@@ -2605,6 +2603,9 @@ func tableExprToTable(
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)
 
+	case *sqlparser.JSONTableExpr:
+		return jsonTableExpr(ctx, t)
+
 	case *sqlparser.ParenTableExpr:
 		if len(t.Exprs) == 1 {
 			switch j := t.Exprs[0].(type) {
@@ -2659,6 +2660,25 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 	default:
 		return nil, sql.ErrUnsupportedFeature.New("Join type " + t.Join)
 	}
+}
+
+func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, error) {
+	data, err := ExprToExpression(ctx, t.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	paths := make([]string, len(t.Spec.Columns))
+	for i, col := range t.Spec.Columns {
+		paths[i] = col.Type.Path
+	}
+
+	sch, err := TableSpecToSchema(ctx, t.Spec)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewJSONTable(ctx, data, t.Path, paths, t.Alias.String(), sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
@@ -3237,8 +3257,7 @@ func handleCollateExpr(ctx *sql.Context, charSet sql.CharacterSetID, expr *sqlpa
 		return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
 	}
 	if collation.CharacterSet() != charSet {
-		//TODO: actual error
-		return nil, fmt.Errorf("COLLATION '%s' is not valid for CHARACTER SET '%s'", collation.Name(), charSet.Name())
+		return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
 	}
 	innerExpr, err := ExprToExpression(ctx, expr.Expr)
 	if err != nil {
@@ -3568,8 +3587,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 					return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
 				}
 				if collation.CharacterSet() != charSet {
-					//TODO: actual error
-					return nil, fmt.Errorf("COLLATION '%s' is not valid for CHARACTER SET '%s'", collation.Name(), charSet.Name())
+					return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
 				}
 			}
 
@@ -3579,8 +3597,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 				return nil, err
 			}
 			if _, ok := expr.(*expression.Literal); !ok || !sql.IsText(expr.Type()) {
-				//TODO: return actual error
-				return nil, fmt.Errorf("CHARACTER SET introducer must be attached to a string")
+				return nil, sql.ErrCharSetIntroducer.New()
 			}
 			literal, err := expr.Eval(ctx, nil)
 			if err != nil {
@@ -3591,15 +3608,13 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			if strLiteral, ok := literal.(string); ok {
 				decodedLiteral, ok := charSet.Encoder().Decode(encodings.StringToBytes(strLiteral))
 				if !ok {
-					//TODO: return actual error
-					return nil, fmt.Errorf("invalid string for character set `%s`: \"%s\"", charSet.Name(), strLiteral)
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
 				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), sql.CreateLongText(collation)), nil
 			} else if byteLiteral, ok := literal.([]byte); ok {
 				decodedLiteral, ok := charSet.Encoder().Decode(byteLiteral)
 				if !ok {
-					//TODO: return actual error
-					return nil, fmt.Errorf("invalid string for character set `%s`: \"%s\"", charSet.Name(), strLiteral)
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
 				return expression.NewLiteral(decodedLiteral, sql.CreateLongText(collation)), nil
 			} else {

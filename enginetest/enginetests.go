@@ -129,6 +129,13 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	}
 }
 
+func TestJSONTableQueries(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Pk_tablesData, setup.Json_table_tablesData)
+	for _, tt := range queries.JSONTableQueryTests {
+		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+	}
+}
+
 // TestInfoSchemaPrepared runs tests of the information_schema database
 func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
@@ -1240,13 +1247,16 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true",
 					assertion.Username, assertion.Password, port), nil)
 				require.NoError(t, err)
-				if assertion.ExpectedErr {
-					r, err := conn.Query(assertion.Query)
+				r, err := conn.Query(assertion.Query)
+				if assertion.ExpectedErr || len(assertion.ExpectedErrStr) > 0 || assertion.ExpectedErrKind != nil {
 					if !assert.Error(t, err) {
 						require.NoError(t, r.Close())
+					} else if len(assertion.ExpectedErrStr) > 0 {
+						assert.Equal(t, assertion.ExpectedErrStr, err.Error())
+					} else if assertion.ExpectedErrKind != nil {
+						assert.True(t, assertion.ExpectedErrKind.Is(err))
 					}
 				} else {
-					r, err := conn.Query(assertion.Query)
 					if assert.NoError(t, err) {
 						require.NoError(t, r.Close())
 					}
@@ -5684,7 +5694,9 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					r, err := conn.Query(query.Query)
-					if assert.NoError(t, err) {
+					if query.Error {
+						require.Error(t, err)
+					} else if assert.NoError(t, err) {
 						rowIdx := -1
 						for r.Next() {
 							rowIdx++

@@ -186,7 +186,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					columnKey  string
 					nullable   = "NO"
 					ordinalPos = uint32(i + 1)
-					colType    = strings.ToLower(c.Type.String())
+					colType    = c.Type.String()
 					dataType   = colType
 					srsId      interface{}
 				)
@@ -319,6 +319,10 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 
 	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
 		return fmt.Sprint(defStr)
+	}
+
+	if sql.IsEnum(cd.Type()) || sql.IsSet(cd.Type()) {
+		return strings.Trim(defStr, "'")
 	}
 
 	v, err := cd.Eval(ctx, nil)

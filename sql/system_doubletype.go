@@ -153,7 +153,7 @@ func (t systemDoubleType) SQL(dest []byte, v interface{}) (sqltypes.Value, error
 
 // String implements Type interface.
 func (t systemDoubleType) String() string {
-	return "SYSTEM_DOUBLE"
+	return "system_double"
 }
 
 // Type implements Type interface.

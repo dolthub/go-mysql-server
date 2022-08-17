@@ -3738,11 +3738,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SHOW DATABASES`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query:    `SHOW SCHEMAS`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query: `SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,

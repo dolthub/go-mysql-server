@@ -630,29 +630,29 @@ func (t numberTypeImpl) String() string {
 
 	switch t.baseType {
 	case sqltypes.Int8:
-		return "TINYINT" + sizeInfo
+		return "tinyint" + sizeInfo
 	case sqltypes.Uint8:
-		return "TINYINT UNSIGNED" + sizeInfo
+		return "tinyint unsigned" + sizeInfo
 	case sqltypes.Int16:
-		return "SMALLINT"
+		return "smallint"
 	case sqltypes.Uint16:
-		return "SMALLINT UNSIGNED"
+		return "smallint unsigned"
 	case sqltypes.Int24:
-		return "MEDIUMINT"
+		return "mediumint"
 	case sqltypes.Uint24:
-		return "MEDIUMINT UNSIGNED"
+		return "mediumint unsigned"
 	case sqltypes.Int32:
-		return "INT"
+		return "int"
 	case sqltypes.Uint32:
-		return "INT UNSIGNED"
+		return "int unsigned"
 	case sqltypes.Int64:
-		return "BIGINT"
+		return "bigint"
 	case sqltypes.Uint64:
-		return "BIGINT UNSIGNED"
+		return "bigint unsigned"
 	case sqltypes.Float32:
-		return "FLOAT"
+		return "float"
 	case sqltypes.Float64:
-		return "DOUBLE"
+		return "double"
 	default:
 		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 	}

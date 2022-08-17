@@ -105,5 +105,5 @@ func TestYearConvert(t *testing.T) {
 }
 
 func TestYearString(t *testing.T) {
-	require.Equal(t, "YEAR", Year.String())
+	require.Equal(t, "year", Year.String())
 }

@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -163,11 +162,10 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			defaultVal = "NULL"
 		}
 
-		// TODO: rather than lower-casing here, we should lower-case the String() method of types
 		if s.Full {
 			row = sql.Row{
 				col.Name,
-				strings.ToLower(col.Type.String()),
+				col.Type.String(),
 				collation,
 				null,
 				key,
@@ -179,7 +177,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		} else {
 			row = sql.Row{
 				col.Name,
-				strings.ToLower(col.Type.String()),
+				col.Type.String(),
 				null,
 				key,
 				defaultVal,

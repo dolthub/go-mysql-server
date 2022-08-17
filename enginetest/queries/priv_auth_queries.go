@@ -93,10 +93,12 @@ type ServerAuthenticationTest struct {
 
 // ServerAuthenticationTestAssertion is within a ServerAuthenticationTest to assert functionality.
 type ServerAuthenticationTestAssertion struct {
-	Username    string
-	Password    string
-	Query       string
-	ExpectedErr bool
+	Username        string
+	Password        string
+	Query           string
+	ExpectedErr     bool
+	ExpectedErrKind *errors.Kind
+	ExpectedErrStr  string
 }
 
 // UserPrivTests test the user and privilege systems. These tests always have the root account available, and the root
@@ -371,6 +373,42 @@ var UserPrivTests = []UserPrivilegeTest{
 					{"localhost", "root"},
 					{"localhost", "testuser2"},
 					{"127.0.0.1", "testuser"},
+				},
+			},
+		},
+	},
+	{
+		Name: "user creation no host",
+		SetUpScript: []string{
+			"CREATE USER testuser;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query: "SELECT user, host from mysql.user",
+				Expected: []sql.Row{
+					{"root", "localhost"},
+					{"testuser", "%"},
+				},
+			},
+		},
+	},
+	{
+		Name: "grants at various scopes no host",
+		SetUpScript: []string{
+			"CREATE USER tester;",
+			"GRANT SELECT ON *.* to tester",
+			"GRANT SELECT ON db.* to tester",
+			"GRANT SELECT ON db.tbl to tester",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT ON *.* TO `tester`@`%`"},
+					{"GRANT SELECT ON `db`.* TO `tester`@`%`"},
+					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`%`"},
 				},
 			},
 		},
@@ -1096,6 +1134,41 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "SHOW DATABASES shows `mysql` database",
+		SetUpScript: []string{
+			"CREATE USER testuser;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT user FROM mysql.user;",
+				Expected: []sql.Row{
+					{"root"},
+					{"testuser"},
+				},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT USER();",
+				Expected: []sql.Row{
+					{"root@localhost"},
+				},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW DATABASES",
+				Expected: []sql.Row{
+					{"information_schema"},
+					{"mydb"},
+					{"mysql"},
+				},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
@@ -1110,6 +1183,46 @@ func (p *NoopPlaintextPlugin) Authenticate(db *mysql_db.MySQLDb, user string, us
 // ServerAuthTests test the server authentication system. These tests always have the root account available, and the
 // root account is used with any queries in the SetUpScript, along as being set to the context passed to SetUpFunc.
 var ServerAuthTests = []ServerAuthenticationTest{
+	{
+		Name: "DROP USER reports correct string for missing address",
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:       "root",
+				Password:       "",
+				Query:          "DROP USER xyz;",
+				ExpectedErrStr: "Error 1105: Operation DROP USER failed for 'xyz'@'%'",
+			},
+		},
+	},
+	{
+		Name: "CREATE USER with an empty password",
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
+				ExpectedErr: false,
+			},
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER rand_user@localhost IDENTIFIED BY '';",
+				ExpectedErr: false,
+			},
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT ALL ON *.* TO rand_user@localhost;",
+				ExpectedErr: false,
+			},
+			{
+				Username:    "rand_user",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+		},
+	},
 	{
 		Name: "Basic root authentication",
 		Assertions: []ServerAuthenticationTestAssertion{

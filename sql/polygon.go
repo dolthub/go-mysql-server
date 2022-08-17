@@ -169,7 +169,7 @@ func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t PolygonType) String() string {
-	return "POLYGON"
+	return "polygon"
 }
 
 // Type implements Type interface.

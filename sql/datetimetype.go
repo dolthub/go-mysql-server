@@ -392,11 +392,11 @@ func (t datetimeType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 func (t datetimeType) String() string {
 	switch t.baseType {
 	case sqltypes.Date:
-		return "DATE"
+		return "date"
 	case sqltypes.Datetime:
-		return "DATETIME"
+		return "datetime"
 	case sqltypes.Timestamp:
-		return "TIMESTAMP"
+		return "timestamp"
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}

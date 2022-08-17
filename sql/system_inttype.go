@@ -161,7 +161,7 @@ func (t systemIntType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t systemIntType) String() string {
-	return "SYSTEM_INT"
+	return "system_int"
 }
 
 // Type implements Type interface.

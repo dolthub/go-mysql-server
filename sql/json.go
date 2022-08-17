@@ -127,7 +127,7 @@ func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t jsonType) String() string {
-	return "JSON"
+	return "json"
 }
 
 // Type implements Type interface.

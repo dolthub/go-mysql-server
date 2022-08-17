@@ -380,7 +380,7 @@ func (t GeometryType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t GeometryType) String() string {
-	return "GEOMETRY"
+	return "geometry"
 }
 
 // Type implements Type interface.

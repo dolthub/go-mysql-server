@@ -293,21 +293,21 @@ func TestDecimalString(t *testing.T) {
 		scale       uint8
 		expectedStr string
 	}{
-		{0, 0, "DECIMAL(10,0)"},
-		{1, 0, "DECIMAL(1,0)"},
-		{5, 0, "DECIMAL(5,0)"},
-		{10, 0, "DECIMAL(10,0)"},
-		{65, 0, "DECIMAL(65,0)"},
-		{1, 1, "DECIMAL(1,1)"},
-		{5, 1, "DECIMAL(5,1)"},
-		{10, 1, "DECIMAL(10,1)"},
-		{65, 1, "DECIMAL(65,1)"},
-		{5, 5, "DECIMAL(5,5)"},
-		{10, 5, "DECIMAL(10,5)"},
-		{65, 5, "DECIMAL(65,5)"},
-		{10, 10, "DECIMAL(10,10)"},
-		{65, 10, "DECIMAL(65,10)"},
-		{65, 30, "DECIMAL(65,30)"},
+		{0, 0, "decimal(10,0)"},
+		{1, 0, "decimal(1,0)"},
+		{5, 0, "decimal(5,0)"},
+		{10, 0, "decimal(10,0)"},
+		{65, 0, "decimal(65,0)"},
+		{1, 1, "decimal(1,1)"},
+		{5, 1, "decimal(5,1)"},
+		{10, 1, "decimal(10,1)"},
+		{65, 1, "decimal(65,1)"},
+		{5, 5, "decimal(5,5)"},
+		{10, 5, "decimal(10,5)"},
+		{65, 5, "decimal(65,5)"},
+		{10, 10, "decimal(10,10)"},
+		{65, 10, "decimal(65,10)"},
+		{65, 30, "decimal(65,30)"},
 	}
 
 	for _, test := range tests {
