@@ -2995,6 +2995,60 @@ var PlanTests = []QueryPlanTest{
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and b <=> NULL`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Filter(b.b <=> NULL)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and b IS NOT NULL`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Filter(NOT(b.b IS NULL))\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and b != 0`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Filter(NOT((b.b = 0)))\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i = b.i and s IS NOT NULL`,
+		ExpectedPlan: "IndexedJoin(a.i = b.i)\n" +
+			" ├─ Filter(NOT(a.s IS NULL))\n" +
+			" │   └─ TableAlias(a)\n" +
+			" │       └─ IndexedTableAccess(mytable)\n" +
+			" │           ├─ index: [mytable.s]\n" +
+			" │           ├─ filters: [{(NULL, ∞)}]\n" +
+			" │           └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         └─ columns: [i i2 b f]\n" +
+			"",
+	},
 }
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.

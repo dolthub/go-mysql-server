@@ -321,6 +321,33 @@ var JoinQueryTests = []QueryTest{
 			{2, "second row"},
 			{3, "third row"}},
 	},
+	{
+		Query: "select * from mytable a join niltable  b on a.i = b.i and b <=> NULL",
+		Expected: []sql.Row{
+			{1, "first row", 1, nil, nil, nil},
+		},
+	},
+	{
+		Query: "select * from mytable a join niltable  b on a.i = b.i and s IS NOT NULL",
+		Expected: []sql.Row{
+			{1, "first row", 1, nil, nil, nil},
+			{2, "second row", 2, 2, 1, nil},
+			{3, "third row", 3, nil, 0, nil},
+		},
+	},
+	{
+		Query: "select * from mytable a join niltable  b on a.i = b.i and b IS NOT NULL",
+		Expected: []sql.Row{
+			{2, "second row", 2, 2, 1, nil},
+			{3, "third row", 3, nil, 0, nil},
+		},
+	},
+	{
+		Query: "select * from mytable a join niltable  b on a.i = b.i and b != 0",
+		Expected: []sql.Row{
+			{2, "second row", 2, 2, 1, nil},
+		},
+	},
 }
 
 var SkippedJoinQueryTests = []QueryTest{
