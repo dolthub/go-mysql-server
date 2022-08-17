@@ -2009,38 +2009,6 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name: "Index Selection Heuristics",
-		SetUpScript: []string{
-			"CREATE TABLE indexed (" +
-				"pk1 int," +
-				"pk2 int," +
-				"c0 int," +
-				"PRIMARY KEY(pk1, pk2)," +
-				"KEY(pk1, c0)" +
-				")",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "EXPLAIN SELECT * FROM indexed WHERE pk1 = 1 AND c0 = 1",
-				Expected: []sql.Row{
-					{"IndexedTableAccess(indexed)"},
-					{" ├─ index: [indexed.pk1,indexed.c0]"},
-					{" ├─ filters: [{[1, 1], [1, 1]}]"},
-					{" └─ columns: [pk1 pk2 c0]"},
-				},
-			},
-			{
-				Query: "EXPLAIN SELECT * FROM indexed WHERE pk1 = 1",
-				Expected: []sql.Row{
-					{"IndexedTableAccess(indexed)"},
-					{" ├─ index: [indexed.pk1,indexed.pk2]"},
-					{" ├─ filters: [{[1, 1], [NULL, ∞)}]"},
-					{" └─ columns: [pk1 pk2 c0]"},
-				},
-			},
-		},
-	},
 }
 
 var SpatialScriptTests = []ScriptTest{
