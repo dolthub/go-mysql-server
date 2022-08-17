@@ -1671,7 +1671,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "SELECT '1' FROM DUAL WHERE 1 IN (SELECT '1' FROM DUAL)",
+		Query:    "SELECT 1 FROM DUAL WHERE '1' IN (SELECT '1' FROM DUAL)",
 		Expected: []sql.Row{{"1"}},
 	},
 	{
