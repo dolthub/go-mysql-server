@@ -30,13 +30,14 @@ func Test_TimestampBindings_CanBeConverted(t *testing.T) {
 }
 
 func Test_TimestampBindings_CanBeCompared(t *testing.T) {
+	t.Skip("https://github.com/dolthub/go-mysql-server/issues/1139")
 	db, close := newDatabase()
 	defer close()
 
 	_, err := db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
 	require.NoError(t, err)
 
-	// We'll insert both of these
+	// We'll insert both of these timestamps and then try and filter them.
 	t0 := time.Date(2022, 01, 01, 0, 0, 0, 0, time.UTC)
 	t1 := t0.Add(1 * time.Minute)
 
