@@ -6815,6 +6815,30 @@ var QueryTests = []QueryTest{
 		Query:    "Select RELEASE_ALL_LOCKS()",
 		Expected: []sql.Row{{0}},
 	},
+	{
+		Query:    "SELECT CONV('a',16,2)",
+		Expected: []sql.Row{{"1010"}},
+	},
+	{
+		Query:    "SELECT CONV('6E',18,8)",
+		Expected: []sql.Row{{"172"}},
+	},
+	{
+		Query:    "SELECT CONV(-18,10,-18)",
+		Expected: []sql.Row{{"-10"}},
+	},
+	{
+		Query:    "SELECT CONV(10+'10'+'10'+X'0a', 10, 10)",
+		Expected: []sql.Row{{"40"}},
+	},
+	{
+		Query:    "SELECT CONV(HEX(SUBSTRING('127.0', 1, 3)), 16, 10)",
+		Expected: []sql.Row{{"3224119"}},
+	},
+	{
+		Query:    "SELECT CONV(i, 10, 2) FROM mytable",
+		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -7186,6 +7210,11 @@ var BrokenQueries = []QueryTest{
 		AND TABLE_NAME = 'mytable'
 		`,
 		Expected: nil,
+	},
+	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
+	{
+		Query:    "SELECT X'0a'",
+		Expected: []sql.Row{{"0x0A"}},
 	},
 }
 
