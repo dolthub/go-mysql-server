@@ -3049,6 +3049,29 @@ var PlanTests = []QueryPlanTest{
 			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i <> b.i and b != 0;`,
+		ExpectedPlan: "InnerJoin(NOT((a.i = b.i)))\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Filter(NOT((b.b = 0)))\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(niltable)\n" +
+			"             └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable b on a.i <> b.i;`,
+		ExpectedPlan: "InnerJoin(NOT((a.i = b.i)))\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table(mytable)\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ Table(niltable)\n" +
+			"         └─ columns: [i i2 b f]\n" +
+			"",
+	},
 }
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.

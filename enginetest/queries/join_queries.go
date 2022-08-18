@@ -348,6 +348,36 @@ var JoinQueryTests = []QueryTest{
 			{2, "second row", 2, 2, 1, nil},
 		},
 	},
+	{
+		Query: "select * from mytable a join niltable  b on a.i <> b.i and b != 0;",
+		Expected: []sql.Row{
+			{3, "third row", 2, 2, 1, nil},
+			{1, "first row", 2, 2, 1, nil},
+			{3, "third row", 5, nil, 1, float64(5)},
+			{2, "second row", 5, nil, 1, float64(5)},
+			{1, "first row", 5, nil, 1, float64(5)},
+		},
+	},
+	{
+		Query: "select * from mytable a join niltable  b on a.i <> b.i;",
+		Expected: []sql.Row{
+			{3, "third row", 1, nil, nil, nil},
+			{2, "second row", 1, nil, nil, nil},
+			{3, "third row", 2, 2, 1, nil},
+			{1, "first row", 2, 2, 1, nil},
+			{2, "second row", 3, nil, 0, nil},
+			{1, "first row", 3, nil, 0, nil},
+			{3, "third row", 5, nil, 1, float64(5)},
+			{2, "second row", 5, nil, 1, float64(5)},
+			{1, "first row", 5, nil, 1, float64(5)},
+			{3, "third row", 4, 4, nil, float64(4)},
+			{2, "second row", 4, 4, nil, float64(4)},
+			{1, "first row", 4, 4, nil, float64(4)},
+			{3, "third row", 6, 6, 0, float64(6)},
+			{2, "second row", 6, 6, 0, float64(6)},
+			{1, "first row", 6, 6, 0, float64(6)},
+		},
+	},
 }
 
 var SkippedJoinQueryTests = []QueryTest{
