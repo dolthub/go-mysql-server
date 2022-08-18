@@ -35,7 +35,6 @@ func TestWindowRowFramers(t *testing.T) {
 			Name:   "rows unbounded preceding to current row framer",
 			Framer: NewRowsUnboundedPrecedingToCurrentRowFramer,
 			Expected: []sql.WindowInterval{
-				{},
 				{Start: 0, End: 1},
 				{Start: 0, End: 2},
 				{Start: 2, End: 3},
@@ -51,7 +50,6 @@ func TestWindowRowFramers(t *testing.T) {
 			Name:   "rows unbounded preceding to 1 following framer",
 			Framer: NewRowsUnboundedPrecedingToNFollowingFramer,
 			Expected: []sql.WindowInterval{
-				{},
 				{Start: 0, End: 2},
 				{Start: 0, End: 2},
 				{Start: 2, End: 4},
@@ -67,7 +65,6 @@ func TestWindowRowFramers(t *testing.T) {
 			Name:   "rows 2 preceding to 1 following framer",
 			Framer: NewRowsNPrecedingToNFollowingFramer,
 			Expected: []sql.WindowInterval{
-				{},
 				{Start: 0, End: 2},
 				{Start: 0, End: 2},
 				{Start: 2, End: 4},
@@ -83,7 +80,6 @@ func TestWindowRowFramers(t *testing.T) {
 			Name:   "rows unbound preceding to unbound following framer",
 			Framer: NewRowsUnboundedPrecedingToUnboundedFollowingFramer,
 			Expected: []sql.WindowInterval{
-				{},
 				{Start: 0, End: 2},
 				{Start: 0, End: 2},
 				{Start: 2, End: 6},
@@ -99,7 +95,6 @@ func TestWindowRowFramers(t *testing.T) {
 			Name:   "rows 2 preceding to 1 preceding framer",
 			Framer: NewRowsNPrecedingToNPrecedingFramer,
 			Expected: []sql.WindowInterval{
-				{},
 				{Start: 0, End: 0},
 				{Start: 0, End: 1},
 				{Start: 2, End: 2},
@@ -115,7 +110,6 @@ func TestWindowRowFramers(t *testing.T) {
 			Name:   "rows 1 following to 1 following framer",
 			Framer: NewRowsNFollowingToNFollowingFramer,
 			Expected: []sql.WindowInterval{
-				{},
 				{Start: 1, End: 2},
 				{Start: 2, End: 2},
 				{Start: 3, End: 4},
@@ -131,7 +125,6 @@ func TestWindowRowFramers(t *testing.T) {
 			Name:   "rows current row to current row framer",
 			Framer: NewRowsCurrentRowToCurrentRowFramer,
 			Expected: []sql.WindowInterval{
-				{},
 				{Start: 0, End: 1},
 				{Start: 1, End: 2},
 				{Start: 2, End: 3},
