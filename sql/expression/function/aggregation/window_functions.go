@@ -1272,11 +1272,6 @@ func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 	if rank == nil {
 		return nil
 	}
-	if a.partitionEnd-a.partitionStart == 1 {
-		a.prevRank = 1
-		a.denseRank = 1
-		return a.denseRank
-	}
 
 	if rank.(uint64) == 1 {
 		a.prevRank = 1
