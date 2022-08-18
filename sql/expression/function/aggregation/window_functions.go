@@ -1235,18 +1235,14 @@ func NewPercentRank(orderBy []sql.Expression) *PercentRank {
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
 // there are 4 values less than 3, and there are (10 - 1) total rows in the list.
 func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	if interval.End-interval.Start < 1 {
+	rank := a.rankBase.Compute(ctx, interval, buf)
+	if rank == nil {
 		return nil
 	}
-	defer func() { a.pos++ }()
-	switch {
-	case a.pos == 0:
+	if a.partitionEnd-a.partitionStart == 1 {
 		return float64(0)
-	case a.partitionEnd-a.partitionStart == 1:
-		return float64(0)
-	default:
-		return float64(interval.Start-a.partitionStart) / float64(a.partitionEnd-a.partitionStart-1)
 	}
+	return float64(rank.(uint64)-1) / float64(a.partitionEnd-a.partitionStart-1)
 }
 
 type DenseRank struct {
@@ -1272,27 +1268,19 @@ func NewDenseRank(orderBy []sql.Expression) *DenseRank {
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(3) because
 // there are 2 unique values less than 3
 func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	if interval.End-interval.Start < 1 {
+	rank := a.rankBase.Compute(ctx, interval, buf)
+	if rank == nil {
 		return nil
 	}
-	defer func() { a.pos++ }()
-	switch {
-	case a.pos == 0:
+	if a.partitionEnd-a.partitionStart == 1 {
 		a.prevRank = 1
 		a.denseRank = 1
-	case a.partitionEnd-a.partitionStart == 1:
-		a.prevRank = 1
-		a.denseRank = 1
-	default:
-		rank := uint64(interval.Start-a.partitionStart) + 1
-		if rank == 1 {
-			a.prevRank = 1
-			a.denseRank = 1
-		} else if rank != a.prevRank {
-			a.prevRank = rank
-			a.denseRank += 1
-		}
 	}
+	if rank != a.prevRank {
+		a.prevRank = rank.(uint64)
+		a.denseRank += 1
+	}
+
 	return a.denseRank
 }
 
