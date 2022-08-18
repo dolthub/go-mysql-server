@@ -1156,21 +1156,6 @@ type rankBase struct {
 	peerGroup sql.WindowInterval
 }
 
-type Rank struct {
-	*rankBase
-}
-
-func NewRank(orderBy []sql.Expression) *Rank {
-	return &Rank{
-		&rankBase{
-			partitionStart: -1,
-			partitionEnd:   -1,
-			pos:            -1,
-			orderBy:        orderBy,
-		},
-	}
-}
-
 func (a *rankBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	na.orderBy = w.OrderBy.ToExpressions()
@@ -1212,6 +1197,21 @@ func (a *rankBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sq
 		return uint64(1)
 	default:
 		return uint64(interval.Start-a.partitionStart) + 1
+	}
+}
+
+type Rank struct {
+	*rankBase
+}
+
+func NewRank(orderBy []sql.Expression) *Rank {
+	return &Rank{
+		&rankBase{
+			partitionStart: -1,
+			partitionEnd:   -1,
+			pos:            -1,
+			orderBy:        orderBy,
+		},
 	}
 }
 
@@ -1275,12 +1275,16 @@ func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 	if a.partitionEnd-a.partitionStart == 1 {
 		a.prevRank = 1
 		a.denseRank = 1
+		return a.denseRank
 	}
-	if rank != a.prevRank {
+
+	if rank.(uint64) == 1 {
+		a.prevRank = 1
+		a.denseRank = 1
+	} else if rank != a.prevRank {
 		a.prevRank = rank.(uint64)
 		a.denseRank += 1
 	}
-
 	return a.denseRank
 }
 
