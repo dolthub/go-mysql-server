@@ -1145,7 +1145,7 @@ func (a *RowNumber) Compute(ctx *sql.Context, interval sql.WindowInterval, buffe
 	return a.pos
 }
 
-type PercentRank struct {
+type rankBase struct {
 	partitionStart, partitionEnd int
 
 	// orderBy tracks peer group increments
@@ -1156,31 +1156,36 @@ type PercentRank struct {
 	peerGroup sql.WindowInterval
 }
 
-func NewPercentRank(orderBy []sql.Expression) *PercentRank {
-	return &PercentRank{
-		partitionStart: -1,
-		partitionEnd:   -1,
-		pos:            -1,
-		orderBy:        orderBy,
+type Rank struct {
+	*rankBase
+}
+
+func NewRank(orderBy []sql.Expression) *Rank {
+	return &Rank{
+		&rankBase{
+			partitionStart: -1,
+			partitionEnd:   -1,
+			pos:            -1,
+			orderBy:        orderBy,
+		},
 	}
 }
 
-func (a *PercentRank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *rankBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	na.orderBy = w.OrderBy.ToExpressions()
 	return &na, nil
 }
 
-func (a *PercentRank) Dispose() {
+func (a *rankBase) Dispose() {
 	return
 }
 
-// DefaultFramer returns a NewPartitionFramer
-func (a *PercentRank) DefaultFramer() sql.WindowFramer {
+func (a *rankBase) DefaultFramer() sql.WindowFramer {
 	return NewPeerGroupFramer(a.orderBy)
 }
 
-func (a *PercentRank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
+func (a *rankBase) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
 	a.Dispose()
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	a.pos = a.partitionStart
@@ -1188,8 +1193,41 @@ func (a *PercentRank) StartPartition(ctx *sql.Context, interval sql.WindowInterv
 	return nil
 }
 
-func (a *PercentRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+func (a *rankBase) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("implement me")
+}
+
+// Compute returns the number of elements before the current peer group (rank) + 1.
+// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(5) because
+// there are 4 values less than 3
+func (a *rankBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	if interval.End-interval.Start < 1 {
+		return nil
+	}
+	defer func() { a.pos++ }()
+	switch {
+	case a.pos == 0:
+		return uint64(1)
+	case a.partitionEnd-a.partitionStart == 1:
+		return uint64(1)
+	default:
+		return uint64(interval.Start-a.partitionStart) + 1
+	}
+}
+
+type PercentRank struct {
+	*rankBase
+}
+
+func NewPercentRank(orderBy []sql.Expression) *PercentRank {
+	return &PercentRank{
+		&rankBase{
+			partitionStart: -1,
+			partitionEnd:   -1,
+			pos:            -1,
+			orderBy:        orderBy,
+		},
+	}
 }
 
 // Compute returns the number of elements before the current peer group (rank),
@@ -1211,120 +1249,23 @@ func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 	}
 }
 
-type Rank struct {
-	partitionStart, partitionEnd int
-
-	// orderBy tracks peer group increments
-	orderBy []sql.Expression
-	// pos increments every iteration
-	pos int
-	// peerGroup tracks value increments
-	peerGroup sql.WindowInterval
-}
-
-func NewRank(orderBy []sql.Expression) *Rank {
-	return &Rank{
-		partitionStart: -1,
-		partitionEnd:   -1,
-		pos:            -1,
-		orderBy:        orderBy,
-	}
-}
-
-func (a *Rank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
-	na := *a
-	na.orderBy = w.OrderBy.ToExpressions()
-	return &na, nil
-}
-
-func (a *Rank) Dispose() {
-	return
-}
-
-// DefaultFramer returns a NewPartitionFramer
-func (a *Rank) DefaultFramer() sql.WindowFramer {
-	return NewPeerGroupFramer(a.orderBy)
-}
-
-func (a *Rank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
-	a.partitionStart, a.partitionEnd = interval.Start, interval.End
-	a.pos = a.partitionStart
-	a.peerGroup = sql.WindowInterval{}
-	return nil
-}
-
-func (a *Rank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
-	panic("implement me")
-}
-
-// Compute returns the number of elements before the current peer group (rank) + 1.
-// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(5) because
-// there are 4 values less than 3
-func (a *Rank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	if interval.End-interval.Start < 1 {
-		return nil
-	}
-	defer func() { a.pos++ }()
-	switch {
-	case a.pos == 0:
-		return uint64(1)
-	case a.partitionEnd-a.partitionStart == 1:
-		return uint64(1)
-	default:
-		return uint64(interval.Start-a.partitionStart) + 1
-	}
-}
-
 type DenseRank struct {
-	partitionStart, partitionEnd int
-
-	// orderBy tracks peer group increments
-	orderBy []sql.Expression
-	// pos increments every iteration
-	pos int
+	*rankBase
 	// prevRank tracks what the previous non-dense rank was
 	prevRank uint64
 	// denseRank tracks what the previous dense rank is
 	denseRank uint64
-	// peerGroup tracks value increments
-	peerGroup sql.WindowInterval
 }
 
 func NewDenseRank(orderBy []sql.Expression) *DenseRank {
 	return &DenseRank{
-		partitionStart: -1,
-		partitionEnd:   -1,
-		pos:            -1,
-		orderBy:        orderBy,
+		rankBase: &rankBase{
+			partitionStart: -1,
+			partitionEnd:   -1,
+			pos:            -1,
+			orderBy:        orderBy,
+		},
 	}
-}
-
-func (a *DenseRank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
-	na := *a
-	na.orderBy = w.OrderBy.ToExpressions()
-	return &na, nil
-}
-
-func (a *DenseRank) Dispose() {
-	return
-}
-
-// DefaultFramer returns a NewPartitionFramer
-func (a *DenseRank) DefaultFramer() sql.WindowFramer {
-	return NewPeerGroupFramer(a.orderBy)
-}
-
-func (a *DenseRank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
-	a.partitionStart, a.partitionEnd = interval.Start, interval.End
-	a.pos = a.partitionStart
-	a.peerGroup = sql.WindowInterval{}
-	return nil
-}
-
-func (a *DenseRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
-	panic("implement me")
 }
 
 // Compute returns the number of unique elements before the current peer group (rank) + 1.
