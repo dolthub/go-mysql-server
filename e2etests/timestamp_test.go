@@ -15,19 +15,18 @@
 package e2etests
 
 import (
+	connector "database/sql"
 	"testing"
 	"time"
 
-	connector "database/sql"
-
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_TimestampBindings_CanBeConverted(t *testing.T) {
