@@ -38,6 +38,8 @@ func Test_TimestampBindings_CanBeConverted(t *testing.T) {
 	_, err = db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
 	require.NoError(t, err)
 
+	// All we are doing in this test is ensuring that writing a timestamp to the
+	// database does not throw an error.
 	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", time.Now())
 	require.NoError(t, err)
 }
