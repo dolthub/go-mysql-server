@@ -1169,6 +1169,144 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "Anonymous User",
+		SetUpScript: []string{
+			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO mydb.test VALUES (0, 0), (1, 1);",
+			"INSERT INTO mydb.test2 VALUES (0, 1), (1, 2);",
+			"CREATE USER 'rand_user'@'localhost';",
+			"CREATE USER ''@'%';",
+			"GRANT SELECT ON mydb.test TO 'rand_user'@'localhost';",
+			"GRANT SELECT ON mydb.test2 TO ''@'%';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "rand_user",
+				Host:  "localhost",
+				Query: "SELECT * FROM mydb.test;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+				},
+			},
+			{
+				User:        "rand_user",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:        "rand_user",
+				Host:        "non_existent_host",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:  "rand_user",
+				Host:  "non_existent_host",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:        "non_existent_user",
+				Host:        "non_existent_host",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:  "non_existent_user",
+				Host:  "non_existent_host",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:        "",
+				Host:        "%",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:  "",
+				Host:  "%",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "IPv4 Loopback == localhost",
+		SetUpScript: []string{
+			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO mydb.test VALUES (0, 0), (1, 1);",
+			"INSERT INTO mydb.test2 VALUES (0, 1), (1, 2);",
+			"CREATE USER 'rand_user1'@'localhost';",
+			"CREATE USER 'rand_user2'@'127.0.0.1';",
+			"GRANT SELECT ON mydb.test TO 'rand_user1'@'localhost';",
+			"GRANT SELECT ON mydb.test2 TO 'rand_user2'@'127.0.0.1';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "rand_user1",
+				Host:  "localhost",
+				Query: "SELECT * FROM mydb.test;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+				},
+			},
+			{
+				User:  "rand_user1",
+				Host:  "127.0.0.1",
+				Query: "SELECT * FROM mydb.test;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+				},
+			},
+			{
+				User:        "rand_user1",
+				Host:        "54.244.85.252",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:  "rand_user2",
+				Host:  "localhost",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:  "rand_user2",
+				Host:  "127.0.0.1",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:        "rand_user2",
+				Host:        "54.244.85.252",
+				Query:       "SELECT * FROM mydb.test2;",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
