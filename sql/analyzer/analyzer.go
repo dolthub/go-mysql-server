@@ -392,6 +392,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		parallelizeId,
 		clearWarningsId,
 		reresolveTablesId,
+		pushdownFiltersId,
 		pruneTablesId,
 		validateResolvedId,
 		validateOrderById,
@@ -417,7 +418,7 @@ func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql
 	return n, err
 }
 
-// prePrepareRuleSelector are applied to a cached prepared statement plan
+// postPrepareRuleSelector are applied to a cached prepared statement plan
 // after bindvars are applied
 func postPrepareRuleSelector(id RuleId) bool {
 	switch id {
@@ -444,6 +445,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownFiltersId,
 		subqueryIndexesId,
 		inSubqueryIndexesId,
+		pruneTablesId,
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules
