@@ -392,7 +392,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 		parallelizeId,
 		clearWarningsId,
 		reresolveTablesId,
-		pushdownFiltersId,
 		pruneTablesId,
 		validateResolvedId,
 		validateOrderById,
