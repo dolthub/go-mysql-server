@@ -6856,6 +6856,10 @@ var QueryTests = []QueryTest{
 		Query:    "SELECT CONV(i, 10, 2) FROM mytable",
 		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
 	},
+	{
+		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
+		Expected: []sql.Row{{1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{

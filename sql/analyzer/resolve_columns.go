@@ -348,10 +348,14 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 		// Look in all the scope, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
 		// match for the column name. If any scope has ambiguity in available column names, that's an error.
 		name := strings.ToLower(col.Name())
+		levels := symbols.levels()
 		if symbols.conflictingAlias(name, len(symbols)) {
-			return col, transform.SameTree, nil
+			// A higher scope produces an alias with this name.
+			// We override the outer scope and qualify this column
+			// only if the current scope provides a definition.
+			levels = levels[len(symbols)-1:]
 		}
-		for _, level := range symbols.levels() {
+		for _, level := range levels {
 
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
 
