@@ -72,10 +72,20 @@ func (g *FramerGen) genNewFramer(def frameDef) {
 		}
 	}
 
+	orderByRequired := def.unit == rang &&
+		((def.start != unboundedPreceding && def.start != startCurrentRow) ||
+			(def.end != unboundedFollowing && def.end != endCurrentRow))
+
+	if orderByRequired {
+		fmt.Fprintf(g.w, "  if len(window.OrderBy.ToExpressions()) != 1 {\n")
+		fmt.Fprintf(g.w, "    return nil, ErrRangeInvalidOrderBy.New(len(window.OrderBy.ToExpressions()))\n")
+		fmt.Fprintf(g.w, "  }\n")
+	}
+
 	if def.unit == rang {
-		fmt.Fprintf(g.w, "  exprs := window.OrderBy.ToExpressions()\n")
-		fmt.Fprintf(g.w, "  if len(exprs) != 1 {\n")
-		fmt.Fprintf(g.w, "    return nil, ErrRangeInvalidOrderBy.New(len(exprs))\n")
+		fmt.Fprintf(g.w, "  var orderBy sql.Expression\n")
+		fmt.Fprintf(g.w, "  if len(window.OrderBy.ToExpressions()) > 0 {\n")
+		fmt.Fprintf(g.w, "    orderBy = window.OrderBy.ToExpressions()[0]\n")
 		fmt.Fprintf(g.w, "  }\n")
 	}
 
@@ -85,7 +95,7 @@ func (g *FramerGen) genNewFramer(def frameDef) {
 		fmt.Fprintf(g.w, "    rowFramerBase{\n")
 	case rang:
 		fmt.Fprintf(g.w, "    rangeFramerBase{\n")
-		fmt.Fprintf(g.w, "      orderBy: exprs[0],\n")
+		fmt.Fprintf(g.w, "      orderBy: orderBy,\n")
 	}
 
 	for _, a := range def.Args() {
