@@ -43,7 +43,6 @@ func Test_TimestampBindings_CanBeConverted(t *testing.T) {
 }
 
 func Test_TimestampBindings_CanBeCompared(t *testing.T) {
-	t.Skip("https://github.com/dolthub/go-mysql-server/issues/1139")
 	db, close := newDatabase()
 	defer close()
 

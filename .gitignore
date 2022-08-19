@@ -33,6 +33,7 @@ _example/*.exe
 test-server
 
 .idea/*
+/.vscode/
 
 # OSX Files
 .DS_Store
