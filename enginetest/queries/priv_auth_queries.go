@@ -1307,6 +1307,37 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "DROP USER without a host designation",
+		SetUpScript: []string{
+			"CREATE USER admin;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT user FROM mysql.user",
+				Expected: []sql.Row{
+					{"root"},
+					{"admin"},
+				},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "DROP USER admin;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT user FROM mysql.user",
+				Expected: []sql.Row{
+					{"root"},
+				},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
