@@ -262,6 +262,10 @@ func (f *rowFramerBase) Next(ctx *sql.Context, buffer sql.WindowBuffer) (sql.Win
 		return sql.WindowInterval{}, io.EOF
 	}
 
+	if f.partitionEnd == 0 {
+		return sql.WindowInterval{}, io.EOF
+	}
+
 	newStart := f.idx + f.startOffset
 	if f.unboundedPreceding || newStart < f.partitionStart {
 		newStart = f.partitionStart
