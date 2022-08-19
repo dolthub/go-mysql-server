@@ -483,6 +483,10 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 	}
 }
 
+func TestRecursiveViewDefinition(t *testing.T) {
+	enginetest.TestRecursiveViewDefinition(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestTableFunctions(t *testing.T) {
 	var tableFunctionScriptTests = []queries.ScriptTest{
 		{

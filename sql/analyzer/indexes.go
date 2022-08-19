@@ -249,7 +249,7 @@ func getIndexes(
 			// either return a merged index lookup for both values, or for neither. Returning either one leads to incorrect
 			// results.
 			if !canMergeIndexLookups(result, indexes) {
-				return nil, nil
+				continue
 			}
 			result, err = indexesIntersection(ctx, result, indexes)
 			if err != nil {

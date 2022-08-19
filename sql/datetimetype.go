@@ -211,6 +211,9 @@ func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
 func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error) {
 	var res time.Time
 
+	if bs, ok := v.([]byte); ok {
+		v = string(bs)
+	}
 	switch value := v.(type) {
 	case string:
 		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
@@ -392,11 +395,11 @@ func (t datetimeType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 func (t datetimeType) String() string {
 	switch t.baseType {
 	case sqltypes.Date:
-		return "DATE"
+		return "date"
 	case sqltypes.Datetime:
-		return "DATETIME"
+		return "datetime"
 	case sqltypes.Timestamp:
-		return "TIMESTAMP"
+		return "timestamp"
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}

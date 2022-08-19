@@ -111,13 +111,18 @@ func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJSONQueries runs the canonical test queries against a single threaded index enabled harness.
+func TestJSONTableQueries(t *testing.T) {
+	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
+		Query: `SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 and pk > 0 ORDER BY 2,3`,
 		Expected: []sql.Row{
 			{1, 2},
 		},
@@ -125,7 +130,7 @@ func TestSingleQuery(t *testing.T) {
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	harness.Setup(setup.Mytable...)
+	harness.Setup(setup.MydbData, setup.SpecialtableData, setup.Pk_tablesData, setup.NiltableData)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
@@ -764,6 +769,14 @@ func TestPrepared(t *testing.T) {
 
 func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestCharsetCollationEngine(t *testing.T) {
+	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestCharsetCollationWire(t *testing.T) {
+	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
 func TestTypesOverWire(t *testing.T) {

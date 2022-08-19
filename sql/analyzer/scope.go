@@ -28,6 +28,8 @@ type Scope struct {
 	// Memo nodes are nodes in the execution context that shouldn't be considered for name resolution, but are still
 	// important for analysis.
 	memos []sql.Node
+	// recursionDepth tracks how many times we've recursed with analysis, to avoid stack overflows from infinite recursion
+	recursionDepth int
 
 	procedures *ProcedureCache
 }
@@ -42,10 +44,16 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.nodes...)
 	return &Scope{
-		nodes:      newNodes,
-		memos:      s.memos,
-		procedures: s.procedures,
+		nodes:          newNodes,
+		memos:          s.memos,
+		recursionDepth: s.recursionDepth + 1,
+		procedures:     s.procedures,
 	}
+}
+
+// newScopeWithDepth returns a new scope object with the recursion depth given
+func newScopeWithDepth(depth int) *Scope {
+	return &Scope{recursionDepth: depth}
 }
 
 // memo creates a new Scope object with the memo node given. Memo nodes don't affect name resolution, but are used in
@@ -81,6 +89,13 @@ func (s *Scope) MemoNodes() []sql.Node {
 		return nil
 	}
 	return s.memos
+}
+
+func (s *Scope) RecursionDepth() int {
+	if s == nil {
+		return 0
+	}
+	return s.recursionDepth
 }
 
 func (s *Scope) procedureCache() *ProcedureCache {

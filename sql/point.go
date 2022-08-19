@@ -156,7 +156,7 @@ func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t PointType) String() string {
-	return "POINT"
+	return "point"
 }
 
 // Type implements Type interface.

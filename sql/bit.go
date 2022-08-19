@@ -219,7 +219,7 @@ func (t bitType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t bitType) String() string {
-	return fmt.Sprintf("BIT(%v)", t.numOfBits)
+	return fmt.Sprintf("bit(%v)", t.numOfBits)
 }
 
 // Type implements Type interface.

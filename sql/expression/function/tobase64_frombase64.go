@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/encodings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -49,22 +51,38 @@ func (t *ToBase64) Description() string {
 
 // Eval implements the Expression interface.
 func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	str, err := t.Child.Eval(ctx, row)
+	val, err := t.Child.Eval(ctx, row)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if str == nil {
+	if val == nil {
 		return nil, nil
 	}
 
-	str, err = sql.LongText.Convert(str)
-	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
+	var strBytes []byte
+	if sql.IsTextOnly(t.Child.Type()) {
+		val, err = t.Child.Type().Convert(val)
+		if err != nil {
+			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
+		}
+		// For string types we need to re-encode the internal string so that we get the correct base64 output
+		encoder := t.Child.Type().(sql.StringType).Collation().CharacterSet().Encoder()
+		encodedBytes, ok := encoder.Encode(encodings.StringToBytes(val.(string)))
+		if !ok {
+			return nil, fmt.Errorf("unable to re-encode string for TO_BASE64 function")
+		}
+		strBytes = encodedBytes
+	} else {
+		val, err = sql.LongText.Convert(val)
+		if err != nil {
+			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
+		}
+		strBytes = []byte(val.(string))
 	}
 
-	encoded := base64.StdEncoding.EncodeToString([]byte(str.(string)))
+	encoded := base64.StdEncoding.EncodeToString(strBytes)
 
 	lenEncoded := len(encoded)
 	if lenEncoded <= 76 {
@@ -156,7 +174,7 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return string(decoded), nil
+	return decoded, nil
 }
 
 // String implements the fmt.Stringer interface.
@@ -179,5 +197,5 @@ func (t *FromBase64) WithChildren(children ...sql.Expression) (sql.Expression, e
 
 // Type implements the Expression interface.
 func (t *FromBase64) Type() sql.Type {
-	return sql.LongText
+	return sql.LongBlob
 }

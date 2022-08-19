@@ -171,7 +171,7 @@ func (t systemEnumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 
 // String implements Type interface.
 func (t systemEnumType) String() string {
-	return "SYSTEM_ENUM"
+	return "system_enum"
 }
 
 // Type implements Type interface.

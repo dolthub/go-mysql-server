@@ -16,7 +16,6 @@ package function
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -58,12 +57,11 @@ func (l *Lower) Eval(
 		return nil, nil
 	}
 
-	v, err = sql.LongText.Convert(v)
+	vStr, collation, err := sql.ConvertToCollatedString(v, l.Child.Type())
 	if err != nil {
 		return nil, err
 	}
-
-	return strings.ToLower(v.(string)), nil
+	return collation.CharacterSet().Encoder().Lowercase(vStr), nil
 }
 
 func (l *Lower) String() string {
@@ -119,12 +117,11 @@ func (u *Upper) Eval(
 		return nil, nil
 	}
 
-	v, err = sql.LongText.Convert(v)
+	vStr, collation, err := sql.ConvertToCollatedString(v, u.Child.Type())
 	if err != nil {
 		return nil, err
 	}
-
-	return strings.ToUpper(v.(string)), nil
+	return collation.CharacterSet().Encoder().Uppercase(vStr), nil
 }
 
 func (u *Upper) String() string {

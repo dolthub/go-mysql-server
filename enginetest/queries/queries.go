@@ -1667,6 +1667,26 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN (NULL)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IS NULL",
+		Expected: []sql.Row{{int64(5), int64(5), nil}},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN ('')",
+		Expected: []sql.Row{{int64(2), int64(2), ""}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE 1 IN (SELECT '1' FROM DUAL)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE '1' IN (SELECT '1' FROM DUAL)",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "SELECT NULL IN (2,3,4)",
 		Expected: []sql.Row{{nil}},
 	},
@@ -3070,6 +3090,23 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `select pk,
+                       percent_rank() over(partition by v2 order by pk),
+                       dense_rank() over(partition by v2 order by pk),
+                       rank() over(partition by v2 order by pk)
+				from one_pk_three_idx order by pk`,
+		Expected: []sql.Row{
+			{0, float64(0), uint64(1), uint64(1)},
+			{1, float64(1) / float64(3), uint64(2), uint64(2)},
+			{2, float64(0), uint64(1), uint64(1)},
+			{3, float64(0), uint64(1), uint64(1)},
+			{4, float64(2) / float64(3), uint64(3), uint64(3)},
+			{5, float64(1), uint64(4), uint64(4)},
+			{6, float64(0), uint64(1), uint64(1)},
+			{7, float64(0), uint64(1), uint64(1)},
+		},
+	},
+	{
 		SkipPrepared: true,
 		Query: `select pk,
 					   first_value(pk) over (order by pk desc),
@@ -3738,11 +3775,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SHOW DATABASES`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query:    `SHOW SCHEMAS`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query: `SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
@@ -3760,11 +3797,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT s FROM mytable WHERE s LIKE '%D ROW'`,
-		Expected: []sql.Row{
-			{"second row"},
-			{"third row"},
-		},
+		Query:    `SELECT s FROM mytable WHERE s LIKE '%D ROW'`,
+		Expected: []sql.Row{}, // default collation of `utf8mb4_0900_bin` is case-sensitive
 	},
 	{
 		Query: `SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
@@ -4330,7 +4364,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT FROM_BASE64('YmFy')",
-		Expected: []sql.Row{{string("bar")}},
+		Expected: []sql.Row{{[]byte("bar")}},
 	},
 	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
@@ -6810,6 +6844,34 @@ var QueryTests = []QueryTest{
 		Query:    "Select RELEASE_ALL_LOCKS()",
 		Expected: []sql.Row{{0}},
 	},
+	{
+		Query:    "SELECT CONV('a',16,2)",
+		Expected: []sql.Row{{"1010"}},
+	},
+	{
+		Query:    "SELECT CONV('6E',18,8)",
+		Expected: []sql.Row{{"172"}},
+	},
+	{
+		Query:    "SELECT CONV(-18,10,-18)",
+		Expected: []sql.Row{{"-10"}},
+	},
+	{
+		Query:    "SELECT CONV(10+'10'+'10'+X'0a', 10, 10)",
+		Expected: []sql.Row{{"40"}},
+	},
+	{
+		Query:    "SELECT CONV(HEX(SUBSTRING('127.0', 1, 3)), 16, 10)",
+		Expected: []sql.Row{{"3224119"}},
+	},
+	{
+		Query:    "SELECT CONV(i, 10, 2) FROM mytable",
+		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
+	},
+	{
+		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
+		Expected: []sql.Row{{1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -7181,6 +7243,11 @@ var BrokenQueries = []QueryTest{
 		AND TABLE_NAME = 'mytable'
 		`,
 		Expected: nil,
+	},
+	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
+	{
+		Query:    "SELECT X'0a'",
+		Expected: []sql.Row{{"0x0A"}},
 	},
 }
 

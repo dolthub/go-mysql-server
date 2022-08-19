@@ -166,7 +166,7 @@ func (s *Substring) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (*Substring) Type() sql.Type { return sql.LongText }
+func (s *Substring) Type() sql.Type { return s.str.Type() }
 
 // WithChildren implements the Expression interface.
 func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {

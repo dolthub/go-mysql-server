@@ -169,7 +169,7 @@ func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 
 // String implements Type interface.
 func (t LineStringType) String() string {
-	return "LINESTRING"
+	return "linestring"
 }
 
 // Type implements Type interface.
