@@ -127,6 +127,10 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
+
+	for _, ts := range queries.SkippedJoinScripts {
+		TestScript(t, harness, ts)
+	}
 }
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
@@ -216,6 +220,13 @@ func TestInfoSchema(t *testing.T, h Harness) {
 
 		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
 	})
+
+	for _, tt := range queries.SkippedInfoSchemaQueries {
+		t.Run(tt.Query, func(t *testing.T) {
+			t.Skip()
+			TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		})
+	}
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
