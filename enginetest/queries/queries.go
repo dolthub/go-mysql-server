@@ -6841,7 +6841,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
-		Expected: []sql.Row{{"1"}},
+		Expected: []sql.Row{{1}},
 	},
 }
 
