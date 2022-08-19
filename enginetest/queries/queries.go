@@ -1667,6 +1667,18 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN (NULL)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IS NULL",
+		Expected: []sql.Row{{int64(5), int64(5), nil}},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN ('')",
+		Expected: []sql.Row{{int64(2), int64(2), ""}},
+	},
+	{
 		Query:    "SELECT 1 FROM DUAL WHERE 1 IN (SELECT '1' FROM DUAL)",
 		Expected: []sql.Row{{1}},
 	},
