@@ -77,14 +77,14 @@ func (g *FramerGen) genNewFramer(def frameDef) {
 			(def.end != unboundedFollowing && def.end != endCurrentRow))
 
 	if orderByRequired {
-		fmt.Fprintf(g.w, "  if len(window.OrderBy.ToExpressions()) != 1 {\n")
+		fmt.Fprintf(g.w, "  if len(window.OrderBy) != 1 {\n")
 		fmt.Fprintf(g.w, "    return nil, ErrRangeInvalidOrderBy.New(len(window.OrderBy.ToExpressions()))\n")
 		fmt.Fprintf(g.w, "  }\n")
 	}
 
 	if def.unit == rang {
 		fmt.Fprintf(g.w, "  var orderBy sql.Expression\n")
-		fmt.Fprintf(g.w, "  if len(window.OrderBy.ToExpressions()) > 0 {\n")
+		fmt.Fprintf(g.w, "  if len(window.OrderBy) > 0 {\n")
 		fmt.Fprintf(g.w, "    orderBy = window.OrderBy.ToExpressions()[0]\n")
 		fmt.Fprintf(g.w, "  }\n")
 	}
