@@ -6825,6 +6825,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
 	},
 	{
+		Query:    "(SELECT '1', 'first row' FROM dual) UNION (SELECT '6', 'sixth row' FROM dual) LIMIT 1",
+		Expected: []sql.Row{{"1", "first row"}},
+	},
+	{
 		Query:    "select GET_LOCK('10', 10)",
 		Expected: []sql.Row{{1}},
 	},
@@ -7905,6 +7909,13 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query:    `SELECT * from information_schema.innodb_virtual`,
 		Expected: []sql.Row{},
+	},
+}
+
+var SkippedInfoSchemaQueries = []QueryTest{
+	{
+		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
+		Expected: []sql.Row{{3}},
 	},
 }
 
