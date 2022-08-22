@@ -116,8 +116,8 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 		//TODO: if a user is mentioned in the "mandatory_roles" (users and roles are interchangeable) system variable then they cannot be dropped
 		err := userTableData.Remove(ctx, mysql_db.UserPrimaryKey{
-			Host: user.Host,
-			User: user.Name,
+			Host: existingUser.Host,
+			User: existingUser.User,
 		}, nil)
 		if err != nil {
 			return nil, err

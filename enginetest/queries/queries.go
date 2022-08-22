@@ -1667,6 +1667,18 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN (NULL)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IS NULL",
+		Expected: []sql.Row{{int64(5), int64(5), nil}},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN ('')",
+		Expected: []sql.Row{{int64(2), int64(2), ""}},
+	},
+	{
 		Query:    "SELECT 1 FROM DUAL WHERE 1 IN (SELECT '1' FROM DUAL)",
 		Expected: []sql.Row{{1}},
 	},
@@ -3075,6 +3087,23 @@ var QueryTests = []QueryTest{
 			{5, 3, float64(3), float64(1)},
 			{6, 2, float64(3), float64(0)},
 			{7, 1, float64(4), float64(0)},
+		},
+	},
+	{
+		Query: `select pk,
+                       percent_rank() over(partition by v2 order by pk),
+                       dense_rank() over(partition by v2 order by pk),
+                       rank() over(partition by v2 order by pk)
+				from one_pk_three_idx order by pk`,
+		Expected: []sql.Row{
+			{0, float64(0), uint64(1), uint64(1)},
+			{1, float64(1) / float64(3), uint64(2), uint64(2)},
+			{2, float64(0), uint64(1), uint64(1)},
+			{3, float64(0), uint64(1), uint64(1)},
+			{4, float64(2) / float64(3), uint64(3), uint64(3)},
+			{5, float64(1), uint64(4), uint64(4)},
+			{6, float64(0), uint64(1), uint64(1)},
+			{7, float64(0), uint64(1), uint64(1)},
 		},
 	},
 	{
@@ -6796,6 +6825,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
 	},
 	{
+		Query:    "(SELECT '1', 'first row' FROM dual) UNION (SELECT '6', 'sixth row' FROM dual) LIMIT 1",
+		Expected: []sql.Row{{"1", "first row"}},
+	},
+	{
 		Query:    "select GET_LOCK('10', 10)",
 		Expected: []sql.Row{{1}},
 	},
@@ -6838,6 +6871,10 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT CONV(i, 10, 2) FROM mytable",
 		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
+	},
+	{
+		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
+		Expected: []sql.Row{{1}},
 	},
 }
 
@@ -7872,6 +7909,13 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query:    `SELECT * from information_schema.innodb_virtual`,
 		Expected: []sql.Row{},
+	},
+}
+
+var SkippedInfoSchemaQueries = []QueryTest{
+	{
+		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
+		Expected: []sql.Row{{3}},
 	},
 }
 

@@ -239,32 +239,44 @@ func (db *MySQLDb) AddSuperUser(username string, host string, password string) {
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
 // roles, roleSearch changes whether the search matches against user or role rules.
 func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
-	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
-	// For now, this just does another check for localhost if the host is 127.0.0.1
-	//TODO: match on anonymous users, which have an empty username (different for roles)
-	var userEntry *User
+	//TODO: Determine what the localhost is on the machine, then handle the conversion between IP and localhost.
+	// For now, this just treats localhost and 127.0.0.1 as the same.
+	//TODO: Determine how to match anonymous roles (roles with an empty user string), which differs from users
+	//TODO: Treat '%' as a proper wildcard for hostnames, allowing for regex-like matches.
+	// Hostnames representing an IP address that have a wildcard have additional restrictions on what may match
+	//TODO: Match non-existent users to the most relevant anonymous user if multiple exist (''@'localhost' vs ''@'%')
+	// It appears that ''@'localhost' can use the privileges set on ''@'%', which seems to be unique behavior.
+	// For example, 'abc'@'localhost' CANNOT use any privileges set on 'abc'@'%'.
+	// Unknown if this is special for ''@'%', or applies to any matching anonymous user.
+	//TODO: Hostnames representing IPs can use masks, such as 'abc'@'54.244.85.0/255.255.255.0'
+	//TODO: Allow for CIDR notation in hostnames
+	//TODO: Which user do we choose when multiple host names match (e.g. host name with most characters matched, etc.)
 	userEntries := db.user.data.Get(UserPrimaryKey{
 		Host: host,
 		User: user,
 	})
 
 	if len(userEntries) == 1 {
-		userEntry = userEntries[0].(*User)
-	} else {
+		return userEntries[0].(*User)
+	}
+
+	// First we check for matches on the same user, then we try the anonymous user
+	for _, targetUser := range []string{user, ""} {
 		userEntries = db.user.data.Get(UserSecondaryKey{
-			User: user,
+			User: targetUser,
 		})
 		for _, readUserEntry := range userEntries {
 			readUserEntry := readUserEntry.(*User)
 			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
-			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+			if host == readUserEntry.Host ||
+				(host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+				(host == "localhost" && readUserEntry.Host == "127.0.0.1") ||
 				(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
-				userEntry = readUserEntry
-				break
+				return readUserEntry
 			}
 		}
 	}
-	return userEntry
+	return nil
 }
 
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the

@@ -127,6 +127,10 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
+
+	for _, ts := range queries.SkippedJoinScripts {
+		TestScript(t, harness, ts)
+	}
 }
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
@@ -216,6 +220,13 @@ func TestInfoSchema(t *testing.T, h Harness) {
 
 		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
 	})
+
+	for _, tt := range queries.SkippedInfoSchemaQueries {
+		t.Run(tt.Query, func(t *testing.T) {
+			t.Skip()
+			TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		})
+	}
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
@@ -3618,6 +3629,50 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
+	RunQuery(t, e, harness, "CREATE TABLE empty_tbl (a int, b int)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE results (name varchar(20), subject varchar(20), mark int)")
+	RunQuery(t, e, harness, "INSERT INTO results VALUES ('Pratibha', 'Maths', 100),('Ankita','Science',80),('Swarna','English',100),('Ankita','Maths',65),('Pratibha','Science',80),('Swarna','Science',50),('Pratibha','English',70),('Swarna','Maths',85),('Ankita','English',90)")
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+		{"English", "Swarna", 100, uint64(1)},
+		{"English", "Ankita", 90, uint64(2)},
+		{"English", "Pratibha", 70, uint64(3)},
+		{"Maths", "Pratibha", 100, uint64(1)},
+		{"Maths", "Swarna", 85, uint64(2)},
+		{"Maths", "Ankita", 65, uint64(3)},
+		{"Science", "Ankita", 80, uint64(1)},
+		{"Science", "Pratibha", 80, uint64(1)},
+		{"Science", "Swarna", 50, uint64(3)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, dense_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+		{"English", "Swarna", 100, uint64(1)},
+		{"English", "Ankita", 90, uint64(2)},
+		{"English", "Pratibha", 70, uint64(3)},
+		{"Maths", "Pratibha", 100, uint64(1)},
+		{"Maths", "Swarna", 85, uint64(2)},
+		{"Maths", "Ankita", 65, uint64(3)},
+		{"Science", "Ankita", 80, uint64(1)},
+		{"Science", "Pratibha", 80, uint64(1)},
+		{"Science", "Swarna", 50, uint64(2)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, percent_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+		{"English", "Swarna", 100, float64(0)},
+		{"English", "Ankita", 90, float64(0.5)},
+		{"English", "Pratibha", 70, float64(1)},
+		{"Maths", "Pratibha", 100, float64(0)},
+		{"Maths", "Swarna", 85, float64(0.5)},
+		{"Maths", "Ankita", 65, float64(1)},
+		{"Science", "Ankita", 80, float64(0)},
+		{"Science", "Pratibha", 80, float64(0)},
+		{"Science", "Swarna", 50, float64(1)},
+	}, nil, nil)
+
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0,0), (1,1,1), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
@@ -3630,6 +3685,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil)
 
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(3)},
+		{2, uint64(5)},
+		{3, uint64(1)},
+		{4, uint64(3)},
+		{5, uint64(6)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(3)},
+		{3, uint64(1)},
+		{4, uint64(2)},
+		{5, uint64(4)},
+	}, nil, nil)
+
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
 		{0, 0.8},
 		{1, 0.4},
@@ -3637,6 +3710,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.8},
 		{4, 0.4},
 		{5, 0.0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+		{0, uint64(5)},
+		{1, uint64(3)},
+		{2, uint64(2)},
+		{3, uint64(5)},
+		{4, uint64(3)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+		{0, uint64(4)},
+		{1, uint64(3)},
+		{2, uint64(2)},
+		{3, uint64(4)},
+		{4, uint64(3)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
@@ -3648,6 +3739,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil)
 
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(4)},
+		{3, uint64(1)},
+		{4, uint64(3)},
+		{5, uint64(5)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(3)},
+		{3, uint64(1)},
+		{4, uint64(2)},
+		{5, uint64(4)},
+	}, nil, nil)
+
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
 		{0, 0.0},
 		{1, 1.0},
@@ -3655,6 +3764,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.0},
 		{4, 0.0},
 		{5, 0.0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	// no order by clause -> all rows are peers
@@ -3665,6 +3792,26 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.0},
 		{4, 0.0},
 		{5, 0.0},
+	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
@@ -3850,6 +3997,16 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`, []sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}}, nil, nil)
+
+	// range framing without an order by clause
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
 
 	// fixed frame size, 3 days
 	RunQuery(t, e, harness, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
