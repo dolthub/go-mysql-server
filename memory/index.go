@@ -54,6 +54,10 @@ func (idx *Index) Expressions() []string {
 	return exprs
 }
 
+func (idx *Index) CanSupport(...sql.Range) bool {
+	return true
+}
+
 func (idx *Index) IsUnique() bool {
 	return idx.Unique
 }

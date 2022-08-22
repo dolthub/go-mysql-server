@@ -39,9 +39,13 @@ type Index interface {
 	// IsGenerated returns whether this index was generated. Generated indexes
 	// are used for index access, but are not displayed (such as with SHOW INDEXES).
 	IsGenerated() bool
-	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
-	// match the string returned from Index.Expressions().
+	// ColumnExpressionTypes returns each expression and its associated Type.
+	// Each expression string should exactly match the string returned from
+	// Index.Expressions().
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
+	// CanSupport returns whether this index supports lookups on the given
+	// range filters.
+	CanSupport(...Range) bool
 }
 
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary

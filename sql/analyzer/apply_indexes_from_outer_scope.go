@@ -101,7 +101,7 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode NameableNode,
 			}
 			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				ret := plan.NewIndexedTableAccess(n, iat.AsIndexedAccess(index), plan.NewLookupBuilder(ctx, index, keyExpr, nullmask))
+				ret := plan.NewIndexedTableAccess(n, iat.IndexedAccess(index), plan.NewLookupBuilder(ctx, index, keyExpr, nullmask))
 				return ret, transform.NewTree, nil
 			}
 		}

@@ -443,7 +443,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row) (sql.R
 	}
 
 	//TODO: profile this, may need to redesign this or add a fast path
-	editorData := mapper.Updater.AsIndexedAccess(mapper.Index)
+	editorData := mapper.Updater.IndexedAccess(mapper.Index)
 	lookup := sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index}
 	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {

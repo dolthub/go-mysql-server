@@ -249,7 +249,7 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
-func (t *tableEditor) AsIndexedAccess(sql.Index) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(sql.Index) sql.IndexedTable {
 	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
 		newTable, err := newTable(pkTea.table, pkTea.table.schema)

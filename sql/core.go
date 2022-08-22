@@ -428,8 +428,9 @@ type IndexColumn struct {
 
 // IndexAddressable is a table that can be scanned through a primary index
 type IndexAddressable interface {
-	// AsIndexedAccess returns a table that can perform scans constrained to an IndexLookup
-	AsIndexedAccess(Index) IndexedTable
+	// IndexedAccess returns a table that can perform scans constrained to
+	// an IndexLookup on the index given
+	IndexedAccess(Index) IndexedTable
 	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
 }

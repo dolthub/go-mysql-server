@@ -157,6 +157,10 @@ type testIndex struct {
 	numcols int
 }
 
+func (testIndex) CanSupport(...Range) bool {
+	return true
+}
+
 func (testIndex) ID() string {
 	return "test_index"
 }

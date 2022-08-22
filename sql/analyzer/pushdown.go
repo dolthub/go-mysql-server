@@ -602,7 +602,7 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				indexLookup, ok := indexes[tableNode.Name()]
-				if ok {
+				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
 					ret, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
 					if err != nil {
@@ -801,6 +801,9 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		lookup, err := indexBuilder.Build(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
+		}
+		if !pkIndex.CanSupport(lookup.Ranges...) {
+			return n, transform.SameTree, nil
 		}
 		newNode, err := plan.NewStaticIndexedAccessForResolvedTable(rs, lookup)
 		if err != nil {

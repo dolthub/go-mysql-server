@@ -36,7 +36,7 @@ var _ sql.RowDeleter = (*tableEditor)(nil)
 var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
 
-func (t *tableEditor) AsIndexedAccess(sql.Index) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(sql.Index) sql.IndexedTable {
 	//TODO implement me
 	panic("implement me")
 }
