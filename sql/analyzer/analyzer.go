@@ -436,6 +436,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownSortId,
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
+		pruneTablesId,
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
@@ -444,7 +445,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownFiltersId,
 		subqueryIndexesId,
 		inSubqueryIndexesId,
-		pruneTablesId,
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules
