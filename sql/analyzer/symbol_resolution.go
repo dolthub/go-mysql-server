@@ -80,8 +80,10 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
 		case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin, *plan.Filter,
 			*plan.GroupBy, *plan.Project, *plan.TableAlias,
-			*plan.Window, *plan.Sort, *plan.Limit, *plan.RecursiveCte,
+			*plan.Window, *plan.Limit, *plan.RecursiveCte,
 			*plan.RecursiveTable, *plan.TopN, *plan.Offset:
+		case *plan.Sort:
+			return n, transform.SameTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -199,7 +201,7 @@ func pruneTableCols(
 	return ret, transform.NewTree, nil
 }
 
-// gatherOuterCols searches a node'e expressions for column
+// gatherOuterCols searches a node's expressions for column
 // references and stars.
 func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 	ne, ok := n.(sql.Expressioner)
