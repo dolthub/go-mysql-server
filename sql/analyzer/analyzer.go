@@ -390,11 +390,12 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 		// Default
 		pruneTablesId,
-		//reorderProjectionId,
+		reorderProjectionId,
 
 		// OnceAfterDefault
+		pushdownFiltersId,
 		inSubqueryIndexesId,
-		//eraseProjectionId,
+		eraseProjectionId,
 		insertTopNId,
 		resolvePreparedInsertId,
 
@@ -448,16 +449,16 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownSortId,
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
-		//pruneTablesId,
+		pruneTablesId,
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
-		//reorderProjectionId,
+		reorderProjectionId,
 
 		// OnceAfterDefault
 		pushdownFiltersId,
 		subqueryIndexesId,
-		//eraseProjectionId,
+		eraseProjectionId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
 
