@@ -384,15 +384,21 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 // are applied
 func prePrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case resolvePreparedInsertId,
-		insertTopNId,
-		inSubqueryIndexesId,
-		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
-		clearWarningsId,
+	case
+		// OnceBeforeDefault
 		reresolveTablesId,
+
+		// Default
 		pruneTablesId,
+		//reorderProjectionId,
+
+		// OnceAfterDefault
+		inSubqueryIndexesId,
+		//eraseProjectionId,
+		insertTopNId,
+		resolvePreparedInsertId,
+
+		// DefaultValidation
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,
@@ -401,10 +407,16 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateOperandsId,
 		validateCaseResultTypesId,
 		validateIntervalUsageId,
-		validateExplodeUsageId,
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
-		validateAggregationsId:
+		validateAggregationsId,
+		validateExplodeUsageId, // not used?
+
+		// OnceAfterAll
+		AutocommitId,
+		TrackProcessId,
+		parallelizeId,
+		clearWarningsId:
 		return false
 	default:
 		return true
@@ -436,14 +448,16 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownSortId,
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
-		pruneTablesId,
+		//pruneTablesId,
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
+		//reorderProjectionId,
 
 		// OnceAfterDefault
 		pushdownFiltersId,
 		subqueryIndexesId,
+		//eraseProjectionId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
 

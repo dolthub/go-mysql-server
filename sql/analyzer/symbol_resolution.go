@@ -83,7 +83,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 			*plan.Window, *plan.Limit, *plan.RecursiveCte,
 			*plan.RecursiveTable, *plan.TopN, *plan.Offset:
 		case *plan.Sort:
-			return n, transform.SameTree, nil
+			//return n, transform.SameTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
