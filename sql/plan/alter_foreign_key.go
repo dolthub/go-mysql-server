@@ -517,7 +517,7 @@ func FindForeignKeyColMapping(
 // prefix. For example, the slices [col1, col2] and [col2, col1] will match the same index, as their ordering does not
 // matter. The index [col1, col2, col3] would match, but the index [col1, col3] would not match as it is missing "col2".
 // Prefix columns are case-insensitive.
-func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexedTable, prefixCols []string, ignoredIndexes ...string) (sql.Index, bool, error) {
+func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefixCols []string, ignoredIndexes ...string) (sql.Index, bool, error) {
 	type idxWithLen struct {
 		sql.Index
 		colLen int
