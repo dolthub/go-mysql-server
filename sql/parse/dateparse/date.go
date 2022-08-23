@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+type OutType int
+
+const (
+	DateTime OutType = iota
+	DateOnly
+	TimeOnly
+)
+
 // ParseDateWithFormat parses the date string according to the given
 // format string, as defined in the MySQL specification.
 //
@@ -15,10 +23,10 @@ import (
 // More info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
 //
 // Even more info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date
-func ParseDateWithFormat(date, format string) (time.Time, error) {
+func ParseDateWithFormat(date, format string) (interface{}, error) {
 	parsers, err := parsersFromFormatString(format)
 	if err != nil {
-		return time.Time{}, err
+		return nil, err
 	}
 
 	// trim all leading and trailing whitespace
@@ -28,17 +36,30 @@ func ParseDateWithFormat(date, format string) (time.Time, error) {
 	date = strings.ToLower(date)
 
 	var result datetime
+	var types = map[ParseType]bool{Time: false, Date: false, None: false}
 	target := date
 	for _, parser := range parsers {
 		target = takeAllSpaces(target)
-		rest, err := parser(&result, target)
+		rest, isTime, err := parser(&result, target)
+		types[isTime] = true
 		if err != nil {
 			return time.Time{}, err
 		}
 		target = rest
 	}
 
-	return evaluate(result)
+	var outType OutType
+	if types[Time] && types[Date] {
+		outType = DateTime
+	} else if types[Time] {
+		outType = TimeOnly
+	} else if types[Date] {
+		outType = DateOnly
+	} else {
+		return nil, err
+	}
+
+	return evaluate(result, outType)
 }
 
 // Convert the user-defined format string into a slice of parser functions
@@ -75,32 +96,32 @@ func parsersFromFormatString(format string) ([]parser, error) {
 // Wrap a literal char parser, returning the corresponding
 // typed error on failures.
 func wrapLiteralParser(literal byte) parser {
-	return func(result *datetime, chars string) (rest string, err error) {
-		rest, err = literalParser(literal)(result, chars)
+	return func(result *datetime, chars string) (rest string, parseType ParseType, err error) {
+		rest, parseType, err = literalParser(literal)(result, chars)
 		if err != nil {
-			return "", ParseLiteralErr{
+			return "", parseType, ParseLiteralErr{
 				Literal: literal,
 				Tokens:  chars,
 				err:     err,
 			}
 		}
-		return rest, nil
+		return rest, parseType, nil
 	}
 }
 
 // Wrap a format specifier parser, returning the corresponding
 // typed error on failures.
 func wrapSpecifierParser(p parser, specifier byte) parser {
-	return func(result *datetime, chars string) (rest string, err error) {
-		rest, err = p(result, chars)
+	return func(result *datetime, chars string) (rest string, parseType ParseType, err error) {
+		rest, parseType, err = p(result, chars)
 		if err != nil {
-			return "", ParseSpecifierErr{
+			return "", parseType, ParseSpecifierErr{
 				Specifier: specifier,
 				Tokens:    chars,
 				err:       err,
 			}
 		}
-		return rest, nil
+		return rest, parseType, nil
 	}
 }
 
@@ -126,9 +147,16 @@ type datetime struct {
 	hours        *uint
 	minutes      *uint
 	seconds      *uint
-	miliseconds  *uint
+	milliseconds *uint
 	microseconds *uint
 	nanoseconds  *uint
+}
+
+func (dt *datetime) isEmpty() bool {
+	if dt.day == nil && dt.month == nil && dt.year == nil && dt.dayOfYear == nil && dt.weekOfYear == nil && dt.weekday == nil && dt.am == nil && dt.hours == nil && dt.minutes == nil && dt.seconds == nil && dt.milliseconds == nil && dt.microseconds == nil && dt.nanoseconds == nil {
+		return true
+	}
+	return false
 }
 
 // ParseSpecifierErr defines a error when attempting to parse
@@ -165,7 +193,7 @@ func (p ParseLiteralErr) Error() string {
 // Reference: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
 var formatSpecifiers = map[byte]parser{
 	// %a	Abbreviated weekday name (Sun..Sat)
-	'a': parseWeedayAbbreviation,
+	'a': parseWeekdayAbbreviation,
 	// %b	Abbreviated month name (Jan..Dec)
 	'b': parseMonthAbbreviation,
 	// %c	Month, numeric (0..12)

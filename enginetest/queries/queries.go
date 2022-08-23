@@ -7375,24 +7375,75 @@ var VersionedScripts = []ScriptTest{
 var DateParseQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('Jan 3, 2000', '%b %e, %Y')",
-		Expected: []sql.Row{{time.Date(2000, time.January, 3, 0, 0, 0, 0, time.Local)}},
+		Expected: []sql.Row{{"2000-01-03"}},
 	},
 	{
-		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')",
-		Expected: []sql.Row{{time.Date(2000, time.May, 3, 22, 23, 0, 0, time.Local)}},
+		Query:    "SELECT STR_TO_DATE('01,5,2013', '%d,%m,%Y')",
+		Expected: []sql.Row{{"2013-05-01"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y')",
+		Expected: []sql.Row{{"2013-05-01"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s')",
+		Expected: []sql.Row{{"09:30:17"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('a09:30:17','%h:%i:%s')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('09:30:17a','%h:%i:%s')",
+		Expected: []sql.Row{{"09:30:17"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('09:30:17 pm','%h:%i:%s %p')",
+		Expected: []sql.Row{{"21:30:17"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('9','%m')",
+		Expected: []sql.Row{{"0000-09-00"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('9','%s')",
+		Expected: []sql.Row{{"00:00:09"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 314', '%m/%e/%y %f')",
-		Expected: []sql.Row{{time.Date(1999, time.January, 2, 0, 0, 0, 314000, time.Local)}},
+		Expected: []sql.Row{{"1999-01-02 00:00:00.314000"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01/02/99 0', '%m/%e/%y %f')",
+		Expected: []sql.Row{{"1999-01-02 00:00:00.000000"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 05:14:12 PM', '%m/%e/%y %r')",
-		Expected: []sql.Row{{time.Date(1999, time.January, 2, 17, 14, 12, 0, time.Local)}},
+		Expected: []sql.Row{{"1999-01-02 17:14:12"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 2000', '%b %e, %H:%i:%s %Y')",
+		Expected: []sql.Row{{"2000-05-03 10:23:00"}},
+	},
+	{
+		// returns null for mysql
+		Query: "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')",
+		//Expected: []sql.Row{{nil}},
+		Expected: []sql.Row{{"2000-05-03 22:23:00"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('abc','abc')",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
 		Expected: []sql.Row{{nil}},
 	},
+	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
+	//{
+	//	Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
+	//	Expected: []sql.Row{{"2013-08-13"}},
+	//},
 }
 
 var InfoSchemaQueries = []QueryTest{
