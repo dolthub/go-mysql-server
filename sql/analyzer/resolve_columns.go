@@ -647,6 +647,8 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 			// time to resolve other parts so this can be resolved.
 			a.Log("deferring resolution of column %s", e)
 			return &deferredColumn{uc}, transform.NewTree, nil
+		case *deferredColumn:
+			return uc, transform.SameTree, nil
 		default:
 			if table != "" {
 				return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
