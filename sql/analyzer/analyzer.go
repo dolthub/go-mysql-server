@@ -389,7 +389,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		reresolveTablesId,
 
 		// Default
-		pruneTablesId,
+		//pruneTablesId,
 		//reorderProjectionId,
 
 		// OnceAfterDefault
