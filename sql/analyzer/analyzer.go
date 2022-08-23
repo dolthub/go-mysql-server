@@ -411,8 +411,8 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 		// OnceAfterAll
 		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
+		//TrackProcessId,
+		//parallelizeId,
 		clearWarningsId:
 		return false
 	default:
@@ -462,8 +462,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 
 		// OnceAfterAll
 		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
+		//TrackProcessId,
+		//parallelizeId,
 		clearWarningsId:
 		return true
 	}
