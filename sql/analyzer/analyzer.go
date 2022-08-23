@@ -393,7 +393,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		//reorderProjectionId,
 
 		// OnceAfterDefault
-		pushdownFiltersId,
+		//pushdownFiltersId,
 		inSubqueryIndexesId,
 		//eraseProjectionId,
 		insertTopNId,
