@@ -387,7 +387,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 	case
 		// OnceBeforeDefault
 		reresolveTablesId,
-		
+
 		// Default
 
 		// OnceAfterDefault
