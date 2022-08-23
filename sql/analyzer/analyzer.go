@@ -407,13 +407,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
 		validateAggregationsId,
-		validateExplodeUsageId,
-
-		// OnceAfterAll
-		AutocommitId,
-		//TrackProcessId,
-		//parallelizeId,
-		clearWarningsId:
+		validateExplodeUsageId:
 		return false
 	default:
 		return true
@@ -445,26 +439,17 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownSortId,
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
-		//pruneTablesId,
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
-		//reorderProjectionId,
 
 		// OnceAfterDefault
 		pushdownFiltersId,
 		subqueryIndexesId,
-		//eraseProjectionId,
 		inSubqueryIndexesId,
-		resolvePreparedInsertId,
-
+		resolvePreparedInsertId:
 		// DefaultValidationRules
-
 		// OnceAfterAll
-		AutocommitId,
-		//TrackProcessId,
-		//parallelizeId,
-		clearWarningsId:
 		return true
 	}
 	return false
