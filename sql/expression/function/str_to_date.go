@@ -76,6 +76,7 @@ func (s StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	goTime, err := dateparse.ParseDateWithFormat(dateStr, formatStr)
 	if err != nil {
+		ctx.Warn(1411, fmt.Sprintf("Incorrect value: '%s' for function %s", dateStr, s.FunctionName()))
 		return nil, nil
 	}
 

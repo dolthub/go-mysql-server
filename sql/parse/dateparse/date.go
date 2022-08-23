@@ -41,10 +41,10 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	for _, parser := range parsers {
 		target = takeAllSpaces(target)
 		rest, isTime, err := parser(&result, target)
-		types[isTime] = true
 		if err != nil {
-			return time.Time{}, err
+			return nil, err
 		}
+		types[isTime] = true
 		target = rest
 	}
 
@@ -56,7 +56,7 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	} else if types[Date] {
 		outType = DateOnly
 	} else {
-		return nil, err
+		return nil, fmt.Errorf("no value to evaluate")
 	}
 
 	return evaluate(result, outType)

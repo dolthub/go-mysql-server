@@ -33,7 +33,7 @@ func evaluate(dt datetime, outType OutType) (interface{}, error) {
 		return nil, nil
 	}
 
-	var result = getDate(dt)
+	var result string
 	if outType == DateTime {
 		d := getDate(dt)
 		t := getTime(dt)
@@ -56,19 +56,19 @@ func getDate(dt datetime) string {
 		year = int(*dt.year)
 	}
 
-	if dt.dayOfYear != nil {
-		// offset from Jan 1st by the specified number of days
-		dayOffsetted := time.Date(year, time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
-		month = int(dayOffsetted.Month())
-		day = dayOffsetted.Day()
-	}
-
 	if dt.month != nil {
 		month = int(*dt.month)
 	}
 
 	if dt.day != nil {
 		day = int(*dt.day)
+	}
+
+	if dt.dayOfYear != nil {
+		// offset from Jan 1st by the specified number of days
+		dayOffsetted := time.Date(year, time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
+		month = int(dayOffsetted.Month())
+		day = dayOffsetted.Day()
 	}
 
 	return fillWithZero(year, 4) + "-" + fillWithZero(month, 2) + "-" + fillWithZero(day, 2)
