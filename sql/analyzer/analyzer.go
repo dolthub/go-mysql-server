@@ -387,15 +387,11 @@ func prePrepareRuleSelector(id RuleId) bool {
 	case
 		// OnceBeforeDefault
 		reresolveTablesId,
-
+		
 		// Default
-		//pruneTablesId,
-		//reorderProjectionId,
 
 		// OnceAfterDefault
-		//pushdownFiltersId,
 		inSubqueryIndexesId,
-		//eraseProjectionId,
 		insertTopNId,
 		resolvePreparedInsertId,
 
@@ -411,7 +407,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
 		validateAggregationsId,
-		validateExplodeUsageId, // not used?
+		validateExplodeUsageId,
 
 		// OnceAfterAll
 		AutocommitId,
