@@ -150,7 +150,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT * FROM mytable order by i desc`,
+		Query: `SELECT * FROM mytable order by i asc`,
 		Expected: []sql.Row{
 			{3, "third row"},
 			{2, "second row"},
