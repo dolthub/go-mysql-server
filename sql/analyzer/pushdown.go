@@ -160,7 +160,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return n, samePred && sameFix, nil
 			case *plan.IndexedTableAccess:
-				if plan.GetIndexLookup(node) == nil {
+				if plan.GetIndexLookup(node).IsEmpty() {
 					// Index without lookup has no filters to mark/push.
 					// Relevant for IndexJoin, which has more restrictive
 					// rules for lookup expressions.
@@ -602,9 +602,13 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				indexLookup, ok := indexes[tableNode.Name()]
-				if ok {
+				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
-					return plan.NewStaticIndexedTableAccess(n, indexLookup.lookup), transform.NewTree, nil
+					ret, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					return ret, transform.NewTree, nil
 				}
 			}
 		}
@@ -736,7 +740,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		// Extract primary key columns from index to maintain order
-		idxTbl, ok := rs.Table.(sql.IndexedTable)
+		idxTbl, ok := rs.Table.(sql.IndexAddressableTable)
 		if !ok {
 			return s, transform.SameTree, nil
 		}
@@ -798,7 +802,13 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newNode := plan.NewStaticIndexedTableAccess(rs, lookup)
+		if !pkIndex.CanSupport(lookup.Ranges...) {
+			return n, transform.SameTree, nil
+		}
+		newNode, err := plan.NewStaticIndexedAccessForResolvedTable(rs, lookup)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
 
 		var resNode sql.Node = newNode
 		if decoratingParent != nil {

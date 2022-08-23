@@ -63,6 +63,10 @@ type dummyLookup struct {
 	values map[string][]*memory.IndexValue
 }
 
+func (i dummyLookup) Lookup() sql.IndexLookup {
+	panic("not implemented")
+}
+
 var _ sql.DriverIndexLookup = (*dummyLookup)(nil)
 
 func (dummyLookup) Indexes() []string { return nil }
@@ -79,14 +83,6 @@ func (i *dummyLookup) Values(partition sql.Partition) (sql.IndexValueIter, error
 	}
 
 	return &dummyLookupIter{values: values}, nil
-}
-
-func (i *dummyLookup) Index() sql.Index {
-	panic("not implemented")
-}
-
-func (i *dummyLookup) Ranges() sql.RangeCollection {
-	panic("not implemented")
 }
 
 type dummyLookupIter struct {
@@ -321,7 +317,7 @@ func TestIndexed(t *testing.T) {
 			}
 
 			projected := table.WithProjections(test.columns)
-			indexed := projected.(*memory.Table).WithIndexLookup(test.lookup)
+			indexed := projected.(*memory.Table).WithDriverIndexLookup(test.lookup)
 
 			ctx := sql.NewEmptyContext()
 			iter, err := indexed.PartitionRows(ctx, test.partition)

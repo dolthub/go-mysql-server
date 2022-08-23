@@ -639,7 +639,7 @@ func TestPushdownIndex(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
-				plan.NewStaticIndexedTableAccess(
+				mustStaticIta(
 					plan.NewResolvedTable(table, nil, nil),
 					mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 				),
@@ -674,7 +674,7 @@ func TestPushdownIndex(t *testing.T) {
 						expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
 						expression.NewLiteral("hello", sql.Text),
 					),
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
@@ -722,7 +722,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral("goodbye", sql.Text),
 						),
 					),
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
@@ -757,11 +757,11 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table2, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 					),
@@ -797,11 +797,11 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table2, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 					),
@@ -815,11 +815,11 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table2, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 					),
@@ -860,7 +860,7 @@ func TestPushdownIndex(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
-					plan.NewStaticIndexedTableAccess(
+					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
 						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
@@ -869,7 +869,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
 							expression.NewLiteral("hello", sql.Text),
 						),
-						plan.NewStaticIndexedTableAccess(
+						mustStaticIta(
 							plan.NewResolvedTable(table2, nil, nil),
 							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 						),
@@ -903,7 +903,7 @@ func TestPushdownIndex(t *testing.T) {
 						expression.NewLiteral(3.14, sql.Float64),
 					),
 					plan.NewTableAlias("t1",
-						plan.NewStaticIndexedTableAccess(
+						mustStaticIta(
 							plan.NewResolvedTable(table, nil, nil),
 							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 						),
@@ -949,7 +949,7 @@ func TestPushdownIndex(t *testing.T) {
 						),
 					),
 					plan.NewTableAlias("t1",
-						plan.NewStaticIndexedTableAccess(
+						mustStaticIta(
 							plan.NewResolvedTable(table, nil, nil),
 							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 						),
@@ -995,7 +995,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewStaticIndexedTableAccess(
+							mustStaticIta(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 							),
@@ -1007,7 +1007,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(21, sql.Int32),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewStaticIndexedTableAccess(
+							mustStaticIta(
 								plan.NewResolvedTable(table2, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 							),
@@ -1072,7 +1072,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewStaticIndexedTableAccess(
+							mustStaticIta(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 							),
@@ -1090,7 +1090,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewStaticIndexedTableAccess(
+							mustStaticIta(
 								plan.NewResolvedTable(table2, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 							),
@@ -1146,7 +1146,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(100, sql.Int32),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewStaticIndexedTableAccess(
+							mustStaticIta(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
 							),
@@ -1201,7 +1201,7 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewResolvedTable(table, nil, nil),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewIndexedTableAccess(
+							mustNewIta(
 								plan.NewResolvedTable(table2, nil, nil),
 								plan.NewLookupBuilder(ctx, idxTable2I2, []sql.Expression{gf(0, "t1", "i")}, []bool{false}),
 							),
@@ -1223,7 +1223,7 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(100, sql.Int32),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewStaticIndexedTableAccess(
+							mustStaticIta(
 								plan.NewResolvedTable(table, nil, nil),
 								mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
 							),
@@ -1241,7 +1241,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewIndexedTableAccess(
+							mustNewIta(
 								plan.NewResolvedTable(table2, nil, nil),
 								plan.NewLookupBuilder(ctx, idxTable2I2, []sql.Expression{gf(0, "t1", "i")}, []bool{false}),
 							),
@@ -1311,7 +1311,7 @@ func TestPushdownIndex(t *testing.T) {
 								expression.NewLiteral(100, sql.Int32),
 							),
 							plan.NewTableAlias("t1",
-								plan.NewStaticIndexedTableAccess(
+								mustStaticIta(
 									plan.NewResolvedTable(table, nil, nil),
 									mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
 								),
@@ -1385,7 +1385,7 @@ func TestPushdownIndex(t *testing.T) {
 								),
 							),
 							plan.NewTableAlias("t2",
-								plan.NewStaticIndexedTableAccess(
+								mustStaticIta(
 									plan.NewResolvedTable(table2, nil, nil),
 									mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 								),
@@ -1437,4 +1437,20 @@ func newFilteredTableWithProjectionsAndFilters(table *memory.FilteredTable, colN
 	newFilteredTable.WithProjections(colNames)
 
 	return newFilteredTable
+}
+
+func mustNewIta(rt *plan.ResolvedTable, builder *plan.LookupBuilder) *plan.IndexedTableAccess {
+	ret, err := plan.NewIndexedAccessForResolvedTable(rt, builder)
+	if err != nil {
+		panic(err)
+	}
+	return ret
+}
+
+func mustStaticIta(rt *plan.ResolvedTable, lookup sql.IndexLookup) *plan.IndexedTableAccess {
+	ret, err := plan.NewStaticIndexedAccessForResolvedTable(rt, lookup)
+	if err != nil {
+		panic(err)
+	}
+	return ret
 }

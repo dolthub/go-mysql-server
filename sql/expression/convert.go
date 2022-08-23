@@ -174,7 +174,8 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 	case ConvertToDate:
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
-		if !(isTime || isString) {
+		_, isBinary := val.([]byte)
+		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
 		d, err := sql.Date.Convert(val)
@@ -185,7 +186,8 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 	case ConvertToDatetime:
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
-		if !(isTime || isString) {
+		_, isBinary := val.([]byte)
+		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
 		d, err := sql.Datetime.Convert(val)

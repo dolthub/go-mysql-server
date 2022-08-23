@@ -261,13 +261,13 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 // Build constructs a new IndexLookup based on the ranges that have been built internally by this builder.
 func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	if b.err != nil {
-		return nil, b.err
+		return emptyLookup, b.err
 	} else {
 		ranges := b.Ranges(ctx)
 		if len(ranges) == 0 {
-			return nil, nil
+			return emptyLookup, nil
 		}
-		return b.idx.NewLookup(ctx, ranges...)
+		return IndexLookup{Index: b.idx, Ranges: ranges}, nil
 	}
 }
 
