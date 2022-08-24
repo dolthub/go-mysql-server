@@ -12,48 +12,48 @@ func NewStrToDate(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("STR_TO_DATE", 2, len(args))
 	}
-	return &StringToDatetime{
+	return &StrToDate{
 		Date:   args[0],
 		Format: args[1],
 	}, nil
 }
 
-// StringToDatetime defines the built-in function STR_TO_DATE(str, format)
-type StringToDatetime struct {
+// StrToDate defines the built-in function STR_TO_DATE(str, format)
+type StrToDate struct {
 	Date   sql.Expression
 	Format sql.Expression
 }
 
-var _ sql.FunctionExpression = (*StringToDatetime)(nil)
+var _ sql.FunctionExpression = (*StrToDate)(nil)
 
 // Description implements sql.FunctionExpression
-func (s StringToDatetime) Description() string {
+func (s StrToDate) Description() string {
 	return "parses the date/datetime/timestamp expression according to the format specifier."
 }
 
 // Resolved returns whether the node is resolved.
-func (s StringToDatetime) Resolved() bool {
+func (s StrToDate) Resolved() bool {
 	dateResolved := s.Date == nil || s.Date.Resolved()
 	formatResolved := s.Format == nil || s.Format.Resolved()
 	return dateResolved && formatResolved
 }
 
-func (s StringToDatetime) String() string {
+func (s StrToDate) String() string {
 	return fmt.Sprintf("STR_TO_DATE(%s, %s)", s.Date, s.Format)
 }
 
 // Type returns the expression type.
-func (s StringToDatetime) Type() sql.Type {
+func (s StrToDate) Type() sql.Type {
 	return sql.Datetime
 }
 
 // IsNullable returns whether the expression can be null.
-func (s StringToDatetime) IsNullable() bool {
+func (s StrToDate) IsNullable() bool {
 	return true
 }
 
 // Eval evaluates the given row and returns a result.
-func (s StringToDatetime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (s StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	date, err := s.Date.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -62,6 +62,7 @@ func (s StringToDatetime) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil {
 		return nil, err
 	}
+
 	dateStr, ok := date.(string)
 	if !ok {
 		// TODO: improve this error
@@ -72,15 +73,20 @@ func (s StringToDatetime) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		// TODO: improve this error
 		return nil, sql.ErrInvalidType.New(fmt.Sprintf("%T", formatStr))
 	}
+
 	goTime, err := dateparse.ParseDateWithFormat(dateStr, formatStr)
 	if err != nil {
+		ctx.Warn(1411, fmt.Sprintf("Incorrect value: '%s' for function %s", dateStr, s.FunctionName()))
 		return nil, nil
 	}
+
+	// zero dates '0000-00-00' and '2010-00-13' are allowed,
+	// but depends on strict sql_mode with NO_ZERO_DATE or NO_ZERO_IN_DATE modes enabled.
 	return goTime, nil
 }
 
 // Children returns the children expressions of this expression.
-func (s StringToDatetime) Children() []sql.Expression {
+func (s StrToDate) Children() []sql.Expression {
 	children := make([]sql.Expression, 0, 2)
 	if s.Date != nil {
 		children = append(children, s.Date)
@@ -91,10 +97,10 @@ func (s StringToDatetime) Children() []sql.Expression {
 	return children
 }
 
-func (s StringToDatetime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s StrToDate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewStrToDate(children...)
 }
 
-func (s StringToDatetime) FunctionName() string {
+func (s StrToDate) FunctionName() string {
 	return "str_to_date"
 }
