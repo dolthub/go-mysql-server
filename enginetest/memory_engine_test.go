@@ -122,22 +122,24 @@ func TestSingleQuery(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 and pk > 0 ORDER BY 2,3`,
+		Query: `SELECT * FROM mytable order by i desc`,
 		Expected: []sql.Row{
-			{1, 2},
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	harness.Setup(setup.MydbData, setup.SpecialtableData, setup.Pk_tablesData, setup.NiltableData)
+	harness.Setup(setup.MydbData, setup.MytableData)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
 	}
 
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestQueryWithEngine(t, harness, engine, test)
 }
@@ -148,22 +150,24 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
+		Query: `SELECT * FROM mytable order by i desc`,
 		Expected: []sql.Row{
-			{sql.Point{X: 1, Y: 2}},
-			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Point{X: 1, Y: 2}},
-			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	engine := enginetest.NewSpatialEngine(t, harness)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	harness.Setup(setup.MydbData, setup.MytableData)
+	//engine, err := harness.NewEngine(t)
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }

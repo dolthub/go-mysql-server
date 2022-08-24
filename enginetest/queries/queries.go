@@ -714,7 +714,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT FORMAT(val, 2) FROM 
+		Query: `SELECT FORMAT(val, 2) FROM
 			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
 		Expected: []sql.Row{
 			{"4,328,904.00"},
@@ -734,7 +734,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM 
+		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM
 			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
 		Expected: []sql.Row{
 			{"4.328.904,00"},
@@ -760,7 +760,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM 
+		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM
 			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31T12:00:00')) a (val)`,
 		Expected: []sql.Row{
 			{-758},
@@ -776,7 +776,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM 
+		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM
 			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
 		Expected: []sql.Row{
 			{1090140},
@@ -792,14 +792,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2) 
-                    FROM (values
-						 row('{ "a": 1, "b": 2 }','null'), 
-                         row('{ "a": 1, "b": 2 }','"row one"'), 
-                         row('{ "a": 3, "c": 4 }','4'), 
-                         row('{ "a": 5, "d": 6 }','[true, true]'),
-                         row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
-                    test (val1, val2)`,
+		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2)
+	               FROM (values
+						 row('{ "a": 1, "b": 2 }','null'),
+	                    row('{ "a": 1, "b": 2 }','"row one"'),
+	                    row('{ "a": 3, "c": 4 }','4'),
+	                    row('{ "a": 5, "d": 6 }','[true, true]'),
+	                    row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
+	               test (val1, val2)`,
 		Expected: []sql.Row{
 			{sql.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
 			{sql.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
@@ -851,8 +851,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT column_0, sum(column_1) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+		Query: `SELECT column_0, sum(column_1) FROM
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 order by 1`,
 		Expected: []sql.Row{
 			{1, 4.0},
@@ -861,8 +861,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT B, sum(C) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a (b,c) 
+		Query: `SELECT B, sum(C) FROM
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a (b,c)
 			group by 1 order by 1`,
 		Expected: []sql.Row{
 			{1, 4.0},
@@ -958,23 +958,23 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select mt.i, 
+		Query: `select mt.i,
 			((
 				select count(*) from mytable
-           	where i in (
-              		select mt2.i from mytable mt2 where mt2.i > mt.i
-           	)
+	      	where i in (
+	         		select mt2.i from mytable mt2 where mt2.i > mt.i
+	      	)
 			)) as greater_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
 	},
 	{
-		Query: `select mt.i, 
+		Query: `select mt.i,
 			((
 				select count(*) from mytable
-           	where i in (
-              		select mt2.i from mytable mt2 where mt2.i = mt.i
-           	)
+	      	where i in (
+	         		select mt2.i from mytable mt2 where mt2.i = mt.i
+	      	)
 			)) as eq_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
@@ -1184,8 +1184,8 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
-			SELECT mtouter.i, 
-				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1) 
+			SELECT mtouter.i,
+				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1)
 			FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
 			{2, "third row"},
@@ -1270,7 +1270,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: ` 
+		Query: `
 			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
 				SELECT sub_part, part, quantity FROM parts WHERE part = 'pie'
 			  UNION ALL
@@ -1292,7 +1292,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: ` 
+		Query: `
 			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
 				SELECT sub_part, part, quantity FROM parts WHERE lower(part) = 'pie'
 			  UNION ALL
@@ -1314,7 +1314,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: ` 
+		Query: `
 			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
 				SELECT sub_part, part, quantity FROM parts WHERE part = (select part from parts where part = 'pie' and sub_part = 'crust')
 			  UNION ALL
@@ -4701,9 +4701,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
-				FROM othertable ot INNER JOIN 
-					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
+		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
+				FROM othertable ot INNER JOIN
+					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
 			{1, 1, "third", 1, "third"},
@@ -4712,9 +4712,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
+		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
 				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
-				INNER JOIN othertable ot 
+				INNER JOIN othertable ot
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
 			{1, 1, "third", 1, "third"},
@@ -5665,8 +5665,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2 
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
 						ORDER BY 1`,
 		Expected: []sql.Row{
@@ -5677,8 +5677,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
 						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
 						ORDER BY 1`,
 		Expected: []sql.Row{
@@ -5686,8 +5686,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
 						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
 						ORDER BY 1`,
 		Expected: []sql.Row{

@@ -282,7 +282,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			new := transferProjections(from, to.(*plan.ResolvedTable))
+			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			from = n.ResolvedTable
@@ -294,7 +294,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				return nil, transform.SameTree, err
 			}
 			new := *n
-			new.ResolvedTable = transferProjections(from, to.(*plan.ResolvedTable))
+			new.ResolvedTable = transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return &new, transform.NewTree, nil
 		case *plan.DeferredAsOfTable:
 			from = n.ResolvedTable
@@ -302,7 +302,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			new := transferProjections(from, to.(*plan.ResolvedTable))
+			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
 		default:
 		}
@@ -314,7 +314,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 }
 
 // transferProjections moves projections from one table scan to another
-func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
+func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.ResolvedTable {
 	var fromTable sql.Table
 	switch t := from.Table.(type) {
 	case sql.TableWrapper:
@@ -348,6 +348,20 @@ func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
 	}
 
 	newTable := pt.WithProjections(projections)
+
+	ft, ok := fromTable.(sql.FilteredTable)
+	if !ok {
+		return plan.NewResolvedTable(newTable, to.Database, to.AsOf)
+	}
+	filters := ft.Filters()
+
+	ft, ok = newTable.(sql.FilteredTable)
+	if !ok {
+		return plan.NewResolvedTable(newTable, to.Database, to.AsOf)
+	}
+
+	newTable = ft.WithFilters(ctx, filters)
+
 	return plan.NewResolvedTable(newTable, to.Database, to.AsOf)
 }
 

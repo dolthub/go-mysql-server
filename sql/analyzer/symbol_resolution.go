@@ -199,7 +199,7 @@ func pruneTableCols(
 	return ret, transform.NewTree, nil
 }
 
-// gatherOuterCols searches a node'e expressions for column
+// gatherOuterCols searches a node's expressions for column
 // references and stars.
 func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 	ne, ok := n.(sql.Expressioner)
