@@ -11,21 +11,19 @@ func TestParsers(t *testing.T) {
 		name             string
 		chars            string
 		parser           parser
-		parserType       ParseType
 		expectedRest     string
 		expectedDatetime datetime
 	}{
-		{"24_timestamp", "13:12:15", parse24HourTimestamp, Time, "",
+		{"24_timestamp", "13:12:15", parse24HourTimestamp, "",
 			datetime{hours: uintPtr(13), minutes: uintPtr(12), seconds: uintPtr(15)},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var dt datetime
-			rest, pt, err := tt.parser(&dt, tt.chars)
+			rest, err := tt.parser(&dt, tt.chars)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedRest, rest)
-			require.Equal(t, tt.parserType, pt)
 			require.Equal(t, tt.expectedDatetime, dt)
 		})
 	}
@@ -43,7 +41,7 @@ func TestParserErr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var dt datetime
-			_, _, err := tt.parser(&dt, tt.chars)
+			_, err := tt.parser(&dt, tt.chars)
 			require.Error(t, err)
 			require.Equal(t, tt.expectedErr, err.Error())
 		})
