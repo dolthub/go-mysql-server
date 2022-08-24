@@ -50,7 +50,7 @@ func parseAmPm(result *datetime, chars string) (rest string, _ error) {
 	return trimPrefix(2, chars), nil
 }
 
-func parseWeedayAbbreviation(result *datetime, chars string) (rest string, _ error) {
+func parseWeekdayAbbreviation(result *datetime, chars string) (rest string, _ error) {
 	if len(chars) < 3 {
 		return "", fmt.Errorf("expected at least 3 chars, got %d", len(chars))
 	}
