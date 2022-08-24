@@ -5,51 +5,7 @@ import (
 	"time"
 )
 
-// Validate that the combination of fields in datetime
-// can be evaluated unambiguously to a time.Time.
-func validate(dt datetime) error {
-	if dt.year == nil && dt.day == nil && dt.month == nil && dt.dayOfYear == nil {
-		return nil
-	}
-	if dt.day == nil {
-		if dt.month != nil {
-			// TODO: ensure this behaves as expected
-			return fmt.Errorf("day is ambiguous")
-		}
-		return nil
-	}
-	if dt.dayOfYear != nil && dt.day != nil {
-		return fmt.Errorf("day is ambiguous")
-	}
-	if (dt.dayOfYear != nil || dt.day != nil) && dt.year == nil {
-		return fmt.Errorf("year is ambiguous")
-	}
-
-	return nil
-}
-
-func evaluate(dt datetime, outType OutType) (interface{}, error) {
-	if dt.isEmpty() {
-		return nil, nil
-	}
-
-	var result string
-	if outType == DateTime {
-		d := getDate(dt)
-		t := getTime(dt)
-		result = d + " " + t
-	} else if outType == TimeOnly {
-		result = getTime(dt)
-	} else if outType == DateOnly {
-		result = getDate(dt)
-	} else {
-		return nil, nil
-	}
-
-	return result, nil
-}
-
-func getDate(dt datetime) string {
+func evaluateDate(dt datetime) string {
 	var year, month, day int
 
 	if dt.year != nil {
@@ -74,7 +30,7 @@ func getDate(dt datetime) string {
 	return fillWithZero(year, 4) + "-" + fillWithZero(month, 2) + "-" + fillWithZero(day, 2)
 }
 
-func getTime(dt datetime) string {
+func evaluateTime(dt datetime) string {
 	var hours, minutes, seconds, milliseconds, microseconds, nanoseconds int
 
 	if dt.hours != nil {

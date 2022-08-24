@@ -6,12 +6,9 @@ import (
 	"time"
 )
 
-type OutType int
-
-const (
-	DateTime OutType = iota
-	DateOnly
-	TimeOnly
+var (
+	dateSpecifiers = []uint8{'a', 'b', 'c', 'D', 'd', 'e', 'j', 'M', 'm', 'U', 'u', 'V', 'v', 'W', 'w', 'X', 'x', 'Y', 'y'}
+	timeSpecifiers = []uint8{'f', 'H', 'h', 'I', 'i', 'k', 'l', 'p', 'r', 'S', 's', 'T'}
 )
 
 // ParseDateWithFormat parses the date string according to the given
@@ -24,9 +21,30 @@ const (
 //
 // Even more info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date
 func ParseDateWithFormat(date, format string) (interface{}, error) {
-	parsers, err := parsersFromFormatString(format)
+	parsers, specifiers, err := parsersFromFormatString(format)
 	if err != nil {
 		return nil, err
+	}
+
+	hasDate := false
+	for _, s := range dateSpecifiers {
+		if _, ok := specifiers[s]; ok {
+			hasDate = true
+			break
+		}
+	}
+
+	hasTime := false
+	_, hasAmPm := specifiers['p']
+	for _, s := range timeSpecifiers {
+		if _, ok := specifiers[s]; ok {
+			// validate that am/pm is not used with 24 hour time specifiers
+			if (s == 'H' || s == 'k' || s == 'T') && hasAmPm {
+				return nil, fmt.Errorf("cannot use 24 hour time (H) with AM/PM (p)")
+			}
+			hasTime = true
+			break
+		}
 	}
 
 	// trim all leading and trailing whitespace
@@ -35,52 +53,52 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	// convert to all lowercase
 	date = strings.ToLower(date)
 
-	var result datetime
-	var types = map[ParseType]bool{Time: false, Date: false, None: false}
+	var dt datetime
 	target := date
 	for _, parser := range parsers {
 		target = takeAllSpaces(target)
-		rest, isTime, err := parser(&result, target)
+		rest, err := parser(&dt, target)
 		if err != nil {
 			return nil, err
 		}
-		types[isTime] = true
 		target = rest
 	}
 
-	var outType OutType
-	if types[Time] && types[Date] {
-		outType = DateTime
-	} else if types[Time] {
-		outType = TimeOnly
-	} else if types[Date] {
-		outType = DateOnly
+	var result string
+	if hasDate && hasTime {
+		result = fmt.Sprintf("%s %s", evaluateDate(dt), evaluateTime(dt))
+	} else if hasTime {
+		result = fmt.Sprintf("%s", evaluateTime(dt))
+	} else if hasDate {
+		result = fmt.Sprintf("%s", evaluateDate(dt))
 	} else {
 		return nil, fmt.Errorf("no value to evaluate")
 	}
 
-	return evaluate(result, outType)
+	return result, nil
 }
 
 // Convert the user-defined format string into a slice of parser functions
 // which will later process the date string.
 //
 // Example format string: "%H:%i:%s".
-func parsersFromFormatString(format string) ([]parser, error) {
+func parsersFromFormatString(format string) ([]parser, map[uint8]bool, error) {
 	parsers := make([]parser, 0, len(format))
+	var specifiersInFormat = make(map[uint8]bool)
 	for i := 0; i < len(format); i++ {
 		char := format[i]
 		if char == '%' {
 			if len(format) <= i+1 {
-				return nil, fmt.Errorf("\"%%\" found at end of format string")
+				return nil, nil, fmt.Errorf("\"%%\" found at end of format string")
 			}
 			specifier := format[i+1]
+			specifiersInFormat[specifier] = true
 			parser, ok := formatSpecifiers[specifier]
 			if !ok {
-				return nil, fmt.Errorf("unknown format specifier \"%c\"", specifier)
+				return nil, nil, fmt.Errorf("unknown format specifier \"%c\"", specifier)
 			}
 			if parser == nil {
-				return nil, fmt.Errorf("format specifier \"%c\" not yet supported", specifier)
+				return nil, nil, fmt.Errorf("format specifier \"%c\" not yet supported", specifier)
 			}
 			parsers = append(parsers, wrapSpecifierParser(parser, specifier))
 
@@ -90,38 +108,39 @@ func parsersFromFormatString(format string) ([]parser, error) {
 			parsers = append(parsers, wrapLiteralParser(char))
 		}
 	}
-	return parsers, nil
+
+	return parsers, specifiersInFormat, nil
 }
 
 // Wrap a literal char parser, returning the corresponding
 // typed error on failures.
 func wrapLiteralParser(literal byte) parser {
-	return func(result *datetime, chars string) (rest string, parseType ParseType, err error) {
-		rest, parseType, err = literalParser(literal)(result, chars)
+	return func(result *datetime, chars string) (rest string, err error) {
+		rest, err = literalParser(literal)(result, chars)
 		if err != nil {
-			return "", parseType, ParseLiteralErr{
+			return "", ParseLiteralErr{
 				Literal: literal,
 				Tokens:  chars,
 				err:     err,
 			}
 		}
-		return rest, parseType, nil
+		return rest, nil
 	}
 }
 
 // Wrap a format specifier parser, returning the corresponding
 // typed error on failures.
 func wrapSpecifierParser(p parser, specifier byte) parser {
-	return func(result *datetime, chars string) (rest string, parseType ParseType, err error) {
-		rest, parseType, err = p(result, chars)
+	return func(result *datetime, chars string) (rest string, err error) {
+		rest, err = p(result, chars)
 		if err != nil {
-			return "", parseType, ParseSpecifierErr{
+			return "", ParseSpecifierErr{
 				Specifier: specifier,
 				Tokens:    chars,
 				err:       err,
 			}
 		}
-		return rest, parseType, nil
+		return rest, nil
 	}
 }
 

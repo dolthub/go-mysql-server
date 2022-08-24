@@ -7426,10 +7426,12 @@ var DateParseQueries = []QueryTest{
 		Expected: []sql.Row{{"2000-05-03 10:23:00"}},
 	},
 	{
-		// returns null for mysql
-		Query: "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')",
-		//Expected: []sql.Row{{nil}},
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %h:%i:%s %p %Y')",
 		Expected: []sql.Row{{"2000-05-03 22:23:00"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')", // cannot use 24 hour time (%H) with AM/PM (%p)
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('abc','abc')",
