@@ -445,16 +445,13 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownSortId,
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
-		//pruneTablesId,
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
-		//reorderProjectionId,
 
 		// OnceAfterDefault
 		pushdownFiltersId,
 		subqueryIndexesId,
-		//eraseProjectionId,
 		inSubqueryIndexesId,
 		resolvePreparedInsertId,
 
