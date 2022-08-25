@@ -482,6 +482,8 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						}
 					case expression.Tuple:
 						// Tuple expressions can contain tuples...
+					case *plan.ExistsSubquery:
+						// Any number of columns are allowed.
 					default:
 						for _, e := range e.Children() {
 							nc := sql.NumColumns(e.Type())

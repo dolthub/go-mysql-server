@@ -6477,6 +6477,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{4}},
 	},
 	{
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT * FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE EXISTS (SELECT * FROM one_pk WHERE pk < 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
 		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
 		Expected: []sql.Row{{0}, {1}},
 	},
