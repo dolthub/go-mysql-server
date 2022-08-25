@@ -1258,6 +1258,29 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive a as (select 1 union all select 2) select * from a union select 10 from dual;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{10},
+		},
+	},
+	{
+		Query: "with recursive a as (select 1 union all select 2) select 10 from dual union select * from a;",
+		Expected: []sql.Row{
+			{10},
+			{1},
+			{2},
+		},
+	},
+	{
+		Query: "with recursive a as (select 1 union all select 2) select * from a union select * from a;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
+	{
 		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select count(*) from t as t1 join t as t2 on t1.n = t2.n;",
 		Expected: []sql.Row{
 			{int64(10)},
