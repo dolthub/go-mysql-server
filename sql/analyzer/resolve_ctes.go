@@ -216,14 +216,8 @@ func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			if _, isCTE := l.(*plan.With); isCTE {
-				newLeftChild := l.Children()[0]
-				newChild := plan.NewUnion(newLeftChild, r)
-				newLeft, err := l.WithChildren(newChild)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				return hoistCommonTableExpressions(ctx, a, newLeft, scope, sel)
+			if cte, isCTE := l.(*plan.With); isCTE {
+				return plan.NewWith(plan.NewUnion(cte.Child, r), cte.CTEs, cte.Recursive), transform.NewTree, nil
 			}
 			if sameL && sameR {
 				return n, transform.SameTree, nil
