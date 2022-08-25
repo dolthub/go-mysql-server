@@ -217,11 +217,6 @@ func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				return nil, transform.SameTree, err
 			}
 			if _, isCTE := l.(*plan.With); isCTE {
-				// left is the new parent
-				// left's child is a union
-				// union's left child is left's child
-				// union's right child is right
-				// then...recurse on that??
 				newLeftChild := l.Children()[0]
 				newChild := plan.NewUnion(newLeftChild, r)
 				newLeft, err := l.WithChildren(newChild)
