@@ -8384,6 +8384,11 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
+		// case-insensitive duplicate
+		Query:       "select * from mytable a join mytable A on a.i = A.i;",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
 		Query:       "SELECT * FROM mytable AS t UNION SELECT * FROM mytable AS t, othertable AS t", // duplicate alias in union
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
