@@ -246,6 +246,11 @@ func (u *updatableJoinTable) Schema() sql.Schema {
 	return u.joinNode.Schema()
 }
 
+// Collation implements the sql.Table interface.
+func (u *updatableJoinTable) Collation() sql.CollationID {
+	return sql.Collation_Default
+}
+
 // Updater implements the sql.UpdatableTable interface.
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{

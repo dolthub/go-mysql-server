@@ -95,6 +95,13 @@ var _ TypeWithCollation = stringType{}
 // VARBINARY). For all other char-based SQL types, length is interpreted as the length of chars in the new
 // StringType (i.e. CHAR, and VARCHAR).
 func CreateString(baseType query.Type, length int64, collation CollationID) (StringType, error) {
+	//TODO: remove character set and collation validity checks once all collations have been implemented (delete errors as well)
+	if collation.CharacterSet().Encoder() == nil {
+		return nil, ErrCharSetNotYetImplementedTemp.New(collation.CharacterSet().Name())
+	} else if collation.Sorter() == nil {
+		return nil, ErrCollationNotYetImplementedTemp.New(collation.CharacterSet().Name())
+	}
+
 	// Check the base type first and fail immediately if it's unknown
 	switch baseType {
 	case sqltypes.Char, sqltypes.Binary, sqltypes.VarChar, sqltypes.VarBinary, sqltypes.Text, sqltypes.Blob:

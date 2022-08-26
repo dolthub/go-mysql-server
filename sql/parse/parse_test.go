@@ -1053,7 +1053,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "hello",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1109,7 +1109,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "bar",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "hello",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1119,7 +1119,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "baz",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "hello",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1129,7 +1129,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase("mydb"),
 		plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
 			Name:     "col1",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "changed",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -4228,8 +4228,8 @@ func TestParseColumnTypeString(t *testing.T) {
 			sql.MustCreateStringWithDefaults(sqltypes.VarChar, 255),
 		},
 		{
-			"VARCHAR(300) COLLATE cp1257_lithuanian_ci",
-			sql.MustCreateString(sqltypes.VarChar, 300, sql.Collation_cp1257_lithuanian_ci),
+			"VARCHAR(300) COLLATE latin1_german2_ci",
+			sql.MustCreateString(sqltypes.VarChar, 300, sql.Collation_latin1_german2_ci),
 		},
 		{
 			"BINARY(6)",
