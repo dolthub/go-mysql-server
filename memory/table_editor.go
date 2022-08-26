@@ -33,18 +33,27 @@ type tableEditor struct {
 	fkTable       *Table
 }
 
+var _ sql.Table = (*tableEditor)(nil)
+var _ sql.RowReplacer = (*tableEditor)(nil)
+var _ sql.RowUpdater = (*tableEditor)(nil)
+var _ sql.RowInserter = (*tableEditor)(nil)
+var _ sql.RowDeleter = (*tableEditor)(nil)
+var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
+
 func (t *tableEditor) Name() string {
 	return t.table.name
 }
 
 func (t *tableEditor) String() string {
 	return t.table.String()
-
 }
 
 func (t *tableEditor) Schema() sql.Schema {
 	return t.table.Schema()
+}
 
+func (t *tableEditor) Collation() sql.CollationID {
+	return t.table.Collation()
 }
 
 func (t *tableEditor) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
@@ -57,12 +66,6 @@ func (t *tableEditor) PartitionRows(ctx *sql.Context, part sql.Partition) (sql.R
 	}
 	return t.table.PartitionRows(ctx, part)
 }
-
-var _ sql.RowReplacer = (*tableEditor)(nil)
-var _ sql.RowUpdater = (*tableEditor)(nil)
-var _ sql.RowInserter = (*tableEditor)(nil)
-var _ sql.RowDeleter = (*tableEditor)(nil)
-var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
 
 func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return t.table.GetIndexes(ctx)

@@ -121,6 +121,8 @@ func (*dummyTable) Insert(*sql.Context, sql.Row) error {
 
 func (t *dummyTable) Schema() sql.Schema { return t.schema }
 
+func (t *dummyTable) Collation() sql.CollationID { return sql.Collation_Default }
+
 func (t *dummyTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return &partitionIter{keys: t.keys}, nil
 }

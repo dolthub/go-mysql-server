@@ -77,6 +77,11 @@ func (c *ColumnsTable) Schema() sql.Schema {
 	return columnsSchema
 }
 
+// Collation implements the sql.Node interface.
+func (c *ColumnsTable) Collation() sql.CollationID {
+	return sql.Collation_Default
+}
+
 // RowIter implements the sql.Node interface.
 func (c *ColumnsTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	partitions, err := c.Partitions(ctx)

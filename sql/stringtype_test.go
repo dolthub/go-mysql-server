@@ -375,9 +375,9 @@ func TestStringString(t *testing.T) {
 			fmt.Sprintf("varchar(%v)", varcharVarbinaryMax)},
 		{MustCreateString(sqltypes.Char, 10, Collation_Default.CharacterSet().BinaryCollation()),
 			fmt.Sprintf("char(10) COLLATE %v", Collation_Default.CharacterSet().BinaryCollation())},
-		{MustCreateString(sqltypes.Char, 10, Collation_tis620_thai_ci), "char(10) CHARACTER SET tis620 COLLATE tis620_thai_ci"},
+		{MustCreateString(sqltypes.Char, 10, Collation_utf16_general_ci), "char(10) CHARACTER SET utf16 COLLATE utf16_general_ci"},
 		{MustCreateString(sqltypes.Text, 10, Collation_ascii_general_ci), "tinytext CHARACTER SET ascii COLLATE ascii_general_ci"},
-		{MustCreateString(sqltypes.VarChar, 10, Collation_cp1251_bin), "varchar(10) CHARACTER SET cp1251 COLLATE cp1251_bin"},
+		{MustCreateString(sqltypes.VarChar, 10, Collation_latin1_bin), "varchar(10) CHARACTER SET latin1 COLLATE latin1_bin"},
 	}
 
 	for _, test := range tests {

@@ -77,6 +77,7 @@ type Table struct {
 	indexes          map[string]sql.Index
 	fkColl           *ForeignKeyCollection
 	checks           []sql.CheckDefinition
+	collation        sql.CollationID
 	pkIndexesEnabled bool
 
 	// pushdown info
@@ -122,13 +123,25 @@ var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 
-// NewTable creates a new Table with the given name and schema.
+// NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
+// collation is desired, please use NewTableWithCollation.
 func NewTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
-	return NewPartitionedTable(name, schema, fkColl, 0)
+	return NewPartitionedTableWithCollation(name, schema, fkColl, 0, sql.Collation_Default)
 }
 
-// NewPartitionedTable creates a new Table with the given name, schema and number of partitions.
+// NewTableWithCollation creates a new Table with the given name, schema, and collation.
+func NewTableWithCollation(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
+	return NewPartitionedTableWithCollation(name, schema, fkColl, 0, collation)
+}
+
+// NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
+// collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
 func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
+	return NewPartitionedTableWithCollation(name, schema, fkColl, numPartitions, sql.Collation_Default)
+}
+
+// NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, and collation.
+func NewPartitionedTableWithCollation(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 
@@ -156,6 +169,7 @@ func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, fkColl *Forei
 		name:          name,
 		schema:        schema,
 		fkColl:        fkColl,
+		collation:     collation,
 		partitions:    partitions,
 		partitionKeys: keys,
 		autoIncVal:    autoIncVal,
@@ -174,6 +188,11 @@ func (t *Table) Schema() sql.Schema {
 		return t.projectedSchema
 	}
 	return t.schema.Schema
+}
+
+// Collation implements the sql.Table interface.
+func (t *Table) Collation() sql.CollationID {
+	return t.collation
 }
 
 func (t *Table) GetPartition(key string) []sql.Row {
@@ -1541,7 +1560,7 @@ func copyschema(sch sql.Schema) sql.Schema {
 }
 
 func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-	newTable := NewPartitionedTable(t.name, newSch, t.fkColl, len(t.partitions))
+	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, len(t.partitions), t.collation)
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {
 			err := newTable.Insert(sql.NewEmptyContext(), partitionRow)

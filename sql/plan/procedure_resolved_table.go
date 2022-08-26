@@ -52,6 +52,11 @@ func (t *ProcedureResolvedTable) Schema() sql.Schema {
 	return t.ResolvedTable.Schema()
 }
 
+// Collation implements the sql.Table interface.
+func (t *ProcedureResolvedTable) Collation() sql.CollationID {
+	return t.ResolvedTable.Collation()
+}
+
 // DebugString implements the sql.DebugStringer interface.
 func (t *ProcedureResolvedTable) DebugString() string {
 	return sql.DebugString(t.ResolvedTable)

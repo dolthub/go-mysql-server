@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +45,10 @@ var (
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
+
+	tableCharsetOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+CHARACTER\s+SET((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
+
+	tableCollationOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+COLLATE((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -1382,7 +1387,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.ColumnAction != "" {
 		switch strings.ToLower(ddl.ColumnAction) {
 		case sqlparser.AddStr:
-			sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
+			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
 			if err != nil {
 				return nil, err
 			}
@@ -1392,7 +1397,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.RenameStr:
 			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
 		case sqlparser.ModifyStr, sqlparser.ChangeStr:
-			sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
+			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
 			if err != nil {
 				return nil, err
 			}
@@ -1696,16 +1701,17 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	qualifier := c.Table.Qualifier.String()
 
-	schema, err := TableSpecToSchema(ctx, c.TableSpec)
+	schema, collation, err := TableSpecToSchema(ctx, c.TableSpec, false)
 	if err != nil {
 		return nil, err
 	}
 
 	tableSpec := &plan.TableSpec{
-		Schema:  schema,
-		IdxDefs: idxDefs,
-		FkDefs:  fkDefs,
-		ChDefs:  chDefs,
+		Schema:    schema,
+		IdxDefs:   idxDefs,
+		FkDefs:    fkDefs,
+		ChDefs:    chDefs,
+		Collation: collation,
 	}
 
 	if c.OptSelect != nil {
@@ -2007,22 +2013,55 @@ func getPkOrdinals(ts *sqlparser.TableSpec) []int {
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.PrimaryKeySchema, error) {
+func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
+	tableCollation := sql.Collation_Default
+	if forceInvalidCollation {
+		tableCollation = sql.Collation_Invalid
+	} else {
+		if len(tableSpec.Options) > 0 {
+			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
+			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)
+			if len(charsetSubmatches) == 5 && len(collationSubmatches) == 5 {
+				var err error
+				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+				}
+			} else if len(charsetSubmatches) == 5 {
+				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+				}
+				tableCollation = charset.DefaultCollation()
+			} else if len(collationSubmatches) == 5 {
+				var err error
+				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+				}
+			}
+		}
+	}
+
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
+		// Use the table's collation if no character or collation was specified for the table
+		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
+			cd.Type.Collate = tableCollation.Name()
+		}
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
 		if err != nil {
-			return sql.PrimaryKeySchema{}, err
+			return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
 		}
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
-			return sql.PrimaryKeySchema{}, ErrPrimaryKeyOnNullField.New()
+			return sql.PrimaryKeySchema{}, sql.Collation_Invalid, ErrPrimaryKeyOnNullField.New()
 		}
 
 		schema = append(schema, column)
 	}
 
-	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), nil
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, nil
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
@@ -2673,7 +2712,7 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 		paths[i] = col.Type.Path
 	}
 
-	sch, err := TableSpecToSchema(ctx, t.Spec)
+	sch, _, err := TableSpecToSchema(ctx, t.Spec, false)
 	if err != nil {
 		return nil, err
 	}
@@ -3250,12 +3289,6 @@ func handleCollateExpr(ctx *sql.Context, charSet sql.CharacterSetID, expr *sqlpa
 	if err != nil {
 		return nil, err
 	}
-	// This is a temporary measure while all of the collations are being added. We could maintain a public list/enum of
-	// which collations are unsupported, however since this logic is temporary anyway it is easier to do this check.
-	// Once all of the collations have been added, this `if` statement will be removed.
-	if collation.Sorter() == nil {
-		return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
-	}
 	if collation.CharacterSet() != charSet {
 		return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
 	}
@@ -3582,9 +3615,6 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 				collation, err = sql.ParseCollation(nil, &collateExpr.Charset, false)
 				if err != nil {
 					return nil, err
-				}
-				if collation.Sorter() == nil {
-					return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
 				}
 				if collation.CharacterSet() != charSet {
 					return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
