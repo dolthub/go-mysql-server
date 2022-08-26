@@ -84,9 +84,6 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			switch n := node.(type) {
 			case *plan.UnresolvedTable:
 				lowerName := strings.ToLower(n.Name())
-				if ctes[lowerName] != nil {
-					return ctes[lowerName], transform.NewTree, nil
-				}
 				cte := ctes[lowerName]
 				if cte == nil {
 					return n, transform.SameTree, nil

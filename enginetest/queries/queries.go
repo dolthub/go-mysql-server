@@ -1252,6 +1252,20 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "WITH mytable as (select * FROM mytable) SELECT s,i FROM mytable;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
 		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(55)},
