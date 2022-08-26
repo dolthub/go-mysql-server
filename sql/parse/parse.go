@@ -3381,6 +3381,11 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+		// value that does not fit in float64 gets rounded up
+		// use the value as string format to keep precision and scale as defined for DECIMAL data type
+		if len(string(v.Val)) > len(fmt.Sprintf("%v", val)) {
+			return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+		}
 		return expression.NewLiteral(val, sql.Float64), nil
 	case sqlparser.HexNum:
 		//TODO: binary collation?
