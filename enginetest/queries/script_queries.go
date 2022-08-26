@@ -1629,6 +1629,26 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
 				Expected: []sql.Row{{2}},
 			},
+			{
+				Query:    "INSERT INTO test VALUES (119815923291839784651.11981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('119815923291839784651.1198159232918398', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:          "create table invalid_decimal (number decimal(65,31));",
+				ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+			},
+			{
+				Query:          "create table invalid_decimal (number decimal(66,30));",
+				ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+			},
+			{
+				Query:          "create table invalid_decimal (number decimal(66,31));",
+				ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+			},
 		},
 	},
 	{

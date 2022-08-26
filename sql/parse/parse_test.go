@@ -1705,6 +1705,12 @@ CREATE TABLE t2
 		expression.NewLiteral("a", sql.LongText),
 		&expression.DefaultColumn{},
 	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
+	`INSERT INTO test (decimal_col) VALUES (11981.5923291839784651)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("11981.5923291839784651", sql.LongText),
+	}}), false, []string{"decimal_col"}, []sql.Expression{}, false),
+	`INSERT INTO test (decimal_col) VALUES (119815923291839784651.11981592329183978465111981592329183978465144)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("119815923291839784651.11981592329183978465111981592329183978465144", sql.LongText),
+	}}), false, []string{"decimal_col"}, []sql.Expression{}, false),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(plan.NewFilter(
 		expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
 		plan.NewUnresolvedTable("t1", ""),

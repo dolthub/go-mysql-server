@@ -3384,8 +3384,8 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
-			if scale, err := strconv.ParseUint(ps[1], 10, 64); err == nil && scale > 0 {
-				if len(string(v.Val)) > len(fmt.Sprintf("%v", val)) {
+			if scale, err := strconv.ParseUint(ps[1], 10, 64); err != nil || scale > 0 {
+				if len(string(v.Val)) >= len(fmt.Sprintf("%v", val)) {
 					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
 				}
 			}
