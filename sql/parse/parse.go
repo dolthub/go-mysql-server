@@ -18,17 +18,12 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
-
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
@@ -37,6 +32,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -3385,7 +3384,9 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
 			if scale, err := strconv.ParseUint(ps[1], 10, 64); err != nil || scale > 0 {
-				if len(string(v.Val)) >= len(fmt.Sprintf("%v", val)) {
+				ogVal := string(v.Val)
+				floatVal := fmt.Sprintf("%v", val)
+				if len(ogVal) >= len(floatVal) && ogVal != floatVal {
 					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
 				}
 			}
