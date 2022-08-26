@@ -1257,12 +1257,6 @@ var QueryTests = []QueryTest{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
-			{"first row", int64(1)},
-			{"second row", int64(2)},
-			{"third row", int64(3)},
-			{"first row", int64(1)},
-			{"second row", int64(2)},
-			{"third row", int64(3)},
 		},
 	},
 	{
