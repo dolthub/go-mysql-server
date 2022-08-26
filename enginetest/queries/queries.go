@@ -1291,7 +1291,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "WITH recursive a AS ( WITH b AS ( SELECT 1 UNION SELECT 2 ), c AS ( SELECT 3 UNION SELECT 4 ) SELECT * from b UNION SELECT * from c), x AS ( WITH y AS ( SELECT 5 UNION SELECT 6 ), z AS ( SELECT 7 UNION SELECT 8 ) SELECT * from y UNION SELECT * from z) SELECT * from a UNION SELECT * from x;",
+		Query: "WITH a AS ( WITH b AS ( SELECT 1 UNION SELECT 2 ), c AS ( SELECT 3 UNION SELECT 4 ) SELECT * from b UNION SELECT * from c), x AS ( WITH y AS ( SELECT 5 UNION SELECT 6 ), z AS ( SELECT 7 UNION SELECT 8 ) SELECT * from y UNION SELECT * from z) SELECT * from a UNION SELECT * from x;",
 		Expected: []sql.Row{
 			{1},
 			{2},
