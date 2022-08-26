@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-const maxCteDepth = 5
+const maxCteDepth = 5000
 
 // resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 // tree with the subqueries defined in the CTEs.
@@ -46,6 +46,8 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			return nil, transform.SameTree, err
 		}
 	}
+
+	isRecursive := with != nil && with.Recursive
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
 	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -82,9 +84,40 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			switch n := node.(type) {
 			case *plan.UnresolvedTable:
 				lowerName := strings.ToLower(n.Name())
-				if ctes[lowerName] != nil {
-					return ctes[lowerName], transform.NewTree, nil
+				cte := ctes[lowerName]
+				if cte == nil {
+					return n, transform.SameTree, nil
 				}
+
+				if isRecursive {
+					return cte, transform.SameTree, nil
+				}
+
+				// look for self references in non-recursive cte
+				subquery, ok := cte.(*plan.SubqueryAlias)
+				if !ok {
+					return cte, transform.NewTree, nil
+				}
+
+				// TODO: just compare the tables themselves?
+				hasSelfReference := false
+				transform.Inspect(subquery.Child, func(node sql.Node) bool {
+					switch n := node.(type) {
+					case *plan.UnresolvedTable:
+						if strings.ToLower(n.Name()) == lowerName {
+							hasSelfReference = true
+							return false
+						}
+						return true
+					default:
+						return true
+					}
+				})
+
+				if !hasSelfReference {
+					return cte, transform.NewTree, nil
+				}
+
 				return n, transform.SameTree, nil
 			case *plan.InsertInto:
 				insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
