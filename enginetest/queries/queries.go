@@ -8818,6 +8818,18 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, b BLOB DEFAULT '');",
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
 	},
+	{
+		Query:       "with a as (select * from a) select * from a",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:       "WITH recursive Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
