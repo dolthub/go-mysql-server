@@ -87,12 +87,9 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 				if ctes[lowerName] != nil {
 					return ctes[lowerName], transform.NewTree, nil
 				}
-				return n, transform.SameTree, nil
 				cte := ctes[lowerName]
 				if cte == nil {
 					return n, transform.SameTree, nil
-				} else {
-					return cte, transform.NewTree, nil
 				}
 
 				if isRecursive {
