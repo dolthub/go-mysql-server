@@ -1301,8 +1301,6 @@ var QueryTests = []QueryTest{
 			{6},
 			{7},
 			{8},
-			{9},
-			{10},
 		},
 	},
 	{
