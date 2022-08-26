@@ -38,10 +38,7 @@ func TestShowCreateTable(t *testing.T) {
 		&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
-	table := memory.NewTable(
-		"test-table",
-		sql.NewPrimaryKeySchema(schema),
-		nil)
+	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(schema), nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -87,10 +84,7 @@ func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema)
-	table := memory.NewTable(
-		"test_table",
-		pkSchema,
-		nil)
+	table := memory.NewTable("test_table", pkSchema, nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -128,10 +122,7 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema, 4, 0)
-	table := memory.NewTable(
-		"test-table",
-		pkSchema,
-		nil)
+	table := memory.NewTable("test-table", pkSchema, nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -169,10 +160,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 		&sql.Column{Name: "foo", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
-	table := memory.NewTable(
-		"test-table",
-		sql.NewPrimaryKeySchema(schema),
-		&memory.ForeignKeyCollection{})
+	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
 
 	require.NoError(table.AddForeignKey(ctx, sql.ForeignKeyConstraint{
 		Name:           "fk1",
@@ -275,15 +263,13 @@ func TestShowCreateView(t *testing.T) {
 	var require = require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable(
-		"test-table",
-		sql.NewPrimaryKeySchema(sql.Schema{
-			&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false, PrimaryKey: true},
-			&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
-			&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
-			&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
-			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
-		}), nil)
+	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(sql.Schema{
+		&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false, PrimaryKey: true},
+		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
+		&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
+	}), nil)
 
 	showCreateTable := NewShowCreateTable(
 		NewSubqueryAlias("myView", "select * from `test-table`", NewResolvedTable(table, nil, nil)),

@@ -5833,12 +5833,18 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					sch, iter, err := engine.Query(ctx, query.Query)
-					if query.Error {
+					if query.Error || query.ErrKind != nil {
 						if err == nil {
 							_, err := sql.RowIterToRows(ctx, sch, iter)
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						} else {
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						}
 					} else {
 						require.NoError(t, err)

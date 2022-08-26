@@ -14,13 +14,7 @@
 
 package sql
 
-import (
-	"github.com/dolthub/go-mysql-server/sql/encodings"
-
-	"gopkg.in/src-d/go-errors.v1"
-)
-
-var ErrCharacterSetNotSupported = errors.NewKind("Unknown character set: %v")
+import "github.com/dolthub/go-mysql-server/sql/encodings"
 
 // CharacterSet represents the character set of a string.
 type CharacterSet struct {
@@ -99,7 +93,7 @@ const (
 // be efficiently passed around (since only an uint16 is needed), while still being able to quickly access all of their
 // properties (index lookups are significantly faster than map lookups).
 var characterSetArray = [42]CharacterSet{
-	/*00*/ {},
+	/*00*/ {CharacterSet_Invalid, "invalid", Collation_Invalid, Collation_Invalid, "Invalid Character Set", 1, &encodings.RangeMap{}},
 	/*01*/ {CharacterSet_armscii8, "armscii8", Collation_armscii8_general_ci, Collation_armscii8_bin, "ARMSCII-8 Armenian", 1, nil},
 	/*02*/ {CharacterSet_ascii, "ascii", Collation_ascii_general_ci, Collation_ascii_bin, "US ASCII", 1, encodings.Ascii},
 	/*03*/ {CharacterSet_big5, "big5", Collation_big5_chinese_ci, Collation_big5_bin, "Big5 Traditional Chinese", 2, nil},
@@ -125,7 +119,7 @@ var characterSetArray = [42]CharacterSet{
 	/*23*/ {CharacterSet_keybcs2, "keybcs2", Collation_keybcs2_general_ci, Collation_keybcs2_bin, "DOS Kamenicky Czech-Slovak", 1, nil},
 	/*24*/ {CharacterSet_koi8r, "koi8r", Collation_koi8r_general_ci, Collation_koi8r_bin, "KOI8-R Relcom Russian", 1, nil},
 	/*25*/ {CharacterSet_koi8u, "koi8u", Collation_koi8u_general_ci, Collation_koi8u_bin, "KOI8-U Ukrainian", 1, nil},
-	/*26*/ {CharacterSet_latin1, "latin1", Collation_latin1_swedish_ci, Collation_latin1_bin, "cp1252 West European", 1, nil},
+	/*26*/ {CharacterSet_latin1, "latin1", Collation_latin1_swedish_ci, Collation_latin1_bin, "cp1252 West European", 1, encodings.Latin1},
 	/*27*/ {CharacterSet_latin2, "latin2", Collation_latin2_general_ci, Collation_latin2_bin, "ISO 8859-2 Central European", 1, nil},
 	/*28*/ {CharacterSet_latin5, "latin5", Collation_latin5_turkish_ci, Collation_latin5_bin, "ISO 8859-9 Turkish", 1, nil},
 	/*29*/ {CharacterSet_latin7, "latin7", Collation_latin7_general_ci, Collation_latin7_bin, "ISO 8859-13 Baltic", 1, nil},
@@ -200,7 +194,11 @@ func ParseCharacterSet(str string) (CharacterSetID, error) {
 	if cs, ok := characterSetStringToID[str]; ok {
 		return cs, nil
 	}
-	return CharacterSet_Invalid, ErrCharacterSetNotSupported.New(str)
+	// It is valid to parse the invalid charset, as some analyzer steps may temporarily use the invalid charset
+	if str == CharacterSet_Invalid.Name() {
+		return CharacterSet_Invalid, nil
+	}
+	return CharacterSet_Invalid, ErrCharSetUnknown.New(str)
 }
 
 // Name returns the name of this CharacterSet.
@@ -241,7 +239,7 @@ func (cs CharacterSetID) Encoder() encodings.Encoder {
 
 // NewCharacterSetsIterator returns a new CharacterSetsIterator.
 func NewCharacterSetsIterator() *CharacterSetsIterator {
-	return &CharacterSetsIterator{0}
+	return &CharacterSetsIterator{1}
 }
 
 // Next returns the next character set. If all character sets have been iterated over, returns false.

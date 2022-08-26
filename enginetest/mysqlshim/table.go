@@ -72,6 +72,11 @@ func (t Table) Schema() sql.Schema {
 	return createTable.Schema()
 }
 
+// Collation implements the interface sql.Table.
+func (t Table) Collation() sql.CollationID {
+	return sql.Collation_Default
+}
+
 // Pks implements sql.PrimaryKeyAlterableTable
 func (t Table) Pks() []sql.IndexColumn {
 	createTable, err := t.getCreateTable()
