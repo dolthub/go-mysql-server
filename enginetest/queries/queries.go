@@ -1266,7 +1266,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable union * from mytable;",
+		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable union SELECT * from mytable;",
 		Expected: []sql.Row{
 			{int64(3), "third row"},
 		},
