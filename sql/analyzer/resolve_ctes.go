@@ -37,6 +37,25 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), sel)
 }
 
+func hasSelfReference(subquery *plan.SubqueryAlias, lowerName string) bool {
+	res := false
+	transform.Inspect(subquery.Child, func(node sql.Node) bool {
+		switch n := node.(type) {
+		case *plan.UnresolvedTable:
+			if strings.ToLower(n.Name()) == lowerName {
+				res = true
+				return false
+			}
+			return true
+		default:
+			return true
+		}
+	})
+	return res
+}
+
+var seen = map[string]bool{}
+
 func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	with, ok := node.(*plan.With)
 	if ok {
@@ -46,8 +65,6 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			return nil, transform.SameTree, err
 		}
 	}
-
-	isRecursive := with != nil && with.Recursive
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
 	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -88,37 +105,10 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 				if cte == nil {
 					return n, transform.SameTree, nil
 				}
-
-				if isRecursive {
-					return cte, transform.NewTree, nil
+				if with == nil || !with.Recursive {
+					//delete(ctes, lowerName)
 				}
-
-				// look for self references in non-recursive cte
-				subquery, ok := cte.(*plan.SubqueryAlias)
-				if !ok {
-					return cte, transform.NewTree, nil
-				}
-
-				// TODO: just compare the tables themselves?
-				hasSelfReference := false
-				transform.Inspect(subquery.Child, func(node sql.Node) bool {
-					switch n := node.(type) {
-					case *plan.UnresolvedTable:
-						if strings.ToLower(n.Name()) == lowerName {
-							hasSelfReference = true
-							return false
-						}
-						return true
-					default:
-						return true
-					}
-				})
-
-				if !hasSelfReference {
-					return cte, transform.NewTree, nil
-				}
-
-				return n, transform.SameTree, nil
+				return cte, transform.NewTree, nil
 			case *plan.InsertInto:
 				insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
 				if err != nil {
@@ -128,6 +118,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 				node := n.WithSource(insertRowSource)
 				return node, transform.NewTree, nil
 			case *plan.SubqueryAlias:
+				return n, transform.SameTree, nil
 				newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
 				if err != nil {
 					return nil, transform.SameTree, err
