@@ -8844,7 +8844,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
-		ExpectedErr: sql.ErrTableNotFound,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
 		Query:       "WITH recursive Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
