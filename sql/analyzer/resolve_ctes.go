@@ -82,11 +82,10 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			switch n := node.(type) {
 			case *plan.UnresolvedTable:
 				lowerName := strings.ToLower(n.Name())
-				cte := ctes[lowerName]
-				if cte == nil {
-					return n, transform.SameTree, nil
+				if ctes[lowerName] != nil {
+					return ctes[lowerName], transform.NewTree, nil
 				}
-				return cte, transform.NewTree, nil
+				return n, transform.SameTree, nil
 			case *plan.InsertInto:
 				insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
 				if err != nil {
@@ -95,9 +94,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 				node := n.WithSource(insertRowSource)
 				return node, transform.NewTree, nil
 			case *plan.SubqueryAlias:
-				lowerName := strings.ToLower(n.Name())
-				cte := ctes[lowerName]
-				if cte != nil {
+				if ctes[strings.ToLower(n.Name())] != nil {
 					return n, transform.SameTree, err
 				}
 				newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
