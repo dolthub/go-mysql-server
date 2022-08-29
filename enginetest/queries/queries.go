@@ -6543,6 +6543,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{4}},
 	},
 	{
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT * FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE EXISTS (SELECT * FROM one_pk WHERE pk < 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
 		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
 		Expected: []sql.Row{{0}, {1}},
 	},
@@ -8841,6 +8849,18 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "WITH recursive Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
 		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
+		ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
 	},
 }
 

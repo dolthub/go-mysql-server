@@ -36,7 +36,7 @@ const (
 
 var (
 	ErrConvertingToDecimal   = errors.NewKind("value %v is not a valid Decimal")
-	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
+	ErrConvertToDecimalLimit = errors.NewKind("Out of range value for column of Decimal type ")
 	ErrMarshalNullDecimal    = errors.NewKind("Decimal cannot marshal a null value")
 
 	decimalValueType = reflect.TypeOf(decimal.Decimal{})
@@ -84,15 +84,16 @@ var InternalDecimalType DecimalType = decimalType{
 
 // CreateDecimalType creates a DecimalType.
 func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
+	if scale > DecimalTypeMaxScale {
+		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
+	}
 	if precision > DecimalTypeMaxPrecision {
-		return nil, fmt.Errorf("%v is beyond the max precision", precision)
+		return nil, fmt.Errorf("Too big precision %v specified. Maximum is %v.", precision, DecimalTypeMaxPrecision)
 	}
 	if scale > precision {
-		return nil, fmt.Errorf("%v cannot be larger than the precision %v", scale, precision)
+		return nil, fmt.Errorf("Scale %v cannot be larger than the precision %v", scale, precision)
 	}
-	if scale > DecimalTypeMaxScale {
-		return nil, fmt.Errorf("%v is beyond the max scale", scale)
-	}
+
 	if precision == 0 {
 		precision = 10
 	}
@@ -236,6 +237,7 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 
 func (t decimalType) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
 	if -v.Exponent() > int32(t.scale) {
+		// TODO : add 'Data truncated' warning
 		v = v.Round(int32(t.scale))
 	}
 	// TODO add shortcut for common case
