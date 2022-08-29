@@ -37,23 +37,6 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), sel)
 }
 
-func hasSelfReference(subquery *plan.SubqueryAlias, lowerName string) bool {
-	res := false
-	transform.Inspect(subquery.Child, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case *plan.UnresolvedTable:
-			if strings.ToLower(n.Name()) == lowerName {
-				res = true
-				return false
-			}
-			return true
-		default:
-			return true
-		}
-	})
-	return res
-}
-
 func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	with, ok := node.(*plan.With)
 	if ok {
