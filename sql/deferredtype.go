@@ -79,7 +79,7 @@ func (t deferredType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t deferredType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t deferredType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil
 }
 

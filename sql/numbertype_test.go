@@ -237,11 +237,11 @@ func TestNumberConvert(t *testing.T) {
 }
 
 func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
-	val, err := Boolean.SQL(nil, true)
+	val, err := Boolean.SQL(NewEmptyContext(), nil, true)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(1)", val.String())
 
-	val, err = Boolean.SQL(nil, false)
+	val, err = Boolean.SQL(NewEmptyContext(), nil, false)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(0)", val.String())
 }
