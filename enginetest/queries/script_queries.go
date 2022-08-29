@@ -1615,6 +1615,7 @@ var ScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"create table test (number decimal(40,16));",
 			"insert into test values ('11981.5923291839784651');",
+			"create table small_test (n decimal(3,2));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1638,16 +1639,24 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{1}},
 			},
 			{
-				Query:          "create table invalid_decimal (number decimal(65,31));",
-				ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+				Query:    "INSERT INTO test VALUES (1.1981592329183978465111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:          "create table invalid_decimal (number decimal(66,30));",
-				ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183978', DECIMAL)",
+				Expected: []sql.Row{{1}},
 			},
 			{
-				Query:          "create table invalid_decimal (number decimal(66,31));",
-				ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+				Query:    "INSERT INTO test VALUES (1.1981592329183978545111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183979', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:       "INSERT INTO small_test VALUES (12.1);",
+				ExpectedErr: sql.ErrConvertToDecimalLimit,
 			},
 		},
 	},

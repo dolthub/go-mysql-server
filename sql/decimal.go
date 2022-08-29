@@ -36,7 +36,7 @@ const (
 
 var (
 	ErrConvertingToDecimal   = errors.NewKind("value %v is not a valid Decimal")
-	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
+	ErrConvertToDecimalLimit = errors.NewKind("Out of range value for column of Decimal type ")
 	ErrMarshalNullDecimal    = errors.NewKind("Decimal cannot marshal a null value")
 
 	decimalValueType = reflect.TypeOf(decimal.Decimal{})
