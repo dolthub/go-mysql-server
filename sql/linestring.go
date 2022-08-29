@@ -151,7 +151,7 @@ func (t LineStringType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t LineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}

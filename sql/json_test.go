@@ -154,7 +154,7 @@ func TestJsonSQL(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.val), func(t *testing.T) {
-			val, err := JSON.SQL(nil, test.val)
+			val, err := JSON.SQL(NewEmptyContext(), nil, test.val)
 			if test.expectedErr {
 				require.Error(t, err)
 			} else {
@@ -166,7 +166,7 @@ func TestJsonSQL(t *testing.T) {
 
 	// test that nulls are null
 	t.Run(fmt.Sprintf("%v", nil), func(t *testing.T) {
-		val, err := JSON.SQL(nil, nil)
+		val, err := JSON.SQL(NewEmptyContext(), nil, nil)
 		require.NoError(t, err)
 		assert.Equal(t, querypb.Type_NULL_TYPE, val.Type())
 	})

@@ -36,6 +36,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Insert multiple character sets",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
 		},
 		Queries: []CharsetCollationWireTestQuery{
@@ -60,6 +61,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Sorting differences",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf8mb4_0900_bin);",
 			"CREATE TABLE test2 (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
 		},
@@ -85,6 +87,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Order by behaves differently according to case-sensitivity",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16_unicode_ci, INDEX(v1));",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin, INDEX(v1));",
 			"INSERT INTO test1 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
@@ -120,6 +123,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Proper index access",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16_unicode_ci, INDEX(v1));",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin, INDEX(v1));",
 			"INSERT INTO test1 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
@@ -199,8 +203,35 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 	},
 	{
+		Name: "SET NAMES does not interfere with column charset",
+		SetUpScript: []string{
+			"SET NAMES utf8mb3;",
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 VARCHAR(100) COLLATE utf8mb4_0900_bin);",
+			"INSERT INTO test VALUES (1, 'a'), (2, 'b');",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "SELECT * FROM test ORDER BY v1 COLLATE utf8mb4_bin ASC;",
+				Expected: []sql.Row{{"1", "a"}, {"2", "b"}},
+			},
+			{
+				Query: "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
+				Error: true,
+			},
+			{
+				Query:    "SELECT 'a' COLLATE utf8mb3_bin;",
+				Expected: []sql.Row{{"a"}},
+			},
+			{
+				Query: "SELECT 'a' COLLATE utf8mb4_bin;",
+				Error: true,
+			},
+		},
+	},
+	{
 		Name: "ENUM collation handling",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf16_unicode_ci);",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf8mb4_0900_bin);",
 		},
@@ -244,6 +275,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "SET collation handling",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 SET('a','b','c') COLLATE utf16_unicode_ci);",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 SET('a','b','c') COLLATE utf8mb4_0900_bin);",
 		},
@@ -281,6 +313,36 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 				Expected: []sql.Row{
 					{"2", "b,c"},
 				},
+			},
+		},
+	},
+	{
+		Name: "Correct behavior with `character_set_results`",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+			"CREATE TABLE test (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
+			"INSERT INTO test VALUES (_utf8mb4'hey');",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{"\x00h\x00e\x00y"}},
+			},
+			{
+				Query:    "SET character_set_results = 'utf8mb4';",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{"hey"}},
+			},
+			{
+				Query:    "SET character_set_results = 'utf32';",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
 			},
 		},
 	},
@@ -332,6 +394,9 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	},
 	{
 		Name: "UPPER() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT UPPER(_utf16'\x00a\x00B\x00c' COLLATE utf16_unicode_ci);",
@@ -355,6 +420,9 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	},
 	{
 		Name: "LOWER() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT LOWER(_utf16'\x00A\x00b\x00C' COLLATE utf16_unicode_ci);",
@@ -512,6 +580,9 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	},
 	{
 		Name: "SUBSTRING() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT SUBSTRING(_utf16'\x00a\x00b\x00c\x00d' COLLATE utf16_unicode_ci, 2, 2);",
@@ -575,6 +646,9 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	},
 	{
 		Name: "TRIM() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT TRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
@@ -598,6 +672,9 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	},
 	{
 		Name: "RTRIM() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT RTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
@@ -621,6 +698,9 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	},
 	{
 		Name: "LTRIM() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT LTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",

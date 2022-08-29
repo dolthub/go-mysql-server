@@ -3820,6 +3820,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SET collation_connection = '" +
+			sql.Collation_Default.String() +
+			"';",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+	{
 		Query:    `SHOW DATABASES`,
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},

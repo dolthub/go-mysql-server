@@ -40,7 +40,7 @@ func TestTuple(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(t, []interface{}{int32(1), "2", int64(3)}, conVal)
 
-	_, err = typ.SQL(nil, nil)
+	_, err = typ.SQL(NewEmptyContext(), nil, nil)
 	require.Error(err)
 
 	require.Equal(sqltypes.Expression, typ.Type())

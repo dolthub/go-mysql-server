@@ -58,13 +58,25 @@ func (ce *CollatedExpression) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (ce *CollatedExpression) Type() sql.Type {
-	return ce.expr.Type()
+	typ := ce.expr.Type()
+	if collatedType, ok := typ.(sql.TypeWithCollation); ok {
+		return collatedType.WithNewCollation(ce.collation)
+	}
+	// If this isn't a collated type then this should fail, as we can't apply a collation to an expression that does not
+	// have a charset. We also can't check in the constructor, as expressions such as unresolved columns will not have
+	// the correct type until after analysis. Therefore, we'll have to check (and potentially fail) in the Eval function.
+	return typ
 }
 
 // Eval implements the sql.Expression interface.
 func (ce *CollatedExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if !sql.IsText(ce.expr.Type()) {
+	typ := ce.expr.Type()
+	if !sql.IsText(typ) {
 		return nil, sql.ErrCollatedExprWrongType.New()
+	}
+	if ce.collation.CharacterSet() != typ.(sql.TypeWithCollation).Collation().CharacterSet() {
+		return nil, sql.ErrCollationInvalidForCharSet.New(
+			ce.collation.Name(), typ.(sql.TypeWithCollation).Collation().CharacterSet().Name())
 	}
 	return ce.expr.Eval(ctx, row)
 }
