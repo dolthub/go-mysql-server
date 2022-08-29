@@ -8818,6 +8818,18 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, b BLOB DEFAULT '');",
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
 	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
+		ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
