@@ -67,6 +67,91 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		return nil, transform.SameTree, err
 	}
 
+	switch n := n.(type) {
+	case *plan.UnresolvedTable:
+		lowerName := strings.ToLower(n.Name())
+		if ctes[lowerName] != nil {
+			return ctes[lowerName], transform.NewTree, nil
+		}
+		return n, transform.NewTree, nil
+	case *plan.InsertInto:
+		insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
+		if err != nil {
+			return nil, false, err
+		}
+		newNode := n.WithSource(insertRowSource)
+		return newNode, transform.NewTree, nil
+	case *plan.SubqueryAlias:
+		newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if same {
+			return node, transform.SameTree, nil
+		}
+		node, err = node.WithChildren(newChild)
+		return node, transform.NewTree, err
+	}
+
+	children := n.Children()
+	if len(children) == 0 {
+		return n, transform.SameTree, nil
+	}
+
+	var newChildren []sql.Node
+	for _, child := range children {
+		newChild, same, err := resolveCtesInNode(ctx, a, child, scope, ctes, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if same {
+			return n, same, nil
+		}
+		newChildren = append(newChildren, newChild)
+	}
+
+	if len(newChildren) == 0 {
+		return n, transform.SameTree, nil
+	}
+
+	n, err = n.WithChildren(newChildren...)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return n, transform.SameTree, nil
+}
+
+func resolveCtesInNode2(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	with, ok := node.(*plan.With)
+	if ok {
+		var err error
+		node, err = stripWith(ctx, a, scope, with, ctes, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+	}
+
+	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
+	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		sq, ok := e.(*plan.Subquery)
+		if !ok {
+			return e, transform.SameTree, nil
+		}
+
+		query, same, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if same {
+			return e, transform.SameTree, nil
+		}
+		return sq.WithQuery(query), transform.NewTree, nil
+	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	// Second pass to catch any uses of CTEs as tables, and CTEs in subqueries (caused by CTEs defined in terms of
 	// other CTEs). Because we transform bottom up, CTEs that themselves contain references to other CTEs will have to
 	// be resolved in multiple passes. For two CTEs, cte1 and cte2, where cte2 is defined in terms of cte1 it works like
