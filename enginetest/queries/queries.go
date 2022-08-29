@@ -1313,6 +1313,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with a as (select 1) select 3, 2, (select * from a);",
+		Expected: []sql.Row{
+			{3, 2, 1},
+		},
+	},
+	{
 		Query: "WITH a AS ( WITH b AS ( WITH recursive c AS ( SELECT 1 UNION SELECT 2 ) SELECT * from c UNION SELECT 3 ) SELECT * from b UNION SELECT 4) SELECT * from a UNION SELECT 10;",
 		Expected: []sql.Row{
 			{1},
