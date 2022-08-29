@@ -111,6 +111,21 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 				}
 				node := n.WithSource(insertRowSource)
 				return node, transform.NewTree, nil
+			case *plan.SubqueryAlias:
+				lowerName := strings.ToLower(n.Name())
+				cte := ctes[lowerName]
+				if cte != nil {
+					return n, transform.SameTree, err
+				}
+				newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return node, transform.SameTree, nil
+				}
+				node, err = node.WithChildren(newChild)
+				return node, transform.NewTree, err
 			default:
 				return n, transform.SameTree, nil
 			}

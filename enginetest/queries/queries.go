@@ -1301,6 +1301,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with a as (select 1), b as (select * from a) select * from b;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "with a as (select 1) select * from (with b as (select * from a) select * from b) as c;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Query: "WITH a AS ( WITH b AS ( WITH recursive c AS ( SELECT 1 UNION SELECT 2 ) SELECT * from c UNION SELECT 3 ) SELECT * from b UNION SELECT 4) SELECT * from a UNION SELECT 10;",
 		Expected: []sql.Row{
 			{1},
