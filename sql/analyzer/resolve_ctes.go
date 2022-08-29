@@ -54,8 +54,6 @@ func hasSelfReference(subquery *plan.SubqueryAlias, lowerName string) bool {
 	return res
 }
 
-var seen = map[string]bool{}
-
 func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	with, ok := node.(*plan.With)
 	if ok {
@@ -105,29 +103,14 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 				if cte == nil {
 					return n, transform.SameTree, nil
 				}
-				if with == nil || !with.Recursive {
-					//delete(ctes, lowerName)
-				}
 				return cte, transform.NewTree, nil
 			case *plan.InsertInto:
 				insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
 				if err != nil {
 					return nil, false, err
 				}
-
 				node := n.WithSource(insertRowSource)
 				return node, transform.NewTree, nil
-			case *plan.SubqueryAlias:
-				return n, transform.SameTree, nil
-				newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if same {
-					return node, transform.SameTree, nil
-				}
-				node, err = node.WithChildren(newChild)
-				return node, transform.NewTree, err
 			default:
 				return n, transform.SameTree, nil
 			}
