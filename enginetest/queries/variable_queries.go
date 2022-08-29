@@ -162,11 +162,11 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set names quoted",
 		SetUpScript: []string{
-			`set NAMES "charset"`,
+			`set NAMES "utf8mb3"`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
 		Expected: []sql.Row{
-			{"charset", "charset", "charset"},
+			{"utf8mb3", "utf8mb3", "utf8mb3"},
 		},
 	},
 	{

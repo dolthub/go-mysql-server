@@ -403,9 +403,7 @@ func convertUse(n *sqlparser.Use) (sql.Node, error) {
 }
 
 func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
-	// Special case: SET NAMES expands to 3 different system variables. The parser doesn't yet support the optional
-	// collation string, which is fine since our support for it is mostly fake anyway.
-	// See https://dev.mysql.com/doc/refman/8.0/en/set-names.html
+	// Special case: SET NAMES expands to 3 different system variables.
 	if isSetNames(n.Exprs) {
 		return convertSet(ctx, &sqlparser.Set{
 			Exprs: sqlparser.SetVarExprs{
@@ -426,10 +424,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		})
 	}
 
-	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables. Although we do not support very
-	// many character sets, changing these variables should not have any effect currently as our character set support is
-	// mostly hardcoded to utf8mb4.
-	// See https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html.
+	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables.
 	if isCharset(n.Exprs) {
 		csd, err := ctx.GetSessionVariable(ctx, "character_set_database")
 		if err != nil {
@@ -3284,17 +3279,19 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 // handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
 func handleCollateExpr(ctx *sql.Context, charSet sql.CharacterSetID, expr *sqlparser.CollateExpr) (sql.Expression, error) {
+	innerExpr, err := ExprToExpression(ctx, expr.Expr)
+	if err != nil {
+		return nil, err
+	}
 	//TODO: rename this from Charset to Collation
 	collation, err := sql.ParseCollation(nil, &expr.Charset, false)
 	if err != nil {
 		return nil, err
 	}
-	if collation.CharacterSet() != charSet {
+	// If we're collating a string literal, we check that the charset and collation match now. Other string sources
+	// (such as from tables) will have their own charset, which we won't know until after the parsing stage.
+	if _, isLiteral := innerExpr.(*expression.Literal); isLiteral && collation.CharacterSet() != charSet {
 		return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
-	}
-	innerExpr, err := ExprToExpression(ctx, expr.Expr)
-	if err != nil {
-		return nil, err
 	}
 	return expression.NewCollatedExpression(innerExpr, collation), nil
 }

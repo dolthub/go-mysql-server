@@ -500,7 +500,7 @@ func (h *Handler) doQuery(
 						continue
 					}
 
-					outputRow, err := rowToSQL(schema, row)
+					outputRow, err := rowToSQL(ctx, schema, row)
 					if err != nil {
 						return err
 					}
@@ -711,7 +711,7 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
-func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
+func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
 	var err error
 	for i, v := range row {
@@ -720,7 +720,7 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 			continue
 		}
 
-		o[i], err = s[i].Type.SQL(nil, v)
+		o[i], err = s[i].Type.SQL(ctx, nil, v)
 		if err != nil {
 			return nil, err
 		}

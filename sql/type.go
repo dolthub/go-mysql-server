@@ -65,7 +65,7 @@ type Type interface {
 	// SQL returns the sqltypes.Value for the given value.
 	// Implementations can optionally use |dest| to append
 	// serialized data, but should not mutate existing data.
-	SQL(dest []byte, v interface{}) (sqltypes.Value, error)
+	SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
 	// ValueType returns the Go type of the value returned by Convert().

@@ -149,7 +149,7 @@ func (t systemBoolType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t systemBoolType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemBoolType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
