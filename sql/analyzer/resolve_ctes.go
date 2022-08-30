@@ -42,7 +42,6 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	if depth > maxCteDepth {
 		return node, transform.SameTree, nil
 	}
-	depth++
 
 	with, ok := node.(*plan.With)
 	if ok {
@@ -79,7 +78,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		cte := ctes[lowerName]
 		if cte != nil {
 			delete(ctes, lowerName) // temporarily remove from cte to prevent infinite recursion
-			res, _, err := resolveCtesInNode(ctx, a, cte, scope, ctes, depth, sel)
+			res, _, err := resolveCtesInNode(ctx, a, cte, scope, ctes, depth+1, sel)
 			ctes[lowerName] = cte
 			return res, transform.NewTree, err
 		}
@@ -106,13 +105,20 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		return newNode, transform.NewTree, nil
 	}
 
+	children := n.Children()
 	var newChildren []sql.Node
-	for _, child := range n.Children() {
-		newChild, _, err := resolveCtesInNode(ctx, a, child, scope, ctes, depth, sel)
+	for i, child := range children {
+		newChild, same, err := resolveCtesInNode(ctx, a, child, scope, ctes, depth, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newChildren = append(newChildren, newChild)
+		if !same {
+			if newChildren == nil {
+				newChildren = make([]sql.Node, len(children))
+				copy(newChildren, children)
+			}
+			newChildren[i] = newChild
+		}
 	}
 
 	if len(newChildren) == 0 {
