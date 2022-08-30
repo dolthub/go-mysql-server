@@ -207,8 +207,10 @@ func schemaLength(node sql.Node) int {
 	return schemaLen
 }
 
-// hoistCommonTableExpressions lifts With nodes above Union and Distinct
-// nodes.  Currently as parsed, we get Union(CTE(...), ...), and we can
+// hoistCommonTableExpressions lifts With nodes above Union, Distinct,
+// Filter, Limit, Sort, and  Having nodes.
+//
+// Currently as parsed, we get Union(CTE(...), ...), and we can
 // transform that to CTE(Union(..., ...)) to make the CTE visible across the
 // Union.
 //
@@ -218,34 +220,45 @@ func schemaLength(node sql.Node) int {
 //
 // where the CTE will be visible on the second half of the UNION. We live with
 // it for now.
+// note: MySQL appears to exhibit the same left-deep parsing limitations
 func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if union, isUnion := n.(*plan.Union); isUnion {
-			if cte, isCTE := union.Left().(*plan.With); isCTE {
-				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs, cte.Recursive), transform.NewTree, nil
-			}
-			l, sameL, err := hoistCommonTableExpressions(ctx, a, union.Left(), scope, sel)
+		switch n := n.(type) {
+		case *plan.Union:
+			left, rSame, err := hoistCommonTableExpressions(ctx, a, n.Left(), scope, sel)
 			if err != nil {
-				return nil, transform.SameTree, err
+				return n, transform.SameTree, err
 			}
-			r, sameR, err := hoistCommonTableExpressions(ctx, a, union.Right(), scope, sel)
-			if err != nil {
-				return nil, transform.SameTree, err
+			cte, ok := left.(*plan.With)
+			if !ok {
+				if rSame {
+					return n, transform.SameTree, nil
+				} else {
+					return plan.NewUnion(left, n.Right()), transform.NewTree, nil
+				}
 			}
-			if _, isCTE := l.(*plan.With); isCTE {
-				return hoistCommonTableExpressions(ctx, a, plan.NewUnion(l, r), scope, sel)
-			}
-			if sameL && sameR {
-				return n, transform.SameTree, nil
-			}
-			return plan.NewUnion(l, r), transform.NewTree, nil
+			return plan.NewWith(plan.NewUnion(cte.Child, n.Right()), cte.CTEs, cte.Recursive), transform.NewTree, nil
+		default:
 		}
-		if distinct, isDistinct := n.(*plan.Distinct); isDistinct {
-			if cte, isCTE := distinct.Child.(*plan.With); isCTE {
-				return plan.NewWith(plan.NewDistinct(cte.Child), cte.CTEs, cte.Recursive), transform.NewTree, nil
-			}
+
+		children := n.Children()
+		if len(children) != 1 {
+			return n, transform.SameTree, nil
 		}
-		return n, transform.SameTree, nil
+		cte, ok := children[0].(*plan.With)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+		switch n := n.(type) {
+		case *plan.Distinct, *plan.Filter, *plan.Limit, *plan.Having, *plan.Sort:
+		default:
+			return n, transform.SameTree, nil
+		}
+		newChild, err := n.WithChildren(cte.Child)
+		if err != nil {
+			return n, transform.SameTree, nil
+		}
+		return plan.NewWith(newChild, cte.CTEs, cte.Recursive), transform.NewTree, nil
 	})
 }
 

@@ -6941,6 +6941,26 @@ var QueryTests = []QueryTest{
 		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query:    "with recursive a as (select 1 union select 2) select * from a union select * from a limit 1;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a having x > 1 union select * from a having x > 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a where x > 1 union select * from a where x > 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a group by x;",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a order by x desc;",
+		Expected: []sql.Row{{2}, {1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -7318,6 +7338,11 @@ var BrokenQueries = []QueryTest{
 		Query:    "SELECT X'0a'",
 		Expected: []sql.Row{{"0x0A"}},
 	},
+	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
+	{
+		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
+		Expected: []sql.Row{{"2013-08-13"}},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -7506,11 +7531,6 @@ var DateParseQueries = []QueryTest{
 		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
 		Expected: []sql.Row{{nil}},
 	},
-	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
-	//{
-	//	Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
-	//	Expected: []sql.Row{{"2013-08-13"}},
-	//},
 }
 
 var InfoSchemaQueries = []QueryTest{
@@ -8353,53 +8373,6 @@ var InfoSchemaScripts = []ScriptTest{
 					{"stable", "pol", nil, "NO", "polygon", "polygon", "", uint32(0)},
 				},
 			},
-		},
-	},
-}
-
-var ExplodeQueries = []QueryTest{
-	{
-		Query: `SELECT a, EXPLODE(b), c FROM explode`,
-		Expected: []sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
-		},
-	},
-	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode`,
-		Expected: []sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
-		},
-	},
-	{
-		Query: `SELECT EXPLODE(SPLIT(c, "")) FROM explode LIMIT 5`,
-		Expected: []sql.Row{
-			{"f"},
-			{"i"},
-			{"r"},
-			{"s"},
-			{"t"},
-		},
-	},
-	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode WHERE x = 'e'`,
-		Expected: []sql.Row{
-			{int64(3), "e", "third"},
-		},
-	},
-	{
-		Query: `SELECT HEX(UNHEX(375));`,
-		Expected: []sql.Row{
-			{"0375"},
 		},
 	},
 }
