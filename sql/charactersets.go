@@ -195,7 +195,7 @@ func ParseCharacterSet(str string) (CharacterSetID, error) {
 		return cs, nil
 	}
 	// It is valid to parse the invalid charset, as some analyzer steps may temporarily use the invalid charset
-	if str == CharacterSet_Invalid.Name() {
+	if str == CharacterSet_Invalid.Name() || str == "" {
 		return CharacterSet_Invalid, nil
 	}
 	return CharacterSet_Invalid, ErrCharSetUnknown.New(str)

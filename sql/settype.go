@@ -235,7 +235,7 @@ func (t setType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t setType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -248,7 +248,11 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	encodedBytes, ok := t.collation.CharacterSet().Encoder().Encode(encodings.StringToBytes(value))
+	resultCharset := ctx.GetCharacterSetResults()
+	if resultCharset == CharacterSet_Invalid || resultCharset == CharacterSet_binary {
+		resultCharset = t.collation.CharacterSet()
+	}
+	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
 		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
 	}

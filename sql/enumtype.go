@@ -235,7 +235,7 @@ func (t enumType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t enumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t enumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -245,7 +245,11 @@ func (t enumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 	value, _ := t.At(int(convertedValue.(uint16)))
 
-	encodedBytes, ok := t.collation.CharacterSet().Encoder().Encode(encodings.StringToBytes(value))
+	resultCharset := ctx.GetCharacterSetResults()
+	if resultCharset == CharacterSet_Invalid || resultCharset == CharacterSet_binary {
+		resultCharset = t.collation.CharacterSet()
+	}
+	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
 		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
 	}

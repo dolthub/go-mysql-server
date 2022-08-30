@@ -283,7 +283,7 @@ func (t decimalType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}

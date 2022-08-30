@@ -192,6 +192,34 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	default: // should never be hit
 		return fmt.Errorf("unable to set `%s` due to unknown scope `%v`", sysVar.Name, sysVar.Scope)
 	}
+	// Setting `character_set_connection`, regardless of how it is set (directly or through SET NAMES) will also set
+	// `collation_connection` to the default collation for the given character set.
+	if strings.ToLower(sysVar.Name) == "character_set_connection" {
+		newSysVar := &expression.SystemVar{
+			Name:  "collation_connection",
+			Scope: sysVar.Scope,
+		}
+		if val == nil {
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral("", sql.LongText), row)
+			if err != nil {
+				return err
+			}
+		} else {
+			valStr, ok := val.(string)
+			if !ok {
+				return sql.ErrInvalidSystemVariableValue.New("collation_connection", val)
+			}
+			charset, err := sql.ParseCharacterSet(valStr)
+			if err != nil {
+				return err
+			}
+			charset = charset
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral(charset.DefaultCollation().Name(), sql.LongText), row)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
