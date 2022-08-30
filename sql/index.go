@@ -53,8 +53,10 @@ type Index interface {
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
 type IndexLookup struct {
 	fmt.Stringer
-	Index  Index
-	Ranges RangeCollection
+	Index         Index
+	Ranges        RangeCollection
+	IsPointLookup bool
+	IsEmptyRange  bool
 }
 
 var emptyLookup = IndexLookup{}
