@@ -395,6 +395,12 @@ func prePrepareRuleSelector(id RuleId) bool {
 		insertTopNId,
 		resolvePreparedInsertId,
 
+		// TODO: move these if necessary
+		//AutocommitId,
+		//TrackProcessId,
+		//parallelizeId,
+		//clearWarningsId,
+
 		// DefaultValidation
 		validateResolvedId,
 		validateOrderById,
@@ -442,6 +448,12 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
+
+		// TODO: move these
+		//AutocommitId,
+		//TrackProcessId,
+		//parallelizeId,
+		//clearWarningsId,
 
 		// OnceAfterDefault
 		pushdownFiltersId,

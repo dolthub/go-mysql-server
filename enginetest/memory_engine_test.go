@@ -84,6 +84,26 @@ func TestQueries(t *testing.T) {
 // TestQueriesPrepared runs the canonical test queries against the gamut of thread, index and partition options
 // with prepared statement caching enabled.
 func TestQueriesPrepared(t *testing.T) {
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexBehavior := range indexBehaviors {
+			for _, parallelism := range parallelVals {
+				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
+					// This case is covered by TestQueriesPreparedSimple
+					continue
+				}
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
+				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
+
+				t.Run(testName, func(t *testing.T) {
+					enginetest.TestQueriesPrepared(t, harness)
+				})
+			}
+		}
+	}
+}
+
+// TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
+func TestQueriesPreparedSimple(t *testing.T) {
 	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -118,21 +138,21 @@ func TestJSONTableQueries(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT * FROM mytable order by i desc`,
+		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
 		Expected: []sql.Row{
-			{3, "third row"},
-			{2, "second row"},
-			{1, "first row"},
+			{"first row"},
+			{"second row"},
+			{"third row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	harness.Setup(setup.MydbData, setup.MytableData)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
@@ -146,21 +166,21 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQueryPrepared(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT * FROM mytable order by i desc`,
+		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
 		Expected: []sql.Row{
-			{3, "third row"},
-			{2, "second row"},
-			{1, "first row"},
+			{"first row"},
+			{"second row"},
+			{"third row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	harness.Setup(setup.MydbData, setup.MytableData)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	//engine, err := harness.NewEngine(t)
 	//if err != nil {
 	//	panic(err)
