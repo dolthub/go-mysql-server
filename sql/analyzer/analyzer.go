@@ -391,15 +391,8 @@ func prePrepareRuleSelector(id RuleId) bool {
 		// Default
 
 		// OnceAfterDefault
-		inSubqueryIndexesId,
 		insertTopNId,
 		resolvePreparedInsertId,
-
-		// TODO: move these if necessary
-		//AutocommitId,
-		//TrackProcessId,
-		//parallelizeId,
-		//clearWarningsId,
 
 		// DefaultValidation
 		validateResolvedId,
