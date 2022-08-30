@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-const maxCteDepth = 10
+const maxCteDepth = 5
 
 // resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 // tree with the subqueries defined in the CTEs.
