@@ -35,7 +35,6 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	}
 
 	res, same, err := resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), 0, sel)
-	//res, same, err := resolveCtesInNode2(ctx, a, n, scope, make(map[string]sql.Node), sel)
 	return res, same, err
 }
 
