@@ -234,7 +234,7 @@ func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				if rSame {
 					return n, transform.SameTree, nil
 				} else {
-					return plan.NewUnion(left, n.Right()), transform.SameTree, nil
+					return plan.NewUnion(left, n.Right()), transform.NewTree, nil
 				}
 			}
 			return plan.NewWith(plan.NewUnion(cte.Child, n.Right()), cte.CTEs, cte.Recursive), transform.NewTree, nil
@@ -250,19 +250,15 @@ func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			return n, transform.SameTree, nil
 		}
 		switch n := n.(type) {
-		case *plan.Distinct:
-			return plan.NewWith(plan.NewDistinct(cte.Child), cte.CTEs, cte.Recursive), transform.NewTree, nil
-		case *plan.Filter:
-			return plan.NewWith(plan.NewFilter(n.Expression, cte.Child), cte.CTEs, cte.Recursive), transform.NewTree, nil
-		case *plan.Limit:
-			return plan.NewWith(plan.NewLimit(n.Limit, cte.Child), cte.CTEs, cte.Recursive), transform.NewTree, nil
-		case *plan.Sort:
-			return plan.NewWith(plan.NewSort(n.SortFields, cte.Child), cte.CTEs, cte.Recursive), transform.NewTree, nil
-		case *plan.Having:
-			return plan.NewWith(plan.NewHaving(n.Cond, cte.Child), cte.CTEs, cte.Recursive), transform.NewTree, nil
+		case *plan.Distinct, *plan.Filter, *plan.Limit, *plan.Having, *plan.Sort:
 		default:
 			return n, transform.SameTree, nil
 		}
+		newChild, err := n.WithChildren(cte.Child)
+		if err != nil {
+			return n, transform.SameTree, nil
+		}
+		return plan.NewWith(newChild, cte.CTEs, cte.Recursive), transform.NewTree, nil
 	})
 }
 
