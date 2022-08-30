@@ -263,7 +263,7 @@ var columnsSchema = Schema{
 	{Name: "CHARACTER_SET_NAME", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "COLLATION_NAME", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "COLUMN_TYPE", Type: MediumText, Default: nil, Nullable: false, Source: ColumnsTableName},
-	{Name: "COLUMN_KEY", Type: MustCreateEnumType([]string{"", "PRI", "UNI", "MUL"}, Collation_utf8mb4_0900_bin), Default: nil, Nullable: false, Source: ColumnsTableName},
+	{Name: "COLUMN_KEY", Type: MustCreateEnumType([]string{"", "PRI", "UNI", "MUL"}, Collation_Default), Default: nil, Nullable: false, Source: ColumnsTableName},
 	{Name: "EXTRA", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "PRIVILEGES", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 154), Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "COLUMN_COMMENT", Type: Text, Default: nil, Nullable: false, Source: ColumnsTableName},
@@ -1930,6 +1930,11 @@ func (t *informationSchemaTable) Name() string {
 // Schema implements the sql.Table interface.
 func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
+}
+
+// Collation implements the sql.Table interface.
+func (t *informationSchemaTable) Collation() CollationID {
+	return Collation_Default
 }
 
 func (t *informationSchemaTable) AssignCatalog(cat Catalog) Table {

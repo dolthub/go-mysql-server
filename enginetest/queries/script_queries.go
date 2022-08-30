@@ -1611,6 +1611,56 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Ensure scale is not rounded when inserting to DECIMAL type through float64",
+		SetUpScript: []string{
+			"create table test (number decimal(40,16));",
+			"insert into test values ('11981.5923291839784651');",
+			"create table small_test (n decimal(3,2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (11981.5923291839784651);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (119815923291839784651.11981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('119815923291839784651.1198159232918398', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1.1981592329183978465111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183978', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1.1981592329183978545111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183979', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:       "INSERT INTO small_test VALUES (12.1);",
+				ExpectedErr: sql.ErrConvertToDecimalLimit,
+			},
+		},
+	},
+	{
 		Name: "JOIN on non-index-prefix columns do not panic (Dolt Issue #2366)",
 		SetUpScript: []string{
 			"CREATE TABLE `player_season_stat_totals` (`player_id` int NOT NULL, `team_id` int NOT NULL, `season_id` int NOT NULL, `minutes` int, `games_started` int, `games_played` int, `2pm` int, `2pa` int, `3pm` int, `3pa` int, `ftm` int, `fta` int, `ast` int, `stl` int, `blk` int, `tov` int, `pts` int, `orb` int, `drb` int, `trb` int, `pf` int, `season_type_id` int NOT NULL, `league_id` int NOT NULL DEFAULT 0, PRIMARY KEY (`player_id`,`team_id`,`season_id`,`season_type_id`,`league_id`));",

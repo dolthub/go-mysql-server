@@ -221,9 +221,9 @@ func (pdb PrivilegedDatabase) GetTableNamesAsOf(ctx *sql.Context, asOf interface
 }
 
 // CreateTable implements the interface sql.TableCreator.
-func (pdb PrivilegedDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema) error {
+func (pdb PrivilegedDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
 	if db, ok := pdb.db.(sql.TableCreator); ok {
-		return db.CreateTable(ctx, name, schema)
+		return db.CreateTable(ctx, name, schema, collation)
 	}
 	return sql.ErrCreateTableNotSupported.New(pdb.db.Name())
 }

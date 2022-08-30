@@ -120,6 +120,11 @@ func (t *JSONTable) Schema() sql.Schema {
 	return t.schema.Schema
 }
 
+// Collation implements the sql.Table interface
+func (t *JSONTable) Collation() sql.CollationID {
+	return sql.Collation_Default
+}
+
 // Partitions implements the sql.Table interface
 func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	// TODO: this does nothing

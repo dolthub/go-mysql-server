@@ -20,12 +20,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/cespare/xxhash"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
-
-var ErrCollationNotSupported = errors.NewKind("Unknown collation: %v")
 
 // Collation represents the collation of a string.
 type Collation struct {
@@ -46,7 +43,7 @@ type CollationsIterator struct {
 
 var collationStringToID = map[string]CollationID{}
 
-// CollationID represents the collation's unique identifier. May be safely be converted to and from an uint16 for storage.
+// CollationID represents the collation's unique identifier. May be safely converted to and from an uint16 for storage.
 type CollationID uint16
 
 // The collations below are ordered alphabetically to make it easier to visually parse them.
@@ -365,15 +362,15 @@ const (
 // properties (index lookups are significantly faster than map lookups). Not all IDs are used, which is why there are
 // gaps in the array.
 var collationArray = [310]Collation{
-	/*000*/ {},
+	/*000*/ {Collation_Invalid, "invalid", CharacterSet_Invalid, true, true, 1, "NO PAD", func(r rune) int32 { return 0 }},
 	/*001*/ {Collation_big5_chinese_ci, "big5_chinese_ci", CharacterSet_big5, true, true, 1, "PAD SPACE", nil},
 	/*002*/ {Collation_latin2_czech_cs, "latin2_czech_cs", CharacterSet_latin2, false, true, 4, "PAD SPACE", nil},
 	/*003*/ {Collation_dec8_swedish_ci, "dec8_swedish_ci", CharacterSet_dec8, true, true, 1, "PAD SPACE", nil},
 	/*004*/ {Collation_cp850_general_ci, "cp850_general_ci", CharacterSet_cp850, true, true, 1, "PAD SPACE", nil},
-	/*005*/ {Collation_latin1_german1_ci, "latin1_german1_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*005*/ {Collation_latin1_german1_ci, "latin1_german1_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", encodings.Latin1_german1_ci_RuneWeight},
 	/*006*/ {Collation_hp8_english_ci, "hp8_english_ci", CharacterSet_hp8, true, true, 1, "PAD SPACE", nil},
 	/*007*/ {Collation_koi8r_general_ci, "koi8r_general_ci", CharacterSet_koi8r, true, true, 1, "PAD SPACE", nil},
-	/*008*/ {Collation_latin1_swedish_ci, "latin1_swedish_ci", CharacterSet_latin1, true, true, 1, "PAD SPACE", nil},
+	/*008*/ {Collation_latin1_swedish_ci, "latin1_swedish_ci", CharacterSet_latin1, true, true, 1, "PAD SPACE", encodings.Latin1_swedish_ci_RuneWeight},
 	/*009*/ {Collation_latin2_general_ci, "latin2_general_ci", CharacterSet_latin2, true, true, 1, "PAD SPACE", nil},
 	/*010*/ {Collation_swe7_swedish_ci, "swe7_swedish_ci", CharacterSet_swe7, true, true, 1, "PAD SPACE", nil},
 	/*011*/ {Collation_ascii_general_ci, "ascii_general_ci", CharacterSet_ascii, true, true, 1, "PAD SPACE", encodings.Ascii_general_ci_RuneWeight},
@@ -396,7 +393,7 @@ var collationArray = [310]Collation{
 	/*028*/ {Collation_gbk_chinese_ci, "gbk_chinese_ci", CharacterSet_gbk, true, true, 1, "PAD SPACE", nil},
 	/*029*/ {Collation_cp1257_lithuanian_ci, "cp1257_lithuanian_ci", CharacterSet_cp1257, false, true, 1, "PAD SPACE", nil},
 	/*030*/ {Collation_latin5_turkish_ci, "latin5_turkish_ci", CharacterSet_latin5, true, true, 1, "PAD SPACE", nil},
-	/*031*/ {Collation_latin1_german2_ci, "latin1_german2_ci", CharacterSet_latin1, false, true, 2, "PAD SPACE", nil},
+	/*031*/ {Collation_latin1_german2_ci, "latin1_german2_ci", CharacterSet_latin1, false, true, 2, "PAD SPACE", encodings.Latin1_german2_ci_RuneWeight},
 	/*032*/ {Collation_armscii8_general_ci, "armscii8_general_ci", CharacterSet_armscii8, true, true, 1, "PAD SPACE", nil},
 	/*033*/ {Collation_utf8mb3_general_ci, "utf8mb3_general_ci", CharacterSet_utf8mb3, true, true, 1, "PAD SPACE", encodings.Utf8mb3_general_ci_RuneWeight},
 	/*034*/ {Collation_cp1250_czech_cs, "cp1250_czech_cs", CharacterSet_cp1250, false, true, 2, "PAD SPACE", nil},
@@ -412,9 +409,9 @@ var collationArray = [310]Collation{
 	/*044*/ {Collation_cp1250_croatian_ci, "cp1250_croatian_ci", CharacterSet_cp1250, false, true, 1, "PAD SPACE", nil},
 	/*045*/ {Collation_utf8mb4_general_ci, "utf8mb4_general_ci", CharacterSet_utf8mb4, false, true, 1, "PAD SPACE", encodings.Utf8mb4_general_ci_RuneWeight},
 	/*046*/ {Collation_utf8mb4_bin, "utf8mb4_bin", CharacterSet_utf8mb4, false, true, 1, "PAD SPACE", encodings.Utf8mb4_bin_RuneWeight},
-	/*047*/ {Collation_latin1_bin, "latin1_bin", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
-	/*048*/ {Collation_latin1_general_ci, "latin1_general_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
-	/*049*/ {Collation_latin1_general_cs, "latin1_general_cs", CharacterSet_latin1, false, true, 1, "PAD SPACE", nil},
+	/*047*/ {Collation_latin1_bin, "latin1_bin", CharacterSet_latin1, false, true, 1, "PAD SPACE", encodings.Latin1_bin_RuneWeight},
+	/*048*/ {Collation_latin1_general_ci, "latin1_general_ci", CharacterSet_latin1, false, true, 1, "PAD SPACE", encodings.Latin1_general_ci_RuneWeight},
+	/*049*/ {Collation_latin1_general_cs, "latin1_general_cs", CharacterSet_latin1, false, true, 1, "PAD SPACE", encodings.Latin1_general_cs_RuneWeight},
 	/*050*/ {Collation_cp1251_bin, "cp1251_bin", CharacterSet_cp1251, false, true, 1, "PAD SPACE", nil},
 	/*051*/ {Collation_cp1251_general_ci, "cp1251_general_ci", CharacterSet_cp1251, true, true, 1, "PAD SPACE", nil},
 	/*052*/ {Collation_cp1251_general_cs, "cp1251_general_cs", CharacterSet_cp1251, false, true, 1, "PAD SPACE", nil},
@@ -730,7 +727,11 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 			}
 			return collation, nil
 		}
-		return Collation_Invalid, ErrCollationNotSupported.New(*collationStr)
+		// It is valid to parse the invalid collation, as some analyzer steps may temporarily use the invalid collation
+		if *collationStr == Collation_Invalid.Name() {
+			return Collation_Invalid, nil
+		}
+		return Collation_Invalid, ErrCollationUnknown.New(*collationStr)
 	} else {
 		characterSet, err := ParseCharacterSet(*characterSetStr)
 		if err != nil {
@@ -744,7 +745,7 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 		}
 		collation, exists := collationStringToID[*collationStr]
 		if !exists {
-			return Collation_Invalid, ErrCollationNotSupported.New(*collationStr)
+			return Collation_Invalid, ErrCollationUnknown.New(*collationStr)
 		}
 		if !collation.WorksWithCharacterSet(characterSet) {
 			return Collation_Invalid, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)

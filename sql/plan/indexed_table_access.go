@@ -35,6 +35,7 @@ type IndexedTableAccess struct {
 	Table         sql.IndexedTable
 }
 
+var _ sql.Table = (*IndexedTableAccess)(nil)
 var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Node2 = (*IndexedTableAccess)(nil)
@@ -106,6 +107,10 @@ func (i *IndexedTableAccess) Resolved() bool {
 
 func (i *IndexedTableAccess) Schema() sql.Schema {
 	return i.ResolvedTable.Schema()
+}
+
+func (i *IndexedTableAccess) Collation() sql.CollationID {
+	return i.ResolvedTable.Collation()
 }
 
 func (i *IndexedTableAccess) Children() []sql.Node {

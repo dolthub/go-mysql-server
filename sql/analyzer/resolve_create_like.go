@@ -85,8 +85,9 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	}
 
 	tableSpec := &plan.TableSpec{
-		Schema:  sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
-		IdxDefs: idxDefs,
+		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		IdxDefs:   idxDefs,
+		Collation: likeTable.Collation(),
 	}
 
 	return plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), tableSpec), transform.NewTree, nil

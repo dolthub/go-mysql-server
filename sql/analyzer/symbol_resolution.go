@@ -249,7 +249,7 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 // accessed through this node's alias name. We return the
 // aliased columns qualified with the base table name,
 // and stars if applicable.
-// TODO: we don't have any tests with the unqualified confition
+// TODO: we don't have any tests with the unqualified condition
 func gatherTableAlias(
 	n sql.Node,
 	parentCols map[tableCol]int,
@@ -260,7 +260,7 @@ func gatherTableAlias(
 	var nodeStars []string
 	switch n := n.(type) {
 	case *plan.TableAlias:
-		alias := n.Name()
+		alias := strings.ToLower(n.Name())
 		var base string
 		if rt, ok := n.Child.(*plan.ResolvedTable); ok {
 			base = rt.Name()

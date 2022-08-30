@@ -1258,6 +1258,52 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive a as (select 1 union all select 2) select * from a union select 10 from dual;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{10},
+		},
+	},
+	{
+		Query: "with recursive a as (select 1 union all select 2) select 10 from dual union select * from a;",
+		Expected: []sql.Row{
+			{10},
+			{1},
+			{2},
+		},
+	},
+	{
+		Query: "with recursive a as (select 1 union all select 2) select * from a union select * from a;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
+	{
+		Query: "WITH a AS ( WITH b AS ( WITH recursive c AS ( SELECT 1 UNION SELECT 2 ) SELECT * from c UNION SELECT 3 ) SELECT * from b UNION SELECT 4) SELECT * from a UNION SELECT 10;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+			{4},
+			{10},
+		},
+	},
+	{
+		Query: "WITH a AS ( WITH b AS ( SELECT 1 UNION SELECT 2 ), c AS ( SELECT 3 UNION SELECT 4 ) SELECT * from b UNION SELECT * from c), x AS ( WITH y AS ( SELECT 5 UNION SELECT 6 ), z AS ( SELECT 7 UNION SELECT 8 ) SELECT * from y UNION SELECT * from z) SELECT * from a UNION SELECT * from x;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+			{4},
+			{5},
+			{6},
+			{7},
+			{8},
+		},
+	},
+	{
 		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select count(*) from t as t1 join t as t2 on t1.n = t2.n;",
 		Expected: []sql.Row{
 			{int64(10)},
@@ -3769,6 +3815,14 @@ var QueryTests = []QueryTest{
 		Query: "/*!40101 SET NAMES " +
 			sql.Collation_Default.CharacterSet().String() +
 			" */",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+	{
+		Query: "SET collation_connection = '" +
+			sql.Collation_Default.String() +
+			"';",
 		Expected: []sql.Row{
 			{},
 		},
@@ -6477,6 +6531,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{4}},
 	},
 	{
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT * FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE EXISTS (SELECT * FROM one_pk WHERE pk < 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
 		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
 		Expected: []sql.Row{{0}, {1}},
 	},
@@ -8384,6 +8446,11 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
+		// case-insensitive duplicate
+		Query:       "select * from mytable a join mytable A on a.i = A.i;",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
 		Query:       "SELECT * FROM mytable AS t UNION SELECT * FROM mytable AS t, othertable AS t", // duplicate alias in union
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
@@ -8758,6 +8825,18 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, b BLOB DEFAULT '');",
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
+		ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
 	},
 }
 

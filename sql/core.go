@@ -356,6 +356,7 @@ type Table interface {
 	Nameable
 	String() string
 	Schema() Schema
+	Collation() CollationID
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
@@ -936,7 +937,7 @@ func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error
 type TableCreator interface {
 	// CreateTable creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
-	CreateTable(ctx *Context, name string, schema PrimaryKeySchema) error
+	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
@@ -945,7 +946,7 @@ type TemporaryTableCreator interface {
 	Database
 	// CreateTemporaryTable creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
-	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema) error
+	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
 // ViewDefinition is the named textual definition of a view

@@ -72,6 +72,11 @@ func (g *mysqlTableShim) Schema() sql.Schema {
 	return g.sch.Copy()
 }
 
+// Collation implements the interface sql.Table.
+func (g *mysqlTableShim) Collation() sql.CollationID {
+	return g.original.Collation()
+}
+
 // Partitions implements the interface sql.Table.
 func (g *mysqlTableShim) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return sql.PartitionsToPartitionIter(dummyPartition{}), nil

@@ -205,7 +205,7 @@ func schemaLength(node sql.Node) int {
 func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if union, isUnion := n.(*plan.Union); isUnion {
-			if cte, isCTE := union.Left().(*plan.With); isCTE && !cte.Recursive {
+			if cte, isCTE := union.Left().(*plan.With); isCTE {
 				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs, cte.Recursive), transform.NewTree, nil
 			}
 			l, sameL, err := hoistCommonTableExpressions(ctx, a, union.Left(), scope, sel)

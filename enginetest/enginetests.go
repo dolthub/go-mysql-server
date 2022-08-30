@@ -5833,12 +5833,18 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					sch, iter, err := engine.Query(ctx, query.Query)
-					if query.Error {
+					if query.Error || query.ErrKind != nil {
 						if err == nil {
 							_, err := sql.RowIterToRows(ctx, sch, iter)
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						} else {
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						}
 					} else {
 						require.NoError(t, err)
@@ -5862,10 +5868,6 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 	port := getEmptyPort(t)
 	for _, script := range queries.CharsetCollationWireTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := NewContextWithClient(harness, sql.Client{
-				User:    "root",
-				Address: "localhost",
-			})
 			serverConfig := server.Config{
 				Protocol:       "tcp",
 				Address:        fmt.Sprintf("localhost:%d", port),
@@ -5875,14 +5877,6 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				RunQueryWithContext(t, engine, harness, ctx, statement)
-			}
 
 			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
 			require.NoError(t, err)
@@ -5898,6 +5892,17 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			require.NoError(t, err)
 			_, err = conn.Exec("USE mydb;")
 			require.NoError(t, err)
+
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				_, err = conn.Exec(statement)
+				require.NoError(t, err)
+			}
+
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					r, err := conn.Query(query.Query)
@@ -6003,7 +6008,7 @@ func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBui
 						}
 						expectedEngineRow := make([]*string, len(engineRow))
 						for i := range engineRow {
-							sqlVal, err := sch[i].Type.SQL(nil, engineRow[i])
+							sqlVal, err := sch[i].Type.SQL(ctx, nil, engineRow[i])
 							if !assert.NoError(t, err) {
 								break
 							}

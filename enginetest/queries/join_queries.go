@@ -20,6 +20,15 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		// Repro for: https://github.com/dolthub/dolt/issues/4183
+		Query: "SELECT mytable.i " +
+			"FROM mytable " +
+			"INNER JOIN othertable ON (mytable.i = othertable.i2) " +
+			"LEFT JOIN othertable T4 ON (mytable.i = T4.i2) " +
+			"ORDER BY othertable.i2, T4.s2",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
 		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v2 where b.pk = 0 and a.v2 = 1;",
 		Expected: []sql.Row{
 			{2, 0},

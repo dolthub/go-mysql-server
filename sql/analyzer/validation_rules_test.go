@@ -158,26 +158,18 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(memory.NewTable(
-				"mytable",
-				sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "foo", Source: "mytable"},
-					{Name: "bar", Source: "mytable"},
-				}),
-				nil,
-			), nil, nil),
+			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "foo", Source: "mytable"},
+				{Name: "bar", Source: "mytable"},
+			}), nil), nil, nil),
 			true,
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(memory.NewTable(
-				"mytable",
-				sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "foo", Source: ""},
-					{Name: "bar", Source: "something"},
-				}),
-				nil,
-			), nil, nil),
+			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "foo", Source: ""},
+				{Name: "bar", Source: "something"},
+			}), nil), nil, nil),
 			false,
 		},
 		{
@@ -219,17 +211,13 @@ func TestValidateSchemaSource(t *testing.T) {
 }
 
 func TestValidateUnionSchemasMatch(t *testing.T) {
-	table := plan.NewResolvedTable(memory.NewTable(
-		"mytable",
-		sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "foo", Source: "mytable", Type: sql.Text},
-			{Name: "bar", Source: "mytable", Type: sql.Int64},
-			{Name: "rab", Source: "mytable", Type: sql.Text},
-			{Name: "zab", Source: "mytable", Type: sql.Int64},
-			{Name: "quuz", Source: "mytable", Type: sql.Boolean},
-		}),
-		nil,
-	), nil, nil)
+	table := plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "foo", Source: "mytable", Type: sql.Text},
+		{Name: "bar", Source: "mytable", Type: sql.Int64},
+		{Name: "rab", Source: "mytable", Type: sql.Text},
+		{Name: "zab", Source: "mytable", Type: sql.Int64},
+		{Name: "quuz", Source: "mytable", Type: sql.Boolean},
+	}), nil), nil, nil)
 	testCases := []struct {
 		name string
 		node sql.Node
