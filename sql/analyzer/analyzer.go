@@ -442,12 +442,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveColumnDefaultsId,
 		expandStarsId,
 
-		// TODO: move these
-		//AutocommitId,
-		//TrackProcessId,
-		//parallelizeId,
-		//clearWarningsId,
-
 		// OnceAfterDefault
 		pushdownFiltersId,
 		subqueryIndexesId,
