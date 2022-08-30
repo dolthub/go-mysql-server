@@ -34,10 +34,17 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 		return n, transform.SameTree, nil
 	}
 
-	return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), sel)
+	res, same, err := resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), 0, sel)
+	//res, same, err := resolveCtesInNode2(ctx, a, n, scope, make(map[string]sql.Node), sel)
+	return res, same, err
 }
 
-func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, depth int, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if depth > maxCteDepth {
+		return node, transform.SameTree, nil
+	}
+	depth++
+
 	with, ok := node.(*plan.With)
 	if ok {
 		var err error
@@ -47,6 +54,11 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		}
 	}
 
+	// TODO: CTEs don't know about CTEs defined after it
+	// with b as (select * from a), c as (select * from b) select * from c; selects from a
+	// with b as (select * from a), c as (select * from b) select * from b; selects from a
+	// with b as (select * from c), c as (select * from a) select * from b; can't find c
+
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
 	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		sq, ok := e.(*plan.Subquery)
@@ -54,7 +66,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			return e, transform.SameTree, nil
 		}
 
-		query, same, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes, sel)
+		query, same, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes, depth, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -70,138 +82,55 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	switch n := n.(type) {
 	case *plan.UnresolvedTable:
 		lowerName := strings.ToLower(n.Name())
-		if ctes[lowerName] != nil {
-			return ctes[lowerName], transform.NewTree, nil
+		cte := ctes[lowerName]
+		if cte != nil {
+			delete(ctes, lowerName) // temporarily remove from cte to prevent infinite recursion
+			res, _, err := resolveCtesInNode(ctx, a, cte, scope, ctes, depth, sel)
+			ctes[lowerName] = cte
+			return res, transform.NewTree, err
 		}
-		return n, transform.NewTree, nil
+		return n, transform.SameTree, nil
 	case *plan.InsertInto:
-		insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
+		insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, depth, sel)
 		if err != nil {
 			return nil, false, err
 		}
 		newNode := n.WithSource(insertRowSource)
 		return newNode, transform.NewTree, nil
 	case *plan.SubqueryAlias:
-		newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
+		newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, depth, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 		if same {
-			return node, transform.SameTree, nil
+			return n, transform.SameTree, nil
 		}
-		node, err = node.WithChildren(newChild)
-		return node, transform.NewTree, err
-	}
-
-	children := n.Children()
-	if len(children) == 0 {
-		return n, transform.SameTree, nil
+		newNode, err := n.WithChildren(newChild)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		return newNode, transform.NewTree, nil
 	}
 
 	var newChildren []sql.Node
-	for _, child := range children {
-		newChild, same, err := resolveCtesInNode(ctx, a, child, scope, ctes, sel)
+	for _, child := range n.Children() {
+		newChild, _, err := resolveCtesInNode(ctx, a, child, scope, ctes, depth, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
-		}
-		if same {
-			return n, same, nil
 		}
 		newChildren = append(newChildren, newChild)
 	}
 
 	if len(newChildren) == 0 {
-		return n, transform.SameTree, nil
+		return n, transform.SameTree, err
 	}
 
-	n, err = n.WithChildren(newChildren...)
+	newNode, err := n.WithChildren(newChildren...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	return n, transform.SameTree, nil
-}
-
-func resolveCtesInNode2(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	with, ok := node.(*plan.With)
-	if ok {
-		var err error
-		node, err = stripWith(ctx, a, scope, with, ctes, sel)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-	}
-
-	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		sq, ok := e.(*plan.Subquery)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-
-		query, same, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes, sel)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if same {
-			return e, transform.SameTree, nil
-		}
-		return sq.WithQuery(query), transform.NewTree, nil
-	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	// Second pass to catch any uses of CTEs as tables, and CTEs in subqueries (caused by CTEs defined in terms of
-	// other CTEs). Because we transform bottom up, CTEs that themselves contain references to other CTEs will have to
-	// be resolved in multiple passes. For two CTEs, cte1 and cte2, where cte2 is defined in terms of cte1 it works like
-	// this: cte2 gets replaced with the Subquery alias of its definition, which contains a reference to cte1. On the
-	// second pass, that reference gets resolved to the subquery alias of cte1's definition. Then we're done.
-	// We iterate until the tree stops changing, or until we hit our limit.
-	var cur, prev sql.Node
-	same := transform.NewTree
-	cur = n
-	for i := 0; i < maxCteDepth && !same; i++ {
-		prev = cur
-		cur, same, err = transform.NodeWithOpaque(prev, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-			switch n := node.(type) {
-			case *plan.UnresolvedTable:
-				lowerName := strings.ToLower(n.Name())
-				if ctes[lowerName] != nil {
-					return ctes[lowerName], transform.NewTree, nil
-				}
-				return n, transform.SameTree, nil
-			case *plan.InsertInto:
-				insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, sel)
-				if err != nil {
-					return nil, false, err
-				}
-				node := n.WithSource(insertRowSource)
-				return node, transform.NewTree, nil
-			case *plan.SubqueryAlias:
-				if ctes[strings.ToLower(n.Name())] != nil {
-					return n, transform.SameTree, err
-				}
-				newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, sel)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if same {
-					return node, transform.SameTree, nil
-				}
-				node, err = node.WithChildren(newChild)
-				return node, transform.NewTree, err
-			default:
-				return n, transform.SameTree, nil
-			}
-		})
-
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-	}
-
-	return cur, transform.NewTree, nil
+	return newNode, transform.NewTree, nil
 }
 
 func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, error) {

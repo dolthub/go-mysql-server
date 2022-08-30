@@ -1238,6 +1238,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with a as (select * from mytable where i = 2), b as (select * from a), c as (select * from b) select * from c",
+		Expected: []sql.Row{
+			{int64(2), "second row"},
+		},
+	},
+	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt UNION ALL SELECT s, i FROM mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -8645,11 +8651,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'abc' is not a valid value for 'DOUBLE'`,
+		ExpectedErrStr: `error: 'abc' is not a valid value for 'double'`,
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'DOUBLE'`,
+		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'double'`,
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,
@@ -8830,7 +8836,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
-		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
+		ExpectedErrStr: "Invalid default value for 'c'",
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
@@ -8869,8 +8875,12 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
+		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
+		ExpectedErrStr: "table not found: b", // TODO: should be c
+	},
+	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrColumnNotFound, // TODO: this should actually be ErrTableNotFound
 	},
 	{
 		Query:       "WITH recursive Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
