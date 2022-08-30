@@ -54,11 +54,6 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		}
 	}
 
-	// TODO: CTEs don't know about CTEs defined after it
-	// with b as (select * from a), c as (select * from b) select * from c; selects from a
-	// with b as (select * from a), c as (select * from b) select * from b; selects from a
-	// with b as (select * from c), c as (select * from a) select * from b; can't find c
-
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
 	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		sq, ok := e.(*plan.Subquery)
