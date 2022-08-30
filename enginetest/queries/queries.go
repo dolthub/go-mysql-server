@@ -8876,7 +8876,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
-		ExpectedErrStr: "table not found: b", // TODO: should be c
+		ExpectedErrStr: "table not found: a", // TODO: should be c
 	},
 	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
