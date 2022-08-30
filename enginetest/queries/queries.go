@@ -8900,6 +8900,17 @@ var ErrorQueries = []QueryErrorTest{
 	},
 }
 
+var BrokenErrorQueries = []QueryErrorTest{
+	{
+		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
+		ExpectedErrStr: "table not found: c",
+	},
+	{
+		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+}
+
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
 // validate the results.
 type WriteQueryTest struct {
