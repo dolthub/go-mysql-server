@@ -180,7 +180,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 			child.SelectExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), transform.NewTree, nil
-	case *plan.ResolvedTable:
+	case *plan.ResolvedTable, *plan.Union:
 		return sort, transform.SameTree, nil
 	default:
 		children := child.Children()
