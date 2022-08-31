@@ -6961,6 +6961,10 @@ var QueryTests = []QueryTest{
 		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a order by x desc;",
 		Expected: []sql.Row{{2}, {1}},
 	},
+	{
+		Query:    "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
+		Expected: []sql.Row{{1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{

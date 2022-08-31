@@ -24,11 +24,7 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
-		Query: "SELECT mytable.i " +
-			"FROM mytable " +
-			"INNER JOIN othertable ON (mytable.i = othertable.i2) " +
-			"LEFT JOIN othertable T4 ON (mytable.i = T4.i2) " +
-			"ORDER BY othertable.i2, T4.s2",
+		Query: `SELECT mytable.i FROM mytable INNER JOIN othertable ON (mytable.i = othertable.i2) LEFT JOIN othertable T4 ON (mytable.i = T4.i2) ORDER BY othertable.i2, T4.s2`,
 		ExpectedPlan: "Project(mytable.i)\n" +
 			" └─ Sort(othertable.i2 ASC, T4.s2 ASC)\n" +
 			"     └─ LeftIndexedJoin(mytable.i = T4.i2)\n" +
@@ -3090,6 +3086,20 @@ var PlanTests = []QueryPlanTest{
 			" └─ TableAlias(b)\n" +
 			"     └─ Table(niltable)\n" +
 			"         └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
+		ExpectedPlan: "SubqueryAlias(temp)\n" +
+			" └─ Project(1)\n" +
+			"     └─ Filter(1 IN (Distinct\n" +
+			"         └─ Union\n" +
+			"             ├─ Project(1)\n" +
+			"             │   └─ Table(dual)\n" +
+			"             └─ Project(2)\n" +
+			"                 └─ Table(dual)\n" +
+			"        ))\n" +
+			"         └─ Table(dual)\n" +
 			"",
 	},
 }
