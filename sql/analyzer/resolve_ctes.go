@@ -53,7 +53,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	}
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	n, sameN, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		sq, ok := e.(*plan.Subquery)
 		if !ok {
 			return e, transform.SameTree, nil
@@ -121,16 +121,16 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		}
 	}
 
-	if len(newChildren) == 0 {
-		return n, transform.SameTree, err
+	var sameC = transform.SameTree
+	if len(newChildren) != 0 {
+		sameC = transform.NewTree
+		n, err = n.WithChildren(newChildren...)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
 	}
 
-	newNode, err := n.WithChildren(newChildren...)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return newNode, transform.NewTree, nil
+	return n, sameC && sameN, nil
 }
 
 func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, error) {
