@@ -99,7 +99,7 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 	if collation.CharacterSet().Encoder() == nil {
 		return nil, ErrCharSetNotYetImplementedTemp.New(collation.CharacterSet().Name())
 	} else if collation.Sorter() == nil {
-		return nil, ErrCollationNotYetImplementedTemp.New(collation.CharacterSet().Name())
+		return nil, ErrCollationNotYetImplementedTemp.New(collation.Name())
 	}
 
 	// Check the base type first and fail immediately if it's unknown

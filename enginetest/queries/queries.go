@@ -1238,6 +1238,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with a as (select * from mytable where i = 2), b as (select * from a), c as (select * from b) select * from c",
+		Expected: []sql.Row{
+			{int64(2), "second row"},
+		},
+	},
+	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt UNION ALL SELECT s, i FROM mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -1249,6 +1255,26 @@ var QueryTests = []QueryTest{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mytable as (select * FROM mytable) SELECT s,i FROM mytable;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable;",
+		Expected: []sql.Row{
+			{int64(3), "third row"},
+		},
+	},
+	{
+		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable union SELECT * from mytable;",
+		Expected: []sql.Row{
+			{int64(3), "third row"},
 		},
 	},
 	{
@@ -1278,6 +1304,24 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{1},
 			{2},
+		},
+	},
+	{
+		Query: "with a as (select 1), b as (select * from a) select * from b;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "with a as (select 1) select * from (with b as (select * from a) select * from b) as c;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "with a as (select 1) select 3, 2, (select * from a);",
+		Expected: []sql.Row{
+			{3, 2, 1},
 		},
 	},
 	{
@@ -6897,6 +6941,26 @@ var QueryTests = []QueryTest{
 		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query:    "with recursive a as (select 1 union select 2) select * from a union select * from a limit 1;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a having x > 1 union select * from a having x > 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a where x > 1 union select * from a where x > 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a group by x;",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a order by x desc;",
+		Expected: []sql.Row{{2}, {1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -7274,6 +7338,11 @@ var BrokenQueries = []QueryTest{
 		Query:    "SELECT X'0a'",
 		Expected: []sql.Row{{"0x0A"}},
 	},
+	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
+	{
+		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
+		Expected: []sql.Row{{"2013-08-13"}},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -7462,11 +7531,6 @@ var DateParseQueries = []QueryTest{
 		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
 		Expected: []sql.Row{{nil}},
 	},
-	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
-	//{
-	//	Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
-	//	Expected: []sql.Row{{"2013-08-13"}},
-	//},
 }
 
 var InfoSchemaQueries = []QueryTest{
@@ -8313,53 +8377,6 @@ var InfoSchemaScripts = []ScriptTest{
 	},
 }
 
-var ExplodeQueries = []QueryTest{
-	{
-		Query: `SELECT a, EXPLODE(b), c FROM explode`,
-		Expected: []sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
-		},
-	},
-	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode`,
-		Expected: []sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
-		},
-	},
-	{
-		Query: `SELECT EXPLODE(SPLIT(c, "")) FROM explode LIMIT 5`,
-		Expected: []sql.Row{
-			{"f"},
-			{"i"},
-			{"r"},
-			{"s"},
-			{"t"},
-		},
-	},
-	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode WHERE x = 'e'`,
-		Expected: []sql.Row{
-			{int64(3), "e", "third"},
-		},
-	},
-	{
-		Query: `SELECT HEX(UNHEX(375));`,
-		Expected: []sql.Row{
-			{"0375"},
-		},
-	},
-}
-
 type QueryErrorTest struct {
 	Query          string
 	Bindings       map[string]sql.Expression
@@ -8607,11 +8624,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'abc' is not a valid value for 'DOUBLE'`,
+		ExpectedErrStr: `error: 'abc' is not a valid value for 'double'`,
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'DOUBLE'`,
+		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'double'`,
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,
@@ -8792,7 +8809,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
-		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
+		ExpectedErrStr: "Invalid default value for 'c'",
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
@@ -8827,6 +8844,22 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
 	},
 	{
+		Query:       "with a as (select * from a) select * from a",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
+		ExpectedErrStr: "table not found: a", // TODO: should be c
+	},
+	{
+		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrColumnNotFound, // TODO: this should actually be ErrTableNotFound
+	},
+	{
+		Query:       "WITH recursive Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
 		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
 		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
 	},
@@ -8837,6 +8870,17 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
 		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+}
+
+var BrokenErrorQueries = []QueryErrorTest{
+	{
+		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
+		ExpectedErrStr: "table not found: c",
+	},
+	{
+		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 }
 
