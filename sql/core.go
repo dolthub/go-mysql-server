@@ -387,6 +387,7 @@ type PartitionCounter interface {
 // FilteredTable is a table that can produce a specific RowIter
 // that's more optimized given the filters.
 type FilteredTable interface {
+	//Node
 	Table
 	//Expressioner
 	Filters() []Expression

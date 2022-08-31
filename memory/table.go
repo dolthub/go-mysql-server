@@ -1018,6 +1018,11 @@ func (t *FilteredTable) WithFilters(ctx *sql.Context, filters []sql.Expression) 
 	return &nt
 }
 
+// WithExpressions implements the sql.Expressioner interface.
+func (t *FilteredTable) WithExpressions(filters []sql.Expression) sql.Table {
+	return t.WithFilters(nil, filters)
+}
+
 // WithProjections implements sql.ProjectedTable
 func (t *FilteredTable) WithProjections(schema []string) sql.Table {
 	table := t.Table.WithProjections(schema)
@@ -1413,6 +1418,11 @@ func (t *Table) IndexKeyValues(
 // Filters implements the sql.FilteredTable interface.
 func (t *Table) Filters() []sql.Expression {
 	return t.filters
+}
+
+// Expressions implements the sql.Expressioner interface.
+func (t *Table) Expressions() []sql.Expression {
+	return t.Filters()
 }
 
 func (t *Table) generateCheckName() string {
