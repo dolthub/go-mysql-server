@@ -552,6 +552,12 @@ func ConvertToBool(v interface{}) (bool, error) {
 	}
 }
 
+// IsDeferred checks if t is Deferred
+func IsDeferred(t Type) bool {
+	_, ok := t.(*deferredType)
+	return ok
+}
+
 // IsByteType checks if t is BINARY, VARBINARY, or BLOB
 func IsByteType(t Type) bool {
 	switch t.Type() {
