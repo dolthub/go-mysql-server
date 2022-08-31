@@ -92,6 +92,16 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 			}
 			ne, _, err := transform.NodeExprs(n.WithSource(newSource), fixBindingsTransform)
 			return ne, transform.NewTree, err
+		// TODO: need to apply bindings to a filtered table as well
+		case *ResolvedTable: // not sure if this should implement expressioner
+			tbl := n.Table
+			if pt, ok := tbl.(*ProcessTable); ok {
+				tbl = pt.Underlying()
+			}
+			if ft, ok := tbl.(sql.FilteredTable); ok {
+				transform.NodeExprs(ft, fixBindingsTransform)
+			}
+		// TODO: recurse on child table?
 		default:
 		}
 		return transform.NodeExprs(node, fixBindingsTransform)
