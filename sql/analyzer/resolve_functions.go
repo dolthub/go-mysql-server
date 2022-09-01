@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -25,6 +26,7 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 	span, ctx := ctx.Span("resolve_table_functions")
 	defer span.End()
 
+	// TODO: this needs to be able to return a deferredTable
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, transform.SameTree, nil
@@ -47,6 +49,20 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 
 		if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 			database = privilegedDatabase.Unwrap()
+		}
+
+		var hasBindVarArgs bool
+		for _, arg := range utf.Arguments {
+			if _, ok := arg.(*expression.BindVar); ok {
+				hasBindVarArgs = true
+				break
+			}
+		}
+
+		if hasBindVarArgs {
+			return n, transform.SameTree, nil
+			// TODO: need to have an already "resolved" table function node just like DeferredAsOfTable
+			return plan.NewDeferredTableFunction(tableFunction, database, utf.Arguments), transform.NewTree, nil
 		}
 
 		newInstance, err := tableFunction.NewInstance(ctx, database, utf.Arguments)
