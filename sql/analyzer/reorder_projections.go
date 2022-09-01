@@ -22,7 +22,7 @@ import (
 )
 
 // reorderProjection adds intermediate Project nodes to the descendants of existing Project nodes, adding fields to
-// the schemas of these intermediate nodes. This is important because the naive parse tree might a descendant of a
+// the schemas of these intermediate nodes. This is important because the naive parse tree might have a descendant of a
 // Project refer to a node introduced in that project (typically an alias). For the child to be able to resolve this
 // reference, it needs to be pushed lower down in the tree, underneath that child.
 // The canonical case here looks something like:
