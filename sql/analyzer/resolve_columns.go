@@ -345,7 +345,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, transform.SameTree, nil
 		}
 
-		// Look in all the scope, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
+		// Look in all the scopes, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
 		// match for the column name. If any scope has ambiguity in available column names, that's an error.
 		name := strings.ToLower(col.Name())
 		levels := symbols.levels()
@@ -356,7 +356,6 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			levels = levels[len(symbols)-1:]
 		}
 		for _, level := range levels {
-
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
 
 			// If the table exists but it's not available for this node it

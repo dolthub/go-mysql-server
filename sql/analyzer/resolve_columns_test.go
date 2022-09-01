@@ -179,7 +179,7 @@ func TestQualifyColumns(t *testing.T) {
 			),
 		},
 		{
-			name: "already qualified with alias",
+			name: "already qualified with table alias",
 			node: plan.NewProject(
 				[]sql.Expression{
 					uqc("a", "i"),
@@ -317,7 +317,7 @@ func TestQualifyColumns(t *testing.T) {
 								plan.NewResolvedTable(table2, nil, nil),
 							),
 						),
-						"select y from mytable2 where x > i"),
+						"select max(y) from mytable2 where x > i"),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			)),
