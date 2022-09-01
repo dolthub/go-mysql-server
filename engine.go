@@ -320,7 +320,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 	}
 
 	if len(bindings) > 0 {
-		parsed, err = plan.ApplyBindings(parsed, bindings)
+		parsed, err = plan.ApplyBindings(ctx, parsed, bindings)
 		if err != nil {
 			return nil, err
 		}
@@ -344,7 +344,7 @@ func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, bindings m
 	}
 
 	if len(bindings) > 0 {
-		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		analyzed, err = plan.ApplyBindings(ctx, analyzed, bindings)
 		if err != nil {
 			return nil, err
 		}

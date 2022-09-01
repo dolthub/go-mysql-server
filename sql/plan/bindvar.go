@@ -26,15 +26,15 @@ import (
 // returned and the |BindVar| expression is left in place. There is no check on
 // whether all entries in |bindings| are used at least once throughout the |n|.
 // sql.DeferredType instances will be resolved by the binding types.
-func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
-	n, _, err := applyBindingsHelper(n, bindings)
+func ApplyBindings(ctx *sql.Context, n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
+	n, _, err := applyBindingsHelper(ctx, n, bindings)
 	if err != nil {
 		return nil, err
 	}
 	return n, err
 }
 
-func fixBindings(expr sql.Expression, bindings map[string]sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+func fixBindings(ctx *sql.Context, expr sql.Expression, bindings map[string]sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 	switch e := expr.(type) {
 	case *expression.BindVar:
 		val, found := bindings[e.Name]
@@ -57,7 +57,7 @@ func fixBindings(expr sql.Expression, bindings map[string]sql.Expression) (sql.E
 	case *Subquery:
 		// *Subquery is a sql.Expression with a sql.Node not reachable
 		// by the visitor. Manually apply bindings to [Query] field.
-		q, err := ApplyBindings(e.Query, bindings)
+		q, err := ApplyBindings(ctx, e.Query, bindings)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -66,9 +66,9 @@ func fixBindings(expr sql.Expression, bindings map[string]sql.Expression) (sql.E
 	return expr, transform.SameTree, nil
 }
 
-func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+func applyBindingsHelper(ctx *sql.Context, n sql.Node, bindings map[string]sql.Expression) (sql.Node, transform.TreeIdentity, error) {
 	fixBindingsTransform := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		return fixBindings(e, bindings)
+		return fixBindings(ctx, e, bindings)
 	}
 	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
@@ -83,7 +83,7 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 		case *InsertInto:
 			// Manually apply bindings to [Source] because only [Destination]
 			// is a proper child.
-			newSource, same, err := applyBindingsHelper(n.Source, bindings)
+			newSource, same, err := applyBindingsHelper(ctx, n.Source, bindings)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -99,9 +99,26 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 				tbl = pt.Underlying()
 			}
 			if ft, ok := tbl.(sql.FilteredTable); ok {
-				transform.NodeExprs(ft, fixBindingsTransform)
+				var fixedFilters []sql.Expression
+				for _, filter := range ft.Filters() {
+					transform.NodeExprs(filter, fixBindingsTransform)
+					if val, found := bindings[filter.String()]; found {
+						fixedFilters = append(fixedFilters, val)
+					}
+				}
+				tbl = ft.WithFilters(ctx, fixedFilters)
+				n.Table = tbl
+				return n, transform.NewTree, nil
+
+				newTbl, same, err := transform.NodeExprs(ft, fixBindingsTransform)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return n, same, nil
+				}
+				return newTbl, transform.NewTree, nil
 			}
-		// TODO: recurse on child table?
 		default:
 		}
 		return transform.NodeExprs(node, fixBindingsTransform)

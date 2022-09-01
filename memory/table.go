@@ -1001,6 +1001,31 @@ type FilteredTable struct {
 
 var _ sql.FilteredTable = (*FilteredTable)(nil)
 
+// Resolved implements the sql.Node interface.
+func (t *FilteredTable) Resolved() bool {
+	return true
+}
+
+// Children implements the sql.Node interface.
+func (t *FilteredTable) Children() []sql.Node {
+	return nil
+}
+
+// WithChildren implements the sql.Node interface.
+func (t *FilteredTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+	return t, nil
+}
+
+// RowIter implements the sql.Node interface.
+func (t *FilteredTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return nil, nil
+}
+
+// CheckPrivileges implements the sql.Node interface.
+func (t *FilteredTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
 func NewFilteredTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
 	return &FilteredTable{
 		Table: NewTable(name, schema, fkColl),
@@ -1019,8 +1044,10 @@ func (t *FilteredTable) WithFilters(ctx *sql.Context, filters []sql.Expression) 
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (t *FilteredTable) WithExpressions(filters []sql.Expression) sql.Table {
-	return t.WithFilters(nil, filters)
+func (t *FilteredTable) WithExpressions(filters ...sql.Expression) (sql.Node, error) {
+	nt := *t
+	nt.filters = filters
+	return &nt, nil
 }
 
 // WithProjections implements sql.ProjectedTable
