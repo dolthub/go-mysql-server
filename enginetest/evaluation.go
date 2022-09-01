@@ -157,11 +157,11 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 		}
 		if assertion.ExpectedErr != nil {
 			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+				AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
 			})
 		} else if assertion.ExpectedErrStr != "" {
 			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+				AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 			})
 		} else if assertion.ExpectedWarning != 0 {
 			t.Run(assertion.Query, func(t *testing.T) {
@@ -399,7 +399,9 @@ func runQueryPreparedWithCtx(
 	e.CachePreparedStmt(ctx, prepared, q)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
-	require.NoError(err, "Unexpected error for query %s", q)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	return rows, sch, err
@@ -578,6 +580,11 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 	AssertErrWithCtx(t, e, harness, NewContext(harness), query, expectedErrKind, errStrs...)
 }
 
+// AssertErrPrepared asserts that the given query returns an error during its execution, optionally specifying a type of error.
+func AssertErrPrepared(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	AssertErrPreparedWithCtx(t, e, harness, NewContext(harness), query, expectedErrKind, errStrs...)
+}
+
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
 // type of error.
 func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query string, bindings map[string]sql.Expression, expectedErrKind *errors.Kind, errStrs ...string) {
@@ -602,6 +609,22 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Co
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
 	}
+	require.Error(t, err)
+	if expectedErrKind != nil {
+		_, orig, _ := sql.CastSQLError(err)
+		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
+	}
+	// If there are multiple error strings then we only match against the first
+	if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
+	}
+	validateEngine(t, ctx, harness, e)
+}
+
+// AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
+func AssertErrPreparedWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	ctx = ctx.WithQuery(query)
+	_, _, err := runQueryPreparedWithCtx(t, ctx, e, query)
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		_, orig, _ := sql.CastSQLError(err)
