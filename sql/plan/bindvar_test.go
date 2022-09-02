@@ -196,7 +196,7 @@ func TestApplyBindings(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			res, err := ApplyBindings(c.Node, c.Bindings)
+			res, err := ApplyBindings(sql.NewEmptyContext(), c.Node, c.Bindings)
 			if assert.NoError(t, err) {
 				assert.Equal(t, res, c.Expected)
 			}

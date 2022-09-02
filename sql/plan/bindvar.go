@@ -66,15 +66,6 @@ func fixBindings(ctx *sql.Context, expr sql.Expression, bindings map[string]sql.
 	return expr, transform.SameTree, nil
 }
 
-func fixExprBindings(expr sql.Expression) sql.Expression {
-	switch e := expr.(type) {
-	case *expression.InTuple:
-		e.Children()
-		e.WithChildren()
-	}
-	return nil
-}
-
 func applyBindingsHelper(ctx *sql.Context, n sql.Node, bindings map[string]sql.Expression) (sql.Node, transform.TreeIdentity, error) {
 	fixBindingsTransform := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		return fixBindings(ctx, e, bindings)
