@@ -325,7 +325,6 @@ func runQueryPreparedWithCtx(
 	e *sqle.Engine,
 	q string,
 ) ([]sql.Row, sql.Schema, error) {
-	require := require.New(t)
 	parsed, err := parse.Parse(ctx, q)
 	if err != nil {
 		return nil, nil, err
@@ -348,7 +347,9 @@ func runQueryPreparedWithCtx(
 	if isDatabaser && !isInsert {
 		// DDL statements don't support prepared statements
 		sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, nil)
-		require.NoError(err, "Unexpected error for query %s", q)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		rows, err := sql.RowIterToRows(ctx, sch, iter)
 		return rows, sch, err
@@ -399,7 +400,9 @@ func runQueryPreparedWithCtx(
 	e.CachePreparedStmt(ctx, prepared, q)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
-	require.NoError(err, "Unexpected error for query %s", q)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	return rows, sch, err
