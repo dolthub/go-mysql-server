@@ -269,6 +269,10 @@ func TestBrokenQueries(t *testing.T) {
 	enginetest.TestBrokenQueries(t, enginetest.NewSkippingMemoryHarness())
 }
 
+func TestBrokenAliasQueries(t *testing.T) {
+	enginetest.TestBrokenAliasQueries(t, enginetest.NewSkippingMemoryHarness())
+}
+
 func TestTestQueryPlanTODOs(t *testing.T) {
 	harness := enginetest.NewSkippingMemoryHarness()
 	harness.Setup(setup.MydbData, setup.Pk_tablesData, setup.NiltableData)

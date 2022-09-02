@@ -20,6 +20,56 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+var BrokenAliasQueries = []QueryTest{
+	{
+		// The dual table's schema can conflict with aliases
+		//
+		Query:    `select "foo" as dummy, (select dummy)`,
+		Expected: []sql.Row{{"foo", "foo"}},
+	},
+	{
+		// This query crashes Dolt with "panic: unexpected type x"
+		// Seems likely to be coming from dual table's schema and dummy value.
+		// https://github.com/dolthub/dolt/issues/4256
+		Query:    `SELECT *, (select pk union select pk) as a from mydb;`,
+		Expected: []sql.Row{{1, 1}},
+	},
+	{
+		// This query actually works correctly in GMS, but not in Dolt
+		// Removing the second "as a" makes it work in Dolt. This seems to happen because GMS uses a map of
+		// aliases by name and the second a alias overwrites the one that should be used. GMS should not allow
+		// the subquery to see the second "as a" alias, since that expression should only see aliases defined
+		// in previous expressions (i.e. forward-references are disallowed).
+		Query:    `SELECT 1 as a, (select a) as a;`,
+		Expected: []sql.Row{{1, 1}},
+	},
+	{
+		// Fails with an unresolved *plan.Project node error
+		// The second Project in the union subquery doens't seem to get its alias reference resolved
+		Query:    `SELECT 1 as a, (select a union select a) as b;`,
+		Expected: []sql.Row{{1, 1}},
+	},
+	{
+		// GMS executes this query, but it is not valid because of the forward ref of alias b.
+		// GMS should return an error about an invalid forward-ref.
+		Query:    `select 1 as a, (select b), 0 as b;`,
+		Expected: []sql.Row{},
+	},
+	{
+		// GMS returns the error "found HAVING clause with no GROUP BY", but MySQL executes
+		// this query without any problems.
+		Query:    "select t1.pk as a from mydb as t1 having a = t1.pk;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
+		// this query. It does seem odd that we are not selecting dt.two though. Perhaps MySQL sees those values are
+		// always going to be literals and optimizes?
+		Query:    "select 1 as a, one + 1 as mod1, dt.* from mydb as t1, (select 1, 2 from t) as dt (one, two) where dt.one > 0 group by one;",
+		Expected: []sql.Row{{1}},
+	},
+}
+
 var ColumnAliasQueries = []QueryTest{
 	{
 		Query: `SELECT i AS cOl FROM mytable`,

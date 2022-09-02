@@ -179,6 +179,11 @@ func TestBrokenQueries(t *testing.T, harness Harness) {
 	RunQueryTests(t, harness, queries.BrokenQueries)
 }
 
+func TestBrokenAliasQueries(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.Fk_tblData)
+	RunQueryTests(t, harness, queries.BrokenAliasQueries)
+}
+
 func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	engine := mustNewEngine(t, harness)
