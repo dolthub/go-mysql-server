@@ -25,7 +25,6 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 	span, ctx := ctx.Span("resolve_table_functions")
 	defer span.End()
 
-	// TODO: this needs to be able to return a deferredTable
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, transform.SameTree, nil
