@@ -77,6 +77,7 @@ type Table struct {
 	indexes          map[string]sql.Index
 	fkColl           *ForeignKeyCollection
 	checks           []sql.CheckDefinition
+	collation        sql.CollationID
 	pkIndexesEnabled bool
 
 	// pushdown info
@@ -93,7 +94,7 @@ type Table struct {
 	insertPartIdx int
 
 	// Indexed lookups
-	lookup sql.IndexLookup
+	lookup sql.DriverIndexLookup
 
 	// AUTO_INCREMENT bookkeeping
 	autoIncVal uint64
@@ -112,7 +113,7 @@ var _ sql.TruncateableTable = (*Table)(nil)
 var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
-var _ sql.IndexedTable = (*Table)(nil)
+
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
@@ -122,13 +123,25 @@ var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 
-// NewTable creates a new Table with the given name and schema.
+// NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
+// collation is desired, please use NewTableWithCollation.
 func NewTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
-	return NewPartitionedTable(name, schema, fkColl, 0)
+	return NewPartitionedTableWithCollation(name, schema, fkColl, 0, sql.Collation_Default)
 }
 
-// NewPartitionedTable creates a new Table with the given name, schema and number of partitions.
+// NewTableWithCollation creates a new Table with the given name, schema, and collation.
+func NewTableWithCollation(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
+	return NewPartitionedTableWithCollation(name, schema, fkColl, 0, collation)
+}
+
+// NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
+// collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
 func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
+	return NewPartitionedTableWithCollation(name, schema, fkColl, numPartitions, sql.Collation_Default)
+}
+
+// NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, and collation.
+func NewPartitionedTableWithCollation(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 
@@ -156,6 +169,7 @@ func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, fkColl *Forei
 		name:          name,
 		schema:        schema,
 		fkColl:        fkColl,
+		collation:     collation,
 		partitions:    partitions,
 		partitionKeys: keys,
 		autoIncVal:    autoIncVal,
@@ -174,6 +188,11 @@ func (t *Table) Schema() sql.Schema {
 		return t.projectedSchema
 	}
 	return t.schema.Schema
+}
+
+// Collation implements the sql.Table interface.
+func (t *Table) Collation() sql.CollationID {
+	return t.collation
 }
 
 func (t *Table) GetPartition(key string) []sql.Row {
@@ -196,6 +215,34 @@ func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return &partitionIter{keys: keys}, nil
 }
 
+// rangePartitionIter returns a partition that has range and table data access
+type rangePartitionIter struct {
+	child  *partitionIter
+	ranges sql.Expression
+}
+
+var _ sql.PartitionIter = (*rangePartitionIter)(nil)
+
+func (i rangePartitionIter) Close(ctx *sql.Context) error {
+	return i.child.Close(ctx)
+}
+
+func (i rangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
+	part, err := i.child.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &rangePartition{
+		Partition: part.(*Partition),
+		rang:      i.ranges,
+	}, nil
+}
+
+type rangePartition struct {
+	*Partition
+	rang sql.Expression
+}
+
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(t.partitions)), nil
@@ -203,30 +250,25 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	filters := t.filters
+	if r, ok := partition.(*rangePartition); ok {
+		// index lookup is currently a single filter applied to a full table scan
+		filters = append(t.filters, r.rang)
+	}
+
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
-
-	var values sql.IndexValueIter
-	if t.lookup != nil {
-		var err error
-		values, err = t.lookup.(sql.DriverIndexLookup).Values(partition)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// The slice could be altered by other operations taking place during iteration (such as deletion or insertion), so
 	// make a copy of the values as they exist when execution begins.
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
 
 	return &tableIter{
-		rows:        rowsCopy,
-		indexValues: values,
-		columns:     t.columns,
-		filters:     t.filters,
+		rows:    rowsCopy,
+		columns: t.columns,
+		filters: filters,
 	}, nil
 }
 
@@ -990,6 +1032,29 @@ func (t *FilteredTable) Projections() []string {
 	return t.projection
 }
 
+// IndexedTable is a table that expects to return one or more partitions
+// for range lookups.
+type IndexedTable struct {
+	*Table
+}
+
+func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	filter, err := lookup.Index.(*Index).rangeFilterExpr(lookup.Ranges...)
+	if err != nil {
+		return nil, err
+	}
+	child, err := t.Table.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
+}
+
+func (t *Table) IndexedAccess(sql.Index) sql.IndexedTable {
+	return &IndexedTable{Table: t}
+}
+
 // WithProjections implements sql.ProjectedTable
 func (t *Table) WithProjections(cols []string) sql.Table {
 	if len(cols) == 0 {
@@ -1311,9 +1376,9 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 	return nil
 }
 
-// WithIndexLookup implements the sql.IndexAddressableTable interface.
-func (t *Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	if lookup == nil {
+// WithDriverIndexLookup implements the sql.IndexAddressableTable interface.
+func (t *Table) WithDriverIndexLookup(lookup sql.DriverIndexLookup) sql.Table {
+	if t.lookup != nil {
 		return t
 	}
 
@@ -1495,7 +1560,7 @@ func copyschema(sch sql.Schema) sql.Schema {
 }
 
 func newTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-	newTable := NewPartitionedTable(t.name, newSch, t.fkColl, len(t.partitions))
+	newTable := NewPartitionedTableWithCollation(t.name, newSch, t.fkColl, len(t.partitions), t.collation)
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {
 			err := newTable.Insert(sql.NewEmptyContext(), partitionRow)

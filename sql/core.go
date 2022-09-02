@@ -356,6 +356,7 @@ type Table interface {
 	Nameable
 	String() string
 	Schema() Schema
+	Collation() CollationID
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
@@ -387,6 +388,7 @@ type PartitionCounter interface {
 // that's more optimized given the filters.
 type FilteredTable interface {
 	Table
+	Filters() []Expression
 	HandledFilters(filters []Expression) []Expression
 	WithFilters(ctx *Context, filters []Expression) Table
 }
@@ -426,28 +428,25 @@ type IndexColumn struct {
 	Length int64
 }
 
-// IndexedTable represents a table that has one or more native indexes on its columns, and can use those indexes to
-// speed up execution of queries that reference those columns. Unlike DriverIndexableTable, IndexedTable doesn't need a
-// separate index driver to function.
-type IndexedTable interface {
-	IndexAddressableTable
-	// GetIndexes returns all indexes on this table.
+// IndexAddressable is a table that can be scanned through a primary index
+type IndexAddressable interface {
+	// IndexedAccess returns a table that can perform scans constrained to
+	// an IndexLookup on the index given
+	IndexedAccess(Index) IndexedTable
+	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
 }
 
-// IndexAddressable provides a Table that has its row iteration restricted to only the rows that match the given index
-// lookup.
-type IndexAddressable interface {
-	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
-	// which was in turn created by a call to Index.Get() for a set of keys for this table.
-	WithIndexLookup(IndexLookup) Table
-}
-
-// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match the given index
-// lookup.
 type IndexAddressableTable interface {
 	Table
 	IndexAddressable
+}
+
+// IndexedTable is a table with an index chosen for range scans
+type IndexedTable interface {
+	Table
+	// LookupPartitions returns partitions scanned by the given IndexLookup
+	LookupPartitions(*Context, IndexLookup) (PartitionIter, error)
 }
 
 type ParallelizedIndexAddressableTable interface {
@@ -470,7 +469,7 @@ type IndexAlterableTable interface {
 
 // ForeignKeyTable is a table that can declare its foreign key constraints, as well as be referenced.
 type ForeignKeyTable interface {
-	IndexedTable
+	IndexAddressableTable
 	// CreateIndexForForeignKey creates an index for this table, using the provided parameters. Indexes created through
 	// this function are specifically ones generated for use with a foreign key. Returns an error if the index name
 	// already exists, or an index on the same columns already exists.
@@ -938,7 +937,7 @@ func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error
 type TableCreator interface {
 	// CreateTable creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
-	CreateTable(ctx *Context, name string, schema PrimaryKeySchema) error
+	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
@@ -947,7 +946,7 @@ type TemporaryTableCreator interface {
 	Database
 	// CreateTemporaryTable creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
-	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema) error
+	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
 // ViewDefinition is the named textual definition of a view

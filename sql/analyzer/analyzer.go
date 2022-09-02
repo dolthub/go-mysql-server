@@ -384,15 +384,18 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 // are applied
 func prePrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case resolvePreparedInsertId,
-		insertTopNId,
-		inSubqueryIndexesId,
-		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
-		clearWarningsId,
+	case
+		// OnceBeforeDefault
 		reresolveTablesId,
-		pruneTablesId,
+
+		// Default
+
+		// OnceAfterDefault
+		inSubqueryIndexesId,
+		insertTopNId,
+		resolvePreparedInsertId,
+
+		// DefaultValidation
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,
@@ -401,10 +404,16 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateOperandsId,
 		validateCaseResultTypesId,
 		validateIntervalUsageId,
-		validateExplodeUsageId,
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
-		validateAggregationsId:
+		validateAggregationsId,
+		validateExplodeUsageId,
+
+		// OnceAfterAll
+		AutocommitId,
+		TrackProcessId,
+		parallelizeId,
+		clearWarningsId:
 		return false
 	default:
 		return true
@@ -417,7 +426,7 @@ func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql
 	return n, err
 }
 
-// prePrepareRuleSelector are applied to a cached prepared statement plan
+// postPrepareRuleSelector are applied to a cached prepared statement plan
 // after bindvars are applied
 func postPrepareRuleSelector(id RuleId) bool {
 	switch id {

@@ -353,7 +353,7 @@ func (t GeometryType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t GeometryType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t GeometryType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}

@@ -30,13 +30,46 @@ type tableEditor struct {
 	initialInsert     int
 	// array of key ordinals for each unique index defined on the table
 	uniqueIdxCols [][]int
+	fkTable       *Table
 }
 
+var _ sql.Table = (*tableEditor)(nil)
 var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
 var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
+
+func (t *tableEditor) Name() string {
+	return t.table.name
+}
+
+func (t *tableEditor) String() string {
+	return t.table.String()
+}
+
+func (t *tableEditor) Schema() sql.Schema {
+	return t.table.Schema()
+}
+
+func (t *tableEditor) Collation() sql.CollationID {
+	return t.table.Collation()
+}
+
+func (t *tableEditor) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	return t.table.Partitions(ctx)
+}
+
+func (t *tableEditor) PartitionRows(ctx *sql.Context, part sql.Partition) (sql.RowIter, error) {
+	if t.fkTable != nil {
+		return t.fkTable.PartitionRows(ctx, part)
+	}
+	return t.table.PartitionRows(ctx, part)
+}
+
+func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	return t.table.GetIndexes(ctx)
+}
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
 	// Checkpointing is equivalent to flushing for tableEditor
@@ -219,8 +252,7 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
-// WithIndexLookup returns
-func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+func (t *tableEditor) IndexedAccess(sql.Index) sql.IndexedTable {
 	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
 		newTable, err := newTable(pkTea.table, pkTea.table.schema)
@@ -243,11 +275,7 @@ func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 		if err != nil {
 			panic(err)
 		}
-		memoryLookup := lookup.(*IndexLookup)
-		lookupIndex := *memoryLookup.idx.(*Index)
-		lookupIndex.Tbl = newTable
-		memoryLookup.idx = &lookupIndex
-		return newTable.WithIndexLookup(memoryLookup)
+		return &IndexedTable{newTable}
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
 		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
@@ -270,11 +298,7 @@ func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 		if err != nil {
 			panic(err)
 		}
-		memoryLookup := lookup.(*IndexLookup)
-		lookupIndex := *memoryLookup.idx.(*Index)
-		lookupIndex.Tbl = newTable
-		memoryLookup.idx = &lookupIndex
-		return newTable.WithIndexLookup(memoryLookup)
+		return &IndexedTable{newTable}
 	}
 }
 

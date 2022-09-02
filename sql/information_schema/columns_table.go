@@ -77,6 +77,11 @@ func (c *ColumnsTable) Schema() sql.Schema {
 	return columnsSchema
 }
 
+// Collation implements the sql.Node interface.
+func (c *ColumnsTable) Collation() sql.CollationID {
+	return sql.Collation_Default
+}
+
 // RowIter implements the sql.Node interface.
 func (c *ColumnsTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	partitions, err := c.Partitions(ctx)
@@ -147,7 +152,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 			var columnKeyMap = make(map[string]string)
 			// Get UNIQUEs, PRIMARY KEYs
 			hasPK := false
-			if indexTable, ok := t.(sql.IndexedTable); ok {
+			if indexTable, ok := t.(sql.IndexAddressable); ok {
 				indexes, iErr := indexTable.GetIndexes(ctx)
 				if iErr != nil {
 					return false, iErr

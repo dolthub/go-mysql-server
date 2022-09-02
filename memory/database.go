@@ -161,13 +161,13 @@ func (d *BaseDatabase) AddTable(name string, t sql.Table) {
 }
 
 // CreateTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema) error {
+func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
 	_, ok := d.tables[name]
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTable(name, schema, d.fkColl)
+	table := NewTableWithCollation(name, schema, d.fkColl, collation)
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}

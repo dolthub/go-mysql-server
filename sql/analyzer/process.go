@@ -83,8 +83,8 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 				}
 			}
 
-			n, err := n.WithTable(plan.NewProcessTable(parallelizedTable, onPartitionDone, onPartitionStart, onRowNext))
-			return n, transform.NewTree, err
+			newTbl, err := n.WithTable(plan.NewProcessTable(parallelizedTable, onPartitionDone, onPartitionStart, onRowNext))
+			return newTbl, transform.NewTree, err
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
 			case *plan.ProcessTable, *plan.ProcessIndexableTable:

@@ -56,6 +56,15 @@ func (n *ForeignKeyHandler) Schema() sql.Schema {
 	return n.OriginalNode.Schema()
 }
 
+// Collation implements the interface sql.Node.
+func (n *ForeignKeyHandler) Collation() sql.CollationID {
+	originalTable, ok := n.OriginalNode.(sql.Table)
+	if !ok {
+		return sql.Collation_Default
+	}
+	return originalTable.Collation()
+}
+
 // Children implements the interface sql.Node.
 func (n *ForeignKeyHandler) Children() []sql.Node {
 	return []sql.Node{n.OriginalNode}

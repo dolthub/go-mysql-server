@@ -41,7 +41,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 	indexes := make(map[string][]sql.Index)
 
 	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
-		it, ok := rt.Table.(sql.IndexedTable)
+		it, ok := rt.Table.(sql.IndexAddressableTable)
 		if !ok {
 			return nil
 		}

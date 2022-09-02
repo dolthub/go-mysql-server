@@ -487,6 +487,97 @@ func TestRecursiveViewDefinition(t *testing.T) {
 	enginetest.TestRecursiveViewDefinition(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestShowCharset(t *testing.T) {
+	iterForAllImplemented := func(t *testing.T) []sql.Row {
+		var rows []sql.Row
+		iter := sql.NewCharacterSetsIterator()
+		for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
+			if charset.Encoder != nil {
+				rows = append(rows, sql.Row{
+					charset.Name,
+					charset.Description,
+					charset.DefaultCollation.String(),
+					uint64(charset.MaxLength),
+				})
+			}
+		}
+		return rows
+	}
+
+	tests := []struct {
+		Query  string
+		RowGen func(t *testing.T) []sql.Row
+	}{
+		{
+			Query:  "SHOW CHARACTER SET;",
+			RowGen: iterForAllImplemented,
+		},
+		{
+			Query:  "SHOW CHARSET;",
+			RowGen: iterForAllImplemented,
+		},
+		{
+			Query: "SHOW CHARSET LIKE 'utf8%'",
+			RowGen: func(t *testing.T) []sql.Row {
+				var rows []sql.Row
+				iter := sql.NewCharacterSetsIterator()
+				for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
+					if charset.Encoder != nil && strings.HasPrefix(charset.Name, "utf8") {
+						rows = append(rows, sql.Row{
+							charset.Name,
+							charset.Description,
+							charset.DefaultCollation.String(),
+							uint64(charset.MaxLength),
+						})
+					}
+				}
+				return rows
+			},
+		},
+		{
+			Query: "SHOW CHARSET WHERE Charset='binary'",
+			RowGen: func(t *testing.T) []sql.Row {
+				var rows []sql.Row
+				iter := sql.NewCharacterSetsIterator()
+				for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
+					if charset.Encoder != nil && charset.Name == "binary" {
+						rows = append(rows, sql.Row{
+							charset.Name,
+							charset.Description,
+							charset.DefaultCollation.String(),
+							uint64(charset.MaxLength),
+						})
+					}
+				}
+				return rows
+			},
+		},
+		{
+			Query: `SHOW CHARSET WHERE Charset = 'foo'`,
+			RowGen: func(t *testing.T) []sql.Row {
+				var rows []sql.Row
+				iter := sql.NewCharacterSetsIterator()
+				for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
+					if charset.Encoder != nil && charset.Name == "foo" {
+						rows = append(rows, sql.Row{
+							charset.Name,
+							charset.Description,
+							charset.DefaultCollation.String(),
+							uint64(charset.MaxLength),
+						})
+					}
+				}
+				return rows
+			},
+		},
+	}
+
+	harness := enginetest.NewMemoryHarness("", 1, 1, false, nil)
+	for _, test := range tests {
+		enginetest.TestQuery(t, harness, test.Query, test.RowGen(t), nil, nil)
+	}
+}
+
 func TestTableFunctions(t *testing.T) {
 	var tableFunctionScriptTests = []queries.ScriptTest{
 		{

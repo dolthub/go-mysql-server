@@ -150,6 +150,8 @@ type partitionable struct {
 	rowsPerPartition int
 }
 
+var _ sql.Table = partitionable{}
+
 // WithChildren implements the Node interface.
 func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
@@ -179,6 +181,10 @@ func (partitionable) Schema() sql.Schema {
 		{Name: "partition", Type: sql.Text, Source: "foo"},
 		{Name: "val", Type: sql.Int64, Source: "foo"},
 	}
+}
+
+func (partitionable) Collation() sql.CollationID {
+	return sql.Collation_Default
 }
 
 func (partitionable) Name() string { return "partitionable" }

@@ -153,6 +153,15 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return left, right, c.Left().Type(), nil
 	}
 
+	if sql.IsTime(leftType) || sql.IsTime(rightType) {
+		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return l, r, sql.Datetime, nil
+	}
+
 	if sql.IsBinaryType(leftType) || sql.IsBinaryType(rightType) {
 		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
 		if err != nil {
@@ -200,15 +209,6 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		}
 
 		return l, r, sql.Uint64, nil
-	}
-
-	if sql.IsTime(leftType) || sql.IsTime(rightType) {
-		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		return l, r, sql.Datetime, nil
 	}
 
 	left, right, err := convertLeftAndRight(left, right, ConvertToChar)

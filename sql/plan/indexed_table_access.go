@@ -32,8 +32,10 @@ type IndexedTableAccess struct {
 	ResolvedTable *ResolvedTable
 	lb            *LookupBuilder
 	lookup        sql.IndexLookup
+	Table         sql.IndexedTable
 }
 
+var _ sql.Table = (*IndexedTableAccess)(nil)
 var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Node2 = (*IndexedTableAccess)(nil)
@@ -42,21 +44,61 @@ var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
 // applied for the row given in RowIter().
-func NewIndexedTableAccess(resolvedTable *ResolvedTable, lb *LookupBuilder) *IndexedTableAccess {
+func NewIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lb *LookupBuilder) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		ResolvedTable: resolvedTable,
+		ResolvedTable: rt,
 		lb:            lb,
+		Table:         t,
 	}
+}
+
+// NewIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// an IndexAddressableTable, otherwise returns an error.
+func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*IndexedTableAccess, error) {
+	var table = rt.Table
+	if t, ok := table.(sql.TableWrapper); ok {
+		table = t.Underlying()
+	}
+	iaTable, ok := table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
+	}
+
+	return &IndexedTableAccess{
+		ResolvedTable: rt,
+		lb:            lb,
+		Table:         iaTable.IndexedAccess(lb.index),
+	}, nil
 }
 
 // NewStaticIndexedTableAccess returns a new IndexedTableAccess node with the indexlookup given. It will be applied in
 // RowIter() without consideration of the row given. The key expression should faithfully represent this lookup, but is
 // only for display purposes.
-func NewStaticIndexedTableAccess(resolvedTable *ResolvedTable, lookup sql.IndexLookup) *IndexedTableAccess {
+func NewStaticIndexedTableAccess(rt *ResolvedTable, t sql.IndexedTable, lookup sql.IndexLookup) *IndexedTableAccess {
 	return &IndexedTableAccess{
-		ResolvedTable: resolvedTable,
+		ResolvedTable: rt,
 		lookup:        lookup,
+		Table:         t,
 	}
+}
+
+// NewStaticIndexedAccessForResolvedTable creates an IndexedTableAccess node if the resolved table embeds
+// an IndexAddressableTable, otherwise returns an error.
+func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+	var table = rt.Table
+	if t, ok := table.(sql.TableWrapper); ok {
+		table = t.Underlying()
+	}
+	iaTable, ok := table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
+	}
+
+	return &IndexedTableAccess{
+		ResolvedTable: rt,
+		lookup:        lookup,
+		Table:         iaTable.IndexedAccess(lookup.Index),
+	}, nil
 }
 
 func (i *IndexedTableAccess) Resolved() bool {
@@ -65,6 +107,10 @@ func (i *IndexedTableAccess) Resolved() bool {
 
 func (i *IndexedTableAccess) Schema() sql.Schema {
 	return i.ResolvedTable.Schema()
+}
+
+func (i *IndexedTableAccess) Collation() sql.CollationID {
+	return i.ResolvedTable.Collation()
 }
 
 func (i *IndexedTableAccess) Children() []sql.Node {
@@ -92,8 +138,8 @@ func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.Pri
 }
 
 func (i *IndexedTableAccess) Index() sql.Index {
-	if i.lookup != nil {
-		return i.lookup.Index()
+	if !i.lookup.IsEmpty() {
+		return i.lookup.Index
 	}
 	return i.lb.index
 }
@@ -101,87 +147,67 @@ func (i *IndexedTableAccess) Index() sql.Index {
 func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.IndexedTableAccess")
 
-	// child is ProcessTable, so get underlying
-	t := i.ResolvedTable.Table
-	if wrapperTable, ok := i.ResolvedTable.Table.(sql.TableWrapper); ok {
-		t = wrapperTable.Underlying()
-	}
-
-	indexAddressableTable, ok := t.(sql.IndexAddressableTable)
-	if !ok {
-		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
-	}
-
 	lookup, err := i.getLookup(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	indexedTable := indexAddressableTable.WithIndexLookup(lookup)
-	partIter, err := indexedTable.Partitions(ctx)
+	partIter, err := i.Table.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, indexedTable, partIter)), nil
+	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, i.Table, partIter)), nil
 }
 
 func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
-	if !ok {
-		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
-	}
-
 	lookup, err := i.getLookup2(ctx, f.Row2())
 	if err != nil {
 		return nil, err
 	}
 
-	indexedTable := resolvedTable.WithIndexLookup(lookup)
-
-	partIter, err := indexedTable.Partitions(ctx)
+	partIter, err := i.Table.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}
-
-	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
+	return sql.NewTableRowIter(ctx, i.Table, partIter), nil
 }
 
 // CanBuildIndex returns whether an index lookup on this table can be successfully built for a zero-valued key. For a
 // static lookup, no lookup needs to be built, so returns true.
 func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	// If the lookup was provided at analysis time (static evaluation), then an index was already built
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return true, nil
 	}
 
 	key := i.lb.GetZeroKey()
 	lookup, err := i.lb.GetLookup(ctx, key)
-	return err == nil && lookup != nil, nil
+	return err == nil && !lookup.IsEmpty(), nil
 }
 
 func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return i.lookup, nil
 	}
 
 	key, err := i.lb.GetKey(ctx, row)
 	if err != nil {
-		return nil, err
+		return sql.IndexLookup{}, err
 	}
 	return i.lb.GetLookup(ctx, key)
 }
 
 func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return i.lookup, nil
 	}
 
 	key, err := i.lb.GetKey2(ctx, row)
 	if err != nil {
-		return nil, err
+		return sql.IndexLookup{}, err
 	}
 	return i.lb.GetLookup(ctx, key)
 }
@@ -191,10 +217,10 @@ func (i *IndexedTableAccess) String() string {
 	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
-	if i.lookup != nil {
-		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges().DebugString()))
+	if !i.lookup.IsEmpty() {
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
 	}
-	if pt, ok := seethroughTableWrapper(i.ResolvedTable).(sql.ProjectedTable); ok {
+	if pt, ok := i.Table.(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
 			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
 		}
@@ -213,16 +239,16 @@ func formatIndexDecoratorString(idx sql.Index) string {
 
 func (i *IndexedTableAccess) DebugString() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("IndexedTableAccess(%s)", sql.DebugString(i.ResolvedTable))
+	pr.WriteNode("IndexedTableAccess(%s)", sql.DebugString(i.Table))
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
-	if i.lookup != nil {
-		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges().DebugString()))
+	if !i.lookup.IsEmpty() {
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
 		children = append(children, fmt.Sprintf("lookup: STATIC LOOKUP(%s)", sql.DebugString(i.lookup)))
 	} else {
 		children = append(children, fmt.Sprintf("lookup: %s", sql.DebugString(i.lb)))
 	}
-	if pt, ok := seethroughTableWrapper(i.ResolvedTable).(sql.ProjectedTable); ok {
+	if pt, ok := i.Table.(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
 			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
 		}
@@ -233,7 +259,7 @@ func (i *IndexedTableAccess) DebugString() string {
 
 // Expressions implements sql.Expressioner
 func (i *IndexedTableAccess) Expressions() []sql.Expression {
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		return nil
 	}
 	return i.lb.Expressions()
@@ -241,7 +267,7 @@ func (i *IndexedTableAccess) Expressions() []sql.Expression {
 
 // WithExpressions implements sql.Expressioner
 func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if i.lookup != nil {
+	if !i.lookup.IsEmpty() {
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), 0)
 		}
@@ -254,6 +280,7 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 	}
 	return &IndexedTableAccess{
 		ResolvedTable: i.ResolvedTable,
+		Table:         i.Table,
 		lb:            lb,
 	}, nil
 }
@@ -265,36 +292,28 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 		return nil, err
 	}
 	i.ResolvedTable = nrt
+
+	if t, ok := table.(sql.TableWrapper); ok {
+		table = t.Underlying()
+	}
+
+	iat, ok := table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil, fmt.Errorf("table does not support indexed access")
+	}
+	i.Table = iat.IndexedAccess(i.Index())
+
 	return &i, nil
 }
 
 // Partitions implements sql.Table
 func (i *IndexedTableAccess) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	if i.lookup == nil {
-		return i.ResolvedTable.Partitions(ctx)
-	}
-
-	table := i.baseTable()
-	return table.Partitions(ctx)
-}
-
-// baseTable returns the underlying sql.Table with any static index lookup applied
-func (i *IndexedTableAccess) baseTable() sql.Table {
-	table := i.ResolvedTable.Table
-	// This won't work if we add another layer of wrapping on top
-	if tw, ok := table.(sql.TableWrapper); ok {
-		table = tw.Underlying()
-	}
-
-	if indexAddressableTable, ok := table.(sql.IndexAddressable); ok {
-		table = indexAddressableTable.WithIndexLookup(i.lookup)
-	}
-	return table
+	return i.Table.LookupPartitions(ctx, i.lookup)
 }
 
 // PartitionRows implements sql.Table
 func (i *IndexedTableAccess) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return i.baseTable().PartitionRows(ctx, partition)
+	return i.Table.PartitionRows(ctx, partition)
 }
 
 // GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.
@@ -389,7 +408,7 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
-		return lb.index.NewLookup(ctx, lb.rang)
+		return sql.IndexLookup{Index: lb.index, Ranges: []sql.Range{lb.rang}}, nil
 	}
 
 	for i := range key {
@@ -406,7 +425,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 		}
 	}
 
-	return lb.index.NewLookup(ctx, lb.rang)
+	return sql.IndexLookup{Index: lb.index, Ranges: []sql.Range{lb.rang}}, nil
 }
 
 func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {

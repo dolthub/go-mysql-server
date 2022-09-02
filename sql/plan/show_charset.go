@@ -71,12 +71,26 @@ func (sc *ShowCharset) Children() []sql.Node {
 }
 
 func (sc *ShowCharset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	ri, err := sc.CharacterSetTable.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
+	//TODO: use the information_schema table instead, currently bypassing it to show currently-implemented charsets
+	//ri, err := sc.CharacterSetTable.RowIter(ctx, row)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return &showCharsetIter{originalIter: ri}, nil
 
-	return &showCharsetIter{originalIter: ri}, nil
+	var rows []sql.Row
+	iter := sql.NewCharacterSetsIterator()
+	for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
+		if charset.Encoder != nil && charset.BinaryCollation.Sorter() != nil && charset.DefaultCollation.Sorter() != nil {
+			rows = append(rows, sql.Row{
+				charset.Name,
+				charset.Description,
+				charset.DefaultCollation.String(),
+				uint64(charset.MaxLength),
+			})
+		}
+	}
+	return sql.RowsToRowIter(rows...), nil
 }
 
 type showCharsetIter struct {

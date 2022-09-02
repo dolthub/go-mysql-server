@@ -46,7 +46,7 @@ func (d *DummyResolvedDB) GetTableNames(ctx *sql.Context) ([]string, error) { re
 
 func (d *DummyResolvedDB) AddTable(name string, t sql.Table) {}
 
-func (d *DummyResolvedDB) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema) error {
+func (d *DummyResolvedDB) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
 	return nil
 }
 

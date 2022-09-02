@@ -127,6 +127,10 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
+
+	for _, ts := range queries.SkippedJoinScripts {
+		TestScript(t, harness, ts)
+	}
 }
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
@@ -216,6 +220,13 @@ func TestInfoSchema(t *testing.T, h Harness) {
 
 		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
 	})
+
+	for _, tt := range queries.SkippedInfoSchemaQueries {
+		t.Run(tt.Query, func(t *testing.T) {
+			t.Skip()
+			TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		})
+	}
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
@@ -1808,7 +1819,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		t9TableIndexable, ok := t12Table.(sql.IndexedTable)
+		t9TableIndexable, ok := t12Table.(sql.IndexAddressableTable)
 		require.True(t, ok)
 		t9Indexes, err := t9TableIndexable.GetIndexes(ctx)
 		require.NoError(t, err)
@@ -3987,6 +3998,16 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`, []sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}}, nil, nil)
 
+	// range framing without an order by clause
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+
 	// fixed frame size, 3 days
 	RunQuery(t, e, harness, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
 	RunQuery(t, e, harness, "INSERT INTO b VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-27'), (2,0,0, '2022-01-28'), (3,1,0,'2022-01-29'), (4,1,0,'2022-01-30'), (5,3,0,'2022-01-31')")
@@ -5812,12 +5833,18 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					sch, iter, err := engine.Query(ctx, query.Query)
-					if query.Error {
+					if query.Error || query.ErrKind != nil {
 						if err == nil {
 							_, err := sql.RowIterToRows(ctx, sch, iter)
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						} else {
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						}
 					} else {
 						require.NoError(t, err)
@@ -5841,10 +5868,6 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 	port := getEmptyPort(t)
 	for _, script := range queries.CharsetCollationWireTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := NewContextWithClient(harness, sql.Client{
-				User:    "root",
-				Address: "localhost",
-			})
 			serverConfig := server.Config{
 				Protocol:       "tcp",
 				Address:        fmt.Sprintf("localhost:%d", port),
@@ -5854,14 +5877,6 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				RunQueryWithContext(t, engine, harness, ctx, statement)
-			}
 
 			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
 			require.NoError(t, err)
@@ -5877,6 +5892,17 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			require.NoError(t, err)
 			_, err = conn.Exec("USE mydb;")
 			require.NoError(t, err)
+
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				_, err = conn.Exec(statement)
+				require.NoError(t, err)
+			}
+
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					r, err := conn.Query(query.Query)
@@ -5982,7 +6008,7 @@ func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBui
 						}
 						expectedEngineRow := make([]*string, len(engineRow))
 						for i := range engineRow {
-							sqlVal, err := sch[i].Type.SQL(nil, engineRow[i])
+							sqlVal, err := sch[i].Type.SQL(ctx, nil, engineRow[i])
 							if !assert.NoError(t, err) {
 								break
 							}

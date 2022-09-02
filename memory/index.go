@@ -54,6 +54,10 @@ func (idx *Index) Expressions() []string {
 	return exprs
 }
 
+func (idx *Index) CanSupport(...sql.Range) bool {
+	return true
+}
+
 func (idx *Index) IsUnique() bool {
 	return idx.Unique
 }
@@ -70,7 +74,7 @@ func (idx *Index) IndexType() string {
 }
 
 // NewLookup implements the interface sql.Index.
-func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
+func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}
@@ -148,8 +152,7 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 		}
 		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
 	}
-
-	return NewIndexLookup(ctx, idx, rangeCollectionExpr, ranges...), nil
+	return rangeCollectionExpr, nil
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
