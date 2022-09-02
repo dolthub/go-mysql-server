@@ -101,10 +101,9 @@ func applyBindingsHelper(ctx *sql.Context, n sql.Node, bindings map[string]sql.E
 			}
 			ne, _, err := transform.NodeExprs(n.WithSource(newSource), fixBindingsTransform)
 			return ne, transform.NewTree, err
-		// TODO: need to apply bindings to a filtered table as well
-		case *ResolvedTable: // not sure if this should implement expressioner
+		case *ResolvedTable:
 			tbl := n.Table
-			if pt, ok := tbl.(*ProcessTable); ok {
+			if pt, ok := n.Table.(*ProcessTable); ok {
 				tbl = pt.Underlying()
 			}
 			if ft, ok := tbl.(sql.FilteredTable); ok {
