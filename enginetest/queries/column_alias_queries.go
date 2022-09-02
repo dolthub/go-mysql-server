@@ -31,8 +31,8 @@ var BrokenAliasQueries = []QueryTest{
 		// This query crashes Dolt with "panic: unexpected type x"
 		// Seems likely to be coming from dual table's schema and dummy value.
 		// https://github.com/dolthub/dolt/issues/4256
-		Query:    `SELECT *, (select pk union select pk) as a from mydb;`,
-		Expected: []sql.Row{{1, 1}},
+		Query:    `SELECT *, (select i union select i) as a from mytable;`,
+		Expected: []sql.Row{{1, "first row", 1}, {2, "second row", 2}, {3, "third row", 3}},
 	},
 	{
 		// This query actually works correctly in GMS, but not in Dolt
@@ -58,14 +58,14 @@ var BrokenAliasQueries = []QueryTest{
 	{
 		// GMS returns the error "found HAVING clause with no GROUP BY", but MySQL executes
 		// this query without any problems.
-		Query:    "select t1.pk as a from mydb as t1 having a = t1.pk;",
-		Expected: []sql.Row{{1}},
+		Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
+		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
 		// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
 		// this query. It does seem odd that we are not selecting dt.two though. Perhaps MySQL sees those values are
 		// always going to be literals and optimizes?
-		Query:    "select 1 as a, one + 1 as mod1, dt.* from mydb as t1, (select 1, 2 from t) as dt (one, two) where dt.one > 0 group by one;",
+		Query:    "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
 		Expected: []sql.Row{{1}},
 	},
 }
