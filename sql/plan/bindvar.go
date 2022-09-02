@@ -66,6 +66,15 @@ func fixBindings(ctx *sql.Context, expr sql.Expression, bindings map[string]sql.
 	return expr, transform.SameTree, nil
 }
 
+func fixExprBindings(expr sql.Expression) sql.Expression {
+	switch e := expr.(type) {
+	case *expression.InTuple:
+		e.Children()
+		e.WithChildren()
+	}
+	return nil
+}
+
 func applyBindingsHelper(ctx *sql.Context, n sql.Node, bindings map[string]sql.Expression) (sql.Node, transform.TreeIdentity, error) {
 	fixBindingsTransform := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		return fixBindings(ctx, e, bindings)
@@ -101,23 +110,22 @@ func applyBindingsHelper(ctx *sql.Context, n sql.Node, bindings map[string]sql.E
 			if ft, ok := tbl.(sql.FilteredTable); ok {
 				var fixedFilters []sql.Expression
 				for _, filter := range ft.Filters() {
-					transform.NodeExprs(filter, fixBindingsTransform)
-					if val, found := bindings[filter.String()]; found {
-						fixedFilters = append(fixedFilters, val)
+					newFilter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+						if bindVar, ok := e.(*expression.BindVar); ok {
+							if val, found := bindings[bindVar.Name]; found {
+								return val, transform.NewTree, nil
+							}
+						}
+						return e, transform.SameTree, nil
+					})
+					if err != nil {
+						return nil, transform.SameTree, err
 					}
+					fixedFilters = append(fixedFilters, newFilter)
 				}
-				tbl = ft.WithFilters(ctx, fixedFilters)
-				n.Table = tbl
+				newTbl := ft.WithFilters(ctx, fixedFilters)
+				n.Table = newTbl
 				return n, transform.NewTree, nil
-
-				newTbl, same, err := transform.NodeExprs(ft, fixBindingsTransform)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if same {
-					return n, same, nil
-				}
-				return newTbl, transform.NewTree, nil
 			}
 		default:
 		}
