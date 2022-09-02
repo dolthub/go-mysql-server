@@ -6938,6 +6938,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
 	},
 	{
+		Query:    `SELECT t1.pk from one_pk join (one_pk t1 join one_pk t2 on t1.pk = t2.pk) on t1.pk = one_pk.pk and one_pk.pk = 1 join (one_pk t3 join one_pk t4 on t3.c1 is not null) on t3.pk = one_pk.pk and one_pk.c1 = 10`,
+		Expected: []sql.Row{{1}, {1}, {1}, {1}},
+	},
+	{
 		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
 		Expected: []sql.Row{{1}},
 	},
