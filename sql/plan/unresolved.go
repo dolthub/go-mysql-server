@@ -210,7 +210,7 @@ func NewDeferredTableFunction(tableFunction sql.TableFunction, database sql.Data
 }
 
 func (dtf *DeferredTableFunction) Resolved() bool {
-	return true
+	return false
 }
 
 func (dtf *DeferredTableFunction) String() string {

@@ -387,6 +387,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 	case
 		// OnceBeforeDefault
 		reresolveTablesId,
+		validatePriviledgesId,
 
 		// Default
 
@@ -430,6 +431,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		reresolveTablesId,
 		setTargetSchemasId,
 		parseColumnDefaultsId,
+		resolveTableFunctionsId,
 
 		// DefaultRules
 		resolveOrderbyLiteralsId,
