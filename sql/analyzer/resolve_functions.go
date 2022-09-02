@@ -18,7 +18,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -61,8 +60,6 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 
 		if hasBindVarArgs {
 			return n, transform.SameTree, nil
-			// TODO: need to have an already "resolved" table function node just like DeferredAsOfTable
-			return plan.NewDeferredTableFunction(tableFunction, database, utf.Arguments), transform.NewTree, nil
 		}
 
 		newInstance, err := tableFunction.NewInstance(ctx, database, utf.Arguments)

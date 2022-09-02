@@ -443,6 +443,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
+		flattenAggregationExprsId,
 
 		// OnceAfterDefault
 		pushdownFiltersId,
