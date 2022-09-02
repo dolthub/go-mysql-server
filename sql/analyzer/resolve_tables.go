@@ -346,7 +346,6 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 	}
 
 	if _, ok := toTable.(sql.FilteredTable); ok {
-		toTable.(sql.FilteredTable).HandledFilters(filters)
 		toTable = toTable.(sql.FilteredTable).WithFilters(ctx, filters)
 	}
 
