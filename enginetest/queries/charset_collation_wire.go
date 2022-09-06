@@ -229,6 +229,26 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 	},
 	{
+		Name: "Coercibility test using HEX",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
+				Expected: []sql.Row{{"1"}},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
+				Expected: []sql.Row{{"0"}},
+			},
+		},
+	},
+	{
 		Name: "ENUM collation handling",
 		SetUpScript: []string{
 			"SET character_set_results = 'binary';",
