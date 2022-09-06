@@ -343,6 +343,32 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		},
 	},
 	{
+		Name: "SET NAMES does not interfere with column charset",
+		SetUpScript: []string{
+			"SET NAMES utf8mb3;",
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 VARCHAR(100) COLLATE utf8mb4_0900_bin);",
+			"INSERT INTO test VALUES (1, 'a'), (2, 'b');",
+		},
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query:    "SELECT * FROM test ORDER BY v1 COLLATE utf8mb4_bin ASC;",
+				Expected: []sql.Row{{int64(1), "a"}, {int64(2), "b"}},
+			},
+			{
+				Query:   "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
+				ErrKind: sql.ErrCollationInvalidForCharSet,
+			},
+			{
+				Query:    "SELECT 'a' COLLATE utf8mb3_bin;",
+				Expected: []sql.Row{{"a"}},
+			},
+			{
+				Query:   "SELECT 'a' COLLATE utf8mb4_bin;",
+				ErrKind: sql.ErrCollationInvalidForCharSet,
+			},
+		},
+	},
+	{
 		Name: "ENUM collation handling",
 		SetUpScript: []string{
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf16_unicode_ci);",

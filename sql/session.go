@@ -41,6 +41,7 @@ const (
 	CurrentDBSessionVar              = "current_database"
 	AutoCommitSessionVar             = "autocommit"
 	characterSetConnectionSysVarName = "character_set_connection"
+	characterSetResultsSysVarName    = "character_set_results"
 	collationConnectionSysVarName    = "collation_connection"
 )
 
@@ -134,6 +135,8 @@ type Session interface {
 	SetConnectionId(connId uint32)
 	// GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
 	GetCharacterSet() CharacterSetID
+	// GetCharacterSetResults returns the result character set for this session (defined by the system variable `character_set_results`).
+	GetCharacterSetResults() CharacterSetID
 	// GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
 	GetCollation() CollationID
 }
@@ -320,6 +323,24 @@ func (s *BaseSession) GetCharacterSet() CharacterSetID {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	val, _ := s.systemVars[characterSetConnectionSysVarName]
+	if val == nil {
+		return CharacterSet_Invalid
+	}
+	charSet, err := ParseCharacterSet(val.(string))
+	if err != nil {
+		panic(err) // shouldn't happen
+	}
+	return charSet
+}
+
+// GetCharacterSetResults returns the result character set for this session (defined by the system variable `character_set_results`).
+func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	val, _ := s.systemVars[characterSetResultsSysVarName]
+	if val == nil {
+		return CharacterSet_Invalid
+	}
 	charSet, err := ParseCharacterSet(val.(string))
 	if err != nil {
 		panic(err) // shouldn't happen
@@ -332,6 +353,9 @@ func (s *BaseSession) GetCollation() CollationID {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	val, _ := s.systemVars[collationConnectionSysVarName]
+	if val == nil {
+		return Collation_Invalid
+	}
 	valStr := val.(string)
 	collation, err := ParseCollation(nil, &valStr, false)
 	if err != nil {
