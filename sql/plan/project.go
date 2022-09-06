@@ -15,7 +15,7 @@
 package plan
 
 import (
-	"strings"
+	"fmt"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -76,23 +76,26 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 func (p *Project) String() string {
 	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Project")
 	var exprs = make([]string, len(p.Projections))
 	for i, expr := range p.Projections {
 		exprs[i] = expr.String()
 	}
-	_ = pr.WriteNode("Project(%s)", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(p.Child.String())
+	columns := fmt.Sprintf("columns: %s", exprs)
+	_ = pr.WriteChildren(columns, p.Child.String())
 	return pr.String()
 }
 
 func (p *Project) DebugString() string {
 	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Project")
 	var exprs = make([]string, len(p.Projections))
 	for i, expr := range p.Projections {
 		exprs[i] = sql.DebugString(expr)
 	}
-	_ = pr.WriteNode("Project(%s)", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(sql.DebugString(p.Child))
+	columns := fmt.Sprintf("projections: %s", exprs)
+	_ = pr.WriteChildren(columns, sql.DebugString(p.Child))
+
 	return pr.String()
 }
 

@@ -34,92 +34,71 @@ func TestMergeUnionSchemas(t *testing.T) {
 	}{
 		{
 			"Unresolved is unchanged",
-			plan.NewUnion(
-				plan.NewUnresolvedTable("mytable", ""),
-				plan.NewUnresolvedTable("mytable", ""),
-			),
-			plan.NewUnion(
-				plan.NewUnresolvedTable("mytable", ""),
-				plan.NewUnresolvedTable("mytable", ""),
-			),
+			plan.NewUnion(plan.NewUnresolvedTable("mytable", ""), plan.NewUnresolvedTable("mytable", ""), false, nil, nil),
+			plan.NewUnion(plan.NewUnresolvedTable("mytable", ""), plan.NewUnresolvedTable("mytable", ""), false, nil, nil),
 			nil,
 		},
 		{
 			"Matching Schemas is Unchanged",
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable, nil, nil),
-				),
-				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
-					plan.NewResolvedTable(dualTable, nil, nil),
-				),
-			),
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable, nil, nil),
-				),
-				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
-					plan.NewResolvedTable(dualTable, nil, nil),
-				),
-			),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), false, nil, nil),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), false, nil, nil),
 			nil,
 		},
 		{
 			"Mismatched Lengths is error",
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable, nil, nil),
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewLiteral(int64(3), sql.Int64),
-						expression.NewLiteral(int64(6), sql.Int64),
-					},
-					plan.NewResolvedTable(dualTable, nil, nil),
-				),
-			),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), plan.NewProject(
+				[]sql.Expression{
+					expression.NewLiteral(int64(3), sql.Int64),
+					expression.NewLiteral(int64(6), sql.Int64),
+				},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), false, nil, nil),
 			nil,
 			errors.New("this is an error"),
 		},
 		{
 			"Mismatched Types Coerced to Strings",
-			plan.NewUnion(
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), plan.NewProject(
+				[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
+				plan.NewResolvedTable(dualTable, nil, nil),
+			), false, nil, nil),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias("1", expression.NewConvert(
+						expression.NewGetField(0, sql.Int64, "1", false), "char")),
+				},
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
 					plan.NewResolvedTable(dualTable, nil, nil),
 				),
+			), plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias("3", expression.NewConvert(
+						expression.NewGetField(0, sql.Int32, "3", false), "char")),
+				},
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
 					plan.NewResolvedTable(dualTable, nil, nil),
 				),
-			),
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewAlias("1", expression.NewConvert(
-							expression.NewGetField(0, sql.Int64, "1", false), "char")),
-					},
-					plan.NewProject(
-						[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-						plan.NewResolvedTable(dualTable, nil, nil),
-					),
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewAlias("3", expression.NewConvert(
-							expression.NewGetField(0, sql.Int32, "3", false), "char")),
-					},
-					plan.NewProject(
-						[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
-						plan.NewResolvedTable(dualTable, nil, nil),
-					),
-				),
-			),
+			), false, nil, nil),
 			nil,
 		},
 	}

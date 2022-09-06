@@ -243,10 +243,6 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
 		}
-		if _, ok := n.(*plan.RecursiveCte); ok {
-			return n, transform.SameTree, nil
-		}
-
 		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
 		nestingLevel++
 
@@ -568,6 +564,8 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	switch n.(type) {
 	case *plan.AddColumn, *plan.ModifyColumn:
 		shouldIndexChildNode = false
+	case *plan.RecursiveCte, *plan.Union:
+		shouldIndexChildNode = false
 	}
 
 	if shouldIndexChildNode {
@@ -631,6 +629,9 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	case *plan.ModifyColumn:
 		tbl := node.Table
 		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
+	case *plan.RecursiveCte, *plan.Union:
+		// opaque nodes have derived schemas
+		indexChildNode(node.(sql.BinaryNode).Left())
 	}
 
 	return columns, nil

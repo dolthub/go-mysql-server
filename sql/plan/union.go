@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -23,12 +24,20 @@ import (
 // Union is a node that returns everything in Left and then everything in Right
 type Union struct {
 	BinaryNode
+	Distinct   bool
+	Limit      sql.Expression
+	SortFields sql.SortFields
 }
 
+var _ sql.Expressioner = (*Union)(nil)
+
 // NewUnion creates a new Union node with the given children.
-func NewUnion(left, right sql.Node) *Union {
+func NewUnion(left, right sql.Node, distinct bool, limit sql.Expression, sortFields sql.SortFields) *Union {
 	return &Union{
 		BinaryNode: BinaryNode{left: left, right: right},
+		Distinct:   distinct,
+		Limit:      limit,
+		SortFields: sortFields,
 	}
 }
 
@@ -52,21 +61,97 @@ func (u *Union) Opaque() bool {
 	return true
 }
 
+func (u *Union) Resolved() bool {
+	res := u.Left().Resolved() && u.Right().Resolved()
+	if u.Limit != nil {
+		res = res && u.Limit.Resolved()
+	}
+	for _, sf := range u.SortFields {
+		res = res && sf.Column.Resolved()
+	}
+	return res
+}
+
+func (u *Union) WithDistinct(b bool) *Union {
+	ret := *u
+	ret.Distinct = b
+	return &ret
+}
+
+func (u *Union) WithLimit(e sql.Expression) *Union {
+	ret := *u
+	ret.Limit = e
+	return &ret
+}
+
+func (u *Union) Expressions() []sql.Expression {
+	var exprs []sql.Expression
+	if u.Limit != nil {
+		exprs = append(exprs, u.Limit)
+	}
+	if len(u.SortFields) > 0 {
+		exprs = append(exprs, u.SortFields.ToExpressions()...)
+	}
+	return exprs
+}
+
+func (u *Union) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	var expLim, expSort int
+	if u.Limit != nil {
+		expLim = 1
+	}
+	expSort = len(u.SortFields)
+
+	if len(exprs) != expLim+expSort {
+		return nil, fmt.Errorf("expected %d limit and %d sort fields", expLim, expSort)
+	} else if len(exprs) == 0 {
+		return u, nil
+	}
+
+	ret := *u
+	if expLim == 1 {
+		ret.Limit = exprs[0]
+		exprs = exprs[1:]
+	}
+	ret.SortFields = u.SortFields.FromExpressions(exprs...)
+	return &ret, nil
+}
+
 // RowIter implements the Node interface.
 func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Union")
-	li, err := u.left.RowIter(ctx, row)
+	var iter sql.RowIter
+	var err error
+	iter, err = u.left.RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
 	}
-	ui := &unionIter{
-		li,
-		func(ctx *sql.Context) (sql.RowIter, error) {
+	iter = &unionIter{
+		cur: iter,
+		nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
 			return u.right.RowIter(ctx, row)
 		},
 	}
-	return sql.NewSpanIter(span, ui), nil
+	if u.Distinct {
+		iter = newDistinctIter(ctx, iter)
+	}
+	if u.Limit != nil && len(u.SortFields) > 0 {
+		limit, err := getInt64Value(ctx, u.Limit)
+		if err != nil {
+			return nil, err
+		}
+		iter = newTopRowsIter(u.SortFields, limit, false, iter)
+	} else if u.Limit != nil {
+		limit, err := getInt64Value(ctx, u.Limit)
+		if err != nil {
+			return nil, err
+		}
+		iter = &limitIter{limit: limit, childIter: iter}
+	} else if len(u.SortFields) > 0 {
+		iter = newSortIter(u.SortFields, iter)
+	}
+	return sql.NewSpanIter(span, iter), nil
 }
 
 // WithChildren implements the Node interface.
@@ -74,7 +159,7 @@ func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 2)
 	}
-	return NewUnion(children[0], children[1]), nil
+	return NewUnion(children[0], children[1], u.Distinct, u.Limit, u.SortFields), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -85,14 +170,30 @@ func (u *Union) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 func (u Union) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Union")
-	_ = pr.WriteChildren(u.left.String(), u.right.String())
+	children := []string{fmt.Sprintf("distinct: %t", u.Distinct)}
+	if len(u.SortFields) > 0 {
+		children = append(children, fmt.Sprintf("sortFields: %s", u.SortFields.ToExpressions()))
+	}
+	if u.Limit != nil {
+		children = append(children, fmt.Sprintf("limit: %s", u.Limit))
+	}
+	children = append(children, u.left.String(), u.right.String())
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
 func (u Union) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Union")
-	_ = pr.WriteChildren(sql.DebugString(u.left), sql.DebugString(u.right))
+	children := []string{fmt.Sprintf("distinct: %t", u.Distinct)}
+	if len(u.SortFields) > 0 {
+		children = append(children, fmt.Sprintf("sortFields: %s", u.SortFields.ToExpressions()))
+	}
+	if u.Limit != nil {
+		children = append(children, fmt.Sprintf("limit: %s", u.Limit))
+	}
+	children = append(children, sql.DebugString(u.left), sql.DebugString(u.right))
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
