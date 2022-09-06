@@ -143,9 +143,9 @@ var _ sql.Expressioner = (*DeferredAsOfTable)(nil)
 var _ sql.UnresolvedTable = (*DeferredAsOfTable)(nil)
 
 func NewDeferredAsOfTable(t *ResolvedTable, asOf sql.Expression) *DeferredAsOfTable {
-	if asOf == nil {
-		panic("Cannot create DeferredAsOfTable with nil asOf expression")
-	}
+	//if asOf == nil {
+	//	panic("Cannot create DeferredAsOfTable with nil asOf expression")
+	//}
 	return &DeferredAsOfTable{
 		ResolvedTable: t,
 		asOf:          asOf,
@@ -153,6 +153,9 @@ func NewDeferredAsOfTable(t *ResolvedTable, asOf sql.Expression) *DeferredAsOfTa
 }
 
 func (t *DeferredAsOfTable) Expressions() []sql.Expression {
+	if t.asOf == nil {
+		return nil
+	}
 	return []sql.Expression{t.asOf}
 }
 
@@ -191,4 +194,16 @@ func (t *DeferredAsOfTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
 // AsOf implements sql.UnresolvedTable
 func (t *DeferredAsOfTable) AsOf() sql.Expression {
 	return t.asOf
+}
+
+type DeferredFilteredTable struct {
+	*ResolvedTable
+}
+
+var _ sql.Node = (*DeferredFilteredTable)(nil)
+
+func NewDeferredFilteredTable(t *ResolvedTable) *DeferredFilteredTable {
+	return &DeferredFilteredTable{
+		ResolvedTable: t,
+	}
 }

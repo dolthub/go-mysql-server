@@ -70,7 +70,7 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 	fixBindingsTransform := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		return fixBindings(e, bindings)
 	}
-	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	node, same, err := transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *IndexedJoin:
 			// *plan.IndexedJoin cannot implement sql.Expressioner
@@ -92,8 +92,29 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 			}
 			ne, _, err := transform.NodeExprs(n.WithSource(newSource), fixBindingsTransform)
 			return ne, transform.NewTree, err
-		default:
+		case *DeferredFilteredTable:
+			ft := n.Table.(sql.FilteredTable)
+			var fixedFilters []sql.Expression
+			for _, filter := range ft.Filters() {
+				newFilter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if bindVar, ok := e.(*expression.BindVar); ok {
+						if val, found := bindings[bindVar.Name]; found {
+							return val, transform.NewTree, nil
+						}
+					}
+					return e, transform.SameTree, nil
+				})
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				fixedFilters = append(fixedFilters, newFilter)
+			}
+
+			newTbl := ft.WithFilters(nil, fixedFilters)
+			n.ResolvedTable.Table = newTbl
+			return n.ResolvedTable, transform.NewTree, nil
 		}
 		return transform.NodeExprs(node, fixBindingsTransform)
 	})
+	return node, same, err
 }
