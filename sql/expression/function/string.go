@@ -93,7 +93,11 @@ type Hex struct {
 var _ sql.FunctionExpression = (*Hex)(nil)
 
 func NewHex(arg sql.Expression) sql.Expression {
-	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
+	// Although this may seem convoluted, the Collation_Default is NOT guaranteed to be the character set's default
+	// collation. This ensures that you're getting the character set's default collation, and also works in the event
+	// that the Collation_Default is ever changed.
+	retType := sql.CreateLongText(sql.Collation_Default.CharacterSet().DefaultCollation())
+	return &Hex{NewUnaryFunc(arg, "HEX", retType)}
 }
 
 // Description implements sql.FunctionExpression
@@ -112,7 +116,6 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// TODO: add cases for geometry, point, linestring, and polygon
 	switch val := arg.(type) {
 	case string:
 		childType := h.Child.Type()

@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -115,4 +116,82 @@ func (ce *CollatedExpression) Children() []sql.Expression {
 // Child returns the inner expression.
 func (ce *CollatedExpression) Child() sql.Expression {
 	return ce.expr
+}
+
+// GetCollationViaCoercion returns the collation and coercibility value that best represents the expression. This is
+// determined by the rules of coercibility as defined by MySQL
+// (https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html). In short, the lower the value of the
+// returned integer, the more explicit the defined collation. A value of 0 indicates that an explicit COLLATE was given.
+// Returns sql.Collation_Invalid if the expression in invalid in some way.
+//
+//TODO: This function's implementation is extremely basic, and is sure to return an incorrect result in some cases. A
+// more accurate implementation would have each expression return its own collation and coercion values.
+func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
+	if expr == nil {
+		return sql.Collation_Default, 6
+	}
+	collation := sql.Collation_Default
+	if typeWithCollation, ok := expr.Type().(sql.TypeWithCollation); ok {
+		collation = typeWithCollation.Collation()
+	} else {
+		// From the docs (which seems applicable): The collation of a numeric or temporal value has a coercibility of 5.
+		return sql.Collation_Default, 5
+	}
+
+	switch expr.(type) {
+	case *CollatedExpression:
+		return collation, 0
+	case *GetField, *ProcedureParam, *UserVar, *SystemVar:
+		return collation, 2
+	case *Literal:
+		return collation, 4
+	default:
+		if funcExpr, ok := expr.(sql.FunctionExpression); ok {
+			switch funcExpr.FunctionName() {
+			case "concat":
+				coercibility := 6
+				var childrenWithCoercibility []sql.CollationID
+				for _, child := range funcExpr.Children() {
+					childCollation, childCoercibility := GetCollationViaCoercion(child)
+					if childCollation == sql.Collation_Invalid {
+						continue
+					}
+					if childCoercibility < coercibility {
+						childrenWithCoercibility = childrenWithCoercibility[:0] // Reset slice while retaining array
+						coercibility = childCoercibility
+					}
+					if childCoercibility == coercibility {
+						childrenWithCoercibility = append(childrenWithCoercibility, childCollation)
+					}
+				}
+
+				if len(childrenWithCoercibility) == 0 {
+					return sql.Collation_Default, 1 // This should never happen, but we're checking just in case
+				}
+				// Check if all children have the same character set, and apply the _bin precedence rule
+				charset := childrenWithCoercibility[0].CharacterSet()
+				collation = childrenWithCoercibility[0]
+				for i := 1; i < len(childrenWithCoercibility); i++ {
+					childCollation := childrenWithCoercibility[i]
+					//TODO: If one character set is Unicode and the other is non-Unicode, we shouldn't error but should
+					// instead use the Unicode character set
+					if childCollation.CharacterSet() != charset {
+						return sql.Collation_Invalid, 6
+					}
+					if !strings.HasSuffix(collation.Name(), "_bin") && strings.HasSuffix(childCollation.Name(), "_bin") {
+						collation = childCollation
+					}
+				}
+
+				return collation, 1
+			case "user", "current_user", "version":
+				return collation, 3
+			default:
+				// It appears that many functions return a value of 4 (using the function COERCIBILITY).
+				return collation, 4
+			}
+		}
+		// Some general expressions returns a value of 5, so we just return 5 for all unmatched expressions.
+		return collation, 5
+	}
 }
