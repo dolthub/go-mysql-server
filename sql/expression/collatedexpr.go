@@ -124,7 +124,7 @@ func (ce *CollatedExpression) Child() sql.Expression {
 // returned integer, the more explicit the defined collation. A value of 0 indicates that an explicit COLLATE was given.
 // Returns sql.Collation_Invalid if the expression in invalid in some way.
 //
-//TODO: This function's implementation is extremely basic, and is sure to return an incorrect result in some cases. A
+// TODO: This function's implementation is extremely basic, and is sure to return an incorrect result in some cases. A
 // more accurate implementation would have each expression return its own collation and coercion values.
 func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 	if expr == nil {
