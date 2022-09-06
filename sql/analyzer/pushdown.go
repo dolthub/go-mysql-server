@@ -33,6 +33,26 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
+	var hasBindVars bool
+	transform.Inspect(n, func(node sql.Node) bool {
+		if fn, ok := node.(*plan.Filter); ok {
+			for _, expr := range fn.Expressions() {
+				transform.InspectExpr(expr, func(e sql.Expression) bool {
+					if _, ok := e.(*expression.BindVar); ok {
+						hasBindVars = true
+						return true
+					}
+					return false
+				})
+			}
+		}
+		return !hasBindVars // stop recursing if bindvars already found
+	})
+
+	if hasBindVars {
+		return n, transform.SameTree, nil
+	}
+
 	return pushdownFiltersAtNode(ctx, a, n, scope, sel)
 }
 

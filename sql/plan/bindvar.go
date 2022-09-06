@@ -92,31 +92,6 @@ func applyBindingsHelper(ctx *sql.Context, n sql.Node, bindings map[string]sql.E
 			}
 			ne, _, err := transform.NodeExprs(n.WithSource(newSource), fixBindingsTransform)
 			return ne, transform.NewTree, err
-		case *ResolvedTable:
-			tbl := n.Table
-			if pt, ok := n.Table.(*ProcessTable); ok {
-				tbl = pt.Underlying()
-			}
-			if ft, ok := tbl.(sql.FilteredTable); ok {
-				var fixedFilters []sql.Expression
-				for _, filter := range ft.Filters() {
-					newFilter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-						if bindVar, ok := e.(*expression.BindVar); ok {
-							if val, found := bindings[bindVar.Name]; found {
-								return val, transform.NewTree, nil
-							}
-						}
-						return e, transform.SameTree, nil
-					})
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-					fixedFilters = append(fixedFilters, newFilter)
-				}
-				newTbl := ft.WithFilters(ctx, fixedFilters)
-				n.Table = newTbl
-				return n, transform.NewTree, nil
-			}
 		default:
 		}
 		return transform.NodeExprs(node, fixBindingsTransform)
