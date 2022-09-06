@@ -432,6 +432,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		setTargetSchemasId,
 		parseColumnDefaultsId,
 		resolveTableFunctionsId,
+		validatePriviledgesId,
 
 		// DefaultRules
 		resolveOrderbyLiteralsId,
