@@ -48,6 +48,8 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return GetDeletable(node.Left())
 	case sql.TableWrapper:
 		return getDeletableTable(node.Underlying())
+	case *DeferredFilteredTable:
+		return GetDeletable(node.ResolvedTable)
 	}
 	if len(node.Children()) > 1 {
 		return nil, ErrDeleteFromNotSupported.New()

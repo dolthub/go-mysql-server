@@ -93,7 +93,10 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 			ne, _, err := transform.NodeExprs(n.WithSource(newSource), fixBindingsTransform)
 			return ne, transform.NewTree, err
 		case *DeferredFilteredTable:
-			ft := n.Table.(sql.FilteredTable)
+			ft, ok := n.Table.(sql.FilteredTable)
+			if !ok {
+				return n.ResolvedTable, transform.NewTree, nil
+			}
 			var fixedFilters []sql.Expression
 			for _, filter := range ft.Filters() {
 				newFilter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
