@@ -396,7 +396,7 @@ func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expressi
 func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	lb.rang = make(sql.Range, len(lb.cets))
 	lb.emptyRange = false
-	lb.isPointLookup = true
+	lb.isPointLookup = len(key) == len(lb.cets)
 	var i int
 	for i < len(key) {
 		if key[i] == nil {
@@ -435,7 +435,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 	}
 
 	lb.emptyRange = false
-	lb.isPointLookup = true
+	lb.isPointLookup = len(key) == len(lb.cets)
 	for i := range key {
 		if key[i] == nil {
 			lb.emptyRange = true

@@ -14,10 +14,6 @@
 
 package sql
 
-import (
-	"fmt"
-)
-
 // Index is the representation of an index, and also creates an IndexLookup when given a collection of ranges.
 type Index interface {
 	// ID returns the identifier of the index.
@@ -52,7 +48,6 @@ type Index interface {
 // information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
 type IndexLookup struct {
-	fmt.Stringer
 	Index         Index
 	Ranges        RangeCollection
 	IsPointLookup bool
