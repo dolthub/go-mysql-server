@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/mitchellh/hashstructure"
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -12,12 +13,12 @@ import (
 
 type sumBuffer struct {
 	isnil bool
-	sum   float64
+	sum   interface{}
 	expr  sql.Expression
 }
 
 func NewSumBuffer(child sql.Expression) *sumBuffer {
-	return &sumBuffer{true, float64(0), child}
+	return &sumBuffer{true, decimal.NewFromInt(0), child}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -31,17 +32,45 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	val, err := sql.Float64.Convert(v)
-	if err != nil {
-		val = float64(0)
-	}
-
 	if m.isnil {
-		m.sum = 0
+		m.sum = decimal.NewFromInt(0)
 		m.isnil = false
 	}
 
-	m.sum += val.(float64)
+	switch n := v.(type) {
+	case float64:
+		val, err := sql.Float64.Convert(n)
+		if err != nil {
+			val = float64(0)
+		}
+		if m.isnil {
+			m.sum = 0
+			m.isnil = false
+		}
+		sum, err := sql.Float64.Convert(m.sum)
+		if err != nil {
+			sum = float64(0)
+		}
+		m.sum = sum.(float64) + val.(float64)
+	case decimal.Decimal:
+		if sum, ok := m.sum.(decimal.Decimal); ok {
+			m.sum = sum.Add(n)
+		} else {
+			m.sum = n
+		}
+	case string:
+		p, s := expression.GetDecimalPrecisionAndScale(n)
+		dt, err := sql.CreateDecimalType(uint8(p), uint8(s))
+		val, err := dt.Convert(v)
+		if err != nil {
+			val = decimal.NewFromInt(0)
+		}
+		if sum, ok := m.sum.(decimal.Decimal); ok {
+			m.sum = sum.Add(val.(decimal.Decimal))
+		} else {
+			m.sum = val.(decimal.Decimal)
+		}
+	}
 
 	return nil
 }

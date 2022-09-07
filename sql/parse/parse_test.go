@@ -2235,8 +2235,8 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewAlias("1.0 * a + 2.0 * b",
 				expression.NewPlus(
-					expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
-					expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
+					expression.NewMult(expression.NewLiteral("1.0", sql.LongText), expression.NewUnresolvedColumn("a")),
+					expression.NewMult(expression.NewLiteral("2.0", sql.LongText), expression.NewUnresolvedColumn("b")),
 				),
 			),
 		},
