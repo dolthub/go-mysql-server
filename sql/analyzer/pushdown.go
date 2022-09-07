@@ -22,6 +22,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// filterHasBindVar looks for any BindVars found in filter nodes
+func filterHasBindVar(filter sql.Node) bool {
+	var hasBindVar bool
+	transform.Inspect(filter, func(node sql.Node) bool {
+		if fn, ok := node.(*plan.Filter); ok {
+			for _, expr := range fn.Expressions() {
+				transform.InspectExpr(expr, func(e sql.Expression) bool {
+					if _, ok := e.(*expression.BindVar); ok {
+						hasBindVar = true
+						return true
+					}
+					return false
+				})
+			}
+		}
+		return !hasBindVar // stop recursing if bindvar already found
+	})
+	return hasBindVar
+}
+
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
 // sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
 // sql.IndexAddressableTable will get an appropriate index lookup applied.
@@ -34,23 +54,8 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	}
 
 	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
-	var hasBindVars bool
-	transform.Inspect(n, func(node sql.Node) bool {
-		if fn, ok := node.(*plan.Filter); ok {
-			for _, expr := range fn.Expressions() {
-				transform.InspectExpr(expr, func(e sql.Expression) bool {
-					if _, ok := e.(*expression.BindVar); ok {
-						hasBindVars = true
-						return true
-					}
-					return false
-				})
-			}
-		}
-		return !hasBindVars // stop recursing if bindvars already found
-	})
 
-	if !hasBindVars {
+	if !filterHasBindVar(n) {
 		return node, same, err
 	}
 

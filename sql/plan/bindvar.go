@@ -70,7 +70,7 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 	fixBindingsTransform := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		return fixBindings(e, bindings)
 	}
-	node, same, err := transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *IndexedJoin:
 			// *plan.IndexedJoin cannot implement sql.Expressioner
@@ -116,5 +116,4 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 		}
 		return transform.NodeExprs(node, fixBindingsTransform)
 	})
-	return node, same, err
 }
