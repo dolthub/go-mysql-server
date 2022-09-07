@@ -396,6 +396,10 @@ var SkippedJoinQueryTests = []QueryTest{
 			{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {7, 7, 7},
 		},
 	},
+	{
+		Query:    "with recursive a(x,y) as (select i,i from mytable where i < 4 union select a.x, mytable.i from a join mytable on a.x+1 = mytable.i limit 2) select * from a;",
+		Expected: []sql.Row{{1, 1}, {2, 2}},
+	},
 }
 
 var SkippedJoinScripts = []ScriptTest{

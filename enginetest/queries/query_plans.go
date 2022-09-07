@@ -25,7 +25,8 @@ type QueryPlanTest struct {
 var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT mytable.i FROM mytable INNER JOIN othertable ON (mytable.i = othertable.i2) LEFT JOIN othertable T4 ON (mytable.i = T4.i2) ORDER BY othertable.i2, T4.s2`,
-		ExpectedPlan: "Project(mytable.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i]\n" +
 			" └─ Sort(othertable.i2 ASC, T4.s2 ASC)\n" +
 			"     └─ LeftIndexedJoin(mytable.i = T4.i2)\n" +
 			"         ├─ IndexedJoin(mytable.i = othertable.i2)\n" +
@@ -65,7 +66,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY pk1, pk2`,
-		ExpectedPlan: "Project(two_pk.pk1 as one, two_pk.pk2 as two)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk1 as one, two_pk.pk2 as two]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -74,7 +76,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY one, two`,
-		ExpectedPlan: "Project(two_pk.pk1 as one, two_pk.pk2 as two)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk1 as one, two_pk.pk2 as two]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -83,7 +86,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
-		ExpectedPlan: "Project(t1.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.i]\n" +
 			" └─ IndexedJoin(t1.i = (t2.i + 1))\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
@@ -102,7 +106,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `select row_number() over (order by i desc), mytable.i as i2 
 				from mytable join othertable on i = i2 order by 1`,
 		ExpectedPlan: "Sort(row_number() over (order by i desc) ASC)\n" +
-			" └─ Project(row_number() over ( order by mytable.i DESC) as row_number() over (order by i desc), i2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [row_number() over ( order by mytable.i DESC) as row_number() over (order by i desc), i2]\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i as i2)\n" +
 			"         └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"             ├─ Table(mytable)\n" +
@@ -153,7 +158,8 @@ var PlanTests = []QueryPlanTest{
 				where mytable.i = 2
 				order by 1`,
 		ExpectedPlan: "Sort(row_number() over (order by i desc) ASC)\n" +
-			" └─ Project(row_number() over ( order by mytable.i DESC) as row_number() over (order by i desc), i2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [row_number() over ( order by mytable.i DESC) as row_number() over (order by i desc), i2]\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i as i2)\n" +
 			"         └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
@@ -169,8 +175,10 @@ var PlanTests = []QueryPlanTest{
 		Query: `INSERT INTO mytable(i,s) SELECT t1.i, 'hello' FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
 		ExpectedPlan: "Insert(i, s)\n" +
 			" ├─ Table(mytable)\n" +
-			" └─ Project(i, s)\n" +
-			"     └─ Project(t1.i, 'hello')\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [i, s]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [t1.i, 'hello']\n" +
 			"         └─ IndexedJoin(t1.i = (t2.i + 1))\n" +
 			"             ├─ Filter(t2.i = 1)\n" +
 			"             │   └─ TableAlias(t2)\n" +
@@ -187,7 +195,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(t1, t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
-		ExpectedPlan: "Project(t1.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.i]\n" +
 			" └─ InnerJoin(t1.i = (t2.i + 1))\n" +
 			"     ├─ Filter(t1.i = 2)\n" +
 			"     │   └─ TableAlias(t1)\n" +
@@ -205,7 +214,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
-		ExpectedPlan: "Project(t1.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.i]\n" +
 			" └─ IndexedJoin(t1.i = (t2.i + 1))\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
@@ -222,7 +232,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(t1, t2, t3) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
-		ExpectedPlan: "Project(t1.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.i]\n" +
 			" └─ IndexedJoin(t1.i = (t2.i + 1))\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
@@ -239,7 +250,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
-		ExpectedPlan: "Project(t1.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.i]\n" +
 			" └─ IndexedJoin(t1.i = (t2.i + 1))\n" +
 			"     ├─ Filter(t2.i = 1)\n" +
 			"     │   └─ TableAlias(t2)\n" +
@@ -256,7 +268,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2`,
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
@@ -267,7 +280,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR s = s2`,
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ IndexedJoin((mytable.i = othertable.i2) OR (mytable.s = othertable.s2))\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i s]\n" +
@@ -282,7 +296,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ot ON i = i2 OR s = s2`,
-		ExpectedPlan: "Project(mytable.i, ot.i2, ot.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, ot.i2, ot.s2]\n" +
 			" └─ IndexedJoin((mytable.i = ot.i2) OR (mytable.s = ot.s2))\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i s]\n" +
@@ -298,7 +313,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2`,
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ IndexedJoin((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, ' ', 1) = othertable.s2))\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i s]\n" +
@@ -313,7 +329,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR SUBSTRING_INDEX(s, ' ', 2) = s2`,
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ IndexedJoin(((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, ' ', 1) = othertable.s2)) OR (SUBSTRING_INDEX(mytable.s, ' ', 2) = othertable.s2))\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i s]\n" +
@@ -332,30 +349,33 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 UNION SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2`,
-		ExpectedPlan: "Distinct\n" +
-			" └─ Union\n" +
-			"     ├─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			"     │   └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"     │       ├─ Table(mytable)\n" +
-			"     │       │   └─ columns: [i]\n" +
-			"     │       └─ IndexedTableAccess(othertable)\n" +
-			"     │           ├─ index: [othertable.i2]\n" +
-			"     │           └─ columns: [s2 i2]\n" +
-			"     └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			"         └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"             ├─ Table(mytable)\n" +
-			"             │   └─ columns: [i]\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ Project\n" +
+			" │   ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
+			" │   └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			" │       ├─ Table(mytable)\n" +
+			" │       │   └─ columns: [i]\n" +
+			" │       └─ IndexedTableAccess(othertable)\n" +
+			" │           ├─ index: [othertable.i2]\n" +
+			" │           └─ columns: [s2 i2]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
+			"     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"         ├─ Table(mytable)\n" +
+			"         │   └─ columns: [i]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub INNER JOIN othertable ot ON sub.i = ot.i2`,
-		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sub.i, sub.i2, sub.s2, ot.i2, ot.s2]\n" +
 			" └─ IndexedJoin(sub.i = ot.i2)\n" +
 			"     ├─ SubqueryAlias(sub)\n" +
-			"     │   └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"     │           ├─ Table(mytable)\n" +
 			"     │           │   └─ columns: [i]\n" +
@@ -370,10 +390,12 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2`,
-		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sub.i, sub.i2, sub.s2, ot.i2, ot.s2]\n" +
 			" └─ IndexedJoin(sub.i = ot.i2)\n" +
 			"     ├─ SubqueryAlias(sub)\n" +
-			"     │   └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"     │           ├─ Table(mytable)\n" +
 			"     │           │   └─ columns: [i]\n" +
@@ -388,7 +410,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM othertable ot LEFT JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 WHERE CONVERT(s2, signed) <> 0) sub ON sub.i = ot.i2 WHERE ot.i2 > 0`,
-		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sub.i, sub.i2, sub.s2, ot.i2, ot.s2]\n" +
 			" └─ LeftJoin(sub.i = ot.i2)\n" +
 			"     ├─ Filter(ot.i2 > 0)\n" +
 			"     │   └─ TableAlias(ot)\n" +
@@ -399,7 +422,8 @@ var PlanTests = []QueryPlanTest{
 			"     └─ HashLookup(child: (sub.i), lookup: (ot.i2))\n" +
 			"         └─ CachedResults\n" +
 			"             └─ SubqueryAlias(sub)\n" +
-			"                 └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"                     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"                         ├─ Table(mytable)\n" +
 			"                         │   └─ columns: [i]\n" +
@@ -423,7 +447,8 @@ var PlanTests = []QueryPlanTest{
 			" └─ HashLookup(child: (j.pk), lookup: (i.pk))\n" +
 			"     └─ CachedResults\n" +
 			"         └─ SubqueryAlias(j)\n" +
-			"             └─ Project(one_pk.pk, RAND() as r)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [one_pk.pk, RAND() as r]\n" +
 			"                 └─ Table(one_pk)\n" +
 			"                     └─ columns: [pk]\n" +
 			"",
@@ -432,11 +457,14 @@ var PlanTests = []QueryPlanTest{
 		Query: `INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2`,
 		ExpectedPlan: "Insert(i, s)\n" +
 			" ├─ Table(mytable)\n" +
-			" └─ Project(i, s)\n" +
-			"     └─ Project((sub.i + 10), ot.s2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [i, s]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [(sub.i + 10), ot.s2]\n" +
 			"         └─ IndexedJoin(sub.i = ot.i2)\n" +
 			"             ├─ SubqueryAlias(sub)\n" +
-			"             │   └─ Project(mytable.i)\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [mytable.i]\n" +
 			"             │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"             │           ├─ Table(mytable)\n" +
 			"             │           │   └─ columns: [i]\n" +
@@ -451,8 +479,10 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)`,
-		ExpectedPlan: "Project(mytable.i, selfjoin.i)\n" +
-			" └─ Filter(selfjoin.i IN (Project(1)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, selfjoin.i]\n" +
+			" └─ Filter(selfjoin.i IN (Project\n" +
+			"     ├─ columns: [1]\n" +
 			"     └─ Table(dual)\n" +
 			"    ))\n" +
 			"     └─ IndexedJoin(mytable.i = selfjoin.i)\n" +
@@ -464,7 +494,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2`,
-		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
@@ -475,7 +506,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM othertable JOIN mytable ON i = i2`,
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
 			"     ├─ Table(othertable)\n" +
 			"     │   └─ columns: [s2 i2]\n" +
@@ -517,7 +549,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i2 = i`,
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
@@ -528,7 +561,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i2 = i`,
-		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
@@ -589,7 +623,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
-		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
 			" └─ InnerJoin(othertable.i2 = mytable.i)\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
@@ -602,7 +637,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT s2, i2, i FROM mytable LEFT JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
-		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
 			" └─ LeftJoin(othertable.i2 = mytable.i)\n" +
 			"     ├─ Table(mytable)\n" +
 			"     │   └─ columns: [i]\n" +
@@ -615,7 +651,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT s2, i2, i FROM (SELECT * FROM mytable) mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
-		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
 			" └─ RightJoin(othertable.i2 = mytable.i)\n" +
 			"     ├─ HashLookup(child: (mytable.i), lookup: (othertable.i2))\n" +
 			"     │   └─ CachedResults\n" +
@@ -639,7 +676,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.s is not null`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ Filter(NOT(a.s IS NULL))\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -655,7 +693,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(b, a) */ a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.s is not null`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -669,7 +708,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.s not in ('1', '2', '3', '4')`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ Filter(NOT((a.s HASH IN ('1', '2', '3', '4'))))\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -685,7 +725,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ Filter(a.i HASH IN (1, 2, 3, 4))\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -829,7 +870,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -842,7 +884,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.s = b.i OR a.i = 1`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin((a.s = b.i) OR (a.i = 1))\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -854,7 +897,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where NOT(a.i = b.s OR a.s = b.i)`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin(NOT(((a.i = b.s) OR (a.s = b.i))))\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -866,7 +910,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -878,7 +923,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i >= b.i`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin(a.i >= b.i)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -890,7 +936,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin\n" +
 			"     ├─ Filter(a.i = a.s)\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -902,7 +949,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin\n" +
 			"     ├─ Filter(a.i HASH IN (2, 432, 7))\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -916,7 +964,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -940,7 +989,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin((c.i = d.s) OR (c.i = 2))\n" +
 			"     ├─ InnerJoin(b.i = c.i)\n" +
 			"     │   ├─ InnerJoin(a.i = b.i)\n" +
@@ -960,7 +1010,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin\n" +
 			"     ├─ InnerJoin(b.i = c.i)\n" +
 			"     │   ├─ InnerJoin(a.i = b.i)\n" +
@@ -979,7 +1030,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -992,7 +1044,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i OR a.i = b.s`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin((a.i = b.i) OR (a.i = b.s))\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -1009,7 +1062,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where NOT(a.i = b.s OR a.s = b.i)`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin(NOT(((a.i = b.s) OR (a.s = b.i))))\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -1021,7 +1075,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -1033,7 +1088,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i >= b.i`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin(a.i >= b.i)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -1045,7 +1101,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.i`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin\n" +
 			"     ├─ Filter(a.i = a.i)\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -1057,7 +1114,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -1081,7 +1139,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin((c.i = d.s) OR (c.i = 2))\n" +
 			"     ├─ InnerJoin(b.i = c.i)\n" +
 			"     │   ├─ InnerJoin(a.i = b.i)\n" +
@@ -1101,7 +1160,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin\n" +
 			"     ├─ InnerJoin(b.s = c.s)\n" +
 			"     │   ├─ InnerJoin(a.i = b.i)\n" +
@@ -1120,7 +1180,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i BETWEEN 10 AND 20`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ Filter(a.i BETWEEN 10 AND 20)\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -1141,7 +1202,8 @@ var PlanTests = []QueryPlanTest{
 			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
 			ORDER BY lefttable.i ASC`,
 		ExpectedPlan: "Sort(lefttable.i ASC)\n" +
-			" └─ Project(lefttable.i, righttable.s)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [lefttable.i, righttable.s]\n" +
 			"     └─ InnerJoin((lefttable.i = righttable.i) AND (righttable.s = lefttable.s))\n" +
 			"         ├─ SubqueryAlias(lefttable)\n" +
 			"         │   └─ Table(mytable)\n" +
@@ -1155,7 +1217,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT s2, i2, i FROM mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
-		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
 			" └─ RightIndexedJoin(othertable.i2 = mytable.i)\n" +
 			"     ├─ SubqueryAlias(othertable)\n" +
 			"     │   └─ Table(othertable)\n" +
@@ -1270,7 +1333,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1`,
-		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ RightIndexedJoin(mytable.i = (othertable.i2 - 1))\n" +
 			"     ├─ Table(othertable)\n" +
 			"     │   └─ columns: [s2 i2]\n" +
@@ -1296,7 +1360,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp`,
-		ExpectedPlan: "Project(t1.Timestamp)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.Timestamp]\n" +
 			" └─ IndexedJoin(t1.Timestamp = t2.Timestamp)\n" +
 			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ Table(reservedWordsTable)\n" +
@@ -1317,7 +1382,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 OR one_pk.c2 = two_pk.c3`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ InnerJoin(((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2)) OR (one_pk.c2 = two_pk.c3))\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk c2]\n" +
@@ -1349,7 +1415,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk <=> two_pk.pk1 AND one_pk.pk = two_pk.pk2`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ LeftIndexedJoin((one_pk.pk <=> two_pk.pk1) AND (one_pk.pk = two_pk.pk2))\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
@@ -1360,7 +1427,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk = two_pk.pk1 AND one_pk.pk <=> two_pk.pk2`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ LeftIndexedJoin((one_pk.pk = two_pk.pk1) AND (one_pk.pk <=> two_pk.pk2))\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
@@ -1371,7 +1439,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk <=> two_pk.pk1 AND one_pk.pk <=> two_pk.pk2`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ LeftIndexedJoin((one_pk.pk <=> two_pk.pk1) AND (one_pk.pk <=> two_pk.pk2))\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
@@ -1382,7 +1451,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ RightIndexedJoin((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2))\n" +
 			"     ├─ Table(two_pk)\n" +
 			"     │   └─ columns: [pk1 pk2]\n" +
@@ -1528,7 +1598,8 @@ var PlanTests = []QueryPlanTest{
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1`,
 		ExpectedPlan: "Sort(dt1.i ASC)\n" +
-			" └─ Project(dt1.i)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i]\n" +
 			"     └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"         ├─ TableAlias(dt2)\n" +
 			"         │   └─ Table(datetime_table)\n" +
@@ -1546,7 +1617,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Limit(3)\n" +
 			" └─ Offset(0)\n" +
 			"     └─ TopN(Limit: [(3 + 0)]; dt1.i ASC)\n" +
-			"         └─ Project(dt1.i)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i]\n" +
 			"             └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
 			"                 │   └─ Table(datetime_table)\n" +
@@ -1563,7 +1635,8 @@ var PlanTests = []QueryPlanTest{
 			order by 1 limit 3`,
 		ExpectedPlan: "Limit(3)\n" +
 			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
-			"     └─ Project(dt1.i)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [dt1.i]\n" +
 			"         └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"             ├─ TableAlias(dt2)\n" +
 			"             │   └─ Table(datetime_table)\n" +
@@ -1578,7 +1651,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk FROM one_pk
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		ExpectedPlan: "Project(one_pk.pk)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk]\n" +
 			" └─ IndexedJoin((one_pk.pk = tpk.pk1) AND (one_pk.pk = tpk.pk2))\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
@@ -1598,7 +1672,8 @@ var PlanTests = []QueryPlanTest{
 						pk FROM one_pk
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		ExpectedPlan: "Project(one_pk.pk)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk]\n" +
 			" └─ IndexedJoin((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ IndexedJoin((one_pk.pk = tpk.pk1) AND (one_pk.pk = tpk.pk2))\n" +
 			"     │   ├─ TableAlias(tpk)\n" +
@@ -1618,7 +1693,8 @@ var PlanTests = []QueryPlanTest{
 						pk FROM one_pk
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		ExpectedPlan: "Project(one_pk.pk)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk]\n" +
 			" └─ LeftIndexedJoin((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ IndexedJoin((one_pk.pk = tpk.pk1) AND (one_pk.pk = tpk.pk2))\n" +
 			"     │   ├─ TableAlias(tpk)\n" +
@@ -1639,7 +1715,8 @@ var PlanTests = []QueryPlanTest{
 						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
 						ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
-			" └─ Project(one_pk.pk, tpk.pk1, tpk2.pk1, tpk.pk2, tpk2.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, tpk.pk1, tpk2.pk1, tpk.pk2, tpk2.pk2]\n" +
 			"     └─ IndexedJoin(((one_pk.pk - 1) = tpk2.pk1) AND (one_pk.pk = tpk2.pk2))\n" +
 			"         ├─ IndexedJoin((one_pk.pk = tpk.pk1) AND ((one_pk.pk - 1) = tpk.pk2))\n" +
 			"         │   ├─ Table(one_pk)\n" +
@@ -1658,7 +1735,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk FROM one_pk
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		ExpectedPlan: "Project(one_pk.pk)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk]\n" +
 			" └─ LeftIndexedJoin((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ LeftIndexedJoin((one_pk.pk = tpk.pk1) AND (one_pk.pk = tpk.pk2))\n" +
 			"     │   ├─ Table(one_pk)\n" +
@@ -1677,7 +1755,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk FROM one_pk
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		ExpectedPlan: "Project(one_pk.pk)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk]\n" +
 			" └─ IndexedJoin((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ LeftIndexedJoin((one_pk.pk = tpk.pk1) AND (one_pk.pk = tpk.pk2))\n" +
 			"     │   ├─ Table(one_pk)\n" +
@@ -1696,7 +1775,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk FROM one_pk
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		ExpectedPlan: "Project(one_pk.pk)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk]\n" +
 			" └─ LeftIndexedJoin((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ IndexedJoin((one_pk.pk = tpk.pk1) AND (one_pk.pk = tpk.pk2))\n" +
 			"     │   ├─ Table(one_pk)\n" +
@@ -1715,7 +1795,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk FROM one_pk 
 						RIGHT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						RIGHT JOIN two_pk tpk2 ON tpk.pk1=TPk2.pk2 AND tpk.pk2=TPK2.pk1`,
-		ExpectedPlan: "Project(one_pk.pk)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk]\n" +
 			" └─ RightIndexedJoin((tpk.pk1 = tpk2.pk2) AND (tpk.pk2 = tpk2.pk1))\n" +
 			"     ├─ TableAlias(tpk2)\n" +
 			"     │   └─ Table(two_pk)\n" +
@@ -1742,7 +1823,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
@@ -1753,7 +1835,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
@@ -1764,7 +1847,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ Table(niltable)\n" +
 			"     │   └─ columns: [i f]\n" +
@@ -1777,7 +1861,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk,nt.i,nt2.i FROM one_pk 
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i + 1`,
-		ExpectedPlan: "Project(one_pk.pk, nt.i, nt2.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, nt.i, nt2.i]\n" +
 			" └─ RightIndexedJoin(one_pk.pk = (nt2.i + 1))\n" +
 			"     ├─ TableAlias(nt2)\n" +
 			"     │   └─ Table(niltable)\n" +
@@ -1793,7 +1878,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ LeftIndexedJoin((one_pk.pk = niltable.i) AND (NOT(niltable.f IS NULL)))\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     │   └─ columns: [pk]\n" +
@@ -1804,7 +1890,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ RightIndexedJoin((one_pk.pk = niltable.i) AND (one_pk.pk > 0))\n" +
 			"     ├─ Table(niltable)\n" +
 			"     │   └─ columns: [i f]\n" +
@@ -1815,7 +1902,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NOT NULL`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Filter(NOT(niltable.f IS NULL))\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(one_pk)\n" +
@@ -1827,7 +1915,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Filter(niltable.i2 > 1)\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(one_pk)\n" +
@@ -1839,7 +1928,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Filter(niltable.i > 1)\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(one_pk)\n" +
@@ -1851,7 +1941,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ Filter(one_pk.c1 > 10)\n" +
 			"     │   └─ Table(one_pk)\n" +
@@ -1863,7 +1954,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ Filter(NOT(niltable.f IS NULL))\n" +
 			"     │   └─ Table(niltable)\n" +
@@ -1875,7 +1967,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
@@ -1889,7 +1982,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 <=> r.i2 ORDER BY 1 ASC`,
 		ExpectedPlan: "Sort(l.i ASC)\n" +
-			" └─ Project(l.i, r.i2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [l.i, r.i2]\n" +
 			"     └─ IndexedJoin(l.i2 <=> r.i2)\n" +
 			"         ├─ TableAlias(l)\n" +
 			"         │   └─ Table(niltable)\n" +
@@ -1902,7 +1996,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0`,
-		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Filter(one_pk.pk > 0)\n" +
 			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(niltable)\n" +
@@ -1924,7 +2019,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(two_pk, one_pk) */ pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"     ├─ Table(two_pk)\n" +
 			"     │   └─ columns: [pk1 pk2]\n" +
@@ -2014,7 +2110,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.c5, two_pk.pk1, two_pk.pk2]\n" +
 			"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk c5]\n" +
@@ -2026,7 +2123,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
 			"         ├─ TableAlias(opk)\n" +
 			"         │   └─ Table(one_pk)\n" +
@@ -2040,7 +2138,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
 			"         ├─ TableAlias(opk)\n" +
 			"         │   └─ Table(one_pk)\n" +
@@ -2054,7 +2153,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT opk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
 			"         ├─ TableAlias(opk)\n" +
 			"         │   └─ Table(one_pk)\n" +
@@ -2068,7 +2168,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.c5, two_pk.pk1, two_pk.pk2]\n" +
 			"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk c5]\n" +
@@ -2116,7 +2217,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
-			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
@@ -2128,7 +2230,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
-			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			"     └─ Filter(NOT(niltable.f IS NULL))\n" +
 			"         └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"             ├─ Table(one_pk)\n" +
@@ -2141,7 +2244,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk ASC)\n" +
-			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
@@ -2155,7 +2259,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i ORDER BY 2,3`,
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
-			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Table(niltable)\n" +
 			"         │   └─ columns: [i f]\n" +
@@ -2167,7 +2272,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3`,
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
-			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			"     └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"         ├─ Filter(NOT(niltable.f IS NULL))\n" +
 			"         │   └─ Table(niltable)\n" +
@@ -2180,7 +2286,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE pk > 0 ORDER BY 2,3`,
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
-			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			"     └─ Filter(one_pk.pk > 0)\n" +
 			"         └─ RightIndexedJoin(one_pk.pk = niltable.i)\n" +
 			"             ├─ Table(niltable)\n" +
@@ -2193,7 +2300,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3`,
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
-			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			"     └─ RightIndexedJoin((one_pk.pk = niltable.i) AND (one_pk.pk > 0))\n" +
 			"         ├─ Table(niltable)\n" +
 			"         │   └─ columns: [i f]\n" +
@@ -2236,7 +2344,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			"     └─ LeftIndexedJoin((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2))\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
@@ -2248,7 +2357,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			"     └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk]\n" +
@@ -2260,7 +2370,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			"     └─ RightIndexedJoin((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2))\n" +
 			"         ├─ Table(two_pk)\n" +
 			"         │   └─ columns: [pk1 pk2]\n" +
@@ -2298,7 +2409,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk c1]\n" +
@@ -2309,7 +2421,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
 			"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
 			"         ├─ Table(one_pk)\n" +
 			"         │   └─ columns: [pk c1]\n" +
@@ -2319,7 +2432,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10`,
-		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
 			" └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
 			"     ├─ Filter(one_pk.c1 = 10)\n" +
 			"     │   └─ Table(one_pk)\n" +
@@ -2366,7 +2480,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT i FROM mytable mt
 		WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
 		AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL`,
-		ExpectedPlan: "Project(mt.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mt.i]\n" +
 			" └─ Filter((NOT((Filter(mytable.i = mt.i)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
@@ -2385,7 +2500,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT i FROM mytable mt
 		WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL
 		AND (SELECT i2 FROM othertable where i2 = i and i > 2) IS NOT NULL`,
-		ExpectedPlan: "Project(mt.i)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mt.i]\n" +
 			" └─ Filter((NOT((Filter(mytable.i = mt.i)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
@@ -2402,12 +2518,13 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,pk2, (SELECT pk from one_pk where pk = 1 limit 1) FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			" └─ Project(t1.pk, t2.pk2, (Limit(1)\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[1, 1]}]\n" +
-			"         └─ columns: [pk]\n" +
-			"    ) as (SELECT pk from one_pk where pk = 1 limit 1))\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [t1.pk, t2.pk2, (Limit(1)\n" +
+			"     │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │       ├─ index: [one_pk.pk]\n" +
+			"     │       ├─ filters: [{[1, 1]}]\n" +
+			"     │       └─ columns: [pk]\n" +
+			"     │  ) as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +
 			"         │   └─ TableAlias(t1)\n" +
@@ -2422,7 +2539,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE s2 <> 'second' ORDER BY i2 ASC`,
 		ExpectedPlan: "Sort(othertable.i2 ASC)\n" +
-			" └─ Project(row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2]\n" +
 			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
 			"         └─ Filter(NOT((othertable.s2 = 'second')))\n" +
 			"             └─ IndexedTableAccess(othertable)\n" +
@@ -2436,7 +2554,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "SubqueryAlias(a)\n" +
 			" └─ Filter(NOT((othertable.s2 = 'second')))\n" +
 			"     └─ Sort(othertable.i2 ASC)\n" +
-			"         └─ Project(row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2]\n" +
 			"             └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
 			"                 └─ Table(othertable)\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -2445,7 +2564,8 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE i2 < 2 OR i2 > 2 ORDER BY i2 ASC`,
 		ExpectedPlan: "Sort(othertable.i2 ASC)\n" +
-			" └─ Project(row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2]\n" +
 			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
 			"         └─ IndexedTableAccess(othertable)\n" +
 			"             ├─ index: [othertable.i2]\n" +
@@ -2458,7 +2578,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "SubqueryAlias(a)\n" +
 			" └─ Filter((othertable.i2 < 2) OR (othertable.i2 > 2))\n" +
 			"     └─ Sort(othertable.i2 ASC)\n" +
-			"         └─ Project(row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [row_number() over ( order by othertable.s2 ASC) as idx, othertable.i2, othertable.s2]\n" +
 			"             └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
 			"                 └─ Table(othertable)\n" +
 			"                     └─ columns: [s2 i2]\n" +
@@ -2466,7 +2587,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT t, n, lag(t, 1, t+1) over (partition by n) FROM bigtable`,
-		ExpectedPlan: "Project(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n) as lag(t, 1, t+1) over (partition by n))\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n) as lag(t, 1, t+1) over (partition by n)]\n" +
 			" └─ Window(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n))\n" +
 			"     └─ Table(bigtable)\n" +
 			"         └─ columns: [t n]\n" +
@@ -2474,7 +2596,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select i, row_number() over (w3) from mytable window w1 as (w2), w2 as (), w3 as (w1)`,
-		ExpectedPlan: "Project(mytable.i, row_number() over () as row_number() over (w3))\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, row_number() over () as row_number() over (w3)]\n" +
 			" └─ Window(mytable.i, row_number() over ())\n" +
 			"     └─ Table(mytable)\n" +
 			"         └─ columns: [i]\n" +
@@ -2482,7 +2605,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select i, row_number() over (w1 partition by s) from mytable window w1 as (order by i asc)`,
-		ExpectedPlan: "Project(mytable.i, row_number() over ( partition by mytable.s order by mytable.i ASC) as row_number() over (w1 partition by s))\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i, row_number() over ( partition by mytable.s order by mytable.i ASC) as row_number() over (w1 partition by s)]\n" +
 			" └─ Window(mytable.i, row_number() over ( partition by mytable.s order by mytable.i ASC))\n" +
 			"     └─ Table(mytable)\n" +
 			"         └─ columns: [i s]\n" +
@@ -2525,7 +2649,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Update\n" +
 			" └─ Update Join\n" +
 			"     └─ UpdateSource(SET two_pk.c1 = (two_pk.c1 + 1))\n" +
-			"         └─ Project(one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
 			"             └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"                 ├─ Table(two_pk)\n" +
 			"                 └─ IndexedTableAccess(one_pk)\n" +
@@ -2537,7 +2662,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Update\n" +
 			" └─ Update Join\n" +
 			"     └─ UpdateSource(SET one_pk.c1 = (one_pk.c1 + 1),SET one_pk.c2 = (one_pk.c2 + 1))\n" +
-			"         └─ Project(one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, t2.pk1, t2.pk2, t2.c1, t2.c2, t2.c3, t2.c4, t2.c5)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, t2.pk1, t2.pk2, t2.c1, t2.c2, t2.c3, t2.c4, t2.c5]\n" +
 			"             └─ IndexedJoin(one_pk.pk = t2.pk1)\n" +
 			"                 ├─ SubqueryAlias(t2)\n" +
 			"                 │   └─ Table(two_pk)\n" +
@@ -2548,7 +2674,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
-		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.x, a.y, a.z]\n" +
 			" └─ IndexedJoin(a.y = b.z)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table(invert_pk)\n" +
@@ -2561,7 +2688,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
-		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.x, a.y, a.z]\n" +
 			" └─ IndexedJoin(a.y = b.z)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table(invert_pk)\n" +
@@ -2607,7 +2735,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c LEFT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
-		ExpectedPlan: "Project(a.pk, a.c1, a.c2, a.c3, a.c4, a.c5)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LeftIndexedJoin((b.pk = c.pk) AND (b.pk = a.pk))\n" +
 			"     ├─ CrossJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
@@ -2624,7 +2753,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c RIGHT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
-		ExpectedPlan: "Project(a.pk, a.c1, a.c2, a.c3, a.c4, a.c5)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ RightJoin((b.pk = c.pk) AND (b.pk = a.pk))\n" +
 			"     ├─ CrossJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
@@ -2640,7 +2770,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c INNER JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
-		ExpectedPlan: "Project(a.pk, a.c1, a.c2, a.c3, a.c4, a.c5)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ IndexedJoin((b.pk = c.pk) AND (b.pk = a.pk))\n" +
 			"     ├─ CrossJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
@@ -2657,7 +2788,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk b INNER JOIN one_pk c ON b.pk = c.pk LEFT JOIN one_pk d ON c.pk = d.pk`,
-		ExpectedPlan: "Project(a.pk, a.c1, a.c2, a.c3, a.c4, a.c5)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LeftIndexedJoin(c.pk = d.pk)\n" +
 			"     ├─ IndexedJoin(b.pk = c.pk)\n" +
 			"     │   ├─ CrossJoin\n" +
@@ -2679,7 +2811,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c INNER JOIN (select * from one_pk) b ON b.pk = c.pk`,
-		ExpectedPlan: "Project(a.pk, a.c1, a.c2, a.c3, a.c4, a.c5)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ InnerJoin(b.pk = c.pk)\n" +
 			"     ├─ CrossJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
@@ -2713,7 +2846,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and c.v2 = 0;`,
-		ExpectedPlan: "Project(a.pk, c.v2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, c.v2]\n" +
 			" └─ Filter(b.pk = 0)\n" +
 			"     └─ RightJoin(b.pk = c.v1)\n" +
 			"         ├─ CrossJoin\n" +
@@ -2731,7 +2865,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and a.v2 = 1;`,
-		ExpectedPlan: "Project(a.pk, c.v2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, c.v2]\n" +
 			" └─ LeftIndexedJoin(b.pk = c.v1)\n" +
 			"     ├─ CrossJoin\n" +
 			"     │   ├─ Filter(a.v2 = 1)\n" +
@@ -2752,14 +2887,16 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `with a as (select a.i, a.s from mytable a CROSS JOIN mytable b) select * from a RIGHT JOIN mytable c on a.i+1 = c.i-1;`,
-		ExpectedPlan: "Project(a.i, a.s, c.i, c.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s, c.i, c.s]\n" +
 			" └─ RightIndexedJoin((a.i + 1) = (c.i - 1))\n" +
 			"     ├─ TableAlias(c)\n" +
 			"     │   └─ Table(mytable)\n" +
 			"     │       └─ columns: [i s]\n" +
 			"     └─ CachedResults\n" +
 			"         └─ SubqueryAlias(a)\n" +
-			"             └─ Project(a.i, a.s)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [a.i, a.s]\n" +
 			"                 └─ CrossJoin\n" +
 			"                     ├─ TableAlias(a)\n" +
 			"                     │   └─ Table(mytable)\n" +
@@ -2770,7 +2907,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.* from mytable a RIGHT JOIN mytable b on a.i = b.i+1 LEFT JOIN mytable c on a.i = c.i-1 RIGHT JOIN mytable d on b.i = d.i;`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ RightIndexedJoin(b.i = d.i)\n" +
 			"     ├─ TableAlias(d)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -2792,7 +2930,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.*,b.* from mytable a RIGHT JOIN othertable b on a.i = b.i2+1 LEFT JOIN mytable c on a.i = c.i-1 LEFT JOIN othertable d on b.i2 = d.i2;`,
-		ExpectedPlan: "Project(a.i, a.s, b.s2, b.i2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s, b.s2, b.i2]\n" +
 			" └─ LeftIndexedJoin(b.i2 = d.i2)\n" +
 			"     ├─ LeftIndexedJoin(a.i = (c.i - 1))\n" +
 			"     │   ├─ RightIndexedJoin(a.i = (b.i2 + 1))\n" +
@@ -2814,7 +2953,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.*,b.* from mytable a RIGHT JOIN othertable b on a.i = b.i2+1 RIGHT JOIN mytable c on a.i = c.i-1 LEFT JOIN othertable d on b.i2 = d.i2;`,
-		ExpectedPlan: "Project(a.i, a.s, b.s2, b.i2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s, b.s2, b.i2]\n" +
 			" └─ LeftIndexedJoin(b.i2 = d.i2)\n" +
 			"     ├─ RightIndexedJoin(a.i = (c.i - 1))\n" +
 			"     │   ├─ TableAlias(c)\n" +
@@ -2836,7 +2976,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select i.pk, j.v3 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk;`,
-		ExpectedPlan: "Project(i.pk, j.v3)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [i.pk, j.v3]\n" +
 			" └─ IndexedJoin(i.v1 = j.pk)\n" +
 			"     ├─ TableAlias(i)\n" +
 			"     │   └─ Table(one_pk_two_idx)\n" +
@@ -2849,7 +2990,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select i.pk, j.v3, k.c1 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk JOIN one_pk k on j.v3 = k.pk;`,
-		ExpectedPlan: "Project(i.pk, j.v3, k.c1)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [i.pk, j.v3, k.c1]\n" +
 			" └─ IndexedJoin(j.v3 = k.pk)\n" +
 			"     ├─ TableAlias(k)\n" +
 			"     │   └─ Table(one_pk)\n" +
@@ -2866,7 +3008,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select i.pk, j.v3 from (one_pk_two_idx i JOIN one_pk_three_idx j on((i.v1 = j.pk)));`,
-		ExpectedPlan: "Project(i.pk, j.v3)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [i.pk, j.v3]\n" +
 			" └─ IndexedJoin(i.v1 = j.pk)\n" +
 			"     ├─ TableAlias(i)\n" +
 			"     │   └─ Table(one_pk_two_idx)\n" +
@@ -2879,7 +3022,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select i.pk, j.v3, k.c1 from ((one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk))) JOIN one_pk k on((j.v3 = k.pk)));`,
-		ExpectedPlan: "Project(i.pk, j.v3, k.c1)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [i.pk, j.v3, k.c1]\n" +
 			" └─ IndexedJoin(j.v3 = k.pk)\n" +
 			"     ├─ TableAlias(k)\n" +
 			"     │   └─ Table(one_pk)\n" +
@@ -2896,7 +3040,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select i.pk, j.v3, k.c1 from (one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk)) JOIN one_pk k on((j.v3 = k.pk)))`,
-		ExpectedPlan: "Project(i.pk, j.v3, k.c1)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [i.pk, j.v3, k.c1]\n" +
 			" └─ IndexedJoin(j.v3 = k.pk)\n" +
 			"     ├─ TableAlias(k)\n" +
 			"     │   └─ Table(one_pk)\n" +
@@ -2913,7 +3058,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.* from one_pk_two_idx a RIGHT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk) on a.pk = i.v1 LEFT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v1 = l.pk) on a.pk = l.v2;`,
-		ExpectedPlan: "Project(a.pk, a.v1, a.v2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, a.v1, a.v2]\n" +
 			" └─ LeftIndexedJoin(a.pk = l.v2)\n" +
 			"     ├─ RightIndexedJoin(a.pk = i.v1)\n" +
 			"     │   ├─ IndexedJoin(i.v1 = j.pk)\n" +
@@ -2940,7 +3086,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.* from one_pk_two_idx a LEFT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.pk = j.v3) on a.pk = i.pk RIGHT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v2 = l.v3) on a.v1 = l.v2;`,
-		ExpectedPlan: "Project(a.pk, a.v1, a.v2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.pk, a.v1, a.v2]\n" +
 			" └─ RightIndexedJoin(a.v1 = l.v2)\n" +
 			"     ├─ IndexedJoin(k.v2 = l.v3)\n" +
 			"     │   ├─ TableAlias(k)\n" +
@@ -2966,7 +3113,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.* from mytable a join mytable b on a.i = b.i and a.i > 2`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
 			"     ├─ Filter(a.i > 2)\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -2982,7 +3130,8 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select a.* from mytable a join mytable b on a.i = b.i and now() >= coalesce(NULL, NULL, now())`,
-		ExpectedPlan: "Project(a.i, a.s)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i, a.s]\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
@@ -3091,20 +3240,492 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
 		ExpectedPlan: "SubqueryAlias(temp)\n" +
-			" └─ Project(1)\n" +
-			"     └─ Filter(1 IN (Distinct\n" +
-			"         └─ Union\n" +
-			"             ├─ Project(1)\n" +
-			"             │   └─ Table(dual)\n" +
-			"             └─ Project(2)\n" +
-			"                 └─ Table(dual)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [1]\n" +
+			"     └─ Filter(1 IN (Union distinct\n" +
+			"         ├─ Project\n" +
+			"         │   ├─ columns: [1]\n" +
+			"         │   └─ Table(dual)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [2]\n" +
+			"             └─ Table(dual)\n" +
 			"        ))\n" +
+			"         └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk,pk1,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 AND pk1=1 ORDER BY 1,2`,
+		ExpectedPlan: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ Filter(t1.pk = 1)\n" +
+			"     │   └─ TableAlias(t1)\n" +
+			"     │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           ├─ filters: [{[1, 1]}]\n" +
+			"     │           └─ columns: [pk]\n" +
+			"     └─ Filter((t2.pk2 = 1) AND (t2.pk1 = 1))\n" +
+			"         └─ TableAlias(t2)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
+		Query: `with recursive a as (select 1 union select 2) select * from a union select * from a limit 1;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ limit: 1\n" +
+			" ├─ SubqueryAlias(a)\n" +
+			" │   └─ Union distinct\n" +
+			" │       ├─ Project\n" +
+			" │       │   ├─ columns: [1]\n" +
+			" │       │   └─ Table(dual)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [2]\n" +
+			" │           └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Union distinct\n" +
+			"         ├─ Project\n" +
+			"         │   ├─ columns: [1]\n" +
+			"         │   └─ Table(dual)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [2]\n" +
+			"             └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with recursive a(x) as (select 1 union select 2) select * from a having x > 1 union select * from a having x > 1;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ Having((a.x > 1))\n" +
+			" │   └─ SubqueryAlias(a)\n" +
+			" │       └─ Union distinct\n" +
+			" │           ├─ Project\n" +
+			" │           │   ├─ columns: [1]\n" +
+			" │           │   └─ Table(dual)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [2]\n" +
+			" │               └─ Table(dual)\n" +
+			" └─ Having((a.x > 1))\n" +
+			"     └─ SubqueryAlias(a)\n" +
+			"         └─ Union distinct\n" +
+			"             ├─ Project\n" +
+			"             │   ├─ columns: [1]\n" +
+			"             │   └─ Table(dual)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [2]\n" +
+			"                 └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with recursive a(x) as (select 1 union select 2) select * from a where x > 1 union select * from a where x > 1;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ SubqueryAlias(a)\n" +
+			" │   └─ Filter(1 > 1)\n" +
+			" │       └─ Union distinct\n" +
+			" │           ├─ Project\n" +
+			" │           │   ├─ columns: [1]\n" +
+			" │           │   └─ Table(dual)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [2]\n" +
+			" │               └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Filter(1 > 1)\n" +
+			"         └─ Union distinct\n" +
+			"             ├─ Project\n" +
+			"             │   ├─ columns: [1]\n" +
+			"             │   └─ Table(dual)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [2]\n" +
+			"                 └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with recursive a(x) as (select 1 union select 2) select * from a union select * from a group by x;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ SubqueryAlias(a)\n" +
+			" │   └─ Union distinct\n" +
+			" │       ├─ Project\n" +
+			" │       │   ├─ columns: [1]\n" +
+			" │       │   └─ Table(dual)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [2]\n" +
+			" │           └─ Table(dual)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(a.x)\n" +
+			"     ├─ Grouping(a.x)\n" +
+			"     └─ SubqueryAlias(a)\n" +
+			"         └─ Union distinct\n" +
+			"             ├─ Project\n" +
+			"             │   ├─ columns: [1]\n" +
+			"             │   └─ Table(dual)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [2]\n" +
+			"                 └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with recursive a(x) as (select 1 union select 2) select * from a union select * from a order by x desc;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ sortFields: [a.x]\n" +
+			" ├─ SubqueryAlias(a)\n" +
+			" │   └─ Union distinct\n" +
+			" │       ├─ Project\n" +
+			" │       │   ├─ columns: [1]\n" +
+			" │       │   └─ Table(dual)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [2]\n" +
+			" │           └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Union distinct\n" +
+			"         ├─ Project\n" +
+			"         │   ├─ columns: [1]\n" +
+			"         │   └─ Table(dual)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [2]\n" +
+			"             └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 5) SELECT count(i) FROM n;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(n.i) as count(i)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ SubqueryAlias(n)\n" +
+			"         └─ RecursiveCTE\n" +
+			"             └─ Union all\n" +
+			"                 ├─ limit: 5\n" +
+			"                 ├─ Project\n" +
+			"                 │   ├─ columns: [1]\n" +
+			"                 │   └─ Table(dual)\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [(n.i + 1)]\n" +
+			"                     └─ Filter((n.i + 1) <= 10)\n" +
+			"                         └─ RecursiveTable(n)\n" +
+			"",
+	},
+	{
+		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n GROUP BY i HAVING i+1 <= 10) SELECT count(i) FROM n;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(n.i) as count(i)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ SubqueryAlias(n)\n" +
+			"         └─ RecursiveCTE\n" +
+			"             └─ Union all\n" +
+			"                 ├─ Project\n" +
+			"                 │   ├─ columns: [1]\n" +
+			"                 │   └─ Table(dual)\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [(n.i + 1)]\n" +
+			"                     └─ Having(((n.i + 1) <= 10))\n" +
+			"                         └─ GroupBy\n" +
+			"                             ├─ SelectedExprs((n.i + 1), n.i)\n" +
+			"                             ├─ Grouping(n.i)\n" +
+			"                             └─ RecursiveTable(n)\n" +
+			"",
+	},
+	{
+		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(n.i) as count(i)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ SubqueryAlias(n)\n" +
+			"         └─ RecursiveCTE\n" +
+			"             └─ Union all\n" +
+			"                 ├─ sortFields: [1]\n" +
+			"                 ├─ limit: 5\n" +
+			"                 ├─ Project\n" +
+			"                 │   ├─ columns: [1]\n" +
+			"                 │   └─ Table(dual)\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [(n.i + 1)]\n" +
+			"                     └─ Having(((n.i + 1) <= 10))\n" +
+			"                         └─ GroupBy\n" +
+			"                             ├─ SelectedExprs((n.i + 1), n.i)\n" +
+			"                             ├─ Grouping(n.i)\n" +
+			"                             └─ Filter((n.i + 1) <= 10)\n" +
+			"                                 └─ RecursiveTable(n)\n" +
+			"",
+	},
+	{
+		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 1) SELECT count(i) FROM n;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(n.i) as count(i)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ SubqueryAlias(n)\n" +
+			"         └─ RecursiveCTE\n" +
+			"             └─ Union all\n" +
+			"                 ├─ limit: 1\n" +
+			"                 ├─ Project\n" +
+			"                 │   ├─ columns: [1]\n" +
+			"                 │   └─ Table(dual)\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [(n.i + 1)]\n" +
+			"                     └─ Filter((n.i + 1) <= 10)\n" +
+			"                         └─ RecursiveTable(n)\n" +
+			"",
+	},
+	{
+		Query: "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
+		ExpectedPlan: "SubqueryAlias(temp)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [1]\n" +
+			"     └─ Filter(1 IN (Union distinct\n" +
+			"         ├─ Project\n" +
+			"         │   ├─ columns: [1]\n" +
+			"         │   └─ Table(dual)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [2]\n" +
+			"             └─ Table(dual)\n" +
+			"        ))\n" +
+			"         └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `select 1 union select * from (select 2 union select 3) a union select 4;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ Union distinct\n" +
+			" │   ├─ Project\n" +
+			" │   │   ├─ columns: [1]\n" +
+			" │   │   └─ Table(dual)\n" +
+			" │   └─ SubqueryAlias(a)\n" +
+			" │       └─ Union distinct\n" +
+			" │           ├─ Project\n" +
+			" │           │   ├─ columns: [2]\n" +
+			" │           │   └─ Table(dual)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [3]\n" +
+			" │               └─ Table(dual)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [4]\n" +
+			"     └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `select 1 union select * from (select 2 union select 3) a union select 4;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ Union distinct\n" +
+			" │   ├─ Project\n" +
+			" │   │   ├─ columns: [1]\n" +
+			" │   │   └─ Table(dual)\n" +
+			" │   └─ SubqueryAlias(a)\n" +
+			" │       └─ Union distinct\n" +
+			" │           ├─ Project\n" +
+			" │           │   ├─ columns: [2]\n" +
+			" │           │   └─ Table(dual)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [3]\n" +
+			" │               └─ Table(dual)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [4]\n" +
+			"     └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `With recursive a(x) as (select 1 union select 4 union select * from (select 2 union select 3) b union select x+1 from a where x < 10) select count(*) from a;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(*) as count(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(*))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ SubqueryAlias(a)\n" +
+			"         └─ RecursiveCTE\n" +
+			"             └─ Union distinct\n" +
+			"                 ├─ Union distinct\n" +
+			"                 │   ├─ Union distinct\n" +
+			"                 │   │   ├─ Project\n" +
+			"                 │   │   │   ├─ columns: [1]\n" +
+			"                 │   │   │   └─ Table(dual)\n" +
+			"                 │   │   └─ Project\n" +
+			"                 │   │       ├─ columns: [4]\n" +
+			"                 │   │       └─ Table(dual)\n" +
+			"                 │   └─ SubqueryAlias(b)\n" +
+			"                 │       └─ Union distinct\n" +
+			"                 │           ├─ Project\n" +
+			"                 │           │   ├─ columns: [2]\n" +
+			"                 │           │   └─ Table(dual)\n" +
+			"                 │           └─ Project\n" +
+			"                 │               ├─ columns: [3]\n" +
+			"                 │               └─ Table(dual)\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [(a.x + 1)]\n" +
+			"                     └─ Filter(a.x < 10)\n" +
+			"                         └─ RecursiveTable(a)\n" +
+			"",
+	},
+	{
+		Query: `with a(j) as (select 1), b(i) as (select 2) select j from a union (select i from b order by 1 desc) union select j from a;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ Union distinct\n" +
+			" │   ├─ SubqueryAlias(a)\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [1]\n" +
+			" │   │       └─ Table(dual)\n" +
+			" │   └─ Sort(b.i DESC)\n" +
+			" │       └─ SubqueryAlias(b)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [2]\n" +
+			" │               └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [1]\n" +
+			"         └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with a(j) as (select 1), b(i) as (select 2) (select t1.j as k from a t1 join a t2 on t1.j = t2.j union select i from b order by k desc limit 1) union select j from a;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ sortFields: [k]\n" +
+			" ├─ limit: 1\n" +
+			" ├─ Union distinct\n" +
+			" │   ├─ Project\n" +
+			" │   │   ├─ columns: [t1.j as k]\n" +
+			" │   │   └─ InnerJoin(t1.j = t2.j)\n" +
+			" │   │       ├─ SubqueryAlias(t1)\n" +
+			" │   │       │   └─ Project\n" +
+			" │   │       │       ├─ columns: [1]\n" +
+			" │   │       │       └─ Table(dual)\n" +
+			" │   │       └─ HashLookup(child: (t2.j), lookup: (t1.j))\n" +
+			" │   │           └─ CachedResults\n" +
+			" │   │               └─ SubqueryAlias(t2)\n" +
+			" │   │                   └─ Project\n" +
+			" │   │                       ├─ columns: [1]\n" +
+			" │   │                       └─ Table(dual)\n" +
+			" │   └─ SubqueryAlias(b)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [2]\n" +
+			" │           └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [1]\n" +
+			"         └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with a(j) as (select 1 union select 2 union select 3), b(i) as (select 2 union select 3) (select t1.j as k from a t1 join a t2 on t1.j = t2.j union select i from b order by k desc limit 2) union select j from a;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ sortFields: [k]\n" +
+			" ├─ limit: 2\n" +
+			" ├─ Union distinct\n" +
+			" │   ├─ Project\n" +
+			" │   │   ├─ columns: [t1.j as k]\n" +
+			" │   │   └─ InnerJoin(t1.j = t2.j)\n" +
+			" │   │       ├─ SubqueryAlias(t1)\n" +
+			" │   │       │   └─ Union distinct\n" +
+			" │   │       │       ├─ Union distinct\n" +
+			" │   │       │       │   ├─ Project\n" +
+			" │   │       │       │   │   ├─ columns: [1]\n" +
+			" │   │       │       │   │   └─ Table(dual)\n" +
+			" │   │       │       │   └─ Project\n" +
+			" │   │       │       │       ├─ columns: [2]\n" +
+			" │   │       │       │       └─ Table(dual)\n" +
+			" │   │       │       └─ Project\n" +
+			" │   │       │           ├─ columns: [3]\n" +
+			" │   │       │           └─ Table(dual)\n" +
+			" │   │       └─ HashLookup(child: (t2.j), lookup: (t1.j))\n" +
+			" │   │           └─ CachedResults\n" +
+			" │   │               └─ SubqueryAlias(t2)\n" +
+			" │   │                   └─ Union distinct\n" +
+			" │   │                       ├─ Union distinct\n" +
+			" │   │                       │   ├─ Project\n" +
+			" │   │                       │   │   ├─ columns: [1]\n" +
+			" │   │                       │   │   └─ Table(dual)\n" +
+			" │   │                       │   └─ Project\n" +
+			" │   │                       │       ├─ columns: [2]\n" +
+			" │   │                       │       └─ Table(dual)\n" +
+			" │   │                       └─ Project\n" +
+			" │   │                           ├─ columns: [3]\n" +
+			" │   │                           └─ Table(dual)\n" +
+			" │   └─ SubqueryAlias(b)\n" +
+			" │       └─ Union distinct\n" +
+			" │           ├─ Project\n" +
+			" │           │   ├─ columns: [2]\n" +
+			" │           │   └─ Table(dual)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [3]\n" +
+			" │               └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Union distinct\n" +
+			"         ├─ Union distinct\n" +
+			"         │   ├─ Project\n" +
+			"         │   │   ├─ columns: [1]\n" +
+			"         │   │   └─ Table(dual)\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [2]\n" +
+			"         │       └─ Table(dual)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [3]\n" +
+			"             └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by j desc limit 1) union select j from a;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ sortFields: [a.j]\n" +
+			" ├─ limit: 1\n" +
+			" ├─ Union distinct\n" +
+			" │   ├─ SubqueryAlias(a)\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [1]\n" +
+			" │   │       └─ Table(dual)\n" +
+			" │   └─ SubqueryAlias(b)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [2]\n" +
+			" │           └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [1]\n" +
+			"         └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 limit 1) union select j from a;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ sortFields: [1]\n" +
+			" ├─ limit: 1\n" +
+			" ├─ Union distinct\n" +
+			" │   ├─ SubqueryAlias(a)\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [1]\n" +
+			" │   │       └─ Table(dual)\n" +
+			" │   └─ SubqueryAlias(b)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [2]\n" +
+			" │           └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [1]\n" +
+			"         └─ Table(dual)\n" +
+			"",
+	},
+	{
+		Query: `with a(j) as (select 1), b(i) as (select 1) (select j from a union all select i from b) union select j from a;`,
+		ExpectedPlan: "Union distinct\n" +
+			" ├─ Union all\n" +
+			" │   ├─ SubqueryAlias(a)\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [1]\n" +
+			" │   │       └─ Table(dual)\n" +
+			" │   └─ SubqueryAlias(b)\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [1]\n" +
+			" │           └─ Table(dual)\n" +
+			" └─ SubqueryAlias(a)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [1]\n" +
 			"         └─ Table(dual)\n" +
 			"",
 	},
 }
 
-// Queries where the query planner produces a correct (results) but suboptimal plan.
+// QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
 var QueryPlanTODOs = []QueryPlanTest{
 	{
 		// TODO: this should use an index. Extra join condition should get moved out of the join clause into a filter
@@ -3116,21 +3737,6 @@ var QueryPlanTODOs = []QueryPlanTest{
 			"         │   └─ Table(one_pk)\n" +
 			"         └─ Projected table access on [i f]\n" +
 			"             └─ Table(niltable)\n" +
-			"",
-	},
-	{
-		// TODO: This should use an index for two_pk as well
-		Query: `SELECT pk,pk1,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 AND pk1=1 ORDER BY 1,2`,
-		ExpectedPlan: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			" └─ Project(t1.pk, t2.pk1, t2.pk2)\n" +
-			"     └─ CrossJoin\n" +
-			"         ├─ Filter(t1.pk = 1)\n" +
-			"         │   └─ TableAlias(t1)\n" +
-			"         │       └─ Projected table access on [pk]\n" +
-			"         │           └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
-			"         └─ Filter((t2.pk2 = 1) AND (t2.pk1 = 1))\n" +
-			"             └─ TableAlias(t2)\n" +
-			"                 └─ Table(two_pk)\n" +
 			"",
 	},
 }
