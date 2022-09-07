@@ -40,7 +40,7 @@ const (
 	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
 	validateReadOnlyTransactionId               // validateReadOnlyTransaction
 	validateDatabaseSetId                       // validateDatabaseSet
-	validatePriviledgesId                       // validatePriviledges
+	validatePrivilegesId                        // validatePrivileges
 	reresolveTablesId                           // reresolveTables
 	validateJoinComplexityId                    // validateJoinComplexity
 

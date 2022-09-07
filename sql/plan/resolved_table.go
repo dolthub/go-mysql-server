@@ -57,13 +57,21 @@ func (t *ResolvedTable) String() string {
 
 func (t *ResolvedTable) DebugString() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("Table(%s)", sql.DebugString(t.Table))
+	pr.WriteNode("Table")
 	table := seethroughTableWrapper(t)
+	children := []string{fmt.Sprintf("name: %s", t.Name())}
 	if pt, ok := table.(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
-			pr.WriteChildren(fmt.Sprintf("columns: %v", pt.Projections()))
+			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
 		}
 	}
+	if pt, ok := table.(sql.FilteredTable); ok {
+		if len(pt.Filters()) > 0 {
+			children = append(children, fmt.Sprintf("filters: %v", pt.Filters()))
+		}
+	}
+	pr.WriteChildren(children...)
+
 	return pr.String()
 }
 

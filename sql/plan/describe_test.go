@@ -97,7 +97,8 @@ func TestDescribeQuery(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"Project(foo.a, foo.b)"},
+		{"Project"},
+		{" ├─ columns: [foo.a, foo.b]"},
 		{" └─ Filter(foo.a = 'foo')"},
 		{"     └─ Table(foo)"},
 	}

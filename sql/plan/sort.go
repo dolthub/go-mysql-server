@@ -61,7 +61,7 @@ func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		span.End()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
+	return sql.NewSpanIter(span, newSortIter(s.SortFields, i)), nil
 }
 
 func (s *Sort) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
@@ -71,7 +71,7 @@ func (s *Sort) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error)
 		span.End()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newSortIter(ctx, s, i)).(sql.RowIter2), nil
+	return sql.NewSpanIter(span, newSortIter(s.SortFields, i)).(sql.RowIter2), nil
 }
 
 func (s *Sort) String() string {
@@ -131,7 +131,7 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type sortIter struct {
-	s           *Sort
+	sortFields  sql.SortFields
 	childIter   sql.RowIter
 	childIter2  sql.RowIter2
 	sortedRows  []sql.Row
@@ -142,10 +142,10 @@ type sortIter struct {
 var _ sql.RowIter = (*sortIter)(nil)
 var _ sql.RowIter2 = (*sortIter)(nil)
 
-func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
+func newSortIter(s sql.SortFields, child sql.RowIter) *sortIter {
 	childIter2, _ := child.(sql.RowIter2)
 	return &sortIter{
-		s:          s,
+		sortFields: s,
 		childIter:  child,
 		childIter2: childIter2,
 		idx:        -1,
@@ -215,7 +215,7 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 
 	rows := cache.Get()
 	sorter := &expression.Sorter{
-		SortFields: i.s.SortFields,
+		SortFields: i.sortFields,
 		Rows:       rows,
 		LastError:  nil,
 		Ctx:        ctx,
@@ -252,7 +252,7 @@ func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
 
 	rows := cache.Get2()
 	sorter := &expression.Sorter2{
-		SortFields: i.s.SortFields,
+		SortFields: i.sortFields,
 		Rows:       rows,
 		Ctx:        ctx,
 	}
@@ -312,7 +312,7 @@ func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newTopRowsIter(n, limit, i)), nil
+	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i)), nil
 }
 
 func (n *TopN) String() string {
@@ -375,20 +375,22 @@ func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type topRowsIter struct {
-	n            *TopN
-	childIter    sql.RowIter
-	limit        int64
-	topRows      []sql.Row
-	numFoundRows int64
-	idx          int
+	sortFields    sql.SortFields
+	calcFoundRows bool
+	childIter     sql.RowIter
+	limit         int64
+	topRows       []sql.Row
+	numFoundRows  int64
+	idx           int
 }
 
-func newTopRowsIter(n *TopN, limit int64, child sql.RowIter) *topRowsIter {
+func newTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter) *topRowsIter {
 	return &topRowsIter{
-		n:         n,
-		limit:     limit,
-		childIter: child,
-		idx:       -1,
+		sortFields:    s,
+		limit:         limit,
+		calcFoundRows: calcFoundRows,
+		childIter:     child,
+		idx:           -1,
 	}
 }
 
@@ -412,7 +414,7 @@ func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (i *topRowsIter) Close(ctx *sql.Context) error {
 	i.topRows = nil
 
-	if i.n.CalcFoundRows {
+	if i.calcFoundRows {
 		ctx.SetLastQueryInfo(sql.FoundRows, i.numFoundRows)
 	}
 
@@ -422,7 +424,7 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	topRowsHeap := &expression.TopRowsHeap{
 		expression.Sorter{
-			SortFields: i.n.Fields,
+			SortFields: i.sortFields,
 			Rows:       []sql.Row{},
 			LastError:  nil,
 			Ctx:        ctx,
