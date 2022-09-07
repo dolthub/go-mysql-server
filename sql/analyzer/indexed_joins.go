@@ -144,7 +144,8 @@ func countTableFactors(n sql.Node) int {
 		case *plan.InsertInto:
 			cnt += countTableFactors(n.Source)
 		case *plan.RecursiveCte:
-			cnt += countTableFactors(n.Right())
+			// TODO subqueries and CTEs should contribute as a single table factor
+			cnt += countTableFactors(n.Union.Right())
 		default:
 		}
 

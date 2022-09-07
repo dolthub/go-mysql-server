@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -81,7 +82,7 @@ func (p *Project) String() string {
 	for i, expr := range p.Projections {
 		exprs[i] = expr.String()
 	}
-	columns := fmt.Sprintf("columns: %s", exprs)
+	columns := fmt.Sprintf("columns: %s", strings.Join(exprs, " ,"))
 	_ = pr.WriteChildren(columns, p.Child.String())
 	return pr.String()
 }
@@ -93,7 +94,7 @@ func (p *Project) DebugString() string {
 	for i, expr := range p.Projections {
 		exprs[i] = sql.DebugString(expr)
 	}
-	columns := fmt.Sprintf("projections: %s", exprs)
+	columns := fmt.Sprintf("columns: %s", strings.Join(exprs, " ,"))
 	_ = pr.WriteChildren(columns, sql.DebugString(p.Child))
 
 	return pr.String()

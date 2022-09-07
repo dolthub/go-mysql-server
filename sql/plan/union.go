@@ -169,8 +169,14 @@ func (u *Union) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 
 func (u Union) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Union")
-	children := []string{fmt.Sprintf("distinct: %t", u.Distinct)}
+	var distinct string
+	if u.Distinct {
+		distinct = "distinct"
+	} else {
+		distinct = "all"
+	}
+	_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+	var children []string
 	if len(u.SortFields) > 0 {
 		children = append(children, fmt.Sprintf("sortFields: %s", u.SortFields.ToExpressions()))
 	}
@@ -184,8 +190,14 @@ func (u Union) String() string {
 
 func (u Union) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Union")
-	children := []string{fmt.Sprintf("distinct: %t", u.Distinct)}
+	var distinct string
+	if u.Distinct {
+		distinct = "distinct"
+	} else {
+		distinct = "all"
+	}
+	_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+	var children []string
 	if len(u.SortFields) > 0 {
 		children = append(children, fmt.Sprintf("sortFields: %s", u.SortFields.ToExpressions()))
 	}

@@ -7090,6 +7090,16 @@ var KeylessQueries = []QueryTest{
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
 	{
+		// mysql is case-sensitive with CTE name
+		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select j from MYTABLE",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		// mysql is case-sensitive with CTE name
+		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select i from mytable;",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
 		// edge case where mysql moves an orderby between scopes
 		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a;",
 		Expected: []sql.Row{{2}, {1}},
