@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -74,11 +75,23 @@ var (
 	dec_int64_min = decimal.NewFromInt(math.MinInt64)
 	// decimal that represents the zero value
 	dec_zero = decimal.NewFromInt(0)
+
+	numberInt8ValueType    = reflect.TypeOf(int8(0))
+	numberInt16ValueType   = reflect.TypeOf(int16(0))
+	numberInt32ValueType   = reflect.TypeOf(int32(0))
+	numberInt64ValueType   = reflect.TypeOf(int64(0))
+	numberUint8ValueType   = reflect.TypeOf(uint8(0))
+	numberUint16ValueType  = reflect.TypeOf(uint16(0))
+	numberUint32ValueType  = reflect.TypeOf(uint32(0))
+	numberUint64ValueType  = reflect.TypeOf(uint64(0))
+	numberFloat32ValueType = reflect.TypeOf(float32(0))
+	numberFloat64ValueType = reflect.TypeOf(float64(0))
 )
 
-// Represents all integer and floating point types.
+// NumberType represents all integer and floating point types.
 // https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
 // https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
+// The type of the returned value is one of the following: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64.
 type NumberType interface {
 	Type
 	IsSigned() bool
@@ -317,6 +330,40 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 	}
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t numberTypeImpl) MaxTextResponseByteLength() uint32 {
+	// MySQL integer type limits: https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+	// This is for a text response format, NOT a binary encoding
+	switch t.baseType {
+	case sqltypes.Uint8:
+		return 3
+	case sqltypes.Int8:
+		return 4
+	case sqltypes.Uint16:
+		return 5
+	case sqltypes.Int16:
+		return 6
+	case sqltypes.Uint24:
+		return 8
+	case sqltypes.Int24:
+		return 9
+	case sqltypes.Uint32:
+		return 10
+	case sqltypes.Int32:
+		return 11
+	case sqltypes.Uint64:
+		return 20
+	case sqltypes.Int64:
+		return 20
+	case sqltypes.Float32:
+		return 12
+	case sqltypes.Float64:
+		return 22
+	default:
+		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
+	}
+}
+
 // MustConvert implements the Type interface.
 func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
@@ -346,7 +393,7 @@ func (t numberTypeImpl) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t numberTypeImpl) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t numberTypeImpl) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -358,9 +405,9 @@ func (t numberTypeImpl) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
 		dest = strconv.AppendUint(dest, mustUint64(v), 10)
 	case sqltypes.Float32:
-		dest = strconv.AppendFloat(dest, float64(v.(float32)), 'f', -1, 32)
+		dest = strconv.AppendFloat(dest, float64(v.(float32)), 'g', -1, 32)
 	case sqltypes.Float64:
-		dest = strconv.AppendFloat(dest, v.(float64), 'f', -1, 64)
+		dest = strconv.AppendFloat(dest, v.(float64), 'g', -1, 64)
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}
@@ -564,29 +611,29 @@ func (t numberTypeImpl) SQL2(v Value) (sqltypes.Value, error) {
 func (t numberTypeImpl) String() string {
 	switch t.baseType {
 	case sqltypes.Int8:
-		return "TINYINT"
+		return "tinyint"
 	case sqltypes.Uint8:
-		return "TINYINT UNSIGNED"
+		return "tinyint unsigned"
 	case sqltypes.Int16:
-		return "SMALLINT"
+		return "smallint"
 	case sqltypes.Uint16:
-		return "SMALLINT UNSIGNED"
+		return "smallint unsigned"
 	case sqltypes.Int24:
-		return "MEDIUMINT"
+		return "mediumint"
 	case sqltypes.Uint24:
-		return "MEDIUMINT UNSIGNED"
+		return "mediumint unsigned"
 	case sqltypes.Int32:
-		return "INT"
+		return "int"
 	case sqltypes.Uint32:
-		return "INT UNSIGNED"
+		return "int unsigned"
 	case sqltypes.Int64:
-		return "BIGINT"
+		return "bigint"
 	case sqltypes.Uint64:
-		return "BIGINT UNSIGNED"
+		return "bigint unsigned"
 	case sqltypes.Float32:
-		return "FLOAT"
+		return "float"
 	case sqltypes.Float64:
-		return "DOUBLE"
+		return "double"
 	default:
 		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 	}
@@ -595,6 +642,38 @@ func (t numberTypeImpl) String() string {
 // Type implements Type interface.
 func (t numberTypeImpl) Type() query.Type {
 	return t.baseType
+}
+
+// ValueType implements Type interface.
+func (t numberTypeImpl) ValueType() reflect.Type {
+	switch t.baseType {
+	case sqltypes.Int8:
+		return numberInt8ValueType
+	case sqltypes.Uint8:
+		return numberUint8ValueType
+	case sqltypes.Int16:
+		return numberInt16ValueType
+	case sqltypes.Uint16:
+		return numberUint16ValueType
+	case sqltypes.Int24:
+		return numberInt32ValueType
+	case sqltypes.Uint24:
+		return numberUint32ValueType
+	case sqltypes.Int32:
+		return numberInt32ValueType
+	case sqltypes.Uint32:
+		return numberUint32ValueType
+	case sqltypes.Int64:
+		return numberInt64ValueType
+	case sqltypes.Uint64:
+		return numberUint64ValueType
+	case sqltypes.Float32:
+		return numberFloat32ValueType
+	case sqltypes.Float64:
+		return numberFloat64ValueType
+	default:
+		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
+	}
 }
 
 // Zero implements Type interface.
@@ -980,8 +1059,18 @@ func mustInt64(v interface{}) int64 {
 			return int64(1)
 		}
 		return int64(0)
+	case uint:
+		return int64(tv)
+	case uint8:
+		return int64(tv)
+	case uint16:
+		return int64(tv)
+	case uint32:
+		return int64(tv)
+	case uint64:
+		return int64(tv)
 	default:
-		panic("unexpected type")
+		panic(fmt.Sprintf("unexpected type %v", v))
 	}
 }
 
@@ -1004,7 +1093,15 @@ func mustUint64(v interface{}) uint64 {
 		return uint64(0)
 	case int:
 		return uint64(tv)
+	case int8:
+		return uint64(tv)
+	case int16:
+		return uint64(tv)
+	case int32:
+		return uint64(tv)
+	case int64:
+		return uint64(tv)
 	default:
-		panic("unexpected type")
+		panic(fmt.Sprintf("unexpected type %v", v))
 	}
 }

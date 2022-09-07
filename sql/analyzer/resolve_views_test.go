@@ -26,56 +26,86 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+var viewDefinition = plan.NewSubqueryAlias(
+	"myview1", "select i from mytable",
+	plan.NewProject(
+		[]sql.Expression{expression.NewUnresolvedColumn("i")},
+		plan.NewUnresolvedTable("mytable", ""),
+	),
+)
+
+var viewDefinitionWithUnion = plan.NewSubqueryAlias(
+	"myview2", "select i from mytable1 union select i from mytable2",
+	plan.NewProject(
+		[]sql.Expression{expression.NewUnresolvedColumn("i")},
+		plan.NewUnion(
+			plan.NewUnresolvedTable("mytable1", ""),
+			plan.NewUnresolvedTable("mytable2", "")),
+	),
+)
+
+var viewDefinitionWithAsOf = plan.NewSubqueryAlias(
+	"viewWithAsOf", "select i from mytable as of '2019-01-01'",
+	plan.NewProject(
+		[]sql.Expression{expression.NewUnresolvedColumn("i")},
+		plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("2019-01-01", sql.LongText)),
+	),
+)
+
 func TestResolveViews(t *testing.T) {
-	require := require.New(t)
-
-	f := getRule(resolveViewsId)
-
-	viewDefinition := plan.NewSubqueryAlias(
-		"myview", "select i from mytable",
-		plan.NewProject(
-			[]sql.Expression{expression.NewUnresolvedColumn("i")},
-			plan.NewUnresolvedTable("mytable", ""),
-		),
-	)
-	view := sql.NewView("myview", viewDefinition, "select i from mytable")
+	// Initialize views and DB
+	view := sql.NewView(viewDefinition.Name(), viewDefinition, viewDefinition.TextDefinition)
+	viewWithUnion := sql.NewView(viewDefinitionWithUnion.Name(), viewDefinitionWithUnion, viewDefinitionWithUnion.TextDefinition)
+	viewWithAsOf := sql.NewView(viewDefinitionWithAsOf.Name(), viewDefinitionWithAsOf, viewDefinitionWithAsOf.TextDefinition)
 
 	db := memory.NewDatabase("mydb")
 	viewReg := sql.NewViewRegistry()
-	err := viewReg.Register(db.Name(), view)
-	require.NoError(err)
+	require.NoError(t, viewReg.Register(db.Name(), view))
+	require.NoError(t, viewReg.Register(db.Name(), viewWithUnion))
+	require.NoError(t, viewReg.Register(db.Name(), viewWithAsOf))
 
+	f := getRule(resolveViewsId)
 	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Id, f.Apply).Build()
 
 	sess := sql.NewBaseSession()
 	sess.SetViewRegistry(viewReg)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess)).WithCurrentDB("mydb")
-	// AS OF expressions on a view should be pushed down to unresolved tables
-	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
-	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(viewDefinition, analyzed)
 
-	viewDefinitionWithAsOf := plan.NewSubqueryAlias(
-		"myview", "select i from mytable",
+	// AS OF expressions on a view should be pushed down to unresolved tables
+	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview1", "")
+	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
+	require.NoError(t, err)
+	require.Equal(t, viewDefinition, analyzed)
+	expectedViewDefinition := plan.NewSubqueryAlias(
+		"myview1", "select i from mytable",
 		plan.NewProject(
 			[]sql.Expression{expression.NewUnresolvedColumn("i")},
 			plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("2019-01-01", sql.LongText)),
 		),
 	)
-	var notAnalyzedAsOf sql.Node = plan.NewUnresolvedTableAsOf("myview", "", expression.NewLiteral("2019-01-01", sql.LongText))
-
+	var notAnalyzedAsOf sql.Node = plan.NewUnresolvedTableAsOf("myview1", "", expression.NewLiteral("2019-01-01", sql.LongText))
 	analyzed, _, err = f.Apply(ctx, a, notAnalyzedAsOf, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(viewDefinitionWithAsOf, analyzed)
+	require.NoError(t, err)
+	require.Equal(t, expectedViewDefinition, analyzed)
+
+	// Views using a union statement should have AsOf pushed to their unresolved tables, even though union is opaque
+	expectedViewDefinition = plan.NewSubqueryAlias(
+		"myview2", "select i from mytable1 union select i from mytable2",
+		plan.NewProject(
+			[]sql.Expression{expression.NewUnresolvedColumn("i")},
+			plan.NewUnion(
+				plan.NewUnresolvedTableAsOf("mytable1", "", expression.NewLiteral("2019-01-01", sql.LongText)),
+				plan.NewUnresolvedTableAsOf("mytable2", "", expression.NewLiteral("2019-01-01", sql.LongText))),
+		),
+	)
+	notAnalyzedAsOf = plan.NewUnresolvedTableAsOf("myview2", "", expression.NewLiteral("2019-01-01", sql.LongText))
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzedAsOf, nil, DefaultRuleSelector)
+	require.NoError(t, err)
+	require.Equal(t, expectedViewDefinition, analyzed)
 
 	// Views that are defined with AS OF clauses cannot have an AS OF pushed down to them
-	viewWithAsOf := sql.NewView("viewWithAsOf", viewDefinitionWithAsOf, "select i from mytable as of '2019-01-01'")
-	err = viewReg.Register(db.Name(), viewWithAsOf)
-	require.NoError(err)
-
 	notAnalyzedAsOf = plan.NewUnresolvedTableAsOf("viewWithAsOf", "", expression.NewLiteral("2019-01-01", sql.LongText))
 	analyzed, _, err = f.Apply(ctx, a, notAnalyzedAsOf, nil, DefaultRuleSelector)
-	require.Error(err)
-	require.True(sql.ErrIncompatibleAsOf.Is(err), "wrong error type")
+	require.Error(t, err)
+	require.True(t, sql.ErrIncompatibleAsOf.Is(err), "wrong error type")
 }

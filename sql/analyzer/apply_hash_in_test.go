@@ -13,6 +13,7 @@ import (
 )
 
 func TestApplyHashIn(t *testing.T) {
+	ctx := &sql.Context{}
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
@@ -21,6 +22,7 @@ func TestApplyHashIn(t *testing.T) {
 	}), nil)
 
 	hitLiteral, _ := expression.NewHashInTuple(
+		ctx,
 		expression.NewGetField(0, sql.Int64, "foo", false),
 		expression.NewTuple(
 			expression.NewLiteral(int64(2), sql.Int64),
@@ -30,6 +32,7 @@ func TestApplyHashIn(t *testing.T) {
 	)
 
 	hitTuple, _ := expression.NewHashInTuple(
+		ctx,
 		expression.NewTuple(
 			expression.NewGetField(0, sql.Int64, "a", false),
 			expression.NewGetField(1, sql.Int64, "b", false),
@@ -42,6 +45,7 @@ func TestApplyHashIn(t *testing.T) {
 	)
 
 	hitHeteroTuple, _ := expression.NewHashInTuple(
+		ctx,
 		expression.NewTuple(
 			expression.NewGetField(0, sql.Int64, "a", false),
 			expression.NewGetField(3, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "d", false),
@@ -203,6 +207,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				mustNewHashInTuple(
+					ctx,
 					expression.NewTuple(
 						expression.NewTuple(
 							expression.NewGetField(0, sql.Int64, "a", false),
@@ -271,6 +276,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				mustNewHashInTuple(
+					ctx,
 					expression.NewPlus(
 						expression.NewLiteral(4, sql.Int64),
 						expression.NewGetField(0, sql.Int64, "foo", false),
@@ -324,6 +330,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				mustNewHashInTuple(
+					ctx,
 					function.NewLower(
 						expression.NewLiteral("hi", sql.TinyText),
 					),
@@ -374,6 +381,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				mustNewHashInTuple(
+					ctx,
 					expression.NewIsNull(
 						expression.NewLiteral(int64(0), sql.Null),
 					),
@@ -424,6 +432,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				mustNewHashInTuple(
+					ctx,
 					expression.NewIsTrue(
 						expression.NewLiteral(int64(0), sql.Null),
 					),
@@ -475,6 +484,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				mustNewHashInTuple(
+					ctx,
 					expression.NewConvert(
 						expression.NewGetField(0, sql.Int64, "foo", false),
 						"char",
@@ -539,8 +549,8 @@ func TestApplyHashIn(t *testing.T) {
 	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(applyHashInId))
 }
 
-func mustNewHashInTuple(left, right sql.Expression) *expression.HashInTuple {
-	hin, err := expression.NewHashInTuple(left, right)
+func mustNewHashInTuple(ctx *sql.Context, left, right sql.Expression) *expression.HashInTuple {
+	hin, err := expression.NewHashInTuple(ctx, left, right)
 	if err != nil {
 		panic(err)
 	}

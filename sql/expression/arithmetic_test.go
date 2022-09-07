@@ -178,7 +178,7 @@ func TestDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
@@ -205,7 +205,7 @@ func TestDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
@@ -231,7 +231,7 @@ func TestDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
@@ -392,7 +392,7 @@ func TestIntDiv(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			if tt.null {
-				assert.Equal(t, sql.Null, result)
+				assert.Equal(t, nil, result)
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
@@ -405,11 +405,17 @@ func TestMod(t *testing.T) {
 		name        string
 		left, right int64
 		expected    int64
+		null        bool
 	}{
-		{"1 % 1", 1, 1, 0},
-		{"8 % 3", 8, 3, 2},
-		{"1 % 3", 1, 3, 1},
-		{"0 % -1024", 0, -1024, 0},
+		{"1 % 1", 1, 1, 0, false},
+		{"8 % 3", 8, 3, 2, false},
+		{"1 % 3", 1, 3, 1, false},
+		{"0 % -1024", 0, -1024, 0, false},
+		{"-1 % 2", -1, 2, -1, false},
+		{"1 % -2", 1, -2, 1, false},
+		{"-1 % -2", -1, -2, -1, false},
+		{"1 % 0", 1, 0, 0, true},
+		{"0 % 0", 0, 0, 0, true},
 	}
 
 	for _, tt := range testCases {
@@ -420,7 +426,11 @@ func TestMod(t *testing.T) {
 				NewLiteral(tt.right, sql.Int64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if tt.null {
+				require.Nil(result)
+			} else {
+				require.Equal(tt.expected, result)
+			}
 		})
 	}
 }

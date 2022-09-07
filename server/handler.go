@@ -27,8 +27,9 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/go-kit/kit/metrics/discard"
-	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -218,12 +219,11 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(c, t)
 		case v.Type() == sqltypes.Decimal:
-			t := sql.MustCreateDecimalType(sql.DecimalTypeMaxPrecision, sql.DecimalTypeMaxScale)
-			v, err := t.Convert(string(v.ToBytes()))
+			v, err := sql.InternalDecimalType.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
-			res[k] = expression.NewLiteral(v, t)
+			res[k] = expression.NewLiteral(v, sql.InternalDecimalType)
 		case v.Type() == sqltypes.Bit:
 			t := sql.MustCreateBitType(sql.BitTypeMaxBits)
 			v, err := t.Convert(v.ToBytes())
@@ -314,7 +314,10 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	if parsed == nil {
-		parsed, _ = parse.Parse(ctx, query)
+		parsed, err = parse.Parse(ctx, query)
+	}
+	if err != nil {
+		return "", err
 	}
 
 	ctx.GetLogger().Tracef("beginning execution")
@@ -497,7 +500,7 @@ func (h *Handler) doQuery(
 						continue
 					}
 
-					outputRow, err := rowToSQL(schema, row)
+					outputRow, err := rowToSQL(ctx, schema, row)
 					if err != nil {
 						return err
 					}
@@ -543,15 +546,15 @@ func (h *Handler) doQuery(
 	switch len(r.Rows) {
 	case 0:
 		if len(r.Info) > 0 {
-			ctx.GetLogger().Debugf("returning result %s", r.Info)
+			ctx.GetLogger().Tracef("returning result %s", r.Info)
 		} else {
-			ctx.GetLogger().Debugf("returning empty result")
+			ctx.GetLogger().Tracef("returning empty result")
 		}
 	case 1:
-		ctx.GetLogger().Debugf("returning result %v", r)
+		ctx.GetLogger().Tracef("returning result %v", r)
 	}
 
-	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
+	ctx.GetLogger().Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
 
 	// processedAtLeastOneBatch means we already called callback() at least
 	// once, so no need to call it if RowsAffected == 0.
@@ -708,7 +711,7 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
-func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
+func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
 	var err error
 	for i, v := range row {
@@ -717,7 +720,7 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 			continue
 		}
 
-		o[i], err = s[i].Type.SQL(nil, v)
+		o[i], err = s[i].Type.SQL(ctx, nil, v)
 		if err != nil {
 			return nil, err
 		}
@@ -749,14 +752,15 @@ func schemaToFields(s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
 		var charset uint32 = mysql.CharacterSetUtf8
-		if sql.IsBlob(c.Type) {
+		if sql.IsBinaryType(c.Type) {
 			charset = mysql.CharacterSetBinary
 		}
 
 		fields[i] = &query.Field{
-			Name:    c.Name,
-			Type:    c.Type.Type(),
-			Charset: charset,
+			Name:         c.Name,
+			Type:         c.Type.Type(),
+			Charset:      charset,
+			ColumnLength: c.Type.MaxTextResponseByteLength(),
 		}
 	}
 
@@ -775,7 +779,7 @@ var (
 )
 
 func observeQuery(ctx *sql.Context, query string) func(err error) {
-	span, _ := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
+	span, ctx := ctx.Span("query", trace.WithAttributes(attribute.String("query", query)))
 
 	t := time.Now()
 	return func(err error) {
@@ -786,6 +790,6 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 			QueryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
 		}
 
-		span.Finish()
+		span.End()
 	}
 }

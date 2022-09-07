@@ -6,20 +6,45 @@ import (
 	"time"
 )
 
+var (
+	dateSpecifiers = []uint8{'a', 'b', 'c', 'D', 'd', 'e', 'j', 'M', 'm', 'U', 'u', 'V', 'v', 'W', 'w', 'X', 'x', 'Y', 'y'}
+	timeSpecifiers = []uint8{'f', 'H', 'h', 'I', 'i', 'k', 'l', 'p', 'r', 'S', 's', 'T'}
+)
+
 // ParseDateWithFormat parses the date string according to the given
 // format string, as defined in the MySQL specification.
 //
 // Reference the MySQL docs for valid format specifiers.
 // This implementation attempts to match the spec to the extent possible.
 //
-//
 // More info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
 //
 // Even more info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date
-func ParseDateWithFormat(date, format string) (time.Time, error) {
-	parsers, err := parsersFromFormatString(format)
+func ParseDateWithFormat(date, format string) (interface{}, error) {
+	parsers, specifiers, err := parsersFromFormatString(format)
 	if err != nil {
-		return time.Time{}, err
+		return nil, err
+	}
+
+	hasDate := false
+	for _, s := range dateSpecifiers {
+		if _, ok := specifiers[s]; ok {
+			hasDate = true
+			break
+		}
+	}
+
+	hasTime := false
+	_, hasAmPm := specifiers['p']
+	for _, s := range timeSpecifiers {
+		if _, ok := specifiers[s]; ok {
+			// validate that am/pm is not used with 24 hour time specifiers
+			if (s == 'H' || s == 'k' || s == 'T') && hasAmPm {
+				return nil, fmt.Errorf("cannot use 24 hour time (H) with AM/PM (p)")
+			}
+			hasTime = true
+			break
+		}
 	}
 
 	// trim all leading and trailing whitespace
@@ -28,39 +53,52 @@ func ParseDateWithFormat(date, format string) (time.Time, error) {
 	// convert to all lowercase
 	date = strings.ToLower(date)
 
-	var result datetime
+	var dt datetime
 	target := date
 	for _, parser := range parsers {
 		target = takeAllSpaces(target)
-		rest, err := parser(&result, target)
+		rest, err := parser(&dt, target)
 		if err != nil {
-			return time.Time{}, err
+			return nil, err
 		}
 		target = rest
 	}
 
-	return evaluate(result)
+	var result string
+	if hasDate && hasTime {
+		result = fmt.Sprintf("%s %s", evaluateDate(dt), evaluateTime(dt))
+	} else if hasTime {
+		result = fmt.Sprintf("%s", evaluateTime(dt))
+	} else if hasDate {
+		result = fmt.Sprintf("%s", evaluateDate(dt))
+	} else {
+		return nil, fmt.Errorf("no value to evaluate")
+	}
+
+	return result, nil
 }
 
 // Convert the user-defined format string into a slice of parser functions
 // which will later process the date string.
 //
 // Example format string: "%H:%i:%s".
-func parsersFromFormatString(format string) ([]parser, error) {
+func parsersFromFormatString(format string) ([]parser, map[uint8]bool, error) {
 	parsers := make([]parser, 0, len(format))
+	var specifiersInFormat = make(map[uint8]bool)
 	for i := 0; i < len(format); i++ {
 		char := format[i]
 		if char == '%' {
 			if len(format) <= i+1 {
-				return nil, fmt.Errorf("\"%%\" found at end of format string")
+				return nil, nil, fmt.Errorf("\"%%\" found at end of format string")
 			}
 			specifier := format[i+1]
+			specifiersInFormat[specifier] = true
 			parser, ok := formatSpecifiers[specifier]
 			if !ok {
-				return nil, fmt.Errorf("unknown format specifier \"%c\"", specifier)
+				return nil, nil, fmt.Errorf("unknown format specifier \"%c\"", specifier)
 			}
 			if parser == nil {
-				return nil, fmt.Errorf("format specifier \"%c\" not yet supported", specifier)
+				return nil, nil, fmt.Errorf("format specifier \"%c\" not yet supported", specifier)
 			}
 			parsers = append(parsers, wrapSpecifierParser(parser, specifier))
 
@@ -70,7 +108,8 @@ func parsersFromFormatString(format string) ([]parser, error) {
 			parsers = append(parsers, wrapLiteralParser(char))
 		}
 	}
-	return parsers, nil
+
+	return parsers, specifiersInFormat, nil
 }
 
 // Wrap a literal char parser, returning the corresponding
@@ -127,9 +166,16 @@ type datetime struct {
 	hours        *uint
 	minutes      *uint
 	seconds      *uint
-	miliseconds  *uint
+	milliseconds *uint
 	microseconds *uint
 	nanoseconds  *uint
+}
+
+func (dt *datetime) isEmpty() bool {
+	if dt.day == nil && dt.month == nil && dt.year == nil && dt.dayOfYear == nil && dt.weekOfYear == nil && dt.weekday == nil && dt.am == nil && dt.hours == nil && dt.minutes == nil && dt.seconds == nil && dt.milliseconds == nil && dt.microseconds == nil && dt.nanoseconds == nil {
+		return true
+	}
+	return false
 }
 
 // ParseSpecifierErr defines a error when attempting to parse
@@ -166,7 +212,7 @@ func (p ParseLiteralErr) Error() string {
 // Reference: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
 var formatSpecifiers = map[byte]parser{
 	// %a	Abbreviated weekday name (Sun..Sat)
-	'a': parseWeedayAbbreviation,
+	'a': parseWeekdayAbbreviation,
 	// %b	Abbreviated month name (Jan..Dec)
 	'b': parseMonthAbbreviation,
 	// %c	Month, numeric (0..12)

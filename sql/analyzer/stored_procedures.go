@@ -27,7 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// loadStoredProcedures loads stored procedures for all databases on relevant calls.
+// loadStoredProcedures loads non-built-in stored procedures for all databases on relevant calls.
 func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (*Scope, error) {
 	if scope.proceduresPopulating() {
 		return scope, nil
@@ -43,25 +43,6 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	}()
 
 	allDatabases := a.Catalog.AllDatabases(ctx)
-	for _, database := range allDatabases {
-		if epdb, ok := database.(sql.ExternalStoredProcedureDatabase); ok {
-			externalProcedures, err := epdb.GetExternalStoredProcedures(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, externalProcedure := range externalProcedures {
-				procedure, err := resolveExternalStoredProcedure(ctx, epdb.Name(), externalProcedure)
-				if err != nil {
-					return nil, err
-				}
-				err = scope.procedures.Register(database.Name(), procedure)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
 	for _, database := range allDatabases {
 		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
 			procedures, err := pdb.GetStoredProcedures(ctx)
@@ -134,6 +115,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 	children := node.Children()
 	newChildren := make([]sql.Node, len(children))
 	var err error
+	procSel := NewSkipPruneRuleSelector(sel)
 	for i, child := range children {
 		var newChild sql.Node
 		switch child := child.(type) {
@@ -144,10 +126,10 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			if skipCall {
 				newChild = child
 			} else {
-				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, sel)
+				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel)
 			}
 		default:
-			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, sel)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel)
 		}
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -191,7 +173,7 @@ func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 
 // validateStoredProcedure handles Procedure nodes, resolving references to the parameters, along with ensuring
 // that all logic contained within the stored procedure body is valid.
-func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string]struct{}, error) {
+func validateStoredProcedure(_ *sql.Context, proc *plan.Procedure) (map[string]struct{}, error) {
 	//TODO: handle declared variables here as well
 	paramNames := make(map[string]struct{})
 	for _, param := range proc.Params {
@@ -258,7 +240,7 @@ func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string
 	return paramNames, nil
 }
 
-// resolveProcedureParams resolves all of the named parameters and declared variables inside of a stored procedure.
+// resolveProcedureParams resolves all named parameters and declared variables in a stored procedure.
 func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, proc sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	newProcNode, _, err := resolveProcedureParamsTransform(ctx, paramNames, proc)
 	if err != nil {
@@ -305,7 +287,7 @@ func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, pr
 	return newProc, transform.NewTree, nil
 }
 
-// resolveProcedureParamsTransform resolves all of the named parameters and declared variables inside of a node.
+// resolveProcedureParamsTransform resolves all named parameters and declared variables in a node.
 // In cases where an expression contains nodes, this will also walk those nodes.
 func resolveProcedureParamsTransform(ctx *sql.Context, paramNames map[string]struct{}, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -351,7 +333,8 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	}
 
 	hasProcedureCall := hasProcedureCall(n)
-	if !hasProcedureCall {
+	_, isShowCreateProcedure := n.(*plan.ShowCreateProcedure)
+	if !hasProcedureCall && !isShowCreateProcedure {
 		return n, transform.SameTree, nil
 	}
 
@@ -364,6 +347,17 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		switch n := n.(type) {
 		case *plan.Call:
 			return applyProceduresCall(ctx, a, n, scope, sel)
+		case *plan.ShowCreateProcedure:
+			procedures, err := a.Catalog.ExternalStoredProcedures(ctx, n.ProcedureName)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			if len(procedures) == 0 {
+				// Not finding an external stored procedure is not an error, since we'll also later
+				// search for a user-defined stored procedure with this name.
+				return n, transform.SameTree, nil
+			}
+			return n.WithExternalStoredProcedure(procedures[0]), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -375,10 +369,31 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	pRef := expression.NewProcedureParamReference()
 	call = call.WithParamReference(pRef)
 
-	procedure := scope.procedures.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
-	if procedure == nil {
-		return nil, transform.SameTree, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+	esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
+	if err != nil {
+		return nil, transform.SameTree, err
 	}
+
+	var procedure *plan.Procedure
+	if esp != nil {
+		externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
+		if err != nil {
+			return nil, false, err
+		}
+
+		procedure = externalProcedure
+	} else {
+		procedure = scope.procedures.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
+	}
+
+	if procedure == nil {
+		err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+		if ctx.GetCurrentDatabase() == "" {
+			return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
+		}
+		return nil, transform.SameTree, err
+	}
+
 	if procedure.HasVariadicParameter() {
 		procedure = procedure.ExtendVariadic(ctx, len(call.Params))
 	}

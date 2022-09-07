@@ -166,12 +166,16 @@ func TestTimeConvert(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, test.expectedVal, val)
-				if test.val != nil {
-					mar, err := Time.Marshal(test.val)
+				if test.val == nil {
+					assert.Equal(t, test.expectedVal, val)
+				} else {
+					assert.Equal(t, test.expectedVal, val.(Timespan).String())
+					timespan, err := Time.ConvertToTimespan(test.val)
 					require.NoError(t, err)
-					umar := Time.Unmarshal(mar)
-					cmp, err := Time.Compare(test.val, umar)
+					require.True(t, timespan.Equals(val.(Timespan)))
+					ms := timespan.AsMicroseconds()
+					ums := Time.MicrosecondsToTimespan(ms)
+					cmp, err := Time.Compare(test.val, ums)
 					require.NoError(t, err)
 					assert.Equal(t, 0, cmp)
 				}
@@ -211,5 +215,5 @@ func TestTimeConvertToTimeDuration(t *testing.T) {
 }
 
 func TestTimeString(t *testing.T) {
-	require.Equal(t, "TIME(6)", Time.String())
+	require.Equal(t, "time(6)", Time.String())
 }

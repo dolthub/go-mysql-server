@@ -15,11 +15,16 @@
 package sql
 
 import (
+	"reflect"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemDoubleValueType = reflect.TypeOf(float64(0))
 
 // systemDoubleType is an internal double type ONLY for system variables.
 type systemDoubleType struct {
@@ -87,6 +92,14 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, error) {
 		if value >= t.lowerbound && value <= t.upperbound {
 			return value, nil
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	}
 
 	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
@@ -109,13 +122,19 @@ func (t systemDoubleType) Equals(otherType Type) bool {
 	return false
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t systemDoubleType) MaxTextResponseByteLength() uint32 {
+	// system types are not sent directly across the wire
+	return 0
+}
+
 // Promote implements the Type interface.
 func (t systemDoubleType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemDoubleType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemDoubleType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -134,12 +153,17 @@ func (t systemDoubleType) SQL(dest []byte, v interface{}) (sqltypes.Value, error
 
 // String implements Type interface.
 func (t systemDoubleType) String() string {
-	return "SYSTEM_DOUBLE"
+	return "system_double"
 }
 
 // Type implements Type interface.
 func (t systemDoubleType) Type() query.Type {
 	return sqltypes.Float64
+}
+
+// ValueType implements Type interface.
+func (t systemDoubleType) ValueType() reflect.Type {
+	return systemDoubleValueType
 }
 
 // Zero implements Type interface.

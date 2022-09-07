@@ -22,8 +22,9 @@ import (
 )
 
 type ShowCreateProcedure struct {
-	db            sql.Database
-	ProcedureName string
+	db                      sql.Database
+	ProcedureName           string
+	externalStoredProcedure *sql.ExternalStoredProcedureDetails
 }
 
 var _ sql.Databaser = (*ShowCreateProcedure)(nil)
@@ -68,71 +69,55 @@ func (s *ShowCreateProcedure) Schema() sql.Schema {
 }
 
 // RowIter implements the sql.Node interface.
-func (s *ShowCreateProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	if externalProcedureDb, ok := s.db.(sql.ExternalStoredProcedureDatabase); ok {
-		externalProcedures, err := externalProcedureDb.GetExternalStoredProcedures(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, procedure := range externalProcedures {
-			if strings.ToLower(procedure.Name) == s.ProcedureName {
-				characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-				if err != nil {
-					return nil, err
-				}
-				collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-				if err != nil {
-					return nil, err
-				}
-				collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-				if err != nil {
-					return nil, err
-				}
-
-				return sql.RowsToRowIter(sql.Row{
-					procedure.Name, // Procedure
-					"",             // sql_mode
-					procedure.FakeCreateProcedureStmt(externalProcedureDb.Name()), // Create Procedure
-					characterSetClient,  // character_set_client
-					collationConnection, // collation_connection
-					collationServer,     // Database Collation
-				}), nil
-			}
-		}
-	}
-	procedureDb, ok := s.db.(sql.StoredProcedureDatabase)
-	if !ok {
-		return nil, sql.ErrStoredProceduresNotSupported.New(s.db.Name())
-	}
-	procedures, err := procedureDb.GetStoredProcedures(ctx)
+func (s *ShowCreateProcedure) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
 	if err != nil {
 		return nil, err
 	}
-	for _, procedure := range procedures {
-		if strings.ToLower(procedure.Name) == s.ProcedureName {
-			characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-			if err != nil {
-				return nil, err
-			}
-			collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-			if err != nil {
-				return nil, err
-			}
-			collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-			if err != nil {
-				return nil, err
-			}
-			return sql.RowsToRowIter(sql.Row{
-				procedure.Name,            // Procedure
-				"",                        // sql_mode
-				procedure.CreateStatement, // Create Procedure
-				characterSetClient,        // character_set_client
-				collationConnection,       // collation_connection
-				collationServer,           // Database Collation
-			}), nil
-		}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
 	}
-	return nil, sql.ErrStoredProcedureDoesNotExist.New(s.ProcedureName)
+	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+	if err != nil {
+		return nil, err
+	}
+
+	if s.externalStoredProcedure != nil {
+		// If an external stored procedure has been plugged in by the analyzer, use that
+		fakeCreateProcedureStmt := s.externalStoredProcedure.FakeCreateProcedureStmt()
+		return sql.RowsToRowIter(sql.Row{
+			s.externalStoredProcedure.Name, // Procedure
+			"",                             // sql_mode
+			fakeCreateProcedureStmt,        // Create Procedure
+			characterSetClient,             // character_set_client
+			collationConnection,            // collation_connection
+			collationServer,                // Database Collation
+		}), nil
+	} else {
+		// Otherwise, search the StoredProcedureDatabase for a user-created stored procedure
+		procedureDb, ok := s.db.(sql.StoredProcedureDatabase)
+		if !ok {
+			return nil, sql.ErrStoredProceduresNotSupported.New(s.db.Name())
+		}
+		procedures, err := procedureDb.GetStoredProcedures(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, procedure := range procedures {
+			if strings.ToLower(procedure.Name) == s.ProcedureName {
+				return sql.RowsToRowIter(sql.Row{
+					procedure.Name,            // Procedure
+					"",                        // sql_mode
+					procedure.CreateStatement, // Create Procedure
+					characterSetClient,        // character_set_client
+					collationConnection,       // collation_connection
+					collationServer,           // Database Collation
+				}), nil
+			}
+		}
+		return nil, sql.ErrStoredProcedureDoesNotExist.New(s.ProcedureName)
+	}
 }
 
 // WithChildren implements the sql.Node interface.
@@ -162,4 +147,12 @@ func (s *ShowCreateProcedure) WithDatabase(db sql.Database) (sql.Node, error) {
 	ns := *s
 	ns.db = db
 	return &ns, nil
+}
+
+// WithExternalStoredProcedure returns a new ShowCreateProcedure node with the specified external stored procedure set
+// as the procedure to be shown.
+func (s *ShowCreateProcedure) WithExternalStoredProcedure(procedure sql.ExternalStoredProcedureDetails) sql.Node {
+	ns := *s
+	ns.externalStoredProcedure = &procedure
+	return &ns
 }

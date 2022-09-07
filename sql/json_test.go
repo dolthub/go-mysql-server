@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -122,13 +123,16 @@ func TestJsonConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if val != nil {
+					assert.True(t, reflect.TypeOf(val).Implements(JSON.ValueType()))
+				}
 			}
 		})
 	}
 }
 
 func TestJsonString(t *testing.T) {
-	require.Equal(t, "JSON", JSON.String())
+	require.Equal(t, "json", JSON.String())
 }
 
 func TestJsonSQL(t *testing.T) {
@@ -150,7 +154,7 @@ func TestJsonSQL(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.val), func(t *testing.T) {
-			val, err := JSON.SQL(nil, test.val)
+			val, err := JSON.SQL(NewEmptyContext(), nil, test.val)
 			if test.expectedErr {
 				require.Error(t, err)
 			} else {
@@ -162,7 +166,7 @@ func TestJsonSQL(t *testing.T) {
 
 	// test that nulls are null
 	t.Run(fmt.Sprintf("%v", nil), func(t *testing.T) {
-		val, err := JSON.SQL(nil, nil)
+		val, err := JSON.SQL(NewEmptyContext(), nil, nil)
 		require.NoError(t, err)
 		assert.Equal(t, querypb.Type_NULL_TYPE, val.Type())
 	})

@@ -41,11 +41,11 @@ func TestDescribe(t *testing.T) {
 
 	n, err := iter.Next(ctx)
 	require.NoError(err)
-	require.Equal(sql.NewRow("c1", "TEXT"), n)
+	require.Equal(sql.NewRow("c1", "text"), n)
 
 	n, err = iter.Next(ctx)
 	require.NoError(err)
-	require.Equal(sql.NewRow("c2", "INT"), n)
+	require.Equal(sql.NewRow("c2", "int"), n)
 
 	n, err = iter.Next(ctx)
 	require.Equal(io.EOF, err)
@@ -98,7 +98,7 @@ func TestDescribeQuery(t *testing.T) {
 
 	expected := []sql.Row{
 		{"Project(foo.a, foo.b)"},
-		{" └─ Filter(foo.a = \"foo\")"},
+		{" └─ Filter(foo.a = 'foo')"},
 		{"     └─ Table(foo)"},
 	}
 

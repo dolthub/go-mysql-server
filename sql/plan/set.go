@@ -77,7 +77,7 @@ func (s *Set) Expressions() []sql.Expression {
 // RowIter implements the sql.Node interface.
 func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Set")
-	defer span.Finish()
+	defer span.End()
 
 	var updateExprs []sql.Expression
 	for _, v := range s.Exprs {
@@ -192,6 +192,34 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	default: // should never be hit
 		return fmt.Errorf("unable to set `%s` due to unknown scope `%v`", sysVar.Name, sysVar.Scope)
 	}
+	// Setting `character_set_connection`, regardless of how it is set (directly or through SET NAMES) will also set
+	// `collation_connection` to the default collation for the given character set.
+	if strings.ToLower(sysVar.Name) == "character_set_connection" {
+		newSysVar := &expression.SystemVar{
+			Name:  "collation_connection",
+			Scope: sysVar.Scope,
+		}
+		if val == nil {
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral("", sql.LongText), row)
+			if err != nil {
+				return err
+			}
+		} else {
+			valStr, ok := val.(string)
+			if !ok {
+				return sql.ErrInvalidSystemVariableValue.New("collation_connection", val)
+			}
+			charset, err := sql.ParseCharacterSet(valStr)
+			if err != nil {
+				return err
+			}
+			charset = charset
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral(charset.DefaultCollation().Name(), sql.LongText), row)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -214,4 +242,21 @@ func (s *Set) DebugString() string {
 		children[i] = fmt.Sprintf(sql.DebugString(v))
 	}
 	return strings.Join(children, ", ")
+}
+
+// Applies the update expressions given to the row given, returning the new resultant row.
+func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row sql.Row) (sql.Row, error) {
+	var ok bool
+	prev := row
+	for _, updateExpr := range updateExprs {
+		val, err := updateExpr.Eval(ctx, prev)
+		if err != nil {
+			return nil, err
+		}
+		prev, ok = val.(sql.Row)
+		if !ok {
+			return nil, ErrUpdateUnexpectedSetResult.New(val)
+		}
+	}
+	return prev, nil
 }

@@ -15,16 +15,10 @@
 package analyzer
 
 import (
-	errors "gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
-
-var errInvalidInRightEvaluation = errors.NewKind("expecting evaluation of IN expression right hand side to be a tuple, but it is %T")
 
 // indexLookup contains an sql.IndexLookup and all sql.Index that are involved
 // in it.
@@ -78,13 +72,13 @@ func getIndexes(
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
 					var allRanges sql.RangeCollection
-					allRanges = append(sql.RangeCollection{}, leftIdx.lookup.Ranges()...)
-					allRanges = append(allRanges, rightIdx.lookup.Ranges()...)
+					allRanges = append(sql.RangeCollection{}, leftIdx.lookup.Ranges...)
+					allRanges = append(allRanges, rightIdx.lookup.Ranges...)
 					newRanges, err := sql.RemoveOverlappingRanges(allRanges...)
 					if err != nil {
 						return nil, nil
 					}
-					newLookup, err := leftIdx.lookup.Index().NewLookup(ctx, newRanges...)
+					newLookup := sql.IndexLookup{Index: leftIdx.lookup.Index, Ranges: newRanges}
 					if err != nil {
 						return nil, err
 					}
@@ -148,7 +142,7 @@ func getIndexes(
 						return nil, err
 					}
 				}
-				if lookup == nil {
+				if lookup.IsEmpty() {
 					return nil, nil
 				}
 
@@ -183,7 +177,7 @@ func getIndexes(
 
 		result[getField.Table()] = lookup
 	case *expression.IsNull:
-		return getIndexes(ctx, ia, expression.NewEquals(e.Child, expression.NewLiteral(nil, sql.Null)), tableAliases)
+		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, sql.Null)), tableAliases)
 	case *expression.Not:
 		r, err := getNegatedIndexes(ctx, ia, e, tableAliases)
 		if err != nil {
@@ -216,7 +210,7 @@ func getIndexes(
 
 				lookup, err := sql.NewIndexBuilder(ctx, idx).GreaterOrEqual(ctx, normalizedExpressions[0].String(), lower).
 					LessOrEqual(ctx, normalizedExpressions[0].String(), upper).Build(ctx)
-				if err != nil || lookup == nil {
+				if err != nil || lookup.IsEmpty() {
 					return nil, err
 				}
 
@@ -255,7 +249,7 @@ func getIndexes(
 			// either return a merged index lookup for both values, or for neither. Returning either one leads to incorrect
 			// results.
 			if !canMergeIndexLookups(result, indexes) {
-				return nil, nil
+				continue
 			}
 			result, err = indexesIntersection(ctx, result, indexes)
 			if err != nil {
@@ -310,12 +304,14 @@ func getComparisonIndexLookup(
 
 	var lookup sql.IndexLookup
 	switch e.(type) {
-	case *expression.Equals, *expression.NullSafeEquals:
-		if e.Right().Type() == sql.Null {
+	case *expression.NullSafeEquals:
+		if value == nil {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).IsNull(ctx, normalizedExpressions[0].String()).Build(ctx)
 		} else {
 			lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 		}
+	case *expression.Equals:
+		lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.GreaterThan:
 		lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
 	case *expression.GreaterThanOrEqual:
@@ -327,7 +323,7 @@ func getComparisonIndexLookup(
 	default:
 		return nil, nil
 	}
-	if err != nil || lookup == nil {
+	if err != nil || lookup.IsEmpty() {
 		return nil, err
 	}
 
@@ -404,8 +400,15 @@ func getNegatedIndexes(
 			return nil, err
 		}
 
-		lookup, err := sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
-		if err != nil || lookup == nil {
+		_, nullsafe := not.Child.(*expression.NullSafeEquals)
+		var lookup sql.IndexLookup
+
+		if nullsafe && value == nil {
+			lookup, err = sql.NewIndexBuilder(ctx, idx).IsNotNull(ctx, normalizedExpressions[0].String()).Build(ctx)
+		} else {
+			lookup, err = sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+		}
+		if err != nil || lookup.IsEmpty() {
 			return nil, err
 		}
 
@@ -442,9 +445,12 @@ func getNegatedIndexes(
 					return nil, err
 				}
 
-				values, ok := value.([]interface{})
-				if !ok {
-					return nil, errInvalidInRightEvaluation.New(value)
+				var values []interface{}
+				switch v := value.(type) {
+				case []interface{}:
+					values = v
+				default:
+					values = []interface{}{v}
 				}
 
 				idxBuilder := sql.NewIndexBuilder(ctx, idx)
@@ -475,7 +481,7 @@ func getNegatedIndexes(
 	case *expression.IsNull:
 		return getNegatedIndexes(ctx, ia,
 			expression.NewNot(
-				expression.NewEquals(
+				expression.NewNullSafeEquals(
 					e.Child,
 					expression.NewLiteral(nil, sql.Null),
 				),
@@ -524,11 +530,11 @@ func indexesIntersection(ctx *sql.Context, left, right indexLookupsByTable) (ind
 
 	for table, idx := range left {
 		if idx2, ok := right[table]; ok && canMergeIndexes(idx.lookup, idx2.lookup) {
-			newRangeCollections, err := idx.lookup.Ranges().Intersect(idx2.lookup.Ranges())
+			newRangeCollections, err := idx.lookup.Ranges.Intersect(idx2.lookup.Ranges)
 			if err != nil || newRangeCollections == nil {
 				continue
 			}
-			idx.lookup, err = idx.lookup.Index().NewLookup(ctx, newRangeCollections...)
+			idx.lookup = sql.IndexLookup{Index: idx.lookup.Index, Ranges: newRangeCollections}
 			if err != nil {
 				return nil, err
 			}
@@ -668,12 +674,14 @@ func getMultiColumnIndexForExpressions(
 				expressions = append(expressions, expr.colExpr)
 
 				switch expr.comparison.(type) {
-				case *expression.Equals, *expression.NullSafeEquals:
-					if expr.comparand.Type() == sql.Null {
+				case *expression.NullSafeEquals:
+					if val == nil {
 						indexBuilder = indexBuilder.IsNull(ctx, expr.col.String())
 					} else {
 						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), val)
 					}
+				case *expression.Equals:
+					indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), val)
 				case *expression.GreaterThan:
 					indexBuilder = indexBuilder.GreaterThan(ctx, expr.col.String(), val)
 				case *expression.GreaterThanOrEqual:
@@ -721,14 +729,15 @@ func getMultiColumnIndexForExpressions(
 			case *expression.Not:
 				switch expr.comparison.(*expression.Not).Child.(type) {
 				//TODO: We should transform NOT nodes for comparisons at some other analyzer step, e.g. (NOT <) becomes (>=)
-				case *expression.Equals:
+				case *expression.NullSafeEquals, *expression.Equals:
 					val, err := expr.comparand.Eval(ctx, nil)
 					if err != nil {
 						return nil, err
 					}
+					_, nullsafe := expr.comparison.(*expression.Not).Child.(*expression.NullSafeEquals)
 					expressions = append(expressions, selectedExpr)
-					if expr.comparand.Type() == sql.Null {
-						indexBuilder.IsNotNull(ctx, expr.col.String())
+					if val == nil && nullsafe {
+						indexBuilder = indexBuilder.IsNotNull(ctx, expr.col.String())
 					} else {
 						indexBuilder = indexBuilder.NotEquals(ctx, expr.col.String(), val)
 					}
@@ -745,7 +754,7 @@ func getMultiColumnIndexForExpressions(
 	if err != nil {
 		return nil, err
 	}
-	if lookup == nil {
+	if lookup.IsEmpty() {
 		return nil, nil
 	}
 	var lookupExpr sql.Expression
@@ -784,6 +793,8 @@ type joinColExpr struct {
 	comparandCol *expression.GetField
 	// The comparison expression in which this joinColExpr is one term
 	comparison sql.Expression
+	// Whether the comparison expression will match null or not.
+	matchnull bool
 }
 
 type joinColExprs []*joinColExpr
@@ -843,6 +854,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 				colExpr:    colExpr.colExpr,
 				comparand:  colExpr.comparand,
 				comparison: expression.NewNot(colExpr.comparison),
+				matchnull:  colExpr.matchnull,
 			}
 		}
 
@@ -864,6 +876,8 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			return "", nil
 		}
 
+		_, matchnull := e.(*expression.NullSafeEquals)
+
 		leftCol, rightCol := expression.ExtractGetField(left), expression.ExtractGetField(right)
 		if leftCol == nil {
 			return "", nil
@@ -875,6 +889,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			comparand:    right,
 			comparandCol: rightCol,
 			comparison:   e,
+			matchnull:    matchnull,
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Upper) || !isEvaluable(e.Lower) || isEvaluable(e.Val) {
@@ -892,6 +907,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			comparand:    nil,
 			comparandCol: nil,
 			comparison:   e,
+			matchnull:    false,
 		}
 	case *expression.InTuple:
 		col := expression.ExtractGetField(e.Left())
@@ -904,6 +920,7 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			comparand:    e.Right(),
 			comparandCol: nil,
 			comparison:   e,
+			matchnull:    false,
 		}
 	default:
 		return "", nil
@@ -944,12 +961,15 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 			return nil, nil
 		}
 
+		_, matchnull := e.(*expression.NullSafeEquals)
+
 		leftCol = &joinColExpr{
 			col:          leftField,
 			colExpr:      left,
 			comparand:    right,
 			comparandCol: rightField,
 			comparison:   cmp,
+			matchnull:    matchnull,
 		}
 		rightCol = &joinColExpr{
 			col:          rightField,
@@ -957,6 +977,7 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 			comparand:    left,
 			comparandCol: leftField,
 			comparison:   cmp,
+			matchnull:    matchnull,
 		}
 		return leftCol, rightCol
 	default:
@@ -1025,11 +1046,11 @@ func canMergeIndexLookups(leftIndexes, rightIndexes indexLookupsByTable) bool {
 }
 
 func canMergeIndexes(a, b sql.IndexLookup) bool {
-	if a == nil || b == nil {
+	if a.IsEmpty() || b.IsEmpty() {
 		return false
 	}
-	ai := a.Index()
-	bi := b.Index()
+	ai := a.Index
+	bi := b.Index
 	if ai.Database() != bi.Database() || ai.Table() != bi.Table() {
 		return false
 	}
@@ -1044,17 +1065,4 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 		}
 	}
 	return true
-}
-
-// convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
-// equivalent as far as the index interfaces are concerned.
-func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
-	expr, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		isNull, ok := e.(*expression.IsNull)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-		return expression.NewEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
-	})
-	return expr
 }

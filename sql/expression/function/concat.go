@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -30,26 +28,10 @@ type Concat struct {
 
 var _ sql.FunctionExpression = (*Concat)(nil)
 
-// ErrConcatArrayWithOthers is returned when there are more than 1 argument in
-// concat and any of them is an array.
-var ErrConcatArrayWithOthers = errors.NewKind("can't concat a string array with any other elements")
-
 // NewConcat creates a new Concat UDF.
 func NewConcat(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("CONCAT", "1 or more", 0)
-	}
-
-	for _, arg := range args {
-		// Don't perform this check until it's resolved. Otherwise we
-		// can't get the type for sure.
-		if !arg.Resolved() {
-			continue
-		}
-
-		if len(args) > 1 && sql.IsArray(arg.Type()) {
-			return nil, ErrConcatArrayWithOthers.New()
-		}
 	}
 
 	return &Concat{args}, nil
@@ -66,11 +48,11 @@ func (c *Concat) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f *Concat) Type() sql.Type { return sql.LongText }
+func (c *Concat) Type() sql.Type { return sql.LongText }
 
 // IsNullable implements the Expression interface.
-func (f *Concat) IsNullable() bool {
-	for _, arg := range f.args {
+func (c *Concat) IsNullable() bool {
+	for _, arg := range c.args {
 		if arg.IsNullable() {
 			return true
 		}
@@ -78,9 +60,9 @@ func (f *Concat) IsNullable() bool {
 	return false
 }
 
-func (f *Concat) String() string {
-	var args = make([]string, len(f.args))
-	for i, arg := range f.args {
+func (c *Concat) String() string {
+	var args = make([]string, len(c.args))
+	for i, arg := range c.args {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("concat(%s)", strings.Join(args, ", "))
@@ -92,8 +74,8 @@ func (*Concat) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 }
 
 // Resolved implements the Expression interface.
-func (f *Concat) Resolved() bool {
-	for _, arg := range f.args {
+func (c *Concat) Resolved() bool {
+	for _, arg := range c.args {
 		if !arg.Resolved() {
 			return false
 		}
@@ -102,13 +84,13 @@ func (f *Concat) Resolved() bool {
 }
 
 // Children implements the Expression interface.
-func (f *Concat) Children() []sql.Expression { return f.args }
+func (c *Concat) Children() []sql.Expression { return c.args }
 
 // Eval implements the Expression interface.
-func (f *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var parts []string
 
-	for _, arg := range f.args {
+	for _, arg := range c.args {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
@@ -118,23 +100,12 @@ func (f *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		if sql.IsArray(arg.Type()) {
-			val, err = sql.CreateArray(sql.LongText).Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, v := range val.([]interface{}) {
-				parts = append(parts, v.(string))
-			}
-		} else {
-			val, err = sql.LongText.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			parts = append(parts, val.(string))
+		val, err = sql.LongText.Convert(val)
+		if err != nil {
+			return nil, err
 		}
+
+		parts = append(parts, val.(string))
 	}
 
 	return strings.Join(parts, ""), nil

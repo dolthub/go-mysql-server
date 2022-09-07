@@ -39,18 +39,32 @@ type Index interface {
 	// IsGenerated returns whether this index was generated. Generated indexes
 	// are used for index access, but are not displayed (such as with SHOW INDEXES).
 	IsGenerated() bool
-	// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns. Each Range
-	// is ordered by the column expressions (as returned by Expressions) with the RangeColumnExpr representing the
-	// searchable area for each column expression. Each Range given will not overlap with any other ranges. Additionally,
-	// all ranges will have the same length, and may represent a partial index (matching a prefix rather than the entire
-	// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
-	// returned only in the event that an error occurred.
-	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
-	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
-	// match the string returned from Index.Expressions().
+	// ColumnExpressionTypes returns each expression and its associated Type.
+	// Each expression string should exactly match the string returned from
+	// Index.Expressions().
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
+	// CanSupport returns whether this index supports lookups on the given
+	// range filters.
+	CanSupport(...Range) bool
 }
 
+// IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
+// information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
+// Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
+type IndexLookup struct {
+	fmt.Stringer
+	Index  Index
+	Ranges RangeCollection
+}
+
+var emptyLookup = IndexLookup{}
+
+func (il IndexLookup) IsEmpty() bool {
+	return il.Index == nil
+}
+
+// FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
+// allowing them to be removed from the overall plan for greater execution efficiency
 type FilteredIndex interface {
 	Index
 	// HandledFilters returns a subset of |filters| that are satisfied
@@ -58,15 +72,20 @@ type FilteredIndex interface {
 	HandledFilters(filters []Expression) (handled []Expression)
 }
 
-// IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
-// information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
-// Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
-type IndexLookup interface {
-	fmt.Stringer
-	// Index returns the index that created this IndexLookup.
-	Index() Index
-	// Ranges returns each Range that created this IndexLookup.
-	Ranges() RangeCollection
+type IndexOrder byte
+
+const (
+	IndexOrderNone IndexOrder = iota
+	IndexOrderAsc
+	IndexOrderDesc
+)
+
+// OrderedIndex is an extension of |Index| that allows indexes to declare their return order. The query engine can
+// optimize certain queries if the order of an index is guaranteed, e.g. removing a sort operation.
+type OrderedIndex interface {
+	Index
+	// Order returns the order of results for reads from this index
+	Order() IndexOrder
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

@@ -89,6 +89,7 @@ func (r *RegexpReplace) String() string {
 
 // Eval implements the sql.Expression interface.
 func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	//TODO: handle collations
 	// Evaluate string value
 	str, err := r.args[0].Eval(ctx, row)
 	if err != nil {

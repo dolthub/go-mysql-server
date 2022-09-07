@@ -41,8 +41,8 @@ var dualTable = func() sql.Table {
 }()
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_tables")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_tables")
+	defer span.End()
 
 	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		ignore := false
@@ -133,11 +133,10 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 	}
 
 	a.Log("table resolved: %s", t.Name())
-	res := plan.NewResolvedTable(rt, database, nil)
 	if asofBindVar {
-		return plan.NewDeferredAsOfTable(res, t.AsOf()), nil
+		return plan.NewDeferredAsOfTable(resolvedTableNode, t.AsOf()), nil
 	}
-	return res, nil
+	return resolvedTableNode, nil
 }
 
 // handleInfoSchemaColumnsTable modifies the detected information_schema.columns table and adds a large set of colums
@@ -195,12 +194,19 @@ func getAllColumnsWithDefaultValue(ctx *sql.Context, a *Analyzer) ([]*sql.Column
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
 // store supplementary schema information. This is useful for lazy resolution of column default values.
 func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("set_target_schema")
-	defer span.Finish()
+	span, ctx := ctx.Span("set_target_schema")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		t, ok := n.(sql.SchemaTarget)
 		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		// Skip filling in target schema info for CreateTable nodes, since the
+		// target schema must be provided by the user and we don't want to pick
+		//  up any resolved tables from a subquery node.
+		if _, ok := n.(*plan.CreateTable); ok {
 			return n, transform.SameTree, nil
 		}
 
@@ -252,7 +258,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 // reresolveTables is a quick and dirty way to make prepared statement reanalysis
 // resolve the most up-to-date table roots while preserving projections folded into
 // table scans.
-//TODO this is racy, alter statements can change a table's schema in-between
+// TODO this is racy, alter statements can change a table's schema in-between
 // prepare and execute
 func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -268,11 +274,15 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if n.Database != nil {
 				db = n.Database.Name()
 			}
-			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.Name(), db), a)
+			var asof sql.Expression
+			if n.AsOf != nil {
+				asof = expression.NewLiteral(n.AsOf, nil)
+			}
+			to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOf(n.Name(), db, asof), a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			new := transferProjections(from, to.(*plan.ResolvedTable))
+			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			from = n.ResolvedTable
@@ -284,7 +294,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				return nil, transform.SameTree, err
 			}
 			new := *n
-			new.ResolvedTable = transferProjections(from, to.(*plan.ResolvedTable))
+			new.ResolvedTable = transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return &new, transform.NewTree, nil
 		case *plan.DeferredAsOfTable:
 			from = n.ResolvedTable
@@ -292,7 +302,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			new := transferProjections(from, to.(*plan.ResolvedTable))
+			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
 		default:
 		}
@@ -304,7 +314,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 }
 
 // transferProjections moves projections from one table scan to another
-func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
+func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.ResolvedTable {
 	var fromTable sql.Table
 	switch t := from.Table.(type) {
 	case sql.TableWrapper:
@@ -315,12 +325,15 @@ func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
 		return to
 	}
 
-	pt, ok := fromTable.(sql.ProjectedTable)
-	if !ok {
-		return to
+	var filters []sql.Expression
+	if ft, ok := fromTable.(sql.FilteredTable); ok {
+		filters = ft.Filters()
 	}
 
-	projections := pt.Projections()
+	var projections []string
+	if pt, ok := fromTable.(sql.ProjectedTable); ok {
+		projections = pt.Projections()
+	}
 
 	var toTable sql.Table
 	switch t := to.Table.(type) {
@@ -332,13 +345,15 @@ func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
 		return to
 	}
 
-	pt, ok = toTable.(sql.ProjectedTable)
-	if !ok {
-		return to
+	if _, ok := toTable.(sql.FilteredTable); ok {
+		toTable = toTable.(sql.FilteredTable).WithFilters(ctx, filters)
 	}
 
-	newTable := pt.WithProjections(projections)
-	return plan.NewResolvedTable(newTable, to.Database, to.AsOf)
+	if _, ok := toTable.(sql.ProjectedTable); ok {
+		toTable = toTable.(sql.ProjectedTable).WithProjections(projections)
+	}
+
+	return plan.NewResolvedTable(toTable, to.Database, to.AsOf)
 }
 
 // validateDropTables returns an error if the database is not droppable.

@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -69,7 +70,7 @@ func TestDecimalAccuracy(t *testing.T) {
 
 	for _, test := range tests {
 		decimalType := MustCreateDecimalType(uint8(precision), uint8(test.scale))
-		decimal := big.NewInt(0)
+		decimalInt := big.NewInt(0)
 		bigIntervals := make([]*big.Int, len(test.intervals))
 		for i, interval := range test.intervals {
 			bigInterval := new(big.Int)
@@ -81,18 +82,18 @@ func TestDecimalAccuracy(t *testing.T) {
 		upperBound := new(big.Int)
 		_ = upperBound.UnmarshalText([]byte("1" + strings.Repeat("0", test.scale)))
 
-		for decimal.Cmp(upperBound) == -1 {
-			decimalStr := decimal.Text(10)
+		for decimalInt.Cmp(upperBound) == -1 {
+			decimalStr := decimalInt.Text(10)
 			fullDecimalStr := strings.Repeat("0", test.scale-len(decimalStr)) + decimalStr
 			fullStr := baseStr + fullDecimalStr
 
 			t.Run(fmt.Sprintf("Scale:%v DecVal:%v", test.scale, fullDecimalStr), func(t *testing.T) {
 				res, err := decimalType.Convert(fullStr)
 				require.NoError(t, err)
-				require.Equal(t, fullStr, res)
+				require.Equal(t, fullStr, res.(decimal.Decimal).StringFixed(int32(decimalType.Scale())))
 			})
 
-			decimal.Add(decimal, bigIntervals[intervalIndex])
+			decimalInt.Add(decimalInt, bigIntervals[intervalIndex])
 			intervalIndex = (intervalIndex + 1) % len(bigIntervals)
 		}
 	}
@@ -267,12 +268,20 @@ func TestDecimalConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.precision, test.scale, test.val), func(t *testing.T) {
-			val, err := MustCreateDecimalType(test.precision, test.scale).Convert(test.val)
+			typ := MustCreateDecimalType(test.precision, test.scale)
+			val, err := typ.Convert(test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, test.expectedVal, val)
+				if test.expectedVal == nil {
+					assert.Nil(t, val)
+				} else {
+					expectedVal, err := decimal.NewFromString(test.expectedVal.(string))
+					require.NoError(t, err)
+					assert.True(t, expectedVal.Equal(val.(decimal.Decimal)))
+					assert.Equal(t, typ.ValueType(), reflect.TypeOf(val))
+				}
 			}
 		})
 	}
@@ -284,21 +293,21 @@ func TestDecimalString(t *testing.T) {
 		scale       uint8
 		expectedStr string
 	}{
-		{0, 0, "DECIMAL(10,0)"},
-		{1, 0, "DECIMAL(1,0)"},
-		{5, 0, "DECIMAL(5,0)"},
-		{10, 0, "DECIMAL(10,0)"},
-		{65, 0, "DECIMAL(65,0)"},
-		{1, 1, "DECIMAL(1,1)"},
-		{5, 1, "DECIMAL(5,1)"},
-		{10, 1, "DECIMAL(10,1)"},
-		{65, 1, "DECIMAL(65,1)"},
-		{5, 5, "DECIMAL(5,5)"},
-		{10, 5, "DECIMAL(10,5)"},
-		{65, 5, "DECIMAL(65,5)"},
-		{10, 10, "DECIMAL(10,10)"},
-		{65, 10, "DECIMAL(65,10)"},
-		{65, 30, "DECIMAL(65,30)"},
+		{0, 0, "decimal(10,0)"},
+		{1, 0, "decimal(1,0)"},
+		{5, 0, "decimal(5,0)"},
+		{10, 0, "decimal(10,0)"},
+		{65, 0, "decimal(65,0)"},
+		{1, 1, "decimal(1,1)"},
+		{5, 1, "decimal(5,1)"},
+		{10, 1, "decimal(10,1)"},
+		{65, 1, "decimal(65,1)"},
+		{5, 5, "decimal(5,5)"},
+		{10, 5, "decimal(10,5)"},
+		{65, 5, "decimal(65,5)"},
+		{10, 10, "decimal(10,10)"},
+		{65, 10, "decimal(65,10)"},
+		{65, 30, "decimal(65,30)"},
 	}
 
 	for _, test := range tests {

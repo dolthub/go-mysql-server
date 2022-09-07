@@ -16,13 +16,18 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
+var tupleValueType = reflect.TypeOf((*[]interface{})(nil)).Elem()
+
 type TupleType []Type
+
+var _ Type = TupleType{nil}
 
 // CreateTuple returns a new tuple type with the given element types.
 func CreateTuple(types ...Type) Type {
@@ -104,11 +109,17 @@ func (t TupleType) Equals(otherType Type) bool {
 	return false
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t TupleType) MaxTextResponseByteLength() uint32 {
+	// TupleTypes are never actually sent over the wire directly
+	return 0
+}
+
 func (t TupleType) Promote() Type {
 	return t
 }
 
-func (t TupleType) SQL([]byte, interface{}) (sqltypes.Value, error) {
+func (t TupleType) SQL(*Context, []byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 
@@ -117,11 +128,16 @@ func (t TupleType) String() string {
 	for i, el := range t {
 		elems[i] = el.String()
 	}
-	return fmt.Sprintf("TUPLE(%s)", strings.Join(elems, ", "))
+	return fmt.Sprintf("tuple(%s)", strings.Join(elems, ", "))
 }
 
 func (t TupleType) Type() query.Type {
 	return sqltypes.Expression
+}
+
+// ValueType implements Type interface.
+func (t TupleType) ValueType() reflect.Type {
+	return tupleValueType
 }
 
 func (t TupleType) Zero() interface{} {

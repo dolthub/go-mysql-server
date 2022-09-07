@@ -51,7 +51,7 @@ func (f *NullIf) Description() string {
 // Eval implements the Expression interface.
 func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if sql.IsNull(f.Left) && sql.IsNull(f.Right) {
-		return sql.Null, nil
+		return nil, nil
 	}
 
 	val, err := expression.NewEquals(f.Left, f.Right).Eval(ctx, row)
@@ -59,7 +59,7 @@ func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if b, ok := val.(bool); ok && b {
-		return sql.Null, nil
+		return nil, nil
 	}
 
 	return f.Left.Eval(ctx, row)

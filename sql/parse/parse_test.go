@@ -1039,21 +1039,21 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "-42.0", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
-	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT ((2+2)/2) COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
 			Comment:  "hello",
-			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "(2+2)/2", nil, true),
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "((2+2)/2)", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "hello",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1109,7 +1109,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "bar",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "hello",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1119,7 +1119,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "baz",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "hello",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1129,7 +1129,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase("mydb"),
 		plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
 			Name:     "col1",
-			Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default),
+			Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Invalid),
 			Nullable: true,
 			Comment:  "changed",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1703,17 +1703,21 @@ CREATE TABLE t2
 	}}), false, []string{}, []sql.Expression{}, false),
 	`INSERT INTO t1 (col1, col2) VALUES ('a', DEFAULT)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("a", sql.LongText),
-	}}), false, []string{"col1"}, []sql.Expression{}, false),
-	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
-		plan.NewFilter(
-			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
-			plan.NewUnresolvedTable("t1", ""),
-		),
-		[]sql.Expression{
-			expression.NewSetField(expression.NewUnresolvedColumn("col1"), expression.NewBindVar("v1")),
-			expression.NewSetField(expression.NewUnresolvedColumn("col2"), expression.NewBindVar("v2")),
-		},
-	),
+		&expression.DefaultColumn{},
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
+	`INSERT INTO test (decimal_col) VALUES (11981.5923291839784651)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("11981.5923291839784651", sql.LongText),
+	}}), false, []string{"decimal_col"}, []sql.Expression{}, false),
+	`INSERT INTO test (decimal_col) VALUES (119815923291839784651.11981592329183978465111981592329183978465144)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("119815923291839784651.11981592329183978465111981592329183978465144", sql.LongText),
+	}}), false, []string{"decimal_col"}, []sql.Expression{}, false),
+	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(plan.NewFilter(
+		expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
+		plan.NewUnresolvedTable("t1", ""),
+	), false, []sql.Expression{
+		expression.NewSetField(expression.NewUnresolvedColumn("col1"), expression.NewBindVar("v1")),
+		expression.NewSetField(expression.NewUnresolvedColumn("col2"), expression.NewBindVar("v2")),
+	}),
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("a", sql.LongText),
 		expression.NewLiteral(int8(1), sql.Int8),
@@ -2502,12 +2506,20 @@ CREATE TABLE t2
 		},
 		plan.NewUnresolvedTable("bar", "foo"),
 	),
-	`SHOW VARIABLES`:                           plan.NewShowVariables(""),
-	`SHOW GLOBAL VARIABLES`:                    plan.NewShowVariables(""),
-	`SHOW SESSION VARIABLES`:                   plan.NewShowVariables(""),
-	`SHOW VARIABLES LIKE 'gtid_mode'`:          plan.NewShowVariables("gtid_mode"),
-	`SHOW SESSION VARIABLES LIKE 'autocommit'`: plan.NewShowVariables("autocommit"),
-	`UNLOCK TABLES`:                            plan.NewUnlockTables(),
+	`SHOW VARIABLES`:         plan.NewShowVariables(nil),
+	`SHOW GLOBAL VARIABLES`:  plan.NewShowVariables(nil),
+	`SHOW SESSION VARIABLES`: plan.NewShowVariables(nil),
+	`SHOW VARIABLES LIKE 'gtid_mode'`: plan.NewShowVariables(expression.NewLike(
+		expression.NewGetField(0, sql.LongText, "variable_name", false),
+		expression.NewLiteral("gtid_mode", sql.LongText),
+		nil,
+	)),
+	`SHOW SESSION VARIABLES LIKE 'autocommit'`: plan.NewShowVariables(expression.NewLike(
+		expression.NewGetField(0, sql.LongText, "variable_name", false),
+		expression.NewLiteral("autocommit", sql.LongText),
+		nil,
+	)),
+	`UNLOCK TABLES`: plan.NewUnlockTables(),
 	`LOCK TABLES foo READ`: plan.NewLockTables([]*plan.TableLock{
 		{Table: plan.NewUnresolvedTable("foo", "")},
 	}),
@@ -3342,6 +3354,91 @@ CREATE TABLE t2
 		},
 		false,
 	),
+	`with cte1 as (select a from b) update c set d = e where f in (select * from cte1)`: plan.NewWith(
+		plan.NewUpdate(
+			plan.NewFilter(
+				plan.NewInSubquery(
+					expression.NewUnresolvedColumn("f"),
+					plan.NewSubquery(plan.NewProject(
+						[]sql.Expression{expression.NewStar()},
+						plan.NewUnresolvedTable("cte1", ""),
+					), "select * from cte1"),
+				),
+				plan.NewUnresolvedTable("c", ""),
+			),
+			false,
+			[]sql.Expression{
+				expression.NewSetField(expression.NewUnresolvedColumn("d"), expression.NewUnresolvedColumn("e")),
+			},
+		),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+		false,
+	),
+	`with cte1 as (select a from b) delete from c where d in (select * from cte1)`: plan.NewWith(
+		plan.NewDeleteFrom(
+			plan.NewFilter(
+				plan.NewInSubquery(
+					expression.NewUnresolvedColumn("d"),
+					plan.NewSubquery(plan.NewProject(
+						[]sql.Expression{expression.NewStar()},
+						plan.NewUnresolvedTable("cte1", ""),
+					), "select * from cte1"),
+				),
+				plan.NewUnresolvedTable("c", ""),
+			),
+		),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+		false,
+	),
+	`with cte1 as (select a from b) insert into c (select * from cte1)`: plan.NewWith(
+		plan.NewInsertInto(
+			sql.UnresolvedDatabase(""),
+			plan.NewUnresolvedTable("c", ""),
+			plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewUnresolvedTable("cte1", ""),
+			),
+			false, []string{}, []sql.Expression{}, false,
+		),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+		false,
+	),
 	`with recursive cte1 as (select 1 union select n+1 from cte1 where n < 10) select * from cte1`: plan.NewWith(
 		plan.NewProject(
 			[]sql.Expression{
@@ -3676,6 +3773,59 @@ CREATE TABLE t2
 			),
 		),
 	),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4 LIMIT 10`: plan.NewLimit(
+		expression.NewLiteral(int8(10), sql.Int8),
+		plan.NewDistinct(
+			plan.NewUnion(
+				plan.NewDistinct(
+					plan.NewUnion(
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+					),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+			),
+		),
+	),
+	`SELECT 2 UNION SELECT 3 UNION SELECT 4 ORDER BY 2`: plan.NewSort(
+		[]sql.SortField{
+			{
+				Column:       expression.NewLiteral(int8(2), sql.Int8),
+				Column2:      expression.NewLiteral(int8(2), sql.Int8),
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsFirst,
+			},
+		},
+		plan.NewDistinct(
+			plan.NewUnion(
+				plan.NewDistinct(
+					plan.NewUnion(
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+						plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+							plan.NewUnresolvedTable("dual", ""),
+						),
+					),
+				),
+				plan.NewProject(
+					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					plan.NewUnresolvedTable("dual", ""),
+				),
+			),
+		),
+	),
 	`CREATE DATABASE test`:               plan.NewCreateDatabase("test", false),
 	`CREATE DATABASE IF NOT EXISTS test`: plan.NewCreateDatabase("test", true),
 	`DROP DATABASE test`:                 plan.NewDropDatabase("test", false),
@@ -3694,15 +3844,12 @@ var triggerFixtures = map[string]sql.Node{
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewBeginEndBlock(
 			plan.NewBlock([]sql.Node{
-				plan.NewUpdate(
-					plan.NewFilter(
-						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
-						plan.NewUnresolvedTable("bar", ""),
-					),
-					[]sql.Expression{
-						expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
-					},
-				),
+				plan.NewUpdate(plan.NewFilter(
+					expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
+					plan.NewUnresolvedTable("bar", ""),
+				), false, []sql.Expression{
+					expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
+				}),
 				plan.NewDeleteFrom(
 					plan.NewFilter(
 						expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
@@ -3861,8 +4008,8 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT i, row_number() over (order by a) group by 1`:       sql.ErrUnsupportedFeature,
 	`SHOW COUNT(*) WARNINGS`:                                    sql.ErrUnsupportedFeature,
 	`SHOW ERRORS`:                                               sql.ErrUnsupportedFeature,
-	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
-	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
+	`SHOW VARIABLES WHERE Value = ''`:                           sql.ErrUnsupportedFeature,
+	`SHOW SESSION VARIABLES WHERE Value IS NOT NULL`:            sql.ErrUnsupportedFeature,
 	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
 	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               sql.ErrUnsupportedFeature,
 	`DROP TABLE curdb.t1, t2`:                                   sql.ErrUnsupportedFeature,
@@ -4087,8 +4234,8 @@ func TestParseColumnTypeString(t *testing.T) {
 			sql.MustCreateStringWithDefaults(sqltypes.VarChar, 255),
 		},
 		{
-			"VARCHAR(300) COLLATE cp1257_lithuanian_ci",
-			sql.MustCreateString(sqltypes.VarChar, 300, sql.Collation_cp1257_lithuanian_ci),
+			"VARCHAR(300) COLLATE latin1_german2_ci",
+			sql.MustCreateString(sqltypes.VarChar, 300, sql.Collation_latin1_german2_ci),
 		},
 		{
 			"BINARY(6)",
@@ -4121,10 +4268,18 @@ func TestParseColumnTypeString(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.columnType, func(t *testing.T) {
-			res, err := ParseColumnTypeString(sql.NewEmptyContext(), test.columnType)
+		ctx := sql.NewEmptyContext()
+		t.Run("parse "+test.columnType, func(t *testing.T) {
+			res, err := ParseColumnTypeString(ctx, test.columnType)
 			require.NoError(t, err)
 			require.Equal(t, test.expectedSqlType, res)
+		})
+		t.Run("round trip "+test.columnType, func(t *testing.T) {
+			str := test.expectedSqlType.String()
+			typ, err := ParseColumnTypeString(ctx, str)
+			require.NoError(t, err)
+			require.Equal(t, test.expectedSqlType, typ)
+			require.Equal(t, typ.String(), str)
 		})
 	}
 }

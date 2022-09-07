@@ -74,9 +74,6 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			case *information_schema.ColumnsTable:
 				analysisErr = passAliases.add(at, t)
 				return false
-			case *plan.DecoratedNode:
-				rt := getResolvedTable(at.Child)
-				analysisErr = passAliases.add(at, rt)
 			case *plan.IndexedTableAccess:
 				analysisErr = passAliases.add(at, t)
 			case *plan.RecursiveCte:
@@ -114,9 +111,6 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		case *information_schema.ColumnsTable:
 			analysisErr = passAliases.add(node, node)
-			return false
-		case *plan.DecoratedNode:
-			aliasFn(node.Child)
 			return false
 		case *plan.IndexedTableAccess:
 			rt := getResolvedTable(node.ResolvedTable)

@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//todo(max): more tests
+// todo(max): more tests
 func TestTransformUp(t *testing.T) {
 	require := require.New(t)
 

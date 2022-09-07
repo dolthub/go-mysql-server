@@ -106,6 +106,7 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
+
 	userTableData := mysqlDb.UserTable().Data()
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{

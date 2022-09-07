@@ -37,6 +37,7 @@ type Catalog struct {
 var _ sql.Catalog = (*Catalog)(nil)
 var _ sql.FunctionProvider = (*Catalog)(nil)
 var _ sql.TableFunctionProvider = (*Catalog)(nil)
+var _ sql.ExternalStoredProcedureProvider = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -234,6 +235,34 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 	}
 
 	return c.builtInFunctions.Function(ctx, name)
+}
+
+// ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider
+func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	if espp, ok := c.provider.(sql.ExternalStoredProcedureProvider); ok {
+		esp, err := espp.ExternalStoredProcedure(ctx, name, numOfParams)
+		if err != nil {
+			return nil, err
+		} else if esp != nil {
+			return esp, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
+func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	if espp, ok := c.provider.(sql.ExternalStoredProcedureProvider); ok {
+		esps, err := espp.ExternalStoredProcedures(ctx, name)
+		if err != nil {
+			return nil, err
+		} else if esps != nil {
+			return esps, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // TableFunction implements the TableFunctionProvider interface

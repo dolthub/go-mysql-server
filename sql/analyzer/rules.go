@@ -44,6 +44,7 @@ var OnceBeforeDefault = []Rule{
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
 	{resolveSubqueriesId, resolveSubqueries},
+	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},
 	{checkUniqueTableNamesId, validateUniqueTableNames},
@@ -55,9 +56,7 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
-	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
-	{stripDecorationsId, stripDecorations},
-	{validateJoinComplexityId, validateJoinComplexity},
+	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -70,6 +69,7 @@ var DefaultRules = []Rule{
 	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{qualifyColumnsId, qualifyColumns},
+	{pruneTablesId, pruneTables},
 	{resolveColumnsId, resolveColumns},
 	{resolveColumnDefaultsId, resolveColumnDefaults},
 	{validateCheckConstraintId, validateCheckConstraints},
@@ -93,7 +93,6 @@ var OnceAfterDefault = []Rule{
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
-	{resolveGeneratorsId, resolveGenerators},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{assignCatalogId, assignCatalog},
 	{pruneColumnsId, pruneColumns},
@@ -102,7 +101,6 @@ var OnceAfterDefault = []Rule{
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{replaceSortPkId, replacePkSort},
-	{pushdownProjectionsId, pushdownProjections},
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
@@ -134,7 +132,6 @@ var DefaultValidationRules = []Rule{
 	{validateOperandsId, validateOperands},
 	{validateCaseResultTypesId, validateCaseResultTypes},
 	{validateIntervalUsageId, validateIntervalUsage},
-	{validateExplodeUsageId, validateExplodeUsage},
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
 	{validateAggregationsId, validateAggregations},

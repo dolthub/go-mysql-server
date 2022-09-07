@@ -36,6 +36,11 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return nil, transform.SameTree, err
 	}
 
+	err = validatePkTypes(ct.TableSpec())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	// passed validateIndexes, so they all must be valid indexes
 	// extract map of columns that have indexes defined over them
 	keyedColumns := make(map[string]bool)
@@ -224,18 +229,24 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// Make sure columns named in After clause exist
+	idx := -1
 	if ac.Order() != nil && ac.Order().AfterColumn != "" {
 		afterColumn := ac.Order().AfterColumn
-		idx := schema.IndexOf(afterColumn, nameable.Name())
+		idx = schema.IndexOf(afterColumn, nameable.Name())
 		if idx < 0 {
 			return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), afterColumn)
 		}
 	}
 
-	// None of the checks we do concern ordering, so we don't need to worry about it here
-	newCol := ac.Column().Copy()
-	newCol.Source = nameable.Name()
-	newSch := append(schema, newCol)
+	newSch := make(sql.Schema, 0, len(schema)+1)
+	if idx >= 0 {
+		newSch = append(newSch, schema[:idx+1]...)
+		newSch = append(newSch, ac.Column().Copy())
+		newSch = append(newSch, schema[idx+1:]...)
+	} else { // new column at end
+		newSch = append(newSch, schema...)
+		newSch = append(newSch, ac.Column().Copy())
+	}
 
 	// TODO: more validation possible to do here
 	err := validateAutoIncrement(newSch, nil)
@@ -326,6 +337,11 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
 
+		err := validateIndexType(ai.Columns, sch)
+		if err != nil {
+			return nil, err
+		}
+
 		return append(indexes, ai.IndexName), nil
 	case plan.IndexAction_Drop:
 		savedIdx := -1
@@ -361,6 +377,19 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	return indexes, nil
 }
 
+// validateIndexType prevents indexing blob columns
+func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
+	for _, c := range cols {
+		i := sch.IndexOfColName(c.Name)
+		if sql.IsByteType(sch[i].Type) {
+			return sql.ErrInvalidByteIndex.New(sch[i].Name)
+		} else if sql.IsTextBlob(sch[i].Type) {
+			return sql.ErrInvalidTextIndex.New(sch[i].Name)
+		}
+	}
+	return nil
+}
+
 // missingIdxColumn takes in a set of IndexColumns and returns false, along with the offending column name, if
 // an index Column is not in an index.
 func missingIdxColumn(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
@@ -382,7 +411,12 @@ func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Sche
 			// Some information about the column is not specified in a MODIFY COLUMN statement, such as being a key
 			cc.PrimaryKey = sch[i].PrimaryKey
 			cc.Source = sch[i].Source
+			if cc.PrimaryKey {
+				cc.Nullable = false
+			}
+
 			schCopy[i] = &cc
+
 		} else {
 			cc := *sch[i]
 			schCopy[i] = &cc
@@ -449,17 +483,39 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 	return nil
 }
 
+const textIndexPrefix = 1000
+
 func validateIndexes(tableSpec *plan.TableSpec) error {
-	lwrNames := make(map[string]bool)
+	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
-		lwrNames[strings.ToLower(col.Name)] = true
+		lwrNames[strings.ToLower(col.Name)] = col
 	}
 
 	for _, idx := range tableSpec.IdxDefs {
-		for _, col := range idx.Columns {
-			if !lwrNames[strings.ToLower(col.Name)] {
-				return sql.ErrUnknownIndexColumn.New(col.Name, idx.IndexName)
+		for _, idxCol := range idx.Columns {
+			col, ok := lwrNames[strings.ToLower(idxCol.Name)]
+			if !ok {
+				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
+
+			if sql.IsByteType(col.Type) {
+				return sql.ErrInvalidByteIndex.New(col.Name)
+			} else if sql.IsTextBlob(col.Type) {
+				return sql.ErrInvalidTextIndex.New(col.Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+// validatePkTypes prevents creating tables with blob primary keys
+func validatePkTypes(tableSpec *plan.TableSpec) error {
+	for _, col := range tableSpec.Schema.Schema {
+		if col.PrimaryKey && sql.IsByteType(col.Type) {
+			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
+		} else if col.PrimaryKey && sql.IsTextBlob(col.Type) {
+			return sql.ErrInvalidTextIndex.New(col.Name)
 		}
 	}
 

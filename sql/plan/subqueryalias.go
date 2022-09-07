@@ -65,7 +65,7 @@ func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 	// subqueries do not have access to outer scope
 	iter, err := sq.Child.RowIter(ctx, nil)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

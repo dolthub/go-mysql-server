@@ -18,10 +18,12 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
 	flatbuffers "github.com/google/flatbuffers/go"
@@ -30,9 +32,24 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 )
 
-// PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
-// persisted.
-type PersistCallback func(ctx *sql.Context, data []byte) error
+// MySQLDbPersistence is used to determine the behavior of how certain tables in MySQLDb will be persisted.
+type MySQLDbPersistence interface {
+	Persist(ctx *sql.Context, data []byte) error
+}
+
+// NoopPersister is used when nothing in mysql db should be persisted
+type NoopPersister struct{}
+
+var _ MySQLDbPersistence = &NoopPersister{}
+
+// Persist implements the MySQLDbPersistence interface
+func (p *NoopPersister) Persist(ctx *sql.Context, data []byte) error {
+	return nil
+}
+
+type PlaintextAuthPlugin interface {
+	Authenticate(db *MySQLDb, user string, userEntry *User, pass string) (bool, error)
+}
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
@@ -50,7 +67,10 @@ type MySQLDb struct {
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
 
-	persistFunc PersistCallback
+	persister MySQLDbPersistence
+	plugins   map[string]PlaintextAuthPlugin
+
+	cache *privilegeCache
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -59,27 +79,42 @@ var _ mysql.AuthServer = (*MySQLDb)(nil)
 // CreateEmptyMySQLDb returns a collection of MySQL Tables that do not contain any data.
 func CreateEmptyMySQLDb() *MySQLDb {
 	// original tables
-	mysqlDb := &MySQLDb{
-		user:       newMySQLTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
-		role_edges: newMySQLTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
-	}
+	mysqlDb := &MySQLDb{}
+	mysqlDb.user = newMySQLTable(
+		userTblName,
+		userTblSchema,
+		mysqlDb,
+		&User{},
+		UserPrimaryKey{},
+		UserSecondaryKey{},
+	)
+	mysqlDb.role_edges = newMySQLTable(
+		roleEdgesTblName,
+		roleEdgesTblSchema,
+		mysqlDb,
+		&RoleEdge{},
+		RoleEdgesPrimaryKey{},
+		RoleEdgesFromKey{},
+		RoleEdgesToKey{},
+	)
 
 	// mysqlTable shims
 	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
 	mysqlDb.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, mysqlDb.user, TablesPrivConverter{})
+	mysqlDb.cache = newPrivilegeCache()
 
 	return mysqlDb
 }
 
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
-	t.Enabled = true
+func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+	db.Enabled = true
 	for _, user := range users {
 		if user == nil {
 			continue
 		}
-		if err := t.user.data.Put(ctx, user); err != nil {
+		if err := db.user.data.Put(ctx, user); err != nil {
 			return err
 		}
 	}
@@ -87,23 +122,44 @@ func (t *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnect
 		if role == nil {
 			continue
 		}
-		if err := t.role_edges.data.Put(ctx, role); err != nil {
+		if err := db.role_edges.data.Put(ctx, role); err != nil {
 			return err
 		}
 	}
+
+	db.clearCache()
+
 	return nil
 }
 
 // LoadData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data.
-func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
+func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	// Do nothing if data file doesn't exist or is empty
 	if buf == nil || len(buf) == 0 {
 		return nil
 	}
 
+	type privDataJson struct {
+		Users []*User
+		Roles []*RoleEdge
+	}
+
+	// if it's a json file, read it; will be rewritten as flatbuffer later
+	data := &privDataJson{}
+	if err := json.Unmarshal(buf, data); err == nil {
+		return db.LoadPrivilegeData(ctx, data.Users, data.Roles)
+	}
+
 	// Indicate that mysql db exists
-	t.Enabled = true
+	db.Enabled = true
+
+	// Recover from panics
+	defer func() {
+		if recover() != nil {
+			err = fmt.Errorf("ill formatted privileges file")
+		}
+	}()
 
 	// Deserialize the flatbuffer
 	serialMySQLDb := serial.GetRootAsMySQLDb(buf, 0)
@@ -115,7 +171,7 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 			continue
 		}
 		user := LoadUser(serialUser)
-		if err := t.user.data.Put(ctx, user); err != nil {
+		if err := db.user.data.Put(ctx, user); err != nil {
 			return err
 		}
 	}
@@ -127,31 +183,46 @@ func (t *MySQLDb) LoadData(ctx *sql.Context, buf []byte) error {
 			continue
 		}
 		role := LoadRoleEdge(serialRoleEdge)
-		if err := t.role_edges.data.Put(ctx, role); err != nil {
+		if err := db.role_edges.data.Put(ctx, role); err != nil {
 			return err
 		}
 	}
 
+	db.clearCache()
+
 	// TODO: fill in other tables when they exist
-	return nil
+	return
 }
 
-// SetPersistCallback sets the callback to be used when the MySQL Db tables have been updated and need to be persisted.
-func (t *MySQLDb) SetPersistCallback(persistFunc PersistCallback) {
-	t.persistFunc = persistFunc
+// SetPersister sets the custom persister to be used when the MySQL Db tables have been updated and need to be persisted.
+func (db *MySQLDb) SetPersister(persister MySQLDbPersistence) {
+	db.persister = persister
+}
+
+func (db *MySQLDb) SetPlugins(plugins map[string]PlaintextAuthPlugin) {
+	db.plugins = plugins
+}
+
+func (db *MySQLDb) VerifyPlugin(plugin string) error {
+	_, ok := db.plugins[plugin]
+	if ok {
+		return nil
+	}
+	return fmt.Errorf(`must provide authentication plugin for unsupported authentication format`)
 }
 
 // AddRootAccount adds the root account to the list of accounts.
-func (t *MySQLDb) AddRootAccount() {
-	t.Enabled = true
-	addSuperUser(t.user, "root", "localhost", "")
+func (db *MySQLDb) AddRootAccount() {
+	db.Enabled = true
+	addSuperUser(db.user, "root", "localhost", "")
+	db.clearCache()
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
 // meant to replace the "auth.New..." functions while the remaining functions are added.
-func (t *MySQLDb) AddSuperUser(username string, password string) {
+func (db *MySQLDb) AddSuperUser(username string, host string, password string) {
 	//TODO: remove this function and the called function
-	t.Enabled = true
+	db.Enabled = true
 	if len(password) > 0 {
 		hash := sha1.New()
 		hash.Write([]byte(password))
@@ -161,49 +232,68 @@ func (t *MySQLDb) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(t.user, username, "%", password)
+	addSuperUser(db.user, username, host, password)
+	db.clearCache()
 }
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
 // roles, roleSearch changes whether the search matches against user or role rules.
-func (t *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
-	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
-	// For now, this just does another check for localhost if the host is 127.0.0.1
-	//TODO: match on anonymous users, which have an empty username (different for roles)
-	var userEntry *User
-	userEntries := t.user.data.Get(UserPrimaryKey{
+func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
+	//TODO: Determine what the localhost is on the machine, then handle the conversion between IP and localhost.
+	// For now, this just treats localhost and 127.0.0.1 as the same.
+	//TODO: Determine how to match anonymous roles (roles with an empty user string), which differs from users
+	//TODO: Treat '%' as a proper wildcard for hostnames, allowing for regex-like matches.
+	// Hostnames representing an IP address that have a wildcard have additional restrictions on what may match
+	//TODO: Match non-existent users to the most relevant anonymous user if multiple exist (''@'localhost' vs ''@'%')
+	// It appears that ''@'localhost' can use the privileges set on ''@'%', which seems to be unique behavior.
+	// For example, 'abc'@'localhost' CANNOT use any privileges set on 'abc'@'%'.
+	// Unknown if this is special for ''@'%', or applies to any matching anonymous user.
+	//TODO: Hostnames representing IPs can use masks, such as 'abc'@'54.244.85.0/255.255.255.0'
+	//TODO: Allow for CIDR notation in hostnames
+	//TODO: Which user do we choose when multiple host names match (e.g. host name with most characters matched, etc.)
+	userEntries := db.user.data.Get(UserPrimaryKey{
 		Host: host,
 		User: user,
 	})
+
 	if len(userEntries) == 1 {
-		userEntry = userEntries[0].(*User)
-	} else {
-		userEntries = t.user.data.Get(UserSecondaryKey{
-			User: user,
+		return userEntries[0].(*User)
+	}
+
+	// First we check for matches on the same user, then we try the anonymous user
+	for _, targetUser := range []string{user, ""} {
+		userEntries = db.user.data.Get(UserSecondaryKey{
+			User: targetUser,
 		})
 		for _, readUserEntry := range userEntries {
 			readUserEntry := readUserEntry.(*User)
 			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
-			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+			if host == readUserEntry.Host ||
+				(host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+				(host == "localhost" && readUserEntry.Host == "127.0.0.1") ||
 				(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
-				userEntry = readUserEntry
-				break
+				return readUserEntry
 			}
 		}
 	}
-	return userEntry
+	return nil
 }
 
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
 // active roles, which are set in the context, therefore the user is also pulled from the context.
-func (t *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
+func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	client := ctx.Session.Client()
-	user := t.GetUser(client.User, client.Address, false)
+	user := db.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return NewPrivilegeSet()
 	}
+
+	if priv, ok := db.cache.userPrivileges(user); ok {
+		return priv
+	}
+
 	privSet := user.PrivilegeSet.Copy()
-	roleEdgeEntries := t.role_edges.data.Get(RoleEdgesToKey{
+	roleEdgeEntries := db.role_edges.data.Get(RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
@@ -211,19 +301,24 @@ func (t *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	//TODO: System variable "activate_all_roles_on_login", if set, will set all roles as active upon logging in
 	for _, roleEdgeEntry := range roleEdgeEntries {
 		roleEdge := roleEdgeEntry.(*RoleEdge)
-		role := t.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
+		role := db.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
 		if role != nil {
 			privSet.UnionWith(role.PrivilegeSet)
 		}
 	}
+
+	// This is technically a race -- two clients could cache at the same time. But this shouldn't matter, as they will
+	// eventually get the same data after the cache is cleared on a write, and MySQL doesn't even guarantee immediate
+	// effect for grant statements.
+	db.cache.cacheUserPrivileges(user, privSet)
 	return privSet
 }
 
 // UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.
-func (t *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
-	privSet := t.UserActivePrivilegeSet(ctx)
+func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
+	privSet := db.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
 		for _, operationPriv := range operation.Privileges {
 			if privSet.Has(operationPriv) {
@@ -252,58 +347,84 @@ func (t *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privileg
 }
 
 // Name implements the interface sql.Database.
-func (t *MySQLDb) Name() string {
+func (db *MySQLDb) Name() string {
 	return "mysql"
 }
 
 // GetTableInsensitive implements the interface sql.Database.
-func (t *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
+func (db *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	switch strings.ToLower(tblName) {
 	case userTblName:
-		return t.user, true, nil
+		return db.user, true, nil
 	case roleEdgesTblName:
-		return t.role_edges, true, nil
+		return db.role_edges, true, nil
 	case dbTblName:
-		return t.db, true, nil
+		return db.db, true, nil
 	case tablesPrivTblName:
-		return t.tables_priv, true, nil
+		return db.tables_priv, true, nil
 	default:
 		return nil, false, nil
 	}
 }
 
 // GetTableNames implements the interface sql.Database.
-func (t *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
-	return []string{userTblName, dbTblName, tablesPrivTblName, roleEdgesTblName}, nil
+func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
+	return []string{
+		userTblName,
+		dbTblName,
+		tablesPrivTblName,
+		roleEdgesTblName,
+	}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
-func (t *MySQLDb) AuthMethod(user string) (string, error) {
-	//TODO: this should pass in the host as well to correctly determine which auth method to use
-	return "mysql_native_password", nil
+func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
+	var host string
+	// TODO : need to check for network type instead of addr string if it's unix socket network,
+	//  macOS passes empty addr, but ubuntu returns "@" as addr for `localhost`
+	if addr == "@" || addr == "" {
+		host = "localhost"
+	} else {
+		splitHost, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return "", err
+		}
+		host = splitHost
+	}
+
+	u := db.GetUser(user, host, false)
+	if u == nil {
+		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
+	}
+	if _, ok := db.plugins[u.Plugin]; ok {
+		return "mysql_clear_password", nil
+	}
+	return u.Plugin, nil
 }
 
 // Salt implements the interface mysql.AuthServer.
-func (t *MySQLDb) Salt() ([]byte, error) {
+func (db *MySQLDb) Salt() ([]byte, error) {
 	return mysql.NewSalt()
 }
 
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
-func (t *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
-	if !t.Enabled {
-		host, _, err := net.SplitHostPort(addr.String())
+func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
+	var host string
+	var err error
+	if addr.Network() == "unix" {
+		host = "localhost"
+	} else {
+		host, _, err = net.SplitHostPort(addr.String())
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if !db.Enabled {
 		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
-	host, _, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return nil, err
-	}
-
-	userEntry := t.GetUser(user, host, false)
+	userEntry := db.GetUser(user, host, false)
 	if userEntry == nil || userEntry.Locked {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
@@ -320,29 +441,58 @@ func (t *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, ad
 }
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
-func (t *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
-	if !t.Enabled {
-		host, _, err := net.SplitHostPort(addr.String())
+func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
+	var host string
+	var err error
+	if addr.Network() == "unix" {
+		host = "localhost"
+	} else {
+		host, _, err = net.SplitHostPort(addr.String())
 		if err != nil {
 			return nil, err
 		}
-		return MysqlConnectionUser{User: user, Host: host}, nil
+	}
+
+	connUser := MysqlConnectionUser{User: user, Host: host}
+	if !db.Enabled {
+		return connUser, nil
+	}
+	userEntry := db.GetUser(user, host, false)
+
+	if userEntry.Plugin != "" {
+		authplugin, ok := db.plugins[userEntry.Plugin]
+		if !ok {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'; auth plugin %s not registered with server", user, userEntry.Plugin)
+		}
+		pass, err := mysql.AuthServerReadPacketString(c)
+		if err != nil {
+			return nil, err
+		}
+		authed, err := authplugin.Authenticate(db, user, userEntry, pass)
+		if err != nil {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v': %v", user, err)
+		}
+		if !authed {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		}
+		return connUser, nil
 	}
 	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }
 
 // Persist passes along all changes to the integrator.
-func (t *MySQLDb) Persist(ctx *sql.Context) error {
-	// Do nothing if persist function is nil
-	if t.persistFunc == nil {
-		return nil
-	}
+func (db *MySQLDb) Persist(ctx *sql.Context) error {
+	defer db.clearCache()
 
 	// Extract all user entries from table, and sort
-	userEntries := t.user.data.ToSlice(ctx)
-	users := make([]*User, len(userEntries))
-	for i, userEntry := range userEntries {
-		users[i] = userEntry.(*User)
+	userEntries := db.user.data.ToSlice(ctx)
+	users := make([]*User, 0)
+	for _, userEntry := range userEntries {
+		user := userEntry.(*User)
+		if user.IsSuperUser {
+			continue
+		}
+		users = append(users, user)
 	}
 	sort.Slice(users, func(i, j int) bool {
 		if users[i].Host == users[j].Host {
@@ -352,7 +502,7 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 	})
 
 	// Extract all role entries from table, and sort
-	roleEntries := t.role_edges.data.ToSlice(ctx)
+	roleEntries := db.role_edges.data.ToSlice(ctx)
 	roles := make([]*RoleEdge, len(roleEntries))
 	for i, roleEntry := range roleEntries {
 		roles[i] = roleEntry.(*RoleEdge)
@@ -387,17 +537,24 @@ func (t *MySQLDb) Persist(ctx *sql.Context) error {
 	b.Finish(mysqlDbOffset)
 
 	// Persist data
-	return t.persistFunc(ctx, b.FinishedBytes())
+	return db.persister.Persist(ctx, b.FinishedBytes())
 }
 
 // UserTable returns the "user" table.
-func (t *MySQLDb) UserTable() *mysqlTable {
-	return t.user
+func (db *MySQLDb) UserTable() *mysqlTable {
+	return db.user
 }
 
 // RoleEdgesTable returns the "role_edges" table.
-func (t *MySQLDb) RoleEdgesTable() *mysqlTable {
-	return t.role_edges
+func (db *MySQLDb) RoleEdgesTable() *mysqlTable {
+	return db.role_edges
+}
+
+func (db *MySQLDb) clearCache() {
+	if db == nil { // nil in the case of some tests
+		return
+	}
+	db.cache.clear()
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given
@@ -451,7 +608,7 @@ func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword 
 
 // mustDefault enforces that no error occurred when constructing the column default value.
 func mustDefault(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
-	colDef, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+	colDef, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, !representsLiteral, mayReturnNil)
 	if err != nil {
 		panic(err)
 	}
@@ -465,4 +622,42 @@ var _ sql.Partition = dummyPartition{}
 // Key implements the interface sql.Partition.
 func (d dummyPartition) Key() []byte {
 	return nil
+}
+
+type privilegeCache struct {
+	mu       sync.Mutex
+	userPriv map[string]PrivilegeSet
+}
+
+func newPrivilegeCache() *privilegeCache {
+	return &privilegeCache{
+		userPriv: make(map[string]PrivilegeSet),
+	}
+}
+
+func userKey(user *User) string {
+	return fmt.Sprintf("%s@%s", user.User, user.Host)
+}
+
+func (pc *privilegeCache) userPrivileges(user *User) (PrivilegeSet, bool) {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
+	privs, ok := pc.userPriv[userKey(user)]
+	return privs, ok
+}
+
+// cacheUserPrivileges Caches the user privileges given. Needs external locking.
+func (pc *privilegeCache) cacheUserPrivileges(user *User, privs PrivilegeSet) {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
+	pc.userPriv[userKey(user)] = privs
+}
+
+func (pc *privilegeCache) clear() {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
+	pc.userPriv = make(map[string]PrivilegeSet)
 }

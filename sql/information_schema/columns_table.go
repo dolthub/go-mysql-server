@@ -18,9 +18,28 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+var typeToNumericPrecision = map[query.Type]int{
+	sqltypes.Int8:    3,
+	sqltypes.Uint8:   3,
+	sqltypes.Int16:   5,
+	sqltypes.Uint16:  5,
+	sqltypes.Int24:   7,
+	sqltypes.Uint24:  7,
+	sqltypes.Int32:   10,
+	sqltypes.Uint32:  10,
+	sqltypes.Int64:   19,
+	sqltypes.Uint64:  20,
+	sqltypes.Float32: 12,
+	sqltypes.Float64: 22,
+}
 
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
@@ -56,6 +75,11 @@ func (c *ColumnsTable) String() string {
 // Schema implements the sql.Node interface.
 func (c *ColumnsTable) Schema() sql.Schema {
 	return columnsSchema
+}
+
+// Collation implements the sql.Node interface.
+func (c *ColumnsTable) Collation() sql.CollationID {
+	return sql.Collation_Default
 }
 
 // RowIter implements the sql.Node interface.
@@ -128,7 +152,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 			var columnKeyMap = make(map[string]string)
 			// Get UNIQUEs, PRIMARY KEYs
 			hasPK := false
-			if indexTable, ok := t.(sql.IndexedTable); ok {
+			if indexTable, ok := t.(sql.IndexAddressable); ok {
 				indexes, iErr := indexTable.GetIndexes(ctx)
 				if iErr != nil {
 					return false, iErr
@@ -166,10 +190,10 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					charMaxLen interface{}
 					columnKey  string
 					nullable   = "NO"
-					ordinalPos = uint64(i + 1)
-					colType    = strings.ToLower(c.Type.String())
+					ordinalPos = uint32(i + 1)
+					colType    = c.Type.String()
 					dataType   = colType
-					srsId      = "NULL"
+					srsId      interface{}
 				)
 
 				if c.Nullable {
@@ -190,7 +214,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				}
 
 				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
-				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
+				colDefault = getColumnDefaultValue(ctx, columnNameToDefault[fullColumnName])
 
 				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 				if c.PrimaryKey {
@@ -204,29 +228,37 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					}
 				}
 
+				if s, ok := c.Type.(sql.SpatialColumnType); ok {
+					if srid, d := s.GetSpatialTypeSRID(); d {
+						srsId = srid
+					}
+				}
+
+				numericPrecision, numericScale := getColumnPrecisionAndScale(c)
+
 				rows = append(rows, sql.Row{
-					"def",      // table_catalog
-					db.Name(),  // table_schema
-					t.Name(),   // table_name
-					c.Name,     // column_name
-					ordinalPos, // ordinal_position
-					colDefault, // column_default
-					nullable,   // is_nullable
-					dataType,   // data_type
-					charMaxLen, // character_maximum_length
-					nil,        // character_octet_length
-					nil,        // numeric_precision
-					nil,        // numeric_scale
-					nil,        // datetime_precision
-					charName,   // character_set_name
-					collName,   // collation_name
-					colType,    // column_type
-					columnKey,  // column_key
-					c.Extra,    // extra
-					"select",   // privileges
-					c.Comment,  // column_comment
-					"",         // generation_expression
-					srsId,      // srs_id
+					"def",            // table_catalog
+					db.Name(),        // table_schema
+					t.Name(),         // table_name
+					c.Name,           // column_name
+					ordinalPos,       // ordinal_position
+					colDefault,       // column_default
+					nullable,         // is_nullable
+					dataType,         // data_type
+					charMaxLen,       // character_maximum_length
+					nil,              // character_octet_length
+					numericPrecision, // numeric_precision
+					numericScale,     // numeric_scale
+					nil,              // datetime_precision
+					charName,         // character_set_name
+					collName,         // collation_name
+					colType,          // column_type
+					columnKey,        // column_key
+					c.Extra,          // extra
+					"select",         // privileges
+					c.Comment,        // column_comment
+					"",               // generation_expression
+					srsId,            // srs_id
 				})
 			}
 			return true, nil
@@ -246,9 +278,9 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				db.Name(), // table_schema
 				view.Name, // table_name
 				"",        // column_name
-				uint64(0), // ordinal_position
+				uint32(0), // ordinal_position
 				nil,       // column_default
-				nil,       // is_nullable
+				"",        // is_nullable
 				nil,       // data_type
 				nil,       // character_maximum_length
 				nil,       // character_octet_length
@@ -263,7 +295,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				"select",  // privileges
 				"",        // column_comment
 				"",        // generation_expression
-				"NULL",    // srs_id
+				nil,       // srs_id
 			})
 		}
 		if err != nil {
@@ -273,26 +305,59 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 	return sql.RowsToRowIter(rows...), nil
 }
 
-// trimColumnDefaultOutput takes in a column default value and 1. Removes Double Quotes for literals 2. Ensures that the
-// string NULL becomes nil.
-func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
+// getColumnDefaultValue returns the column default value for given sql.ColumnDefaultValue
+func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
 	if cd == nil {
 		return nil
 	}
-
-	colStr := cd.String()
-	// TODO: We need to fix the ColumnDefault String() to prevent double quoting.
-	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
-		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
-	}
-
-	if strings.HasPrefix(colStr, "(") && strings.HasSuffix(colStr, ")") {
-		return strings.TrimSuffix(strings.TrimPrefix(colStr, "("), ")")
-	}
-
-	if colStr == "NULL" {
+	defStr := cd.String()
+	if defStr == "NULL" {
 		return nil
 	}
 
-	return colStr
+	if !cd.IsLiteral() {
+		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
+			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
+		}
+		return fmt.Sprint(defStr)
+	}
+
+	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		return fmt.Sprint(defStr)
+	}
+
+	if sql.IsEnum(cd.Type()) || sql.IsSet(cd.Type()) {
+		return strings.Trim(defStr, "'")
+	}
+
+	v, err := cd.Eval(ctx, nil)
+	if err != nil {
+		return nil
+	}
+	switch l := v.(type) {
+	case time.Time:
+		v = l.Format("2006-01-02 15:04:05")
+	}
+
+	return fmt.Sprint(v)
+}
+
+// getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
+// function should return nil,nil.
+func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
+	switch t := col.Type.(type) {
+	case sql.DecimalType:
+		return int(t.Precision()), int(t.Scale())
+	case sql.NumberType:
+		var numericScale interface{}
+		switch col.Type.Type() {
+		case sqltypes.Float32, sqltypes.Float64:
+			numericScale = nil
+		default:
+			numericScale = 0
+		}
+		return typeToNumericPrecision[col.Type.Type()], numericScale
+	default:
+		return nil, nil
+	}
 }

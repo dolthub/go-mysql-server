@@ -155,13 +155,13 @@ type HashInTuple struct {
 var _ Comparer = (*InTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
-func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
+func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple, error) {
 	rightTup, ok := right.(Tuple)
 	if !ok {
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	cmp, hasNull, err := newInMap(rightTup, left.Type())
+	cmp, hasNull, err := newInMap(ctx, rightTup, left.Type())
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
 }
 
 // newInMap hashes static expressions in the right child Tuple of a InTuple node
-func newInMap(right Tuple, lType sql.Type) (map[uint64]sql.Expression, bool, error) {
+func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Expression, bool, error) {
 	if lType == sql.Null {
 		return nil, true, nil
 	}
@@ -182,7 +182,7 @@ func newInMap(right Tuple, lType sql.Type) (map[uint64]sql.Expression, bool, err
 		if el.Type() == sql.Null {
 			hasNull = true
 		}
-		i, err := el.Eval(sql.NewEmptyContext(), sql.Row{})
+		i, err := el.Eval(ctx, sql.Row{})
 		if err != nil {
 			return nil, hasNull, err
 		}
@@ -198,15 +198,32 @@ func newInMap(right Tuple, lType sql.Type) (map[uint64]sql.Expression, bool, err
 }
 
 func hashOfSimple(i interface{}, t sql.Type) (uint64, error) {
-	hash := xxhash.New()
-	x, err := t.Promote().Convert(i)
-	if err != nil {
-		return 0, sql.ErrInvalidType.New(i)
+	if i == nil {
+		return 0, nil
 	}
-	if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
-		return 0, err
+
+	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
+	if sql.IsTextOnly(t) {
+		if str, ok := i.(string); ok {
+			return t.(sql.StringType).Collation().HashToUint(str)
+		} else {
+			i, err := t.Convert(i)
+			if err != nil {
+				return 0, err
+			}
+			return t.(sql.StringType).Collation().HashToUint(i.(string))
+		}
+	} else {
+		hash := xxhash.New()
+		x, err := t.Promote().Convert(i)
+		if err != nil {
+			return 0, sql.ErrInvalidType.New(i)
+		}
+		if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
+			return 0, err
+		}
+		return hash.Sum64(), nil
 	}
-	return hash.Sum64(), nil
 }
 
 // Eval implements the Expression interface.

@@ -25,7 +25,7 @@ import (
 // byte values rather than character by character. The BINARY operator also causes trailing spaces in comparisons to be
 // significant.
 //
-//cc: https://dev.mysql.com/doc/refman/8.0/en/cast-functions.html#operator_binary
+// cc: https://dev.mysql.com/doc/refman/8.0/en/cast-functions.html#operator_binary
 type Binary struct {
 	UnaryExpression
 }
@@ -48,7 +48,7 @@ func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return convertValue(expr, ConvertToBinary)
+	return convertValue(expr, ConvertToBinary, b.Child.Type())
 }
 
 func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {

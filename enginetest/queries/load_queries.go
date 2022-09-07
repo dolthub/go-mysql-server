@@ -50,9 +50,22 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Load data with csv but use IGNORE ROWS syntax",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 longtext)",
+			"LOAD DATA INFILE './testdata/test2.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 ROWS",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from loadtable",
+				Expected: []sql.Row{{int8(1), "hi"}, {int8(2), "hello"}},
+			},
+		},
+	},
+	{
 		Name: "Load data with csv with prefix.",
 		SetUpScript: []string{
-			"create table loadtable(pk longtext primary key, c1 int)",
+			"create table loadtable(pk longtext, c1 int)",
 			"LOAD DATA INFILE './testdata/test3.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES (`pk`, `c1`)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -65,7 +78,7 @@ var LoadDataScripts = []ScriptTest{
 	{
 		Name: "LOAD DATA with all columns reordered in projection",
 		SetUpScript: []string{
-			"create table loadtable(pk longtext primary key, c1 int)",
+			"create table loadtable(pk longtext, c1 int)",
 			"LOAD DATA INFILE './testdata/test3backwards.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES (`c1`, `pk`)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -203,7 +216,7 @@ var LoadDataErrorScripts = []ScriptTest{
 	{
 		Name: "Load data with unknown files throws an error.",
 		SetUpScript: []string{
-			"create table loadtable(pk longtext primary key, c1 int)",
+			"create table loadtable(pk longtext, c1 int)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{

@@ -22,8 +22,8 @@ import (
 )
 
 func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_table_functions")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_table_functions")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
@@ -49,6 +49,18 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 			database = privilegedDatabase.Unwrap()
 		}
 
+		var hasBindVarArgs bool
+		for _, arg := range utf.Arguments {
+			if _, ok := arg.(*expression.BindVar); ok {
+				hasBindVarArgs = true
+				break
+			}
+		}
+
+		if hasBindVarArgs {
+			return n, transform.SameTree, nil
+		}
+
 		newInstance, err := tableFunction.NewInstance(ctx, database, utf.Arguments)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -60,8 +72,8 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 
 // resolveFunctions replaces UnresolvedFunction nodes with equivalent functions from the Catalog.
 func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_functions")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_functions")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {

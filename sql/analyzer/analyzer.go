@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -357,12 +357,20 @@ func SelectAllBatches(string) bool { return true }
 func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
-	case stripDecorationsId,
-		reresolveTablesId,
+	case reresolveTablesId,
 		resolvePreparedInsertId:
 		return false
 	}
 	return true
+}
+
+func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		if id == pruneTablesId {
+			return false
+		}
+		return sel(id)
+	}
 }
 
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
@@ -376,15 +384,18 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 // are applied
 func prePrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case resolvePreparedInsertId,
-		insertTopNId,
-		inSubqueryIndexesId,
-		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
-		clearWarningsId,
-		stripDecorationsId,
+	case
+		// OnceBeforeDefault
 		reresolveTablesId,
+		validatePrivilegesId,
+
+		// Default
+
+		// OnceAfterDefault
+		insertTopNId,
+		resolvePreparedInsertId,
+
+		// DefaultValidation
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,
@@ -393,10 +404,10 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateOperandsId,
 		validateCaseResultTypesId,
 		validateIntervalUsageId,
-		validateExplodeUsageId,
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
-		validateAggregationsId:
+		validateAggregationsId,
+		validateExplodeUsageId:
 		return false
 	default:
 		return true
@@ -409,7 +420,7 @@ func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql
 	return n, err
 }
 
-// prePrepareRuleSelector are applied to a cached prepared statement plan
+// postPrepareRuleSelector are applied to a cached prepared statement plan
 // after bindvars are applied
 func postPrepareRuleSelector(id RuleId) bool {
 	switch id {
@@ -419,8 +430,9 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveTablesId,
 		reresolveTablesId,
 		setTargetSchemasId,
-		stripDecorationsId,
 		parseColumnDefaultsId,
+		resolveTableFunctionsId,
+		validatePrivilegesId,
 
 		// DefaultRules
 		resolveOrderbyLiteralsId,
@@ -432,20 +444,14 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
+		flattenAggregationExprsId,
 
 		// OnceAfterDefault
-		pushdownFiltersId,
 		subqueryIndexesId,
 		inSubqueryIndexesId,
-		resolvePreparedInsertId,
-
+		resolvePreparedInsertId:
 		// DefaultValidationRules
-
 		// OnceAfterAll
-		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
-		clearWarningsId:
 		return true
 	}
 	return false
@@ -455,9 +461,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 // after bindvars are applied
 func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 	switch id {
-	case stripDecorationsId,
-		reresolveTablesId,
-
+	case reresolveTablesId,
 		expandStarsId,
 		resolveFunctionsId,
 		flattenTableAliasesId,
@@ -504,10 +508,16 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 	}, sel)
 }
 
+// Every time we recursively invoke the analyzer we increment a depth counter to avoid analyzing queries that could
+// cause infinite recursion. This limit is high but arbitrary
+const maxBatchRecursion = 100
+
 func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("analyze", opentracing.Tags{
-		//"plan": , n.String(),
-	})
+	span, ctx := ctx.Span("analyze")
+
+	if scope.RecursionDepth() > maxBatchRecursion {
+		return n, transform.SameTree, ErrMaxAnalysisIters.New(maxBatchRecursion)
+	}
 
 	var (
 		same    = transform.SameTree
@@ -531,9 +541,9 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 
 	defer func() {
 		if n != nil {
-			span.SetTag("IsResolved", n.Resolved())
+			span.SetAttributes(attribute.Bool("IsResolved", n.Resolved()))
 		}
-		span.Finish()
+		span.End()
 	}()
 
 	return n, allSame, err

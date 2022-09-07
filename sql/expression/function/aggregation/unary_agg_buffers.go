@@ -155,31 +155,187 @@ func (a *avgBuffer) Dispose() {
 	expression.Dispose(a.expr)
 }
 
-type countDistinctBuffer struct {
-	seen map[uint64]struct{}
+type bitAndBuffer struct {
+	res  uint64
+	rows uint64
 	expr sql.Expression
 }
 
-func NewCountDistinctBuffer(child sql.Expression) *countDistinctBuffer {
-	return &countDistinctBuffer{make(map[uint64]struct{}), child}
+func NewBitAndBuffer(child sql.Expression) *bitAndBuffer {
+	const (
+		res  = ^uint64(0) // bitwise not xor, so 0xffff...
+		rows = uint64(0)
+	)
+
+	return &bitAndBuffer{res, rows, child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (b *bitAndBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := b.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	if v == nil {
+		return nil
+	}
+
+	v, err = sql.Uint64.Convert(v)
+	if err != nil {
+		v = uint64(0)
+	}
+
+	b.res &= v.(uint64)
+	b.rows += 1
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (b *bitAndBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return b.res, nil
+}
+
+// Dispose implements the Disposable interface.
+func (b *bitAndBuffer) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+type bitOrBuffer struct {
+	res  uint64
+	rows uint64
+	expr sql.Expression
+}
+
+func NewBitOrBuffer(child sql.Expression) *bitOrBuffer {
+	const (
+		res  = uint64(0)
+		rows = uint64(0)
+	)
+
+	return &bitOrBuffer{res, rows, child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (b *bitOrBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := b.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	if v == nil {
+		return nil
+	}
+
+	v, err = sql.Uint64.Convert(v)
+	if err != nil {
+		v = uint64(0)
+	}
+
+	b.res |= v.(uint64)
+	b.rows += 1
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (b *bitOrBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return b.res, nil
+}
+
+// Dispose implements the Disposable interface.
+func (b *bitOrBuffer) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+type bitXorBuffer struct {
+	res  uint64
+	rows uint64
+	expr sql.Expression
+}
+
+func NewBitXorBuffer(child sql.Expression) *bitXorBuffer {
+	const (
+		res  = uint64(0)
+		rows = uint64(0)
+	)
+
+	return &bitXorBuffer{res, rows, child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (b *bitXorBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := b.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	if v == nil {
+		return nil
+	}
+
+	v, err = sql.Uint64.Convert(v)
+	if err != nil {
+		v = uint64(0)
+	}
+
+	b.res ^= v.(uint64)
+	b.rows += 1
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (b *bitXorBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	// This case is triggered when no rows exist.
+	if b.res == 0 && b.rows == 0 {
+		return uint64(0), nil
+	}
+
+	if b.rows == 0 {
+		return uint64(0), nil
+	}
+
+	return b.res, nil
+}
+
+// Dispose implements the Disposable interface.
+func (b *bitXorBuffer) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+type countDistinctBuffer struct {
+	seen  map[uint64]struct{}
+	exprs []sql.Expression
+}
+
+func NewCountDistinctBuffer(children []sql.Expression) *countDistinctBuffer {
+	return &countDistinctBuffer{make(map[uint64]struct{}), children}
 }
 
 // Update implements the AggregationBuffer interface.
 func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	var value interface{}
-	if _, ok := c.expr.(*expression.Star); ok {
+	if len(c.exprs) == 0 {
+		return fmt.Errorf("no expressions")
+	}
+	if _, ok := c.exprs[0].(*expression.Star); ok {
 		value = row
 	} else {
-		v, err := c.expr.Eval(ctx, row)
-		if v == nil {
-			return nil
+		val := make([]interface{}, len(c.exprs))
+		for i, expr := range c.exprs {
+			v, err := expr.Eval(ctx, row)
+			if err != nil {
+				return err
+			}
+			// skip nil values
+			if v == nil {
+				return nil
+			}
+			val[i] = v
 		}
-
-		if err != nil {
-			return err
-		}
-
-		value = v
+		value = val
 	}
 
 	hash, err := hashstructure.Hash(value, nil)
@@ -198,7 +354,9 @@ func (c *countDistinctBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 func (c *countDistinctBuffer) Dispose() {
-	expression.Dispose(c.expr)
+	for _, e := range c.exprs {
+		expression.Dispose(e)
+	}
 }
 
 type countBuffer struct {

@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -30,11 +31,11 @@ type CreateDB struct {
 	IfNotExists bool
 }
 
-func (c CreateDB) Resolved() bool {
+func (c *CreateDB) Resolved() bool {
 	return true
 }
 
-func (c CreateDB) String() string {
+func (c *CreateDB) String() string {
 	ifNotExists := ""
 	if c.IfNotExists {
 		ifNotExists = " if not exists"
@@ -42,15 +43,15 @@ func (c CreateDB) String() string {
 	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifNotExists, c.dbName)
 }
 
-func (c CreateDB) Schema() sql.Schema {
+func (c *CreateDB) Schema() sql.Schema {
 	return sql.OkResultSchema
 }
 
-func (c CreateDB) Children() []sql.Node {
+func (c *CreateDB) Children() []sql.Node {
 	return nil
 }
 
-func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (c *CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := c.Catalog.HasDB(ctx, c.dbName)
 	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
 
@@ -76,12 +77,12 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
 // CheckPrivileges implements the interface sql.Node.
-func (c CreateDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (c *CreateDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Create))
 }
@@ -100,11 +101,11 @@ type DropDB struct {
 	IfExists bool
 }
 
-func (d DropDB) Resolved() bool {
+func (d *DropDB) Resolved() bool {
 	return true
 }
 
-func (d DropDB) String() string {
+func (d *DropDB) String() string {
 	ifExists := ""
 	if d.IfExists {
 		ifExists = " if exists"
@@ -112,15 +113,15 @@ func (d DropDB) String() string {
 	return fmt.Sprintf("%s database%s %v", sqlparser.DropStr, ifExists, d.dbName)
 }
 
-func (d DropDB) Schema() sql.Schema {
+func (d *DropDB) Schema() sql.Schema {
 	return sql.OkResultSchema
 }
 
-func (d DropDB) Children() []sql.Node {
+func (d *DropDB) Children() []sql.Node {
 	return nil
 }
 
-func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (d *DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := d.Catalog.HasDB(ctx, d.dbName)
 	if !exists {
 		if d.IfExists {
@@ -143,8 +144,8 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	// Unsets the current database
-	if ctx.GetCurrentDatabase() == d.dbName {
+	// Unsets the current database. Database name is case-insensitive.
+	if strings.ToLower(ctx.GetCurrentDatabase()) == strings.ToLower(d.dbName) {
 		ctx.SetCurrentDatabase("")
 	}
 
@@ -153,12 +154,12 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (d DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 
 // CheckPrivileges implements the interface sql.Node.
-func (d DropDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (d *DropDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Drop))
 }

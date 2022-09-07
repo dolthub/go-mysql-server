@@ -27,10 +27,10 @@ import (
 // schema of the flattened node.
 // e.g. GroupBy(sum(a) + sum(b)) becomes project(sum(a) + sum(b), GroupBy(sum(a), sum(b)).
 // e.g. Window(sum(a) + sum(b) over (partition by a)) becomes
-//    project(sum(a) + sum(b) over (partition by a), Window(sum(a), sum(b) over (partition by a))).
+// project(sum(a) + sum(b) over (partition by a), Window(sum(a), sum(b) over (partition by a))).
 func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("flatten_aggregation_exprs")
-	defer span.Finish()
+	span, ctx := ctx.Span("flatten_aggregation_exprs")
+	defer span.End()
 
 	if !n.Resolved() {
 		return n, transform.SameTree, nil

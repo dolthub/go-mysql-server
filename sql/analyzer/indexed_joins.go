@@ -30,7 +30,7 @@ import (
 // constructJoinPlan finds an optimal table ordering and access plan for the tables in the query.
 func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("construct_join_plan")
-	defer span.Finish()
+	defer span.End()
 
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
@@ -45,7 +45,12 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 
 // validateJoinComplexity prevents joins with 13 or more tables from being analyzed further
 func validateJoinComplexity(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if d := countTableFactors(n); d > joinComplexityLimit {
+	_, joinComplexityLimit, ok := sql.SystemVariables.GetGlobal("join_complexity_limit")
+	if !ok {
+		return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New("join_complexity_limit")
+	}
+
+	if d := countTableFactors(n); d > int(joinComplexityLimit.(uint64)) {
 		return nil, transform.SameTree, sql.ErrUnsupportedJoinFactorCount.New(joinComplexityLimit, d)
 	}
 	return n, transform.SameTree, nil
@@ -89,6 +94,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
+
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -122,7 +128,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 // countTableFactors uses a naive algorithm to count
 // the number of join leaves in a query.
-//todo(max): recursive ctes with joins might be double counted,
+// todo(max): recursive ctes with joins might be double counted,
 // tricky to test
 func countTableFactors(n sql.Node) int {
 	var cnt int
@@ -216,12 +222,16 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		if indexToApply.index != nil {
-			keyExprs := createIndexLookupKeyExpression(ctx, indexToApply, tableAliases)
+			keyExprs, matchesNullMask := createIndexLookupKeyExpression(ctx, indexToApply, tableAliases)
 			keyExprs, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, schema, keyExprs...)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return plan.NewIndexedTableAccess(node, indexToApply.index, keyExprs), transform.NewTree, nil
+			ret, err := plan.NewIndexedAccessForResolvedTable(node, plan.NewLookupBuilder(ctx, indexToApply.index, keyExprs, matchesNullMask))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return ret, transform.NewTree, nil
 		} else {
 			ln, sameL, lerr := toIndexedTableAccess(node, indexToApply.disjunction[0])
 			if lerr != nil {
@@ -282,15 +292,16 @@ func replaceTableAccessWithIndexedAccess(
 			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 
-		if sameL && sameR {
-			return node, transform.SameTree, nil
-		}
-
 		// the condition's field indexes might need adjusting if the order of tables changed
-		cond, _, err := FixFieldIndexes(ctx, scope, a, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
+		cond, sameC, err := FixFieldIndexes(ctx, scope, a, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		if sameL && sameR && sameC {
+			return node, transform.SameTree, nil
+		}
+
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond, len(scope.Schema())), transform.NewTree, nil
 	case *plan.Limit:
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
@@ -403,7 +414,14 @@ func replanJoin(
 	joinHint := extractJoinHint(node)
 
 	// Collect all tables
-	tableJoinOrder := newJoinOrderNode(node)
+	_, joinComplexityLimit, ok := sql.SystemVariables.GetGlobal("join_complexity_limit")
+	if !ok {
+		return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New("join_complexity_limit")
+	}
+	tableJoinOrder, cnt := newJoinOrderNode(node)
+	if cnt > int(joinComplexityLimit.(uint64)) {
+		return nil, transform.SameTree, sql.ErrUnsupportedJoinFactorCount.New(joinComplexityLimit, cnt)
+	}
 
 	// Find a hinted or cost optimized access order for them
 	ordered := false
@@ -507,29 +525,31 @@ func joinTreeToNodes(tree *joinSearchNode, scope *Scope, ordered bool) sql.Node 
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
 // RowIter method of an IndexedTableAccess node. Column expressions must match the declared column order of the index.
-func createIndexLookupKeyExpression(ctx *sql.Context, ji *joinIndex, tableAliases TableAliases) []sql.Expression {
+func createIndexLookupKeyExpression(ctx *sql.Context, ji *joinIndex, tableAliases TableAliases) ([]sql.Expression, []bool) {
 	idxExprs := ji.index.Expressions()
 	count := len(idxExprs)
 	if count > len(ji.cols) {
 		count = len(ji.cols)
 	}
 	keyExprs := make([]sql.Expression, count)
+	nullmask := make([]bool, count)
 
 IndexExpressions:
 	for i := 0; i < count; i++ {
 		for j, col := range ji.cols {
 			if idxExprs[i] == normalizeExpression(ctx, tableAliases, col).String() {
 				keyExprs[i] = ji.comparandExprs[j]
+				nullmask[i] = ji.nullmask[j]
 				continue IndexExpressions
 			}
 		}
 
 		// If we finished this loop, we didn't find a column of the index in the join expression.
 		// This should be impossible.
-		return nil
+		return nil, nil
 	}
 
-	return keyExprs
+	return keyExprs, nullmask
 }
 
 // A joinIndex captures an index to use in a join between two or more tables.
@@ -558,6 +578,12 @@ type joinIndex struct {
 	comparandCols []*expression.GetField
 	// The expressions of other tables, in the same order as cols
 	comparandExprs []sql.Expression
+	// Has a bool for each comparandExprs; the bool is true if this
+	// index lookup should return entries that are NULL when the
+	// lookup is NULL. The entry is false otherwise.
+	// Distinguishes between child.parent_id <=> parent.id VS
+	// child.parent_id = parent.id.
+	nullmask []bool
 }
 
 func (ji *joinIndex) hasIndex() bool {
@@ -617,8 +643,8 @@ func findJoinIndexesByTable(
 	tableAliases TableAliases,
 	a *Analyzer,
 ) (joinIndexesByTable, error) {
-	indexSpan, _ := ctx.Span("find_join_indexes")
-	defer indexSpan.Finish()
+	indexSpan, ctx := ctx.Span("find_join_indexes")
+	defer indexSpan.End()
 
 	var err error
 	var conds []joinCond
@@ -718,7 +744,7 @@ func joinCondPresent(e sql.Expression, jcs []*joinCond) bool {
 // getJoinIndexes examines the join condition expression given and returns it mapped by table name with
 // potential indexes assigned. Only = and AND expressions composed solely of = predicates are supported.
 // TODO: any conjunctions will only get an index applied if their terms correspond 1:1 with the columns of an index on
-//  that table. We could also attempt to apply subsets of the terms of such conjunctions to indexes.
+// that table. We could also attempt to apply subsets of the terms of such conjunctions to indexes.
 func getJoinIndexes(
 	ctx *sql.Context,
 	a *Analyzer,
@@ -742,21 +768,22 @@ func getJoinIndexes(
 		return result
 	case *expression.And:
 		exprs := splitConjunction(jc.cond)
+		var eqs []sql.Expression
 		for _, expr := range exprs {
 			switch e := expr.(type) {
 			case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+				eqs = append(eqs, e)
 			case *expression.Not:
 				switch e.Child.(type) {
 				case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+					eqs = append(eqs, e)
 				default:
-					return nil
 				}
 			default:
-				return nil
 			}
 		}
 
-		return getJoinIndex(ctx, jc, exprs, ia, tableAliases)
+		return getJoinIndex(ctx, jc, eqs, ia, tableAliases)
 	case *expression.Or:
 		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable}
 		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable}
@@ -780,6 +807,9 @@ func getJoinIndexes(
 						comparandExprs := make([]sql.Expression, 0, len(left.comparandExprs)+len(right.comparandExprs))
 						comparandExprs = append(comparandExprs, left.comparandExprs...)
 						comparandExprs = append(comparandExprs, right.comparandExprs...)
+						nullmask := make([]bool, 0, len(left.nullmask)+len(right.nullmask))
+						nullmask = append(nullmask, left.nullmask...)
+						nullmask = append(nullmask, right.nullmask...)
 						v = append(v, &joinIndex{
 							table:          table,
 							index:          nil,
@@ -791,6 +821,7 @@ func getJoinIndexes(
 							colExprs:       colExprs,
 							comparandCols:  comparandCols,
 							comparandExprs: comparandExprs,
+							nullmask:       nullmask,
 						})
 					}
 				}
@@ -813,8 +844,11 @@ func getEqualityIndexes(
 	tableAliases TableAliases,
 ) (leftJoinIndex *joinIndex, rightJoinIndex *joinIndex) {
 
+	var matchnull bool
 	switch joinCond.cond.(type) {
-	case *expression.Equals, *expression.NullSafeEquals:
+	case *expression.Equals:
+	case *expression.NullSafeEquals:
+		matchnull = true
 	default:
 		return nil, nil
 	}
@@ -853,6 +887,7 @@ func getEqualityIndexes(
 		colExprs:       []sql.Expression{leftCol.colExpr},
 		comparandCols:  []*expression.GetField{leftCol.comparandCol},
 		comparandExprs: []sql.Expression{leftCol.comparand},
+		nullmask:       []bool{matchnull},
 	}
 
 	rightJoinIndex = &joinIndex{
@@ -865,6 +900,7 @@ func getEqualityIndexes(
 		colExprs:       []sql.Expression{rightCol.colExpr},
 		comparandCols:  []*expression.GetField{rightCol.comparandCol},
 		comparandExprs: []sql.Expression{rightCol.comparand},
+		nullmask:       []bool{matchnull},
 	}
 
 	return leftJoinIndex, rightJoinIndex
@@ -916,11 +952,13 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 		joinPosition = plan.JoinTypeRight
 	}
 
+	nullmask := make([]bool, len(colExprs))
 	for i, col := range colExprs {
 		cols[i] = col.col
 		cmpCols[i] = col.comparandCol
 		exprs[i] = col.colExpr
 		cmpExprs[i] = col.comparand
+		nullmask[i] = col.matchnull
 	}
 
 	return &joinIndex{
@@ -933,6 +971,7 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 		colExprs:       exprs,
 		comparandCols:  cmpCols,
 		comparandExprs: cmpExprs,
+		nullmask:       nullmask,
 	}
 }
 

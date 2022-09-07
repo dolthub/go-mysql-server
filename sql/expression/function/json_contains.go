@@ -38,9 +38,10 @@ import (
 //     some element of the target.
 //   - A candidate non-array is contained in a target array if and only if the candidate is contained in some element
 //     of the target.
-///   - A candidate object is contained in a target object if and only if for each key in the candidate there is a key
+//   - A candidate object is contained in a target object if and only if for each key in the candidate there is a key
 //     with the same name in the target and the value associated with the candidate key is contained in the value
 //     associated with the target key.
+//
 // Otherwise, the candidate value is not contained in the target document.
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains
@@ -127,7 +128,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	// If there's path reevaluate target based off of this path
+	// If there's a path reevaluate target based off of it
 	if j.Path != nil {
 		// Evaluate the given path if there is one
 		path, err := j.Path.Eval(ctx, row)
@@ -166,7 +167,7 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 
 	var converted interface{}
 	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, JSONValue:
+	case string, []interface{}, map[string]interface{}, sql.JSONValue:
 		converted, err = sql.JSON.Convert(js)
 		if err != nil {
 			return nil, sql.ErrInvalidJSONText.New(js)

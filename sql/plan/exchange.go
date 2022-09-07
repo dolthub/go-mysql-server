@@ -20,6 +20,7 @@ import (
 	"io"
 	"sync"
 
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -173,7 +174,7 @@ func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, er
 
 func (e *Exchange) String() string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Exchange(parallelism=%d)", e.Parallelism)
+	_ = p.WriteNode("Exchange")
 	_ = p.WriteChildren(e.Child.String())
 	return p.String()
 }
@@ -402,8 +403,8 @@ func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partit
 				return err
 			}
 			count, err := sendAllRows(ctx, iter, rows)
-			span.LogKV("num_rows", count)
-			span.Finish()
+			span.SetAttributes(attribute.Int("num_rows", count))
+			span.End()
 			if err != nil {
 				return err
 			}
@@ -433,8 +434,8 @@ func iterPartitionRows2(ctx *sql.Context, getRowIter rowIter2PartitionFunc, part
 				return err
 			}
 			count, err := sendAllRows2(ctx, iter, rows, f)
-			span.LogKV("num_rows", count)
-			span.Finish()
+			span.SetAttributes(attribute.Int("num_rows", count))
+			span.End()
 			if err != nil {
 				return err
 			}

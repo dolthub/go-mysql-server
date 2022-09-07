@@ -32,7 +32,7 @@ func TestLower(t *testing.T) {
 	}{
 		{"text nil", sql.LongText, sql.NewRow(nil), nil},
 		{"text ok", sql.LongText, sql.NewRow("LoWeR"), "lower"},
-		{"binary ok", sql.Blob, sql.NewRow([]byte("LoWeR")), "lower"},
+		{"binary ok", sql.Blob, sql.NewRow([]byte("LoWeR")), "LoWeR"},
 		{"other type", sql.Int32, sql.NewRow(int32(1)), "1"},
 	}
 
@@ -58,7 +58,7 @@ func TestUpper(t *testing.T) {
 	}{
 		{"text nil", sql.LongText, sql.NewRow(nil), nil},
 		{"text ok", sql.LongText, sql.NewRow("UpPeR"), "UPPER"},
-		{"binary ok", sql.Blob, sql.NewRow([]byte("UpPeR")), "UPPER"},
+		{"binary ok", sql.Blob, sql.NewRow([]byte("UpPeR")), "UpPeR"},
 		{"other type", sql.Int32, sql.NewRow(int32(1)), "1"},
 	}
 

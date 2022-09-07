@@ -319,12 +319,12 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	return !cols.has(gf.Table(), gf.Name())
 }
 
-func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithCtx(n, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(node, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
-		case *plan.RenameColumn, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet, *plan.DropColumn, *plan.ShowCreateTable:
-			// do nothing, column defaults already have been resolved
-			return n, transform.SameTree, nil
+		case sql.SchemaTarget:
+			// do nothing, column defaults have already been resolved
+			return node, transform.SameTree, nil
 		case *plan.SubqueryAlias:
 			child, same, err := fixRemainingFieldsIndexes(ctx, a, n.Child, nil)
 			if err != nil {

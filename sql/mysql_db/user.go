@@ -34,6 +34,8 @@ type User struct {
 	PasswordLastChanged time.Time
 	Locked              bool
 	Attributes          *string
+	Identity            string
+	IsSuperUser         bool
 	//TODO: add the remaining fields
 
 	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a
@@ -64,8 +66,9 @@ func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, er
 		Plugin:              row[userTblColIndex_plugin].(string),
 		Password:            row[userTblColIndex_authentication_string].(string),
 		PasswordLastChanged: passwordLastChanged,
-		Locked:              row[userTblColIndex_account_locked].(string) == "Y",
+		Locked:              row[userTblColIndex_account_locked].(uint16) == 2,
 		Attributes:          attributes,
+		Identity:            row[userTblColIndex_identity].(string),
 		IsRole:              false,
 	}, nil
 }
@@ -96,8 +99,9 @@ func (u *User) ToRow(ctx *sql.Context) sql.Row {
 	row[userTblColIndex_plugin] = u.Plugin
 	row[userTblColIndex_authentication_string] = u.Password
 	row[userTblColIndex_password_last_changed] = u.PasswordLastChanged
+	row[userTblColIndex_identity] = u.Identity
 	if u.Locked {
-		row[userTblColIndex_account_locked] = "Y"
+		row[userTblColIndex_account_locked] = uint16(2)
 	}
 	if u.Attributes != nil {
 		row[userTblColIndex_User_attributes] = *u.Attributes
@@ -118,6 +122,7 @@ func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 		u.Host != otherUser.Host ||
 		u.Plugin != otherUser.Plugin ||
 		u.Password != otherUser.Password ||
+		u.Identity != otherUser.Identity ||
 		!u.PasswordLastChanged.Equal(otherUser.PasswordLastChanged) ||
 		u.Locked != otherUser.Locked ||
 		!u.PrivilegeSet.Equals(otherUser.PrivilegeSet) ||
@@ -172,127 +177,127 @@ func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 	for i, val := range row {
 		switch i {
 		case userTblColIndex_Select_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Select)
 			}
 		case userTblColIndex_Insert_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Insert)
 			}
 		case userTblColIndex_Update_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Update)
 			}
 		case userTblColIndex_Delete_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Delete)
 			}
 		case userTblColIndex_Create_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Create)
 			}
 		case userTblColIndex_Drop_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Drop)
 			}
 		case userTblColIndex_Reload_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Reload)
 			}
 		case userTblColIndex_Shutdown_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Shutdown)
 			}
 		case userTblColIndex_Process_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Process)
 			}
 		case userTblColIndex_File_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_File)
 			}
 		case userTblColIndex_Grant_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Grant)
 			}
 		case userTblColIndex_References_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_References)
 			}
 		case userTblColIndex_Index_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Index)
 			}
 		case userTblColIndex_Alter_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Alter)
 			}
 		case userTblColIndex_Show_db_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_ShowDB)
 			}
 		case userTblColIndex_Super_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Super)
 			}
 		case userTblColIndex_Create_tmp_table_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_CreateTempTable)
 			}
 		case userTblColIndex_Lock_tables_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_LockTables)
 			}
 		case userTblColIndex_Execute_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Execute)
 			}
 		case userTblColIndex_Repl_slave_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_ReplicationSlave)
 			}
 		case userTblColIndex_Repl_client_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_ReplicationClient)
 			}
 		case userTblColIndex_Create_view_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_CreateView)
 			}
 		case userTblColIndex_Show_view_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_ShowView)
 			}
 		case userTblColIndex_Create_routine_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_CreateRoutine)
 			}
 		case userTblColIndex_Alter_routine_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_AlterRoutine)
 			}
 		case userTblColIndex_Create_user_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_CreateUser)
 			}
 		case userTblColIndex_Event_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Event)
 			}
 		case userTblColIndex_Trigger_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_Trigger)
 			}
 		case userTblColIndex_Create_tablespace_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_CreateTablespace)
 			}
 		case userTblColIndex_Create_role_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_CreateRole)
 			}
 		case userTblColIndex_Drop_role_priv:
-			if val.(string) == "Y" {
+			if val.(uint16) == 2 {
 				privSet.AddGlobalStatic(sql.PrivilegeType_DropRole)
 			}
 		}
@@ -306,67 +311,67 @@ func (u *User) privSetToRow(ctx *sql.Context, row sql.Row) {
 	for _, priv := range u.PrivilegeSet.ToSlice() {
 		switch priv {
 		case sql.PrivilegeType_Select:
-			row[userTblColIndex_Select_priv] = "Y"
+			row[userTblColIndex_Select_priv] = uint16(2)
 		case sql.PrivilegeType_Insert:
-			row[userTblColIndex_Insert_priv] = "Y"
+			row[userTblColIndex_Insert_priv] = uint16(2)
 		case sql.PrivilegeType_Update:
-			row[userTblColIndex_Update_priv] = "Y"
+			row[userTblColIndex_Update_priv] = uint16(2)
 		case sql.PrivilegeType_Delete:
-			row[userTblColIndex_Delete_priv] = "Y"
+			row[userTblColIndex_Delete_priv] = uint16(2)
 		case sql.PrivilegeType_Create:
-			row[userTblColIndex_Create_priv] = "Y"
+			row[userTblColIndex_Create_priv] = uint16(2)
 		case sql.PrivilegeType_Drop:
-			row[userTblColIndex_Drop_priv] = "Y"
+			row[userTblColIndex_Drop_priv] = uint16(2)
 		case sql.PrivilegeType_Reload:
-			row[userTblColIndex_Reload_priv] = "Y"
+			row[userTblColIndex_Reload_priv] = uint16(2)
 		case sql.PrivilegeType_Shutdown:
-			row[userTblColIndex_Shutdown_priv] = "Y"
+			row[userTblColIndex_Shutdown_priv] = uint16(2)
 		case sql.PrivilegeType_Process:
-			row[userTblColIndex_Process_priv] = "Y"
+			row[userTblColIndex_Process_priv] = uint16(2)
 		case sql.PrivilegeType_File:
-			row[userTblColIndex_File_priv] = "Y"
+			row[userTblColIndex_File_priv] = uint16(2)
 		case sql.PrivilegeType_Grant:
-			row[userTblColIndex_Grant_priv] = "Y"
+			row[userTblColIndex_Grant_priv] = uint16(2)
 		case sql.PrivilegeType_References:
-			row[userTblColIndex_References_priv] = "Y"
+			row[userTblColIndex_References_priv] = uint16(2)
 		case sql.PrivilegeType_Index:
-			row[userTblColIndex_Index_priv] = "Y"
+			row[userTblColIndex_Index_priv] = uint16(2)
 		case sql.PrivilegeType_Alter:
-			row[userTblColIndex_Alter_priv] = "Y"
+			row[userTblColIndex_Alter_priv] = uint16(2)
 		case sql.PrivilegeType_ShowDB:
-			row[userTblColIndex_Show_db_priv] = "Y"
+			row[userTblColIndex_Show_db_priv] = uint16(2)
 		case sql.PrivilegeType_Super:
-			row[userTblColIndex_Super_priv] = "Y"
+			row[userTblColIndex_Super_priv] = uint16(2)
 		case sql.PrivilegeType_CreateTempTable:
-			row[userTblColIndex_Create_tmp_table_priv] = "Y"
+			row[userTblColIndex_Create_tmp_table_priv] = uint16(2)
 		case sql.PrivilegeType_LockTables:
-			row[userTblColIndex_Lock_tables_priv] = "Y"
+			row[userTblColIndex_Lock_tables_priv] = uint16(2)
 		case sql.PrivilegeType_Execute:
-			row[userTblColIndex_Execute_priv] = "Y"
+			row[userTblColIndex_Execute_priv] = uint16(2)
 		case sql.PrivilegeType_ReplicationSlave:
-			row[userTblColIndex_Repl_slave_priv] = "Y"
+			row[userTblColIndex_Repl_slave_priv] = uint16(2)
 		case sql.PrivilegeType_ReplicationClient:
-			row[userTblColIndex_Repl_client_priv] = "Y"
+			row[userTblColIndex_Repl_client_priv] = uint16(2)
 		case sql.PrivilegeType_CreateView:
-			row[userTblColIndex_Create_view_priv] = "Y"
+			row[userTblColIndex_Create_view_priv] = uint16(2)
 		case sql.PrivilegeType_ShowView:
-			row[userTblColIndex_Show_view_priv] = "Y"
+			row[userTblColIndex_Show_view_priv] = uint16(2)
 		case sql.PrivilegeType_CreateRoutine:
-			row[userTblColIndex_Create_routine_priv] = "Y"
+			row[userTblColIndex_Create_routine_priv] = uint16(2)
 		case sql.PrivilegeType_AlterRoutine:
-			row[userTblColIndex_Alter_routine_priv] = "Y"
+			row[userTblColIndex_Alter_routine_priv] = uint16(2)
 		case sql.PrivilegeType_CreateUser:
-			row[userTblColIndex_Create_user_priv] = "Y"
+			row[userTblColIndex_Create_user_priv] = uint16(2)
 		case sql.PrivilegeType_Event:
-			row[userTblColIndex_Event_priv] = "Y"
+			row[userTblColIndex_Event_priv] = uint16(2)
 		case sql.PrivilegeType_Trigger:
-			row[userTblColIndex_Trigger_priv] = "Y"
+			row[userTblColIndex_Trigger_priv] = uint16(2)
 		case sql.PrivilegeType_CreateTablespace:
-			row[userTblColIndex_Create_tablespace_priv] = "Y"
+			row[userTblColIndex_Create_tablespace_priv] = uint16(2)
 		case sql.PrivilegeType_CreateRole:
-			row[userTblColIndex_Create_role_priv] = "Y"
+			row[userTblColIndex_Create_role_priv] = uint16(2)
 		case sql.PrivilegeType_DropRole:
-			row[userTblColIndex_Drop_role_priv] = "Y"
+			row[userTblColIndex_Drop_role_priv] = uint16(2)
 		}
 	}
 }

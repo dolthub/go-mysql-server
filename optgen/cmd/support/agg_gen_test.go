@@ -68,7 +68,7 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) NewBuffer() (sql.AggregationBuffer, error) {
-            child, err := transform.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.Child)
             if err != nil {
                 return nil, err
             }
@@ -76,7 +76,7 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) NewWindowFunction() (sql.WindowFunction, error) {
-            child, err := transform.Clone(a.UnaryExpression.Child)
+            child, err := transform.Clone(a.Child)
             if err != nil {
                 return nil, err
             }

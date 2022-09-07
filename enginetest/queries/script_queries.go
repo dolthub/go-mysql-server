@@ -73,6 +73,101 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
+			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				// enginetests returns the enum id, but the text representation is sent over the wire
+				Query:    "SELECT * FROM enumtest1;",
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}, {3, uint64(2)}},
+			},
+			{
+				// enum values must match EXACTLY for case-sensitive collations
+				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				ExpectedErrStr: "value ABC is not valid for this Enum",
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
+				Query: "SHOW CREATE TABLE enumtest2;",
+				Expected: []sql.Row{{
+					"enumtest2",
+					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('abc','XYZ')", "YES", "", "NULL", ""}},
+			},
+			{
+				Query: "DESCRIBE enumtest2;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('x','X','y','Y')", "YES", "", "NULL", ""}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
+				Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
+			},
+		},
+	},
+	{
+		Name: "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", "NULL", ""}},
+			},
+			{
+				Query: "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{
+					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci",
+					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci"}},
+			},
+			{
+				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+		},
+	},
+
+	{
 		Name: "failed statements data validation for INSERT, UPDATE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
@@ -1039,7 +1134,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", ""},
 					{"v1", "bigint", "NO", "", "200", ""},
 				},
 			},
@@ -1093,8 +1188,8 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"uk", "int", "YES", "UNI", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"uk", "int", "YES", "UNI", "NULL", "auto_increment"},
 				},
 			},
 		},
@@ -1109,8 +1204,8 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"mk", "int", "YES", "MUL", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"mk", "int", "YES", "MUL", "NULL", "auto_increment"},
 				},
 			},
 		},
@@ -1359,7 +1454,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+				Expected: []sql.Row{{1, uint16(2), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
@@ -1367,7 +1462,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+				Expected: []sql.Row{{1, uint16(3), uint64(2)}, {2, uint16(1), uint64(1)}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
@@ -1375,7 +1470,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+				Expected: []sql.Row{{1, uint16(3), uint64(3)}, {2, uint16(1), uint64(1)}},
 			},
 		},
 	},
@@ -1455,39 +1550,16 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 4;",
-				Expected: []sql.Row{{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[4, 4], (-∞, ∞), (-∞, ∞)}])"}},
-			},
-			{
 				Query:    "SELECT * FROM test WHERE v3 = 4;",
 				Expected: []sql.Row{{1, 2, 3, 4}},
-			},
-			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
-				Expected: []sql.Row{
-					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[8, 8], [7, 7], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
 				Expected: []sql.Row{{5, 6, 7, 8}},
 			},
 			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
-				Expected: []sql.Row{
-					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[6, ∞), [6, ∞), (-∞, ∞)}])"}},
-			},
-			{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
 				Expected: []sql.Row{{4, 5, 6, 7}, {5, 6, 7, 8}},
-			},
-			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
-				Expected: []sql.Row{
-					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[7, 7], [6, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
@@ -1503,40 +1575,16 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
-				Expected: []sql.Row{
-					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[2, 2], (1, ∞), (-∞, ∞)}])"}},
-			},
-			{
 				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
 				Expected: []sql.Row{{1, 2, 3, 4}},
-			},
-			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
-				Expected: []sql.Row{
-					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{(1, ∞), [4, 4], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
 				Expected: []sql.Row{{2, 3, 4, 5}},
 			},
 			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
-				Expected: []sql.Row{
-					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2] with ranges: [{(1, ∞), [6, 6], (-∞, ∞)}])"}},
-			},
-			{
 				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
 				Expected: []sql.Row{{3, 4, 5, 6}},
-			},
-			{
-				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
-				Expected: []sql.Row{
-					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[5, 5], [1, ∞), (-∞, 10]}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
@@ -1559,6 +1607,56 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT COUNT(*) FROM GzaKtwgIya",
 				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "Ensure scale is not rounded when inserting to DECIMAL type through float64",
+		SetUpScript: []string{
+			"create table test (number decimal(40,16));",
+			"insert into test values ('11981.5923291839784651');",
+			"create table small_test (n decimal(3,2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (11981.5923291839784651);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (119815923291839784651.11981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('119815923291839784651.1198159232918398', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1.1981592329183978465111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183978', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1.1981592329183978545111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183979', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:       "INSERT INTO small_test VALUES (12.1);",
+				ExpectedErr: sql.ErrConvertToDecimalLimit,
 			},
 		},
 	},
@@ -1593,7 +1691,7 @@ var ScriptTests = []ScriptTest{
 			"alter table t2 add constraint t2du unique (d)",
 			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
 			"create table t3 (a int, b varchar(100), c datetime, primary key (b,a))",
-			"create table t4 (a int default floor(1), b int default coalesce(a, 10))",
+			"create table t4 (a int default (floor(1)), b int default (coalesce(a, 10)))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1601,10 +1699,10 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` varchar(10) NOT NULL DEFAULT \"abc\",\n" +
+						"  `b` varchar(10) NOT NULL DEFAULT 'abc',\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `t1b` (`b`),\n" +
-						"  CONSTRAINT `ck1` CHECK (`b` LIKE \"%abc%\")\n" +
+						"  CONSTRAINT `ck1` CHECK (`b` LIKE '%abc%')\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -1741,9 +1839,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
 			{
@@ -1753,9 +1851,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
 		},
@@ -1773,8 +1871,8 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""}, // should not be dropped
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""}, // should not be dropped
 				},
 			},
 			{
@@ -1784,9 +1882,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1796,9 +1894,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1808,9 +1906,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1820,9 +1918,9 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1832,10 +1930,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "MUL", "", ""},
-					{"v4", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "MUL", "NULL", ""},
+					{"v4", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 			{
@@ -1849,11 +1947,11 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "YES", "", "", ""},
-					{"v4", "int", "YES", "MUL", "", ""},
-					{"v5", "int", "YES", "MUL", "", ""},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "YES", "", "NULL", ""},
+					{"v4", "int", "YES", "MUL", "NULL", ""},
+					{"v5", "int", "YES", "MUL", "NULL", ""},
 				},
 			},
 		},
@@ -1875,7 +1973,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", ""},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1898,7 +1996,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1909,7 +2007,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1920,7 +2018,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -1931,10 +2029,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v3", "int", "NO", "", "", ""},
-					{"v4", "int", "YES", "", "", ""},
-					{"v5", "int", "NO", "", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
+					{"v3", "int", "NO", "", "NULL", ""},
+					{"v4", "int", "YES", "", "NULL", ""},
+					{"v5", "int", "NO", "", "NULL", ""},
 				},
 			},
 			{
@@ -1944,11 +2042,11 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
-					{"v3", "int", "NO", "", "", ""},
-					{"mycol", "int", "NO", "", "", ""},
-					{"v6", "int", "NO", "", "", ""},
-					{"v7", "int", "YES", "", "", ""},
+					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
+					{"v3", "int", "NO", "", "NULL", ""},
+					{"mycol", "int", "NO", "", "NULL", ""},
+					{"v6", "int", "NO", "", "NULL", ""},
+					{"v7", "int", "YES", "", "NULL", ""},
 				},
 			},
 			// TODO: Does not include tests with column renames and defaults.
@@ -2013,13 +2111,56 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Describe with expressions and views work correctly",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, val int DEFAULT (pk * 2))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"val", "int", "YES", "", "((pk * 2))", ""}, // TODO: MySQL would return (`pk` * 2)
+				},
+			},
+		},
+	},
+	{
+		Name: "Check support for deprecated BINARY attribute after character set",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "ALTER TABLE test CHANGE v1 v2 VARCHAR(255) CHARACTER SET utf8mb4 BINARY NOT NULL;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4 BINARY);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE test2;",
+				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
 	{
 		Name: "create table using default point value",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, p point default point(123.456, 7.89));",
+			"CREATE TABLE test (i int primary key, p point default (point(123.456, 7.89)));",
 			"insert into test (i) values (0);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2033,14 +2174,14 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
 			},
 		},
 	},
 	{
 		Name: "create table using default linestring value",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, l linestring default linestring(point(1,2), point(3,4)));",
+			"CREATE TABLE test (i int primary key, l linestring default (linestring(point(1,2), point(3,4))));",
 			"insert into test (i) values (0);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2054,14 +2195,14 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
 			},
 		},
 	},
 	{
 		Name: "create table using default polygon value",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, p polygon default polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0))));",
+			"CREATE TABLE test (i int primary key, p polygon default (polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0)))));",
 			"insert into test (i) values (0);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2075,14 +2216,14 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
 			},
 		},
 	},
 	{
 		Name: "create geometry table using default point value",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, g geometry  default point(123.456, 7.89));",
+			"CREATE TABLE test (i int primary key, g geometry  default (point(123.456, 7.89)));",
 			"insert into test (i) values (0);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2096,14 +2237,14 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
 			},
 		},
 	},
 	{
 		Name: "create geometry table using default linestring value",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, g geometry default linestring(point(1,2), point(3,4)));",
+			"CREATE TABLE test (i int primary key, g geometry default (linestring(point(1,2), point(3,4))));",
 			"insert into test (i) values (0);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2117,14 +2258,14 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
 			},
 		},
 	},
 	{
 		Name: "create geometry table using default polygon value",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, g geometry default polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0))));",
+			"CREATE TABLE test (i int primary key, g geometry default (polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0)))));",
 			"insert into test (i) values (0);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2138,7 +2279,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
 			},
 		},
 	},
@@ -2152,6 +2293,216 @@ var SpatialScriptTests = []ScriptTest{
 			{
 				Query:    "select * from null_default",
 				Expected: []sql.Row{{0, nil, nil, nil, nil}},
+			},
+		},
+	},
+	{
+		Name: "create table using SRID value for geometry type",
+		SetUpScript: []string{
+			"CREATE TABLE tab0 (i int primary key, g geometry srid 4326 default (point(1,1)));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table tab0",
+				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry SRID 4326 DEFAULT (POINT(1, 1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO tab0 VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4326))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(g) FROM tab0",
+				Expected: []sql.Row{{1, "POINT(1 2)"}},
+			},
+			{
+				Query:       "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(2,4))))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(g) FROM tab0",
+				Expected: []sql.Row{{1, "POINT(1 2)"}, {2, "LINESTRING(1 6,4 3)"}},
+			},
+		},
+	},
+	{
+		Name: "create table using SRID value for linestring type",
+		SetUpScript: []string{
+			"CREATE TABLE tab1 (i int primary key, l linestring srid 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table tab1",
+				Expected: []sql.Row{{"tab1", "CREATE TABLE `tab1` (\n  `i` int NOT NULL,\n  `l` linestring SRID 0,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO tab1 VALUES (1, LINESTRING(POINT(0, 0),POINT(2, 2)))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(l) FROM tab1",
+				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
+			},
+			{
+				Query:       "INSERT INTO tab1 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "select i, ST_ASWKT(l) FROM tab1",
+				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
+			},
+		},
+	},
+	{
+		Name: "create table using SRID value for point type",
+		SetUpScript: []string{
+			"CREATE TABLE tab2 (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE tab2 ADD COLUMN p POINT NOT NULL SRID 0",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table tab2",
+				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL SRID 0,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO tab2 VALUES (1, POINT(2, 2))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(p) FROM tab2",
+				Expected: []sql.Row{{1, "POINT(2 2)"}},
+			},
+			{
+				Query:       "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "select i, ST_ASWKT(p) FROM tab2",
+				Expected: []sql.Row{{1, "POINT(2 2)"}},
+			},
+			{
+				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(p) FROM tab2",
+				Expected: []sql.Row{{1, "POINT(2 2)"}, {2, "POINT(1 6)"}},
+			},
+			{
+				Query:       "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "delete from tab2 where i = 1",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table tab2",
+				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL SRID 4326,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create table using SRID value for polygon type",
+		SetUpScript: []string{
+			"CREATE TABLE tab3 (i int primary key, y polygon NOT NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table tab3",
+				Expected: []sql.Row{{"tab3", "CREATE TABLE `tab3` (\n  `i` int NOT NULL,\n  `y` polygon NOT NULL,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO tab3 VALUES (1, polygon(linestring(point(0,0),point(8,0),point(12,9),point(0,9),point(0,0))))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(y) FROM tab3",
+				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+			},
+			{
+				Query:    "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 0",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:       "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 4326",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "select i, ST_ASWKT(y) FROM tab3",
+				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+			},
+			{
+				Query:    "ALTER TABLE tab3 MODIFY COLUMN y GEOMETRY NULL SRID 0",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "select i, ST_ASWKT(y) FROM tab3",
+				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+			},
+		},
+	},
+	{
+		Name: "invalid cases of SRID value",
+		SetUpScript: []string{
+			"CREATE TABLE table1 (i int primary key, p point srid 4326);",
+			"INSERT INTO table1 VALUES (1, ST_SRID(POINT(1, 5), 4326))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE table2 (i int primary key, p point srid 1);",
+				// error should be ErrInvalidSRID once we support all mysql valid srid values
+				ExpectedErr: sql.ErrUnsupportedFeature,
+			},
+			{
+				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
+				Expected: []sql.Row{{1, "POINT(5 1)"}},
+			},
+			{
+				Query:       "INSERT INTO table1 VALUES (2, POINT(2, 5))",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
+				Expected: []sql.Row{{1, "POINT(5 1)"}},
+			},
+			{
+				Query:       "ALTER TABLE table1 CHANGE COLUMN p p linestring srid 4326",
+				ExpectedErr: sql.ErrSpatialTypeConversion,
+			},
+			{
+				Query:       "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 0",
+				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
+			},
+			{
+				Query:    "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 4326",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table table1",
+				Expected: []sql.Row{{"table1", "CREATE TABLE `table1` (\n  `i` int NOT NULL,\n  `p` geometry SRID 4326,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO table1 VALUES (2, ST_SRID(LINESTRING(POINT(0, 0),POINT(2, 2)),4326))",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "ALTER TABLE table1 CHANGE COLUMN p p point srid 4326",
+				ExpectedErr: sql.ErrSpatialTypeConversion,
 			},
 		},
 	},
@@ -2418,6 +2769,16 @@ var BrokenScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "ALTER TABLE RENAME on a column when another column has a default dependency on it",
+		SetUpScript: []string{"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));"},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table test rename column v2 to mycol",
+				ExpectedErr: sql.ErrAlterTableNotSupported, // Not the correct error. The point is that this query needs to fail.
+			},
+		},
+	},
 	// TODO: We should implement unique indexes with GMS
 	{
 		Name: "Keyless Table with Unique Index",
@@ -2478,6 +2839,52 @@ var BrokenScriptTests = []ScriptTest{
 					{"v6", "int", "NO", "", "", ""},
 					{"v7", "int", "NO", "", "", ""},
 				},
+			},
+		},
+	},
+	{
+		Name: "REGEXP operator",
+		SetUpScript: []string{
+			"CREATE TABLE IF NOT EXISTS `person` (`id` INTEGER AUTO_INCREMENT NOT NULL PRIMARY KEY, `name` VARCHAR(255) NOT NULL);",
+			"INSERT INTO `person` (`name`) VALUES ('n1'), ('n2'), ('n3')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT `t1`.`id`, `t1`.`name` FROM `person` AS `t1` WHERE (`t1`.`name` REGEXP 'N[1,3]') ORDER BY `t1`.`name`;",
+				Expected: []sql.Row{{1, "n1"}, {3, "n3"}},
+			},
+		},
+	},
+	{
+		Name: "Drop a column with a check constraint",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable DROP COLUMN col2",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE XA(YW VARCHAR(24) NOT NULL, XB VARCHAR(100), XC VARCHAR(2500),\n  XD VARCHAR(2500), XE VARCHAR(100), XF VARCHAR(100), XG VARCHAR(100),\n  XI VARCHAR(100), XJ VARCHAR(100), XK VARCHAR(100), XL VARCHAR(100),\n  XM VARCHAR(1000), XN TEXT, XO TEXT, PRIMARY KEY (YW));",
+			"CREATE TABLE XP(YW VARCHAR(24) NOT NULL, XQ VARCHAR(100) NOT NULL,\n  XR VARCHAR(1000), PRIMARY KEY (YW));",
+			"CREATE TABLE XS(YW VARCHAR(24) NOT NULL, XT VARCHAR(24) NOT NULL,\n  XU VARCHAR(24), XV VARCHAR(100) NOT NULL, XW DOUBLE NOT NULL,\n  XX DOUBLE NOT NULL, XY VARCHAR(100), XC VARCHAR(100), XZ VARCHAR(100) NOT NULL,\n  YA DOUBLE, YB VARCHAR(24) NOT NULL, YC VARCHAR(1000), XO VARCHAR(1000),\n  YD DOUBLE NOT NULL, YE DOUBLE NOT NULL, PRIMARY KEY (YW));",
+			"CREATE TABLE YF(YW VARCHAR(24) NOT NULL, XB VARCHAR(100) NOT NULL, YG VARCHAR(100),\n  YH VARCHAR(100), XO TEXT, PRIMARY KEY (YW));",
+			"CREATE TABLE yp(YW VARCHAR(24) NOT NULL, XJ VARCHAR(100) NOT NULL, XL VARCHAR(100),\n  XT VARCHAR(24) NOT NULL, YI INT NOT NULL, XO VARCHAR(1000), PRIMARY KEY (YW),\n  FOREIGN KEY (XT) REFERENCES XP (YW));",
+			"INSERT INTO XS VALUES ('', '', NULL, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC', 0, 0,\n  NULL, NULL, '', NULL, '', NULL, NULL, 0, 0);",
+			"INSERT INTO YF VALUES ('', '', NULL, NULL, NULL);",
+			"INSERT INTO XA VALUES ('', '', '', '', '', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC',\n  '', '', '', '', '', '', '', '');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT DISTINCT YM.YW AS YW,\n  (SELECT YW FROM YF WHERE YF.XB = YM.XB) AS YF_YW,\n  (\n    SELECT YW\n    FROM yp\n    WHERE\n      yp.XJ = YM.XJ AND\n      (yp.XL = YM.XL OR (yp.XL IS NULL AND YM.XL IS NULL)) AND\n      yp.XT = nd.XT\n    ) AS YJ,\n  XE AS XE,\n  XI AS YO,\n  XK AS XK,\n  XM AS XM,\n  CASE\n    WHEN YM.XO <> 'Z'\n  THEN YM.XO\n  ELSE NULL\n  END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n    FROM XA\n  ) YM\n  INNER JOIN XS nd\n    ON nd.XV = XF\n  WHERE\n    XB IN (SELECT XB FROM YF) AND\n    (XF IS NOT NULL AND XF <> 'Z')\n  UNION\n  SELECT DISTINCT YL.YW AS YW,\n    (\n      SELECT YW\n      FROM YF\n      WHERE YF.XB = YL.XB\n    ) AS YF_YW,\n    (\n      SELECT YW FROM yp\n      WHERE\n        yp.XJ = YL.XJ AND\n        (yp.XL = YL.XL OR (yp.XL IS NULL AND YL.XL IS NULL)) AND\n        yp.XT = YN.XT\n    ) AS YJ,\n    XE AS XE,\n    XI AS YO,\n    XK AS XK,\n    XM AS XM,\n    CASE WHEN YL.XO <> 'Z' THEN YL.XO ELSE NULL END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n      FROM XA\n  ) YL\n  INNER JOIN XS YN\n    ON YN.XC = YL.XC\n  WHERE\n    XB IN (SELECT XB FROM YF) AND \n    (XF IS NULL OR XF = 'Z');",
+				Expected: []sql.Row{{"", "", "", "", "", "", "", ""}},
 			},
 		},
 	},

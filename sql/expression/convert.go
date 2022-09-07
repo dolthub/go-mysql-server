@@ -133,7 +133,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Should always return nil, and a warning instead
-	casted, err := convertValue(val, c.castToType)
+	casted, err := convertValue(val, c.castToType, c.Child.Type())
 	if err != nil {
 		if c.castToType == ConvertToJSON {
 			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
@@ -148,12 +148,21 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // convertValue only returns an error if converting to JSON, Date, and Datetime;
 // the zero value is returned for float types.
 // Nil is returned in all other cases.
-func convertValue(val interface{}, castTo string) (interface{}, error) {
+func convertValue(val interface{}, castTo string, originType sql.Type) (interface{}, error) {
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
 		b, err := sql.LongBlob.Convert(val)
 		if err != nil {
 			return nil, nil
+		}
+		if sql.IsTextOnly(originType) {
+			// For string types we need to re-encode the string as we want the binary representation of the character set
+			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
+			encodedBytes, ok := encoder.Encode(b.([]byte))
+			if !ok {
+				return nil, fmt.Errorf("unable to re-encode string to convert to binary")
+			}
+			b = encodedBytes
 		}
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
@@ -165,7 +174,8 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 	case ConvertToDate:
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
-		if !(isTime || isString) {
+		_, isBinary := val.([]byte)
+		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
 		d, err := sql.Date.Convert(val)
@@ -176,7 +186,8 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 	case ConvertToDatetime:
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
-		if !(isTime || isString) {
+		_, isBinary := val.([]byte)
+		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
 		d, err := sql.Datetime.Convert(val)

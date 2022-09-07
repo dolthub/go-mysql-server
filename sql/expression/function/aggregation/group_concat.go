@@ -204,21 +204,26 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 	}
 
 	var v interface{}
-	if retType == sql.Blob {
+	var vs string
+	if sql.IsByteType(retType) {
 		v, err = sql.Blob.Convert(evalRow[0])
+		if err != nil {
+			return err
+		}
+		vs = string(v.([]byte))
+		if len(vs) == 0 {
+			return nil
+		}
 	} else {
 		v, err = sql.LongText.Convert(evalRow[0])
+		if err != nil {
+			return err
+		}
+		if v == nil {
+			return nil
+		}
+		vs = v.(string)
 	}
-
-	if err != nil {
-		return err
-	}
-
-	if v == nil {
-		return nil
-	}
-
-	vs := v.(string)
 
 	// Get the current array of rows and the map
 	// Check if distinct is active if so look at and update our map

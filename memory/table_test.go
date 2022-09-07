@@ -63,6 +63,10 @@ type dummyLookup struct {
 	values map[string][]*memory.IndexValue
 }
 
+func (i dummyLookup) Lookup() sql.IndexLookup {
+	panic("not implemented")
+}
+
 var _ sql.DriverIndexLookup = (*dummyLookup)(nil)
 
 func (dummyLookup) Indexes() []string { return nil }
@@ -79,14 +83,6 @@ func (i *dummyLookup) Values(partition sql.Partition) (sql.IndexValueIter, error
 	}
 
 	return &dummyLookupIter{values: values}, nil
-}
-
-func (i *dummyLookup) Index() sql.Index {
-	panic("not implemented")
-}
-
-func (i *dummyLookup) Ranges() sql.RangeCollection {
-	panic("not implemented")
 }
 
 type dummyLookupIter struct {
@@ -156,19 +152,19 @@ var tests = []struct {
 			sql.NewRow("b", int32(10), int64(100)),
 			sql.NewRow("e", int32(10), int64(200)),
 		},
-		columns: []string{"col3", "col1"},
+		columns: []string{"col1", "col3"},
 		expectedProjected: []sql.Row{
-			sql.NewRow("a", nil, int64(100)),
-			sql.NewRow("b", nil, int64(100)),
-			sql.NewRow("c", nil, int64(100)),
-			sql.NewRow("d", nil, int64(200)),
-			sql.NewRow("e", nil, int64(200)),
-			sql.NewRow("f", nil, int64(200)),
+			sql.NewRow("a", int64(100)),
+			sql.NewRow("b", int64(100)),
+			sql.NewRow("c", int64(100)),
+			sql.NewRow("d", int64(200)),
+			sql.NewRow("e", int64(200)),
+			sql.NewRow("f", int64(200)),
 		},
 		expectedFiltersAndProjections: []sql.Row{
-			sql.NewRow("a", nil, int64(100)),
-			sql.NewRow("b", nil, int64(100)),
-			sql.NewRow("e", nil, int64(200)),
+			sql.NewRow("a", int64(100)),
+			sql.NewRow("b", int64(100)),
+			sql.NewRow("e", int64(200)),
 		},
 		indexColumns: []string{"col1", "col3"},
 		expectedKeyValues: []*indexKeyValue{
@@ -195,9 +191,9 @@ var tests = []struct {
 		},
 		partition: memory.NewPartition([]byte("0")),
 		expectedIndexed: []sql.Row{
-			{"a", nil, int64(100)},
-			{"c", nil, int64(100)},
-			{"e", nil, int64(200)},
+			{"a", int64(100)},
+			{"c", int64(100)},
+			{"e", int64(200)},
 		},
 	},
 }
@@ -321,7 +317,7 @@ func TestIndexed(t *testing.T) {
 			}
 
 			projected := table.WithProjections(test.columns)
-			indexed := projected.(*memory.Table).WithIndexLookup(test.lookup)
+			indexed := projected.(*memory.Table).WithDriverIndexLookup(test.lookup)
 
 			ctx := sql.NewEmptyContext()
 			iter, err := indexed.PartitionRows(ctx, test.partition)
@@ -330,7 +326,7 @@ func TestIndexed(t *testing.T) {
 			rows, err := sql.RowIterToRows(ctx, indexed.Schema(), iter)
 			require.NoError(err)
 
-			require.Equal(rows, test.expectedIndexed)
+			require.Equal(test.expectedIndexed, rows)
 		})
 	}
 }

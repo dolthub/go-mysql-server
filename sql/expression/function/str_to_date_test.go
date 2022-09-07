@@ -19,7 +19,7 @@ func TestStrToDate(t *testing.T) {
 		fmtStr   string
 		expected string
 	}{
-		{"standard", "Dec 26, 2000 2:13:15", "%b %e, %Y %T", "2000-12-26 02:13:15 -0600 CST"},
+		{"standard", "Dec 26, 2000 2:13:15", "%b %e, %Y %T", "2000-12-26 02:13:15"},
 	}
 
 	for _, tt := range testCases {
@@ -32,7 +32,7 @@ func TestStrToDate(t *testing.T) {
 		}
 		t.Run(tt.name, func(t *testing.T) {
 			dtime := eval(t, f, sql.NewRow(tt.dateStr, tt.fmtStr))
-			require.Equal(t, tt.expected, dtime.(time.Time).String())
+			require.Equal(t, tt.expected, dtime)
 		})
 		req := require.New(t)
 		req.True(f.IsNullable())
@@ -60,7 +60,7 @@ func TestStrToDateFailure(t *testing.T) {
 		}
 		t.Run(tt.name, func(t *testing.T) {
 			dtime := eval(t, f, sql.NewRow(tt.dateStr, tt.fmtStr))
-			require.Equal(t, sql.Null, dtime)
+			require.Equal(t, nil, dtime)
 		})
 		req := require.New(t)
 		req.True(f.IsNullable())

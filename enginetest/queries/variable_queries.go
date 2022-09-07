@@ -32,6 +32,23 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name:  "select join_complexity_limit",
+		Query: "SELECT @@join_complexity_limit",
+		Expected: []sql.Row{
+			{uint64(12)},
+		},
+	},
+	{
+		Name: "set join_complexity_limit",
+		SetUpScript: []string{
+			"set @@join_complexity_limit = 2",
+		},
+		Query: "SELECT @@join_complexity_limit",
+		Expected: []sql.Row{
+			{uint64(2)},
+		},
+	},
+	{
 		Name: "set system variables and user variables",
 		SetUpScript: []string{
 			"SET @myvar = @@autocommit",
@@ -76,7 +93,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
 		Expected: []sql.Row{
-			{1, ""},
+			{1, uint64(0)},
 		},
 	},
 	{
@@ -86,7 +103,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
 		Expected: []sql.Row{
-			{1, ""},
+			{1, uint64(0)},
 		},
 	},
 	{
@@ -145,11 +162,11 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set names quoted",
 		SetUpScript: []string{
-			`set NAMES "charset"`,
+			`set NAMES "utf8mb3"`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
 		Expected: []sql.Row{
-			{"charset", "charset", "charset"},
+			{"utf8mb3", "utf8mb3", "utf8mb3"},
 		},
 	},
 	{
@@ -189,7 +206,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"ALLOW_INVALID_DATES"},
+			{uint64(1)},
 		},
 	},
 	{
@@ -199,7 +216,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"ALLOW_INVALID_DATES"},
+			{uint64(1)},
 		},
 	},
 	{
@@ -209,7 +226,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
+			{uint64(0b10110000110100000100)},
 		},
 	},
 	// User variables

@@ -352,9 +352,16 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		return err
 	}
 	defer rowIter.Close(ctx)
-	if _, err = rowIter.Next(ctx); err == nil {
+
+	_, err = rowIter.Next(ctx)
+	if err != nil && err != io.EOF {
+		return err
+	}
+	if err == nil {
+		// We have a parent row so throw no error
 		return nil
 	}
+
 	if reference.ForeignKey.IsSelfReferential() {
 		allMatch := true
 		for i := range reference.ForeignKey.Columns {
@@ -435,13 +442,10 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row) (sql.R
 		rang[i+len(mapper.IndexPositions)] = sql.AllRangeColumnExpr(appendType)
 	}
 
-	lookup, err := mapper.Index.NewLookup(ctx, rang)
-	if err != nil {
-		return nil, err
-	}
-	editorData := mapper.Updater.WithIndexLookup(lookup)
 	//TODO: profile this, may need to redesign this or add a fast path
-	partIter, err := editorData.Partitions(ctx)
+	editorData := mapper.Updater.IndexedAccess(mapper.Index)
+	lookup := sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index}
+	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}

@@ -37,7 +37,8 @@ type Config struct {
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
 	// IsReadOnly sets the engine to disallow modification queries.
-	IsReadOnly bool
+	IsReadOnly     bool
+	IsServerLocked bool
 	// IncludeRootAccount adds the root account (with no password) to the list of accounts, and also enables
 	// authentication.
 	IncludeRootAccount bool
@@ -62,6 +63,7 @@ type Engine struct {
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
 	IsReadOnly        bool
+	IsServerLocked    bool
 	PreparedData      map[uint32]PreparedData
 	mu                *sync.Mutex
 }
@@ -80,17 +82,12 @@ type PreparedData struct {
 // the default settings use `NewDefault`. Should call Engine.Close() to finalize
 // dependency lifecycles.
 func New(a *analyzer.Analyzer, cfg *Config) *Engine {
-	var versionPostfix string
-	var isReadOnly bool
-	if cfg != nil {
-		versionPostfix = cfg.VersionPostfix
-		isReadOnly = cfg.IsReadOnly
-		if cfg.IncludeRootAccount {
-			a.Catalog.MySQLDb.AddRootAccount()
-		}
-		for _, tempUser := range cfg.TemporaryUsers {
-			a.Catalog.MySQLDb.AddSuperUser(tempUser.Username, tempUser.Password)
-		}
+	if cfg == nil {
+		cfg = &Config{}
+	}
+
+	if cfg.IncludeRootAccount {
+		a.Catalog.MySQLDb.AddRootAccount()
 	}
 
 	ls := sql.NewLockSubsystem()
@@ -98,7 +95,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	emptyCtx := sql.NewEmptyContext()
 	a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
 		Name: "version",
-		Fn:   function.NewVersion(versionPostfix),
+		Fn:   function.NewVersion(cfg.VersionPostfix),
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
@@ -108,7 +105,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		ProcessList:       NewProcessList(),
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
-		IsReadOnly:        isReadOnly,
+		IsReadOnly:        cfg.IsReadOnly,
+		IsServerLocked:    cfg.IsServerLocked,
 		PreparedData:      make(map[uint32]PreparedData),
 		mu:                &sync.Mutex{},
 	}
@@ -321,16 +319,16 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		return nil, err
 	}
 
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(bindings) > 0 {
-		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		parsed, err = plan.ApplyBindings(parsed, bindings)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return analyzed, nil
@@ -501,14 +499,20 @@ func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
 
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
 func (e *Engine) readOnlyCheck(node sql.Node) error {
-	if plan.IsDDLNode(node) && e.IsReadOnly {
-		return sql.ErrNotAuthorized.New()
+	if plan.IsDDLNode(node) {
+		if e.IsReadOnly {
+			return sql.ErrReadOnly.New()
+		} else if e.IsServerLocked {
+			return sql.ErrDatabaseWriteLocked.New()
+		}
 	}
 	switch node.(type) {
 	case
 		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
-			return sql.ErrNotAuthorized.New()
+			return sql.ErrReadOnly.New()
+		} else if e.IsServerLocked {
+			return sql.ErrDatabaseWriteLocked.New()
 		}
 	}
 	return nil

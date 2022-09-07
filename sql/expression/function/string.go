@@ -25,6 +25,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 // Ascii implements the sql function "ascii" which returns the numeric value of the leftmost character
@@ -92,7 +93,11 @@ type Hex struct {
 var _ sql.FunctionExpression = (*Hex)(nil)
 
 func NewHex(arg sql.Expression) sql.Expression {
-	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
+	// Although this may seem convoluted, the Collation_Default is NOT guaranteed to be the character set's default
+	// collation. This ensures that you're getting the character set's default collation, and also works in the event
+	// that the Collation_Default is ever changed.
+	retType := sql.CreateLongText(sql.Collation_Default.CharacterSet().DefaultCollation())
+	return &Hex{NewUnaryFunc(arg, "HEX", retType)}
 }
 
 // Description implements sql.FunctionExpression
@@ -111,10 +116,20 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// TODO: add cases for geometry, point, linestring, and polygon
 	switch val := arg.(type) {
 	case string:
-		return hexForString(val), nil
+		childType := h.Child.Type()
+		if sql.IsTextOnly(childType) {
+			// For string types we need to re-encode the internal string so that we get the correct hex output
+			encoder := childType.(sql.StringType).Collation().CharacterSet().Encoder()
+			encodedBytes, ok := encoder.Encode(encodings.StringToBytes(val))
+			if !ok {
+				return nil, fmt.Errorf("unable to re-encode string for HEX function")
+			}
+			return hexForString(encodings.BytesToString(encodedBytes)), nil
+		} else {
+			return hexForString(val), nil
+		}
 
 	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
 		n, err := sql.Int64.Convert(arg)
@@ -164,8 +179,17 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case []byte:
 		return hexForString(string(val)), nil
 
+	case sql.Point:
+		return hexForString(string(sql.SerializePoint(val))), nil
+
+	case sql.LineString:
+		return hexForString(string(sql.SerializeLineString(val))), nil
+
+	case sql.Polygon:
+		return hexForString(string(sql.SerializePolygon(val))), nil
+
 	default:
-		return nil, sql.ErrInvalidArgumentDetails.New("crc32", fmt.Sprint(arg))
+		return nil, sql.ErrInvalidArgumentDetails.New("hex", fmt.Sprint(arg))
 	}
 }
 
@@ -253,7 +277,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongBlob.Convert(arg)
+	val, err := sql.LongText.Convert(arg)
 
 	if err != nil {
 		return nil, err

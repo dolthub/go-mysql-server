@@ -35,7 +35,7 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	}
 	likeTable := resolvedLikeTable.Table
 	var idxDefs []*plan.IndexDefinition
-	if indexableTable, ok := likeTable.(sql.IndexedTable); ok {
+	if indexableTable, ok := likeTable.(sql.IndexAddressableTable); ok {
 		indexes, err := indexableTable.GetIndexes(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -46,8 +46,13 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			}
 			constraint := sql.IndexConstraint_None
 			if index.IsUnique() {
-				constraint = sql.IndexConstraint_Unique
+				if index.ID() == "PRIMARY" {
+					constraint = sql.IndexConstraint_Primary
+				} else {
+					constraint = sql.IndexConstraint_Unique
+				}
 			}
+
 			columns := make([]sql.IndexColumn, len(index.Expressions()))
 			for i, col := range index.Expressions() {
 				//TODO: find a better way to get only the column name if the table is present
@@ -80,8 +85,9 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	}
 
 	tableSpec := &plan.TableSpec{
-		Schema:  sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
-		IdxDefs: idxDefs,
+		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		IdxDefs:   idxDefs,
+		Collation: likeTable.Collation(),
 	}
 
 	return plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), tableSpec), transform.NewTree, nil

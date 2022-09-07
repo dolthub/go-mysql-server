@@ -24,8 +24,8 @@ import (
 // eraseProjection removes redundant Project nodes from the plan. A project is redundant if it doesn't alter the schema
 // of its child.
 func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("erase_projection")
-	defer span.Finish()
+	span, ctx := ctx.Span("erase_projection")
+	defer span.End()
 
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
@@ -46,8 +46,8 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 // ordered. The OrderedDistinct node is much faster and uses much less memory, since it only has to compare the
 // previous row to the current one to determine its distinct-ness.
 func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("optimize_distinct")
-	defer span.Finish()
+	span, ctx := ctx.Span("optimize_distinct")
+	defer span.End()
 
 	if n, ok := node.(*plan.Distinct); ok {
 		var sortField *expression.GetField
@@ -133,36 +133,27 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return node, transform.SameTree, nil
 	}
 
-	// Add a new filter node with all removed predicates above the top level InnerJoin. Or, if there is a filter node
-	// above that, combine into a new filter.
-	selector := func(c transform.Context) bool {
-		switch c.Parent.(type) {
-		case *plan.Filter:
-			return false
+	return transform.NodeWithCtx(node, func(transform.Context) bool { return true }, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		if c.Node != topJoin {
+			return c.Node, transform.SameTree, nil
 		}
-		return c.Parent != topJoin
-	}
-
-	return transform.NodeWithCtx(node, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch node := c.Node.(type) {
+		switch n := c.Parent.(type) {
 		case *plan.Filter:
 			return plan.NewFilter(
-				expression.JoinAnd(append([]sql.Expression{node.Expression}, nonJoinFilters...)...),
-				node.Child), transform.NewTree, nil
-		case *plan.InnerJoin, *plan.CrossJoin:
+				expression.JoinAnd(append([]sql.Expression{n.Expression}, nonJoinFilters...)...),
+				n.Child), transform.NewTree, nil
+		default:
 			return plan.NewFilter(
 				expression.JoinAnd(nonJoinFilters...),
-				node), transform.NewTree, nil
-		default:
-			return node, transform.SameTree, nil
+				c.Node), transform.NewTree, nil
 		}
 	})
 }
 
 // removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
 func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("remove_unnecessary_converts")
-	defer span.Finish()
+	span, ctx := ctx.Span("remove_unnecessary_converts")
+	defer span.End()
 
 	if !n.Resolved() {
 		return n, transform.SameTree, nil

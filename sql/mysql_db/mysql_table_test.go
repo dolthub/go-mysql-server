@@ -54,6 +54,7 @@ func TestGrantTableData(t *testing.T) {
 				PrimaryKey: true,
 			},
 		},
+		nil,
 		&testEntry{},
 		testPK{},
 		testSK{},

@@ -1,5 +1,5 @@
 exec
-create table explode (a bigint, b JSON, c text)
+create table explode (a bigint, b JSON, c varchar(20))
 ----
 
 exec

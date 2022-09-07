@@ -131,7 +131,7 @@ func (t Trim) Resolved() bool {
 	return t.str.Resolved() && t.pat.Resolved() && t.pat.Resolved()
 }
 
-func (Trim) Type() sql.Type { return sql.LongText }
+func (t Trim) Type() sql.Type { return t.str.Type() }
 
 func (t Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
@@ -160,7 +160,7 @@ func (t *LeftTrim) Description() string {
 	return "returns the string str with leading space characters removed."
 }
 
-func (t *LeftTrim) Type() sql.Type { return sql.LongText }
+func (t *LeftTrim) Type() sql.Type { return t.Child.Type() }
 
 func (t *LeftTrim) String() string {
 	return fmt.Sprintf("ltrim(%s)", t.Child)
@@ -217,7 +217,7 @@ func (t *RightTrim) Description() string {
 	return "returns the string str with trailing space characters removed."
 }
 
-func (t *RightTrim) Type() sql.Type { return sql.LongText }
+func (t *RightTrim) Type() sql.Type { return t.Child.Type() }
 
 func (t *RightTrim) String() string {
 	return fmt.Sprintf("rtrim(%s)", t.Child)

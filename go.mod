@@ -3,24 +3,24 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20220525003637-9c94a4060dd1
+	github.com/dolthub/vitess v0.0.0-20220826175112-8dd4ffc9eda1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
-	github.com/golang/glog v0.0.0-20210429001901-424d2337a529
 	github.com/google/flatbuffers v2.0.6+incompatible
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/lestrrat-go/strftime v1.0.4
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
-	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/shopspring/decimal v1.2.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/src-d/go-oniguruma v1.1.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
+	go.opentelemetry.io/otel v1.7.0
+	go.opentelemetry.io/otel/trace v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.10
@@ -44,4 +44,4 @@ require (
 
 replace github.com/oliveagle/jsonpath => github.com/dolthub/jsonpath v0.0.0-20210609232853-d49537a30474
 
-go 1.18
+go 1.19

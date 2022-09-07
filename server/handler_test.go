@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -43,7 +42,7 @@ func TestHandlerOutput(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -165,7 +164,7 @@ func TestHandlerComPrepare(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -203,7 +202,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			name:      "select statement returns non-nil schema",
 			statement: "select c1 from test where c1 > ?",
 			expected: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
 			},
 		},
 	} {
@@ -223,7 +222,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -257,7 +256,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -299,7 +298,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -336,7 +335,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -409,7 +408,7 @@ func TestServerEventListener(t *testing.T) {
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			e.MemoryManager,
 			e.ProcessList,
@@ -490,7 +489,7 @@ func TestHandlerKill(t *testing.T) {
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			e.MemoryManager,
 			e.ProcessList,
@@ -549,19 +548,123 @@ func TestSchemaToFields(t *testing.T) {
 	require := require.New(t)
 
 	schema := sql.Schema{
-		{Name: "foo", Type: sql.Blob},
-		{Name: "bar", Type: sql.Text},
-		{Name: "baz", Type: sql.Int64},
+		// Blob, Text, and JSON Types
+		{Name: "tinyblob", Type: sql.TinyBlob},
+		{Name: "blob", Type: sql.Blob},
+		{Name: "mediumblob", Type: sql.MediumBlob},
+		{Name: "longblob", Type: sql.LongBlob},
+		{Name: "tinytext", Type: sql.TinyText},
+		{Name: "text", Type: sql.Text},
+		{Name: "mediumtext", Type: sql.MediumText},
+		{Name: "longtext", Type: sql.LongText},
+		{Name: "json", Type: sql.JSON},
+
+		// Geometry Types
+		{Name: "geometry", Type: sql.GeometryType{}},
+		{Name: "point", Type: sql.PointType{}},
+		{Name: "polygon", Type: sql.PolygonType{}},
+		{Name: "linestring", Type: sql.LineStringType{}},
+
+		// Integer Types
+		{Name: "uint8", Type: sql.Uint8},
+		{Name: "int8", Type: sql.Int8},
+		{Name: "uint16", Type: sql.Uint16},
+		{Name: "int16", Type: sql.Int16},
+		{Name: "uint24", Type: sql.Uint24},
+		{Name: "int24", Type: sql.Int24},
+		{Name: "uint32", Type: sql.Uint32},
+		{Name: "int32", Type: sql.Int32},
+		{Name: "uint64", Type: sql.Uint64},
+		{Name: "int64", Type: sql.Int64},
+
+		// Floating Point and Decimal Types
+		{Name: "float32", Type: sql.Float32},
+		{Name: "float64", Type: sql.Float64},
+		{Name: "decimal10_0", Type: sql.MustCreateDecimalType(10, 0)},
+		{Name: "decimal60_30", Type: sql.MustCreateDecimalType(60, 30)},
+
+		// Char, Binary, and Bit Types
+		{Name: "varchar50", Type: sql.MustCreateString(sqltypes.VarChar, 50, sql.Collation_Default)},
+		{Name: "varbinary12345", Type: sql.MustCreateBinary(sqltypes.VarBinary, 12345)},
+		{Name: "binary123", Type: sql.MustCreateBinary(sqltypes.Binary, 123)},
+		{Name: "char123", Type: sql.MustCreateString(sqltypes.Char, 123, sql.Collation_Default)},
+		{Name: "bit12", Type: sql.MustCreateBitType(12)},
+
+		// Dates
+		{Name: "datetime", Type: sql.MustCreateDatetimeType(sqltypes.Datetime)},
+		{Name: "timestamp", Type: sql.MustCreateDatetimeType(sqltypes.Timestamp)},
+		{Name: "date", Type: sql.MustCreateDatetimeType(sqltypes.Date)},
+		{Name: "time", Type: sql.Time},
+		{Name: "year", Type: sql.Year},
+
+		// Set and Enum Types
+		{Name: "set", Type: sql.MustCreateSetType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
+		{Name: "enum", Type: sql.MustCreateEnumType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
 	}
 
 	expected := []*query.Field{
-		{Name: "foo", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary},
-		{Name: "bar", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8},
-		{Name: "baz", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8},
+		// Blob, Text, and JSON Types
+		{Name: "tinyblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 255},
+		{Name: "blob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 65_535},
+		{Name: "mediumblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 16_777_215},
+		{Name: "longblob", Type: query.Type_BLOB, Charset: mysql.CharacterSetBinary, ColumnLength: 4_294_967_295},
+		{Name: "tinytext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 1020},
+		{Name: "text", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 262_140},
+		{Name: "mediumtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 67_108_860},
+		{Name: "longtext", Type: query.Type_TEXT, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "json", Type: query.Type_JSON, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+
+		// Geometry Types
+		{Name: "geometry", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "point", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "polygon", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+		{Name: "linestring", Type: query.Type_GEOMETRY, Charset: mysql.CharacterSetUtf8, ColumnLength: 4_294_967_295},
+
+		// Integer Types
+		{Name: "uint8", Type: query.Type_UINT8, Charset: mysql.CharacterSetUtf8, ColumnLength: 3},
+		{Name: "int8", Type: query.Type_INT8, Charset: mysql.CharacterSetUtf8, ColumnLength: 4},
+		{Name: "uint16", Type: query.Type_UINT16, Charset: mysql.CharacterSetUtf8, ColumnLength: 5},
+		{Name: "int16", Type: query.Type_INT16, Charset: mysql.CharacterSetUtf8, ColumnLength: 6},
+		{Name: "uint24", Type: query.Type_UINT24, Charset: mysql.CharacterSetUtf8, ColumnLength: 8},
+		{Name: "int24", Type: query.Type_INT24, Charset: mysql.CharacterSetUtf8, ColumnLength: 9},
+		{Name: "uint32", Type: query.Type_UINT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 10},
+		{Name: "int32", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
+		{Name: "uint64", Type: query.Type_UINT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
+		{Name: "int64", Type: query.Type_INT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
+
+		// Floating Point and Decimal Types
+		{Name: "float32", Type: query.Type_FLOAT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
+		{Name: "float64", Type: query.Type_FLOAT64, Charset: mysql.CharacterSetUtf8, ColumnLength: 22},
+		{Name: "decimal10_0", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
+		{Name: "decimal60_30", Type: query.Type_DECIMAL, Charset: mysql.CharacterSetUtf8, ColumnLength: 62},
+
+		// Char, Binary, and Bit Types
+		{Name: "varchar50", Type: query.Type_VARCHAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 50 * 4},
+		{Name: "varbinary12345", Type: query.Type_VARBINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 12345},
+		{Name: "binary123", Type: query.Type_BINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 123},
+		{Name: "char123", Type: query.Type_CHAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 123 * 4},
+		{Name: "bit12", Type: query.Type_BIT, Charset: mysql.CharacterSetUtf8, ColumnLength: 12},
+
+		// Dates
+		{Name: "datetime", Type: query.Type_DATETIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 26},
+		{Name: "timestamp", Type: query.Type_TIMESTAMP, Charset: mysql.CharacterSetUtf8, ColumnLength: 26},
+		{Name: "date", Type: query.Type_DATE, Charset: mysql.CharacterSetUtf8, ColumnLength: 10},
+		{Name: "time", Type: query.Type_TIME, Charset: mysql.CharacterSetUtf8, ColumnLength: 17},
+		{Name: "year", Type: query.Type_YEAR, Charset: mysql.CharacterSetUtf8, ColumnLength: 4},
+
+		// Set and Enum Types
+		{Name: "set", Type: query.Type_SET, Charset: mysql.CharacterSetUtf8, ColumnLength: 72},
+		{Name: "enum", Type: query.Type_ENUM, Charset: mysql.CharacterSetUtf8, ColumnLength: 20},
 	}
 
+	require.Equal(len(schema), len(expected))
+
 	fields := schemaToFields(schema)
-	require.Equal(expected, fields)
+	for i := 0; i < len(fields); i++ {
+		t.Run(schema[i].Name, func(t *testing.T) {
+			assert.Equal(t, expected[i], fields[i])
+		})
+	}
 }
 
 func TestHandlerTimeout(t *testing.T) {
@@ -572,7 +675,7 @@ func TestHandlerTimeout(t *testing.T) {
 
 	timeOutHandler := NewHandler(
 		e, NewSessionManager(testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -584,7 +687,7 @@ func TestHandlerTimeout(t *testing.T) {
 
 	noTimeOutHandler := NewHandler(
 		e2, NewSessionManager(testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -639,7 +742,7 @@ func TestOkClosedConnection(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
@@ -755,7 +858,7 @@ func TestBindingsToExprs(t *testing.T) {
 			map[string]sql.Expression{
 				"i8":        expression.NewLiteral(int64(12), sql.Int64),
 				"u64":       expression.NewLiteral(uint64(4096), sql.Uint64),
-				"bin":       expression.NewLiteral(string([]byte{byte(0xC0), byte(0x00), byte(0x10)}), sql.MustCreateBinary(query.Type_VARBINARY, int64(3))),
+				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, sql.MustCreateBinary(query.Type_VARBINARY, int64(3))),
 				"text":      expression.NewLiteral("four score and seven years ago...", sql.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
 				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
 				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), sql.Date),
@@ -793,7 +896,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		e,
 		NewSessionManager(
 			testSessionBuilder,
-			opentracing.NoopTracer{},
+			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),

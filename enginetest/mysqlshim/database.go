@@ -76,11 +76,11 @@ func (d Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // CreateTable implements the interface sql.TableCreator.
-func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema) error {
+func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
 	colStmts := make([]string, len(schema.Schema))
 	var primaryKeyCols []string
 	for i, col := range schema.Schema {
-		stmt := fmt.Sprintf("  `%s` %s", col.Name, strings.ToLower(col.Type.String()))
+		stmt := fmt.Sprintf("  `%s` %s", col.Name, col.Type.String())
 		if !col.Nullable {
 			stmt = fmt.Sprintf("%s NOT NULL", stmt)
 		}

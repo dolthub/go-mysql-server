@@ -31,7 +31,7 @@ import (
 // ALTER TABLE statements.
 //
 // TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
-//       checks that will never evaluate correctly.
+// checks that will never evaluate correctly.
 func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
@@ -119,8 +119,8 @@ func checkExpressionValid(e sql.Expression) error {
 // loadChecks loads any checks that are required for a plan node to operate properly (except for nodes dealing with
 // check execution).
 func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("loadChecks")
-	defer span.Finish()
+	span, ctx := ctx.Span("loadChecks")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch node := n.(type) {

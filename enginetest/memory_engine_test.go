@@ -19,11 +19,11 @@ import (
 	"log"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -84,6 +84,11 @@ func TestQueries(t *testing.T) {
 // TestQueriesPrepared runs the canonical test queries against the gamut of thread, index and partition options
 // with prepared statement caching enabled.
 func TestQueriesPrepared(t *testing.T) {
+	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("parallelism=2", 2, testNumPartitions, true, nil))
+}
+
+// TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
+func TestQueriesPreparedSimple(t *testing.T) {
 	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -111,27 +116,35 @@ func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJSONQueries runs the canonical test queries against a single threaded index enabled harness.
+func TestJSONTableQueries(t *testing.T) {
+	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `show create table two_pk`,
+		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
 		Expected: []sql.Row{
-			{1, 2},
+			{"first row"},
+			{"second row"},
+			{"third row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
 	}
-	enginetest.CreateIndexes(t, harness, engine)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestQueryWithEngine(t, harness, engine, test)
 }
@@ -142,22 +155,24 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
+		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
 		Expected: []sql.Row{
-			{sql.Point{X: 1, Y: 2}},
-			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Point{X: 1, Y: 2}},
-			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{"first row"},
+			{"second row"},
+			{"third row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	engine := enginetest.NewSpatialEngine(t, harness)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
+	//engine, err := harness.NewEngine(t)
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
@@ -320,7 +335,7 @@ func TestQueryPlans(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
 			// The IN expression requires mergeable indexes meaning that an unmergeable index returns a different result, so we skip this test
 			harness.QueriesToSkip("SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)")
-			enginetest.TestQueryPlans(t, harness)
+			enginetest.TestQueryPlans(t, harness, queries.PlanTests)
 		})
 	}
 }
@@ -386,12 +401,24 @@ func TestInsertIgnoreInto(t *testing.T) {
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
+	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestInsertIntoErrors(t *testing.T) {
 	enginetest.TestInsertIntoErrors(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestBrokenInsertScripts(t *testing.T) {
 	enginetest.TestBrokenInsertScripts(t, enginetest.NewSkippingMemoryHarness())
+}
+
+func TestStatistics(t *testing.T) {
+	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestPreparedStatistics(t *testing.T) {
+	enginetest.TestStatisticsPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestSpatialInsertInto(t *testing.T) {
@@ -420,6 +447,10 @@ func TestReplaceIntoErrors(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	enginetest.TestUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestUpdateIgnore(t *testing.T) {
+	enginetest.TestUpdateIgnore(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestUpdateErrors(t *testing.T) {
@@ -475,12 +506,6 @@ func TestLoadDataPrepared(t *testing.T) {
 }
 
 func TestScriptsPrepared(t *testing.T) {
-	//TODO: when foreign keys are implemented in the memory table, we can do the following test
-	for i := len(queries.ScriptTests) - 1; i >= 0; i-- {
-		if queries.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
-			queries.ScriptTests = append(queries.ScriptTests[:i], queries.ScriptTests[i+1:]...)
-		}
-	}
 	enginetest.TestScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
@@ -545,7 +570,7 @@ func TestStoredProcedures(t *testing.T) {
 }
 
 func TestExternalProcedures(t *testing.T) {
-	harness := enginetest.NewExternalStoredProcedureMemoryHarness()
+	harness := enginetest.NewDefaultMemoryHarness()
 	for _, script := range queries.ExternalProcedureTests {
 		myDb := harness.NewDatabase("mydb")
 		databases := []sql.Database{myDb}
@@ -616,6 +641,12 @@ func TestDropForeignKeys(t *testing.T) {
 }
 
 func TestForeignKeys(t *testing.T) {
+	for i := len(queries.ForeignKeyTests) - 1; i >= 0; i-- {
+		//TODO: memory tables don't quite handle keyless foreign keys properly
+		if queries.ForeignKeyTests[i].Name == "Keyless CASCADE over three tables" {
+			queries.ForeignKeyTests = append(queries.ForeignKeyTests[:i], queries.ForeignKeyTests[i+1:]...)
+		}
+	}
 	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
@@ -728,6 +759,10 @@ func TestNullRanges(t *testing.T) {
 	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestBlobs(t *testing.T) {
+	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestPersist(t *testing.T) {
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
 		persistedGlobals := memory.GlobalsMap{}
@@ -745,10 +780,16 @@ func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
-func TestKeylessUniqueIndex(t *testing.T) {
-	// TODO: GMS does not support unique indexes for keyless tables.
-	t.Skip()
-	enginetest.TestKeylessUniqueIndex(t, enginetest.NewDefaultMemoryHarness())
+func TestCharsetCollationEngine(t *testing.T) {
+	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestCharsetCollationWire(t *testing.T) {
+	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+}
+
+func TestTypesOverWire(t *testing.T) {
+	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

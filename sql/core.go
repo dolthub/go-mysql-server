@@ -281,7 +281,7 @@ func DebugString(nodeOrExpression interface{}) string {
 }
 
 // OpaqueNode is a node that doesn't allow transformations to its children and
-// acts a a black box.
+// acts as a black box.
 type OpaqueNode interface {
 	Node
 	// Opaque reports whether the node is opaque or not.
@@ -356,6 +356,7 @@ type Table interface {
 	Nameable
 	String() string
 	Schema() Schema
+	Collation() CollationID
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
@@ -387,6 +388,7 @@ type PartitionCounter interface {
 // that's more optimized given the filters.
 type FilteredTable interface {
 	Table
+	Filters() []Expression
 	HandledFilters(filters []Expression) []Expression
 	WithFilters(ctx *Context, filters []Expression) Table
 }
@@ -397,16 +399,6 @@ type ProjectedTable interface {
 	Table
 	WithProjections(colNames []string) Table
 	Projections() []string
-}
-
-// StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
-// planning performance.
-type StatisticsTable interface {
-	Table
-	// NumRows returns the unfiltered count of rows contained in the table
-	NumRows(*Context) (uint64, error)
-	// DataLength returns the length of the data file (varies by engine).
-	DataLength(ctx *Context) (uint64, error)
 }
 
 // IndexUsing is the desired storage type.
@@ -436,28 +428,30 @@ type IndexColumn struct {
 	Length int64
 }
 
-// IndexedTable represents a table that has one or more native indexes on its columns, and can use those indexes to
-// speed up execution of queries that reference those columns. Unlike DriverIndexableTable, IndexedTable doesn't need a
-// separate index driver to function.
-type IndexedTable interface {
-	IndexAddressableTable
-	// GetIndexes returns all indexes on this table.
+// IndexAddressable is a table that can be scanned through a primary index
+type IndexAddressable interface {
+	// IndexedAccess returns a table that can perform scans constrained to
+	// an IndexLookup on the index given
+	IndexedAccess(Index) IndexedTable
+	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
 }
 
-// IndexAddressable provides a Table that has its row iteration restricted to only the rows that match the given index
-// lookup.
-type IndexAddressable interface {
-	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
-	// which was in turn created by a call to Index.Get() for a set of keys for this table.
-	WithIndexLookup(IndexLookup) Table
-}
-
-// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match the given index
-// lookup.
 type IndexAddressableTable interface {
 	Table
 	IndexAddressable
+}
+
+// IndexedTable is a table with an index chosen for range scans
+type IndexedTable interface {
+	Table
+	// LookupPartitions returns partitions scanned by the given IndexLookup
+	LookupPartitions(*Context, IndexLookup) (PartitionIter, error)
+}
+
+type ParallelizedIndexAddressableTable interface {
+	IndexAddressableTable
+	ShouldParallelizeAccess() bool
 }
 
 // IndexAlterableTable represents a table that supports index modification operations.
@@ -475,7 +469,7 @@ type IndexAlterableTable interface {
 
 // ForeignKeyTable is a table that can declare its foreign key constraints, as well as be referenced.
 type ForeignKeyTable interface {
-	IndexedTable
+	IndexAddressableTable
 	// CreateIndexForForeignKey creates an index for this table, using the provided parameters. Indexes created through
 	// this function are specifically ones generated for use with a foreign key. Returns an error if the index name
 	// already exists, or an index on the same columns already exists.
@@ -630,7 +624,7 @@ type Closer interface {
 
 // RowReplacer is a combination of RowDeleter and RowInserter.
 // TODO: We can't embed those interfaces because go 1.13 doesn't allow for overlapping interfaces (they both declare
-//  Close). Go 1.14 fixes this problem, but we aren't ready to drop support for 1.13 yet.
+// Close). Go 1.14 fixes this problem, but we aren't ready to drop support for 1.13 yet.
 type RowReplacer interface {
 	TableEditor
 	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
@@ -677,16 +671,17 @@ type RewritableTable interface {
 	Table
 	AlterableTable
 
-	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old schema, new
-	// schema, and modified column (added, dropped, modified) is provided.
+	// ShouldRewriteTable returns whether this table should be rewritten because of a schema change. The old and new
+	// versions of the schema and modified column are provided. For some operations, one or both of |oldColumn| or
+	// |newColumn| may be nil.
 	// The engine may decide to rewrite tables regardless in some cases, such as when a new non-nullable column is added.
-	ShouldRewriteTable(ctx *Context, oldSchema PrimaryKeySchema, newSchema PrimaryKeySchema, modifiedColumn *Column) bool
+	ShouldRewriteTable(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) bool
 
 	// RewriteInserter returns a RowInserter for the new schema. Rows from the current table, with the old schema, will
-	// be streamed from the table and passed to this RowInsertor. Implementor tables must still return rows in the
+	// be streamed from the table and passed to this RowInserter. Implementor tables must still return rows in the
 	// current schema until the rewrite operation completes. |Close| will be called on RowInserter when all rows have
 	// been inserted.
-	RewriteInserter(ctx *Context, newSchema PrimaryKeySchema) (RowInserter, error)
+	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) (RowInserter, error)
 }
 
 // DatabaseProvider is a collection of Database.
@@ -709,6 +704,21 @@ type MutableDatabaseProvider interface {
 
 	// DropDatabase removes a database from the provider's collection.
 	DropDatabase(ctx *Context, name string) error
+}
+
+// ExternalStoredProcedureProvider provides access to built-in stored procedures. These procedures are implemented
+// as functions, instead of as SQL statements. The returned stored procedures cannot be modified or deleted.
+type ExternalStoredProcedureProvider interface {
+	// ExternalStoredProcedure returns the external stored procedure details for the procedure with the specified name
+	// that is able to accept the specified number of parameters. If no matching external stored procedure is found,
+	// nil, nil is returned. If an unexpected error is encountered, it is returned as the error parameter.
+	ExternalStoredProcedure(ctx *Context, name string, numOfParams int) (*ExternalStoredProcedureDetails, error)
+	// ExternalStoredProcedures returns a slice of all external stored procedure details with the specified name. External
+	// stored procedures can overload the same name with different arguments, so this method enables a caller to see all
+	// available variants with the specified name. If no matching external stored procedures are found, an
+	// empty slice is returned, with a nil error. If an unexpected error is encountered, it is returned as the
+	// error parameter.
+	ExternalStoredProcedures(ctx *Context, name string) ([]ExternalStoredProcedureDetails, error)
 }
 
 // FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
@@ -927,7 +937,7 @@ func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error
 type TableCreator interface {
 	// CreateTable creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
-	CreateTable(ctx *Context, name string, schema PrimaryKeySchema) error
+	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
@@ -936,7 +946,7 @@ type TemporaryTableCreator interface {
 	Database
 	// CreateTemporaryTable creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
-	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema) error
+	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
 // ViewDefinition is the named textual definition of a view
@@ -1031,7 +1041,7 @@ type ExternalStoredProcedureDetails struct {
 	Schema Schema
 	// Function is the implementation of the external stored procedure. All functions should have the following definition:
 	// `func(*Context, <PARAMETERS>) (RowIter, error)`. The <PARAMETERS> may be any of the following types: `bool`,
-	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `decimal`
+	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `Decimal`
 	// (shopspring/decimal). The architecture-dependent types `int` and `uint` (without a number) are also supported.
 	// It is valid to return a nil RowIter if there are no rows to be returned.
 	//
@@ -1040,7 +1050,7 @@ type ExternalStoredProcedureDetails struct {
 	//
 	// Values are converted to their nearest type before being passed in, following the conversion rules of their
 	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with
-	// the default collation) and decimal (treated with a larger precision and scale). Take extra care when using decimal
+	// the default collation) and Decimal (treated with a larger precision and scale). Take extra care when using decimal
 	// for an INOUT parameter, to ensure that the returned value fits the original's precision and scale, else an error
 	// will occur.
 	//
@@ -1054,15 +1064,10 @@ type ExternalStoredProcedureDetails struct {
 	Function interface{}
 }
 
-// Comment returns a comment stating that this is an external stored procedure, which is defined by the given database.
-func (espd ExternalStoredProcedureDetails) Comment(dbName string) string {
-	return fmt.Sprintf("External stored procedure defined by %s", dbName)
-}
-
 // FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some
 // tools (such as Java's JDBC connector) require a valid statement in some situations.
-func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt(dbName string) string {
-	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT '%s';", espd.Name, espd.Comment(dbName))
+func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt() string {
+	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT 'External stored procedure';", espd.Name)
 }
 
 // StoredProcedureDatabase is a database that supports the creation and execution of stored procedures. The engine will
@@ -1081,16 +1086,6 @@ type StoredProcedureDatabase interface {
 
 	// DropStoredProcedure removes the StoredProcedureDetails with the matching name from the database.
 	DropStoredProcedure(ctx *Context, name string) error
-}
-
-// ExternalStoredProcedureDatabase is a database that implements its own stored procedures as a function, rather than as
-// a SQL statement. The returned stored procedures are treated as "built-in", in that they cannot be modified nor
-// deleted.
-type ExternalStoredProcedureDatabase interface {
-	StoredProcedureDatabase
-
-	// GetExternalStoredProcedures returns all ExternalStoredProcedureDetails for the database.
-	GetExternalStoredProcedures(ctx *Context) ([]ExternalStoredProcedureDetails, error)
 }
 
 // EvaluateCondition evaluates a condition, which is an expression whose value
@@ -1158,18 +1153,51 @@ func IsTrue(val interface{}) bool {
 // TypesEqual compares two Types and returns whether they are equivalent.
 func TypesEqual(a, b Type) bool {
 	//TODO: replace all of the Type() == Type() calls with TypesEqual
-	if tupA, ok := a.(TupleType); ok {
-		if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
-			for i := range tupA {
-				if !TypesEqual(tupA[i], tupB[i]) {
-					return false
-				}
-			}
-			return true
-		}
-		return false
-	} else if _, ok := b.(TupleType); ok {
+
+	// We can assume they have the same implementing type if this passes, so we have to check the parameters
+	if a.Type() != b.Type() {
 		return false
 	}
-	return a == b
+	// Some types cannot be compared structurally as they contain non-comparable types (such as slices), so we handle
+	// those separately.
+	switch at := a.(type) {
+	case enumType:
+		aEnumType := at
+		bEnumType := b.(enumType)
+		if len(aEnumType.indexToVal) != len(bEnumType.indexToVal) {
+			return false
+		}
+		for i := 0; i < len(aEnumType.indexToVal); i++ {
+			if aEnumType.indexToVal[i] != bEnumType.indexToVal[i] {
+				return false
+			}
+		}
+		return aEnumType.collation == bEnumType.collation
+	case setType:
+		aSetType := at
+		bSetType := b.(setType)
+		if len(aSetType.bitToVal) != len(bSetType.bitToVal) {
+			return false
+		}
+		for bit, aVal := range aSetType.bitToVal {
+			if bVal, ok := bSetType.bitToVal[bit]; ok && aVal != bVal {
+				return false
+			}
+		}
+		return aSetType.collation == bSetType.collation
+	case TupleType:
+		if tupA, ok := a.(TupleType); ok {
+			if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
+				for i := range tupA {
+					if !TypesEqual(tupA[i], tupB[i]) {
+						return false
+					}
+				}
+				return true
+			}
+		}
+		return false
+	default:
+		return a == b
+	}
 }

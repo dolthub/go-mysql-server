@@ -15,24 +15,38 @@
 package sql
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// Represents the Point type.
+// PointType represents the POINT type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
+// The type of the returned value is Point.
+type PointType struct {
+	SRID        uint32
+	DefinedSRID bool
+}
+
+// Point is the value type returned from PointType. Implements GeometryValue.
 type Point struct {
 	SRID uint32
 	X    float64
 	Y    float64
 }
 
-type PointType struct{}
-
 var _ Type = PointType{}
+var _ SpatialColumnType = PointType{}
+var _ GeometryValue = Point{}
 
-var ErrNotPoint = errors.NewKind("value of type %T is not a point")
+var (
+	ErrNotPoint = errors.NewKind("value of type %T is not a point")
+
+	pointValueType = reflect.TypeOf(Point{})
+)
 
 // Compare implements Type interface.
 func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
@@ -98,9 +112,12 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(val))
 	case Point:
+		if err := t.MatchSRID(val); err != nil {
+			return nil, err
+		}
 		return val, nil
 	default:
-		return nil, ErrNotPoint.New(val)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -110,28 +127,36 @@ func (t PointType) Equals(otherType Type) bool {
 	return ok
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t PointType) MaxTextResponseByteLength() uint32 {
+	return GeometryMaxByteLength
+}
+
 // Promote implements the Type interface.
 func (t PointType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t PointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	pv, err := t.Convert(v)
+	v, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(pv.(string))), nil
+	buf := SerializePoint(v.(Point))
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
+
+	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
 
 // String implements Type interface.
 func (t PointType) String() string {
-	return "POINT"
+	return "point"
 }
 
 // Type implements Type interface.
@@ -143,3 +168,37 @@ func (t PointType) Type() query.Type {
 func (t PointType) Zero() interface{} {
 	return Point{X: 0.0, Y: 0.0}
 }
+
+// ValueType implements Type interface.
+func (t PointType) ValueType() reflect.Type {
+	return pointValueType
+}
+
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t PointType) GetSpatialTypeSRID() (uint32, bool) {
+	return t.SRID, t.DefinedSRID
+}
+
+// SetSRID implements SpatialColumnType interface.
+func (t PointType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.DefinedSRID = true
+	return t
+}
+
+// MatchSRID implements SpatialColumnType interface
+func (t PointType) MatchSRID(v interface{}) error {
+	val, ok := v.(Point)
+	if !ok {
+		return ErrNotPoint.New(v)
+	}
+	if !t.DefinedSRID {
+		return nil
+	} else if t.SRID == val.SRID {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
+}
+
+// implementsGeometryValue implements GeometryValue interface.
+func (p Point) implementsGeometryValue() {}

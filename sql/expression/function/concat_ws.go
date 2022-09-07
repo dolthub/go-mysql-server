@@ -37,22 +37,6 @@ func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("CONCAT_WS", "1 or more", 0)
 	}
 
-	for _, arg := range args {
-		// Don't perform this check until it's resolved. Otherwise we
-		// can't get the type for sure.
-		if !arg.Resolved() {
-			continue
-		}
-
-		if len(args) > 1 && sql.IsArray(arg.Type()) {
-			return nil, ErrConcatArrayWithOthers.New()
-		}
-
-		if sql.IsTuple(arg.Type()) {
-			return nil, sql.ErrInvalidType.New("tuple")
-		}
-	}
-
 	return &ConcatWithSeparator{args}, nil
 }
 
@@ -123,23 +107,12 @@ func (f *ConcatWithSeparator) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 			continue
 		}
 
-		if sql.IsArray(arg.Type()) {
-			val, err = sql.CreateArray(sql.LongText).Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, v := range val.([]interface{}) {
-				parts = append(parts, v.(string))
-			}
-		} else {
-			val, err = sql.LongText.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-
-			parts = append(parts, val.(string))
+		val, err = sql.LongText.Convert(val)
+		if err != nil {
+			return nil, err
 		}
+
+		parts = append(parts, val.(string))
 	}
 
 	return strings.Join(parts[1:], parts[0]), nil

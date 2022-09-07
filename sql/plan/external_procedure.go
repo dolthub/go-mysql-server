@@ -169,7 +169,6 @@ func (n *ExternalProcedure) processParam(ctx *sql.Context, funcParamType reflect
 		}
 		exprParamVal = val
 	case byteSliceType:
-		exprParamVal = []byte(exprParamVal.(string))
 	case intType:
 		if strconv.IntSize == 32 {
 			exprParamVal = int(exprParamVal.(int32))
@@ -183,11 +182,7 @@ func (n *ExternalProcedure) processParam(ctx *sql.Context, funcParamType reflect
 			exprParamVal = int(exprParamVal.(uint64))
 		}
 	case decimalType:
-		var err error
-		exprParamVal, err = decimal.NewFromString(exprParamVal.(string))
-		if err != nil {
-			return reflect.Value{}, err
-		}
+		exprParamVal = exprParamVal.(decimal.Decimal)
 	}
 
 	if funcParamType.Kind() == reflect.Ptr { // Coincides with INOUT

@@ -15,24 +15,38 @@
 package sql
 
 import (
+	"fmt"
+	"reflect"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// Represents the Polygon type.
+// PolygonType represents the POLYGON type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-polygon.html
-type Polygon struct {
-	SRID  uint32
-	Lines []Linestring
+// The type of the returned value is Polygon.
+type PolygonType struct {
+	SRID        uint32
+	DefinedSRID bool
 }
 
-type PolygonType struct{}
+// Polygon is the value type returned from PolygonType. Implements GeometryValue.
+type Polygon struct {
+	SRID  uint32
+	Lines []LineString
+}
 
 var _ Type = PolygonType{}
+var _ SpatialColumnType = PolygonType{}
+var _ GeometryValue = Polygon{}
 
-var ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
+var (
+	ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
+
+	polygonValueType = reflect.TypeOf(Polygon{})
+)
 
 // Compare implements Type interface.
 func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
@@ -63,7 +77,7 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 	// Compare each line until there's a difference
 	for i := 0; i < n; i++ {
-		diff, err := LinestringType{}.Compare(_a.Lines[i], _b.Lines[i])
+		diff, err := LineStringType{}.Compare(_a.Lines[i], _b.Lines[i])
 		if err != nil {
 			return 0, err
 		}
@@ -111,9 +125,12 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 	case string:
 		return t.Convert([]byte(val))
 	case Polygon:
+		if err := t.MatchSRID(val); err != nil {
+			return nil, err
+		}
 		return val, nil
 	default:
-		return nil, ErrNotPolygon.New(val)
+		return nil, ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -123,28 +140,36 @@ func (t PolygonType) Equals(otherType Type) bool {
 	return ok
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t PolygonType) MaxTextResponseByteLength() uint32 {
+	return GeometryMaxByteLength
+}
+
 // Promote implements the Type interface.
 func (t PolygonType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t PolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	lv, err := t.Convert(v)
+	v, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(lv.(string))), nil
+	buf := SerializePolygon(v.(Polygon))
+	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
+
+	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
 }
 
 // String implements Type interface.
 func (t PolygonType) String() string {
-	return "POLYGON"
+	return "polygon"
 }
 
 // Type implements Type interface.
@@ -152,7 +177,41 @@ func (t PolygonType) Type() query.Type {
 	return sqltypes.Geometry
 }
 
+// ValueType implements Type interface.
+func (t PolygonType) ValueType() reflect.Type {
+	return polygonValueType
+}
+
 // Zero implements Type interface.
 func (t PolygonType) Zero() interface{} {
-	return Polygon{Lines: []Linestring{{Points: []Point{{}, {}, {}, {}}}}}
+	return Polygon{Lines: []LineString{{Points: []Point{{}, {}, {}, {}}}}}
 }
+
+// GetSpatialTypeSRID implements SpatialColumnType interface.
+func (t PolygonType) GetSpatialTypeSRID() (uint32, bool) {
+	return t.SRID, t.DefinedSRID
+}
+
+// SetSRID implements SpatialColumnType interface.
+func (t PolygonType) SetSRID(v uint32) Type {
+	t.SRID = v
+	t.DefinedSRID = true
+	return t
+}
+
+// MatchSRID implements SpatialColumnType interface
+func (t PolygonType) MatchSRID(v interface{}) error {
+	val, ok := v.(Polygon)
+	if !ok {
+		return ErrNotPolygon.New(v)
+	}
+	if !t.DefinedSRID {
+		return nil
+	} else if t.SRID == val.SRID {
+		return nil
+	}
+	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
+}
+
+// implementsGeometryValue implements GeometryValue interface.
+func (p Polygon) implementsGeometryValue() {}

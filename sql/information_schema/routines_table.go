@@ -35,6 +35,22 @@ var (
 	_ Table = (*routineTable)(nil)
 )
 
+var doltProcedureAliasSet = map[string]interface{}{
+	"dadd":                    nil,
+	"dbranch":                 nil,
+	"dcheckout":               nil,
+	"dclean":                  nil,
+	"dcommit":                 nil,
+	"dfetch":                  nil,
+	"dmerge":                  nil,
+	"dpull":                   nil,
+	"dpush":                   nil,
+	"dreset":                  nil,
+	"drevert":                 nil,
+	"dverify_constraints":     nil,
+	"dverify_all_constraints": nil,
+}
+
 func (t *routineTable) AssignCatalog(cat Catalog) Table {
 	t.catalog = cat
 	return t
@@ -54,6 +70,11 @@ func (r *routineTable) Name() string {
 // Schema implements the sql.Table interface.
 func (r *routineTable) Schema() Schema {
 	return r.schema
+}
+
+// Collation implements the sql.Table interface.
+func (r *routineTable) Collation() CollationID {
+	return Collation_Default
 }
 
 func (r *routineTable) String() string {
@@ -105,6 +126,10 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	}
 	for db, procedures := range p {
 		for _, procedure := range procedures {
+			// Skip dolt procedure aliases to show in this table
+			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
+				continue
+			}
 			// We skip external procedures if the variable to show them is set to false
 			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
 				continue

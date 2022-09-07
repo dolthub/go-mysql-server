@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -128,6 +129,9 @@ func TestBitConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedVal, val)
+				if val != nil {
+					assert.Equal(t, test.typ.ValueType(), reflect.TypeOf(val))
+				}
 			}
 		})
 	}
@@ -138,10 +142,10 @@ func TestBitString(t *testing.T) {
 		typ         Type
 		expectedStr string
 	}{
-		{MustCreateBitType(1), "BIT(1)"},
-		{MustCreateBitType(10), "BIT(10)"},
-		{MustCreateBitType(32), "BIT(32)"},
-		{MustCreateBitType(64), "BIT(64)"},
+		{MustCreateBitType(1), "bit(1)"},
+		{MustCreateBitType(10), "bit(10)"},
+		{MustCreateBitType(32), "bit(32)"},
+		{MustCreateBitType(64), "bit(64)"},
 	}
 
 	for _, test := range tests {

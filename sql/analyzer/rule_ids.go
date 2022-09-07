@@ -28,6 +28,7 @@ const (
 	loadCheckConstraintsId                      // loadCheckConstraints
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
+	setViewTargetSchemaId                       // setViewTargetSchema
 	resolveUnionsId                             // resolveUnions
 	resolveDescribeQueryId                      // resolveDescribeQuery
 	checkUniqueTableNamesId                     // checkUniqueTableNames
@@ -39,8 +40,7 @@ const (
 	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
 	validateReadOnlyTransactionId               // validateReadOnlyTransaction
 	validateDatabaseSetId                       // validateDatabaseSet
-	validatePriviledgesId                       // validatePriviledges
-	stripDecorationsId                          // stripDecorations
+	validatePrivilegesId                        // validatePrivileges
 	reresolveTablesId                           // reresolveTables
 	validateJoinComplexityId                    // validateJoinComplexity
 
@@ -82,7 +82,7 @@ const (
 	pushdownFiltersId             // pushdownFilters
 	subqueryIndexesId             // subqueryIndexes
 	inSubqueryIndexesId           // inSubqueryIndexes
-	pushdownProjectionsId         // pushdownProjections
+	pruneTablesId                 // pruneTables
 	setJoinScopeLenId             // setJoinScopeLen
 	eraseProjectionId             // eraseProjection
 	replaceSortPkId               // replaceSortPk

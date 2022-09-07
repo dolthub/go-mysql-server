@@ -33,15 +33,12 @@ func TestShowCreateTable(t *testing.T) {
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false, PrimaryKey: true},
-		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "z`ab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
 		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
 		&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
-	table := memory.NewTable(
-		"test-table",
-		sql.NewPrimaryKeySchema(schema),
-		nil)
+	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(schema), nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -55,11 +52,11 @@ func TestShowCreateTable(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `zab` int DEFAULT 0,\n"+
-			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `z``ab` int DEFAULT '0',\n"+
+			"  `bza` bigint unsigned DEFAULT '0' COMMENT 'hello',\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
-			"  PRIMARY KEY (`baz`,`zab`)\n"+
+			"  PRIMARY KEY (`baz`,`z``ab`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
@@ -87,10 +84,7 @@ func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema)
-	table := memory.NewTable(
-		"test-table",
-		pkSchema,
-		nil)
+	table := memory.NewTable("test_table", pkSchema, nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -105,11 +99,11 @@ func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 
 	expected := sql.NewRow(
 		table.Name(),
-		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+		"CREATE TABLE `test_table` (\n  `baz` text NOT NULL,\n"+
+			"  `bza` bigint unsigned DEFAULT '0' COMMENT 'hello',\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
-			"  `zab` int DEFAULT 0\n"+
+			"  `zab` int DEFAULT '0'\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
@@ -128,10 +122,7 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema, 4, 0)
-	table := memory.NewTable(
-		"test-table",
-		pkSchema,
-		nil)
+	table := memory.NewTable("test-table", pkSchema, nil)
 
 	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
@@ -147,10 +138,10 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `bza` bigint unsigned DEFAULT '0' COMMENT 'hello',\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
-			"  `zab` int DEFAULT 0,\n"+
+			"  `zab` int DEFAULT '0',\n"+
 			"  PRIMARY KEY (`zab`,`baz`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
@@ -169,10 +160,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 		&sql.Column{Name: "foo", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Source: "test-table", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
-	table := memory.NewTable(
-		"test-table",
-		sql.NewPrimaryKeySchema(schema),
-		&memory.ForeignKeyCollection{})
+	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
 
 	require.NoError(table.AddForeignKey(ctx, sql.ForeignKeyConstraint{
 		Name:           "fk1",
@@ -219,7 +207,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 		&mockIndex{
 			db:    "testdb",
 			table: "test-table",
-			id:    "qux",
+			id:    "`qux`",
 			exprs: []sql.Expression{
 				expression.NewGetFieldWithTable(3, sql.Int64, "test-table", "foo", true),
 			},
@@ -254,12 +242,12 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	expected := sql.NewRow(
 		table.Name(),
 		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
-			"  `zab` int DEFAULT 0,\n"+
-			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `zab` int DEFAULT '0',\n"+
+			"  `bza` bigint unsigned DEFAULT '0' COMMENT 'hello',\n"+
 			"  `foo` varchar(123),\n"+
 			"  `pok` char(123),\n"+
 			"  PRIMARY KEY (`baz`,`zab`),\n"+
-			"  UNIQUE KEY `qux` (`foo`),\n"+
+			"  UNIQUE KEY ```qux``` (`foo`),\n"+
 			"  KEY `zug` (`pok`,`foo`) COMMENT 'test comment',\n"+
 			"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
 			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
@@ -275,15 +263,13 @@ func TestShowCreateView(t *testing.T) {
 	var require = require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable(
-		"test-table",
-		sql.NewPrimaryKeySchema(sql.Schema{
-			&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false, PrimaryKey: true},
-			&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
-			&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
-			&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
-			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
-		}), nil)
+	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(sql.Schema{
+		&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false, PrimaryKey: true},
+		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
+		&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
+	}), nil)
 
 	showCreateTable := NewShowCreateTable(
 		NewSubqueryAlias("myView", "select * from `test-table`", NewResolvedTable(table, nil, nil)),
@@ -299,6 +285,8 @@ func TestShowCreateView(t *testing.T) {
 	expected := sql.NewRow(
 		"myView",
 		"CREATE VIEW `myView` AS select * from `test-table`",
+		"utf8mb4",
+		"utf8mb4_0900_bin",
 	)
 
 	require.Equal(expected, row)

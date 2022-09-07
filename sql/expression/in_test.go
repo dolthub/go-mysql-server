@@ -447,8 +447,9 @@ func TestHashInTuple(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := &sql.Context{}
 			require := require.New(t)
-			expr, err := expression.NewHashInTuple(tt.left, tt.right)
+			expr, err := expression.NewHashInTuple(ctx, tt.left, tt.right)
 			if tt.staticErr != nil {
 				require.Error(err)
 				require.True(tt.staticErr.Is(err))

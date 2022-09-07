@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
@@ -57,7 +57,7 @@ type managedSession struct {
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
 	addr        string
-	tracer      opentracing.Tracer
+	tracer      trace.Tracer
 	hasDBFunc   func(ctx *sql.Context, name string) bool
 	memory      *sql.MemoryManager
 	processlist sql.ProcessList
@@ -70,7 +70,7 @@ type SessionManager struct {
 // NewSessionManager creates a SessionManager with the given SessionBuilder.
 func NewSessionManager(
 	builder SessionBuilder,
-	tracer opentracing.Tracer,
+	tracer trace.Tracer,
 	hasDBFunc func(ctx *sql.Context, name string) bool,
 	memory *sql.MemoryManager,
 	processlist sql.ProcessList,
@@ -138,6 +138,29 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 	return nil
 }
 
+// Iter iterates over the active sessions and executes the specified callback function on each one.
+func (s *SessionManager) Iter(f func(session sql.Session) (stop bool, err error)) error {
+	// Lock the mutex guarding the sessions map while we make a copy of it to prevent errors from
+	// mutating a map while iterating over it. Making a copy of the map also allows us to guard
+	// against long running callback functions being passed in that could cause long mutex blocking.
+	s.mu.Lock()
+	sessionsCopy := make(map[uint32]*managedSession)
+	for key, value := range s.sessions {
+		sessionsCopy[key] = value
+	}
+	s.mu.Unlock()
+
+	var err error
+	for _, value := range sessionsCopy {
+		var stop bool
+		stop, err = f(value.session)
+		if stop == true || err != nil {
+			break
+		}
+	}
+	return err
+}
+
 func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -179,6 +202,8 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		return nil, err
 	}
 
+	ctx, span := s.tracer.Start(ctx, "query")
+
 	context := sql.NewContext(
 		ctx,
 		sql.WithSession(sess),
@@ -187,7 +212,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		sql.WithQuery(query),
 		sql.WithMemoryManager(s.memory),
 		sql.WithProcessList(s.processlist),
-		sql.WithRootSpan(s.tracer.StartSpan("query")),
+		sql.WithRootSpan(span),
 		sql.WithServices(sql.Services{
 			KillConnection: s.killConnection,
 			LoadInfile:     conn.LoadInfile,

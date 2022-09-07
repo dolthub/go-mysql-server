@@ -49,9 +49,9 @@ func (bt RangeBoundType) Inclusive() bool {
 func GetRangeCutKey(c RangeCut) interface{} {
 	switch c := c.(type) {
 	case Below:
-		return c.key
+		return c.Key
 	case Above:
-		return c.key
+		return c.Key
 	default:
 		panic(fmt.Errorf("need to check the RangeCut type before calling GetRangeCutKey, used on `%T`", c))
 	}
@@ -61,7 +61,7 @@ func RangeCutIsBinding(c RangeCut) bool {
 	switch c.(type) {
 	case Below, Above:
 		return true
-	case AboveAll, BelowAll, NullBound:
+	case AboveAll, AboveNull, BelowNull:
 		return false
 	default:
 		panic(fmt.Errorf("unknown range cut %v", c))
@@ -122,7 +122,7 @@ func GetRangeCutMin(typ Type, cuts ...RangeCut) (RangeCut, error) {
 
 // Above represents the position immediately above the contained key.
 type Above struct {
-	key interface{}
+	Key interface{}
 }
 
 var _ RangeCut = Above{}
@@ -132,12 +132,12 @@ func (a Above) Compare(c RangeCut, typ Type) (int, error) {
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
-	case BelowAll:
+	case AboveNull:
 		return 1, nil
 	case Above:
-		return typ.Compare(a.key, c.key)
+		return typ.Compare(a.Key, c.Key)
 	case Below:
-		cmp, err := typ.Compare(a.key, c.key)
+		cmp, err := typ.Compare(a.Key, c.Key)
 		if err != nil {
 			return 0, err
 		}
@@ -145,8 +145,8 @@ func (a Above) Compare(c RangeCut, typ Type) (int, error) {
 			return -1, nil
 		}
 		return 1, nil
-	case NullBound:
-		return -1, nil
+	case BelowNull:
+		return 1, nil
 	default:
 		panic(fmt.Errorf("unrecognized RangeCut type '%T'", c))
 	}
@@ -154,7 +154,7 @@ func (a Above) Compare(c RangeCut, typ Type) (int, error) {
 
 // String implements RangeCut.
 func (a Above) String() string {
-	return fmt.Sprintf("Above[%v]", a.key)
+	return fmt.Sprintf("Above[%v]", a.Key)
 }
 
 // TypeAsLowerBound implements RangeCut.
@@ -177,9 +177,6 @@ func (AboveAll) Compare(c RangeCut, typ Type) (int, error) {
 	if _, ok := c.(AboveAll); ok {
 		return 0, nil
 	}
-	if _, ok := c.(NullBound); ok {
-		return -1, nil
-	}
 	return 1, nil
 }
 
@@ -200,7 +197,7 @@ func (AboveAll) TypeAsUpperBound() RangeBoundType {
 
 // Below represents the position immediately below the contained key.
 type Below struct {
-	key interface{}
+	Key interface{}
 }
 
 var _ RangeCut = Below{}
@@ -210,12 +207,12 @@ func (b Below) Compare(c RangeCut, typ Type) (int, error) {
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
-	case BelowAll:
+	case AboveNull:
 		return 1, nil
 	case Below:
-		return typ.Compare(b.key, c.key)
+		return typ.Compare(b.Key, c.Key)
 	case Above:
-		cmp, err := typ.Compare(c.key, b.key)
+		cmp, err := typ.Compare(c.Key, b.Key)
 		if err != nil {
 			return 0, err
 		}
@@ -223,8 +220,8 @@ func (b Below) Compare(c RangeCut, typ Type) (int, error) {
 			return 1, nil
 		}
 		return -1, nil
-	case NullBound:
-		return -1, nil
+	case BelowNull:
+		return 1, nil
 	default:
 		panic(fmt.Errorf("unrecognized RangeCut type '%T'", c))
 	}
@@ -232,7 +229,7 @@ func (b Below) Compare(c RangeCut, typ Type) (int, error) {
 
 // String implements RangeCut.
 func (b Below) String() string {
-	return fmt.Sprintf("Below[%v]", b.key)
+	return fmt.Sprintf("Below[%v]", b.Key)
 }
 
 // TypeAsLowerBound implements RangeCut.
@@ -245,59 +242,63 @@ func (Below) TypeAsUpperBound() RangeBoundType {
 	return Open
 }
 
-// BelowAll represents the position beyond the minimum possible value.
-type BelowAll struct{}
+// AboveNull represents the position just above NULL, lower than every possible value in the domain.
+type AboveNull struct{}
 
-var _ RangeCut = BelowAll{}
+var _ RangeCut = AboveNull{}
 
 // Compare implements RangeCut.
-func (BelowAll) Compare(c RangeCut, typ Type) (int, error) {
-	if _, ok := c.(BelowAll); ok {
+func (AboveNull) Compare(c RangeCut, typ Type) (int, error) {
+	if _, ok := c.(AboveNull); ok {
+		return 0, nil
+	}
+	if _, ok := c.(BelowNull); ok {
+		return 1, nil
+	}
+	return -1, nil
+}
+
+// String implements RangeCut.
+func (AboveNull) String() string {
+	return "AboveNull"
+}
+
+// TypeAsLowerBound implements RangeCut.
+func (AboveNull) TypeAsLowerBound() RangeBoundType {
+	return Open
+}
+
+// TypeAsUpperBound implements RangeCut.
+func (AboveNull) TypeAsUpperBound() RangeBoundType {
+	return Closed
+}
+
+// BelowNull represents the position below NULL, which sorts before |AboveNull|
+// and every non-NULL value in the domain.
+type BelowNull struct{}
+
+var _ RangeCut = BelowNull{}
+
+// Compare implements RangeCut.
+func (BelowNull) Compare(c RangeCut, typ Type) (int, error) {
+	// BelowNull overlaps with itself
+	if _, ok := c.(BelowNull); ok {
 		return 0, nil
 	}
 	return -1, nil
 }
 
 // String implements RangeCut.
-func (BelowAll) String() string {
-	return "BelowAll"
+func (BelowNull) String() string {
+	return "BelowNull"
 }
 
 // TypeAsLowerBound implements RangeCut.
-func (BelowAll) TypeAsLowerBound() RangeBoundType {
-	return Open
-}
-
-// TypeAsUpperBound implements RangeCut.
-func (BelowAll) TypeAsUpperBound() RangeBoundType {
-	return Open
-}
-
-// NullBound represents the set of null fields
-type NullBound struct{}
-
-var _ RangeCut = NullBound{}
-
-// Compare implements RangeCut.
-func (NullBound) Compare(c RangeCut, typ Type) (int, error) {
-	// null only overlaps with itself
-	if _, ok := c.(NullBound); ok {
-		return 0, nil
-	}
-	return 1, nil
-}
-
-// String implements RangeCut.
-func (NullBound) String() string {
-	return "NullBound"
-}
-
-// TypeAsLowerBound implements RangeCut.
-func (NullBound) TypeAsLowerBound() RangeBoundType {
+func (BelowNull) TypeAsLowerBound() RangeBoundType {
 	return Closed
 }
 
 // TypeAsUpperBound implements RangeCut.
-func (NullBound) TypeAsUpperBound() RangeBoundType {
-	return Closed
+func (BelowNull) TypeAsUpperBound() RangeBoundType {
+	return Open
 }

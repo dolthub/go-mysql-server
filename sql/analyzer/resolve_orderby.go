@@ -28,8 +28,8 @@ import (
 // pushdownSort pushes the Sort node underneath the Project or GroupBy node in the case that columns needed to
 // sort would be projected away before sorting. This can also alter the projection in some cases.
 func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("pushdownSort")
-	defer span.Finish()
+	span, ctx := ctx.Span("pushdownSort")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		sort, ok := n.(*plan.Sort)
@@ -38,6 +38,10 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		}
 
 		if !sort.Child.Resolved() {
+			return n, transform.SameTree, nil
+		}
+
+		if sort.Child == plan.EmptyTable {
 			return n, transform.SameTree, nil
 		}
 
@@ -176,7 +180,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 			child.SelectExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), transform.NewTree, nil
-	case *plan.ResolvedTable:
+	case *plan.ResolvedTable, *plan.Union:
 		return sort, transform.SameTree, nil
 	default:
 		children := child.Children()

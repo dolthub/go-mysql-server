@@ -145,6 +145,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		plugin := b.CreateString(user.Plugin)
 		password := b.CreateString(user.Password)
 		attributes := serializeAttributes(b, user.Attributes)
+		identity := b.CreateString(user.Identity)
 
 		serial.UserStart(b)
 		serial.UserAddUser(b, userName)
@@ -155,6 +156,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		serial.UserAddPasswordLastChanged(b, user.PasswordLastChanged.Unix())
 		serial.UserAddLocked(b, user.Locked)
 		serial.UserAddAttributes(b, attributes)
+		serial.UserAddIdentity(b, identity)
 
 		offsets[len(users)-i-1] = serial.UserEnd(b) // reverse order
 	}
@@ -185,8 +187,7 @@ func serializeRoleEdge(b *flatbuffers.Builder, roleEdges []*RoleEdge) flatbuffer
 		serial.RoleEdgeAddWithAdminOption(b, roleEdge.WithAdminOption)
 
 		// End RoleEdge
-		offset := serial.RoleEdgeEnd(b)
-		offsets[len(roleEdges)-i-1] = offset // reverse order
+		offsets[len(roleEdges)-i-1] = serial.RoleEdgeEnd(b) // reverse order
 	}
 
 	// Write role_edges vector (already in reversed order)

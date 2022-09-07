@@ -49,6 +49,42 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	var seen = make(map[string]struct{})
 	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
+		case *plan.IndexedTableAccess:
+			// Only parallelize indexed table accesses if the underlying table supports it
+			parallelizedTable, ok := n.ResolvedTable.Table.(sql.ParallelizedIndexAddressableTable)
+			if !ok || !parallelizedTable.ShouldParallelizeAccess() {
+				return n, transform.SameTree, nil
+			}
+
+			name := parallelizedTable.Name()
+			if _, ok := seen[name]; ok {
+				return n, transform.SameTree, nil
+			}
+
+			// TODO: what should total be?
+			processList.AddTableProgress(ctx.Pid(), name, -1)
+
+			seen[name] = struct{}{}
+
+			onPartitionDone := func(partitionName string) {
+				processList.UpdateTableProgress(ctx.Pid(), name, 1)
+				processList.RemovePartitionProgress(ctx.Pid(), name, partitionName)
+			}
+
+			onPartitionStart := func(partitionName string) {
+				processList.AddPartitionProgress(ctx.Pid(), name, partitionName, -1)
+			}
+
+			var onRowNext plan.NamedNotifyFunc
+			// TODO: coarser default for row updates (like updating every 100 rows) that doesn't kill performance
+			if updateQueryProgressEachRow {
+				onRowNext = func(partitionName string) {
+					processList.UpdatePartitionProgress(ctx.Pid(), name, partitionName, 1)
+				}
+			}
+
+			newTbl, err := n.WithTable(plan.NewProcessTable(parallelizedTable, onPartitionDone, onPartitionStart, onRowNext))
+			return newTbl, transform.NewTree, err
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
 			case *plan.ProcessTable, *plan.ProcessIndexableTable:
@@ -137,7 +173,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	return plan.NewQueryProcess(node, func() {
 		processList.Done(ctx.Pid())
 		if span := ctx.RootSpan(); span != nil {
-			span.Finish()
+			span.End()
 		}
 	}), transform.NewTree, nil
 }

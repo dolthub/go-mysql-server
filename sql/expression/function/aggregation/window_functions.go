@@ -206,6 +206,208 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt)
 }
 
+type BitAndAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+}
+
+func NewBitAndAgg(e sql.Expression) *BitAndAgg {
+	return &BitAndAgg{
+		expr: e,
+	}
+}
+
+func (b *BitAndAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *b
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
+}
+
+func (b *BitAndAgg) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (b *BitAndAgg) DefaultFramer() sql.WindowFramer {
+	if b.framer != nil {
+		return b.framer
+	}
+	return NewPartitionFramer()
+}
+
+func (b *BitAndAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	b.Dispose()
+	return nil
+}
+
+func (b *BitAndAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+	panic("sliding window interface not implemented yet")
+}
+
+func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	res := ^uint64(0) // bitwise not xor, so 0xffff...
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		v, err := b.expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+
+		if v == nil {
+			continue
+		}
+
+		val, err := sql.Uint64.Convert(v)
+		if err != nil {
+			return 0
+		}
+
+		res &= val.(uint64)
+	}
+	return res
+}
+
+type BitOrAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+}
+
+func NewBitOrAgg(e sql.Expression) *BitOrAgg {
+	return &BitOrAgg{
+		expr: e,
+	}
+}
+
+func (b *BitOrAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *b
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
+}
+
+func (b *BitOrAgg) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (b *BitOrAgg) DefaultFramer() sql.WindowFramer {
+	if b.framer != nil {
+		return b.framer
+	}
+	return NewPartitionFramer()
+}
+
+func (b *BitOrAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	b.Dispose()
+	return nil
+}
+
+func (b *BitOrAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+	panic("sliding window interface not implemented yet")
+}
+
+func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	var res uint64
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		v, err := b.expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+
+		if v == nil {
+			continue
+		}
+
+		val, err := sql.Uint64.Convert(v)
+		if err != nil {
+			return 0
+		}
+
+		res |= val.(uint64)
+	}
+	return res
+}
+
+type BitXorAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+}
+
+func NewBitXorAgg(e sql.Expression) *BitXorAgg {
+	return &BitXorAgg{
+		expr: e,
+	}
+}
+
+func (b *BitXorAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *b
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
+}
+
+func (b *BitXorAgg) Dispose() {
+	expression.Dispose(b.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (b *BitXorAgg) DefaultFramer() sql.WindowFramer {
+	if b.framer != nil {
+		return b.framer
+	}
+	return NewPartitionFramer()
+}
+
+func (b *BitXorAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	b.Dispose()
+	return nil
+}
+
+func (b *BitXorAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+	panic("sliding window interface not implemented yet")
+}
+
+func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	var res uint64
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		v, err := b.expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+
+		if v == nil {
+			continue
+		}
+
+		// TODO: handle strings
+		val, err := sql.Uint64.Convert(v)
+		if err != nil {
+			return 0
+		}
+
+		res ^= val.(uint64)
+	}
+	return res
+}
+
 type MaxAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
@@ -943,7 +1145,7 @@ func (a *RowNumber) Compute(ctx *sql.Context, interval sql.WindowInterval, buffe
 	return a.pos
 }
 
-type PercentRank struct {
+type rankBase struct {
 	partitionStart, partitionEnd int
 
 	// orderBy tracks peer group increments
@@ -954,31 +1156,21 @@ type PercentRank struct {
 	peerGroup sql.WindowInterval
 }
 
-func NewPercentRank(orderBy []sql.Expression) *PercentRank {
-	return &PercentRank{
-		partitionStart: -1,
-		partitionEnd:   -1,
-		pos:            -1,
-		orderBy:        orderBy,
-	}
-}
-
-func (a *PercentRank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *rankBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	na.orderBy = w.OrderBy.ToExpressions()
 	return &na, nil
 }
 
-func (a *PercentRank) Dispose() {
+func (a *rankBase) Dispose() {
 	return
 }
 
-// DefaultFramer returns a NewPartitionFramer
-func (a *PercentRank) DefaultFramer() sql.WindowFramer {
+func (a *rankBase) DefaultFramer() sql.WindowFramer {
 	return NewPeerGroupFramer(a.orderBy)
 }
 
-func (a *PercentRank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
+func (a *rankBase) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
 	a.Dispose()
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	a.pos = a.partitionStart
@@ -986,8 +1178,56 @@ func (a *PercentRank) StartPartition(ctx *sql.Context, interval sql.WindowInterv
 	return nil
 }
 
-func (a *PercentRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
+func (a *rankBase) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("implement me")
+}
+
+// Compute returns the number of elements before the current peer group (rank) + 1.
+// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(5) because
+// there are 4 values less than 3
+func (a *rankBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	if interval.End-interval.Start < 1 {
+		return nil
+	}
+	defer func() { a.pos++ }()
+	switch {
+	case a.pos == 0:
+		return uint64(1)
+	case a.partitionEnd-a.partitionStart == 1:
+		return uint64(1)
+	default:
+		return uint64(interval.Start-a.partitionStart) + 1
+	}
+}
+
+type Rank struct {
+	*rankBase
+}
+
+func NewRank(orderBy []sql.Expression) *Rank {
+	return &Rank{
+		&rankBase{
+			partitionStart: -1,
+			partitionEnd:   -1,
+			pos:            -1,
+			orderBy:        orderBy,
+		},
+	}
+}
+
+type PercentRank struct {
+	*rankBase
+}
+
+func NewPercentRank(orderBy []sql.Expression) *PercentRank {
+	return &PercentRank{
+		&rankBase{
+			partitionStart: -1,
+			partitionEnd:   -1,
+			pos:            -1,
+			orderBy:        orderBy,
+		},
+	}
 }
 
 // Compute returns the number of elements before the current peer group (rank),
@@ -995,18 +1235,52 @@ func (a *PercentRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval)
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
 // there are 4 values less than 3, and there are (10 - 1) total rows in the list.
 func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	if interval.End-interval.Start < 1 {
+	rank := a.rankBase.Compute(ctx, interval, buf)
+	if rank == nil {
 		return nil
 	}
-	defer func() { a.pos++ }()
-	switch {
-	case a.pos == 0:
+	if a.partitionEnd-a.partitionStart == 1 {
 		return float64(0)
-	case a.partitionEnd-a.partitionStart == 1:
-		return float64(0)
-	default:
-		return float64(interval.Start-a.partitionStart) / float64(a.partitionEnd-a.partitionStart-1)
 	}
+	return float64(rank.(uint64)-1) / float64(a.partitionEnd-a.partitionStart-1)
+}
+
+type DenseRank struct {
+	*rankBase
+	// prevRank tracks what the previous non-dense rank was
+	prevRank uint64
+	// denseRank tracks what the previous dense rank is
+	denseRank uint64
+}
+
+func NewDenseRank(orderBy []sql.Expression) *DenseRank {
+	return &DenseRank{
+		rankBase: &rankBase{
+			partitionStart: -1,
+			partitionEnd:   -1,
+			pos:            -1,
+			orderBy:        orderBy,
+		},
+	}
+}
+
+// Compute returns the number of unique elements before the current peer group (rank) + 1.
+// ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(3) because
+// there are 2 unique values less than 3
+func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	rank := a.rankBase.Compute(ctx, interval, buf)
+	if rank == nil {
+		return nil
+	}
+
+	if rank.(uint64) == 1 {
+		a.prevRank = 1
+		a.denseRank = 1
+	} else if rank != a.prevRank {
+		a.prevRank = rank.(uint64)
+		a.denseRank += 1
+	}
+	return a.denseRank
 }
 
 type Lag struct {

@@ -104,7 +104,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
-			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), "blobdata",
+			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"),
 		}},
 	},
 	{
@@ -122,7 +122,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
-			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), "blobdata",
+			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"),
 		}},
 	},
 	{
@@ -140,7 +140,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, sql.MustJSON(`""`), "",
+			"", sql.False, sql.MustJSON(`""`), []byte(""),
 		}},
 	},
 	{
@@ -158,7 +158,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, sql.MustJSON(`""`), "",
+			"", sql.False, sql.MustJSON(`""`), []byte(""),
 		}},
 	},
 	{
@@ -176,7 +176,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.Date.Zero(),
-			"", sql.False, sql.MustJSON(`""`), "",
+			"", sql.False, sql.MustJSON(`""`), []byte(""),
 		}},
 	},
 	{
@@ -622,6 +622,29 @@ var InsertQueries = []WriteQueryTest{
 			{1, 1},
 		},
 	},
+	{
+		WriteQuery:          "with t (i,f) as (select 4,'fourth row' from dual) insert into mytable select i,f from t",
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+			sql.NewRow(4, "fourth row"),
+		},
+	},
+	{
+		WriteQuery:          "with recursive t (i,f) as (select 4,4 from dual union all select i + 1, i + 1 from t where i < 5) insert into mytable select i,f from t",
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+			sql.NewRow(4, "4"),
+			sql.NewRow(5, "5"),
+		},
+	},
 }
 
 var SpatialInsertQueries = []WriteQueryTest{
@@ -641,38 +664,45 @@ var SpatialInsertQueries = []WriteQueryTest{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,2),POINT(3,4)));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+		ExpectedSelect:      []sql.Row{{0, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, 0x00000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040);",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+		ExpectedSelect:      []sql.Row{{0, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
 	},
 	{
-		WriteQuery:          "INSERT INTO polygon_table VALUES (1, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
+		WriteQuery:          "INSERT INTO polygon_table VALUES (2, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+		ExpectedSelect: []sql.Row{
+			{0, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{1, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{2, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
+		},
 	},
 	{
-		WriteQuery:          "INSERT INTO polygon_table VALUES (1, 0x0000000001030000000100000005000000000000000000F03F000000000000F03F000000000000F03F000000000000F0BF000000000000F0BF000000000000F0BF000000000000F0BF000000000000F03F000000000000F03F000000000000F03F);",
+		WriteQuery:          "INSERT INTO polygon_table VALUES (2, 0x0000000001030000000100000005000000000000000000F03F000000000000F03F000000000000F03F000000000000F0BF000000000000F0BF000000000000F0BF000000000000F0BF000000000000F03F000000000000F03F000000000000F03F);",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+		ExpectedSelect: []sql.Row{
+			{0, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{1, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{2, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO geometry_table VALUES (7, POINT(123.456,7.89));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
 		ExpectedSelect: []sql.Row{
-			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
-			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
-			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
-			{7, sql.Geometry{Inner: sql.Point{X: 123.456, Y: 7.89}}},
+			{1, sql.Point{X: 1, Y: 2}},
+			{2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{4, sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{7, sql.Point{X: 123.456, Y: 7.89}},
 		},
 	},
 	{
@@ -680,13 +710,13 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
 		ExpectedSelect: []sql.Row{
-			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
-			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
-			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
-			{7, sql.Geometry{Inner: sql.Point{X: 123.456, Y: 7.89}}},
+			{1, sql.Point{X: 1, Y: 2}},
+			{2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{4, sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{7, sql.Point{X: 123.456, Y: 7.89}},
 		},
 	},
 	{
@@ -694,13 +724,13 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
 		ExpectedSelect: []sql.Row{
-			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
-			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
-			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
-			{7, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{1, sql.Point{X: 1, Y: 2}},
+			{2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{4, sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{7, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
 		},
 	},
 	{
@@ -708,13 +738,13 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
 		ExpectedSelect: []sql.Row{
-			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
-			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
-			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
-			{7, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+			{1, sql.Point{X: 1, Y: 2}},
+			{2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{4, sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{7, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
 		},
 	},
 	{
@@ -722,13 +752,13 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
 		ExpectedSelect: []sql.Row{
-			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
-			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
-			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
-			{7, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+			{1, sql.Point{X: 1, Y: 2}},
+			{2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{4, sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{7, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
 		},
 	},
 	{
@@ -736,40 +766,14 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
 		ExpectedSelect: []sql.Row{
-			{1, sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{2, sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{3, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{4, sql.Geometry{Inner: sql.Point{SRID: 4326, X: 1, Y: 2}}},
-			{5, sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}},
-			{6, sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
-			{7, sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+			{1, sql.Point{X: 1, Y: 2}},
+			{2, sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{3, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{4, sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{5, sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{6, sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{7, sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
 		},
-	},
-}
-
-var InsertIntoKeylessUnique = []WriteQueryTest{
-	{
-		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 3);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
-		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
-	},
-	{
-		WriteQuery:          "INSERT INTO unique_keyless VALUES (3, 4);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT * FROM unique_keyless order by c0;",
-		ExpectedSelect:      []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 4}},
-	},
-}
-
-var InsertIntoKeylessUniqueError = []GenericErrorQueryTest{
-	{
-		Name:  "Try to insert into a unique keyless table",
-		Query: "INSERT INTO unique_keyless (100, 2)",
-	},
-	{
-		Name:  "Try to insert into a unique keyless table",
-		Query: "INSERT INTO unique_keyless (1, 1)",
 	},
 }
 
@@ -1131,41 +1135,97 @@ var InsertScripts = []ScriptTest{
 	{
 		Name: "explicit DEFAULT",
 		SetUpScript: []string{
-			"CREATE TABLE mytable(id int PRIMARY KEY, v2 int NOT NULL DEFAULT '2')",
+			"CREATE TABLE t1(id int DEFAULT '2', dt datetime DEFAULT now());",
+			"CREATE TABLE t2(id varchar(100) DEFAULT (uuid()));",
+			"CREATE TABLE t3(a int DEFAULT '1', b int default (2 * a));",
+			"CREATE TABLE t4(c0 varchar(10) null default 'c0', c1 varchar(10) null default 'c1');",
+			// MySQL allows the current_timestamp() function to NOT be in parens when used as a default
+			// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
+			"CREATE TABLE t5(c0 varchar(100) DEFAULT (repeat('_', 100)), c1 datetime DEFAULT current_timestamp());",
+			// Regression test case for custom column ordering: https://github.com/dolthub/dolt/issues/4004
+			"create table t6 (color enum('red', 'blue', 'green') default 'blue', createdAt timestamp default (current_timestamp()));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "INSERT INTO mytable (id, v2)values (1, DEFAULT)",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
-				},
+				Query:    "INSERT INTO T1 values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query: "SELECT * FROM mytable",
-				Expected: []sql.Row{
-					{1, 2},
-				},
-			},
-		},
-	},
-	{
-		Name: "explicit DEFAULT with multiple values",
-		SetUpScript: []string{
-			"CREATE TABLE mytable(id int PRIMARY KEY, v2 int NOT NULL DEFAULT '2')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "INSERT INTO mytable (id, v2)values (1, DEFAULT), (2, DEFAULT)",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
-				},
+				Query:    "INSERT INTO t1 (id, dt) values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query: "SELECT * FROM mytable",
-				Expected: []sql.Row{
-					{1, 2},
-					{2, 2},
-				},
+				Query:    "INSERT INTO t1 (dt, ID) values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (ID) values (DEFAULT), (3)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (dt) values (DEFAULT), ('1981-02-16 00:00:00')",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 values (100, '2000-01-01 12:34:56'), (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (id, dt) values (100, '2022-01-01 01:01:01'), (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (id) values (10), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t1 (DT) values ('2022-02-02 02:02:02'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t2 values ('10'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "INSERT INTO t2 (id) values (DEFAULT), ('11'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "select count(distinct id) from t2",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "INSERT INTO t3 (a) values (DEFAULT), ('2'), (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "SELECT b from t3 order by b asc",
+				Expected: []sql.Row{{2}, {2}, {4}},
+			},
+			{
+				Query:    "INSERT INTO T4 (c1, c0) values (DEFAULT, NULL)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select * from t4",
+				Expected: []sql.Row{{nil, "c1"}},
+			},
+			{
+				Query:    "INSERT INTO T5 values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO T5 (c0, c1) values (DEFAULT, DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO T5 (c1) values (DEFAULT)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// Custom column order should use the correct column defaults
+				Query:    "insert into T6(createdAt, color) values (DEFAULT, DEFAULT);",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},
@@ -1284,7 +1344,7 @@ var InsertScripts = []ScriptTest{
 		Name: "Insert on duplicate key",
 		SetUpScript: []string{
 			`CREATE TABLE users (
-  				id varchar(42) PRIMARY KEY
+				id varchar(42) PRIMARY KEY
 			)`,
 			`CREATE TABLE nodes (
 			    id varchar(42) PRIMARY KEY,
@@ -1315,6 +1375,141 @@ var InsertScripts = []ScriptTest{
 					{"id1", "milo", "on", 1},
 					{"id2", "dabe", "off", 3},
 				},
+			},
+		},
+	},
+	{
+		Name: "Insert throws primary key violations",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk int PRIMARY key);",
+			"CREATE TABLE t2 (pk1 int, pk2 int, PRIMARY KEY (pk1, pk2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t VALUES (1), (2);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:       "INSERT into t VALUES (1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "INSERT into t2 VALUES (1, 1), (2, 2);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:       "INSERT into t2 VALUES (1, 1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name: "Insert throws unique key violations",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk int PRIMARY key, col1 int UNIQUE);",
+			"CREATE TABLE t2 (pk int PRIMARY key, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"INSERT into t VALUES (1, 1);",
+			"INSERT into t2 VALUES (1, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t VALUES (2, 2), (3, 1), (4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (2, 2, 2), (3, 1, 1), (4, 4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t VALUES (5, 2), (6, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (5, 2, 2), (6, 2, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:    "INSERT into t2 VALUES (5, NULL, 1), (6, NULL, 1), (7, 1, NULL), (8, 1, NULL), (9, NULL, NULL), (10, NULL, NULL)",
+				Expected: []sql.Row{{sql.NewOkResult(6)}},
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
+			},
+		},
+	},
+	{
+		Name: "Insert throws unique key violations for keyless tables",
+		SetUpScript: []string{
+			"CREATE TABLE t (not_pk int NOT NULL, col1 int UNIQUE);",
+			"CREATE TABLE t2 (not_pk int NOT NULL, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"INSERT into t VALUES (1, 1);",
+			"INSERT into t2 VALUES (1, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t VALUES (2, 2), (3, 1), (4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (2, 2, 2), (3, 1, 1), (4, 4, 4);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t VALUES (5, 2), (6, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       "INSERT INTO t2 VALUES (5, 2, 2), (6, 2, 2);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+			{
+				Query:    "INSERT into t2 VALUES (5, NULL, 1), (6, NULL, 1), (7, 1, NULL), (8, 1, NULL), (9, NULL, NULL), (10, NULL, NULL)",
+				Expected: []sql.Row{{sql.NewOkResult(6)}},
+			},
+			{
+				Query:    "SELECT * from t2;",
+				Expected: []sql.Row{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
 			},
 		},
 	},
@@ -1425,6 +1620,14 @@ var InsertErrorScripts = []ScriptTest{
 			"create table bad (s varchar(9))",
 		},
 		Query:       "insert into bad values ('1234567890')",
+		ExpectedErr: sql.ErrLengthBeyondLimit,
+	},
+	{
+		Name: "try inserting varbinary larger than max limit",
+		SetUpScript: []string{
+			"create table bad (vb varbinary(65535))",
+		},
+		Query:       "insert into bad values (repeat('0', 65536))",
 		ExpectedErr: sql.ErrLengthBeyondLimit,
 	},
 }
@@ -1542,26 +1745,165 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 		},
 	},
-}
-
-var InsertBrokenScripts = []ScriptTest{
-	// TODO: Support unique keys and FK violations in memory implementation
 	{
 		Name: "Test that INSERT IGNORE INTO works with unique keys",
 		SetUpScript: []string{
-			"CREATE TABLE mytable(pk int PRIMARY KEY, value varchar(10) UNIQUE)",
-			"INSERT INTO mytable values (1,'one')",
+			"CREATE TABLE one_uniq(pk int PRIMARY KEY, col1 int UNIQUE)",
+			"CREATE TABLE two_uniq(pk int PRIMARY KEY, col1 int, col2 int, UNIQUE KEY col1_col2_uniq (col1, col2))",
+			"INSERT INTO one_uniq values (1, 1)",
+			"INSERT INTO two_uniq values (1, 1, 1)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "INSERT IGNORE INTO mytable VALUES (2, 'one')",
+				Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 0}},
+					{sql.OkResult{RowsAffected: 3}},
 				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from one_uniq;",
+				Expected: []sql.Row{
+					{1, 1}, {3, 2}, {4, nil}, {5, nil},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 8}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from two_uniq;",
+				Expected: []sql.Row{
+					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
+				},
+			},
+		},
+	},
+}
+
+var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
+	{
+		Name: "Test that INSERT IGNORE INTO works with unique keys on a keyless table",
+		SetUpScript: []string{
+			"CREATE TABLE one_uniq(not_pk int, value int UNIQUE)",
+			"CREATE TABLE two_uniq(not_pk int, col1 int, col2 int, UNIQUE KEY col1_col2_uniq (col1, col2));",
+			"INSERT INTO one_uniq values (1, 1)",
+			"INSERT INTO two_uniq values (1, 1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 3}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from one_uniq;",
+				Expected: []sql.Row{
+					{1, 1}, {3, 2}, {4, nil}, {5, nil},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 8}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "SELECT * from two_uniq;",
+				Expected: []sql.Row{
+					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "INSERT IGNORE INTO multiple violations of a unique secondary index",
+		SetUpScript: []string{
+			"CREATE TABLE keyless(pk int, val int)",
+			"INSERT INTO keyless values (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT IGNORE INTO keyless VALUES (1, 2);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "DELETE FROM keyless where pk = 1 and val = 2",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:           "INSERT IGNORE INTO keyless VALUES (1, 3)",
+				Expected:        []sql.Row{{sql.NewOkResult(0)}},
 				ExpectedWarning: mysql.ERDupEntry,
 			},
 		},
 	},
+	{
+		Name: "UPDATE IGNORE keyless tables and secondary indexes",
+		SetUpScript: []string{
+			"CREATE TABLE keyless(pk int, val int)",
+			"INSERT INTO keyless VALUES (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = 1 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = 3 where pk = 1",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:           "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM keyless ORDER BY pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
+			},
+		},
+	},
+}
+
+var InsertBrokenScripts = []ScriptTest{
+	// TODO: Support unique keys and FK violations in memory implementation
 	{
 		Name: "Test that INSERT IGNORE works with FK Violations",
 		SetUpScript: []string{

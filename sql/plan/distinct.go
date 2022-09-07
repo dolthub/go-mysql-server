@@ -43,7 +43,7 @@ func (d *Distinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	it, err := d.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -160,7 +160,7 @@ func (d *OrderedDistinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 
 	it, err := d.Child.RowIter(ctx, nil)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 

@@ -46,7 +46,7 @@ func TestWalk(t *testing.T) {
 	sql.Walk(f, e)
 
 	require.Equal(t,
-		[]sql.Expression{e, and, col, nil, fn, lit1, nil, lit2, nil, nil, nil, nil},
+		[]sql.Expression{e, and, col, fn, lit1, lit2},
 		visited,
 	)
 
@@ -62,7 +62,7 @@ func TestWalk(t *testing.T) {
 	sql.Walk(f, e)
 
 	require.Equal(t,
-		[]sql.Expression{e, and, col, nil, fn, nil, nil},
+		[]sql.Expression{e, and, col, fn},
 		visited,
 	)
 }
@@ -97,7 +97,7 @@ func TestInspect(t *testing.T) {
 	sql.Inspect(e, f)
 
 	require.Equal(t,
-		[]sql.Expression{e, and, col, nil, fn, lit1, nil, lit2, nil, nil, nil, nil},
+		[]sql.Expression{e, and, col, fn, lit1, lit2},
 		visited,
 	)
 
@@ -113,7 +113,7 @@ func TestInspect(t *testing.T) {
 	sql.Inspect(e, f)
 
 	require.Equal(t,
-		[]sql.Expression{e, and, col, nil, fn, nil, nil},
+		[]sql.Expression{e, and, col, fn},
 		visited,
 	)
 }

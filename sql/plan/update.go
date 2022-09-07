@@ -30,17 +30,21 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 type Update struct {
 	UnaryNode
 	Checks sql.CheckConstraints
+	Ignore bool
 }
 
 var _ sql.Databaseable = (*Update)(nil)
 
 // NewUpdate creates an Update node.
-func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
+func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
 	return &Update{
 		UnaryNode: UnaryNode{NewUpdateSource(
 			n,
+			ignore,
 			updateExprs,
-		)}}
+		)},
+		Ignore: ignore,
+	}
 }
 
 func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
@@ -144,6 +148,7 @@ type updateIter struct {
 	updater   sql.RowUpdater
 	checks    sql.CheckConstraints
 	closed    bool
+	ignore    bool
 }
 
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -154,7 +159,6 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
 	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
-		// TODO: we aren't enforcing other kinds of constraints here, like nullability
 		if !equals {
 			// apply check constraints
 			for _, check := range u.checks {
@@ -168,18 +172,18 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 
 				if sql.IsFalse(res) {
-					return nil, sql.ErrCheckConstraintViolated.New(check.Name)
+					return nil, u.ignoreOrError(ctx, newRow, sql.ErrCheckConstraintViolated.New(check.Name))
 				}
 			}
 
-			err := u.validateNullability(newRow, u.schema)
+			err := u.validateNullability(ctx, newRow, u.schema)
 			if err != nil {
-				return nil, err
+				return nil, u.ignoreOrError(ctx, newRow, err)
 			}
 
 			err = u.updater.Update(ctx, oldRow, newRow)
 			if err != nil {
-				return nil, err
+				return nil, u.ignoreOrError(ctx, newRow, err)
 			}
 		}
 	} else {
@@ -189,15 +193,23 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return oldAndNewRow, nil
 }
 
-// Applies the update expressions given to the row given, returning the new resultant row.
+// Applies the update expressions given to the row given, returning the new resultant row. In the case that ignore is
+// provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
 // TODO: a set of update expressions should probably be its own expression type with an Eval method that does this
-func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row sql.Row) (sql.Row, error) {
+func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
 	var ok bool
 	prev := row
 	for _, updateExpr := range updateExprs {
 		val, err := updateExpr.Eval(ctx, prev)
 		if err != nil {
-			return nil, err
+			wtce, ok2 := err.(sql.WrappedTypeConversionError)
+			if !ok2 || !ignore {
+				return nil, err
+			}
+
+			cpy := prev.Copy()
+			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
+			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
 		}
 		prev, ok = val.(sql.Row)
 		if !ok {
@@ -207,12 +219,18 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 	return prev, nil
 }
 
-func (u *updateIter) validateNullability(row sql.Row, schema sql.Schema) error {
+func (u *updateIter) validateNullability(ctx *sql.Context, row sql.Row, schema sql.Schema) error {
 	for idx := 0; idx < len(row); idx++ {
 		col := schema[idx]
 		if !col.Nullable && row[idx] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
-			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+			if u.ignore {
+				row[idx] = col.Type.Zero()
+				_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+			} else {
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+			}
+
 		}
 	}
 	return nil
@@ -229,18 +247,37 @@ func (u *updateIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
+func (u *updateIter) ignoreOrError(ctx *sql.Context, row sql.Row, err error) error {
+	if !u.ignore {
+		return err
+	}
+
+	return warnOnIgnorableError(ctx, row, err)
+}
+
 func newUpdateIter(
 	childIter sql.RowIter,
 	schema sql.Schema,
 	updater sql.RowUpdater,
 	checks sql.CheckConstraints,
+	ignore bool,
 ) sql.RowIter {
-	return NewTableEditorIter(updater, &updateIter{
-		childIter: childIter,
-		updater:   updater,
-		schema:    schema,
-		checks:    checks,
-	})
+	if ignore {
+		return NewCheckpointingTableEditorIter(updater, &updateIter{
+			childIter: childIter,
+			updater:   updater,
+			schema:    schema,
+			checks:    checks,
+			ignore:    true,
+		})
+	} else {
+		return NewTableEditorIter(updater, &updateIter{
+			childIter: childIter,
+			updater:   updater,
+			schema:    schema,
+			checks:    checks,
+		})
+	}
 }
 
 // RowIter implements the Node interface.
@@ -256,7 +293,7 @@ func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return newUpdateIter(iter, updatable.Schema(), updater, u.Checks), nil
+	return newUpdateIter(iter, updatable.Schema(), updater, u.Checks, u.Ignore), nil
 }
 
 // WithChildren implements the Node interface.

@@ -1026,6 +1026,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemUintType("join_buffer_size", 128, 18446744073709547520),
 		Default:           uint64(262144),
 	},
+	"join_complexity_limit": {
+		Name:              "join_complexity_limit",
+		Scope:             SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: true,
+		Type:              NewSystemUintType("join_complexity_limit", 2, 20),
+		Default:           uint64(12),
+	},
 	"keep_files_on_create": {
 		Name:              "keep_files_on_create",
 		Scope:             SystemVariableScope_Both,

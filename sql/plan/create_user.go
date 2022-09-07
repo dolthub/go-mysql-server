@@ -102,6 +102,11 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 	userTableData := mysqlDb.UserTable().Data()
 	for _, user := range n.Users {
+		// replace empty host with any host
+		if user.UserName.Host == "" {
+			user.UserName.Host = "%"
+		}
+
 		userPk := mysql_db.UserPrimaryKey{
 			Host: user.UserName.Host,
 			User: user.UserName.Name,
@@ -120,8 +125,13 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			plugin = user.Auth1.Plugin()
 			password = user.Auth1.Password()
 		}
+		if plugin != "mysql_native_password" {
+			if err := mysqlDb.VerifyPlugin(plugin); err != nil {
+				return nil, sql.ErrUserCreationFailure.New(err)
+			}
+		}
 		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
-		//TODO: validate all of the data
+		// TODO: validate all of the data
 		err := userTableData.Put(ctx, &mysql_db.User{
 			User:                user.UserName.Name,
 			Host:                user.UserName.Host,
@@ -132,6 +142,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			Locked:              false,
 			Attributes:          nil,
 			IsRole:              false,
+			Identity:            user.Identity,
 		})
 		if err != nil {
 			return nil, err

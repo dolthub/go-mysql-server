@@ -15,11 +15,16 @@
 package sql
 
 import (
+	"reflect"
 	"strings"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
+
+var systemEnumValueType = reflect.TypeOf(string(""))
 
 // systemEnumType is an internal enum type ONLY for system variables.
 type systemEnumType struct {
@@ -98,6 +103,14 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 		if value == float64(int(value)) {
 			return t.Convert(int(value))
 		}
+	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(f)
+	case decimal.NullDecimal:
+		if value.Valid {
+			f, _ := value.Decimal.Float64()
+			return t.Convert(f)
+		}
 	case string:
 		if idx, ok := t.valToIndex[strings.ToLower(value)]; ok {
 			return t.indexToVal[idx], nil
@@ -129,13 +142,19 @@ func (t systemEnumType) Equals(otherType Type) bool {
 	return false
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t systemEnumType) MaxTextResponseByteLength() uint32 {
+	// system types are not sent directly across the wire
+	return 0
+}
+
 // Promote implements the Type interface.
 func (t systemEnumType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemEnumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemEnumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -145,19 +164,24 @@ func (t systemEnumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSlice(dest, []byte(v.(string)))
+	val := appendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.
 func (t systemEnumType) String() string {
-	return "SYSTEM_ENUM"
+	return "system_enum"
 }
 
 // Type implements Type interface.
 func (t systemEnumType) Type() query.Type {
 	return sqltypes.VarChar
+}
+
+// ValueType implements Type interface.
+func (t systemEnumType) ValueType() reflect.Type {
+	return systemEnumValueType
 }
 
 // Zero implements Type interface.

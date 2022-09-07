@@ -30,7 +30,7 @@ type ExistsSubquery struct {
 
 var _ sql.Expression = (*ExistsSubquery)(nil)
 
-//NewExistsSubquery created an ExistsSubquery expression.
+// NewExistsSubquery created an ExistsSubquery expression.
 func NewExistsSubquery(query sql.Expression) *ExistsSubquery {
 	return &ExistsSubquery{expression.UnaryExpression{Child: query}}
 }

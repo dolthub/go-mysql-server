@@ -151,8 +151,8 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_is_resolved")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_is_resolved")
+	defer span.End()
 
 	if !n.Resolved() {
 		return nil, transform.SameTree, unresolvedError(n)
@@ -191,8 +191,8 @@ func unresolvedError(n sql.Node) error {
 }
 
 func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_order_by")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_order_by")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.Sort:
@@ -208,8 +208,8 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 }
 
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_group_by")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_group_by")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.GroupBy:
@@ -270,8 +270,8 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_schema_source")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_schema_source")
+	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.TableAlias:
@@ -286,8 +286,8 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 }
 
 func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_index_creation")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_index_creation")
+	defer span.End()
 
 	ci, ok := n.(*plan.CreateIndex)
 	if !ok {
@@ -327,8 +327,8 @@ func validateSchema(t *plan.ResolvedTable) error {
 }
 
 func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("validate_union_schemas_match")
-	defer span.Finish()
+	span, ctx := ctx.Span("validate_union_schemas_match")
+	defer span.End()
 
 	var firstmismatch []string
 	transform.Inspect(n, func(n sql.Node) bool {
@@ -362,7 +362,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 
 func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_case_result_types")
-	defer span.Finish()
+	defer span.End()
 
 	var err error
 	transform.InspectExpressions(n, func(e sql.Expression) bool {
@@ -425,31 +425,6 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	return n, transform.SameTree, nil
 }
 
-func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var invalid bool
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		// If it's already invalid just skip everything else.
-		if invalid {
-			return false
-		}
-
-		// All usage of Explode will be incorrect because the ones in projects
-		// would have already been converted to Generate, so we only have to
-		// look for those.
-		if _, ok := e.(*function.Explode); ok {
-			invalid = true
-		}
-
-		return true
-	})
-
-	if invalid {
-		return nil, transform.SameTree, ErrExplodeInvalidUse.New()
-	}
-
-	return n, transform.SameTree, nil
-}
-
 func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Validate that the number of columns in an operand or a top level
 	// expression are as expected. The current rules are:
@@ -507,6 +482,8 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						}
 					case expression.Tuple:
 						// Tuple expressions can contain tuples...
+					case *plan.ExistsSubquery:
+						// Any number of columns are allowed.
 					default:
 						for _, e := range e.Children() {
 							nc := sql.NumColumns(e.Type())
@@ -776,7 +753,7 @@ func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 
 // validateSem is a way to add validation logic for
 // specific expression types.
-//todo(max): Refactor and consolidate validation so it can
+// todo(max): Refactor and consolidate validation so it can
 // run before the rest of analysis. Add more expression types.
 // Add node equivalent.
 func validateSem(e sql.Expression) error {
@@ -805,7 +782,7 @@ func logicalSem(e expression.BinaryExpression) error {
 }
 
 // fds counts the functional dependencies of an expression.
-//todo(max): input/output fd's should be part of the expression
+// todo(max): input/output fd's should be part of the expression
 // interface.
 func fds(e sql.Expression) int {
 	switch e.(type) {

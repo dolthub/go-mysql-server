@@ -181,7 +181,7 @@ func (f *GroupByFramer) SlidingInterval(ctx sql.Context) (sql.WindowInterval, sq
 // framer implementation, one start and one end bound.
 //
 // Ex: startCurrentRow = true; endNFollowing = 1;
-//     buffer = [0, 1, 2, 3, 4, 5];
+// buffer = [0, 1, 2, 3, 4, 5];
 // =>
 // pos:    0->0   1->1   2->2   3->3   4->4   5->5
 // frame:  {0,2}, {1,3}, {2,4}, {3,5}, {4,6}, {4,5}
@@ -262,6 +262,10 @@ func (f *rowFramerBase) Next(ctx *sql.Context, buffer sql.WindowBuffer) (sql.Win
 		return sql.WindowInterval{}, io.EOF
 	}
 
+	if f.partitionEnd == 0 {
+		return sql.WindowInterval{}, io.EOF
+	}
+
 	newStart := f.idx + f.startOffset
 	if f.unboundedPreceding || newStart < f.partitionStart {
 		newStart = f.partitionStart
@@ -305,8 +309,8 @@ func (f *rowFramerBase) Interval() (sql.WindowInterval, error) {
 // one start and one end bound.
 //
 // Ex: startCurrentRow = true; endNFollowing = 2; orderBy = x;
-//  -> startInclusion = (x), endInclusion = (x+2)
-//     buffer = [0, 1, 2, 4, 4, 5];
+// -> startInclusion = (x), endInclusion = (x+2)
+// buffer = [0, 1, 2, 4, 4, 5];
 // =>
 // pos:    0->0     1->1   2->2   3->4     4->4     5->5
 // frame:  {0,3},   {1,3}, {2,3}, {3,5},   {3,5},   {4,5}
@@ -402,7 +406,11 @@ func (f *rangeFramerBase) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 	var err error
 	newStart := f.frameStart
 	switch {
-	case newStart < f.partitionStart, f.unboundedPreceding:
+	case newStart < f.partitionStart, f.unboundedPreceding, f.startCurrentRow && f.orderBy == nil:
+		// Start the frame at the partition start for unbounded preceding, or for current row when no order by clause
+		// has been specified. From the MySQL docs, when an order by clause is not specified with range framing, the
+		// default frame includes all rows, since all rows in the current partition are peers when no order has been
+		// specified.
 		newStart = f.partitionStart
 	default:
 		newStart, err = findInclusionBoundary(ctx, f.idx, newStart, f.partitionEnd, f.startInclusion, f.orderBy, buf, greaterThanOrEqual)
@@ -416,7 +424,7 @@ func (f *rangeFramerBase) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 		newEnd = newStart
 	}
 	switch {
-	case newEnd > f.partitionEnd, f.unboundedFollowing:
+	case newEnd > f.partitionEnd, f.unboundedFollowing, f.endCurrentRow && f.orderBy == nil:
 		newEnd = f.partitionEnd
 	default:
 		newEnd, err = findInclusionBoundary(ctx, f.idx, newEnd, f.partitionEnd, f.endInclusion, f.orderBy, buf, greaterThan)

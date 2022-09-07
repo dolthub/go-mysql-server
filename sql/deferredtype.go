@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -56,6 +58,12 @@ func (t deferredType) Convert(v interface{}) (interface{}, error) {
 	return nil, nil
 }
 
+// MaxTextResponseByteLength implements the Type interface
+func (t deferredType) MaxTextResponseByteLength() uint32 {
+	// deferredType is never actually sent over the wire
+	return 0
+}
+
 // MustConvert implements the Type interface.
 func (t deferredType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
@@ -71,18 +79,23 @@ func (t deferredType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t deferredType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t deferredType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil
 }
 
 // String implements Type interface.
 func (t deferredType) String() string {
-	return "DEFERRED"
+	return "deferred"
 }
 
 // Type implements Type interface.
 func (t deferredType) Type() query.Type {
 	return sqltypes.Expression
+}
+
+// ValueType implements Type interface.
+func (t deferredType) ValueType() reflect.Type {
+	return nil
 }
 
 // Zero implements Type interface.

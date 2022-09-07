@@ -90,8 +90,11 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
-		Expected: []sql.Row{{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"}},
+		Query: `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
+		Expected: []sql.Row{
+			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+			{"01030000000200000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
@@ -99,11 +102,11 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
+		Expected: []sql.Row{{sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_ASWKT(p) from point_table`,
@@ -117,12 +120,18 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT ST_ASWKT(p) from polygon_table`,
-		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+		Query: `SELECT ST_ASWKT(p) from polygon_table`,
+		Expected: []sql.Row{
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
+		},
 	},
 	{
-		Query:    `SELECT ST_ASTEXT(p) from polygon_table`,
-		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+		Query: `SELECT ST_ASTEXT(p) from polygon_table`,
+		Expected: []sql.Row{
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
+		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)))`,
@@ -130,11 +139,11 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
+		Expected: []sql.Row{{sql.LineString{Points: []sql.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_X(POINT(1,2))`,
@@ -181,8 +190,11 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{{uint32(0)}, {uint32(0)}},
 	},
 	{
-		Query:    `SELECT ST_SRID(p) from polygon_table`,
-		Expected: []sql.Row{{uint32(0)}},
+		Query: `SELECT ST_SRID(p) from polygon_table`,
+		Expected: []sql.Row{
+			{uint32(0)},
+			{uint32(0)},
+		},
 	},
 	{
 		Query:    `SELECT ST_SRID(p, 4326) from point_table`,
@@ -191,14 +203,15 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SRID(l, 4326) from line_table ORDER BY l`,
 		Expected: []sql.Row{
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -206,10 +219,10 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{sql.Point{SRID: 4326, X: 2, Y: 1}},
 			{sql.Point{SRID: 4326, X: 56.789, Y: 123.45}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.345, Y: 1.23}, {SRID: 4326, X: 4.56, Y: 3.56789}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.2, Y: 1.1}, {SRID: 4326, X: 4.4, Y: 3.3}, {SRID: 4326, X: 6.6, Y: 5.5}, {SRID: 4326, X: 2.2, Y: 1.1}}}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 2}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.345, Y: 1.23}, {SRID: 4326, X: 4.56, Y: 3.56789}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.2, Y: 1.1}, {SRID: 4326, X: 4.4, Y: 3.3}, {SRID: 4326, X: 6.6, Y: 5.5}, {SRID: 4326, X: 2.2, Y: 1.1}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 2}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -229,6 +242,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_ASGEOJSON(p) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
 		},
 	},
 	{
@@ -251,14 +265,15 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(l)) from line_table`,
 		Expected: []sql.Row{
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 6, Y: 5}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -278,6 +293,7 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_DIMENSION(p) from polygon_table`,
 		Expected: []sql.Row{
 			{2},
+			{2},
 		},
 	},
 	{
@@ -289,14 +305,15 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(l) from line_table`,
 		Expected: []sql.Row{
-			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
+			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -305,9 +322,9 @@ var SpatialQueryTests = []QueryTest{
 			{"POINT(1 2)"},
 			{"LINESTRING(1 2,3 4)"},
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
-			{"POINT(1 2)"},
-			{"LINESTRING(1 2,3 4)"},
-			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POINT(2 1)"},
+			{"LINESTRING(2 1,4 3)"},
+			{"POLYGON((0 0,1 0,1 1,0 0))"},
 		},
 	},
 	{
@@ -335,12 +352,12 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}},
-			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
-			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -357,12 +374,12 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Geometry{Inner: sql.Point{X: 2, Y: 1}}},
-			{sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}}},
-			{sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
-			{sql.Geometry{Inner: sql.Point{SRID: 4326, X: 2, Y: 1}}},
-			{sql.Geometry{Inner: sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}}},
-			{sql.Geometry{Inner: sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}},
+			{sql.Point{X: 2, Y: 1}},
+			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{SRID: 4326, X: 2, Y: 1}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 }
@@ -697,7 +714,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT FORMAT(val, 2) FROM 
+		Query: `SELECT FORMAT(val, 2) FROM
 			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
 		Expected: []sql.Row{
 			{"4,328,904.00"},
@@ -717,7 +734,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM 
+		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM
 			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
 		Expected: []sql.Row{
 			{"4.328.904,00"},
@@ -743,7 +760,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM 
+		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM
 			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31T12:00:00')) a (val)`,
 		Expected: []sql.Row{
 			{-758},
@@ -759,7 +776,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM 
+		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM
 			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
 		Expected: []sql.Row{
 			{1090140},
@@ -775,14 +792,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2) 
-                    FROM (values
-						 row('{ "a": 1, "b": 2 }','null'), 
-                         row('{ "a": 1, "b": 2 }','"row one"'), 
-                         row('{ "a": 3, "c": 4 }','4'), 
-                         row('{ "a": 5, "d": 6 }','[true, true]'),
-                         row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
-                    test (val1, val2)`,
+		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2)
+	               FROM (values
+						 row('{ "a": 1, "b": 2 }','null'),
+	                    row('{ "a": 1, "b": 2 }','"row one"'),
+	                    row('{ "a": 3, "c": 4 }','4'),
+	                    row('{ "a": 5, "d": 6 }','[true, true]'),
+	                    row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
+	               test (val1, val2)`,
 		Expected: []sql.Row{
 			{sql.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
 			{sql.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
@@ -834,8 +851,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT column_0, sum(column_1) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+		Query: `SELECT column_0, sum(column_1) FROM
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 order by 1`,
 		Expected: []sql.Row{
 			{1, 4.0},
@@ -844,8 +861,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT B, sum(C) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a (b,c) 
+		Query: `SELECT B, sum(C) FROM
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a (b,c)
 			group by 1 order by 1`,
 		Expected: []sql.Row{
 			{1, 4.0},
@@ -941,23 +958,23 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select mt.i, 
+		Query: `select mt.i,
 			((
 				select count(*) from mytable
-           	where i in (
-              		select mt2.i from mytable mt2 where mt2.i > mt.i
-           	)
+	      	where i in (
+	         		select mt2.i from mytable mt2 where mt2.i > mt.i
+	      	)
 			)) as greater_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
 	},
 	{
-		Query: `select mt.i, 
+		Query: `select mt.i,
 			((
 				select count(*) from mytable
-           	where i in (
-              		select mt2.i from mytable mt2 where mt2.i = mt.i
-           	)
+	      	where i in (
+	         		select mt2.i from mytable mt2 where mt2.i = mt.i
+	      	)
 			)) as eq_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
@@ -1167,8 +1184,8 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
-			SELECT mtouter.i, 
-				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1) 
+			SELECT mtouter.i,
+				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1)
 			FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
 			{2, "third row"},
@@ -1221,6 +1238,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with a as (select * from mytable where i = 2), b as (select * from a), c as (select * from b) select * from c",
+		Expected: []sql.Row{
+			{int64(2), "second row"},
+		},
+	},
+	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt UNION ALL SELECT s, i FROM mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -1235,9 +1258,93 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "WITH mytable as (select * FROM mytable) SELECT s,i FROM mytable;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable;",
+		Expected: []sql.Row{
+			{int64(3), "third row"},
+		},
+	},
+	{
+		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable union SELECT * from mytable;",
+		Expected: []sql.Row{
+			{int64(3), "third row"},
+		},
+	},
+	{
 		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(55)},
+		},
+	},
+	{
+		Query: "with recursive a as (select 1 union all select 2) select * from a union select 10 from dual;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{10},
+		},
+	},
+	{
+		Query: "with recursive a as (select 1 union all select 2) select 10 from dual union select * from a;",
+		Expected: []sql.Row{
+			{10},
+			{1},
+			{2},
+		},
+	},
+	{
+		Query: "with recursive a as (select 1 union all select 2) select * from a union select * from a;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
+	{
+		Query: "with a as (select 1), b as (select * from a) select * from b;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "with a as (select 1) select * from (with b as (select * from a) select * from b) as c;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "with a as (select 1) select 3, 2, (select * from a);",
+		Expected: []sql.Row{
+			{3, 2, 1},
+		},
+	},
+	{
+		Query: "WITH a AS ( WITH b AS ( WITH recursive c AS ( SELECT 1 UNION SELECT 2 ) SELECT * from c UNION SELECT 3 ) SELECT * from b UNION SELECT 4) SELECT * from a UNION SELECT 10;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+			{4},
+			{10},
+		},
+	},
+	{
+		Query: "WITH a AS ( WITH b AS ( SELECT 1 UNION SELECT 2 ), c AS ( SELECT 3 UNION SELECT 4 ) SELECT * from b UNION SELECT * from c), x AS ( WITH y AS ( SELECT 5 UNION SELECT 6 ), z AS ( SELECT 7 UNION SELECT 8 ) SELECT * from y UNION SELECT * from z) SELECT * from a UNION SELECT * from x;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+			{4},
+			{5},
+			{6},
+			{7},
+			{8},
 		},
 	},
 	{
@@ -1253,7 +1360,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: ` 
+		Query: `
 			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
 				SELECT sub_part, part, quantity FROM parts WHERE part = 'pie'
 			  UNION ALL
@@ -1275,7 +1382,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: ` 
+		Query: `
 			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
 				SELECT sub_part, part, quantity FROM parts WHERE lower(part) = 'pie'
 			  UNION ALL
@@ -1297,7 +1404,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: ` 
+		Query: `
 			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
 				SELECT sub_part, part, quantity FROM parts WHERE part = (select part from parts where part = 'pie' and sub_part = 'crust')
 			  UNION ALL
@@ -1648,6 +1755,26 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT 1 IN (2,3,4)",
 		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN (NULL)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IS NULL",
+		Expected: []sql.Row{{int64(5), int64(5), nil}},
+	},
+	{
+		Query:    "SELECT * FROM stringandtable WHERE v IN ('')",
+		Expected: []sql.Row{{int64(2), int64(2), ""}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE 1 IN (SELECT '1' FROM DUAL)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE '1' IN (SELECT '1' FROM DUAL)",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT NULL IN (2,3,4)",
@@ -2162,6 +2289,26 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT i FROM niltable WHERE i2 IS NOT NULL ORDER BY 1",
 		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
+	},
+	{
+		Query:    "SELECT * FROM niltable WHERE i2 = NULL",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i2 FROM niltable WHERE i2 <=> NULL",
+		Expected: []sql.Row{{nil}, {nil}, {nil}},
+	},
+	{
+		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 = r.i2 ORDER BY 1",
+		Expected: []sql.Row{{2, 2}, {4, 4}, {6, 6}},
+	},
+	{
+		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 != r.i2 ORDER BY 1, 2",
+		Expected: []sql.Row{{2, 4}, {2, 6}, {4, 2}, {4, 6}, {6, 2}, {6, 4}},
+	},
+	{
+		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 <=> r.i2 ORDER BY 1 ASC",
+		Expected: []sql.Row{{1, nil}, {1, nil}, {1, nil}, {2, 2}, {3, nil}, {3, nil}, {3, nil}, {4, 4}, {5, nil}, {5, nil}, {5, nil}, {6, 6}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
@@ -3033,6 +3180,23 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `select pk,
+                       percent_rank() over(partition by v2 order by pk),
+                       dense_rank() over(partition by v2 order by pk),
+                       rank() over(partition by v2 order by pk)
+				from one_pk_three_idx order by pk`,
+		Expected: []sql.Row{
+			{0, float64(0), uint64(1), uint64(1)},
+			{1, float64(1) / float64(3), uint64(2), uint64(2)},
+			{2, float64(0), uint64(1), uint64(1)},
+			{3, float64(0), uint64(1), uint64(1)},
+			{4, float64(2) / float64(3), uint64(3), uint64(3)},
+			{5, float64(1), uint64(4), uint64(4)},
+			{6, float64(0), uint64(1), uint64(1)},
+			{7, float64(0), uint64(1), uint64(1)},
+		},
+	},
+	{
 		SkipPrepared: true,
 		Query: `select pk,
 					   first_value(pk) over (order by pk desc),
@@ -3348,22 +3512,6 @@ var QueryTests = []QueryTest{
 			{int64(3), "third row", int64(1), "first row", "first", int64(3)},
 			{int64(3), "third row", int64(2), "second row", "first", int64(3)},
 			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
-		},
-	},
-	{
-		Query: `SELECT split(s," ") FROM mytable`,
-		Expected: []sql.Row{
-			sql.NewRow([]interface{}{"first", "row"}),
-			sql.NewRow([]interface{}{"second", "row"}),
-			sql.NewRow([]interface{}{"third", "row"}),
-		},
-	},
-	{
-		Query: `SELECT split(s,"s") FROM mytable`,
-		Expected: []sql.Row{
-			sql.NewRow([]interface{}{"fir", "t row"}),
-			sql.NewRow([]interface{}{"", "econd row"}),
-			sql.NewRow([]interface{}{"third row"}),
 		},
 	},
 	{
@@ -3716,12 +3864,20 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SET collation_connection = '" +
+			sql.Collation_Default.String() +
+			"';",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+	{
 		Query:    `SHOW DATABASES`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query:    `SHOW SCHEMAS`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query: `SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
@@ -3739,11 +3895,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT s FROM mytable WHERE s LIKE '%D ROW'`,
-		Expected: []sql.Row{
-			{"second row"},
-			{"third row"},
-		},
+		Query:    `SELECT s FROM mytable WHERE s LIKE '%D ROW'`,
+		Expected: []sql.Row{}, // default collation of `utf8mb4_0900_bin` is case-sensitive
 	},
 	{
 		Query: `SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
@@ -3828,6 +3981,18 @@ var QueryTests = []QueryTest{
 			{"gtid_next", "AUTOMATIC"},
 			{"gtid_owned", ""},
 			{"gtid_purged", ""},
+		},
+	},
+	{
+		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
+		Expected: []sql.Row{
+			{"autocommit", 1}, {"version", ""},
+		},
+	},
+	{
+		Query: `SHOW VARIABLES WHERE Variable_name > 'version' and variable_name like '%_%'`,
+		Expected: []sql.Row{
+			{"version_comment", ""}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
 		},
 	},
 	{
@@ -3918,6 +4083,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+			"utf8mb4",
+			"utf8mb4_0900_bin",
 		}},
 	},
 	{
@@ -3925,7 +4092,16 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
+			"utf8mb4",
+			"utf8mb4_0900_bin",
 		}},
+	},
+	{
+		Query: `describe myview`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "", "NULL", ""},
+			{"s", "varchar(20)", "NO", "", "NULL", ""},
+		},
 	},
 	{
 		Query:    `SELECT -1`,
@@ -3950,7 +4126,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT nullif(NULL, NULL)`,
 		Expected: []sql.Row{
-			{sql.Null},
+			{nil},
 		},
 	},
 	{
@@ -3962,7 +4138,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT nullif(123, 123)`,
 		Expected: []sql.Row{
-			{sql.Null},
+			{nil},
 		},
 	},
 	{
@@ -4121,29 +4297,29 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_binary.String(),
 				"binary",
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].PadSpace,
+				int64(sql.Collation_binary),
+				sql.Collation_binary.IsDefault(),
+				sql.Collation_binary.IsCompiled(),
+				sql.Collation_binary.SortLength(),
+				sql.Collation_binary.PadAttribute(),
 			},
 			{
 				sql.Collation_utf8_general_ci.String(),
 				"utf8mb3",
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].PadSpace,
+				int64(sql.Collation_utf8_general_ci),
+				sql.Collation_utf8_general_ci.IsDefault(),
+				sql.Collation_utf8_general_ci.IsCompiled(),
+				sql.Collation_utf8_general_ci.SortLength(),
+				sql.Collation_utf8_general_ci.PadAttribute(),
 			},
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].PadSpace,
+				int64(sql.Collation_utf8mb4_0900_ai_ci),
+				sql.Collation_utf8mb4_0900_ai_ci.IsDefault(),
+				sql.Collation_utf8mb4_0900_ai_ci.IsCompiled(),
+				sql.Collation_utf8mb4_0900_ai_ci.SortLength(),
+				sql.Collation_utf8mb4_0900_ai_ci.PadAttribute(),
 			},
 		},
 	},
@@ -4157,11 +4333,11 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_binary.String(),
 				"binary",
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_binary.Name].PadSpace,
+				int64(sql.Collation_binary),
+				sql.Collation_binary.IsDefault(),
+				sql.Collation_binary.IsCompiled(),
+				sql.Collation_binary.SortLength(),
+				sql.Collation_binary.PadAttribute(),
 			},
 		},
 	},
@@ -4175,54 +4351,13 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].PadSpace,
+				int64(sql.Collation_utf8mb4_0900_ai_ci),
+				sql.Collation_utf8mb4_0900_ai_ci.IsDefault(),
+				sql.Collation_utf8mb4_0900_ai_ci.IsCompiled(),
+				sql.Collation_utf8mb4_0900_ai_ci.SortLength(),
+				sql.Collation_utf8mb4_0900_ai_ci.PadAttribute(),
 			},
 		},
-	},
-	{
-		Query: "SHOW CHARSET",
-		Expected: []sql.Row{
-			{
-				sql.CharacterSet_utf8mb4.String(),
-				sql.CharacterSet_utf8mb4.Description(),
-				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				uint64(sql.CharacterSet_utf8mb4.MaxLength()),
-			},
-		},
-	},
-	{
-		Query: "SHOW CHARACTER SET",
-		Expected: []sql.Row{
-			{
-				sql.CharacterSet_utf8mb4.String(),
-				sql.CharacterSet_utf8mb4.Description(),
-				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				uint64(sql.CharacterSet_utf8mb4.MaxLength()),
-			},
-		},
-	},
-	{
-		Query: "SHOW CHARSET LIKE 'utf8%'",
-		Expected: []sql.Row{
-			{
-				sql.CharacterSet_utf8mb4.String(),
-				sql.CharacterSet_utf8mb4.Description(),
-				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				uint64(sql.CharacterSet_utf8mb4.MaxLength()),
-			},
-		},
-	},
-	{
-		Query:    "show charset where charset='binary'",
-		Expected: nil,
-	},
-	{
-		Query:    `SHOW CHARSET WHERE Charset = 'foo'`,
-		Expected: nil,
 	},
 	{
 		Query:    "ROLLBACK",
@@ -4286,7 +4421,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT FROM_BASE64('YmFy')",
-		Expected: []sql.Row{{string("bar")}},
+		Expected: []sql.Row{{[]byte("bar")}},
 	},
 	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
@@ -4439,14 +4574,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{sql.MustJSON(`1`)}},
 	},
 	// TODO(andy)
-	{
-		Query:    `SELECT ARRAY_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
-		Expected: []sql.Row{{int32(3)}},
-	},
-	{
-		Query:    `SELECT ARRAY_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
-		Expected: []sql.Row{{int32(3)}},
-	},
+	//{
+	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
+	//	Expected: []sql.Row{{int32(3)}},
+	//},
+	//{
+	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
+	//	Expected: []sql.Row{{int32(3)}},
+	//},
 	{
 		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
 		Expected: []sql.Row{{int64(4)}},
@@ -4664,9 +4799,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
-				FROM othertable ot INNER JOIN 
-					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub 
+		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
+				FROM othertable ot INNER JOIN
+					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
 			{1, 1, "third", 1, "third"},
@@ -4675,9 +4810,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 
+		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
 				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
-				INNER JOIN othertable ot 
+				INNER JOIN othertable ot
 				ON sub.i = ot.i2 order by 1`,
 		Expected: []sql.Row{
 			{1, 1, "third", 1, "third"},
@@ -4738,14 +4873,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    `SELECT ARRAY_LENGTH(null)`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT ARRAY_LENGTH("foo")`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
 		Query:    `SELECT * FROM mytable WHERE NULL AND i = 3`,
 		Expected: nil,
 	},
@@ -4791,6 +4918,26 @@ var QueryTests = []QueryTest{
 	{
 		Query:    `SELECT COUNT(DISTINCT t.i) FROM tabletest t, mytable t2`,
 		Expected: []sql.Row{{int64(3)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT t.i, t.s) FROM tabletest t, mytable t2`,
+		Expected: []sql.Row{{int64(3)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT gender) FROM people`,
+		Expected: []sql.Row{{int64(3)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT height_inches, gender) FROM people`,
+		Expected: []sql.Row{{int64(5)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT height_inches, gender) FROM people where gender = 0`,
+		Expected: []sql.Row{{int64(2)}},
+	},
+	{
+		Query:    `SELECT COUNT(DISTINCT height_inches - 100 < 0, gender < 0) FROM people`,
+		Expected: []sql.Row{{int64(1)}},
 	},
 	{
 		Query:    `SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
@@ -4879,7 +5026,14 @@ var QueryTests = []QueryTest{
 			{"XXXXX XXX"},
 		},
 	},
-
+	{
+		Query:    `SELECT 20 REGEXP '^[-]?2[0-9]+$'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT 30 REGEXP '^[-]?2[0-9]+$'`,
+		Expected: []sql.Row{{false}},
+	},
 	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",
 		Expected: []sql.Row{
@@ -5609,8 +5763,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2 
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
 						ORDER BY 1`,
 		Expected: []sql.Row{
@@ -5621,8 +5775,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
 						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
 						ORDER BY 1`,
 		Expected: []sql.Row{
@@ -5630,8 +5784,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
 						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
 						ORDER BY 1`,
 		Expected: []sql.Row{
@@ -5944,39 +6098,39 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT 1/0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0/0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 1.0/0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0.0/0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 1 div 0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 1.0 div 0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0 div 0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT 0.0 div 0.0 FROM dual",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT NULL <=> NULL FROM dual",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.Row{{true}},
 	},
 	{
 		Query:    "SELECT POW(2,3) FROM dual",
@@ -6275,13 +6429,13 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT BINARY 'hi'",
 		Expected: []sql.Row{
-			{"hi"},
+			{[]byte("hi")},
 		},
 	},
 	{
 		Query: "SELECT BINARY 1",
 		Expected: []sql.Row{
-			{"1"},
+			{[]byte("1")},
 		},
 	},
 	{
@@ -6418,6 +6572,14 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT * FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE EXISTS (SELECT * FROM one_pk WHERE pk < 4)`,
 		Expected: []sql.Row{{4}},
 	},
 	{
@@ -6719,6 +6881,94 @@ var QueryTests = []QueryTest{
 			{false},
 		},
 	},
+	{
+		Query:    `select * from mytable where 1 = 0 order by i asc`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `select * from mytable where i not in (1)`,
+		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
+	},
+	{
+		Query:    "(SELECT '1', 'first row' FROM dual) UNION (SELECT '6', 'sixth row' FROM dual) LIMIT 1",
+		Expected: []sql.Row{{"1", "first row"}},
+	},
+	{
+		Query:    "select GET_LOCK('10', 10)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select IS_FREE_LOCK('10')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "Select IS_USED_LOCK('10')",
+		Expected: []sql.Row{{uint64(1)}},
+	},
+	{
+		Query:    "Select RELEASE_LOCK('10')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select RELEASE_ALL_LOCKS()",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "SELECT CONV('a',16,2)",
+		Expected: []sql.Row{{"1010"}},
+	},
+	{
+		Query:    "SELECT CONV('6E',18,8)",
+		Expected: []sql.Row{{"172"}},
+	},
+	{
+		Query:    "SELECT CONV(-18,10,-18)",
+		Expected: []sql.Row{{"-10"}},
+	},
+	{
+		Query:    "SELECT CONV(10+'10'+'10'+X'0a', 10, 10)",
+		Expected: []sql.Row{{"40"}},
+	},
+	{
+		Query:    "SELECT CONV(HEX(SUBSTRING('127.0', 1, 3)), 16, 10)",
+		Expected: []sql.Row{{"3224119"}},
+	},
+	{
+		Query:    "SELECT CONV(i, 10, 2) FROM mytable",
+		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
+	},
+	{
+		Query:    `SELECT t1.pk from one_pk join (one_pk t1 join one_pk t2 on t1.pk = t2.pk) on t1.pk = one_pk.pk and one_pk.pk = 1 join (one_pk t3 join one_pk t4 on t3.c1 is not null) on t3.pk = one_pk.pk and one_pk.c1 = 10`,
+		Expected: []sql.Row{{1}, {1}, {1}, {1}},
+	},
+	{
+		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "with recursive a as (select 1 union select 2) select * from a union select * from a limit 1;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a having x > 1 union select * from a having x > 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a where x > 1 union select * from a where x > 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a group by x;",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
+		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a order by x desc;",
+		Expected: []sql.Row{{2}, {1}},
+	},
+	{
+		Query:    "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
+		Expected: []sql.Row{{1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -6759,22 +7009,22 @@ var KeylessQueries = []QueryTest{
 	{
 		Query: "DESCRIBE keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "", ""},
-			{"c1", "bigint", "YES", "", "", ""},
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
 		},
 	},
 	{
 		Query: "SHOW COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "", ""},
-			{"c1", "bigint", "YES", "", "", ""},
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
 		},
 	},
 	{
 		Query: "SHOW FULL COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", nil, "YES", "", "", "", "", ""},
-			{"c1", "bigint", nil, "YES", "", "", "", "", ""},
+			{"c0", "bigint", nil, "YES", "", "NULL", "", "", ""},
+			{"c1", "bigint", nil, "YES", "", "NULL", "", "", ""},
 		},
 	},
 	{
@@ -7079,6 +7329,28 @@ var BrokenQueries = []QueryTest{
 		Query:    "select i, date_col from datetime_table",
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
+	// Currently, not matching MySQL's information schema for this table
+	{
+		Query: `
+		SELECT
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
+		`,
+		Expected: nil,
+	},
+	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
+	{
+		Query:    "SELECT X'0a'",
+		Expected: []sql.Row{{"0x0A"}},
+	},
+	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
+	{
+		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
+		Expected: []sql.Row{{"2013-08-13"}},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -7182,16 +7454,16 @@ var VersionedScripts = []ScriptTest{
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "", ""},
-					{"s", "text", "NO", "", "", ""},
+					{"i", "bigint", "NO", "PRI", "NULL", ""},
+					{"s", "text", "NO", "", "NULL", ""},
 				},
 			},
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "", ""},
-					{"s", "text", "NO", "", "", ""},
-					{"c", "text", "NO", "", "", ""},
+					{"i", "bigint", "NO", "PRI", "NULL", ""},
+					{"s", "text", "NO", "", "NULL", ""},
+					{"c", "text", "NO", "", "NULL", ""},
 				},
 			},
 		},
@@ -7201,261 +7473,298 @@ var VersionedScripts = []ScriptTest{
 var DateParseQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('Jan 3, 2000', '%b %e, %Y')",
-		Expected: []sql.Row{{time.Date(2000, time.January, 3, 0, 0, 0, 0, time.Local)}},
+		Expected: []sql.Row{{"2000-01-03"}},
 	},
 	{
-		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')",
-		Expected: []sql.Row{{time.Date(2000, time.May, 3, 22, 23, 0, 0, time.Local)}},
+		Query:    "SELECT STR_TO_DATE('01,5,2013', '%d,%m,%Y')",
+		Expected: []sql.Row{{"2013-05-01"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y')",
+		Expected: []sql.Row{{"2013-05-01"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s')",
+		Expected: []sql.Row{{"09:30:17"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('a09:30:17','%h:%i:%s')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('09:30:17a','%h:%i:%s')",
+		Expected: []sql.Row{{"09:30:17"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('09:30:17 pm','%h:%i:%s %p')",
+		Expected: []sql.Row{{"21:30:17"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('9','%m')",
+		Expected: []sql.Row{{"0000-09-00"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('9','%s')",
+		Expected: []sql.Row{{"00:00:09"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 314', '%m/%e/%y %f')",
-		Expected: []sql.Row{{time.Date(1999, time.January, 2, 0, 0, 0, 314000, time.Local)}},
+		Expected: []sql.Row{{"1999-01-02 00:00:00.314000"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01/02/99 0', '%m/%e/%y %f')",
+		Expected: []sql.Row{{"1999-01-02 00:00:00.000000"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 05:14:12 PM', '%m/%e/%y %r')",
-		Expected: []sql.Row{{time.Date(1999, time.January, 2, 17, 14, 12, 0, time.Local)}},
+		Expected: []sql.Row{{"1999-01-02 17:14:12"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 2000', '%b %e, %H:%i:%s %Y')",
+		Expected: []sql.Row{{"2000-05-03 10:23:00"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %h:%i:%s %p %Y')",
+		Expected: []sql.Row{{"2000-05-03 22:23:00"}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')", // cannot use 24 hour time (%H) with AM/PM (%p)
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('abc','abc')",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
-		Expected: []sql.Row{{sql.Null}},
+		Expected: []sql.Row{{nil}},
 	},
 }
 
 var InfoSchemaQueries = []QueryTest{
-	//{
-	//	Query: "SHOW TABLES",
-	//	Expected: []sql.Row{
-	//		{"myview"},
-	//		{"fk_tbl"},
-	//		{"mytable"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW FULL TABLES",
-	//	Expected: []sql.Row{
-	//		{"fk_tbl", "BASE TABLE"},
-	//		{"myview", "VIEW"},
-	//		{"mytable", "BASE TABLE"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW TABLES FROM foo",
-	//	Expected: []sql.Row{
-	//		{"other_table"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW TABLES LIKE '%table'",
-	//	Expected: []sql.Row{
-	//		{"mytable"},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW COLUMNS FROM mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//		{"s", "varchar(20)", "NO", "UNI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `DESCRIBE mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//		{"s", "varchar(20)", "NO", "UNI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `DESC mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//		{"s", "varchar(20)", "NO", "UNI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", "NO", "PRI", "", ""},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW FULL COLUMNS FROM mytable`,
-	//	Expected: []sql.Row{
-	//		{"i", "bigint", nil, "NO", "PRI", "", "", "", ""},
-	//		{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "", "", "", "column s"},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
-	//	Expected: []sql.Row{
-	//		{"mytable"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT
-	//		LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
-	//	FROM INFORMATION_SCHEMA.FILES
-	//	WHERE FILE_TYPE = 'UNDO LOG'
-	//		AND FILE_NAME IS NOT NULL
-	//		AND LOGFILE_GROUP_NAME IS NOT NULL
-	//	GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
-	//	ORDER BY LOGFILE_GROUP_NAME
-	//	`,
-	//	Expected: nil,
-	//},
-	//{
-	//	Query: `
-	//	SELECT DISTINCT
-	//		TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
-	//	FROM INFORMATION_SCHEMA.FILES
-	//	WHERE FILE_TYPE = 'DATAFILE'
-	//	ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
-	//	`,
-	//	Expected: nil,
-	//},
-	//{
-	//	Query: `
-	//	SELECT
-	//		COLUMN_NAME,
-	//		JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-	//	FROM information_schema.COLUMN_STATISTICS
-	//	WHERE SCHEMA_NAME = 'mydb'
-	//	AND TABLE_NAME = 'mytable'
-	//	`,
-	//	Expected: nil,
-	//},
-	//{
-	//	Query: `
-	//	SELECT TABLE_NAME FROM information_schema.TABLES
-	//	WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
-	//	ORDER BY 1
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"fk_tbl"},
-	//		{"mytable"},
-	//		{"myview"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s", "varchar(20)"},
-	//		{"i", "bigint"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY COLUMN_NAME
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s"},
-	//		{"i"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY 1
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s"},
-	//		{"i"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY 1
-	//	`,
-	//	Expected: []sql.Row{
-	//		{"s"},
-	//		{"i"},
-	//	},
-	//},
-	//{
-	//	Query: `
-	//	SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
-	//	WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
-	//	GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
-	//	`,
-	//	Expected: []sql.Row{{"s"}},
-	//},
-	//{
-	//	Query: `SHOW INDEXES FROM mytaBLE`,
-	//	Expected: []sql.Row{
-	//		{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW KEYS FROM mytaBLE`,
-	//	Expected: []sql.Row{
-	//		{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//		{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW CREATE TABLE mytaBLE`,
-	//	Expected: []sql.Row{
-	//		{"mytable", "CREATE TABLE `mytable` (\n" +
-	//			"  `i` bigint NOT NULL,\n" +
-	//			"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
-	//			"  PRIMARY KEY (`i`),\n" +
-	//			"  KEY `idx_si` (`s`,`i`),\n" +
-	//			"  KEY `mytable_i_s` (`i`,`s`),\n" +
-	//			"  UNIQUE KEY `mytable_s` (`s`)\n" +
-	//			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-	//	},
-	//},
-	//{
-	//	Query: `SHOW CREATE TABLE fk_TBL`,
-	//	Expected: []sql.Row{
-	//		{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
-	//			"  `pk` bigint NOT NULL,\n" +
-	//			"  `a` bigint,\n" +
-	//			"  `b` varchar(20),\n" +
-	//			"  PRIMARY KEY (`pk`),\n" +
-	//			"  KEY `ab` (`a`,`b`),\n" +
-	//			"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
-	//			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-	//	},
-	//},
-	//{
-	//
-	//	Query: "SELECT table_name, `auto_increment` FROM information_schema.tables " +
-	//		"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
-	//	Expected: []sql.Row{
-	//		{"fk_tbl", nil},
-	//		{"mytable", nil},
-	//	},
-	//},
-	//{
-	//	Query: "SHOW ENGINES",
-	//	Expected: []sql.Row{
-	//		{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
-	//	},
-	//},
+	{
+		Query: "SHOW TABLES",
+		Expected: []sql.Row{
+			{"myview"},
+			{"fk_tbl"},
+			{"mytable"},
+		},
+	},
+	{
+		Query: "SHOW FULL TABLES",
+		Expected: []sql.Row{
+			{"fk_tbl", "BASE TABLE"},
+			{"myview", "VIEW"},
+			{"mytable", "BASE TABLE"},
+		},
+	},
+	{
+		Query: "SHOW TABLES FROM foo",
+		Expected: []sql.Row{
+			{"other_table"},
+		},
+	},
+	{
+		Query: "SHOW TABLES LIKE '%table'",
+		Expected: []sql.Row{
+			{"mytable"},
+		},
+	},
+	{
+		Query: `SHOW COLUMNS FROM mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+		},
+	},
+	{
+		Query: `DESCRIBE mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+		},
+	},
+	{
+		Query: `DESC mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+		},
+	},
+	{
+		Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+		},
+	},
+	{
+		Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
+		Expected: []sql.Row{
+			{"i", "bigint", "NO", "PRI", "NULL", ""},
+		},
+	},
+	{
+		Query: `SHOW FULL COLUMNS FROM mytable`,
+		Expected: []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+		},
+	},
+	{
+		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
+		Expected: []sql.Row{
+			{"mytable"},
+		},
+	},
+	{
+		Query: `
+		SELECT
+			LOGFILE_GROUP_NAME, FILE_NAME, TOTAL_EXTENTS, INITIAL_SIZE, ENGINE, EXTRA
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'UNDO LOG'
+			AND FILE_NAME IS NOT NULL
+			AND LOGFILE_GROUP_NAME IS NOT NULL
+		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
+		ORDER BY LOGFILE_GROUP_NAME
+		`,
+		Expected: nil,
+	},
+	{
+		Query: `
+		SELECT DISTINCT
+			TABLESPACE_NAME, FILE_NAME, LOGFILE_GROUP_NAME, EXTENT_SIZE, INITIAL_SIZE, ENGINE
+		FROM INFORMATION_SCHEMA.FILES
+		WHERE FILE_TYPE = 'DATAFILE'
+		ORDER BY TABLESPACE_NAME, LOGFILE_GROUP_NAME
+		`,
+		Expected: nil,
+	},
+	{
+		Query: `
+		SELECT TABLE_NAME FROM information_schema.TABLES
+		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
+		ORDER BY 1
+		`,
+		Expected: []sql.Row{
+			{"fk_tbl"},
+			{"mytable"},
+			{"myview"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
+		`,
+		Expected: []sql.Row{
+			{"s", "varchar"},
+			{"i", "bigint"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY COLUMN_NAME
+		`,
+		Expected: []sql.Row{
+			{"s"},
+			{"i"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
+		`,
+		Expected: []sql.Row{
+			{"s"},
+			{"i"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1
+		`,
+		Expected: []sql.Row{
+			{"s"},
+			{"i"},
+		},
+	},
+	{
+		Query: `
+		SELECT COLUMN_NAME AS COLUMN_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
+		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
+		`,
+		Expected: []sql.Row{{"s"}},
+	},
+	{
+		Query: `SHOW INDEXES FROM mytaBLE`,
+		Expected: []sql.Row{
+			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW KEYS FROM mytaBLE`,
+		Expected: []sql.Row{
+			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW CREATE TABLE mytaBLE`,
+		Expected: []sql.Row{
+			{"mytable", "CREATE TABLE `mytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  KEY `idx_si` (`s`,`i`),\n" +
+				"  KEY `mytable_i_s` (`i`,`s`),\n" +
+				"  UNIQUE KEY `mytable_s` (`s`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+		},
+	},
+	{
+		Query: `SHOW CREATE TABLE fk_TBL`,
+		Expected: []sql.Row{
+			{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
+				"  `pk` bigint NOT NULL,\n" +
+				"  `a` bigint,\n" +
+				"  `b` varchar(20),\n" +
+				"  PRIMARY KEY (`pk`),\n" +
+				"  KEY `ab` (`a`,`b`),\n" +
+				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+		},
+	},
+	{
+
+		Query: "SELECT table_name, `auto_increment` FROM information_schema.tables " +
+			"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
+		Expected: []sql.Row{
+			{"fk_tbl", nil},
+			{"mytable", nil},
+		},
+	},
+	{
+		Query: "SHOW ENGINES",
+		Expected: []sql.Row{
+			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
+		},
+	},
 	{
 		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
 		Expected: []sql.Row{
@@ -7749,6 +8058,13 @@ var InfoSchemaQueries = []QueryTest{
 	},
 }
 
+var SkippedInfoSchemaQueries = []QueryTest{
+	{
+		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
+		Expected: []sql.Row{{3}},
+	},
+}
+
 var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.table_constraints ignores non-unique indexes",
@@ -7868,11 +8184,7 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value with more types",
 		SetUpScript: []string{
-			"CREATE TABLE test_table (pk int primary key, fname varchar(20), lname varchar(20), height int)",
-			"ALTER TABLE test_table CHANGE fname col2 float NOT NULL DEFAULT 4.5",
-			"ALTER TABLE test_table CHANGE lname col3 double NOT NULL DEFAULT 3.14159",
-			"ALTER TABLE test_table CHANGE height col4 datetime NULL DEFAULT '2008-04-22 16:16:16'",
-			"ALTER TABLE test_table ADD COLUMN col5 boolean NULL DEFAULT FALSE",
+			"CREATE TABLE test_table (pk int primary key, col2 float NOT NULL DEFAULT 4.5, col3 double NOT NULL DEFAULT 3.14159, col4 datetime NULL DEFAULT '2008-04-22 16:16:16', col5 boolean NULL DEFAULT FALSE)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7882,7 +8194,7 @@ var InfoSchemaScripts = []ScriptTest{
 					{"test_table", "col2", "4.5", "NO"},
 					{"test_table", "col3", "3.14159", "NO"},
 					{"test_table", "col4", "2008-04-22 16:16:16", "YES"},
-					{"test_table", "col5", "false", "YES"},
+					{"test_table", "col5", "0", "YES"},
 				},
 			},
 		},
@@ -7890,19 +8202,44 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.columns shows default value with more types",
 		SetUpScript: []string{
-			"CREATE TABLE test_table (pk int primary key)",
-			"ALTER TABLE test_table ADD COLUMN col2 float DEFAULT length('hello')",
-			"ALTER TABLE test_table ADD COLUMN col3 int DEFAULT greatest(`pk`, 2)",
-			"ALTER TABLE test_table ADD COLUMN col4 int DEFAULT (5 + 5)",
+			"CREATE TABLE test_table (pk int primary key, col2 float DEFAULT (length('he`Llo')), col3 int DEFAULT (greatest(`pk`, 2)), col4 int DEFAULT (5 + 5), col5 datetime default NOW(), create_time timestamp(6) NOT NULL DEFAULT NOW(6));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
 				Expected: []sql.Row{
 					{"test_table", "pk", nil, "NO"},
-					{"test_table", "col2", "LENGTH(\"hello\")", "YES"},
+					{"test_table", "col2", "LENGTH('he`Llo')", "YES"},
 					{"test_table", "col3", "GREATEST(pk, 2)", "YES"},
 					{"test_table", "col4", "(5 + 5)", "YES"},
+					{"test_table", "col5", "NOW()", "YES"},
+					{"test_table", "create_time", "NOW(6)", "NO"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns correctly shows numeric precision and scale for a wide variety of types",
+		SetUpScript: []string{
+			"CREATE TABLE `digits` (`c0` tinyint,`c1` tinyint unsigned,`c2` smallint,`c3` smallint unsigned,`c4` mediumint,`c5` mediumint unsigned,`c6` int,`c7` int unsigned,`c8` bigint,`c9` bigint unsigned,`c10` float,`c11` dec(5,2),`st` varchar(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select column_name, numeric_precision, numeric_scale from information_schema.columns where table_name='digits' order by ordinal_position;",
+				Expected: []sql.Row{
+					{"c0", 3, 0},
+					{"c1", 3, 0},
+					{"c2", 5, 0},
+					{"c3", 5, 0},
+					{"c4", 7, 0},
+					{"c5", 7, 0},
+					{"c6", 10, 0},
+					{"c7", 10, 0},
+					{"c8", 19, 0},
+					{"c9", 20, 0},
+					{"c10", 12, nil},
+					{"c11", 5, 2},
+					{"st", nil, nil},
 				},
 			},
 		},
@@ -7942,7 +8279,7 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "information_schema.columns",
+		Name: "information_schema.columns for view",
 		SetUpScript: []string{
 			"USE foo",
 			"drop table other_table",
@@ -7953,8 +8290,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
 				Expected: []sql.Row{
-					{"def", "foo", "t", "i", uint64(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", "", "NULL"},
-					{"def", "foo", "v", "", uint64(0), nil, nil, nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", "NULL"},
+					{"def", "foo", "t", "i", uint32(1), nil, "YES", "int", nil, nil, int64(10), int64(0), nil, nil, nil, "int", "", "", "select", "", "", nil},
+					{"def", "foo", "v", "", uint32(0), nil, "", nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", nil},
 				},
 			},
 		},
@@ -8029,51 +8366,21 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 		},
 	},
-}
-
-var ExplodeQueries = []QueryTest{
 	{
-		Query: `SELECT a, EXPLODE(b), c FROM explode`,
-		Expected: []sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
+		Name: "information_schema.columns with srs_id defined in spatial columns",
+		SetUpScript: []string{
+			"CREATE TABLE stable (geo GEOMETRY NOT NULL DEFAULT (POINT(2, 5)), line LINESTRING NOT NULL, pnt POINT SRID 4326, pol POLYGON NOT NULL SRID 0);",
 		},
-	},
-	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode`,
-		Expected: []sql.Row{
-			{int64(1), "a", "first"},
-			{int64(1), "b", "first"},
-			{int64(2), "c", "second"},
-			{int64(2), "d", "second"},
-			{int64(3), "e", "third"},
-			{int64(3), "f", "third"},
-		},
-	},
-	{
-		Query: `SELECT EXPLODE(SPLIT(c, "")) FROM explode LIMIT 5`,
-		Expected: []sql.Row{
-			{"f"},
-			{"i"},
-			{"r"},
-			{"s"},
-			{"t"},
-		},
-	},
-	{
-		Query: `SELECT a, EXPLODE(b) AS x, c FROM explode WHERE x = 'e'`,
-		Expected: []sql.Row{
-			{int64(3), "e", "third"},
-		},
-	},
-	{
-		Query: `SELECT HEX(UNHEX(375));`,
-		Expected: []sql.Row{
-			{"0375"},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'stable'",
+				Expected: []sql.Row{
+					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", nil},
+					{"stable", "line", nil, "NO", "linestring", "linestring", "", nil},
+					{"stable", "pnt", nil, "YES", "point", "point", "", uint32(4326)},
+					{"stable", "pol", nil, "NO", "polygon", "polygon", "", uint32(0)},
+				},
+			},
 		},
 	},
 }
@@ -8161,6 +8468,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "SELECT * FROM mytable AS t, othertable as t", // duplicate alias
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		// case-insensitive duplicate
+		Query:       "select * from mytable a join mytable A on a.i = A.i;",
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
@@ -8320,11 +8632,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'abc' is not a valid value for 'DOUBLE'`,
+		ExpectedErrStr: `error: 'abc' is not a valid value for 'double'`,
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'DOUBLE'`,
+		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'double'`,
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,
@@ -8477,26 +8789,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query: `SELECT t1.*
 					  FROM
-						mytable as t1,
-						mytable as t2,
-						mytable as t3,
-						mytable as t4,
-						mytable as t5,
-						mytable as t6,
-						mytable as t7,
-						mytable as t8,
-						mytable as t9,
-						mytable as t10,
-						mytable as t11,
-						mytable as t12,
-						mytable as t13,
-						mytable as t14,
-						mytable as t15`,
-		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
-	},
-	{
-		Query: `SELECT t1.*
-					  FROM
 						mytable as t1
 						LEFT JOIN mytable as t2 ON t1.i = t2.i
 						LEFT JOIN mytable as t3 ON t2.i = t3.i
@@ -8518,6 +8810,85 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
 		ExpectedErr: sql.ErrFunctionNotFound,
+	},
+	{
+		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
+		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
+	},
+	{
+		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
+		ExpectedErrStr: "Invalid default value for 'c'",
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
+		ExpectedErr: sql.ErrColumnDefaultSubquery,
+	},
+	{
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, b int DEFAULT '2', c int DEFAULT `b`)",
+		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 POINT DEFAULT POINT(1,2));",
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 JSON DEFAULT JSON_ARRAY(1,2));",
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, j JSON DEFAULT '{}');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, g GEOMETRY DEFAULT '');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, t TEXT DEFAULT '');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, b BLOB DEFAULT '');",
+		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
+	},
+	{
+		Query:       "with a as (select * from a) select * from a",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
+		ExpectedErrStr: "table not found: a", // TODO: should be c
+	},
+	{
+		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrColumnNotFound, // TODO: this should actually be ErrTableNotFound
+	},
+	{
+		Query:       "WITH recursive Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
+		ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+	},
+	{
+		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
+		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+}
+
+var BrokenErrorQueries = []QueryErrorTest{
+	{
+		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
+		ExpectedErrStr: "table not found: c",
+	},
+	{
+		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
+		ExpectedErr: sql.ErrTableNotFound,
 	},
 }
 
@@ -8666,6 +9037,8 @@ var VersionedViewTests = []QueryTest{
 			sql.NewRow(int64(3), "third row, 1"),
 		},
 	},
+
+	// Nested views
 	{
 		Query: "SELECT * FROM myview2",
 		Expected: []sql.Row{
@@ -8708,6 +9081,82 @@ var VersionedViewTests = []QueryTest{
 			sql.NewRow(int64(1), "first row, 1"),
 		},
 	},
+
+	// Views with unions
+	{
+		Query: "SELECT * FROM myview3 AS OF '2019-01-01'",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row, 1"},
+			{"second row, 1"},
+			{"third row, 1"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview3 AS OF '2019-01-02'",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row, 2"},
+			{"second row, 2"},
+			{"third row, 2"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview3 AS OF '2019-01-03'",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row, 3"},
+			{"second row, 3"},
+			{"third row, 3"},
+		},
+	},
+
+	// Views with subqueries
+	{
+		Query: "SELECT * FROM myview4 AS OF '2019-01-01'",
+		Expected: []sql.Row{
+			{1, "first row, 1"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview4 AS OF '2019-01-02'",
+		Expected: []sql.Row{
+			{2, "second row, 2"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview4 AS OF '2019-01-03'",
+		Expected: []sql.Row{
+			{3, "third row, 3", "3"},
+		},
+	},
+
+	// Views with subquery aliases
+	{
+		Query: "SELECT * FROM myview5 AS OF '2019-01-01'",
+		Expected: []sql.Row{
+			{1, "first row, 1"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview5 AS OF '2019-01-02'",
+		Expected: []sql.Row{
+			{2, "second row, 2"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview5 AS OF '2019-01-03'",
+		Expected: []sql.Row{
+			{3, "third row, 3", "3"},
+		},
+	},
+
 	// info schema support
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb'",
@@ -8715,6 +9164,9 @@ var VersionedViewTests = []QueryTest{
 			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{
@@ -8723,6 +9175,9 @@ var VersionedViewTests = []QueryTest{
 			sql.NewRow("myview"),
 			sql.NewRow("myview1"),
 			sql.NewRow("myview2"),
+			sql.NewRow("myview3"),
+			sql.NewRow("myview4"),
+			sql.NewRow("myview5"),
 		},
 	},
 }
@@ -8732,20 +9187,20 @@ var ShowTableStatusQueries = []QueryTest{
 		Query: `SHOW TABLE STATUS FROM mydb`,
 		Expected: []sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS LIKE '%table'`,
 		Expected: []sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
 		Expected: []sql.Row{
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
@@ -8758,13 +9213,94 @@ var ShowTableStatusQueries = []QueryTest{
 		Query: `SHOW TABLE STATUS`,
 		Expected: []sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
 		Expected: []sql.Row{
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+		},
+	},
+}
+
+var StatisticsQueries = []ScriptTest{
+	{
+		Name: "analyze single int column",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int primary key)",
+			"INSERT INTO t VALUES (1), (2), (3)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze two int columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int, j int)",
+			"INSERT INTO t VALUES (1, 4), (2, 5), (3, 6)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
+					{"mydb", "t", "j", float64(5), float64(4), float64(6), uint64(3), uint64(0), uint64(3), "[[4.00, 4.00, 0.33],[5.00, 5.00, 0.33],[6.00, 6.00, 0.33]]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze float columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (i float)",
+			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(16.125), float64(1.25), float64(45.25), uint64(4), uint64(0), uint64(4), "[[1.25, 1.25, 0.25],[7.50, 7.50, 0.25],[10.50, 10.50, 0.25],[45.25, 45.25, 0.25]]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze empty table creates stats with 0s",
+		SetUpScript: []string{
+			"CREATE TABLE t (i float)",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{
+					{"mydb", "t", "i", float64(0), float64(0), float64(0), uint64(0), uint64(0), uint64(0), "[]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "analyze columns that can't be converted to float throws error",
+		SetUpScript: []string{
+			"CREATE TABLE t (t longtext)",
+			"INSERT INTO t VALUES ('not a number')",
+			"ANALYZE TABLE t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM information_schema.column_statistics",
+				Expected: []sql.Row{},
+			},
 		},
 	},
 }

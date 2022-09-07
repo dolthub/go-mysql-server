@@ -51,6 +51,7 @@ func (r *Reverse) Eval(
 	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
+	//TODO: handle collations
 	v, err := r.Child.Eval(ctx, row)
 	if v == nil || err != nil {
 		return nil, err
@@ -135,6 +136,7 @@ func (r *Repeat) Eval(
 	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
+	//TODO: handle collations
 	str, err := r.Left.Eval(ctx, row)
 	if str == nil || err != nil {
 		return nil, err
@@ -222,6 +224,7 @@ func (r *Replace) Eval(
 	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
+	//TODO: handle collations
 	str, err := r.str.Eval(ctx, row)
 	if str == nil || err != nil {
 		return nil, err

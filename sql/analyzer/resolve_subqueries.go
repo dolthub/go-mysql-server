@@ -23,13 +23,13 @@ import (
 
 func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_subqueries")
-	defer span.Finish()
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			// subqueries do not have access to outer scope
-			child, same, err := a.analyzeThroughBatch(ctx, n.Child, nil, "default-rules", sel)
+			// subqueries do not have access to outer scope, but we do need a scope object to track recursion depth
+			child, same, err := a.analyzeThroughBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", sel)
 			if err != nil {
 				return nil, same, err
 			}
@@ -53,13 +53,13 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 
 func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("finalize_subqueries")
-	defer span.Finish()
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			// subqueries do not have access to outer scope
-			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, nil, "default-rules", sel)
+			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", sel)
 			if err != nil {
 				return nil, same, err
 			}
@@ -83,7 +83,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 
 func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("flatten_table_aliases")
-	defer span.Finish()
+	defer span.End()
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.TableAlias:
@@ -315,4 +315,50 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		}
 		return n, transform.SameTree, nil
 	})
+}
+
+// setViewTargetSchema is used to set the target schema for views. It is run after resolve_subqueries in order for
+// SubqueryAlias resolution to happen.
+func setViewTargetSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("set_view_target_schema")
+	defer span.End()
+
+	if _, ok := n.(*plan.ShowColumns); !ok {
+		return n, transform.SameTree, nil
+	}
+
+	t, ok := n.(sql.SchemaTarget)
+	if !ok {
+		return n, transform.SameTree, nil
+	}
+
+	sq := getSubqueryAlias(n)
+	if sq == nil {
+		return n, transform.SameTree, nil
+	}
+
+	n, err := t.WithTargetSchema(sq.Schema())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return n, transform.NewTree, nil
+}
+
+func getSubqueryAlias(node sql.Node) *plan.SubqueryAlias {
+	var sq *plan.SubqueryAlias
+	transform.Inspect(node, func(node sql.Node) bool {
+		// Only want to the first match
+		if sq != nil {
+			return false
+		}
+
+		switch n := node.(type) {
+		case *plan.SubqueryAlias:
+			sq = n
+			return false
+		}
+		return true
+	})
+	return sq
 }

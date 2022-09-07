@@ -158,26 +158,18 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(memory.NewTable(
-				"mytable",
-				sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "foo", Source: "mytable"},
-					{Name: "bar", Source: "mytable"},
-				}),
-				nil,
-			), nil, nil),
+			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "foo", Source: "mytable"},
+				{Name: "bar", Source: "mytable"},
+			}), nil), nil, nil),
 			true,
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(memory.NewTable(
-				"mytable",
-				sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "foo", Source: ""},
-					{Name: "bar", Source: "something"},
-				}),
-				nil,
-			), nil, nil),
+			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "foo", Source: ""},
+				{Name: "bar", Source: "something"},
+			}), nil), nil, nil),
 			false,
 		},
 		{
@@ -219,17 +211,13 @@ func TestValidateSchemaSource(t *testing.T) {
 }
 
 func TestValidateUnionSchemasMatch(t *testing.T) {
-	table := plan.NewResolvedTable(memory.NewTable(
-		"mytable",
-		sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "foo", Source: "mytable", Type: sql.Text},
-			{Name: "bar", Source: "mytable", Type: sql.Int64},
-			{Name: "rab", Source: "mytable", Type: sql.Text},
-			{Name: "zab", Source: "mytable", Type: sql.Int64},
-			{Name: "quuz", Source: "mytable", Type: sql.Boolean},
-		}),
-		nil,
-	), nil, nil)
+	table := plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "foo", Source: "mytable", Type: sql.Text},
+		{Name: "bar", Source: "mytable", Type: sql.Int64},
+		{Name: "rab", Source: "mytable", Type: sql.Text},
+		{Name: "zab", Source: "mytable", Type: sql.Int64},
+		{Name: "quuz", Source: "mytable", Type: sql.Boolean},
+	}), nil), nil, nil)
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -758,85 +746,6 @@ func TestValidateIntervalUsage(t *testing.T) {
 			} else {
 				require.Error(err)
 				require.True(ErrIntervalInvalidUse.Is(err))
-			}
-		})
-	}
-}
-
-func TestValidateExplodeUsage(t *testing.T) {
-	testCases := []struct {
-		name string
-		node sql.Node
-		ok   bool
-	}{
-		{
-			"valid",
-			plan.NewGenerate(
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewAlias("foo", function.NewGenerate(
-							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-						)),
-					},
-					plan.NewUnresolvedTable("dual", ""),
-				),
-				expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
-			),
-			true,
-		},
-		{
-			"where",
-			plan.NewFilter(
-				function.NewArrayLength(
-					function.NewExplode(
-						expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
-					),
-				),
-				plan.NewGenerate(
-					plan.NewProject(
-						[]sql.Expression{
-							expression.NewAlias("foo", function.NewGenerate(
-								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-							)),
-						},
-						plan.NewUnresolvedTable("dual", ""),
-					),
-					expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
-				),
-			),
-			false,
-		},
-		{
-			"group by",
-			plan.NewGenerate(
-				plan.NewGroupBy(
-					[]sql.Expression{
-						expression.NewAlias("foo", function.NewExplode(
-							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-						)),
-					},
-					[]sql.Expression{
-						expression.NewAlias("foo", function.NewExplode(
-							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
-						)),
-					},
-					plan.NewUnresolvedTable("dual", ""),
-				),
-				expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
-			),
-			false,
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			_, _, err := validateExplodeUsage(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
-			if tt.ok {
-				require.NoError(err)
-			} else {
-				require.Error(err)
-				require.True(ErrExplodeInvalidUse.Is(err))
 			}
 		})
 	}

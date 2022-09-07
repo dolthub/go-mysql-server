@@ -17,7 +17,8 @@ package plan
 import (
 	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -56,14 +57,13 @@ func (p *Project) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Project", opentracing.Tag{
-		Key:   "projections",
-		Value: len(p.Projections),
-	})
+	span, ctx := ctx.Span("plan.Project", trace.WithAttributes(
+		attribute.Int("projections", len(p.Projections)),
+	))
 
 	i, err := p.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
+		span.End()
 		return nil, err
 	}
 
@@ -162,9 +162,9 @@ func ProjectRow(
 			secondPass = append(secondPass, i)
 			continue
 		}
-		f, err := expr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
+		f, fErr := expr.Eval(ctx, row)
+		if fErr != nil {
+			return nil, fErr
 		}
 		fields = append(fields, f)
 	}

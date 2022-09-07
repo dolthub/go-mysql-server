@@ -4,16 +4,20 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: format-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   format:
     name: Format PR
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.18
+          go-version: ^1.19
       - uses: actions/checkout@v2
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
@@ -44,12 +48,12 @@ jobs:
   verify:
     needs: format
     name: Verify format
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.18
+          go-version: ^1.19
         id: go
       - uses: actions/checkout@v2
         with:
@@ -64,12 +68,12 @@ jobs:
   alt-verify:
     if: github.event.pull_request.head.repo.full_name != github.repository
     name: Verify format
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.18
+          go-version: ^1.19
         id: go
       - uses: actions/checkout@v2
       - name: Check all

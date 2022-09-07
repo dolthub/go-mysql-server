@@ -85,10 +85,11 @@ func (i *IndexDefinition) ColumnNames() []string {
 
 // TableSpec is a node describing the schema of a table.
 type TableSpec struct {
-	Schema  sql.PrimaryKeySchema
-	FkDefs  []*sql.ForeignKeyConstraint
-	ChDefs  []*sql.CheckConstraint
-	IdxDefs []*IndexDefinition
+	Schema    sql.PrimaryKeySchema
+	FkDefs    []*sql.ForeignKeyConstraint
+	ChDefs    []*sql.CheckConstraint
+	IdxDefs   []*IndexDefinition
+	Collation sql.CollationID
 }
 
 func (c *TableSpec) WithSchema(schema sql.PrimaryKeySchema) *TableSpec {
@@ -125,6 +126,7 @@ type CreateTable struct {
 	fkParentTbls []sql.ForeignKeyTable
 	chDefs       sql.CheckConstraints
 	idxDefs      []*IndexDefinition
+	collation    sql.CollationID
 	like         sql.Node
 	temporary    TempTableOption
 	selectNode   sql.Node
@@ -133,6 +135,7 @@ type CreateTable struct {
 var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
+var _ sql.SchemaTarget = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
@@ -140,6 +143,10 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		s.Source = name
 	}
 
+	collation := tableSpec.Collation
+	if collation == sql.Collation_Invalid {
+		collation = sql.Collation_Default
+	}
 	return &CreateTable{
 		ddlNode:      ddlNode{db},
 		name:         name,
@@ -147,6 +154,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		fkDefs:       tableSpec.FkDefs,
 		chDefs:       tableSpec.ChDefs,
 		idxDefs:      tableSpec.IdxDefs,
+		collation:    collation,
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
@@ -180,6 +188,16 @@ func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tab
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
+}
+
+// WithTargetSchema  implements the sql.TargetSchema interface.
+func (c *CreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	return nil, fmt.Errorf("unable to set target schema without primary key info")
+}
+
+// TargetSchema implements the sql.TargetSchema interface.
+func (c *CreateTable) TargetSchema() sql.Schema {
+	return c.CreateSchema.Schema
 }
 
 // WithDatabase implements the sql.Databaser interface.
@@ -242,7 +260,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			return sql.RowsToRowIter(), err
 		}
 
-		err = creatable.CreateTemporaryTable(ctx, c.name, c.CreateSchema)
+		err = creatable.CreateTemporaryTable(ctx, c.name, c.CreateSchema, c.collation)
 	} else {
 		maybePrivDb := c.db
 		if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
@@ -257,7 +275,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			return sql.RowsToRowIter(), err
 		}
 
-		err = creatable.CreateTable(ctx, c.name, c.CreateSchema)
+		err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
 	}
 
 	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
@@ -561,6 +579,7 @@ func (c *CreateTable) TableSpec() *TableSpec {
 	ret = ret.WithForeignKeys(c.fkDefs)
 	ret = ret.WithIndices(c.idxDefs)
 	ret = ret.WithCheckConstraints(c.chDefs)
+	ret.Collation = c.collation
 
 	return ret
 }

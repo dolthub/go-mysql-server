@@ -25,8 +25,8 @@ import (
 )
 
 func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, _ := ctx.Span("resolve_views")
-	defer span.Finish()
+	span, ctx := ctx.Span("resolve_views")
+	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		urt, ok := n.(*plan.UnresolvedTable)
@@ -75,11 +75,9 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		// If we didn't find the view from the database directly, use the in-session registry
 		var err error
 		if view == nil {
-			view, err = ctx.GetViewRegistry().View(dbName, viewName)
-			if sql.ErrViewDoesNotExist.Is(err) {
+			view, ok = ctx.GetViewRegistry().View(dbName, viewName)
+			if !ok {
 				return n, transform.SameTree, nil
-			} else if err != nil {
-				return nil, transform.SameTree, err
 			}
 		}
 
@@ -111,10 +109,54 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	})
 }
 
+// applyAsOfToView transforms the nodes in the view's execution plan to apply the asOf expression to every
+// individual table involved in the view.
 func applyAsOfToView(n sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, transform.TreeIdentity, error) {
 	a.Log("applying AS OF clause to view definition")
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	// Transform any tables in our node tree so that they use the AsOf expression
+	newNode, nodeIdentity, err := applyAsOfToViewTables(n, a, asOf)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	// Subquery expressions won't get updated by the Node transform above, but we still need to update
+	// any UnresolvedTable references in them to set the AsOf expression correctly.
+	newNode, exprIdentity, err := applyAsOfToViewSubqueries(newNode, a, asOf)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	identity := transform.SameTree
+	if exprIdentity == transform.NewTree || nodeIdentity == transform.NewTree {
+		identity = transform.NewTree
+	}
+
+	return newNode, identity, nil
+}
+
+// applyAsOfToViewSubqueries transforms the specified node by traversing its expressions, finding all the subquery expressions,
+// and running applyAsOfToViewTables on each subquery's query node.
+func applyAsOfToViewSubqueries(n sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(n, func(node sql.Node, expression sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if sq, ok := expression.(*plan.Subquery); ok {
+			newNode, identity, err := applyAsOfToViewTables(sq.Query, a, asOf)
+			if err != nil {
+				return expression, transform.SameTree, err
+			}
+			if identity == transform.NewTree {
+				return sq.WithQuery(newNode), transform.NewTree, nil
+			}
+		}
+
+		return expression, transform.SameTree, nil
+	})
+}
+
+// applyAsOfToViewTables transforms the specified node tree by finding all UnresolvedTable nodes
+// and setting their AsOf expression to the value specified.
+func applyAsOfToViewTables(newNode sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(newNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		urt, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, transform.SameTree, nil

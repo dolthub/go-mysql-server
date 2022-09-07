@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -28,8 +29,8 @@ var (
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
-	// ErrNotAuthorized is returned when the engine has been set to Read Only but a write operation was attempted.
-	ErrNotAuthorized = errors.NewKind("not authorized")
+	// ErrReadOnly is returned when the engine has been set to Read Only but a write operation was attempted.
+	ErrReadOnly = errors.NewKind("database server is set to read only mode")
 
 	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
 	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
@@ -121,7 +122,7 @@ var (
 	ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
 
 	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
-	ErrInvalidTextBlobColumnDefault = errors.NewKind("text/blob types may only have expression default values")
+	ErrInvalidTextBlobColumnDefault = errors.NewKind("TEXT, BLOB, GEOMETRY, and JSON types may only have expression default values")
 
 	// ErrInvalidColumnDefaultFunction is returned when an invalid function is used in a default value.
 	ErrInvalidColumnDefaultFunction = errors.NewKind("function `%s` on column `%s` is not valid for usage in a default value")
@@ -131,6 +132,9 @@ var (
 
 	// ErrColumnDefaultSubquery is returned when a default value contains a subquery.
 	ErrColumnDefaultSubquery = errors.NewKind("default value on column `%s` may not contain subqueries")
+
+	// ErrInvalidColumnDefaultValue is returned when column default function value is not wrapped in parentheses for column types excluding datetime and timestamp
+	ErrInvalidColumnDefaultValue = errors.NewKind("Invalid default value for '%s'")
 
 	// ErrInvalidDefaultValueOrder is returned when a default value references a column that comes after it and contains a default expression.
 	ErrInvalidDefaultValueOrder = errors.NewKind(`default value of column "%s" cannot refer to a column defined after it if those columns have an expression default value`)
@@ -213,6 +217,8 @@ var (
 
 	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
 	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
+
+	ErrSystemVariableReinitialized = errors.NewKind(`Variable '%s' was initialized more than 1x`)
 
 	// ErrSystemVariableSessionOnly is returned when attempting to set a SESSION-only variable using SET GLOBAL.
 	ErrSystemVariableSessionOnly = errors.NewKind(`Variable '%s' is a SESSION variable and can't be used with SET GLOBAL`)
@@ -455,6 +461,10 @@ var (
 	// ErrReadOnlyTransaction is returned when a write query is executed in a READ ONLY transaction.
 	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
 
+	// ErrLockDeadlock is the go-mysql-server equivalent of ER_LOCK_DEADLOCK. Transactions throwing this error
+	// are automatically rolled back. Clients receiving this error must retry the transaction.
+	ErrLockDeadlock = errors.NewKind("serialization failure: %s, try restarting transaction.")
+
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")
 
@@ -469,6 +479,9 @@ var (
 
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
+
+	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
+	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
 
 	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
 	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
@@ -564,6 +577,65 @@ var (
 
 	// ErrUnsupportedJoinFactorCount is returned for a query with more commutable join tables than we support
 	ErrUnsupportedJoinFactorCount = errors.NewKind("unsupported join factor count: expected fewer than %d tables, found %d")
+
+	// ErrNotMatchingSRID is returned for SRID values not matching
+	ErrNotMatchingSRID = errors.NewKind("The SRID of the geometry is %v, but the SRID of the column is %v. Consider changing the SRID of the geometry or the SRID property of the column.")
+
+	// ErrNotMatchingSRIDWithColName is returned for error of SRID values not matching with column name detail
+	ErrNotMatchingSRIDWithColName = errors.NewKind("The SRID of the geometry does not match the SRID of the column '%s'. %v")
+
+	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
+	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
+
+	// ErrInvalidBytePrimaryKey is returned when attempting to create a primary key with a byte column
+	ErrInvalidBytePrimaryKey = errors.NewKind("invalid primary key on byte column '%s'")
+
+	// ErrInvalidByteIndex is returned for an index on a byte column with no prefix or an invalid prefix
+	ErrInvalidByteIndex = errors.NewKind("index on byte column '%s' unsupported")
+
+	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
+	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
+
+	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
+	// conflicts with an active server
+	ErrDatabaseWriteLocked = errors.NewKind("database is locked to writes")
+
+	// ErrCollationMalformedString is returned when a malformed string is encountered during a collation-related operation.
+	ErrCollationMalformedString = errors.NewKind("malformed string encountered while %s")
+
+	// ErrCollatedExprWrongType is returned when the wrong type is given to a CollatedExpression.
+	ErrCollatedExprWrongType = errors.NewKind("wrong type in collated expression")
+
+	// ErrCollationInvalidForCharSet is returned when the wrong collation is given for the character set when parsing.
+	ErrCollationInvalidForCharSet = errors.NewKind("COLLATION '%s' is not valid for CHARACTER SET '%s'")
+
+	// ErrCollationUnknown is returned when the collation is not a recognized MySQL collation.
+	ErrCollationUnknown = errors.NewKind("Unknown collation: %v")
+
+	// ErrCollationNotYetImplementedTemp is returned when the collation is valid but has not yet been implemented.
+	// This error is temporary, and will be removed once all collations have been added.
+	ErrCollationNotYetImplementedTemp = errors.NewKind("The collation `%s` has not yet been implemented, " +
+		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
+
+	// ErrCollationIllegalMix is returned when two different collations are used in a scenario where they are not compatible.
+	ErrCollationIllegalMix = errors.NewKind("Illegal mix of collations (%v) and (%v)")
+
+	// ErrCharSetIntroducer is returned when a character set introducer is not attached to a string
+	ErrCharSetIntroducer = errors.NewKind("CHARACTER SET introducer must be attached to a string")
+
+	// ErrCharSetInvalidString is returned when an invalid string is given for a character set.
+	ErrCharSetInvalidString = errors.NewKind("invalid string for character set `%s`: \"%s\"")
+
+	// ErrCharSetFailedToEncode is returned when a character set fails encoding
+	ErrCharSetFailedToEncode = errors.NewKind("failed to encode `%s`")
+
+	// ErrCharSetUnknown is returned when the character set is not a recognized MySQL character set
+	ErrCharSetUnknown = errors.NewKind("Unknown character set: %v")
+
+	// ErrCharSetNotYetImplementedTemp is returned when the character set is valid but has not yet been implemented.
+	// This error is temporary, and will be removed once all character sets have been added.
+	ErrCharSetNotYetImplementedTemp = errors.NewKind("The character set `%s` has not yet been implemented, " +
+		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
@@ -579,6 +651,10 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 
 	if w, ok := err.(WrappedInsertError); ok {
 		return CastSQLError(w.Cause)
+	}
+
+	if wm, ok := err.(WrappedTypeConversionError); ok {
+		return CastSQLError(wm.Err)
 	}
 
 	switch {
@@ -620,11 +696,21 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = 1553 // TODO: Needs to be added to vitess
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
+	case ErrLockDeadlock.Is(err):
+		// ER_LOCK_DEADLOCK signals that the transaction was rolled back
+		// due to a deadlock between concurrent transactions.
+		// MySQL maps this error to the ANSI SQLSTATE code of 40001 which
+		// has the more general meaning of "serialization failure".
+		// 	https://mariadb.com/kb/en/mariadb-error-codes/
+		// 	https://en.wikipedia.org/wiki/SQLSTATE
+		code = mysql.ERLockDeadlock
+		sqlState = mysql.SSLockDeadlock
 	default:
 		code = mysql.ERUnknownError
 	}
 
-	return mysql.NewSQLError(code, sqlState, err.Error()), err, false // return the original error as well
+	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
+	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1)), err, false // return the original error as well
 }
 
 type UniqueKeyError struct {
@@ -667,14 +753,30 @@ func (w WrappedInsertError) Error() string {
 	return w.Cause.Error()
 }
 
-type ErrInsertIgnore struct {
+// IgnorableError is used propagate information about an error that needs to be ignored and does not interfere with
+// any update accumulators
+type IgnorableError struct {
 	OffendingRow Row
 }
 
-func NewErrInsertIgnore(row Row) ErrInsertIgnore {
-	return ErrInsertIgnore{OffendingRow: row}
+func NewIgnorableError(row Row) IgnorableError {
+	return IgnorableError{OffendingRow: row}
 }
 
-func (e ErrInsertIgnore) Error() string {
-	return "Insert ignore error shoudl never be printed"
+func (e IgnorableError) Error() string {
+	return "An ignorable error should never be printed"
+}
+
+type WrappedTypeConversionError struct {
+	OffendingVal interface{}
+	OffendingIdx int
+	Err          error
+}
+
+func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error) WrappedTypeConversionError {
+	return WrappedTypeConversionError{OffendingVal: offendingVal, OffendingIdx: idx, Err: err}
+}
+
+func (w WrappedTypeConversionError) Error() string {
+	return w.Err.Error()
 }

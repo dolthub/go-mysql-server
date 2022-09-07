@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -411,6 +413,26 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(3, "third row"),
 		},
 	},
+	{
+		WriteQuery:          "with t (n) as (select (1) from dual) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "updated 1"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
+	{
+		WriteQuery:          "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 2) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "select * from mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "updated 1"),
+			sql.NewRow(2, "updated 2"),
+			sql.NewRow(3, "third row"),
+		},
+	},
 }
 
 var SpatialUpdateTests = []WriteQueryTest{
@@ -424,13 +446,16 @@ var SpatialUpdateTests = []WriteQueryTest{
 		WriteQuery:          "UPDATE line_table SET l = linestring(point(1.2,3.4),point(5.6,7.8));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{int64(0), sql.Linestring{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), sql.Linestring{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
+		ExpectedSelect:      []sql.Row{{int64(0), sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
 	},
 	{
 		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      []sql.Row{{int64(0), sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+		ExpectedSelect: []sql.Row{
+			{int64(0), sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
+			{int64(1), sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
+		},
 	},
 }
 
@@ -526,6 +551,161 @@ var GenericUpdateErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "targets subquery alias",
 		Query: "UPDATE (SELECT * FROM mytable) mytable SET s = NULL;",
+	},
+}
+
+var UpdateIgnoreTests = []WriteQueryTest{
+	{
+		WriteQuery:          "UPDATE IGNORE mytable SET i = 2 where i = 1",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
+		SelectQuery:         "SELECT * FROM mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
+	{
+		WriteQuery:          "UPDATE IGNORE mytable SET i = i+1 where i = 1",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
+		SelectQuery:         "SELECT * FROM mytable order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
+}
+
+var UpdateIgnoreScripts = []ScriptTest{
+	{
+		Name: "UPDATE IGNORE with primary keys and indexes",
+		SetUpScript: []string{
+			"CREATE TABLE pkTable(pk int, val int, primary key(pk, val))",
+			"CREATE TABLE idxTable(pk int primary key, val int UNIQUE)",
+			"INSERT INTO pkTable VALUES (1, 1), (2, 2), (3, 3)",
+			"INSERT INTO idxTable VALUES (1, 1), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "UPDATE IGNORE pkTable set pk = pk + 1, val = val + 1",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}},
+			},
+			{
+				Query:           "UPDATE IGNORE idxTable set val = val + 1",
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM idxTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
+			},
+			{
+				Query:    "UPDATE IGNORE pkTable set val = val + 1 where pk = 2",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 3}, {4, 4}},
+			},
+			{
+				Query:           "UPDATE IGNORE pkTable SET pk = NULL",
+				Expected:        []sql.Row{{newUpdateResult(3, 3)}},
+				ExpectedWarning: mysql.ERBadNullError,
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{0, 1}, {0, 3}, {0, 4}},
+			},
+			{
+				Query:    "UPDATE IGNORE pkTable SET val = NULL",
+				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+			},
+			{
+				Query:    "SELECT * FROM pkTable order by pk",
+				Expected: []sql.Row{{0, 0}, {0, 3}, {0, 4}},
+			},
+			{
+				Query:           "UPDATE IGNORE idxTable set pk = pk + 1, val = val + 1", // two bad updates
+				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query:    "SELECT * FROM idxTable order by pk",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 5}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE IGNORE with type conversions",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, v1 int, v2 int)",
+			"INSERT INTO t1 VALUES (1, 1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "UPDATE IGNORE t1 SET v1 = 'dsddads'",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+			{
+				Query:    "SELECT * FROM t1",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:           "UPDATE IGNORE t1 SET pk = 'dasda', v2 = 'dsddads'",
+				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+			{
+				Query:    "SELECT * FROM t1",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE IGNORE with foreign keys",
+		SetUpScript: []string{
+			"CREATE TABLE colors ( id INT NOT NULL, color VARCHAR(32) NOT NULL, PRIMARY KEY (id), INDEX color_index(color));",
+			"CREATE TABLE objects (id INT NOT NULL, name VARCHAR(64) NOT NULL,color VARCHAR(32), PRIMARY KEY(id),FOREIGN KEY (color) REFERENCES colors(color))",
+			"INSERT INTO colors (id,color) VALUES (1,'red'),(2,'green'),(3,'blue'),(4,'purple')",
+			"INSERT INTO objects (id,name,color) VALUES (1,'truck','red'),(2,'ball','green'),(3,'shoe','blue')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "UPDATE IGNORE objects SET color = 'orange' where id = 2",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarning: mysql.ErNoReferencedRow2,
+			},
+			{
+				Query:    "SELECT * FROM objects ORDER BY id",
+				Expected: []sql.Row{{1, "truck", "red"}, {2, "ball", "green"}, {3, "shoe", "blue"}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE IGNORE with check constraints",
+		SetUpScript: []string{
+			"CREATE TABLE checksTable(pk int primary key)",
+			"ALTER TABLE checksTable ADD CONSTRAINT mycx CHECK (pk < 5)",
+			"INSERT INTO checksTable VALUES (1),(2),(3),(4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "UPDATE IGNORE checksTable SET pk = pk + 1 where pk = 4",
+				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarning: mysql.ERUnknownError,
+			},
+			{
+				Query:    "SELECT * from checksTable ORDER BY pk",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+		},
 	},
 }
 

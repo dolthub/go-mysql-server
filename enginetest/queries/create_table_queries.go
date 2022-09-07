@@ -18,6 +18,12 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 var CreateTableQueries = []WriteQueryTest{
 	{
+		WriteQuery:          `create table floattypedefs (a float(10), b float(10, 2), c double(10, 2))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE floattypedefs",
+		ExpectedSelect:      []sql.Row{sql.Row{"floattypedefs", "CREATE TABLE `floattypedefs` (\n  `a` float,\n  `b` float,\n  `c` double\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
 		WriteQuery:          `CREATE TABLE t1 (a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
@@ -28,18 +34,6 @@ var CreateTableQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
 		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `a` int NOT NULL,\n  `b` varchar(10) NOT NULL,\n  PRIMARY KEY (`a`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-	},
-	{
-		WriteQuery:          `CREATE TABLE t1 (a INTEGER NOT NULL, b TEXT NOT NULL, c bool, primary key (a,b))`,
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
-		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `a` int NOT NULL,\n  `b` text NOT NULL,\n  `c` tinyint,\n  PRIMARY KEY (`a`,`b`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-	},
-	{
-		WriteQuery:          `CREATE TABLE t1(a INTEGER NOT NULL, b TEXT NOT NULL, c bool, primary key (a,b))`,
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
-		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `a` int NOT NULL,\n  `b` text NOT NULL,\n  `c` tinyint,\n  PRIMARY KEY (`a`,`b`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 (a INTEGER, b TEXT NOT NULL COMMENT 'comment', c bool, primary key (a))`,
@@ -73,7 +67,7 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `create table t1 like foo.other_table`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `text` text NOT NULL,\n  `number` mediumint,\n  PRIMARY KEY (`text`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `text` varchar(20) NOT NULL,\n  `number` mediumint,\n  PRIMARY KEY (`text`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 (a INTEGER NOT NULL PRIMARY KEY, b VARCHAR(10) UNIQUE)`,
@@ -133,6 +127,21 @@ var CreateTableQueries = []WriteQueryTest{
 		)`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `pk` int NOT NULL,\n  `col1` blob DEFAULT (\"abc\"),\n  `col2` json DEFAULT (JSON_OBJECT(\"a\", 1)),\n  `col3` text DEFAULT (\"abc\"),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `pk` int NOT NULL,\n  `col1` blob DEFAULT ('abc'),\n  `col2` json DEFAULT (JSON_OBJECT('a', 1)),\n  `col3` text DEFAULT ('abc'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery: `CREATE TABLE td (
+		  pk int PRIMARY KEY,
+		  col2 int NOT NULL DEFAULT 2,
+ 		  col3 double NOT NULL DEFAULT (round(-(1.58),0)),
+		  col4 varchar(10) DEFAULT 'new row',
+          col5 float DEFAULT 33.33,
+          col6 int DEFAULT NULL,
+		  col7 timestamp DEFAULT NOW(),
+		  col8 bigint DEFAULT (NOW())
+		)`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE td",
+		ExpectedSelect:      []sql.Row{sql.Row{"td", "CREATE TABLE `td` (\n  `pk` int NOT NULL,\n  `col2` int NOT NULL DEFAULT '2',\n  `col3` double NOT NULL DEFAULT (ROUND(-1.58, 0)),\n  `col4` varchar(10) DEFAULT 'new row',\n  `col5` float DEFAULT '33.33',\n  `col6` int DEFAULT NULL,\n  `col7` timestamp DEFAULT (NOW()),\n  `col8` bigint DEFAULT (NOW()),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 }
