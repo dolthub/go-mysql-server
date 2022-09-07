@@ -631,6 +631,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
 	case *plan.RecursiveCte, *plan.Union:
 		// opaque nodes have derived schemas
+		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
 	}
 
