@@ -42,7 +42,7 @@ func _() {
 	_ = x[validateReadOnlyDatabaseId-31]
 	_ = x[validateReadOnlyTransactionId-32]
 	_ = x[validateDatabaseSetId-33]
-	_ = x[validatePriviledgesId-34]
+	_ = x[validatePrivilegesId-34]
 	_ = x[reresolveTablesId-35]
 	_ = x[validateJoinComplexityId-36]
 	_ = x[resolveNaturalJoinsId-37]

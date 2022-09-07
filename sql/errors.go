@@ -612,13 +612,16 @@ var (
 	// ErrCollationInvalidForCharSet is returned when the wrong collation is given for the character set when parsing.
 	ErrCollationInvalidForCharSet = errors.NewKind("COLLATION '%s' is not valid for CHARACTER SET '%s'")
 
-	// ErrCollationUnknown is returned when the collation is not a recognized MySQL collation
+	// ErrCollationUnknown is returned when the collation is not a recognized MySQL collation.
 	ErrCollationUnknown = errors.NewKind("Unknown collation: %v")
 
 	// ErrCollationNotYetImplementedTemp is returned when the collation is valid but has not yet been implemented.
 	// This error is temporary, and will be removed once all collations have been added.
 	ErrCollationNotYetImplementedTemp = errors.NewKind("The collation `%s` has not yet been implemented, " +
 		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
+
+	// ErrCollationIllegalMix is returned when two different collations are used in a scenario where they are not compatible.
+	ErrCollationIllegalMix = errors.NewKind("Illegal mix of collations (%v) and (%v)")
 
 	// ErrCharSetIntroducer is returned when a character set introducer is not attached to a string
 	ErrCharSetIntroducer = errors.NewKind("CHARACTER SET introducer must be attached to a string")

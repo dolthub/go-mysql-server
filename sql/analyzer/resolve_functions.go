@@ -49,6 +49,18 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, 
 			database = privilegedDatabase.Unwrap()
 		}
 
+		var hasBindVarArgs bool
+		for _, arg := range utf.Arguments {
+			if _, ok := arg.(*expression.BindVar); ok {
+				hasBindVarArgs = true
+				break
+			}
+		}
+
+		if hasBindVarArgs {
+			return n, transform.SameTree, nil
+		}
+
 		newInstance, err := tableFunction.NewInstance(ctx, database, utf.Arguments)
 		if err != nil {
 			return nil, transform.SameTree, err
