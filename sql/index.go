@@ -48,8 +48,12 @@ type Index interface {
 // information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
 type IndexLookup struct {
-	Index         Index
-	Ranges        RangeCollection
+	Index  Index
+	Ranges RangeCollection
+	// IsPointLookup is true if the lookup will return one or zero
+	// values; the range is null safe, the index is unique, every index
+	// column has a range expression, and every range expression is an
+	// exact equality.
 	IsPointLookup bool
 	IsEmptyRange  bool
 }

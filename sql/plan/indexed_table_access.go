@@ -429,7 +429,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 		return sql.IndexLookup{
 			Index:         lb.index,
 			Ranges:        []sql.Range{lb.rang},
-			IsPointLookup: lb.nullSafe && lb.isPointLookup,
+			IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 			IsEmptyRange:  lb.emptyRange,
 		}, nil
 	}
@@ -457,7 +457,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 	return sql.IndexLookup{
 		Index:         lb.index,
 		Ranges:        []sql.Range{lb.rang},
-		IsPointLookup: lb.nullSafe && lb.isPointLookup,
+		IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 		IsEmptyRange:  lb.emptyRange,
 	}, nil
 }
