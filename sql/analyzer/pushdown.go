@@ -33,6 +33,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
+	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
 	var hasBindVars bool
 	transform.Inspect(n, func(node sql.Node) bool {
 		if fn, ok := node.(*plan.Filter); ok {
@@ -49,7 +50,6 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return !hasBindVars // stop recursing if bindvars already found
 	})
 
-	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
 	if !hasBindVars {
 		return node, same, err
 	}
@@ -57,7 +57,9 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	// Wrap with DeferredFilteredTable if there are bindvars
 	return transform.NodeWithOpaque(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if rt, ok := n.(*plan.ResolvedTable); ok {
-			return plan.NewDeferredFilteredTable(rt), transform.NewTree, nil
+			if _, ok := rt.Table.(sql.FilteredTable); ok {
+				return plan.NewDeferredFilteredTable(rt), transform.NewTree, nil
+			}
 		}
 		return n, transform.SameTree, nil
 	})

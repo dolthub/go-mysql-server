@@ -63,8 +63,6 @@ func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return getUpdatableTable(node.Underlying())
 	case *UpdateJoin:
 		return node.GetUpdatable(), nil
-	case *DeferredFilteredTable:
-		return GetUpdatable(node.ResolvedTable)
 	}
 	if len(node.Children()) > 1 {
 		return nil, ErrUpdateNotSupported.New()
