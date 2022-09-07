@@ -4028,7 +4028,7 @@ func TestPrintTree(t *testing.T) {
 	require.Equal(`Limit(5)
  └─ Offset(2)
      └─ Project
-         ├─ columns: [t.foo bar.baz]
+         ├─ columns: [t.foo, bar.baz]
          └─ Filter(foo > qux)
              └─ InnerJoin(foo = baz)
                  ├─ TableAlias(t)

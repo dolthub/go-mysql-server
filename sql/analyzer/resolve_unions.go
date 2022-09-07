@@ -77,7 +77,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			u = n
 		case *plan.RecursiveCte:
 			// rCTEs behave like unions after default rules
-			u = n.Union
+			u = n.Union()
 		default:
 			return n, transform.SameTree, nil
 		}
