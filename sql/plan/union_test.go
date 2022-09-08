@@ -56,26 +56,20 @@ func TestUnion(t *testing.T) {
 		expected []string
 	}{
 		{
-			NewUnion(
-				NewProject(name, NewResolvedTable(child, nil, nil)),
-				NewProject(name, NewResolvedTable(child, nil, nil))),
+			NewUnion(NewProject(name, NewResolvedTable(child, nil, nil)), NewProject(name, NewResolvedTable(child, nil, nil)), false, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			NewUnion(
-				NewProject(name, NewResolvedTable(empty, nil, nil)),
-				NewProject(name, NewResolvedTable(child, nil, nil))),
+			NewUnion(NewProject(name, NewResolvedTable(empty, nil, nil)), NewProject(name, NewResolvedTable(child, nil, nil)), false, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			NewUnion(
-				NewProject(name, NewResolvedTable(child, nil, nil)),
-				NewProject(name, NewResolvedTable(empty, nil, nil))),
+			NewUnion(NewProject(name, NewResolvedTable(child, nil, nil)), NewProject(name, NewResolvedTable(empty, nil, nil)), false, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},

@@ -429,6 +429,9 @@ var (
 	// ErrFunctionNotFound is thrown when a function is not found
 	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
 
+	// ErrConflictingExternalQuery is thrown when a scope's parent has a conflicting sort or limit node
+	ErrConflictingExternalQuery = errors.NewKind("found external scope with conflicting ORDER BY/LIMIT")
+
 	// ErrTableFunctionNotFound is thrown when a table function is not found
 	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
 

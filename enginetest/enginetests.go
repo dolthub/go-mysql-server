@@ -3850,6 +3850,114 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 0},
 	}, nil, nil)
 
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, nil},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, nil},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 4},
+		{1, nil},
+		{2, 5},
+		{3, 6},
+		{4, 7},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, 0},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, 4},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, -1},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, -1},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 4},
+		{1, -1},
+		{2, 5},
+		{3, -1},
+		{4, -1},
+		{5, -1},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, "s"},
+		{1, nil},
+		{2, "s"},
+		{3, "s"},
+		{4, "s"},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 0},
+		{4, 1},
+		{5, 3},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a-1) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, 0},
+		{2, 1},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(c) over (partition by b order by c) FROM t1 order by a*b,a`, []sql.Row{
+		{0, 0},
+		{3, 0},
+		{1, 1},
+		{2, 0},
+		{4, 0},
+		{5, 0},
+	}, nil, nil)
+
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
 		{0, nil},
 		{1, nil},

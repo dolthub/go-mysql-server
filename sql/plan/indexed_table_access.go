@@ -367,25 +367,42 @@ type LookupBuilder struct {
 
 	index sql.Index
 
-	key  lookupBuilderKey
-	rang sql.Range
-	cets []sql.ColumnExpressionType
+	key           lookupBuilderKey
+	rang          sql.Range
+	nullSafe      bool
+	isPointLookup bool
+	emptyRange    bool
+	cets          []sql.ColumnExpressionType
 }
 
 func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
 	cets := index.ColumnExpressionTypes(ctx)
+	var nullSafe = true
+	for i := range matchesNullMask {
+		if matchesNullMask[i] {
+			nullSafe = false
+		}
+	}
 	return &LookupBuilder{
 		index:           index,
 		keyExprs:        keyExprs,
 		matchesNullMask: matchesNullMask,
 		cets:            cets,
+		nullSafe:        nullSafe,
+		isPointLookup:   true,
 	}
 }
 
 func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	lb.rang = make(sql.Range, len(lb.cets))
+	lb.emptyRange = false
+	lb.isPointLookup = len(key) == len(lb.cets)
 	var i int
 	for i < len(key) {
+		if key[i] == nil {
+			lb.emptyRange = true
+			lb.isPointLookup = false
+		}
 		if lb.matchesNullMask[i] {
 			if key[i] == nil {
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
@@ -400,6 +417,7 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	}
 	for i < len(lb.cets) {
 		lb.rang[i] = sql.AllRangeColumnExpr(lb.cets[i].Type)
+		lb.isPointLookup = false
 		i++
 	}
 	return
@@ -408,10 +426,21 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
-		return sql.IndexLookup{Index: lb.index, Ranges: []sql.Range{lb.rang}}, nil
+		return sql.IndexLookup{
+			Index:         lb.index,
+			Ranges:        []sql.Range{lb.rang},
+			IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
+			IsEmptyRange:  lb.emptyRange,
+		}, nil
 	}
 
+	lb.emptyRange = false
+	lb.isPointLookup = len(key) == len(lb.cets)
 	for i := range key {
+		if key[i] == nil {
+			lb.emptyRange = true
+			lb.isPointLookup = false
+		}
 		if lb.matchesNullMask[i] {
 			if key[i] == nil {
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
@@ -425,7 +454,12 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 		}
 	}
 
-	return sql.IndexLookup{Index: lb.index, Ranges: []sql.Range{lb.rang}}, nil
+	return sql.IndexLookup{
+		Index:         lb.index,
+		Ranges:        []sql.Range{lb.rang},
+		IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
+		IsEmptyRange:  lb.emptyRange,
+	}, nil
 }
 
 func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {
