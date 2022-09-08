@@ -15,11 +15,10 @@
 package expression
 
 import (
-	"fmt"
+	"github.com/shopspring/decimal"
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -30,12 +29,12 @@ func TestPlus(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		left, right float64
-		expected    string
+		expected    float64
 	}{
-		{"1 + 1", 1, 1, "2"},
-		{"-1 + 1", -1, 1, "0"},
-		{"0 + 0", 0, 0, "0"},
-		{"0.14159 + 3.0", 0.14159, 3.0, "3.14159"},
+		{"1 + 1", 1, 1, 2},
+		{"-1 + 1", -1, 1, 0},
+		{"0 + 0", 0, 0, 0},
+		{"0.14159 + 3.0", 0.14159, 3.0, float64(0.14159) + float64(3)},
 	}
 
 	for _, tt := range testCases {
@@ -46,11 +45,7 @@ func TestPlus(t *testing.T) {
 				NewLiteral(tt.right, sql.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
-			if d, ok := result.(decimal.Decimal); ok {
-				require.Equal(tt.expected, d.StringFixed(d.Exponent()*-1))
-			} else {
-				require.Equal("0", fmt.Sprintf("%v", result))
-			}
+			require.Equal(tt.expected, result)
 		})
 	}
 
@@ -58,7 +53,7 @@ func TestPlus(t *testing.T) {
 	result, err := NewPlus(NewLiteral("2", sql.LongText), NewLiteral(3, sql.Float64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	require.Equal("5", fmt.Sprintf("%v", result))
+	require.Equal(float64(5), result)
 }
 
 func TestPlusInterval(t *testing.T) {
@@ -88,12 +83,12 @@ func TestMinus(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		left, right float64
-		expected    string
+		expected    float64
 	}{
-		{"1 - 1", 1, 1, "0"},
-		{"1 - 1", 1, 1, "0"},
-		{"0 - 0", 0, 0, "0"},
-		{"3.14159 - 3.0", 3.14159, 3.0, "0.14159"},
+		{"1 - 1", 1, 1, 0},
+		{"1 - 1", 1, 1, 0},
+		{"0 - 0", 0, 0, 0},
+		{"3.14159 - 3.0", 3.14159, 3.0, float64(3.14159) - float64(3.0)},
 	}
 
 	for _, tt := range testCases {
@@ -104,11 +99,7 @@ func TestMinus(t *testing.T) {
 				NewLiteral(tt.right, sql.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
-			if d, ok := result.(decimal.Decimal); ok {
-				require.Equal(tt.expected, d.StringFixed(d.Exponent()*-1))
-			} else {
-				require.Equal("0", fmt.Sprintf("%v", result))
-			}
+			require.Equal(tt.expected, result)
 		})
 	}
 
@@ -116,7 +107,7 @@ func TestMinus(t *testing.T) {
 	result, err := NewMinus(NewLiteral("10", sql.LongText), NewLiteral(10, sql.Int64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	require.Equal("0", fmt.Sprintf("%v", result))
+	require.Equal(float64(0), result)
 }
 
 func TestMinusInterval(t *testing.T) {
@@ -137,12 +128,12 @@ func TestMult(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		left, right float64
-		expected    string
+		expected    float64
 	}{
-		{"1 * 1", 1, 1, "1"},
-		{"-1 * 1", -1, 1, "-1"},
-		{"0 * 0", 0, 0, "0"},
-		{"3.14159 * 3.0", 3.14159, 3.1, "9.738929"},
+		{"1 * 1", 1, 1, 1},
+		{"-1 * 1", -1, 1, -1},
+		{"0 * 0", 0, 0, 0},
+		{"3.14159 * 3.0", 3.14159, 3.0, float64(3.14159) * float64(3.0)},
 	}
 
 	for _, tt := range testCases {
@@ -153,35 +144,31 @@ func TestMult(t *testing.T) {
 				NewLiteral(tt.right, sql.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
-			if d, ok := result.(decimal.Decimal); ok {
-				require.Equal(tt.expected, d.StringFixed(d.Exponent()*-1))
-			} else {
-				require.Equal("0", fmt.Sprintf("%v", result))
-			}
+			require.Equal(tt.expected, result)
 		})
 	}
 
 	require := require.New(t)
-	result, err := NewMult(NewLiteral("10", sql.LongText), NewLiteral("3.0", sql.LongText)).
+	result, err := NewMult(NewLiteral("10", sql.LongText), NewLiteral("10", sql.LongText)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	require.Equal("30.0", result.(decimal.Decimal).StringFixed(result.(decimal.Decimal).Exponent()*-1))
+	require.Equal(float64(100), result)
 }
 
 func TestDiv(t *testing.T) {
 	var floatTestCases = []struct {
 		name        string
 		left, right float64
-		expected    string
+		expected    float64
 		null        bool
 	}{
-		{"1 / 1", 1, 1, "1.0000", false},
-		{"-1 / 1", -1, 1, "-1.0000", false},
-		{"0 / 1234567890", 0, 12345677890, "0.0000", false},
-		{"3.14159 / 3.0", 3.14159, 3.0, "1.047196667", false},
-		{"1/0", 1, 0, "", true},
-		{"-1/0", -1, 0, "", true},
-		{"0/0", 0, 0, "", true},
+		{"1 / 1", 1, 1, 1, false},
+		{"-1 / 1", -1, 1, -1, false},
+		{"0 / 1234567890", 0, 12345677890, 0, false},
+		{"3.14159 / 3.0", 3.14159, 3.0, float64(3.14159) / float64(3.0), false},
+		{"1/0", 1, 0, 0, true},
+		{"-1/0", -1, 0, 0, true},
+		{"0/0", 0, 0, 0, true},
 	}
 
 	for _, tt := range floatTestCases {
@@ -194,11 +181,7 @@ func TestDiv(t *testing.T) {
 			if tt.null {
 				assert.Equal(t, nil, result)
 			} else {
-				if d, ok := result.(decimal.Decimal); ok {
-					require.Equal(t, tt.expected, d.StringFixed(d.Exponent()*-1))
-				} else {
-					require.Equal(t, tt.expected, fmt.Sprintf("%v", result))
-				}
+				assert.Equal(t, tt.expected, result)
 			}
 		})
 	}
@@ -523,8 +506,8 @@ func TestUnaryMinus(t *testing.T) {
 		{"uint64", uint64(1), sql.Uint64, int64(-1)},
 		{"float32", float32(1), sql.Float32, float32(-1)},
 		{"float64", float64(1), sql.Float64, float64(-1)},
-		{"int text", "1", sql.LongText, float64(-1)},
-		{"float text", "1.2", sql.LongText, float64(-1.2)},
+		{"int text", "1", sql.LongText, "-1"},
+		{"float text", "1.2", sql.LongText, "-1.2"},
 		{"nil", nil, sql.LongText, nil},
 	}
 
@@ -533,7 +516,12 @@ func TestUnaryMinus(t *testing.T) {
 			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, result)
+			if dt, ok := result.(decimal.Decimal); ok {
+				require.Equal(t, tt.expected, dt.StringFixed(dt.Exponent()*-1))
+			} else {
+				require.Equal(t, tt.expected, result)
+			}
+
 		})
 	}
 }

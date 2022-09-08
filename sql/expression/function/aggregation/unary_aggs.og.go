@@ -589,7 +589,6 @@ func NewSum(e sql.Expression) *Sum {
 }
 
 func (a *Sum) Type() sql.Type {
-	// TODO the type depends on column if functions over table, or the input given (most likely to be DECIMAL with the longest precision and scaled input defines it)
 	return sql.Float64
 }
 
