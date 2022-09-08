@@ -52,6 +52,12 @@ type Index interface {
 type IndexLookup struct {
 	Index  Index
 	Ranges RangeCollection
+	// IsPointLookup is true if the lookup will return one or zero
+	// values; the range is null safe, the index is unique, every index
+	// column has a range expression, and every range expression is an
+	// exact equality.
+	IsPointLookup bool
+	IsEmptyRange  bool
 }
 
 var emptyLookup = IndexLookup{}
