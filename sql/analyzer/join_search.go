@@ -64,7 +64,6 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 			// for each assignment of conditions to the right tree
 			return helper(n.right, func() bool {
 				columns := n.tableCols()
-				fmt.Printf("accumulated table columns: %s", columns)
 				// look at every remaining condition
 				for i := range conditions {
 					cond := conditions[i]
