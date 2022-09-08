@@ -135,6 +135,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "last", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewLast(e) }},
 	sql.Function0{Name: "last_insert_id", Fn: NewLastInsertId},
 	sql.Function1{Name: "lcase", Fn: NewLower},
+	sql.FunctionN{Name: "lead", Fn: func(e ...sql.Expression) (sql.Expression, error) { return window.NewLead(e...) }},
 	sql.FunctionN{Name: "least", Fn: NewLeast},
 	sql.Function2{Name: "left", Fn: NewLeft},
 	sql.Function1{Name: "length", Fn: NewLength},
