@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"github.com/shopspring/decimal"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,17 +35,17 @@ func TestSum(t *testing.T) {
 		{
 			"string int values",
 			[]sql.Row{{"1"}, {"2"}, {"3"}, {"4"}},
-			float64(10),
+			"10",
 		},
 		{
 			"string float values",
 			[]sql.Row{{"1.5"}, {"2"}, {"3"}, {"4"}},
-			float64(10.5),
+			"10.5",
 		},
 		{
 			"string non-int values",
 			[]sql.Row{{"a"}, {"b"}, {"c"}, {"d"}},
-			float64(0),
+			"0",
 		},
 		{
 			"float values",
@@ -85,7 +86,11 @@ func TestSum(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if dt, ok := result.(decimal.Decimal); ok {
+				require.Equal(tt.expected, dt.StringFixed(dt.Exponent()*-1))
+			} else {
+				require.Equal(tt.expected, result)
+			}
 		})
 	}
 }
@@ -107,17 +112,23 @@ func TestSumWithDistinct(t *testing.T) {
 		{
 			"string int values",
 			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
-			float64(10),
+			"10",
 		},
+		// TODO : DISTINCT returns incorrect result, it currently returns 11.00
+		//{
+		//	"string int values",
+		//	[]sql.Row{{"1.00"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
+		//	"10",
+		//},
 		{
 			"string float values",
 			[]sql.Row{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},
-			float64(10.5),
+			"10.5",
 		},
 		{
 			"string non-int values",
 			[]sql.Row{{"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}},
-			float64(0),
+			"0",
 		},
 		{
 			"float values",
@@ -158,7 +169,11 @@ func TestSumWithDistinct(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if dt, ok := result.(decimal.Decimal); ok {
+				require.Equal(tt.expected, dt.StringFixed(dt.Exponent()*-1))
+			} else {
+				require.Equal(tt.expected, result)
+			}
 		})
 	}
 }

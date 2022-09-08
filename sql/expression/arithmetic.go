@@ -152,7 +152,7 @@ func (a *Arithmetic) Type() sql.Type {
 			return sql.Int64
 		}
 
-		return a.getDecimalType()
+		return a.getArithmeticTypeFromExpr()
 
 	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
 		return sql.Uint64
@@ -164,11 +164,15 @@ func (a *Arithmetic) Type() sql.Type {
 		return sql.Int64
 	}
 
-	return a.getDecimalType()
+	return a.getArithmeticTypeFromExpr()
 }
 
-// getArithmeticType returns column type if
-func (a *Arithmetic) getDecimalType() sql.Type {
+// getArithmeticTypeFromExpr returns a type that left and right values to be converted into.
+// If there is system variable, return type should be the type of that system variable.
+// For any non-DECIMAL column type, it will use default sql.Float64 type.
+// For DECIMAL column type, or any Literal values, the return type will the DECIMAL type with
+// the highest precision and scale calculated out of all Literals and DECIMAL column type definition.
+func (a *Arithmetic) getArithmeticTypeFromExpr() sql.Type {
 	var resType sql.Type
 	var precision uint8
 	var scale uint8
@@ -225,6 +229,7 @@ func (a *Arithmetic) getDecimalType() sql.Type {
 	return resType
 }
 
+// GetDecimalPrecisionAndScale returns precision and scale for given string formatted float/double number.
 func GetDecimalPrecisionAndScale(val string) (uint8, uint8) {
 	scale := 0
 	precScale := strings.Split(strings.TrimPrefix(val, "-"), ".")
