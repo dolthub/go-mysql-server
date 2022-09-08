@@ -490,15 +490,15 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + sum(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), float64(28)},
-			{int64(1), float64(108)},
+			{int64(0), int64(28)},
+			{int64(1), int64(108)},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + min(c3) as sum_and_min FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), float64(16)},
-			{int64(1), float64(76)},
+			{int64(0), int64(16)},
+			{int64(1), int64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -507,15 +507,15 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "sum_and_min",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(`c3`) +    min( c3 ) FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), float64(16)},
-			{int64(1), float64(76)},
+			{int64(0), int64(16)},
+			{int64(1), int64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -524,7 +524,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "SUM(`c3`) +    min( c3 )",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 	},
@@ -3775,9 +3775,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
 		Expected: []sql.Row{
-			{float64(2), int64(1)},
-			{float64(3), int64(2)},
-			{float64(4), int64(3)},
+			{int64(2), int64(1)},
+			{int64(3), int64(2)},
+			{int64(4), int64(3)},
 		},
 	},
 	{
@@ -6079,9 +6079,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
 		Expected: []sql.Row{
-			{float64(2)},
-			{float64(4)},
-			{float64(6)},
+			{int64(2)},
+			{int64(4)},
+			{int64(6)},
 		},
 	},
 	{
