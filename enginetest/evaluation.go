@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"strings"
 	"testing"
 	"time"
@@ -429,6 +430,15 @@ func checkResults(
 			for i, val := range widenedRow {
 				if _, ok := val.(time.Time); ok {
 					widenedRow[i] = time.Unix(0, 0).UTC()
+				}
+			}
+		}
+	}
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") {
+		for _, widenedRow := range widenedRows {
+			for i, val := range widenedRow {
+				if d, ok := val.(decimal.Decimal); ok {
+					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
 				}
 			}
 		}

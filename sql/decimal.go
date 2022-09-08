@@ -15,9 +15,11 @@
 package sql
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -200,6 +202,12 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 		res = decimal.NewFromFloat32(value)
 	case float64:
 		res = decimal.NewFromFloat(value)
+	case []uint8:
+		val, err := strconv.ParseUint(hex.EncodeToString(value), 16, 64)
+		if err != nil {
+			return decimal.NullDecimal{}, err
+		}
+		return t.ConvertToNullDecimal(val)
 	case string:
 		var err error
 		res, err = decimal.NewFromString(value)
@@ -228,6 +236,8 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 			return decimal.NullDecimal{}, nil
 		}
 		res = value.Decimal
+	case JSONDocument:
+		return t.ConvertToNullDecimal(value.Val)
 	default:
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}
@@ -242,6 +252,10 @@ func (t decimalType) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
 	}
 	// TODO add shortcut for common case
 	// ex: certain num of bits fast tracks OK
+	r := v.StringFixed(v.Exponent() * -1)
+	l := t.exclusiveUpperBound.StringFixed(t.exclusiveUpperBound.Exponent() * -1)
+	if r == l {
+	}
 	if !v.Abs().LessThan(t.exclusiveUpperBound) {
 		return decimal.Decimal{}, ErrConvertToDecimalLimit.New()
 	}

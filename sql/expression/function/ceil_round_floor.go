@@ -17,6 +17,7 @@ package function
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math"
 	"reflect"
 	"strconv"
@@ -98,6 +99,8 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return math.Ceil(num), nil
 	case float32:
 		return float32(math.Ceil(float64(num))), nil
+	case decimal.Decimal:
+		return num.Ceil(), nil
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(num))
 	}
@@ -176,6 +179,8 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return math.Floor(num), nil
 	case float32:
 		return float32(math.Floor(float64(num))), nil
+	case decimal.Decimal:
+		return num.Floor(), nil
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(num))
 	}
@@ -313,6 +318,8 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// 586 / 100
 	// 5.86
 	switch xNum := xVal.(type) {
+	case decimal.Decimal:
+		return xNum.Round(int32(dVal)), nil
 	case float64:
 		return math.Round(xNum*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal), nil
 	case float32:

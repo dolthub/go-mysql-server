@@ -1426,9 +1426,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "with recursive t (n) as (select sum(1) from dual union all select (2) from dual) select sum(n) from t;",
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
 		Expected: []sql.Row{
-			{float64(3)},
+			{"3.00"},
 		},
 	},
 	{

@@ -13,7 +13,7 @@ import (
 
 type sumBuffer struct {
 	isnil bool
-	sum   interface{}
+	sum   interface{} // sum is either decimal.Decimal or float64
 	expr  sql.Expression
 }
 
@@ -32,13 +32,38 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	if m.isnil {
-		m.sum = decimal.NewFromInt(0)
-		m.isnil = false
-	}
-
 	switch n := v.(type) {
-	case float64:
+	case decimal.Decimal:
+		if m.isnil {
+			m.sum = decimal.NewFromInt(0)
+			m.isnil = false
+		}
+		if sum, ok := m.sum.(decimal.Decimal); ok {
+			m.sum = sum.Add(n)
+		} else {
+			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(n)
+		}
+	case string:
+		p, s := expression.GetDecimalPrecisionAndScale(n)
+		dt, err := sql.CreateDecimalType(uint8(p), uint8(s))
+		val, err := dt.Convert(v)
+		if err != nil {
+			val = decimal.NewFromInt(0)
+		}
+		if m.isnil {
+			m.sum = decimal.NewFromInt(0)
+			m.isnil = false
+		}
+		if sum, ok := m.sum.(decimal.Decimal); ok {
+			r := sum.StringFixed(sum.Exponent() * -1)
+			i := val.(decimal.Decimal).StringFixed(val.(decimal.Decimal).Exponent() * -1)
+			if r == i {
+			}
+			m.sum = sum.Add(val.(decimal.Decimal))
+		} else {
+			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(val.(decimal.Decimal))
+		}
+	default:
 		val, err := sql.Float64.Convert(n)
 		if err != nil {
 			val = float64(0)
@@ -52,24 +77,6 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 			sum = float64(0)
 		}
 		m.sum = sum.(float64) + val.(float64)
-	case decimal.Decimal:
-		if sum, ok := m.sum.(decimal.Decimal); ok {
-			m.sum = sum.Add(n)
-		} else {
-			m.sum = n
-		}
-	case string:
-		p, s := expression.GetDecimalPrecisionAndScale(n)
-		dt, err := sql.CreateDecimalType(uint8(p), uint8(s))
-		val, err := dt.Convert(v)
-		if err != nil {
-			val = decimal.NewFromInt(0)
-		}
-		if sum, ok := m.sum.(decimal.Decimal); ok {
-			m.sum = sum.Add(val.(decimal.Decimal))
-		} else {
-			m.sum = val.(decimal.Decimal)
-		}
 	}
 
 	return nil

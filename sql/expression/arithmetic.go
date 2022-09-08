@@ -170,13 +170,26 @@ func (a *Arithmetic) Type() sql.Type {
 // getArithmeticType returns column type if
 func (a *Arithmetic) getDecimalType() sql.Type {
 	var resType sql.Type
-	var precision int
-	var scale int
+	var precision uint8
+	var scale uint8
 	sql.Inspect(a, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
-		case *GetField:
+		case *SystemVar:
 			resType = c.Type()
 			return false
+		case *GetField:
+			if sql.IsDecimal(resType) {
+				resType = c.Type()
+				dt, _ := resType.(sql.DecimalType)
+				if dt.Precision() > (precision) {
+					precision = dt.Precision()
+				}
+				if dt.Scale() > scale {
+					scale = dt.Precision()
+				}
+			} else {
+				resType = sql.Float64
+			}
 		case *Literal:
 			val, err := c.Eval(nil, nil)
 			if err != nil {
@@ -196,30 +209,30 @@ func (a *Arithmetic) getDecimalType() sql.Type {
 			if s > scale {
 				scale = s
 			}
-			return true
 		}
 		return true
 	})
 
-	if resType == nil {
-		r, err := sql.CreateDecimalType(uint8(precision), uint8(scale))
-		if err != nil {
-			return sql.Float64
+	if sql.IsDecimal(resType) {
+		r, err := sql.CreateDecimalType(precision, scale)
+		if err == nil {
+			resType = r
 		}
-		resType = r
+	} else if resType == nil {
+		return sql.Float64
 	}
 
 	return resType
 }
 
-func GetDecimalPrecisionAndScale(val string) (int, int) {
+func GetDecimalPrecisionAndScale(val string) (uint8, uint8) {
 	scale := 0
 	precScale := strings.Split(strings.TrimPrefix(val, "-"), ".")
 	if len(precScale) != 1 {
 		scale = len(precScale[1])
 	}
 	precision := len((precScale)[0]) + scale
-	return precision, scale
+	return uint8(precision), uint8(scale)
 }
 
 func isInterval(expr sql.Expression) bool {
@@ -337,18 +350,51 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 
 func plus(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			return l + r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			return l + r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			return l + r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			return l + r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			return l + r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			return l + r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
 			return l + r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
 			return l + r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			return l + r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
@@ -378,18 +424,51 @@ func plus(lval, rval interface{}) (interface{}, error) {
 
 func minus(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			return l - r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			return l - r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			return l - r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			return l - r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			return l - r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			return l - r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
 			return l - r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
 			return l - r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			return l - r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
@@ -414,18 +493,51 @@ func minus(lval, rval interface{}) (interface{}, error) {
 
 func mult(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			return l * r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			return l * r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			return l * r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			return l * r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			return l * r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			return l * r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
 			return l * r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
 			return l * r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			return l * r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
@@ -443,6 +555,54 @@ func mult(lval, rval interface{}) (interface{}, error) {
 
 func div(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
@@ -451,7 +611,6 @@ func div(lval, rval interface{}) (interface{}, error) {
 			}
 			return l / r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
@@ -460,7 +619,14 @@ func div(lval, rval interface{}) (interface{}, error) {
 			}
 			return l / r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
