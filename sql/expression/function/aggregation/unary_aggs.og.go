@@ -589,7 +589,7 @@ func NewSum(e sql.Expression) *Sum {
 }
 
 func (a *Sum) Type() sql.Type {
-	return sql.Float64
+	return a.Child.Type()
 }
 
 func (a *Sum) IsNullable() bool {
