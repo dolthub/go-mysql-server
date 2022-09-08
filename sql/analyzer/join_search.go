@@ -312,7 +312,7 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 			}
 		}
 		for accessOrder, err := perm.Next(); err == nil; accessOrder, err = perm.Next() {
-			if !isCongruentJoinOrder(accessOrder, jo.tableNames(), cond) {
+			if !isConnectedJoinOrder(accessOrder, jo.tableNames(), cond) {
 				continue
 			}
 			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost, availableSchemaForKeys)
@@ -331,10 +331,10 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 	return nil
 }
 
-// isCongruentJoinOrder returns true if the table order is a valid path
+// isConnectedJoinOrder returns true if the table order is a valid path
 // through the condition adjacency matrix, or false if the table order
 // leaves disjoin condition(s) that convert to cross joins
-func isCongruentJoinOrder(order []int, tables []string, condAdj condAdjMap) bool {
+func isConnectedJoinOrder(order []int, tables []string, condAdj condAdjMap) bool {
 	for i := 1; i < len(order); i++ {
 		// valid if any preceding tab has a relation to this tab
 		rels := condAdj[tables[order[i]]]

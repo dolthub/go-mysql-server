@@ -1040,7 +1040,7 @@ func TestValidIndexedJoin(t *testing.T) {
 			}
 			adj := conditionAdjacencyMap(joinConds)
 			assert.Equal(t, tt.adj, adj)
-			assert.Equal(t, tt.valid, isCongruentJoinOrder(tt.order, tt.tables, tt.adj))
+			assert.Equal(t, tt.valid, isConnectedJoinOrder(tt.order, tt.tables, tt.adj))
 		})
 	}
 }
