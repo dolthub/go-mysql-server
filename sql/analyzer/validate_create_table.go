@@ -31,6 +31,11 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, transform.SameTree, nil
 	}
 
+	err := validateIndexes(ct.TableSpec())
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	// passed validateIndexes, so they all must be valid indexes
 	// extract map of columns that have indexes defined over them
 	keyedColumns := make(map[string]bool)
@@ -40,7 +45,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		}
 	}
 
-	err := validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
+	err = validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -475,6 +480,7 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 
 const textIndexPrefix = 1000
 
+// validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 func validateIndexes(tableSpec *plan.TableSpec) error {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
@@ -489,23 +495,26 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 			}
 
 			if sql.IsByteType(col.Type) {
-				return sql.ErrInvalidByteIndex.New(col.Name)
+				if idxCol.Length == 0 {
+					// TODO: should be this error, but can't tell the difference between 0 and unspecified
+					// return sql.ErrKeyZero.New(col.Name)
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length < 0 {
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length > 3072 {
+					return sql.ErrKeyTooLong.New()
+				}
 			} else if sql.IsTextBlob(col.Type) {
-				return sql.ErrInvalidTextIndex.New(col.Name)
+				if idxCol.Length == 0 {
+					// TODO: should be this error, but can't tell the difference between 0 and unspecified
+					// return sql.ErrKeyZero.New(col.Name)
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length < 0 {
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length > 768 {
+					return sql.ErrKeyTooLong.New()
+				}
 			}
-		}
-	}
-
-	return nil
-}
-
-// validatePkTypes prevents creating tables with blob primary keys
-func validatePkTypes(tableSpec *plan.TableSpec) error {
-	for _, col := range tableSpec.Schema.Schema {
-		if col.PrimaryKey && sql.IsByteType(col.Type) {
-			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
-		} else if col.PrimaryKey && sql.IsTextBlob(col.Type) {
-			return sql.ErrInvalidTextIndex.New(col.Name)
 		}
 	}
 
