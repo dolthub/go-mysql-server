@@ -31,16 +31,6 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, transform.SameTree, nil
 	}
 
-	err := validateIndexes(ct.TableSpec())
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	err = validatePkTypes(ct.TableSpec())
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
 	// passed validateIndexes, so they all must be valid indexes
 	// extract map of columns that have indexes defined over them
 	keyedColumns := make(map[string]bool)
@@ -50,7 +40,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		}
 	}
 
-	err = validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
+	err := validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
