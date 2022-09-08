@@ -36,30 +36,31 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 	}
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		var u *plan.Union
 		switch n := n.(type) {
 		case *plan.Union:
-			subqueryCtx, cancelFunc := ctx.NewSubContext()
-			defer cancelFunc()
-
-			left, _, err := a.analyzeThroughBatch(subqueryCtx, n.Left(), scope, "default-rules", sel)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			right, _, err := a.analyzeThroughBatch(subqueryCtx, n.Right(), scope, "default-rules", sel)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			newn, err := n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return newn, transform.NewTree, nil
-
+			u = n
 		default:
 			return n, transform.SameTree, nil
 		}
+		subqueryCtx, cancelFunc := ctx.NewSubContext()
+		defer cancelFunc()
+
+		left, _, err := a.analyzeThroughBatch(subqueryCtx, u.Left(), scope, "default-rules", sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		right, _, err := a.analyzeThroughBatch(subqueryCtx, u.Right(), scope, "default-rules", sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		ret, err := n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		return ret, transform.NewTree, nil
 	})
 }
 
@@ -70,30 +71,35 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	}
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		var u *plan.Union
 		switch n := n.(type) {
 		case *plan.Union:
-			subqueryCtx, cancelFunc := ctx.NewSubContext()
-			defer cancelFunc()
-
-			// TODO we could detect tree modifications here, skip rebuilding
-			left, _, err := a.analyzeStartingAtBatch(subqueryCtx, n.Left(), scope, "default-rules", sel)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			right, _, err := a.analyzeStartingAtBatch(subqueryCtx, n.Right(), scope, "default-rules", sel)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			newn, err := n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return newn, transform.NewTree, nil
+			u = n
+		case *plan.RecursiveCte:
+			// rCTEs behave like unions after default rules
+			u = n.Union()
 		default:
 			return n, transform.SameTree, nil
 		}
+		subqueryCtx, cancelFunc := ctx.NewSubContext()
+		defer cancelFunc()
+
+		// TODO we could detect tree modifications here, skip rebuilding
+		left, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Left(), scope, "default-rules", sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		right, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Right(), scope, "default-rules", sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		newn, err := n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		return newn, transform.NewTree, nil
 	})
 }
 

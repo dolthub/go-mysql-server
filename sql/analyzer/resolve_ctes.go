@@ -15,11 +15,9 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -153,19 +151,24 @@ func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map
 		}
 
 		if with.Recursive {
-			// TODO this needs to be split into a separate rule
-			rCte, err := newRecursiveCte(subquery)
+			// TODO maybe split into a separate rule
+			rCte, err := convertUnionToRecursiveCTE(subquery)
 			if err != nil {
 				return nil, err
 			}
-			rCte, _, err = resolveRecursiveCte(ctx, a, rCte, subquery, scope, sel)
+			var ret sql.Node
+
+			if rCte.Right() == nil {
+				// not recursive, back out into regular query
+				ret = subquery
+			} else {
+				ret, err = resolveRecursiveCte(ctx, a, rCte, scope, sel)
+				ret = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, ret).WithColumns(rCte.Columns)
+			}
 			if err != nil {
 				return nil, err
 			}
-			ctes[strings.ToLower(cteName)] = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, plan.NewProject(
-				[]sql.Expression{expression.NewQualifiedStar(subquery.Name())},
-				rCte,
-			))
+			ctes[strings.ToLower(cteName)] = ret
 		} else {
 			ctes[strings.ToLower(cteName)] = subquery
 		}
@@ -234,10 +237,10 @@ func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				if rSame {
 					return n, transform.SameTree, nil
 				} else {
-					return plan.NewUnion(left, n.Right()), transform.NewTree, nil
+					return plan.NewUnion(left, n.Right(), n.Distinct, n.Limit, n.SortFields), transform.NewTree, nil
 				}
 			}
-			return plan.NewWith(plan.NewUnion(cte.Child, n.Right()), cte.CTEs, cte.Recursive), transform.NewTree, nil
+			return plan.NewWith(plan.NewUnion(cte.Child, n.Right(), n.Distinct, n.Limit, n.SortFields), cte.CTEs, cte.Recursive), transform.NewTree, nil
 		default:
 		}
 
@@ -280,104 +283,100 @@ func hoistRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	})
 }
 
-func newRecursiveCte(sq *plan.SubqueryAlias) (sql.Node, error) {
-	// either UNION (deduplicate) or UNION ALL (keep duplicates)
-	var deduplicate bool
-	var union *plan.Union
-	switch n := sq.Child.(type) {
-	case *plan.Distinct:
-		deduplicate = true
-		union = n.Child.(*plan.Union)
-	case *plan.Union:
-		union = n
-	}
-	if union == nil {
-		return nil, sql.ErrInvalidRecursiveCteUnion.New(sq)
-	}
-
-	// TODO: can we support other top-level nodes?
-	// Window, Subquery, RecursiveCte, Cte?
-	switch n := union.Left().(type) {
-	case *plan.Project, *plan.GroupBy:
-	default:
-		return nil, sql.ErrInvalidRecursiveCteInitialQuery.New(n)
-	}
-	switch n := union.Right().(type) {
-	case *plan.Project, *plan.GroupBy:
-	default:
-		return nil, sql.ErrInvalidRecursiveCteRecursiveQuery.New(n)
-	}
-
-	return plan.NewRecursiveCte(union.Left(), union.Right(), sq.Name(), sq.Columns, deduplicate), nil
+func convertUnionToRecursiveCTE(sq *plan.SubqueryAlias) (*plan.RecursiveCte, error) {
+	u := sq.Child.(*plan.Union)
+	l, r := splitRecursiveCteUnion(sq.Name(), u)
+	return plan.NewRecursiveCte(l, r, sq.Name(), sq.Columns, u.Distinct, u.Limit, u.SortFields), nil
 }
 
-func resolveRecursiveCte(ctx *sql.Context, a *Analyzer, node sql.Node, sq sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	rCte := node.(*plan.RecursiveCte)
-	if rCte == nil {
-		return node, transform.SameTree, nil
+// splitRecursiveCteUnion distinguishes between recursive and non-recursive
+// portions of a recursive CTE. We walk a left deep tree of unions downwards
+// as far as the right scope references the recursive binding. A subquery
+// alias or a non-recursive right scope terminates the walk. We transpose all
+// recursive right scopes into a new union tree, returning separate initial
+// and recursive trees. If the node is not a recursive union, the returned
+// right node will be nil.
+//
+// todo(max): better error messages to differentiate between syntax errors
+// "should have one or more non-recursive query blocks followed by one or more recursive ones"
+// "the recursive table must be referenced only once, and not in any subquery"
+func splitRecursiveCteUnion(name string, n sql.Node) (sql.Node, sql.Node) {
+	union, ok := n.(*plan.Union)
+	if !ok {
+		return n, nil
+	}
+	switch union.Right().(type) {
+	case *plan.Union:
+		panic("not supported")
+	case *plan.SubqueryAlias:
+		// can't be recursive
+		return plan.NewUnion(union.Left(), union.Right(), union.Distinct, union.Limit, union.SortFields), nil
+	default:
 	}
 
-	newInit, _, err := a.analyzeThroughBatch(ctx, rCte.Init, scope, "default-rules", sel)
+	if hasTable(name, union.Right()) {
+		l, r := splitRecursiveCteUnion(name, union.Left())
+		if r == nil {
+			return union.Left(), union.Right()
+		}
+		return l, plan.NewUnion(r, union.Right(), union.Distinct, union.Limit, union.SortFields)
+	}
+
+	return plan.NewUnion(union.Left(), union.Right(), union.Distinct, union.Limit, union.SortFields), nil
+}
+
+// resolveRecursiveCte resolves the static left node of the CTE to perform
+// 1) schema discovery for the CTE and recursive right half, and 2) replace
+// recursive UnresolvedTable references with resolved RecursiveTable nodes.
+func resolveRecursiveCte(
+	ctx *sql.Context,
+	a *Analyzer,
+	rCte *plan.RecursiveCte,
+	scope *Scope,
+	sel RuleSelector,
+) (sql.Node, error) {
+	newInit, _, err := a.analyzeThroughBatch(ctx, rCte.Left(), scope, "default-rules", sel)
 	if err != nil {
-		return node, transform.SameTree, err
+		return rCte, err
 	}
 
-	// create recursive schema from initial projection cols and names
-	var outputProj []sql.Expression
-	switch n := newInit.(type) {
-	case *plan.Project:
-		outputProj = n.Projections
-	case *plan.GroupBy:
-		outputProj = n.SelectedExprs
+	recSch := make(sql.Schema, len(newInit.Schema()))
+	for i, c := range newInit.Schema() {
+		newC := c.Copy()
+		if len(rCte.Columns) > 0 {
+			newC.Name = rCte.Columns[i]
+		}
+		newC.Source = rCte.Name()
+		recSch[i] = newC
 	}
 
-	schema := make(sql.Schema, len(outputProj))
-	var name string
-	for i, p := range outputProj {
-		switch c := p.(type) {
-		case *expression.Alias, *expression.GetField:
-			name = c.(sql.Nameable).Name()
-		case *expression.Literal, sql.Aggregation:
-			name = c.String()
-		default:
-			return nil, transform.SameTree, fmt.Errorf("failed to resolve or unsupported field: %v", p)
-		}
-		if i < len(rCte.Columns) {
-			name = rCte.Columns[i]
-		}
-		schema[i] = &sql.Column{
-			Name:     name,
-			Source:   rCte.Name(),
-			Type:     p.Type(),
-			Nullable: p.IsNullable(),
-		}
-	}
-
-	// resolve recursive table with proper schema
-	rTable := plan.NewRecursiveTable(rCte.Name(), schema)
-
-	// replace recursive table refs
-	newRec, sameR, err := transform.Node(rCte.Rec, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch t := n.(type) {
+	// replace recursive table refs, cannot do this until we have schema
+	// TODO does ResolvedTable need a schema? should we replace in prior step?
+	rTable := plan.NewRecursiveTable(rCte.Name(), recSch)
+	newRec, _, err := transform.Node(rCte.Right(), func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
 		case *plan.UnresolvedTable:
-			if t.Name() == rCte.Name() {
+			if n.Name() == rCte.Name() {
 				return rTable, transform.NewTree, nil
+			}
+		case *plan.TableAlias:
+			switch c := n.Child.(type) {
+			case *plan.UnresolvedTable:
+				if c.Name() == rCte.Name() {
+					return plan.NewTableAlias(n.Name(), rTable), transform.NewTree, nil
+				}
 			}
 		}
 		return n, transform.SameTree, nil
 	})
 	if err != nil {
-		return node, transform.SameTree, err
+		return rCte, err
 	}
 
-	if sameR {
-		//todo(max): failing to consider sameR breaks,
-		// including sameI in the check also breaks.
-		return sq, transform.SameTree, nil
-	}
-	node, err = rCte.WithSchema(schema).WithWorking(rTable).WithChildren(newInit, newRec)
+	newRec, _, err = a.analyzeThroughBatch(ctx, newRec, scope, "default-rules", sel)
 	if err != nil {
-		return nil, transform.SameTree, err
+		return rCte, err
 	}
-	return node, transform.NewTree, nil
+
+	return rCte.WithSchema(recSch).WithWorking(rTable).WithChildren(newInit, newRec)
 }
