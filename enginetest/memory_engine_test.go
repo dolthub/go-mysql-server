@@ -179,54 +179,73 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "non-existent procedure in trigger body",
+			Name: "Alias Refactoring Testing",
 			SetUpScript: []string{
-				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+				"create table t (pk int primary key);",
+				"insert into t values (1);",
+				"create table datetime_table (i int primary key, date_col date, datetime_col datetime, timestamp_col timestamp, time_col time);",
+				"INSERT INTO DATETIME_TABLE VALUES(1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:00');",
+				"create table mytable (i int primary key, s varchar(20));",
+				"INSERT INTO MYTABLE VALUES(1, 'first row'), (2, 'second row'), (3, 'third row');",
+				"create table othertable (i2 int primary key, s2 varchar(20));",
+				"INSERT INTO othertable VALUES(1, 'third'), (2, 'second'), (3, 'first');",
+				"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+				"INSERT INTO tab0 VALUES(83,0,38), (26,0,79), (43,81,24)",
+				"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+					// https://github.com/dolthub/dolt/issues/4288
+					Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t SET sales.year_built = 1235;",
+
+					Expected: []sql.Row{{sql.OkResult{0, 0, plan.UpdateInfo{0, 0, 0}}}},
 				},
 				{
-					Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
-SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
-INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
-					Expected: []sql.Row{{sql.OkResult{}}},
+					Query:    `SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
+					Expected: []sql.Row{{"row"}},
 				},
 				{
-					Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-					Expected: []sql.Row{{sql.OkResult{}}},
+					Query:    "SELECT + 13 AS col0 FROM tab0 GROUP BY tab0.col0",
+					Expected: []sql.Row{{13}, {13}, {13}},
 				},
 				{
-					Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
-					ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+					Query:    "SELECT 82 col1 FROM tab0 AS cor0 GROUP BY cor0.col1",
+					Expected: []sql.Row{{82}, {82}},
 				},
 				{
-					Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
-					Expected: []sql.Row{{sql.OkResult{}}},
+					Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) " +
+						"from mydb.datetime_table " +
+						"group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
+					Expected: []sql.Row{{1577966400, 1.0}},
 				},
 				{
-					Query:    "CALL add_entry(4, 'aaa');",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+					Query: `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s ` +
+						`   FROM mytable INNER JOIN othertable ` +
+						`        ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) ` +
+						`   GROUP BY 1 ` +
+						`   HAVING s = 'secon'`,
+					Expected: []sql.Row{{"secon"}},
 				},
 				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
-				},
-				{
-					Query:    "SELECT * FROM t1;",
-					Expected: []sql.Row{{1, 8, "aaa"}},
-				},
-				{
-					Query:          "CALL add_entry(54, 'bbb');",
-					ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
+					Query: `select CONCAT(tbl.table_schema, '.', tbl.table_name) as the_table,
+							col.column_name, GROUP_CONCAT(kcu.column_name SEPARATOR ',') as pk
+							from information_schema.tables as tbl
+							join information_schema.columns as col
+							on tbl.table_name = col.table_name
+							join information_schema.key_column_usage as kcu
+							on tbl.table_name = kcu.table_name
+							join information_schema.table_constraints as tc
+							on kcu.constraint_name = tc.constraint_name
+							where tbl.table_schema = 'mydb' and
+							tbl.table_name = kcu.table_name and
+							tc.constraint_type = 'PRIMARY KEY' and
+							col.column_name like 'pk%'
+							group by the_table, col.column_name`,
+					Expected: []sql.Row{{"mydb.t", "pk", "pk,pk,pk,pk,pk"}},
 				},
 			},
 		},
@@ -238,8 +257,8 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		if err != nil {
 			panic(err)
 		}
-		// engine.Analyzer.Debug = true
-		// engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

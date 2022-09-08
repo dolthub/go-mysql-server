@@ -16,11 +16,61 @@ package expression
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Alias is a node that gives a name to an expression.
+// AliasReference is a named reference to an aliased expression.
+type AliasReference struct {
+	name string
+}
+
+// NewAliasReference creates a new AliasReference from the specified alias name.
+func NewAliasReference(name string) *AliasReference {
+	return &AliasReference{name}
+}
+
+func (a AliasReference) Name() string {
+	return a.name
+}
+
+func (a AliasReference) Table() string {
+	return ""
+}
+
+func (a AliasReference) String() string {
+	return fmt.Sprintf("(alias reference)%s", a.name)
+}
+
+func (a AliasReference) Resolved() bool {
+	return false
+}
+
+func (a AliasReference) IsNullable() bool {
+	return true
+}
+
+func (a AliasReference) Children() []sql.Expression {
+	return []sql.Expression{}
+}
+
+func (a AliasReference) Type() sql.Type {
+	return sql.Null
+}
+
+func (a AliasReference) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, fmt.Errorf("tried to call eval on an unresolved AliasReference")
+}
+
+func (a AliasReference) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 0)
+	}
+	return NewAliasReference(a.name), nil
+}
+
+var _ sql.Expression = (*AliasReference)(nil)
+
+// Alias is a unary expression that defines a new alias by giving a name to an expression.
 type Alias struct {
 	UnaryExpression
 	name string

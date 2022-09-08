@@ -49,6 +49,7 @@ const (
 	resolveOrderbyLiteralsId       // resolveOrderbyLiterals
 	resolveFunctionsId             // resolveFunctions
 	flattenTableAliasesId          // flattenTableAliases
+	identifyGroupByAliasesId       // identifyGroupByAliases
 	pushdownSortId                 // pushdownSort
 	pushdownGroupbyAliasesId       // pushdownGroupbyAliases
 	pushdownSubqueryAliasFiltersId // pushdownSubqueryAliasFilters
