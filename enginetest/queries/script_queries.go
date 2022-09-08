@@ -2154,6 +2154,25 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "sum on DECIMAL type column returns the same type result",
+		SetUpScript: []string{
+			"create table decimal_table (id int, val decimal(18,16));",
+			"insert into decimal_table values (1,-2.5633000000000384);",
+			"insert into decimal_table values (2,2.5633000000000370);",
+			"insert into decimal_table values (3,0.0000000000000004);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT val FROM decimal_table;",
+				Expected: []sql.Row{{"-2.5633000000000384"}, {"2.5633000000000370"}, {"0.0000000000000004"}},
+			},
+			{
+				Query:    "SELECT sum(val) FROM decimal_table;",
+				Expected: []sql.Row{{"-0.0000000000000010"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
