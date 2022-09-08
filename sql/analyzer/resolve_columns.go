@@ -108,7 +108,6 @@ type nestingLevelSymbols struct {
 	availableAliases   map[string]*expression.Alias
 	availableTables    map[string]string
 	availableTableCols map[tableCol]struct{}
-	lastRel            string
 }
 
 func newNestingLevelSymbols() *nestingLevelSymbols {
@@ -233,16 +232,6 @@ func (a availableNames) indexTable(alias, name string, nestingLevel int) {
 	a[nestingLevel].availableTables[alias] = strings.ToLower(name)
 }
 
-// nesting levels returns all levels present, from inner to outer
-func (a availableNames) nestingLevels() []int {
-	levels := make([]int, len(a))
-	for level := range a {
-		levels = append(levels, level)
-	}
-	sort.Ints(levels)
-	return levels
-}
-
 func (a availableNames) tablesAtLevel(level int) map[string]string {
 	return a[level].availableTables
 }
@@ -365,7 +354,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, transform.SameTree, nil
 		}
 
-		// AliasReferences do not need to be qualified to a table; they are already fully qualified
+		// AliasReferences do not need to be further qualified
 		if _, ok := col.(*expression.AliasReference); ok {
 			return col, transform.SameTree, nil
 		}
@@ -440,12 +429,6 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 					col.Name(),
 				), transform.NewTree, nil
 			default:
-				if len(symbols[level].lastRel) > 0 {
-					return expression.NewUnresolvedQualifiedColumn(
-						symbols[level].lastRel,
-						col.Name(),
-					), transform.NewTree, nil
-				}
 				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
 			}
 		}
