@@ -1198,19 +1198,10 @@ func replaceExpressionsWithAliasReferences(exprs []sql.Expression, replacedAlias
 func findAllColumns(e sql.Expression) []column {
 	var cols []column
 	sql.Inspect(e, func(e sql.Expression) bool {
-		uc, ok := e.(*expression.UnresolvedColumn)
-		if ok {
-			cols = append(cols, uc)
+		if c, ok := e.(column); ok {
+			cols = append(cols, c)
 		}
 		return true
 	})
-	sql.Inspect(e, func(e sql.Expression) bool {
-		ar, ok := e.(*expression.AliasReference)
-		if ok {
-			cols = append(cols, ar)
-		}
-		return true
-	})
-
 	return cols
 }

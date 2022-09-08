@@ -65,14 +65,11 @@ var DefaultRules = []Rule{
 	{resolveOrderbyLiteralsId, resolveOrderByLiterals},
 	{resolveFunctionsId, resolveFunctions},
 	{flattenTableAliasesId, flattenTableAliases},
-
 	{identifyGroupByAliasesId, identifyGroupByAliases},
 	{qualifyColumnsId, qualifyColumns},
-
 	{pushdownSortId, pushdownSort},
 	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
-
 	{pruneTablesId, pruneTables},
 	{resolveColumnsId, resolveColumns},
 	{resolveColumnDefaultsId, resolveColumnDefaults},
