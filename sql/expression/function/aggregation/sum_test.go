@@ -15,9 +15,9 @@
 package aggregation
 
 import (
-	"github.com/shopspring/decimal"
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
