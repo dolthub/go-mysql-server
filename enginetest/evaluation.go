@@ -16,11 +16,11 @@ package enginetest
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"

@@ -17,10 +17,11 @@ package function
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math"
 	"reflect"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
