@@ -424,6 +424,8 @@ func replanJoin(
 		return nil, transform.SameTree, sql.ErrUnsupportedJoinFactorCount.New(joinComplexityLimit, cnt)
 	}
 
+	cond := joinIndexes.flattenJoinConds(tableJoinOrder.tableNames())
+	condAdj := conditionAdjacencyMap(cond)
 	// Find a hinted or cost optimized access order for them
 	ordered := false
 	if joinHint != nil {
@@ -435,14 +437,14 @@ func replanJoin(
 	}
 
 	if !ordered {
-		err := tableJoinOrder.estimateCost(ctx, joinIndexes)
+		err := tableJoinOrder.estimateCost(ctx, joinIndexes, condAdj)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 	}
 
 	// Use the order in tableJoinOrder to construct a join tree
-	joinTree := buildJoinTree(tableJoinOrder, joinIndexes.flattenJoinConds(tableJoinOrder.tableNames()))
+	joinTree := buildJoinTree(ctx, tableJoinOrder, cond)
 
 	// This shouldn't happen, but better to fail gracefully if it does
 	if joinTree == nil {
@@ -459,6 +461,34 @@ func extractJoinHint(node plan.JoinNode) QueryHint {
 		return parseJoinHint(node.Comment())
 	}
 	return nil
+}
+
+type condAdjMap map[string][]string
+
+// conditionAdjacencyMap creates a map with links between tables
+// associated by join conditions
+func conditionAdjacencyMap(conds []*joinCond) condAdjMap {
+	adj := make(condAdjMap)
+	for _, c := range conds {
+		var tabs []string
+		transform.InspectExpr(c.cond, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.GetField:
+				tabs = append(tabs, e.Table())
+			default:
+			}
+			return false
+		})
+		for _, t1 := range tabs {
+			for _, t2 := range tabs {
+				if t1 == t2 {
+					continue
+				}
+				adj[t1] = append(adj[t1], t2)
+			}
+		}
+	}
+	return adj
 }
 
 var hintRegex = regexp.MustCompile("(\\s*[a-z_]+\\([^\\(]+\\)\\s*)+")

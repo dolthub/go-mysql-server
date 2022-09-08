@@ -16,6 +16,8 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -612,7 +614,7 @@ func TestBuildJoinTree(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			joinTree := buildJoinTree(tt.tableOrder, tt.joinConds)
+			joinTree := buildJoinTree(sql.NewEmptyContext(), tt.tableOrder, tt.joinConds)
 			if !assert.Equal(t, tt.joinTree, joinTree) {
 				fmt.Printf("Expected:\n%s, but got:\n%s", tt.joinTree, joinTree)
 			}
@@ -919,4 +921,126 @@ func tableOrder(db sql.Database, cat map[string]*plan.ResolvedTable, tables ...i
 		jo.order = append(jo.order, i)
 	}
 	return jo
+}
+
+type joinPrinter struct {
+	r       *joinSearchNode
+	b       *strings.Builder
+	nesting string
+}
+
+func printJoinTree(n *joinSearchNode) string {
+	p := &joinPrinter{
+		r:       n,
+		b:       &strings.Builder{},
+		nesting: "",
+	}
+	_printJoinTree(n, p)
+	return p.b.String()
+}
+
+func _printJoinTree(n *joinSearchNode, p *joinPrinter) {
+	if n.isLeaf() {
+		p.b.WriteString(fmt.Sprintf("%s%s\n", p.nesting, n.table))
+		return
+	}
+	p.b.WriteString(fmt.Sprintf("%s(\n", p.nesting))
+	p.nesting = p.nesting + "  "
+	_printJoinTree(n.left, p)
+	_printJoinTree(n.right, p)
+	p.nesting = p.nesting[:len(p.nesting)-2]
+	p.b.WriteString(fmt.Sprintf("%s)\n", p.nesting))
+}
+
+func TestValidIndexedJoin(t *testing.T) {
+	var tests = []struct {
+		order  []int
+		tables []string
+		conds  []sql.Expression
+		adj    condAdjMap
+		valid  bool
+	}{
+		{
+			order:  []int{0, 1, 2},
+			tables: []string{"a", "b", "c"},
+			conds: []sql.Expression{
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "c", "x", false),
+				),
+			},
+			adj: condAdjMap{
+				"a": []string{"b"},
+				"b": []string{"a", "c"},
+				"c": []string{"b"},
+			},
+			valid: true,
+		},
+		{
+			order:  []int{1, 0, 2, 3},
+			tables: []string{"a", "b", "c", "d"},
+			conds: []sql.Expression{
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "c", "x", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "d", "x", false),
+				),
+			},
+			adj: condAdjMap{
+				"a": []string{"b", "d"},
+				"b": []string{"a", "c"},
+				"c": []string{"b"},
+				"d": []string{"a"},
+			},
+			valid: true,
+		},
+		{
+			order:  []int{1, 3, 2, 0},
+			tables: []string{"a", "b", "c", "d"},
+			conds: []sql.Expression{
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "c", "x", false),
+				),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "d", "x", false),
+				),
+			},
+			adj: condAdjMap{
+				"a": []string{"b", "d"},
+				"b": []string{"a", "c"},
+				"c": []string{"b"},
+				"d": []string{"a"},
+			},
+			valid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("order: %v", tt.order), func(t *testing.T) {
+			joinConds := make([]*joinCond, len(tt.conds))
+			for i := range joinConds {
+				joinConds[i] = &joinCond{cond: tt.conds[i]}
+			}
+			adj := conditionAdjacencyMap(joinConds)
+			assert.Equal(t, tt.adj, adj)
+			assert.Equal(t, tt.valid, isCongruentJoinOrder(tt.order, tt.tables, tt.adj))
+		})
+	}
 }

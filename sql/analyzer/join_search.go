@@ -25,10 +25,10 @@ import (
 )
 
 func buildJoinTree(
+	ctx *sql.Context,
 	jo *joinOrderNode,
 	joinConds []*joinCond,
 ) *joinSearchNode {
-
 	var found *joinSearchNode
 	jo.visitJoinSearchNodes(func(n *joinSearchNode) bool {
 		assignConditions(n, joinConds)
@@ -64,6 +64,7 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 			// for each assignment of conditions to the right tree
 			return helper(n.right, func() bool {
 				columns := n.tableCols()
+				fmt.Printf("accumulated table columns: %s", columns)
 				// look at every remaining condition
 				for i := range conditions {
 					cond := conditions[i]
@@ -258,7 +259,7 @@ func (jo *joinOrderNode) tables() []NameableNode {
 // `joinOrderNode`, taking into account the cost of its children and
 // attempting to find the lowest cost assignment by varying
 // `jo.order` for commutable nodes.
-func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesByTable) error {
+func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesByTable, cond condAdjMap) error {
 	if jo.node != nil {
 		// Subqueries are considered opaque in this analysis, so give them the opaque table cost.
 		switch node := jo.node.(type) {
@@ -282,18 +283,18 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 			jo.cost = uint64(1000)
 		}
 	} else if jo.left != nil {
-		err := jo.left.estimateCost(ctx, joinIndexes)
+		err := jo.left.estimateCost(ctx, joinIndexes, cond)
 		if err != nil {
 			return err
 		}
-		err = jo.right.estimateCost(ctx, joinIndexes)
+		err = jo.right.estimateCost(ctx, joinIndexes, cond)
 		if err != nil {
 			return err
 		}
 		jo.cost = jo.left.cost * jo.right.cost
 	} else {
 		for i := range jo.commutes {
-			err := jo.commutes[i].estimateCost(ctx, joinIndexes)
+			err := jo.commutes[i].estimateCost(ctx, joinIndexes, cond)
 			if err != nil {
 				return err
 			}
@@ -312,6 +313,9 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 			}
 		}
 		for accessOrder, err := perm.Next(); err == nil; accessOrder, err = perm.Next() {
+			if !isCongruentJoinOrder(accessOrder, jo.tableNames(), cond) {
+				continue
+			}
 			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost, availableSchemaForKeys)
 			if err != nil {
 				return err
@@ -326,6 +330,30 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 	}
 
 	return nil
+}
+
+// isCongruentJoinOrder returns true if the table order is a valid path
+// through the condition adjacency matrix, or false if the table order
+// leaves disjoin condition(s) that convert to cross joins
+func isCongruentJoinOrder(order []int, tables []string, condAdj condAdjMap) bool {
+	for i := 1; i < len(order); i++ {
+		// valid if any preceding tab has a relation to this tab
+		rels := condAdj[tables[order[i]]]
+		found := false
+		for j := 0; j < i; j++ {
+			t2 := tables[order[j]]
+			for _, opt := range rels {
+				if t2 == opt {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // todo(max): if availableSchemaForKeys was a bitmap/fastintmap, 50% of the join
