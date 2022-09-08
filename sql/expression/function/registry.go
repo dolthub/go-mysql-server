@@ -179,6 +179,7 @@ var BuiltIns = []sql.Function{
 	sql.Function0{Name: "rank", Fn: window.NewRank},
 	sql.Function0{Name: "dense_rank", Fn: window.NewDenseRank},
 	sql.Function1{Name: "first_value", Fn: window.NewFirstValue},
+	sql.Function1{Name: "last_value", Fn: window.NewLastValue},
 	sql.FunctionN{Name: "rpad", Fn: NewRightPad},
 	sql.Function1{Name: "rtrim", Fn: NewRightTrim},
 	sql.Function0{Name: "schema", Fn: NewDatabase},
