@@ -3850,7 +3850,6 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 0},
 	}, nil, nil)
 
-	////////
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
 		{0, 0},
 		{1, 1},
