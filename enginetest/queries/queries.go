@@ -7021,6 +7021,28 @@ var QueryTests = []QueryTest{
 		Query:    "with a(j) as (select 1), b(i) as (select 1) (select j from a union all select i from b) union select j from a;",
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query: `
+With c as (
+  select * from (
+    select a.s
+    From mytable a
+    Join (
+      Select t2.*
+      From mytable t2
+      Where t2.i in (1,2)
+    ) b
+    On a.i = b.i
+    Join (
+      select t1.*
+      from mytable t1
+      Where t1.I in (2,3)
+    ) e
+    On b.I = e.i
+  ) d   
+) select * from c;`,
+		Expected: []sql.Row{{"second row"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
