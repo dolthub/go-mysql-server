@@ -54,16 +54,15 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
 	resolvedTables := getTablesByName(ij)
 
-	ret := make(map[string]sql.RowUpdater)
-
+	rowUpdatersByTable := make(map[string]sql.RowUpdater)
 	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
-		v, ok := resolvedTables[tableToBeUpdated]
+		resolvedTable, ok := resolvedTables[tableToBeUpdated]
 		if !ok {
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
 		var updatable sql.UpdatableTable
-		switch tt := v.Table.(type) {
+		switch tt := resolvedTable.Table.(type) {
 		case sql.UpdatableTable:
 			updatable = tt
 		case *plan.ProcessTable:
@@ -85,10 +84,10 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
 		}
 
-		ret[tableToBeUpdated] = updatable.Updater(ctx)
+		rowUpdatersByTable[tableToBeUpdated] = updatable.Updater(ctx)
 	}
 
-	return ret, nil
+	return rowUpdatersByTable, nil
 }
 
 // getTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
