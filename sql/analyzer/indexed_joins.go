@@ -279,7 +279,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, transform.SameTree, err
 		}
 
-		if scope != nil {
+		if scope != nil && len(scope.Schema()) > 0 {
 			left = plan.NewStripRowNode(left, len(scope.Schema()))
 		}
 
@@ -289,7 +289,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, transform.SameTree, err
 		}
 
-		if scope != nil {
+		if scope != nil && len(scope.Schema()) > 0 {
 			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 
