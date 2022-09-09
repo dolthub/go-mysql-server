@@ -3366,31 +3366,11 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(*) FROM t1 where a = 4`, []sql.Row{{1}}, nil, nil)
 }
 
-// todo(max): rewrite into []ScriptTest
 func TestChecksOnUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK ((a + b) / 2 >= 1) ENFORCED")
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
-	}, nil, nil)
-
-	AssertErr(t, e, harness, "UPDATE t1 set b = 0", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set a = 0, b = 1", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set b = 0 WHERE b = 1", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set a = 0, b = 1 WHERE b = 1", sql.ErrCheckConstraintViolated)
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
-	}, nil, nil)
+	for _, script := range queries.ChecksOnUpdateScriptTests {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
