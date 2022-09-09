@@ -195,15 +195,8 @@ func TestSingleScript(t *testing.T) {
 				"INSERT INTO othertable VALUES(1, 'third'), (2, 'second'), (3, 'first');",
 				"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
 				"INSERT INTO tab0 VALUES(83,0,38), (26,0,79), (43,81,24)",
-				"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				{
-					// https://github.com/dolthub/dolt/issues/4288
-					Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t SET sales.year_built = 1235;",
-
-					Expected: []sql.Row{{sql.OkResult{0, 0, plan.UpdateInfo{0, 0, 0}}}},
-				},
 				{
 					Query:    `SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
 					Expected: []sql.Row{{"row"}},

@@ -206,6 +206,8 @@ func (a availableNames) indexAlias(e *expression.Alias, nestingLevel int) {
 	}
 	_, ok = a[nestingLevel].availableAliases[name]
 	if !ok {
+		// BUG: If there was already a duplicate named alias registered, then we
+		//      silently drop a duplicate alias and can execute queries incorrectly.
 		a[nestingLevel].availableAliases[name] = e
 	}
 }
@@ -771,10 +773,10 @@ func identifyGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		return n, transform.SameTree, nil
 	}
 
+	// nestingLevels represents the node tree level – all within the same scope I assume?
 	var nestingLevel int
 	symbols := make(availableNames)
 
-	// TODO: What is nesting level? Is that different than scope?
 	getNodeAvailableNames(n, scope, symbols, 0)
 	a.Log(fmt.Sprintf("Identified symbols (nesting level: %d): '%s'", nestingLevel, symbols.debugString()))
 
@@ -1144,6 +1146,10 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[s
 	var expr sql.Expression
 	for i := range exprs {
 		expr = exprs[i]
+
+		// TODO: This is also where we need to unqualify these same expressions
+		//       (the ones that aren't AliasReferences)
+
 		if alias, ok := replacedAliases[expr.String()]; ok {
 			if newExprs == nil {
 				newExprs = make([]sql.Expression, len(exprs))
@@ -1179,12 +1185,10 @@ func replaceExpressionsWithAliasReferences2(exprs []sql.Expression, symbols avai
 					// We override the outer scope and qualify this column
 					// only if the current scope provides a definition.
 					levels = levels[len(symbols)-1:]
+					// TODO: Test this with subquery example to better understand levels and scopes
 				}
 
-				for _, level := range levels {
-					tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
-					fmt.Println(tablesForColumn)
-				}
+				fmt.Println(symbols.debugString())
 
 				if foundAlias {
 					if newExprs == nil {
