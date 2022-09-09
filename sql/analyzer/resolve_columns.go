@@ -246,10 +246,59 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
 		nestingLevel++
 
-		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		// Updates need to have check constraints qualified since multiple tables could be involved
+		checkConstraintsUpdated := false
+		if nn, ok := n.(*plan.Update); ok {
+			newChecks, err := qualifyCheckConstraints(nn)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			nn.Checks = newChecks
+			n = nn
+			checkConstraintsUpdated = true
+		}
+
+		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
 		})
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+		if checkConstraintsUpdated {
+			identity = transform.NewTree
+		}
+		return newNode, identity, nil
 	})
+}
+
+// qualifyCheckConstraints returns a new set of CheckConstraints created by taking the specified Update node's checks
+// and qualifying them to the table involved in the update, including honoring any table aliases specified.
+func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) {
+	checks := update.Checks
+	table, alias := getResolvedTableAndAlias(update.Child)
+
+	newExprs := make([]sql.Expression, len(checks))
+	for i, checkExpr := range checks.ToExpressions() {
+		newExpr, _, err := transform.Expr(checkExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			switch ee := e.(type) {
+			case column:
+				if ee.Table() == "" {
+					tableName := table.Name()
+					if alias != "" {
+						tableName = alias
+					}
+					return expression.NewUnresolvedQualifiedColumn(tableName, ee.Name()), transform.NewTree, nil
+				}
+			}
+			return e, transform.SameTree, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		newExprs[i] = newExpr
+	}
+
+	return checks.FromExpressions(newExprs)
 }
 
 // getNodeAvailableSymbols returns the set of table and column names accessible to the node given and using the buildScope

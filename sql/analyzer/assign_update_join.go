@@ -39,7 +39,6 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 
 		uj := plan.NewUpdateJoin(updaters, us)
 		ret, err := n.WithChildren(uj)
-
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -57,20 +56,32 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 
 	ret := make(map[string]sql.RowUpdater)
 
-	for k, v := range resolvedTables {
-		if _, exists := namesOfTableToBeUpdated[k]; exists {
-			updatable, ok := v.Table.(sql.UpdatableTable)
-			if !ok {
-				continue
-			}
-
-			keyless := sql.IsKeyless(updatable.Schema())
-			if keyless {
-				return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
-			}
-
-			ret[k] = updatable.Updater(ctx)
+	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
+		v, ok := resolvedTables[tableToBeUpdated]
+		if !ok {
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
+
+		var updatable sql.UpdatableTable
+		switch tt := v.Table.(type) {
+		case sql.UpdatableTable:
+			updatable = tt
+		case *plan.ProcessIndexableTable:
+			if ut, ok := tt.DriverIndexableTable.(sql.UpdatableTable); ok {
+				updatable = ut
+			}
+		}
+		// If there is no UpdatableTable for a table being updated, error out
+		if updatable == nil {
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
+		}
+
+		keyless := sql.IsKeyless(updatable.Schema())
+		if keyless {
+			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
+		}
+
+		ret[tableToBeUpdated] = updatable.Updater(ctx)
 	}
 
 	return ret, nil
