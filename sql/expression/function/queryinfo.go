@@ -123,7 +123,12 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx.SetLastQueryInfo(sql.LastInsertId, toInt64(res))
+	id, err := sql.Int64.Convert(res)
+	if err != nil {
+		return nil, err
+	}
+	// if we goes here id is must int64, we don't need to checkout the err of convert interface type to int64
+	ctx.SetLastQueryInfo(sql.LastInsertId, id.(int64))
 	return res, nil
 }
 
@@ -201,35 +206,4 @@ func (r FoundRows) Children() []sql.Expression {
 // WithChildren implements sql.Expression
 func (r FoundRows) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return sql.NillaryWithChildren(r, children...)
-}
-
-func toInt64(x interface{}) int64 {
-	switch x := x.(type) {
-	case int:
-		return int64(x)
-	case uint:
-		return int64(x)
-	case int8:
-		return int64(x)
-	case uint8:
-		return int64(x)
-	case int16:
-		return int64(x)
-	case uint16:
-		return int64(x)
-	case int32:
-		return int64(x)
-	case uint32:
-		return int64(x)
-	case int64:
-		return x
-	case uint64:
-		return int64(x)
-	case float32:
-		return int64(x)
-	case float64:
-		return int64(x)
-	default:
-		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
-	}
 }
