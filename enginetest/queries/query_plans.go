@@ -3723,6 +3723,54 @@ var PlanTests = []QueryPlanTest{
 			"         └─ Table(dual)\n" +
 			"",
 	},
+	{
+		Query: `
+With c as (
+  select * from (
+    select a.s
+    From mytable a
+    Join (
+      Select t2.*
+      From mytable t2
+      Where t2.i in (1,2)
+    ) b
+    On a.i = b.i
+    Join (
+      select t1.*
+      from mytable t1
+      Where t1.I in (2,3)
+    ) e
+    On b.I = e.i
+  ) d   
+) select * from c;`,
+		ExpectedPlan: "SubqueryAlias(c)\n" +
+			" └─ SubqueryAlias(d)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [a.s]\n" +
+			"         └─ IndexedJoin(a.i = b.i)\n" +
+			"             ├─ IndexedJoin(b.i = e.i)\n" +
+			"             │   ├─ SubqueryAlias(b)\n" +
+			"             │   │   └─ Filter(t2.i HASH IN (1, 2))\n" +
+			"             │   │       └─ TableAlias(t2)\n" +
+			"             │   │           └─ IndexedTableAccess(mytable)\n" +
+			"             │   │               ├─ index: [mytable.i]\n" +
+			"             │   │               ├─ filters: [{[2, 2]}, {[1, 1]}]\n" +
+			"             │   │               └─ columns: [i s]\n" +
+			"             │   └─ HashLookup(child: (e.i), lookup: (b.i))\n" +
+			"             │       └─ CachedResults\n" +
+			"             │           └─ SubqueryAlias(e)\n" +
+			"             │               └─ Filter(t1.i HASH IN (2, 3))\n" +
+			"             │                   └─ TableAlias(t1)\n" +
+			"             │                       └─ IndexedTableAccess(mytable)\n" +
+			"             │                           ├─ index: [mytable.i]\n" +
+			"             │                           ├─ filters: [{[3, 3]}, {[2, 2]}]\n" +
+			"             │                           └─ columns: [i s]\n" +
+			"             └─ TableAlias(a)\n" +
+			"                 └─ IndexedTableAccess(mytable)\n" +
+			"                     ├─ index: [mytable.i]\n" +
+			"                     └─ columns: [i s]\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
