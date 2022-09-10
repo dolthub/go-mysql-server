@@ -268,7 +268,7 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	// We only want to do this if we're at the top of the tree.
 	// TODO: Not a perfect indicator of whether we're at the top of the tree...
 	sameD := transform.SameTree
-	if scope == nil || len(scope.Schema()) == 0 {
+	if scope.IsEmpty() {
 		selector := func(c transform.Context) bool {
 			if _, isIndexedJoin := c.Parent.(*plan.IndexedJoin); isIndexedJoin {
 				return c.ChildNum == 0

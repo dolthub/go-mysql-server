@@ -54,7 +54,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	var aliasFn func(node sql.Node) bool
 	var analysisErr error
 	var recScope *Scope
-	if scope != nil && len(scope.Schema()) > 0 {
+	if !scope.IsEmpty() {
 		recScope = recScope.withMemos(scope.memos)
 	}
 

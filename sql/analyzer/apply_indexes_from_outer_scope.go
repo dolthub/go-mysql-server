@@ -30,7 +30,7 @@ import (
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
 func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if scope == nil || len(scope.Schema()) == 0 {
+	if scope.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
 
