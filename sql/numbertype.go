@@ -399,17 +399,30 @@ func (t numberTypeImpl) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 	}
 
 	stop := len(dest)
-	switch t.baseType {
-	case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
-		dest = strconv.AppendInt(dest, mustInt64(v), 10)
-	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-		dest = strconv.AppendUint(dest, mustUint64(v), 10)
-	case sqltypes.Float32:
-		dest = strconv.AppendFloat(dest, float64(v.(float32)), 'g', -1, 32)
-	case sqltypes.Float64:
-		dest = strconv.AppendFloat(dest, v.(float64), 'g', -1, 64)
-	default:
-		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+	if vt, err := t.Convert(v); err == nil {
+		switch t.baseType {
+		case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
+			dest = strconv.AppendInt(dest, mustInt64(vt), 10)
+		case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
+			dest = strconv.AppendUint(dest, mustUint64(vt), 10)
+		case sqltypes.Float32:
+			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 32)
+		case sqltypes.Float64:
+			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 64)
+		default:
+			panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+		}
+	} else if ErrInvalidValue.Is(err) {
+		switch str := v.(type) {
+		case []byte:
+			dest = str
+		case string:
+			dest = []byte(str)
+		default:
+			return sqltypes.Value{}, err
+		}
+	} else {
+		return sqltypes.Value{}, err
 	}
 
 	val := dest[stop:]
@@ -1053,12 +1066,7 @@ func mustInt64(v interface{}) int64 {
 	case int32:
 		return int64(tv)
 	case int64:
-		return int64(tv)
-	case bool:
-		if tv {
-			return int64(1)
-		}
-		return int64(0)
+		return tv
 	case uint:
 		return int64(tv)
 	case uint8:
@@ -1068,6 +1076,15 @@ func mustInt64(v interface{}) int64 {
 	case uint32:
 		return int64(tv)
 	case uint64:
+		return int64(tv)
+	case bool:
+		if tv {
+			return int64(1)
+		}
+		return int64(0)
+	case float32:
+		return int64(tv)
+	case float64:
 		return int64(tv)
 	default:
 		panic(fmt.Sprintf("unexpected type %v", v))
@@ -1085,12 +1102,7 @@ func mustUint64(v interface{}) uint64 {
 	case uint32:
 		return uint64(tv)
 	case uint64:
-		return uint64(tv)
-	case bool:
-		if tv {
-			return uint64(1)
-		}
-		return uint64(0)
+		return tv
 	case int:
 		return uint64(tv)
 	case int8:
@@ -1101,7 +1113,61 @@ func mustUint64(v interface{}) uint64 {
 		return uint64(tv)
 	case int64:
 		return uint64(tv)
+	case bool:
+		if tv {
+			return uint64(1)
+		}
+		return uint64(0)
+	case float32:
+		return uint64(tv)
+	case float64:
+		return uint64(tv)
 	default:
 		panic(fmt.Sprintf("unexpected type %v", v))
+	}
+}
+
+func mustFloat64(v interface{}) float64 {
+	switch tv := v.(type) {
+	case uint:
+		return float64(tv)
+	case uint8:
+		return float64(tv)
+	case uint16:
+		return float64(tv)
+	case uint32:
+		return float64(tv)
+	case uint64:
+		return float64(tv)
+	case int:
+		return float64(tv)
+	case int8:
+		return float64(tv)
+	case int16:
+		return float64(tv)
+	case int32:
+		return float64(tv)
+	case int64:
+		return float64(tv)
+	case bool:
+		if tv {
+			return float64(1)
+		}
+		return float64(0)
+	case float32:
+		return float64(tv)
+	case float64:
+		return tv
+	default:
+		panic(fmt.Sprintf("unexpected type %v", v))
+	}
+}
+
+func isString(v interface{}) bool {
+	switch v.(type) {
+	case []byte, string:
+		return true
+	default:
+		return false
 	}
 }
