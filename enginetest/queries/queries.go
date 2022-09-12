@@ -4268,6 +4268,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT CASE WHEN i > 2 THEN i WHEN i < 2 THEN i ELSE 'two' END FROM mytable`,
+		Expected: []sql.Row{
+			{"1"},
+			{"two"},
+			{"3"},
+		},
+	},
+	{
+		Query: `SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 2 END FROM mytable`,
+		Expected: []sql.Row{
+			{"less than two"},
+			{"2"},
+			{"more than two"},
+		},
+	},
+	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' END FROM mytable`,
 		Expected: []sql.Row{
 			{"one"},
@@ -4281,6 +4297,14 @@ var QueryTests = []QueryTest{
 			{sql.MustJSON(`{"a": 1}`)},
 			{sql.MustJSON(`{"b": 2}`)},
 			{nil},
+		},
+	},
+	{
+		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": 1}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+			{sql.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
