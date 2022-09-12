@@ -64,8 +64,6 @@ var DefaultRules = []Rule{
 	{resolveNaturalJoinsId, resolveNaturalJoins},
 	{resolveOrderbyLiteralsId, resolveOrderByLiterals},
 	{resolveFunctionsId, resolveFunctions},
-
-	// TODO: Could FlattenTableAliases be removed by changing the parser to emit these as flat?
 	{flattenTableAliasesId, flattenTableAliases},
 	{identifyGroupByAliasesId, identifyGroupByAliases},
 	{qualifyColumnsId, qualifyColumns},
@@ -77,7 +75,7 @@ var DefaultRules = []Rule{
 	{resolveColumnDefaultsId, resolveColumnDefaults},
 	{validateCheckConstraintId, validateCheckConstraints},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables},
-	{expandStarsId, expandStars}, // TODO: Need to get this one moved up higher next
+	{expandStarsId, expandStars},
 	{resolveHavingId, resolveHaving},
 	{mergeUnionSchemasId, mergeUnionSchemas},
 	{flattenAggregationExprsId, flattenAggregationExpressions},
