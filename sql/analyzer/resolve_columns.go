@@ -772,164 +772,6 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 	), transform.NewTree, nil
 }
 
-func identifyGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if n.Resolved() {
-		return n, transform.SameTree, nil
-	}
-
-	// nestingLevels represents the node tree level – all within the same scope I assume?
-	var nestingLevel int
-	symbols := make(availableNames)
-
-	getNodeAvailableNames(n, scope, symbols, 0)
-
-	// replacedAliases is a map of original expression string to alias that will need to be pushed down below the GroupBy in
-	// the new projection node later in the analyzer.
-	replacedAliases := make(map[string]string)
-	var err error
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
-			return n, transform.SameTree, nil
-		}
-		if _, ok := n.(*plan.RecursiveCte); ok {
-			return n, transform.SameTree, nil
-		}
-
-		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
-		nestingLevel++
-
-		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
-		// GroupBy itself.
-		ex, ok := n.(sql.Expressioner)
-		if ok && len(symbols) > 0 {
-			newExprs, same := replaceExpressionsWithAliasReferences(ex.Expressions(), replacedAliases)
-			if !same {
-				n, err = ex.WithExpressions(newExprs...)
-				return n, transform.NewTree, err
-			}
-		}
-
-		if n.Resolved() {
-			return n, transform.SameTree, nil
-		}
-
-		hav, ok := n.(*plan.Having)
-		if ok {
-			if hav.Cond != nil {
-				transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					switch c := e.(type) {
-					case *expression.UnresolvedColumn:
-						for _, value := range replacedAliases {
-							// TODO: This doesn't take into account aliases from outer scopes that could be visible...
-							//       Feels like this needs to be part of identifying aliases and later
-							//       resolving (or qualifying?) them.
-							if c.Name() == value {
-								return expression.NewAliasReference(value), transform.NewTree, nil
-							}
-						}
-					}
-					return e, transform.SameTree, nil
-				})
-			}
-		}
-
-		g, ok := n.(*plan.GroupBy)
-		if !ok || len(g.GroupByExprs) == 0 {
-			return n, transform.SameTree, nil
-		}
-
-		// The reason we have two sets of columns, one for grouping and
-		// one for aggregate is because an alias can redefine a column name
-		// of the child schema. In the grouping, if that column is referenced
-		// it refers to the alias, and not the one in the child. However,
-		// in the aggregate, aliases in that same aggregate cannot be used,
-		// so it refers to the column in the child node.
-		var groupingColumns = make(map[string]column)
-		for _, g := range g.GroupByExprs {
-			for _, n := range findAllColumns(g) {
-				groupingColumns[strings.ToLower(n.Name())] = n
-			}
-		}
-
-		var selectedColumns = make(map[string]column)
-		for _, agg := range g.SelectedExprs {
-			// This alias is going to be pushed down, so don't bother gathering
-			// its requirements.
-			if alias, ok := agg.(*expression.Alias); ok {
-				if _, ok := groupingColumns[strings.ToLower(alias.Name())]; ok {
-					continue
-				}
-			}
-
-			for _, n := range findAllColumns(agg) {
-				selectedColumns[strings.ToLower(n.Name())] = n
-			}
-		}
-
-		for _, expr := range g.SelectedExprs {
-			alias, ok := expr.(*expression.Alias)
-			// Note that aliases of aggregations cannot be used in the grouping
-			// because the grouping is needed before computing the aggregation.
-			if !ok || containsAggregation(alias) {
-				continue
-			}
-
-			name := strings.ToLower(alias.Name())
-			// Only if the alias is required in the grouping set needsReorder
-			// to true. If it's not required, there's no need for a reorder if
-			// no other alias is required.
-			_, ok = groupingColumns[name]
-			if ok && groupingColumns[name].Table() == "" {
-				delete(groupingColumns, name)
-
-				replacedAliases[alias.Child.String()] = alias.Name()
-			}
-		}
-
-		var newExprs []sql.Expression
-		for i, expr := range g.GroupByExprs {
-			newExpr, isSame, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if uc, ok := e.(*expression.UnresolvedColumn); ok {
-					// If the "column"(named reference?)
-					if uc.Table() != "" {
-						return e, transform.SameTree, nil
-					}
-
-					// TODO: Need to understand nestingLevels better...
-					//       For now, just search all levels, but this isn't correct
-					for _, level := range symbols.levels() {
-						if _, ok := symbols[level].availableAliases[strings.ToLower(uc.Name())]; ok {
-							// If the unresolved column is not qualified with a table and there exists an available alias with
-							// the same name, then it must be an alias reference because that's higher precedence than a column name.
-							return expression.NewAliasReference(uc.Name()), transform.NewTree, nil
-						}
-					}
-				}
-
-				return e, transform.SameTree, nil
-			})
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			// TODO: what is a "named reference"? It can be a column in a table, a column from a projection, a variable, or an alias
-			if !isSame {
-				if newExprs == nil {
-					newExprs = make([]sql.Expression, len(g.GroupByExprs))
-					copy(newExprs, g.GroupByExprs)
-				}
-				newExprs[i] = newExpr
-			}
-		}
-
-		if newExprs == nil {
-			return n, transform.SameTree, nil
-		} else {
-			g.GroupByExprs = newExprs
-			return g, transform.NewTree, nil
-		}
-	})
-}
-
 // pushdownGroupByAliases reorders the aggregation in a groupby so aliases defined in it can be resolved in the grouping
 // of the groupby. To do so, all aliases are pushed down to a projection node under the group by.
 func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -1100,6 +942,164 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			newSelectedExprs, newGroupBys,
 			plan.NewProject(projection, g.Child),
 		), transform.NewTree, nil
+	})
+}
+
+func identifyGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if n.Resolved() {
+		return n, transform.SameTree, nil
+	}
+
+	// nestingLevels represents the node tree level – all within the same scope I assume?
+	var nestingLevel int
+	symbols := make(availableNames)
+
+	getNodeAvailableNames(n, scope, symbols, 0)
+
+	// replacedAliases is a map of original expression string to alias that will need to be pushed down below the GroupBy in
+	// the new projection node later in the analyzer.
+	replacedAliases := make(map[string]string)
+	var err error
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
+			return n, transform.SameTree, nil
+		}
+		if _, ok := n.(*plan.RecursiveCte); ok {
+			return n, transform.SameTree, nil
+		}
+
+		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
+		nestingLevel++
+
+		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
+		// GroupBy itself.
+		ex, ok := n.(sql.Expressioner)
+		if ok && len(symbols) > 0 {
+			newExprs, same := replaceExpressionsWithAliasReferences(ex.Expressions(), replacedAliases)
+			if !same {
+				n, err = ex.WithExpressions(newExprs...)
+				return n, transform.NewTree, err
+			}
+		}
+
+		if n.Resolved() {
+			return n, transform.SameTree, nil
+		}
+
+		hav, ok := n.(*plan.Having)
+		if ok {
+			if hav.Cond != nil {
+				transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch c := e.(type) {
+					case *expression.UnresolvedColumn:
+						for _, value := range replacedAliases {
+							// TODO: This doesn't take into account aliases from outer scopes that could be visible...
+							//       Feels like this needs to be part of identifying aliases and later
+							//       resolving (or qualifying?) them.
+							if c.Name() == value {
+								return expression.NewAliasReference(value), transform.NewTree, nil
+							}
+						}
+					}
+					return e, transform.SameTree, nil
+				})
+			}
+		}
+
+		g, ok := n.(*plan.GroupBy)
+		if !ok || len(g.GroupByExprs) == 0 {
+			return n, transform.SameTree, nil
+		}
+
+		// The reason we have two sets of columns, one for grouping and
+		// one for aggregate is because an alias can redefine a column name
+		// of the child schema. In the grouping, if that column is referenced
+		// it refers to the alias, and not the one in the child. However,
+		// in the aggregate, aliases in that same aggregate cannot be used,
+		// so it refers to the column in the child node.
+		var groupingColumns = make(map[string]column)
+		for _, g := range g.GroupByExprs {
+			for _, n := range findAllColumns(g) {
+				groupingColumns[strings.ToLower(n.Name())] = n
+			}
+		}
+
+		var selectedColumns = make(map[string]column)
+		for _, agg := range g.SelectedExprs {
+			// This alias is going to be pushed down, so don't bother gathering
+			// its requirements.
+			if alias, ok := agg.(*expression.Alias); ok {
+				if _, ok := groupingColumns[strings.ToLower(alias.Name())]; ok {
+					continue
+				}
+			}
+
+			for _, n := range findAllColumns(agg) {
+				selectedColumns[strings.ToLower(n.Name())] = n
+			}
+		}
+
+		for _, expr := range g.SelectedExprs {
+			alias, ok := expr.(*expression.Alias)
+			// Note that aliases of aggregations cannot be used in the grouping
+			// because the grouping is needed before computing the aggregation.
+			if !ok || containsAggregation(alias) {
+				continue
+			}
+
+			name := strings.ToLower(alias.Name())
+			// Only if the alias is required in the grouping set needsReorder
+			// to true. If it's not required, there's no need for a reorder if
+			// no other alias is required.
+			_, ok = groupingColumns[name]
+			if ok && groupingColumns[name].Table() == "" {
+				delete(groupingColumns, name)
+
+				replacedAliases[alias.Child.String()] = alias.Name()
+			}
+		}
+
+		var newExprs []sql.Expression
+		for i, expr := range g.GroupByExprs {
+			newExpr, isSame, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if uc, ok := e.(*expression.UnresolvedColumn); ok {
+					// If the "column"(named reference?)
+					if uc.Table() != "" {
+						return e, transform.SameTree, nil
+					}
+
+					// TODO: Need to understand nestingLevels better...
+					//       For now, just search all levels, but this isn't correct
+					for _, level := range symbols.levels() {
+						if _, ok := symbols[level].availableAliases[strings.ToLower(uc.Name())]; ok {
+							// If the unresolved column is not qualified with a table and there exists an available alias with
+							// the same name, then it must be an alias reference because that's higher precedence than a column name.
+							return expression.NewAliasReference(uc.Name()), transform.NewTree, nil
+						}
+					}
+				}
+
+				return e, transform.SameTree, nil
+			})
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			// TODO: what is a "named reference"? It can be a column in a table, a column from a projection, a variable, or an alias
+			if !isSame {
+				if newExprs == nil {
+					newExprs = make([]sql.Expression, len(g.GroupByExprs))
+					copy(newExprs, g.GroupByExprs)
+				}
+				newExprs[i] = newExpr
+			}
+		}
+
+		if newExprs == nil {
+			return n, transform.SameTree, nil
+		} else {
+			g.GroupByExprs = newExprs
+			return g, transform.NewTree, nil
+		}
 	})
 }
 
