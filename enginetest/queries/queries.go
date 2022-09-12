@@ -3921,7 +3921,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT AVG(23.222000)`,
 		Expected: []sql.Row{
-			{float64(23.222)},
+			{"23.2220000000"},
 		},
 	},
 	{
