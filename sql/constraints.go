@@ -79,7 +79,7 @@ type CheckConstraint struct {
 
 type CheckConstraints []*CheckConstraint
 
-// ToExpressions returns the check expressions in these constrains as a slice of sql.Expression
+// ToExpressions returns the check expressions in these constraints as a slice of sql.Expression
 func (checks CheckConstraints) ToExpressions() []Expression {
 	exprs := make([]Expression, len(checks))
 	for i := range checks {

@@ -1,6 +1,11 @@
 package function
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"fmt"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+)
 
 // RowCount implements the ROW_COUNT() function
 type RowCount struct{}
@@ -61,14 +66,23 @@ func (r RowCount) FunctionName() string {
 }
 
 // LastInsertId implements the LAST_INSERT_ID() function
-type LastInsertId struct{}
+type LastInsertId struct {
+	expression.UnaryExpression
+}
 
 func (r LastInsertId) IsNonDeterministic() bool {
 	return true
 }
 
-func NewLastInsertId() sql.Expression {
-	return LastInsertId{}
+func NewLastInsertId(children ...sql.Expression) (sql.Expression, error) {
+	switch len(children) {
+	case 0:
+		return LastInsertId{}, nil
+	case 1:
+		return LastInsertId{UnaryExpression: expression.UnaryExpression{Child: children[0]}}, nil
+	default:
+		return nil, sql.ErrInvalidArgumentNumber.New("LastInsertId", len(children), 1)
+	}
 }
 
 var _ sql.FunctionExpression = LastInsertId{}
@@ -85,7 +99,7 @@ func (r LastInsertId) Resolved() bool {
 
 // String implements sql.Expression
 func (r LastInsertId) String() string {
-	return "LAST_INSERT_ID()"
+	return fmt.Sprintf("LAST_INSERT_ID(%s)", r.Child)
 }
 
 // Type implements sql.Expression
@@ -100,17 +114,36 @@ func (r LastInsertId) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return ctx.GetLastQueryInfo(sql.LastInsertId), nil
+	// if no expr like LAST_INSERT_ID(), we should return lastInsertId from ctx
+	if len(r.Children()) == 0 {
+		return ctx.GetLastQueryInfo(sql.LastInsertId), nil
+	}
+	// if expr is provided like LAST_INSERT_ID(id + 1), then the return value is the
+	// value of expr and we also need to save the lastinsertid into ctx for next query
+	res, err := r.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	id, err := sql.Int64.Convert(res)
+	if err != nil {
+		return nil, err
+	}
+	// if we goes here id is must int64, we don't need to checkout the err of convert interface type to int64
+	ctx.SetLastQueryInfo(sql.LastInsertId, id.(int64))
+	return res, nil
 }
 
 // Children implements sql.Expression
 func (r LastInsertId) Children() []sql.Expression {
-	return nil
+	if r.Child == nil {
+		return nil
+	}
+	return []sql.Expression{r.Child}
 }
 
 // WithChildren implements sql.Expression
 func (r LastInsertId) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return sql.NillaryWithChildren(r, children...)
+	return NewLastInsertId(children...)
 }
 
 // FunctionName implements sql.FunctionExpression

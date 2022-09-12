@@ -133,7 +133,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "json_value", Fn: NewJSONValue},
 	sql.FunctionN{Name: "lag", Fn: func(e ...sql.Expression) (sql.Expression, error) { return window.NewLag(e...) }},
 	sql.Function1{Name: "last", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewLast(e) }},
-	sql.Function0{Name: "last_insert_id", Fn: NewLastInsertId},
+	sql.FunctionN{Name: "last_insert_id", Fn: NewLastInsertId},
 	sql.Function1{Name: "lcase", Fn: NewLower},
 	sql.FunctionN{Name: "lead", Fn: func(e ...sql.Expression) (sql.Expression, error) { return window.NewLead(e...) }},
 	sql.FunctionN{Name: "least", Fn: NewLeast},
