@@ -698,6 +698,30 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "last_insert_id(expr) behavior",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "row_count() behavior",
 		SetUpScript: []string{
 			"create table b (x int primary key)",
