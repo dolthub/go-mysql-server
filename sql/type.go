@@ -399,9 +399,16 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if ct.Length == nil {
 			return nil, fmt.Errorf("VARCHAR requires a length")
 		}
-		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-		if err != nil {
-			return nil, err
+
+		var strLen = string(ct.Length.Val)
+		var length int64
+		if strings.ToLower(strLen) == "max" {
+			length = 16383
+		} else {
+			length, err = strconv.ParseInt(strLen, 10, 64)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return CreateString(sqltypes.VarChar, length, collation)
 	case "nvarchar", "national varchar", "national character varying":
