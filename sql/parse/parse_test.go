@@ -16,7 +16,6 @@ package parse
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math"
 	"sort"
 	"testing"
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
