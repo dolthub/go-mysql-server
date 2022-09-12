@@ -399,24 +399,30 @@ func (t numberTypeImpl) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 	}
 
 	stop := len(dest)
-	switch tv := v.(type) {
-	case []byte:
-		dest = tv
-	case string:
-		dest = []byte(tv)
-	default:
+	if vt, err := t.Convert(v); err == nil {
 		switch t.baseType {
 		case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
-			dest = strconv.AppendInt(dest, mustInt64(v), 10)
+			dest = strconv.AppendInt(dest, mustInt64(vt), 10)
 		case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-			dest = strconv.AppendUint(dest, mustUint64(v), 10)
+			dest = strconv.AppendUint(dest, mustUint64(vt), 10)
 		case sqltypes.Float32:
-			dest = strconv.AppendFloat(dest, mustFloat64(v), 'g', -1, 32)
+			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 32)
 		case sqltypes.Float64:
-			dest = strconv.AppendFloat(dest, mustFloat64(v), 'g', -1, 64)
+			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 64)
 		default:
 			panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 		}
+	} else if ErrInvalidValue.Is(err) {
+		switch str := v.(type) {
+		case []byte:
+			dest = str
+		case string:
+			dest = []byte(str)
+		default:
+			return sqltypes.Value{}, err
+		}
+	} else {
+		return sqltypes.Value{}, err
 	}
 
 	val := dest[stop:]
@@ -1154,5 +1160,14 @@ func mustFloat64(v interface{}) float64 {
 		return tv
 	default:
 		panic(fmt.Sprintf("unexpected type %v", v))
+	}
+}
+
+func isString(v interface{}) bool {
+	switch v.(type) {
+	case []byte, string:
+		return true
+	default:
+		return false
 	}
 }
