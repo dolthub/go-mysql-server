@@ -282,10 +282,6 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
 		}
-		if _, ok := n.(*plan.RecursiveCte); ok {
-			return n, transform.SameTree, nil
-		}
-
 		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
 		nestingLevel++
 
@@ -323,15 +319,17 @@ func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) 
 	newExprs := make([]sql.Expression, len(checks))
 	for i, checkExpr := range checks.ToExpressions() {
 		newExpr, _, err := transform.Expr(checkExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			switch ee := e.(type) {
-			case column:
-				if ee.Table() == "" {
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				if e.Table() == "" {
 					tableName := table.Name()
 					if alias != "" {
 						tableName = alias
 					}
-					return expression.NewUnresolvedQualifiedColumn(tableName, ee.Name()), transform.NewTree, nil
+					return expression.NewUnresolvedQualifiedColumn(tableName, e.Name()), transform.NewTree, nil
 				}
+			default:
+				// nothing else needed for other types
 			}
 			return e, transform.SameTree, nil
 		})
@@ -662,6 +660,8 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	switch n.(type) {
 	case *plan.AddColumn, *plan.ModifyColumn:
 		shouldIndexChildNode = false
+	case *plan.RecursiveCte, *plan.Union:
+		shouldIndexChildNode = false
 	}
 
 	if shouldIndexChildNode {
@@ -725,6 +725,10 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	case *plan.ModifyColumn:
 		tbl := node.Table
 		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
+	case *plan.RecursiveCte, *plan.Union:
+		// opaque nodes have derived schemas
+		// TODO also subquery aliases?
+		indexChildNode(node.(sql.BinaryNode).Left())
 	}
 
 	return columns, nil

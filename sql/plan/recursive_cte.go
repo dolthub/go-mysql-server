@@ -46,12 +46,7 @@ const cteRecursionLimit = 1000
 // projection count and types. [Init] will be resolved before
 // [Rec] or [RecursiveCte] to share schema types.
 type RecursiveCte struct {
-	// non-recursive projection
-	Init sql.Node
-	// optionally recursive projection
-	Rec sql.Node
-	// if set, use a hashmap to skip tuples seen more than once
-	Deduplicate bool
+	union *Union
 	// Columns used to name lazily-loaded schema fields
 	Columns []string
 	// schema will match the types of [Init.Schema()], names of [Columns]
@@ -63,20 +58,38 @@ type RecursiveCte struct {
 
 var _ sql.Node = (*RecursiveCte)(nil)
 var _ sql.Nameable = (*RecursiveCte)(nil)
+var _ sql.Expressioner = (*RecursiveCte)(nil)
 
-func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool) *RecursiveCte {
+func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool, l sql.Expression, sf sql.SortFields) *RecursiveCte {
 	return &RecursiveCte{
-		Init:        initial,
-		Rec:         recursive,
-		Columns:     outputCols,
-		Deduplicate: deduplicate,
-		name:        name,
+		Columns: outputCols,
+		union: &Union{
+			BinaryNode: BinaryNode{left: initial, right: recursive},
+			Distinct:   deduplicate,
+			Limit:      l,
+			SortFields: sf,
+		},
+		name: name,
 	}
 }
 
 // Name implements sql.Nameable
 func (r *RecursiveCte) Name() string {
 	return r.name
+}
+
+// Left implements sql.BinaryNode
+func (r *RecursiveCte) Left() sql.Node {
+	return r.union.left
+}
+
+// Right implements sql.BinaryNode
+func (r *RecursiveCte) Right() sql.Node {
+	return r.union.right
+}
+
+func (r *RecursiveCte) Union() *Union {
+	return r.union
 }
 
 // WithSchema inherits [Init]'s schema at resolve time
@@ -100,51 +113,87 @@ func (r *RecursiveCte) Schema() sql.Schema {
 
 // RowIter implements sql.Node
 func (r *RecursiveCte) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &recursiveCteIter{
-		init:        r.Init,
-		rec:         r.Rec,
+	var iter sql.RowIter = &recursiveCteIter{
+		init:        r.Left(),
+		rec:         r.Right(),
 		row:         row,
 		working:     r.working,
 		temp:        make([]sql.Row, 0),
-		deduplicate: r.Deduplicate,
-	}, nil
-}
-
-// Children implements sql.Node
-func (r *RecursiveCte) Children() []sql.Node {
-	return []sql.Node{r.Init, r.Rec}
+		deduplicate: r.union.Distinct,
+	}
+	if r.union.Limit != nil && len(r.union.SortFields) > 0 {
+		limit, err := getInt64Value(ctx, r.union.Limit)
+		if err != nil {
+			return nil, err
+		}
+		iter = newTopRowsIter(r.union.SortFields, limit, false, iter)
+	} else if r.union.Limit != nil {
+		limit, err := getInt64Value(ctx, r.union.Limit)
+		if err != nil {
+			return nil, err
+		}
+		iter = &limitIter{limit: limit, childIter: iter}
+	} else if len(r.union.SortFields) > 0 {
+		iter = newSortIter(r.union.SortFields, iter)
+	}
+	return iter, nil
 }
 
 // WithChildren implements sql.Node
 func (r *RecursiveCte) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 2)
+	ret := *r
+	u, err := r.union.WithChildren(children...)
+	if err != nil {
+		return nil, err
 	}
-	nn := *r
-	nn.Init = children[0]
-	nn.Rec = children[1]
-	return &nn, nil
+	ret.union = u.(*Union)
+	return &ret, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (r *RecursiveCte) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return r.Init.CheckPrivileges(ctx, opChecker) && r.Rec.CheckPrivileges(ctx, opChecker)
+func (r *RecursiveCte) Opaque() bool {
+	return true
 }
 
-// Resolved implements sql.Node
 func (r *RecursiveCte) Resolved() bool {
-	return r.Init.Resolved() && r.Rec.Resolved()
+	return r.union.Resolved()
+}
+
+func (r *RecursiveCte) Children() []sql.Node {
+	return r.union.Children()
+}
+
+func (r *RecursiveCte) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return r.union.CheckPrivileges(ctx, opChecker)
+}
+
+func (r *RecursiveCte) Expressions() []sql.Expression {
+	return r.union.Expressions()
+}
+
+func (r *RecursiveCte) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	ret := *r
+	u, err := r.union.WithExpressions(exprs...)
+	if err != nil {
+		return nil, err
+	}
+	ret.union = u.(*Union)
+	return &ret, nil
 }
 
 // String implements sql.Node
 func (r *RecursiveCte) String() string {
-	var union string
-	if r.Deduplicate {
-		union = "UNION"
-	} else {
-		union = "UNION ALL"
-	}
-	return fmt.Sprintf("(%s %s %s)", r.Init, union, r.Rec)
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("RecursiveCTE")
+	pr.WriteChildren(r.union.String())
+	return pr.String()
+}
+
+// DebugString implements sql.Node
+func (r *RecursiveCte) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("RecursiveCTE")
+	pr.WriteChildren(sql.DebugString(r.union))
+	return pr.String()
 }
 
 // Type implements sql.Node
@@ -308,7 +357,7 @@ func (r *RecursiveTable) Name() string {
 }
 
 func (r *RecursiveTable) String() string {
-	return r.name
+	return fmt.Sprintf("RecursiveTable(%s)", r.name)
 }
 
 func (r *RecursiveTable) Schema() sql.Schema {

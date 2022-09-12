@@ -34,6 +34,11 @@ type Scope struct {
 	procedures *ProcedureCache
 }
 
+func (s *Scope) IsEmpty() bool {
+	return s == nil || len(s.nodes) == 0
+
+}
+
 // newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
 // the Node given should be the sibling Node of the subquery.
 func (s *Scope) newScope(node sql.Node) *Scope {

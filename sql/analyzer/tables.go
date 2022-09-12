@@ -112,6 +112,26 @@ func getTable(node sql.Node) sql.Table {
 	return table
 }
 
+// Finds first unresolved table node that is a descendant of the node given
+func hasTable(name string, node sql.Node) bool {
+	var found bool
+	transform.Inspect(node, func(node sql.Node) bool {
+		switch n := node.(type) {
+		case *plan.UnresolvedTable:
+			found = found ||
+				name == n.Name()
+		case *plan.TableAlias:
+			switch n := n.Child.(type) {
+			case *plan.UnresolvedTable:
+				found = found || name == n.Name()
+			}
+		default:
+		}
+		return !found
+	})
+	return found
+}
+
 // getResolvedTableAndAlias returns the first resolved table in the specified node tree, along with its aliased name,
 // or the empty string if no table alias has been specified.
 func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {

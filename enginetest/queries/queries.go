@@ -6966,8 +6966,82 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{2}, {1}},
 	},
 	{
+		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 5) SELECT count(i) FROM n;`,
+		Expected: []sql.Row{{5}},
+	},
+	{
+		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n GROUP BY i HAVING i+1 <= 10) SELECT count(i) FROM n;`,
+		Expected: []sql.Row{{10}},
+	},
+	{
+		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
+		Expected: []sql.Row{{5}},
+	},
+	{
+		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 1) SELECT count(i) FROM n;`,
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
 		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select 1 union select * from (select 2 union select 3) a union select 4;",
+		Expected: []sql.Row{{1}, {2}, {3}, {4}},
+	},
+	{
+		Query:    "select 1 union select * from (select 2 union select 3) a union select 4;",
+		Expected: []sql.Row{{1}, {2}, {3}, {4}},
+	},
+	{
+		Query:    "With recursive a(x) as (select 1 union select 4 union select * from (select 2 union select 3) b union select x+1 from a where x < 10) select count(*) from a;",
+		Expected: []sql.Row{{10}},
+	},
+	{
+		Query:    "with a(j) as (select 1), b(i) as (select 2) select j from a union (select i from b order by 1 desc) union select j from a;",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
+		Query:    "with a(j) as (select 1), b(i) as (select 2) (select t1.j as k from a t1 join a t2 on t1.j = t2.j union select i from b order by k desc limit 1) union select j from a;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with a(j) as (select 1 union select 2 union select 3), b(i) as (select 2 union select 3) (select t1.j as k from a t1 join a t2 on t1.j = t2.j union select i from b order by k desc limit 2) union select j from a;",
+		Expected: []sql.Row{{3}, {2}},
+	},
+	{
+		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by j desc limit 1) union select j from a;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 limit 1) union select j from a;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "with a(j) as (select 1), b(i) as (select 1) (select j from a union all select i from b) union select j from a;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: `
+With c as (
+  select * from (
+    select a.s
+    From mytable a
+    Join (
+      Select t2.*
+      From mytable t2
+      Where t2.i in (1,2)
+    ) b
+    On a.i = b.i
+    Join (
+      select t1.*
+      from mytable t1
+      Where t1.I in (2,3)
+    ) e
+    On b.I = e.i
+  ) d   
+) select * from c;`,
+		Expected: []sql.Row{{"second row"}},
 	},
 }
 
@@ -7035,8 +7109,38 @@ var KeylessQueries = []QueryTest{
 	},
 }
 
-// Queries that are known to be broken in the engine.
+// BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
+	{
+		// mysql is case-sensitive with CTE name
+		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select j from MYTABLE",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		// mysql is case-sensitive with CTE name
+		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select i from mytable;",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		// edge case where mysql moves an orderby between scopes
+		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a;",
+		Expected: []sql.Row{{2}, {1}},
+	},
+	{
+		// mysql converts boolean to int8
+		Query:    "with a(j) as (select 1 union select 2 union select 3), b(i) as (select 2 union select 3) select (3,4) in (select a.j, b.i+1 from a, b where a.j = b.i) as k group by k having k = 1;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		// mysql converts boolean to int8 and deduplicates with other 1
+		Query:    "With recursive a(x) as (select 1 union select 2 union select x in (select t1.i from mytable t1) from a) select x from a;",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
+		// mysql overwrites outer CTEs on seeing inner CTE definition
+		Query:    "with a(j) as (select 1) ( with c(k) as (select 3) select k from c union select 6) union select k from c;",
+		Expected: []sql.Row{{3}, {6}},
+	},
 	{
 		Query:    "SELECT pk1, SUM(c1) FROM two_pk",
 		Expected: []sql.Row{{0, 60.0}},
@@ -8393,6 +8497,10 @@ type QueryErrorTest struct {
 }
 
 var ErrorQueries = []QueryErrorTest{
+	{
+		Query:       "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a order by 1 asc;",
+		ExpectedErr: sql.ErrConflictingExternalQuery,
+	},
 	{
 		// Test for: https://github.com/dolthub/dolt/issues/3247
 		Query:       "select * from dual where foo() and true;",

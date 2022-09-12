@@ -14,9 +14,7 @@
 
 package sql
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Index is the representation of an index, and also creates an IndexLookup when given a collection of ranges.
 type Index interface {
@@ -52,15 +50,34 @@ type Index interface {
 // information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
 type IndexLookup struct {
-	fmt.Stringer
 	Index  Index
 	Ranges RangeCollection
+	// IsPointLookup is true if the lookup will return one or zero
+	// values; the range is null safe, the index is unique, every index
+	// column has a range expression, and every range expression is an
+	// exact equality.
+	IsPointLookup bool
+	IsEmptyRange  bool
 }
 
 var emptyLookup = IndexLookup{}
 
 func (il IndexLookup) IsEmpty() bool {
 	return il.Index == nil
+}
+
+func (il IndexLookup) String() string {
+	pr := NewTreePrinter()
+	_ = pr.WriteNode("IndexLookup")
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String()))
+	return pr.String()
+}
+
+func (il IndexLookup) DebugString() string {
+	pr := NewTreePrinter()
+	_ = pr.WriteNode("IndexLookup")
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString()))
+	return pr.String()
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
