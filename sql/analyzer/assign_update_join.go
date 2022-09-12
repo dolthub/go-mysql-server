@@ -61,21 +61,14 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		var updatable sql.UpdatableTable
-		switch tt := resolvedTable.Table.(type) {
-		case sql.UpdatableTable:
-			updatable = tt
-		case *plan.ProcessTable:
-			if ut, ok := tt.Table.(sql.UpdatableTable); ok {
-				updatable = ut
-			}
-		case *plan.ProcessIndexableTable:
-			if ut, ok := tt.DriverIndexableTable.(sql.UpdatableTable); ok {
-				updatable = ut
-			}
+		var table = resolvedTable.Table
+		if t, ok := table.(sql.TableWrapper); ok {
+			table = t.Underlying()
 		}
+
 		// If there is no UpdatableTable for a table being updated, error out
-		if updatable == nil {
+		updatable, ok := table.(sql.UpdatableTable)
+		if !ok && updatable == nil {
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 

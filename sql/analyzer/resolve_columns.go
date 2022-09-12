@@ -280,15 +280,17 @@ func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) 
 	newExprs := make([]sql.Expression, len(checks))
 	for i, checkExpr := range checks.ToExpressions() {
 		newExpr, _, err := transform.Expr(checkExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			switch ee := e.(type) {
-			case column:
-				if ee.Table() == "" {
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				if e.Table() == "" {
 					tableName := table.Name()
 					if alias != "" {
 						tableName = alias
 					}
-					return expression.NewUnresolvedQualifiedColumn(tableName, ee.Name()), transform.NewTree, nil
+					return expression.NewUnresolvedQualifiedColumn(tableName, e.Name()), transform.NewTree, nil
 				}
+			default:
+				// nothing else needed for other types
 			}
 			return e, transform.SameTree, nil
 		})
