@@ -783,17 +783,16 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	// the new projection node.
 	replacedAliases := make(map[string]string)
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		// TODO: Don't we still need to do this?
 		// For any unresolved alias references above the GroupBy, we need to apply the same alias replacement as we did in the
 		// GroupBy itself.
-		//ex, ok := n.(sql.Expressioner)
-		//if ok && len(replacedAliases) > 0 {
-		//	newExprs, same := replaceExpressionsWithAliases(ex.Expressions(), replacedAliases)
-		//	if !same {
-		//		n, err = ex.WithExpressions(newExprs...)
-		//		return n, transform.NewTree, err
-		//	}
-		//}
+		ex, ok := n.(sql.Expressioner)
+		if ok && len(replacedAliases) > 0 {
+			newExprs, same := replaceExpressionsWithAliases(ex.Expressions(), replacedAliases)
+			if !same {
+				n, err := ex.WithExpressions(newExprs...)
+				return n, transform.NewTree, err
+			}
+		}
 
 		g, ok := n.(*plan.GroupBy)
 		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
@@ -1136,7 +1135,6 @@ func replaceExpressionsWithAliasReferences(exprs []sql.Expression, replacedAlias
 				newExprs = make([]sql.Expression, len(exprs))
 				copy(newExprs, exprs)
 			}
-			// TODO: This is always guaranteed to be an alias reference, right?
 			newExprs[i] = expression.NewAliasReference(alias)
 		}
 	}
