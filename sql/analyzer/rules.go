@@ -130,7 +130,6 @@ var DefaultValidationRules = []Rule{
 	{validateSchemaSourceId, validateSchemaSource},
 	{validateIndexCreationId, validateIndexCreation},
 	{validateOperandsId, validateOperands},
-	{validateCaseResultTypesId, validateCaseResultTypes},
 	{validateIntervalUsageId, validateIntervalUsage},
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
