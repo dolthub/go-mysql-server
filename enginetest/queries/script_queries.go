@@ -713,7 +713,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
