@@ -804,7 +804,6 @@ func identifyGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		ex, ok := n.(sql.Expressioner)
 		if ok && len(symbols) > 0 {
 			newExprs, same := replaceExpressionsWithAliasReferences(ex.Expressions(), replacedAliases)
-			//newExprs, same := replaceExpressionsWithAliasReferences2(ex.Expressions(), symbols)
 			if !same {
 				n, err = ex.WithExpressions(newExprs...)
 				return n, transform.NewTree, err
@@ -1032,7 +1031,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// same expressions. So if we replace one, replace both.
 		// TODO: this is pretty fragile and relies on string matching, need a better solution
 		newGroupBys, _ := replaceExpressionsWithAliases(g.GroupByExprs, replacedAliases)
-		newGroupBys, _ = updateQualifiedColumns(g.GroupByExprs, replacedAliases)
 
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
@@ -1106,42 +1104,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	})
 }
 
-func updateQualifiedColumns(exprs []sql.Expression, replacedAliases map[string]string) ([]sql.Expression, transform.TreeIdentity) {
-	// TODO: Don't we need to transform on the expressions to processes them recursively and not just iterate? YES!
-	//       This works for the replacement done by pushdownGroupByAliases, but... it needs to be done recursively
-	//       for all nested expressions in order to identify aliases.
-	var newExprs []sql.Expression
-	for i := range exprs {
-		switch c := exprs[i].(type) {
-		case column:
-			// If a column expression was previously qualified against a table, we need to unqualify it,
-			// because it is now coming from a projection that we are inserting above the raw table source.
-			// TODO: Is this good enough or should we compare to the expected table name? (seems good enuf)
-			// Ugh... this won't work in the case where a column was already qualified as part of the original
-			// statement. We can't unqualify that and change it to an alias or unresolved column. We need to identify
-			// the aliases better up front...
-
-			shouldUnqualify := false
-			for _, value := range replacedAliases {
-				if value == c.Name() {
-					shouldUnqualify = true
-				}
-			}
-			if c.Table() != "" && shouldUnqualify {
-				if newExprs == nil {
-					newExprs = make([]sql.Expression, len(exprs))
-					copy(newExprs, exprs)
-				}
-				newExprs[i] = expression.NewUnresolvedColumn(c.Name())
-			}
-		}
-	}
-	if len(newExprs) > 0 {
-		return newExprs, transform.NewTree
-	}
-	return exprs, transform.SameTree
-}
-
 // replaceExpressionsWithAliases replaces any expressions in the slice given that match the map of aliases given with
 // their alias expression. This is necessary when pushing aliases down the tree, since we introduce a projection node
 // that effectively erases the original columns of a table.
@@ -1159,51 +1121,7 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[s
 				newExprs = make([]sql.Expression, len(exprs))
 				copy(newExprs, exprs)
 			}
-			newExprs[i] = expression.NewUnresolvedColumn(alias)
-		}
-	}
-	if len(newExprs) > 0 {
-		return newExprs, transform.NewTree
-	}
-	return exprs, transform.SameTree
-}
-
-func replaceExpressionsWithAliasReferences2(exprs []sql.Expression, symbols availableNames) ([]sql.Expression, transform.TreeIdentity) {
-	var newExprs []sql.Expression
-	// TODO: Does this need to be a recursive transform and not just an iteration?
-	for i := range exprs {
-		switch e := exprs[i].(type) {
-		case *expression.AliasReference:
-			fmt.Println("Found AliasReference")
-		case *expression.UnresolvedColumn:
-			// If an unknown column does not have a table name, then check if it's an alias
-			if e.Table() == "" {
-				foundAlias := true // TODO: for now... let's assume everything without a table name is an alias?
-
-				name := strings.ToLower(e.Name())
-				levels := symbols.levels()
-
-				// TODO: Huh?
-				if symbols.conflictingAlias(name, len(symbols)) {
-					// A higher scope produces an alias with this name.
-					// We override the outer scope and qualify this column
-					// only if the current scope provides a definition.
-					levels = levels[len(symbols)-1:]
-					// TODO: Test this with subquery example to better understand levels and scopes
-				}
-
-				fmt.Println(symbols.debugString())
-
-				if foundAlias {
-					if newExprs == nil {
-						newExprs = make([]sql.Expression, len(exprs))
-						copy(newExprs, exprs)
-					}
-					newExprs[i] = expression.NewAliasReference(e.Name())
-				}
-			}
-		default:
-			fmt.Printf("Found non-UnresolvedColumn: %s (%T)", e.String(), e)
+			newExprs[i] = expression.NewAliasReference(alias)
 		}
 	}
 	if len(newExprs) > 0 {

@@ -195,8 +195,24 @@ func TestSingleScript(t *testing.T) {
 				"INSERT INTO othertable VALUES(1, 'third'), (2, 'second'), (3, 'first');",
 				"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
 				"INSERT INTO tab0 VALUES(83,0,38), (26,0,79), (43,81,24)",
+				"CREATE TABLE T1 (pk int primary key, a int, b int)",
+				"CREATE TABLE T2 (pk int primary key, c int, d int)",
+				"INSERT INTO T1 VALUES (1, 1, 1), (2, 2, 2);",
+				"INSERT INTO T2 VALUES (1, 100, 100), (2, 200, 200);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "select a as a1, b from t1 group by a1, b",
+					Expected: []sql.Row{{1, 1}, {2, 2}},
+				},
+				{
+					Query:    "select a, b, c, d from t1, t2 where t1.pk = t2.pk",
+					Expected: []sql.Row{{1, 1, 100, 100}, {2, 2, 200, 200}},
+				},
+				{
+					Query:    "select a as a1, b, c as a3, d from t1, t2 where t1.pk = t2.pk group by a1, a3, b, d",
+					Expected: []sql.Row{{1, 1, 100, 100}, {2, 2, 200, 200}},
+				},
 				{
 					Query:    `SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
 					Expected: []sql.Row{{"row"}},
@@ -238,7 +254,7 @@ func TestSingleScript(t *testing.T) {
 							tc.constraint_type = 'PRIMARY KEY' and
 							col.column_name like 'pk%'
 							group by the_table, col.column_name`,
-					Expected: []sql.Row{{"mydb.t", "pk", "pk,pk,pk,pk,pk"}},
+					Expected: []sql.Row{{"mydb.t", "pk", "pk,pk,pk,pk,pk,pk,pk"}},
 				},
 			},
 		},

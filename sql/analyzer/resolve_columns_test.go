@@ -634,6 +634,7 @@ func TestPushdownGroupByAliases(t *testing.T) {
 		[]sql.Expression{
 			uc("a"),
 			uc("b"),
+			uc("d"),
 		},
 		plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}, nil), nil, nil),
 	)
@@ -643,7 +644,7 @@ func TestPushdownGroupByAliases(t *testing.T) {
 			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,
 				uc("c"),
 			)),
-			uc("b"),
+			expression.NewAliasReference("b"),
 			expression.NewUnresolvedFunction("bar", true, nil,
 				uc("b_01"),
 			),
@@ -651,6 +652,7 @@ func TestPushdownGroupByAliases(t *testing.T) {
 		[]sql.Expression{
 			uc("a"),
 			uc("b"),
+			expression.NewAliasReference("b"),
 		},
 		plan.NewProject(
 			[]sql.Expression{
@@ -658,6 +660,7 @@ func TestPushdownGroupByAliases(t *testing.T) {
 				uc("a"),
 				expression.NewAlias("b_01", uc("b")),
 				uc("c"),
+				uc("d"),
 			},
 			plan.NewResolvedTable(memory.NewTable("table", sql.PrimaryKeySchema{}, nil), nil, nil),
 		),
