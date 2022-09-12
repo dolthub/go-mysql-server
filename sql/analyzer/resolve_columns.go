@@ -782,11 +782,10 @@ func identifyGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	symbols := make(availableNames)
 
 	getNodeAvailableNames(n, scope, symbols, 0)
-	a.Log(fmt.Sprintf("Identified symbols (nesting level: %d): '%s'", nestingLevel, symbols.debugString()))
 
 	// replacedAliases is a map of original expression string to alias that will need to be pushed down below the GroupBy in
 	// the new projection node later in the analyzer.
-	replacedAliases := make(map[string]string) // TODO: rename: identifiedAliases? // TODO: rewrite all this code?
+	replacedAliases := make(map[string]string)
 	var err error
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
@@ -1112,9 +1111,6 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[s
 	var expr sql.Expression
 	for i := range exprs {
 		expr = exprs[i]
-
-		// TODO: This is also where we need to unqualify these same expressions
-		//       (the ones that aren't AliasReferences)
 
 		if alias, ok := replacedAliases[expr.String()]; ok {
 			if newExprs == nil {
