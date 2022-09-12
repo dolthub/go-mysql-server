@@ -3925,6 +3925,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT AVG("23.222000")`,
+		Expected: []sql.Row{
+			{23.222},
+		},
+	},
+	{
 		Query: `SELECT DATABASE()`,
 		Expected: []sql.Row{
 			{"mydb"},

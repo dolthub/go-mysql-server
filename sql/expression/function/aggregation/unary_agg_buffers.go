@@ -164,18 +164,6 @@ func (a *avgBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		} else {
 			a.sum = decimal.NewFromFloat(a.sum.(float64)).Add(n)
 		}
-	case string:
-		p, s := expression.GetDecimalPrecisionAndScale(n)
-		dt, err := sql.CreateDecimalType(p, s)
-		val, err := dt.Convert(v)
-		if err != nil {
-			val = decimal.NewFromInt(0)
-		}
-		if sum, ok := a.sum.(decimal.Decimal); ok {
-			a.sum = sum.Add(val.(decimal.Decimal))
-		} else {
-			a.sum = decimal.NewFromFloat(a.sum.(float64)).Add(val.(decimal.Decimal))
-		}
 	default:
 		val, err := sql.Float64.Convert(n)
 		if err != nil {
@@ -197,7 +185,7 @@ func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	// This case is triggered when no rows exist.
 	switch s := a.sum.(type) {
 	case float64:
-		if a.sum == 0 && a.rows == 0 {
+		if s == 0 && a.rows == 0 {
 			return nil, nil
 		}
 
