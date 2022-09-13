@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -126,36 +125,11 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		}
 	}
 	if sql.IsTextOnly(compareType) {
-		// This does an approximation of MySQL's coercibility rules:
-		// https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html
 		leftCollation, leftCoercibility := GetCollationViaCoercion(c.Left())
 		rightCollation, rightCoercibility := GetCollationViaCoercion(c.Right())
-		if leftCoercibility < rightCoercibility {
-			collationPreference = leftCollation
-		} else if leftCoercibility > rightCoercibility {
-			collationPreference = rightCollation
-		} else if leftCollation == rightCollation {
-			collationPreference = leftCollation
-		} else { // Collations are not equal
-			leftCharset := leftCollation.CharacterSet()
-			rightCharset := rightCollation.CharacterSet()
-			if leftCharset != rightCharset {
-				if leftCharset.MaxLength() == 1 && rightCharset.MaxLength() > 1 { // Left non-Unicode, Right Unicode
-					collationPreference = rightCollation
-				} else if leftCharset.MaxLength() > 1 && rightCharset.MaxLength() == 1 { // Left Unicode, Right non-Unicode
-					collationPreference = leftCollation
-				} else {
-					return 0, sql.ErrCollationIllegalMix.New(leftCollation.Name(), rightCollation.Name())
-				}
-			} else { // Character sets are equal
-				// If the right collation is not _bin, then we default to the left collation (regardless of whether it is
-				// or is not _bin).
-				if strings.HasSuffix(rightCollation.Name(), "_bin") {
-					collationPreference = rightCollation
-				} else {
-					collationPreference = leftCollation
-				}
-			}
+		collationPreference, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+		if err != nil {
+			return 0, err
 		}
 
 		stringCompareType := compareType.(sql.StringType)

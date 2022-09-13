@@ -274,7 +274,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				}
 
 				return e, transform.SameTree, nil
-			case *expression.Literal, expression.Tuple, *expression.Interval:
+			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression:
 				return e, transform.SameTree, nil
 			default:
 				if !isEvaluable(e) {

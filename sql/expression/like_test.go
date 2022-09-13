@@ -75,29 +75,58 @@ func TestCustomPatternToRegex(t *testing.T) {
 }
 
 func TestLike(t *testing.T) {
-	f := NewLike(
-		NewGetField(0, sql.Text, "", false),
-		NewGetField(1, sql.Text, "", false),
-		nil,
-	)
-
 	testCases := []struct {
 		pattern, value, escape string
 		ok                     bool
+		collation              sql.CollationID
 	}{
-		{"a__", "abc", "", true},
-		{"a__", "abcd", "", false},
-		{"a%b", "acb", "", true},
-		{"a%b", "acdkeflskjfdklb", "", true},
-		{"a%b", "ab", "", true},
-		{"a%b", "a", "", false},
-		{"a_b", "ab", "", false},
-		{"aa:%", "aa:bb:cc:dd:ee:ff", "", true},
-		//TODO: test a case-insensitive collation
+		{"a__", "abc", "", true, sql.Collation_Default},
+		{"a__", "abcd", "", false, sql.Collation_Default},
+		{"a%b", "acb", "", true, sql.Collation_Default},
+		{"a%b", "acdkeflskjfdklb", "", true, sql.Collation_Default},
+		{"a%b", "ab", "", true, sql.Collation_Default},
+		{"a%b", "a", "", false, sql.Collation_Default},
+		{"a_b", "ab", "", false, sql.Collation_Default},
+		{"aa:%", "aa:bb:cc:dd:ee:ff", "", true, sql.Collation_Default},
+		{"aa:%", "AA:BB:CC:DD:EE:FF", "", false, sql.Collation_Default},
+		{"aa:%", "AA:BB:CC:DD:EE:FF", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{"a_%_b%_%c", "AaAbCc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{"a_%_b%_%c", "AaAbBcCbCc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{"a_%_b%_%c", "AbbbbC", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{"a_%_n%_%z", "aBcDeFgHiJkLmNoPqRsTuVwXyZ", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{`a\%b`, "acb", "", false, sql.Collation_Default},
+		{`a\%b`, "a%b", "", true, sql.Collation_Default},
+		{`a\%b`, "A%B", "", false, sql.Collation_Default},
+		{`a\%b`, "A%B", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{"a$%b", "acb", "$", false, sql.Collation_Default},
+		{"a$%b", "a%b", "$", true, sql.Collation_Default},
+		{"a$%b", "A%B", "$", false, sql.Collation_Default},
+		{"a$%b", "A%B", "$", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{`a`, "a", "", true, sql.Collation_Default},
+		{`ab`, "a", "", false, sql.Collation_Default},
+		{`a\b`, "a", "", false, sql.Collation_Default},
+		{`a\\b`, "a", "", false, sql.Collation_Default},
+		{`a\\\b`, "a", "", false, sql.Collation_Default},
+		{`a`, "a", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{`ab`, "a", "", false, sql.Collation_utf8mb4_0900_ai_ci},
+		{`a\b`, "a", "", false, sql.Collation_utf8mb4_0900_ai_ci},
+		{`a\\b`, "a", "", false, sql.Collation_utf8mb4_0900_ai_ci},
+		{`a\\\b`, "a", "", false, sql.Collation_utf8mb4_0900_ai_ci},
+		{`A%%%%`, "abc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{`A%%%%bc`, "abc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
 	}
 
 	for _, tt := range testCases {
 		t.Run(fmt.Sprintf("%q LIKE %q", tt.value, tt.pattern), func(t *testing.T) {
+			var escape sql.Expression
+			if tt.escape != "" {
+				escape = NewLiteral(tt.escape, sql.LongText)
+			}
+			f := NewLike(
+				NewGetField(0, sql.CreateText(tt.collation), "", false),
+				NewGetField(1, sql.CreateText(tt.collation), "", false),
+				escape,
+			)
 			value, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(
 				tt.value,
 				tt.pattern,
