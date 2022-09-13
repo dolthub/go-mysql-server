@@ -163,6 +163,9 @@ func TestUnixTimestamp(t *testing.T) {
 
 	// When MySQL can't convert the expression to a date, it always returns 0 and sets a warning
 	ctx.ClearWarnings()
+	// TODO: ClearWarnings has to be called twice to actually clear the warnings because of the way it sets its
+	//       warncnt member var. This should be fixed, but existing behavior depends on this behavior currently.
+	ctx.ClearWarnings()
 	ut, err = NewUnixTimestamp(expression.NewLiteral("d0lthub", sql.Text))
 	require.NoError(err)
 	result, err = ut.Eval(ctx, nil)
