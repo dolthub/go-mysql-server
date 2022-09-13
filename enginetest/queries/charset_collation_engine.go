@@ -455,6 +455,158 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		},
 	},
 	{
+		Name: "LIKE respects table collations",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+			"CREATE TABLE test(v1 VARCHAR(100) COLLATE utf8mb4_0900_bin, v2 VARCHAR(100) COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO test VALUES ('abc', 'abc'), ('ABC', 'ABC');",
+		},
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'A%';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'A%';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE '%C';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE '%C';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+		},
+	},
+	{
+		Name: "LIKE respects connection collation",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+		},
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT _utf8mb4'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE _utf8mb4'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+		},
+	},
+	{
 		Name: "LENGTH() function",
 		Queries: []CharsetCollationEngineTestQuery{
 			{

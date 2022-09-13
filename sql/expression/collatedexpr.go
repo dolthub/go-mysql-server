@@ -195,3 +195,36 @@ func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 		return collation, 5
 	}
 }
+
+// ResolveCoercibility returns the collation to use by comparing coercibility, along with giving priority to binary
+// collations. This is an approximation of MySQL's coercibility rules:
+// https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html
+func ResolveCoercibility(leftCollation sql.CollationID, leftCoercibility int, rightCollation sql.CollationID, rightCoercibility int) (sql.CollationID, error) {
+	if leftCoercibility < rightCoercibility {
+		return leftCollation, nil
+	} else if leftCoercibility > rightCoercibility {
+		return rightCollation, nil
+	} else if leftCollation == rightCollation {
+		return leftCollation, nil
+	} else { // Collations are not equal
+		leftCharset := leftCollation.CharacterSet()
+		rightCharset := rightCollation.CharacterSet()
+		if leftCharset != rightCharset {
+			if leftCharset.MaxLength() == 1 && rightCharset.MaxLength() > 1 { // Left non-Unicode, Right Unicode
+				return rightCollation, nil
+			} else if leftCharset.MaxLength() > 1 && rightCharset.MaxLength() == 1 { // Left Unicode, Right non-Unicode
+				return leftCollation, nil
+			} else {
+				return sql.Collation_Invalid, sql.ErrCollationIllegalMix.New(leftCollation.Name(), rightCollation.Name())
+			}
+		} else { // Character sets are equal
+			// If the right collation is not _bin, then we default to the left collation (regardless of whether it is
+			// or is not _bin).
+			if strings.HasSuffix(rightCollation.Name(), "_bin") {
+				return rightCollation, nil
+			} else {
+				return leftCollation, nil
+			}
+		}
+	}
+}

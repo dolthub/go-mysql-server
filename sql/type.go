@@ -26,8 +26,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/go-mysql-server/internal/regex"
 )
 
 var (
@@ -96,10 +94,6 @@ type SpatialColumnType interface {
 	SetSRID(uint32) Type
 	// MatchSRID returns nil if column type SRID matches given value SRID otherwise returns error.
 	MatchSRID(interface{}) error
-}
-
-type LikeMatcher interface {
-	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }
 
 // SystemVariableType represents a SQL type specifically (and only) used in system variables. Assigning any non-system
