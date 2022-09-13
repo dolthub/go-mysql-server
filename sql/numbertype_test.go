@@ -246,6 +246,16 @@ func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
 	assert.Equal(t, "INT8(0)", val.String())
 }
 
+func TestNumberSQL_NumberFromString(t *testing.T) {
+	val, err := Int64.SQL(NewEmptyContext(), nil, "not a number")
+	require.NoError(t, err)
+	assert.Equal(t, "not a number", val.ToString())
+
+	val, err = Float64.SQL(NewEmptyContext(), nil, "also not a number")
+	require.NoError(t, err)
+	assert.Equal(t, "also not a number", val.ToString())
+}
+
 func TestNumberString(t *testing.T) {
 	tests := []struct {
 		typ         Type

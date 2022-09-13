@@ -3424,12 +3424,19 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
-			if scale, err := strconv.ParseUint(ps[1], 10, 64); err != nil || scale > 0 {
-				ogVal := string(v.Val)
-				floatVal := fmt.Sprintf("%v", val)
-				if len(ogVal) >= len(floatVal) && ogVal != floatVal {
+			ogVal := string(v.Val)
+			floatVal := fmt.Sprintf("%v", val)
+			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
+				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
+				dt, err := sql.CreateDecimalType(p, s)
+				if err != nil {
 					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
 				}
+				dVal, err := dt.Convert(ogVal)
+				if err != nil {
+					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+				}
+				return expression.NewLiteral(dVal, dt), nil
 			}
 		}
 

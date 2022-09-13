@@ -490,15 +490,15 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + sum(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), float64(28)},
-			{int64(1), float64(108)},
+			{int64(0), int64(28)},
+			{int64(1), int64(108)},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + min(c3) as sum_and_min FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), float64(16)},
-			{int64(1), float64(76)},
+			{int64(0), int64(16)},
+			{int64(1), int64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -507,15 +507,15 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "sum_and_min",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(`c3`) +    min( c3 ) FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), float64(16)},
-			{int64(1), float64(76)},
+			{int64(0), int64(16)},
+			{int64(1), int64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -524,7 +524,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "SUM(`c3`) +    min( c3 )",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 	},
@@ -1426,7 +1426,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "with recursive t (n) as (select sum(1) from dual union all select (2) from dual) select sum(n) from t;",
+		Query: "with recursive t (n) as (select sum(1) from dual union all select ('2.00') from dual) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(3)},
 		},
@@ -3775,9 +3775,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
 		Expected: []sql.Row{
-			{float64(2), int64(1)},
-			{float64(3), int64(2)},
-			{float64(4), int64(3)},
+			{int64(2), int64(1)},
+			{int64(3), int64(2)},
+			{int64(4), int64(3)},
 		},
 	},
 	{
@@ -3921,7 +3921,13 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT AVG(23.222000)`,
 		Expected: []sql.Row{
-			{float64(23.222)},
+			{"23.2220000000"},
+		},
+	},
+	{
+		Query: `SELECT AVG("23.222000")`,
+		Expected: []sql.Row{
+			{23.222},
 		},
 	},
 	{
@@ -4268,6 +4274,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT CASE WHEN i > 2 THEN i WHEN i < 2 THEN i ELSE 'two' END FROM mytable`,
+		Expected: []sql.Row{
+			{"1"},
+			{"two"},
+			{"3"},
+		},
+	},
+	{
+		Query: `SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 2 END FROM mytable`,
+		Expected: []sql.Row{
+			{"less than two"},
+			{"2"},
+			{"more than two"},
+		},
+	},
+	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' END FROM mytable`,
 		Expected: []sql.Row{
 			{"one"},
@@ -4281,6 +4303,14 @@ var QueryTests = []QueryTest{
 			{sql.MustJSON(`{"a": 1}`)},
 			{sql.MustJSON(`{"b": 2}`)},
 			{nil},
+		},
+	},
+	{
+		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": 1}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+			{sql.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
@@ -6079,9 +6109,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
 		Expected: []sql.Row{
-			{float64(2)},
-			{float64(4)},
-			{float64(6)},
+			{int64(2)},
+			{int64(4)},
+			{int64(6)},
 		},
 	},
 	{
@@ -7454,6 +7484,14 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
+	},
+	// mergeUnionSchemas adds convert the decimal value to cast to string, which loses decimal type info.
+	// 				https://github.com/dolthub/dolt/issues/4331
+	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"3.00"},
+		},
 	},
 }
 

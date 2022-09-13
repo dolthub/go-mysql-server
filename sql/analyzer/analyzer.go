@@ -402,7 +402,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateSchemaSourceId,
 		validateIndexCreationId,
 		validateOperandsId,
-		validateCaseResultTypesId,
 		validateIntervalUsageId,
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
