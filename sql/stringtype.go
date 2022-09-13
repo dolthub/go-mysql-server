@@ -373,7 +373,7 @@ func ConvertToString(v interface{}, t StringType) (string, error) {
 	case time.Time:
 		val = s.Format(TimestampDatetimeLayout)
 	case decimal.Decimal:
-		val = s.String()
+		val = s.StringFixed(s.Exponent() * -1)
 	case decimal.NullDecimal:
 		if !s.Valid {
 			return "", nil

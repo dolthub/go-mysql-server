@@ -166,9 +166,6 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
-		if sql.IsDecimal(originType) {
-			return val, nil
-		}
 		s, err := sql.LongText.Convert(val)
 		if err != nil {
 			return nil, nil
