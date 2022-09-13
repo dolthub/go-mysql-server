@@ -147,6 +147,20 @@ func TestUnixTimestamp(t *testing.T) {
 	result, err = ut.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
+
+	// When MySQL can't convert the expression to a date, it always returns 0
+	ut, err = NewUnixTimestamp(expression.NewLiteral(1577995200, sql.Int64))
+	require.NoError(err)
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(0, result)
+
+	// When MySQL can't convert the expression to a date, it always returns 0
+	ut, err = NewUnixTimestamp(expression.NewLiteral("d0lthub", sql.Text))
+	require.NoError(err)
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(0, result)
 }
 
 func TestFromUnixtime(t *testing.T) {

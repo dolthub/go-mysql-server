@@ -377,7 +377,6 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	}
 
 	date, err := ut.Date.Eval(ctx, row)
-
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +386,8 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 
 	date, err = sql.Datetime.Convert(date)
 	if err != nil {
-		return nil, err
+		// If we aren't able to convert the value to a date, return 0 to match MySQL's behavior
+		return 0, nil
 	}
 
 	return toUnixTimestamp(date.(time.Time))
