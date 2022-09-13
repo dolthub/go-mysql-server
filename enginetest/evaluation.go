@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -429,6 +430,19 @@ func checkResults(
 			for i, val := range widenedRow {
 				if _, ok := val.(time.Time); ok {
 					widenedRow[i] = time.Unix(0, 0).UTC()
+				}
+			}
+		}
+	}
+
+	// The result from SELECT or WITH queries can be decimal.Decimal type.
+	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
+	// which is the value we get on sql shell.
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") {
+		for _, widenedRow := range widenedRows {
+			for i, val := range widenedRow {
+				if d, ok := val.(decimal.Decimal); ok {
+					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
 				}
 			}
 		}

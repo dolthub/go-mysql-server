@@ -8,7 +8,6 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{
 		Name:     "Avg",
 		Desc:     "returns the average value of expr in all rows.",
-		RetType:  "sql.Float64",
 		Nullable: true,
 	},
 	{
@@ -56,7 +55,6 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{
 		Name:     "Sum",
 		Desc:     "returns the sum of expr in all rows",
-		RetType:  "sql.Float64",
 		Nullable: false,
 	},
 }

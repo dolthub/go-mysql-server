@@ -79,7 +79,7 @@ var ColumnAliasQueries = []QueryTest{
 			},
 			{
 				Name: "COL2",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 		// TODO: SUM should be integer typed for integers
@@ -98,7 +98,7 @@ var ColumnAliasQueries = []QueryTest{
 			},
 			{
 				Name: "COL2",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 		Expected: []sql.Row{
@@ -116,7 +116,7 @@ var ColumnAliasQueries = []QueryTest{
 			},
 			{
 				Name: "coL2",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 		Expected: []sql.Row{
@@ -134,7 +134,7 @@ var ColumnAliasQueries = []QueryTest{
 			},
 			{
 				Name: "TimeStamp",
-				Type: sql.Float64,
+				Type: sql.Int64,
 			},
 		},
 		Expected: []sql.Row{

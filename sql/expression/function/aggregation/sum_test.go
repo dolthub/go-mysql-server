@@ -109,6 +109,13 @@ func TestSumWithDistinct(t *testing.T) {
 			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
 			float64(10),
 		},
+		// TODO : DISTINCT returns incorrect result, it currently returns 11.00
+		//        https://github.com/dolthub/dolt/issues/4298
+		//{
+		//	"string int values",
+		//	[]sql.Row{{"1.00"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
+		//	float64(10),
+		//},
 		{
 			"string float values",
 			[]sql.Row{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},

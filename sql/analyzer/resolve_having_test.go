@@ -44,7 +44,7 @@ func TestResolveHaving(t *testing.T) {
 			),
 			expected: plan.NewHaving(
 				expression.NewGreaterThan(
-					expression.NewGetField(0, sql.Float64, "x", true),
+					expression.NewGetField(0, sql.Int64, "x", true),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewGroupBy(
@@ -75,7 +75,7 @@ func TestResolveHaving(t *testing.T) {
 			),
 			expected: plan.NewHaving(
 				expression.NewGreaterThan(
-					expression.NewGetField(0, sql.Float64, "x", true),
+					expression.NewGetField(0, sql.Int64, "x", true),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewGroupBy(
@@ -106,7 +106,7 @@ func TestResolveHaving(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Float64, "x", true),
+					expression.NewGetField(0, sql.Int64, "x", true),
 					expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
 				},
 				plan.NewHaving(

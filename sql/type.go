@@ -615,7 +615,7 @@ func IsNumber(t Type) bool {
 
 // IsSigned checks if t is a signed type.
 func IsSigned(t Type) bool {
-	return t == Int8 || t == Int16 || t == Int32 || t == Int64
+	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
 }
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
@@ -675,7 +675,7 @@ func IsTuple(t Type) bool {
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t Type) bool {
-	return t == Uint8 || t == Uint16 || t == Uint32 || t == Uint64
+	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
 }
 
 // NumColumns returns the number of columns in a type. This is one for all
