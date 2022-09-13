@@ -2220,6 +2220,19 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "compare DECIMAL type columns with different precision and scale",
+		SetUpScript: []string{
+			"create table t (id int primary key, val1 decimal(2, 1), val2 decimal(3, 1));",
+			"insert into t values (1, 1.2, 1.1), (2, 1.2, 10.1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select if(val1 < val2, 'YES', 'NO') from t order by id;",
+				Expected: []sql.Row{{"NO"}, {"YES"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
