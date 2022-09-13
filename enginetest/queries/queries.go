@@ -6965,6 +6965,14 @@ var QueryTests = []QueryTest{
 		Query:    "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query: "create table test (id int primary key, first_name varchar(MAX))",
+		Expected: []sql.Row{
+			{
+				sql.OkResult{},
+			},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
