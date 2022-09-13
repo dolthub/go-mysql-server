@@ -128,20 +128,12 @@ func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	ad, err := t.BoundsCheck(af.Decimal)
-	if err != nil {
-		return 0, err
-	}
 	bf, err := t.ConvertToNullDecimal(b)
 	if err != nil {
 		return 0, err
 	}
-	bd, err := t.BoundsCheck(bf.Decimal)
-	if err != nil {
-		return 0, err
-	}
 
-	return ad.Cmp(bd), nil
+	return af.Decimal.Cmp(bf.Decimal), nil
 }
 
 // Convert implements Type interface.
