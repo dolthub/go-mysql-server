@@ -173,7 +173,6 @@ type BaseSession struct {
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
 	warnings         []*Warning
-	warncnt          uint16
 	locks            map[string]bool
 	queriedDb        string
 	lastQueryInfo    map[string]int64
@@ -414,14 +413,8 @@ func (s *BaseSession) ClearWarnings() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	cnt := uint16(len(s.warnings))
-	if s.warncnt == cnt {
-		if s.warnings != nil {
-			s.warnings = s.warnings[:0]
-		}
-		s.warncnt = 0
-	} else {
-		s.warncnt = cnt
+	if s.warnings != nil {
+		s.warnings = s.warnings[:0]
 	}
 }
 

@@ -386,7 +386,9 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 
 	date, err = sql.Datetime.Convert(date)
 	if err != nil {
-		// If we aren't able to convert the value to a date, return 0 to match MySQL's behavior
+		// If we aren't able to convert the value to a date, return 0 and set
+		// a warning to match MySQL's behavior
+		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String())
 		return 0, nil
 	}
 
