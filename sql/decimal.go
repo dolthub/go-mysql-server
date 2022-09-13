@@ -234,10 +234,6 @@ func (t decimalType) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
 	}
 	// TODO add shortcut for common case
 	// ex: certain num of bits fast tracks OK
-	vv := v.StringFixed(v.Exponent() * -1)
-	tt := t.exclusiveUpperBound.StringFixed(t.exclusiveUpperBound.Exponent() * -1)
-	if vv == tt {
-	}
 	if !v.Abs().LessThan(t.exclusiveUpperBound) {
 		return decimal.Decimal{}, ErrConvertToDecimalLimit.New()
 	}
