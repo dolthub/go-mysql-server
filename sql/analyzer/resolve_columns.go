@@ -408,7 +408,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			return col, transform.SameTree, nil
 		}
 
-		// Skip this step for variables
+		// Variables do not need to be further qualified
 		if strings.HasPrefix(col.Name(), "@") || strings.HasPrefix(col.Table(), "@") {
 			return col, transform.SameTree, nil
 		}
@@ -783,7 +783,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	// the new projection node.
 	replacedAliases := make(map[string]string)
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		// For any unresolved alias references above the GroupBy, we need to apply the same alias replacement as we did in the
+		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
 		// GroupBy itself.
 		ex, ok := n.(sql.Expressioner)
 		if ok && len(replacedAliases) > 0 {
