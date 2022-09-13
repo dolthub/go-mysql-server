@@ -120,8 +120,9 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 func (l *Listener) Close() error {
-	if !shutdownIsClosed(l.shutdown) {
+	if l.shutdown != nil {
 		close(l.shutdown)
+		l.shutdown = nil
 	}
 
 	err := l.netListener.Close()
@@ -135,32 +136,13 @@ func (l *Listener) Close() error {
 		}
 	}
 	err = l.eg.Wait()
-	if !connResIsClosed(l.conns) {
+	if l.conns != nil {
 		close(l.conns)
+		l.conns = nil
 	}
 	return err
 }
 
 func (l *Listener) Addr() net.Addr {
 	return l.netListener.Addr()
-}
-
-func shutdownIsClosed(ch <-chan struct{}) bool {
-	select {
-	case <-ch:
-		return true
-	default:
-	}
-
-	return false
-}
-
-func connResIsClosed(ch <-chan connRes) bool {
-	select {
-	case <-ch:
-		return true
-	default:
-	}
-
-	return false
 }
