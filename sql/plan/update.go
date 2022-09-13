@@ -24,6 +24,7 @@ import (
 )
 
 var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")
+var ErrUpdateForTableNotSupported = errors.NewKind("The target table %s of the UPDATE is not updatable")
 var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but expression returned %T")
 
 // Update is a node for updating rows on tables.

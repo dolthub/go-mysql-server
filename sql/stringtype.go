@@ -27,7 +27,6 @@ import (
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/internal/regex"
 	istrings "github.com/dolthub/go-mysql-server/internal/strings"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
@@ -602,34 +601,6 @@ func (t stringType) MaxCharacterLength() int64 {
 // MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
 func (t stringType) MaxByteLength() int64 {
 	return t.maxByteLength
-}
-
-func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	//TODO: regular expressions do not currently work properly with collations, needs to be fixed
-	if strings.HasSuffix(t.Collation().Name(), "_ci") {
-		return insensitiveLikeMatcher(likeStr)
-	} else {
-		return sensitiveLikeMatcher(likeStr)
-	}
-}
-
-type insensitiveMatcher struct {
-	regex.DisposableMatcher
-}
-
-func insensitiveLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	lower := strings.ToLower(likeStr)
-	dm, err := regex.NewDisposableMatcher("go", lower)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &insensitiveMatcher{dm}, nil
-}
-
-func sensitiveLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	return regex.NewDisposableMatcher("go", likeStr)
 }
 
 func appendAndSliceString(buffer []byte, addition string) (slice []byte) {

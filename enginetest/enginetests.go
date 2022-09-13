@@ -3366,31 +3366,11 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(*) FROM t1 where a = 4`, []sql.Row{{1}}, nil, nil)
 }
 
-// todo(max): rewrite into []ScriptTest
 func TestChecksOnUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK ((a + b) / 2 >= 1) ENFORCED")
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
-	}, nil, nil)
-
-	AssertErr(t, e, harness, "UPDATE t1 set b = 0", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set a = 0, b = 1", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set b = 0 WHERE b = 1", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set a = 0, b = 1 WHERE b = 1", sql.ErrCheckConstraintViolated)
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
-	}, nil, nil)
+	for _, script := range queries.ChecksOnUpdateScriptTests {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
@@ -3848,6 +3828,78 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{2, 0},
 		{4, 1},
 		{5, 0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, nil},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, nil},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 4},
+		{1, nil},
+		{2, 5},
+		{3, 6},
+		{4, 7},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, 0},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, 4},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, -1},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, -1},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 4},
+		{1, -1},
+		{2, 5},
+		{3, -1},
+		{4, -1},
+		{5, -1},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, "s"},
+		{1, nil},
+		{2, "s"},
+		{3, "s"},
+		{4, "s"},
+		{5, nil},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{

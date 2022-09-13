@@ -4268,6 +4268,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT CASE WHEN i > 2 THEN i WHEN i < 2 THEN i ELSE 'two' END FROM mytable`,
+		Expected: []sql.Row{
+			{"1"},
+			{"two"},
+			{"3"},
+		},
+	},
+	{
+		Query: `SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 2 END FROM mytable`,
+		Expected: []sql.Row{
+			{"less than two"},
+			{"2"},
+			{"more than two"},
+		},
+	},
+	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' END FROM mytable`,
 		Expected: []sql.Row{
 			{"one"},
@@ -4281,6 +4297,14 @@ var QueryTests = []QueryTest{
 			{sql.MustJSON(`{"a": 1}`)},
 			{sql.MustJSON(`{"b": 2}`)},
 			{nil},
+		},
+	},
+	{
+		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": 1}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+			{sql.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
@@ -7020,6 +7044,28 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "with a(j) as (select 1), b(i) as (select 1) (select j from a union all select i from b) union select j from a;",
 		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: `
+With c as (
+  select * from (
+    select a.s
+    From mytable a
+    Join (
+      Select t2.*
+      From mytable t2
+      Where t2.i in (1,2)
+    ) b
+    On a.i = b.i
+    Join (
+      select t1.*
+      from mytable t1
+      Where t1.I in (2,3)
+    ) e
+    On b.I = e.i
+  ) d   
+) select * from c;`,
+		Expected: []sql.Row{{"second row"}},
 	},
 }
 
