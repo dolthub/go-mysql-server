@@ -18,7 +18,7 @@ type sumBuffer struct {
 }
 
 func NewSumBuffer(child sql.Expression) *sumBuffer {
-	return &sumBuffer{true, nil, child}
+	return &sumBuffer{true, float64(0), child}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -32,6 +32,12 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
+	m.PerformSum(v)
+
+	return nil
+}
+
+func (m *sumBuffer) PerformSum(v interface{}) {
 	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
 	if s, isStr := v.(string); isStr && sql.IsDecimal(m.expr.Type()) {
@@ -67,8 +73,6 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		}
 		m.sum = sum.(float64) + val.(float64)
 	}
-
-	return nil
 }
 
 // Eval implements the AggregationBuffer interface.
@@ -140,10 +144,16 @@ func NewAvgBuffer(child sql.Expression) *avgBuffer {
 
 // Update implements the AggregationBuffer interface.
 func (a *avgBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	err := a.sum.Update(ctx, row)
+	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
+
+	if v == nil {
+		return nil
+	}
+
+	a.sum.PerformSum(v)
 	a.rows += 1
 
 	return nil

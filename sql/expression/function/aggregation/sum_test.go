@@ -17,7 +17,6 @@ package aggregation
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -35,17 +34,17 @@ func TestSum(t *testing.T) {
 		{
 			"string int values",
 			[]sql.Row{{"1"}, {"2"}, {"3"}, {"4"}},
-			"10",
+			float64(10),
 		},
 		{
 			"string float values",
 			[]sql.Row{{"1.5"}, {"2"}, {"3"}, {"4"}},
-			"10.5",
+			float64(10.5),
 		},
 		{
 			"string non-int values",
 			[]sql.Row{{"a"}, {"b"}, {"c"}, {"d"}},
-			"0",
+			float64(0),
 		},
 		{
 			"float values",
@@ -86,11 +85,7 @@ func TestSum(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			if dt, ok := result.(decimal.Decimal); ok {
-				require.Equal(tt.expected, dt.StringFixed(dt.Exponent()*-1))
-			} else {
-				require.Equal(tt.expected, result)
-			}
+			require.Equal(tt.expected, result)
 		})
 	}
 }
@@ -112,24 +107,24 @@ func TestSumWithDistinct(t *testing.T) {
 		{
 			"string int values",
 			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
-			"10",
+			float64(10),
 		},
 		// TODO : DISTINCT returns incorrect result, it currently returns 11.00
 		//        https://github.com/dolthub/dolt/issues/4298
 		//{
 		//	"string int values",
 		//	[]sql.Row{{"1.00"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
-		//	"10",
+		//	float64(10),
 		//},
 		{
 			"string float values",
 			[]sql.Row{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},
-			"10.5",
+			float64(10.5),
 		},
 		{
 			"string non-int values",
 			[]sql.Row{{"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}},
-			"0",
+			float64(0),
 		},
 		{
 			"float values",
@@ -170,11 +165,7 @@ func TestSumWithDistinct(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			if dt, ok := result.(decimal.Decimal); ok {
-				require.Equal(tt.expected, dt.StringFixed(dt.Exponent()*-1))
-			} else {
-				require.Equal(tt.expected, result)
-			}
+			require.Equal(tt.expected, result)
 		})
 	}
 }
