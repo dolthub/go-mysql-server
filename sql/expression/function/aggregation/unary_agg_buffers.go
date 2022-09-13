@@ -18,7 +18,7 @@ type sumBuffer struct {
 }
 
 func NewSumBuffer(child sql.Expression) *sumBuffer {
-	return &sumBuffer{true, decimal.NewFromInt(0), child}
+	return &sumBuffer{true, nil, child}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -32,6 +32,15 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
+	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
+	// so convert it to appropriate Decimal type
+	if s, isStr := v.(string); isStr && sql.IsDecimal(m.expr.Type()) {
+		val, err := m.expr.Type().Convert(s)
+		if err == nil {
+			v = val
+		}
+	}
+
 	switch n := v.(type) {
 	case decimal.Decimal:
 		if m.isnil {
@@ -43,29 +52,13 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		} else {
 			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(n)
 		}
-	case string:
-		p, s := expression.GetDecimalPrecisionAndScale(n)
-		dt, err := sql.CreateDecimalType(p, s)
-		val, err := dt.Convert(v)
-		if err != nil {
-			val = decimal.NewFromInt(0)
-		}
-		if m.isnil {
-			m.sum = decimal.NewFromInt(0)
-			m.isnil = false
-		}
-		if sum, ok := m.sum.(decimal.Decimal); ok {
-			m.sum = sum.Add(val.(decimal.Decimal))
-		} else {
-			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(val.(decimal.Decimal))
-		}
 	default:
 		val, err := sql.Float64.Convert(n)
 		if err != nil {
 			val = float64(0)
 		}
 		if m.isnil {
-			m.sum = 0
+			m.sum = float64(0)
 			m.isnil = false
 		}
 		sum, err := sql.Float64.Convert(m.sum)
@@ -132,48 +125,24 @@ func (l *lastBuffer) Dispose() {
 }
 
 type avgBuffer struct {
-	sum  interface{} // sum is either decimal.Decimal or float64
+	sum  *sumBuffer // sum is either decimal.Decimal or float64
 	rows int64
 	expr sql.Expression
 }
 
 func NewAvgBuffer(child sql.Expression) *avgBuffer {
 	const (
-		sum  = float64(0)
 		rows = int64(0)
 	)
 
-	return &avgBuffer{sum, rows, child}
+	return &avgBuffer{NewSumBuffer(child), rows, child}
 }
 
 // Update implements the AggregationBuffer interface.
 func (a *avgBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	v, err := a.expr.Eval(ctx, row)
+	err := a.sum.Update(ctx, row)
 	if err != nil {
 		return err
-	}
-
-	if v == nil {
-		return nil
-	}
-
-	switch n := v.(type) {
-	case decimal.Decimal:
-		if sum, ok := a.sum.(decimal.Decimal); ok {
-			a.sum = sum.Add(n)
-		} else {
-			a.sum = decimal.NewFromFloat(a.sum.(float64)).Add(n)
-		}
-	default:
-		val, err := sql.Float64.Convert(n)
-		if err != nil {
-			val = float64(0)
-		}
-		sum, err := sql.Float64.Convert(a.sum)
-		if err != nil {
-			sum = float64(0)
-		}
-		a.sum = sum.(float64) + val.(float64)
 	}
 	a.rows += 1
 
@@ -182,8 +151,12 @@ func (a *avgBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 // Eval implements the AggregationBuffer interface.
 func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	sum, err := a.sum.Eval(ctx)
+	if err != nil {
+		return nil, err
+	}
 	// This case is triggered when no rows exist.
-	switch s := a.sum.(type) {
+	switch s := sum.(type) {
 	case float64:
 		if s == 0 && a.rows == 0 {
 			return nil, nil
