@@ -136,7 +136,7 @@ func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.Table interface
 func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return t.RowIter(ctx, nil) // it finally came back to bite my in the ass...
+	return t.RowIter(ctx, nil)
 }
 
 // Resolved implements the sql.Resolvable interface
