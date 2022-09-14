@@ -509,11 +509,144 @@ const (
 	globalPrefix  = sqlparser.GlobalStr + "."
 )
 
+func resolveColumnsHelperHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if n.Resolved() {
+		return n, transform.SameTree, nil
+	}
+
+	if _, ok := n.(sql.Expressioner); !ok {
+		return n, transform.SameTree, nil
+	}
+
+	// We need to use the schema, so all children must be resolved.
+	// TODO: also enforce the equivalent constraint for outer scopes. More complicated, because the outer scope can't
+	//  be Resolved() owing to a child expression (the one being evaluated) not being resolved yet.
+	for _, c := range n.Children() {
+		if !c.Resolved() {
+			return n, transform.SameTree, nil
+		}
+	}
+
+	columns, err := indexColumns(ctx, a, n, scope)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		uc, ok := e.(column)
+		if !ok || e.Resolved() {
+			return e, transform.SameTree, nil
+		}
+
+		return resolveColumnExpression(a, n, uc, columns)
+	})
+}
+
+// TODO: need to special case crossjoin
+func resolveColumnsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// don't recurse on children of opaque nodes
+	_, ok := n.(sql.OpaqueNode)
+	if ok {
+		return resolveColumnsHelperHelper(ctx, a, n, scope, sel)
+	}
+
+	// special case for cross joins that have json_table on the right (probably all joins, but idk yet)
+	if cj, ok := n.(*plan.CrossJoin); ok {
+		if _, ok := cj.Right().(*plan.JSONTable); ok {
+			// Recurse on left as usual
+			l, _, err := resolveColumnsHelperHelper(ctx, a, n, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			// get columns from left
+			leftColumns, err := indexColumns(ctx, a, cj.Left(), scope)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			// get columns from right
+			columns, err := indexColumns(ctx, a, cj.Right(), scope)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			// merge left and right columns before resolving right child
+			for k, v := range leftColumns {
+				columns[k] = v
+			}
+
+			// "recurse" on right
+			r, _, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				uc, ok := e.(column)
+				if !ok || e.Resolved() {
+					return e, transform.SameTree, nil
+				}
+
+				return resolveColumnExpression(a, n, uc, columns)
+			})
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			// create new crossjoin from this
+			newCj, err := cj.WithChildren(l, r)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			// "recurse" on yourself
+			return resolveColumnsHelperHelper(ctx, a, newCj, scope, sel)
+		}
+	}
+
+	// recurse on children
+	children := n.Children()
+	if len(children) == 0 {
+		return resolveColumnsHelperHelper(ctx, a, n, scope, sel)
+	}
+
+	var newChildren []sql.Node
+	var child sql.Node
+	for i := range children {
+		child = children[i]
+		child, same, err := resolveColumnsHelper(ctx, a, child, scope, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if !same {
+			if newChildren == nil {
+				newChildren = make([]sql.Node, len(children))
+				copy(newChildren, children)
+			}
+			newChildren[i] = child
+		}
+	}
+
+	var err error
+	sameC := transform.SameTree
+	if len(newChildren) > 0 {
+		sameC = transform.NewTree
+		n, err = n.WithChildren(newChildren...)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+	}
+
+	node, sameN, err := resolveColumnsHelperHelper(ctx, a, child, scope, sel)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	return node, sameC && sameN, nil
+}
+
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
 // the expression's child node.
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.End()
+
+	return resolveColumnsHelper(ctx, a, n, scope, sel)
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
