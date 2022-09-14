@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net"
 	"runtime"
-	"sync"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -38,7 +37,6 @@ type Listener struct {
 	// unixListener is a unix socket listener
 	unixListener net.Listener
 	eg           *errgroup.Group
-	wg           sync.WaitGroup
 	// channel to receive connections on either listener
 	conns chan connRes
 	// channel to close both listener
