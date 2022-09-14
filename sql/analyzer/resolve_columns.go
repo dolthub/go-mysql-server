@@ -554,7 +554,7 @@ func resolveColumnsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	if cj, ok := n.(*plan.CrossJoin); ok {
 		if _, ok := cj.Right().(*plan.JSONTable); ok {
 			// Recurse on left as usual
-			l, _, err := resolveColumnsHelperHelper(ctx, a, n, scope, sel)
+			l, _, err := resolveColumnsHelperHelper(ctx, a, cj.Left(), scope, sel)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -577,7 +577,7 @@ func resolveColumnsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 			}
 
 			// "recurse" on right
-			r, _, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			r, _, err := transform.OneNodeExprsWithNode(cj.Right(), func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				uc, ok := e.(column)
 				if !ok || e.Resolved() {
 					return e, transform.SameTree, nil
@@ -645,8 +645,8 @@ func resolveColumnsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.End()
-
-	return resolveColumnsHelper(ctx, a, n, scope, sel)
+	node, same, err := resolveColumnsHelper(ctx, a, n, scope, sel)
+	return node, same, err
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
@@ -817,6 +817,8 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
+	case *plan.ResolvedTable:
+		indexSchema(node.Schema())
 	}
 
 	return columns, nil
