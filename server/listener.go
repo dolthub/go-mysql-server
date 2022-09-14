@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -37,6 +38,7 @@ type Listener struct {
 	// unixListener is a unix socket listener
 	unixListener net.Listener
 	eg           *errgroup.Group
+	wg           *sync.WaitGroup
 	// channel to receive connections on either listener
 	conns chan connRes
 	// channel to close both listener
@@ -79,7 +81,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 			if errors.Is(err, net.ErrClosed) {
 				return nil
 			}
-
+			l.wg.Add(1)
 			select {
 			case <-l.shutdown:
 				conn.Close()
@@ -97,7 +99,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 				if errors.Is(err, net.ErrClosed) {
 					return nil
 				}
-
+				l.wg.Add(1)
 				select {
 				case <-l.shutdown:
 					conn.Close()
@@ -120,6 +122,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 func (l *Listener) Close() error {
+	l.wg.Wait()
 	if l.shutdown != nil {
 		close(l.shutdown)
 		l.shutdown = nil
