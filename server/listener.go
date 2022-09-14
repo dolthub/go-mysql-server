@@ -38,7 +38,7 @@ type Listener struct {
 	// unixListener is a unix socket listener
 	unixListener net.Listener
 	eg           *errgroup.Group
-	wg           *sync.WaitGroup
+	wg           sync.WaitGroup
 	// channel to receive connections on either listener
 	conns chan connRes
 	// channel to close both listener
@@ -74,6 +74,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		eg:           new(errgroup.Group),
 		shutdown:     make(chan struct{}),
 	}
+	l.wg.Add(1)
 	l.eg.Go(func() error {
 		for {
 			conn, err := l.netListener.Accept()
@@ -81,7 +82,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 			if errors.Is(err, net.ErrClosed) {
 				return nil
 			}
-			l.wg.Add(1)
+
 			select {
 			case <-l.shutdown:
 				conn.Close()
@@ -92,6 +93,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 	})
 
 	if l.unixListener != nil {
+		l.wg.Add(1)
 		l.eg.Go(func() error {
 			for {
 				conn, err := l.unixListener.Accept()
@@ -99,7 +101,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 				if errors.Is(err, net.ErrClosed) {
 					return nil
 				}
-				l.wg.Add(1)
+
 				select {
 				case <-l.shutdown:
 					conn.Close()
@@ -109,6 +111,10 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 			}
 		})
 	}
+
+	go func() {
+		defer l.wg.Done()
+	}()
 
 	return l, nil
 }
