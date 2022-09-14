@@ -17,6 +17,7 @@ package plan
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 
 	"github.com/oliveagle/jsonpath"
@@ -135,7 +136,7 @@ func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.Table interface
 func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return t.RowIter(ctx, nil)
+	return t.RowIter(ctx, nil) // it finally came back to bite my in the ass...
 }
 
 // Resolved implements the sql.Resolvable interface
@@ -150,6 +151,11 @@ func (t *JSONTable) Children() []sql.Node {
 
 // RowIter implements the sql.Node interface
 func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	// if dataExpr is a getField, find table?
+	if gf, ok := t.dataExpr.(*expression.GetField); ok {
+		gf.Table()
+	}
+
 	// data must evaluate to JSON string
 	data, err := t.dataExpr.Eval(ctx, row)
 	if err != nil {
