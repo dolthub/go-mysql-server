@@ -457,14 +457,6 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 		for _, level := range levels {
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, level)
 
-			// If the table exists but it's not available for this node it
-			// means some work is still needed, so just return the column
-			// and let it be resolved in the next pass.
-			// TODO:
-			// if !stringContains(tablesForColumn, table) {
-			// 	return col, nil
-			// }
-
 			switch len(tablesForColumn) {
 			case 0:
 				// This column could be in an outer scope, keep going
@@ -482,7 +474,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 			}
 		}
 
-		// If there are no tables that have any column with the column name let's just return it as it is. This may be an
+		// If there are no tables or aliases that match the column name just return it as it is. This may be an
 		// alias, so we'll wait for the reorder of the projection to resolve it.
 		return col, transform.SameTree, nil
 	case *expression.Star:
@@ -1110,7 +1102,6 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[s
 	var expr sql.Expression
 	for i := range exprs {
 		expr = exprs[i]
-
 		if alias, ok := replacedAliases[expr.String()]; ok {
 			if newExprs == nil {
 				newExprs = make([]sql.Expression, len(exprs))
