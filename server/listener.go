@@ -74,7 +74,6 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		eg:           new(errgroup.Group),
 		shutdown:     make(chan struct{}),
 	}
-	l.wg.Add(1)
 	l.eg.Go(func() error {
 		for {
 			conn, err := l.netListener.Accept()
@@ -93,7 +92,6 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 	})
 
 	if l.unixListener != nil {
-		l.wg.Add(1)
 		l.eg.Go(func() error {
 			for {
 				conn, err := l.unixListener.Accept()
@@ -112,10 +110,6 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		})
 	}
 
-	go func() {
-		defer l.wg.Done()
-	}()
-
 	return l, nil
 }
 
@@ -128,11 +122,12 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 func (l *Listener) Close() error {
-	l.wg.Wait()
-	if l.shutdown != nil {
-		close(l.shutdown)
-		l.shutdown = nil
+	if l.shutdown == nil {
+		return nil
 	}
+
+	close(l.shutdown)
+	l.shutdown = nil
 
 	err := l.netListener.Close()
 	if err != nil && !errors.Is(err, net.ErrClosed) {
@@ -145,10 +140,7 @@ func (l *Listener) Close() error {
 		}
 	}
 	err = l.eg.Wait()
-	if l.conns != nil {
-		close(l.conns)
-		l.conns = nil
-	}
+	close(l.conns)
 	return err
 }
 
