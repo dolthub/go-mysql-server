@@ -82,7 +82,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	var likeMatcher likeMatcher
+	var lm likeMatcher
 	if !l.cached {
 		// for non-cached regex every time create a new matcher
 		right, escape, rerr := l.evalRight(ctx, row)
@@ -99,20 +99,20 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		likeMatcher, err = constructLikeMatcher(collation, *right, escape)
+		lm, err = constructLikeMatcher(collation, *right, escape)
 	} else {
 		l.once.Do(func() {
 			right, escape, err := l.evalRight(ctx, row)
 			l.pool = &sync.Pool{
 				New: func() interface{} {
 					if err != nil || right == nil {
-						return likeMatcherErrTuple{likeMatcher, err}
+						return likeMatcherErrTuple{likeMatcher{}, err}
 					}
 					leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
 					rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
 					collation, err := ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 					if err != nil {
-						return likeMatcherErrTuple{likeMatcher, err}
+						return likeMatcherErrTuple{likeMatcher{}, err}
 					}
 					m, e := constructLikeMatcher(collation, *right, escape)
 					return likeMatcherErrTuple{m, e}
@@ -120,18 +120,18 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		})
 		tpl := l.pool.Get().(likeMatcherErrTuple)
-		likeMatcher, err = tpl.matcher, tpl.err
+		lm, err = tpl.matcher, tpl.err
 	}
 	if err != nil {
 		return nil, err
 	}
-	if likeMatcher.collation == sql.Collation_Invalid {
+	if lm.collation == sql.Collation_Invalid {
 		return false, nil
 	}
 
-	ok := likeMatcher.Match(left.(string))
+	ok := lm.Match(left.(string))
 	if l.cached {
-		l.pool.Put(likeMatcherErrTuple{likeMatcher, nil})
+		l.pool.Put(likeMatcherErrTuple{lm, nil})
 	}
 	return ok, nil
 }
