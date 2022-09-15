@@ -125,7 +125,7 @@ var JSONTableQueryTests = []QueryTest{
 // TODO: test subqueries, cte, recursive cte, multiple joins
 var JSONTableScriptTests = []ScriptTest{
 	{
-		Name: "create table from json column no aliases simple",
+		Name: "create table from json column not qualified simple",
 		SetUpScript: []string{
 			"create table organizations (organization varchar(10), members json)",
 			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
@@ -139,12 +139,27 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "create table from json column no aliases complex",
+		Name: "create table from json column not qualified complex",
 		SetUpScript: []string{
 			"create table organizations(organization varchar(10), members json);",
 			`insert into organizations values("orgA", '["bob", "john"]'), ("orgB", '["alice", "mary"]'), ('orgC', '["kevin", "john"]'), ('orgD', '["alice", "alice"]')`,
 		},
 		Query: "SELECT names, COUNT(names) AS count FROM organizations, JSON_TABLE(organizations.members, '$[*]' COLUMNS (names varchar(100) path '$')) AS jt GROUP BY names ORDER BY names asc;",
+		Expected: []sql.Row{
+			{"alice", 3},
+			{"bob", 1},
+			{"john", 2},
+			{"kevin", 1},
+			{"mary", 1},
+		},
+	},
+	{
+		Name: "create table from json column qualified complex",
+		SetUpScript: []string{
+			"create table organizations(organization varchar(10), members json);",
+			`insert into organizations values("orgA", '["bob", "john"]'), ("orgB", '["alice", "mary"]'), ('orgC', '["kevin", "john"]'), ('orgD', '["alice", "alice"]')`,
+		},
+		Query: "SELECT jt.names, COUNT(jt.names) AS count FROM organizations AS o, JSON_TABLE(o.members, '$[*]' COLUMNS (names varchar(100) path '$')) AS jt GROUP BY jt.names ORDER BY jt.names asc;",
 		Expected: []sql.Row{
 			{"alice", 3},
 			{"bob", 1},
@@ -207,14 +222,14 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "",
+		Name: "json table in subquery qualified with parent",
 		SetUpScript: []string{
 			"create table t (i int, j json)",
 			`insert into t values (1, '["test"]')`,
 		},
-		Query: "select i, (select names from JSON_Table(t.j, '$[*]' columns (names varchar(100) path '$')) jt) from t;",
+		Query: "select (select names from JSON_Table(t.j, '$[*]' columns (names varchar(100) path '$')) jt) from t;",
 		Expected: []sql.Row{
-			{1, "test"},
+			{"test"},
 		},
 	},
 }
