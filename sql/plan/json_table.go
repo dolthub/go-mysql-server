@@ -223,3 +223,9 @@ func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPat
 		colPaths: colPaths,
 	}, nil
 }
+
+//type JSONTableCrossJoin struct {
+//}
+//
+//var _ sql.Node = (*JSONTableCrossJoin)(nil)
+//var _ sql.OpaqueNode = *JSONTableCrossJoin{}

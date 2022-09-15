@@ -135,6 +135,35 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	})
 }
 
+//func resolveJSONTableCrossJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+//	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+//		s, ok := n.(*plan.JSONTableCrossJoin)
+//		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
+//		// query might cause them to need to shift their field indexes.
+//		if !ok {
+//			return n, transform.SameTree, nil
+//		}
+//
+//		subqueryCtx, cancelFunc := ctx.NewSubContext()
+//		defer cancelFunc()
+//		subScope := scope.newScope(n)
+//
+//		leftAnalyzed, _, err := a.analyzeWithSelector(subqueryCtx, s.Left(), subScope, SelectAllBatches, sel)
+//		if err != nil {
+//			return nil, transform.SameTree, err
+//		}
+//
+//		rightScope := scope.newScope(leftAnalyzed)
+//		qualifyColumns()
+//		resolveColumns()
+//
+//		// reolsve json table on the right
+//		// qualify and resolve
+//
+//		return s.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
+//	})
+//}
+
 // StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query
 // tracking, transaction logic, etc) from the node tree given and return the first non-passthrough child element. This
 // is useful for when we invoke the analyzer recursively when e.g. analyzing subqueries or triggers
