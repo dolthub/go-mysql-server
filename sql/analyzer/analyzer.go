@@ -31,7 +31,7 @@ import (
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
 
-const maxAnalysisIterations = 100 //8
+const maxAnalysisIterations = 8
 
 // ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
