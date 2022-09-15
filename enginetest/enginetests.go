@@ -140,6 +140,12 @@ func TestJSONTableQueries(t *testing.T, harness Harness) {
 	}
 }
 
+func TestJSONTableScripts(t *testing.T, harness Harness) {
+	for _, tt := range queries.JSONTableScriptTests {
+		TestScript(t, harness, tt)
+	}
+}
+
 // TestInfoSchemaPrepared runs tests of the information_schema database
 func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)

@@ -118,3 +118,48 @@ var JSONTableQueryTests = []QueryTest{
 		},
 	},
 }
+
+var JSONTableScriptTests = []ScriptTest{
+	{
+		Name: "create table from json column no aliases",
+		SetUpScript: []string{
+			"create table organizations (organization varchar(10), members json)",
+			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
+		},
+		Query: "select names from organizations, JSON_TABLE(organizations.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Expected: []sql.Row{
+			{"bob"},
+			{"john"},
+			{"alice"},
+			{"mary"},
+		},
+	},
+	{
+		Name: "create table from json column aliased",
+		SetUpScript: []string{
+			"create table organizations (organization varchar(10), members json)",
+			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
+		},
+		Query: "select names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Expected: []sql.Row{
+			{"bob"},
+			{"john"},
+			{"alice"},
+			{"mary"},
+		},
+	},
+	{
+		Name: "create table from json column aliased column",
+		SetUpScript: []string{
+			"create table organizations (organization varchar(10), members json)",
+			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
+		},
+		Query: "select jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Expected: []sql.Row{
+			{"bob"},
+			{"john"},
+			{"alice"},
+			{"mary"},
+		},
+	},
+}
