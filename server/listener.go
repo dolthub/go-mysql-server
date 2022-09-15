@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -41,6 +42,7 @@ type Listener struct {
 	conns chan connRes
 	// channel to close both listener
 	shutdown chan struct{}
+	mu       *sync.Mutex
 }
 
 // NewListener creates a new Listener.
@@ -71,6 +73,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		conns:        make(chan connRes),
 		eg:           new(errgroup.Group),
 		shutdown:     make(chan struct{}),
+		mu:           &sync.Mutex{},
 	}
 	l.eg.Go(func() error {
 		for {
@@ -120,13 +123,6 @@ func (l *Listener) Accept() (net.Conn, error) {
 }
 
 func (l *Listener) Close() error {
-	if l.shutdown == nil {
-		return nil
-	}
-
-	close(l.shutdown)
-	l.shutdown = nil
-
 	err := l.netListener.Close()
 	if err != nil && !errors.Is(err, net.ErrClosed) {
 		return err
@@ -137,11 +133,22 @@ func (l *Listener) Close() error {
 			return err
 		}
 	}
-	err = l.eg.Wait()
-	close(l.conns)
-	return err
+	if l.shutdown != nil {
+		l.CloseChannels()
+	}
+	return l.eg.Wait()
 }
 
 func (l *Listener) Addr() net.Addr {
 	return l.netListener.Addr()
+}
+
+func (l *Listener) CloseChannels() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	close(l.shutdown)
+	close(l.conns)
+
+	l.shutdown = nil
 }
