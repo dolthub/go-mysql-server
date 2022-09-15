@@ -17,12 +17,12 @@ package plan
 import (
 	"encoding/json"
 	"fmt"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"io"
 	"reflect"
 
 	"github.com/oliveagle/jsonpath"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
