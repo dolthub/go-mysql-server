@@ -119,6 +119,7 @@ var JSONTableQueryTests = []QueryTest{
 	},
 }
 
+// TODO: test subqueries, cte, recursive cte, multiple joins
 var JSONTableScriptTests = []ScriptTest{
 	{
 		Name: "create table from json column no aliases simple",
