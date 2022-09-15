@@ -509,8 +509,6 @@ const (
 	globalPrefix  = sqlparser.GlobalStr + "."
 )
 
-// TODO: need to special case crossjoin
-
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
 // the expression's child node.
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -520,52 +518,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, transform.SameTree, nil
-		}
-
-		if _, ok := n.(*plan.JSONTable); ok {
-			return n, transform.SameTree, nil
-		}
-
-		// TODO: better as a separate rule?
-		// TODO: what happens with multiple cross joins on multiple json tables?
-		// Node is bottom up, so children have already been resolved
-		if cj, ok := n.(*plan.CrossJoin); ok {
-			if _, ok := cj.Right().(*plan.JSONTable); ok {
-				leftColumns, err := indexColumns(ctx, a, cj.Left(), scope)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				columns, err := indexColumns(ctx, a, cj.Right(), scope)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				for k, v := range leftColumns {
-					columns[k] = v
-				}
-
-				newRight, same, err := transform.OneNodeExprsWithNode(cj.Right(), func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					uc, ok := e.(column)
-					if !ok || e.Resolved() {
-						return e, transform.SameTree, nil
-					}
-
-					return resolveColumnExpression(a, n, uc, columns)
-				})
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				if !same {
-					newCj, err := cj.WithChildren(cj.Left(), newRight)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-					return newCj, transform.NewTree, nil
-				}
-				return n, transform.SameTree, nil
-			}
 		}
 
 		if _, ok := n.(sql.Expressioner); !ok {
@@ -597,7 +549,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	})
 }
 
-// TODO: unused not sure if better as separate
 func resolveJSONTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_json_tables")
 	defer span.End()

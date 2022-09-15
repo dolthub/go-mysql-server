@@ -135,34 +135,33 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	})
 }
 
-//func resolveJSONTableCrossJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-//	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-//		s, ok := n.(*plan.JSONTableCrossJoin)
-//		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
-//		// query might cause them to need to shift their field indexes.
-//		if !ok {
-//			return n, transform.SameTree, nil
-//		}
-//
-//		subqueryCtx, cancelFunc := ctx.NewSubContext()
-//		defer cancelFunc()
-//		subScope := scope.newScope(n)
-//
-//		leftAnalyzed, _, err := a.analyzeWithSelector(subqueryCtx, s.Left(), subScope, SelectAllBatches, sel)
-//		if err != nil {
-//			return nil, transform.SameTree, err
-//		}
-//
-//		rightScope := scope.newScope(leftAnalyzed)
-//		qualifyColumns()
-//		resolveColumns()
-//
-//		// reolsve json table on the right
-//		// qualify and resolve
-//
-//		return s.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
-//	})
-//}
+func resolveJSONTableCrossJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		cj, ok := n.(*plan.JSONTableCrossJoin)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		// analyze left child with parent scope
+		subCtx, cancelFunc := ctx.NewSubContext()
+		defer cancelFunc()
+		subScope := scope.newScope(n)
+
+		newLeft, _, err := a.analyzeWithSelector(subCtx, cj.Left(), subScope, SelectAllBatches, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		// qualify and resolve right child with left and parent scope
+		rightScope := scope.newScope(newLeft)
+
+		newRight, _, err := qualifyColumns(ctx, a, cj.Right(), rightScope, sel)
+		newRight, _, err = resolveColumns(ctx, a, newRight, rightScope, sel)
+
+		// TODO: return a normal cross join? if yes, probably don't use any of its methods
+		return plan.NewCrossJoin(newLeft, newRight), transform.NewTree, nil
+	})
+}
 
 // StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query
 // tracking, transaction logic, etc) from the node tree given and return the first non-passthrough child element. This

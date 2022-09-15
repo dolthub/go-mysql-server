@@ -2593,9 +2593,19 @@ func tableExprsToTable(
 		return nodes[0], nil
 	}
 
-	join := plan.NewCrossJoin(nodes[0], nodes[1])
+	var join sql.Node
+	if jt, ok := nodes[1].(*plan.JSONTable); ok {
+		join = plan.NewJSONTableCrossJoin(nodes[0], jt)
+	} else {
+		join = plan.NewCrossJoin(nodes[0], nodes[1])
+	}
+
 	for i := 2; i < len(nodes); i++ {
-		join = plan.NewCrossJoin(join, nodes[i])
+		if jt, ok := nodes[i].(*plan.JSONTable); ok {
+			join = plan.NewJSONTableCrossJoin(join, jt)
+		} else {
+			join = plan.NewCrossJoin(join, nodes[i])
+		}
 	}
 
 	return join, nil
