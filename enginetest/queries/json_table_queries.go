@@ -121,7 +121,7 @@ var JSONTableQueryTests = []QueryTest{
 
 var JSONTableScriptTests = []ScriptTest{
 	{
-		Name: "create table from json column no aliases",
+		Name: "create table from json column no aliases simple",
 		SetUpScript: []string{
 			"create table organizations (organization varchar(10), members json)",
 			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
@@ -132,6 +132,21 @@ var JSONTableScriptTests = []ScriptTest{
 			{"john"},
 			{"alice"},
 			{"mary"},
+		},
+	},
+	{
+		Name: "create table from json column no aliases complex",
+		SetUpScript: []string{
+			"create table organizations(organization varchar(10), members json);",
+			`insert into organizations values("orgA", '["bob", "john"]'), ("orgB", '["alice", "mary"]'), ('orgC', '["kevin", "john"]'), ('orgD', '["alice", "alice"]')`,
+		},
+		Query: "SELECT names, COUNT(names) AS count FROM organizations, JSON_TABLE(organizations.members, '$[*]' COLUMNS (names varchar(100) path '$')) AS jt GROUP BY names ORDER BY names asc;",
+		Expected: []sql.Row{
+			{"alice", 3},
+			{"bob", 1},
+			{"john", 2},
+			{"kevin", 1},
+			{"mary", 1},
 		},
 	},
 	{
