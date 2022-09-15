@@ -549,60 +549,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	})
 }
 
-func resolveJSONTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("resolve_json_tables")
-	defer span.End()
-
-	// look for a CrossJoin with a JSON Table as the right child
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		cj, ok := n.(*plan.CrossJoin)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		_, ok = cj.Right().(*plan.JSONTable)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		leftColumns, err := indexColumns(ctx, a, cj.Left(), scope)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		columns, err := indexColumns(ctx, a, cj.Right(), scope)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		for k, v := range leftColumns {
-			columns[k] = v
-		}
-
-		newRight, same, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			uc, ok := e.(column)
-			if !ok || e.Resolved() {
-				return e, transform.SameTree, nil
-			}
-
-			return resolveColumnExpression(a, n, uc, columns)
-		})
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		if !same {
-			newCj, err := cj.WithChildren(cj.Left(), newRight)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return newCj, transform.NewTree, nil
-		}
-
-		return n, transform.SameTree, nil
-	})
-}
-
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
