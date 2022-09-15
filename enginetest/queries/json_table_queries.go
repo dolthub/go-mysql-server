@@ -18,9 +18,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// left side can values, table source, join, cte, subqery
-// parent cab be anything that has opaque nodes
-// select, join, child of a union, subquery, in a cte, subquery expression, group by
 var JSONTableQueryTests = []QueryTest{
 	{
 		Query:    "SELECT * FROM JSON_TABLE(NULL,'$[*]' COLUMNS(x int path '$.a')) as t;",
@@ -122,7 +119,6 @@ var JSONTableQueryTests = []QueryTest{
 	},
 }
 
-// TODO: test subqueries, cte, recursive cte, multiple joins
 var JSONTableScriptTests = []ScriptTest{
 	{
 		Name: "create table from json column not qualified simple",
