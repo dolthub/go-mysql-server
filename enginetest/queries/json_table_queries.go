@@ -173,12 +173,12 @@ var JSONTableScriptTests = []ScriptTest{
 			"create table organizations (organization varchar(10), members json)",
 			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
 		},
-		Query: "select o.organization from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Query: "select o.organization, jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
 		Expected: []sql.Row{
-			{"orgA"},
-			{"orgA"},
-			{"orgB"},
-			{"orgB"},
+			{"orgA", "bob"},
+			{"orgA", "john"},
+			{"orgB", "alice"},
+			{"orgB", "mary"},
 		},
 	},
 	{
@@ -187,12 +187,34 @@ var JSONTableScriptTests = []ScriptTest{
 			"create table organizations (organization varchar(10), members json)",
 			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
 		},
-		Query: "select jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Query: "select o.organization, jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
 		Expected: []sql.Row{
-			{"bob"},
-			{"john"},
-			{"alice"},
-			{"mary"},
+			{"orgA", "bob"},
+			{"orgA", "john"},
+			{"orgB", "alice"},
+			{"orgB", "mary"},
+		},
+	},
+	{
+		Name: "json table in subquery references parent data",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query: "select i, (select names from JSON_Table(t.j, '$[*]' columns (names varchar(100) path '$')) jt) from t;",
+		Expected: []sql.Row{
+			{1, "test"},
+		},
+	},
+	{
+		Name: "",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query: "select i, (select names from JSON_Table(t.j, '$[*]' columns (names varchar(100) path '$')) jt) from t;",
+		Expected: []sql.Row{
+			{1, "test"},
 		},
 	},
 }

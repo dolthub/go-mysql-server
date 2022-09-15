@@ -142,12 +142,16 @@ func resolveJSONTableCrossJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 			return n, transform.SameTree, nil
 		}
 
+		if cj.Resolved() {
+			return n, transform.SameTree, nil
+		}
+
 		// analyze left child with parent scope
 		subCtx, cancelFunc := ctx.NewSubContext()
 		defer cancelFunc()
 		subScope := scope.newScope(n)
 
-		newLeft, _, err := a.analyzeWithSelector(subCtx, cj.Left(), subScope, SelectAllBatches, sel)
+		newLeft, sameL, err := a.analyzeWithSelector(subCtx, cj.Left(), subScope, SelectAllBatches, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -155,11 +159,10 @@ func resolveJSONTableCrossJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		// qualify and resolve right child with left and parent scope
 		rightScope := scope.newScope(newLeft)
 
-		newRight, _, err := qualifyColumns(ctx, a, cj.Right(), rightScope, sel)
-		newRight, _, err = resolveColumns(ctx, a, newRight, rightScope, sel)
+		newRight, sameR1, err := qualifyColumns(ctx, a, cj.Right(), rightScope, sel)
+		newRight, sameR2, err := resolveColumns(ctx, a, newRight, rightScope, sel)
 
-		// TODO: return a normal cross join? if yes, probably don't use any of its methods
-		return plan.NewCrossJoin(newLeft, newRight), transform.NewTree, nil
+		return plan.NewCrossJoin(newLeft, newRight), sameL && sameR1 && sameR2, nil
 	})
 }
 
