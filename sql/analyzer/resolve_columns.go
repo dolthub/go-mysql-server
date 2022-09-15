@@ -320,7 +320,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames, nesti
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess, *plan.JSONTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				names.indexTable(name, name, i)
 				return false
@@ -485,7 +485,7 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, nestingLevel int)
 
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *information_schema.ColumnsTable:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *information_schema.ColumnsTable, *plan.JSONTable:
 			for _, col := range n.Schema() {
 				names.indexColumn(col.Source, col.Name, nestingLevel)
 			}
@@ -685,8 +685,6 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
-	case *plan.ResolvedTable:
-		indexSchema(node.Schema())
 	}
 
 	return columns, nil
