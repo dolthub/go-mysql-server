@@ -320,7 +320,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames, nesti
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess, *plan.JSONTable:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				names.indexTable(name, name, i)
 				return false
@@ -661,7 +661,6 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		}
 	}
 
-	// TODO: add a case for TableAlias
 	switch node := n.(type) {
 	case *plan.CreateTable: // For this node in particular, the columns will only come into existence after the analyzer step, so we forge them here.
 		for _, col := range node.CreateSchema.Schema {
