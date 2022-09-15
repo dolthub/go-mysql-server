@@ -136,22 +136,13 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 }
 
 func resolveJSONTableCrossJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		cj, ok := n.(*plan.JSONTableCrossJoin)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
 
-		if cj.Resolved() {
-			return n, transform.SameTree, nil
-		}
-
-		// analyze left child with parent scope
-		subCtx, cancelFunc := ctx.NewSubContext()
-		defer cancelFunc()
-		subScope := scope.newScope(n)
-
-		newLeft, sameL, err := a.analyzeWithSelector(subCtx, cj.Left(), subScope, SelectAllBatches, sel)
+		newLeft, _, err := a.analyzeThroughBatch(ctx, cj.Left(), scope, "after-all", JSONTableRuleSelector)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -159,10 +150,16 @@ func resolveJSONTableCrossJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		// qualify and resolve right child with left and parent scope
 		rightScope := scope.newScope(newLeft)
 
-		newRight, sameR1, err := qualifyColumns(ctx, a, cj.Right(), rightScope, sel)
-		newRight, sameR2, err := resolveColumns(ctx, a, newRight, rightScope, sel)
+		newRight, _, err := qualifyColumns(ctx, a, cj.Right(), rightScope, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		newRight, _, err = resolveColumns(ctx, a, newRight, rightScope, sel)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
 
-		return plan.NewCrossJoin(newLeft, newRight), sameL && sameR1 && sameR2, nil
+		return plan.NewCrossJoin(newLeft, newRight), transform.NewTree, nil
 	})
 }
 

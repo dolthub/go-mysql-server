@@ -364,6 +364,15 @@ func DefaultRuleSelector(id RuleId) bool {
 	return true
 }
 
+func JSONTableRuleSelector(id RuleId) bool {
+	switch id {
+	// prepared statement rules are incompatible with default rules
+	case TrackProcessId:
+		return false
+	}
+	return true
+}
+
 func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		if id == pruneTablesId {
