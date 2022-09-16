@@ -178,20 +178,20 @@ var JSONTableScriptTests = []ScriptTest{
 			{"mary"},
 		},
 	},
-	//{
-	//	Name: "create table from json column aliased column",
-	//	SetUpScript: []string{
-	//		"create table organizations (organization varchar(10), members json)",
-	//		`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-	//	},
-	//	Query: "select o.organization, jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
-	//	Expected: []sql.Row{
-	//		{"orgA", "bob"},
-	//		{"orgA", "john"},
-	//		{"orgB", "alice"},
-	//		{"orgB", "mary"},
-	//	},
-	//},
+	{
+		Name: "create table from json column aliased column",
+		SetUpScript: []string{
+			"create table organizations (organization varchar(10), members json)",
+			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
+		},
+		Query: "select o.organization, jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Expected: []sql.Row{
+			{"orgA", "bob"},
+			{"orgA", "john"},
+			{"orgB", "alice"},
+			{"orgB", "mary"},
+		},
+	},
 	{
 		Name: "json table in subquery references parent data",
 		SetUpScript: []string{

@@ -571,6 +571,47 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 				return plan.NewCrossJoin(j.Left(), newJt), transform.NewTree, nil
 			}
 		case *plan.NaturalJoin:
+			if jt, ok := j.Right().(*plan.JSONTable); ok {
+				newJt, same, err := resolveJSONTableInJoin(ctx, a, scope, j.Left(), jt)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return n, transform.SameTree, nil
+				}
+				return plan.NewNaturalJoin(j.Left(), newJt), transform.NewTree, nil
+			}
+		case *plan.InnerJoin:
+			if jt, ok := j.Right().(*plan.JSONTable); ok {
+				newJt, same, err := resolveJSONTableInJoin(ctx, a, scope, j.Left(), jt)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return n, transform.SameTree, nil
+				}
+
+				// resolve condition
+				newJ := plan.NewInnerJoin(j.Left(), newJt, j.Cond)
+				columns, err := indexColumns(ctx, a, newJ, scope)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				newN, same, err := transform.OneNodeExprsWithNode(newJ, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					uc, ok := e.(column)
+					if !ok || e.Resolved() {
+						return e, transform.SameTree, nil
+					}
+
+					return resolveColumnExpression(a, n, uc, columns)
+				})
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				return newN, transform.NewTree, nil
+			}
 		}
 
 		if _, ok := n.(sql.Expressioner); !ok {
@@ -749,13 +790,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
 	case *plan.TableAlias:
-		for _, col := range node.Schema() {
-			columns[tableCol{
-				table: strings.ToLower(node.Name()),
-				col:   strings.ToLower(col.Name),
-			}] = indexedCol{col, idx}
-			idx++
-		}
+		indexSchema(node.Schema())
 	case *plan.ResolvedTable:
 		indexSchema(node.Schema())
 	}

@@ -78,7 +78,11 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
-		case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin, *plan.Filter,
+		case *plan.CrossJoin:
+			if _, ok := n.Right().(*plan.JSONTable); ok {
+				return n, transform.SameTree, nil
+			}
+		case plan.JoinNode, *plan.IndexedJoin, *plan.Filter,
 			*plan.GroupBy, *plan.Project, *plan.TableAlias,
 			*plan.Window, *plan.Sort, *plan.Limit, *plan.RecursiveCte,
 			*plan.RecursiveTable, *plan.TopN, *plan.Offset:
