@@ -25,6 +25,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
@@ -64,7 +65,7 @@ func Test_TimestampBindings_CanBeCompared(t *testing.T) {
 }
 
 func newDatabase() (*connector.DB, func()) {
-	provider := NewDatabaseProvider(
+	provider := sql.NewDatabaseProvider(
 		memory.NewDatabase("mydb"),
 	)
 	engine := sqle.New(analyzer.NewDefault(provider), &sqle.Config{
