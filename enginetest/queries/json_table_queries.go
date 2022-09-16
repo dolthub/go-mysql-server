@@ -233,6 +233,45 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "inner join json table with condition in subquery",
+		SetUpScript: []string{
+			`create table p (i int primary key)`,
+			`insert into p values (1),(2),(3)`,
+		},
+		Query: `select (select jt.i from p inner join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt where p.i >= jt.i LIMIT 1);`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Name: "left join json table with condition in subquery",
+		SetUpScript: []string{
+			`create table p (i int primary key)`,
+			`insert into p values (1),(2),(3)`,
+		},
+		Query: `select * from p left join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt on p.i > jt.i;`,
+		Expected: []sql.Row{
+			{1, nil},
+			{2, 1},
+			{3, 1},
+			{3, 2},
+		},
+	},
+	{
+		Name: "right join json table with condition in subquery",
+		SetUpScript: []string{
+			`create table p (i int primary key)`,
+			`insert into p values (1),(2),(3)`,
+		},
+		Query: `select * from p right join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt on p.i > jt.i;`,
+		Expected: []sql.Row{
+			{2, 1},
+			{3, 1},
+			{3, 2},
+			{nil, 3},
+		},
+	},
+	{
 		Name: "json table in subquery references parent data",
 		SetUpScript: []string{
 			"create table t (i int, j json)",
