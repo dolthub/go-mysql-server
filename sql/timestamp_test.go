@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2etests
+package sql_test
 
 import (
 	connector "database/sql"
@@ -25,7 +25,6 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
@@ -65,7 +64,7 @@ func Test_TimestampBindings_CanBeCompared(t *testing.T) {
 }
 
 func newDatabase() (*connector.DB, func()) {
-	provider := sql.NewDatabaseProvider(
+	provider := NewDatabaseProvider(
 		memory.NewDatabase("mydb"),
 	)
 	engine := sqle.New(analyzer.NewDefault(provider), &sqle.Config{
