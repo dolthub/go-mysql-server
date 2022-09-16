@@ -42,7 +42,7 @@ type Listener struct {
 	conns chan connRes
 	// channel to close both listener
 	shutdown chan struct{}
-	mu       *sync.Mutex
+	once     *sync.Once
 }
 
 // NewListener creates a new Listener.
@@ -73,7 +73,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		conns:        make(chan connRes),
 		eg:           new(errgroup.Group),
 		shutdown:     make(chan struct{}),
-		mu:           &sync.Mutex{},
+		once:         &sync.Once{},
 	}
 	l.eg.Go(func() error {
 		for {
@@ -133,22 +133,13 @@ func (l *Listener) Close() error {
 			return err
 		}
 	}
-	if l.shutdown != nil {
-		l.CloseChannels()
-	}
+	l.once.Do(func() {
+		close(l.shutdown)
+		close(l.conns)
+	})
 	return l.eg.Wait()
 }
 
 func (l *Listener) Addr() net.Addr {
 	return l.netListener.Addr()
-}
-
-func (l *Listener) CloseChannels() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	close(l.shutdown)
-	close(l.conns)
-
-	l.shutdown = nil
 }
