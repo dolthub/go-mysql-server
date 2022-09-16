@@ -6966,7 +6966,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query: "create table test (id int primary key, first_name varchar(MAX))",
+		Query: "",
 		Expected: []sql.Row{
 			{
 				sql.OkResult{},
