@@ -2713,8 +2713,6 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 		return nil, err
 	}
 
-	// if right is a JSON_table
-
 	if t.Join == sqlparser.NaturalJoinStr {
 		return plan.NewNaturalJoin(left, right), nil
 	}
