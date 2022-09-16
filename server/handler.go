@@ -139,7 +139,11 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		}
 	}()
 
-	ctx, _ := h.sm.NewContextWithQuery(c, "")
+	ctx, err := h.sm.NewContextWithQuery(c, "")
+	if err != nil {
+		h.sm.CloseConn(c)
+		return
+	}
 	h.sm.CloseConn(c)
 
 	// If connection was closed, kill its associated queries.
