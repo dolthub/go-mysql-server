@@ -229,6 +229,26 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 	},
 	{
+		Name: "Coercibility test using HEX",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
+				Expected: []sql.Row{{"1"}},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
+				Expected: []sql.Row{{"0"}},
+			},
+		},
+	},
+	{
 		Name: "ENUM collation handling",
 		SetUpScript: []string{
 			"SET character_set_results = 'binary';",
@@ -343,6 +363,158 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query:    "SELECT * FROM test;",
 				Expected: []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
+			},
+		},
+	},
+	{
+		Name: "LIKE respects table collations",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+			"CREATE TABLE test(v1 VARCHAR(100) COLLATE utf8mb4_0900_bin, v2 VARCHAR(100) COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO test VALUES ('abc', 'abc'), ('ABC', 'ABC');",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'A%';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'A%';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE '%C';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE '%C';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LIKE respects connection collation",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT _utf8mb4'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE _utf8mb4'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
 			},
 		},
 	},

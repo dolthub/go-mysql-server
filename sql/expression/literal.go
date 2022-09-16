@@ -17,6 +17,8 @@ package expression
 import (
 	"fmt"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -66,6 +68,8 @@ func (lit *Literal) String() string {
 		return fmt.Sprintf("%d", v)
 	case string:
 		return fmt.Sprintf("'%s'", v)
+	case decimal.Decimal:
+		return v.StringFixed(v.Exponent() * -1)
 	case []byte:
 		return "BLOB"
 	case nil:

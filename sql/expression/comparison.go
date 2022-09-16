@@ -125,6 +125,13 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		}
 	}
 	if sql.IsTextOnly(compareType) {
+		leftCollation, leftCoercibility := GetCollationViaCoercion(c.Left())
+		rightCollation, rightCoercibility := GetCollationViaCoercion(c.Right())
+		collationPreference, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+		if err != nil {
+			return 0, err
+		}
+
 		stringCompareType := compareType.(sql.StringType)
 		compareType = sql.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}

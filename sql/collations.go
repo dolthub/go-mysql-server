@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/cespare/xxhash"
@@ -886,11 +885,6 @@ func (ci *CollationsIterator) Next() (Collation, bool) {
 		return collationArray[ci.idx-1], true
 	}
 	return Collation{}, false
-}
-
-func (im *insensitiveMatcher) Match(matchStr string) bool {
-	lower := strings.ToLower(matchStr)
-	return im.DisposableMatcher.Match(lower)
 }
 
 // TypeWithCollation is implemented on all types that may return a collation.

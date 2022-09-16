@@ -22,6 +22,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// filterHasBindVar looks for any BindVars found in filter nodes
+func filterHasBindVar(filter sql.Node) bool {
+	var hasBindVar bool
+	transform.Inspect(filter, func(node sql.Node) bool {
+		if fn, ok := node.(*plan.Filter); ok {
+			for _, expr := range fn.Expressions() {
+				transform.InspectExpr(expr, func(e sql.Expression) bool {
+					if _, ok := e.(*expression.BindVar); ok {
+						hasBindVar = true
+						return true
+					}
+					return false
+				})
+			}
+		}
+		return !hasBindVar // stop recursing if bindvar already found
+	})
+	return hasBindVar
+}
+
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
 // sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
 // sql.IndexAddressableTable will get an appropriate index lookup applied.
@@ -33,7 +53,21 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
-	return pushdownFiltersAtNode(ctx, a, n, scope, sel)
+	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
+
+	if !filterHasBindVar(n) {
+		return node, same, err
+	}
+
+	// Wrap with DeferredFilteredTable if there are bindvars
+	return transform.NodeWithOpaque(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if rt, ok := n.(*plan.ResolvedTable); ok {
+			if _, ok := rt.Table.(sql.FilteredTable); ok {
+				return plan.NewDeferredFilteredTable(rt), transform.NewTree, nil
+			}
+		}
+		return n, transform.SameTree, nil
+	})
 }
 
 func pushdownFiltersAtNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

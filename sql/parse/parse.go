@@ -366,7 +366,6 @@ func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql
 	case *sqlparser.Select:
 		return convertSelect(ctx, n)
 	case *sqlparser.Union:
-		// TODO: support for WITH
 		return convertUnion(ctx, n)
 	case *sqlparser.ParenSelect:
 		return convertSelectStatement(ctx, n.Select)
@@ -832,19 +831,50 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 		return nil, err
 	}
 
-	var node sql.Node
-	if u.Type == sqlparser.UnionAllStr {
-		node = plan.NewUnion(left, right)
-	} else { // default is DISTINCT (either explicit or implicit)
-		// TODO: this creates redundant Distinct nodes that we can't easily remove after the fact. With this construct,
-		//  we can't in all cases tell the difference between `union distinct (select ...)` and
-		//  `union (select distinct ...)`. We need something like a Distinct property on Union nodes to be able to prune
-		//  redundant Distinct nodes and thereby avoid doing extra work.
-		node = plan.NewDistinct(plan.NewUnion(left, right))
+	// TODO: CalcFoundRows?
+	distinct := u.Type != sqlparser.UnionAllStr
+	l, err := limitToLimitExpr(ctx, u.Limit)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO: CalcFoundRows?
-	return nodeWithLimitAndOrderBy(ctx, node, u.OrderBy, u.Limit, false)
+	var sortFields sql.SortFields
+	if len(u.OrderBy) > 0 {
+		sortFields, err = orderByToSortFields(ctx, u.OrderBy)
+		if err != nil {
+			return nil, err
+		}
+	}
+	union, err := buildUnion(left, right, distinct, l, sortFields)
+	if err != nil {
+		return nil, err
+	}
+	if u.With != nil {
+		return ctesToWith(ctx, u.With, union)
+	}
+	return union, nil
+}
+
+func buildUnion(left, right sql.Node, distinct bool, limit sql.Expression, sf sql.SortFields) (*plan.Union, error) {
+	// propagate sortFields, limit from child
+	n, ok := left.(*plan.Union)
+	if ok {
+		if len(n.SortFields) > 0 {
+			if len(sf) > 0 {
+				return nil, sql.ErrConflictingExternalQuery.New()
+			}
+			sf = n.SortFields
+		}
+		if n.Limit != nil {
+			if limit != nil {
+				return nil, fmt.Errorf("conflicing external ORDER BY")
+			}
+			limit = n.Limit
+		}
+		left = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil)
+		// TODO recurse and put more union-specific rules after
+	}
+	return plan.NewUnion(left, right, distinct, limit, sf), nil
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -902,6 +932,19 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	}
 
 	return node, nil
+}
+
+func limitToLimitExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil && limit.Offset != nil {
+		return ExprToExpression(ctx, limit.Offset)
+	} else if limit != nil {
+		return ExprToExpression(ctx, limit.Rowcount)
+	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
+		limit := mustCastNumToInt64(val)
+		return expression.NewLiteral(limit, sql.Int64), nil
+	}
+	return nil, nil
 }
 
 func nodeWithLimitAndOrderBy(ctx *sql.Context, node sql.Node, orderby sqlparser.OrderBy, limit *sqlparser.Limit, calcfoundrows bool) (sql.Node, error) {
@@ -3381,12 +3424,19 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
-			if scale, err := strconv.ParseUint(ps[1], 10, 64); err != nil || scale > 0 {
-				ogVal := string(v.Val)
-				floatVal := fmt.Sprintf("%v", val)
-				if len(ogVal) >= len(floatVal) && ogVal != floatVal {
+			ogVal := string(v.Val)
+			floatVal := fmt.Sprintf("%v", val)
+			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
+				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
+				dt, err := sql.CreateDecimalType(p, s)
+				if err != nil {
 					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
 				}
+				dVal, err := dt.Convert(ogVal)
+				if err != nil {
+					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+				}
+				return expression.NewLiteral(dVal, dt), nil
 			}
 		}
 

@@ -935,14 +935,9 @@ func (t *Table) String() string {
 func (t *Table) DebugString() string {
 	p := sql.NewTreePrinter()
 
-	kind := ""
-
+	children := []string{fmt.Sprintf("name: %s", t.name)}
 	if t.lookup != nil {
-		kind += fmt.Sprintf("Indexed on %s", t.lookup)
-	}
-
-	if kind != "" {
-		kind = ": " + kind
+		children = append(children, fmt.Sprintf("index: %s", t.lookup))
 	}
 
 	if len(t.columns) > 0 {
@@ -950,7 +945,8 @@ func (t *Table) DebugString() string {
 		for _, column := range t.columns {
 			projections = append(projections, fmt.Sprintf("%d", column))
 		}
-		kind += fmt.Sprintf("Projected on [%s] ", strings.Join(projections, ", "))
+		children = append(children, fmt.Sprintf("projections: %s", projections))
+
 	}
 
 	if len(t.filters) > 0 {
@@ -958,14 +954,10 @@ func (t *Table) DebugString() string {
 		for _, filter := range t.filters {
 			filters = append(filters, fmt.Sprintf("%s", sql.DebugString(filter)))
 		}
-		kind += fmt.Sprintf("Filtered on [%s]", strings.Join(filters, ", "))
+		children = append(children, fmt.Sprintf("filters: %s", filters))
 	}
-
-	if len(kind) == 0 {
-		return t.name
-	}
-
-	_ = p.WriteNode("%s%s", t.name, kind)
+	_ = p.WriteNode("Table")
+	p.WriteChildren(children...)
 	return p.String()
 }
 

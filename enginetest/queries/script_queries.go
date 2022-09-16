@@ -698,6 +698,30 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "last_insert_id(expr) behavior",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "row_count() behavior",
 		SetUpScript: []string{
 			"create table b (x int primary key)",
@@ -1256,7 +1280,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
-				Expected: []sql.Row{{float64(-1455)}},
+				Expected: []sql.Row{{int64(-1455)}},
 			},
 			{
 				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
@@ -2151,6 +2175,61 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SHOW CREATE TABLE test2;",
 				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "sum() and avg() on DECIMAL type column returns the DECIMAL type result",
+		SetUpScript: []string{
+			"create table decimal_table (id int, val decimal(18,16));",
+			"insert into decimal_table values (1,-2.5633000000000384);",
+			"insert into decimal_table values (2,2.5633000000000370);",
+			"insert into decimal_table values (3,0.0000000000000004);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT val FROM decimal_table;",
+				Expected: []sql.Row{{"-2.5633000000000384"}, {"2.5633000000000370"}, {"0.0000000000000004"}},
+			},
+			{
+				Query:    "SELECT sum(val) FROM decimal_table;",
+				Expected: []sql.Row{{"-0.0000000000000010"}},
+			},
+			{
+				Query:    "SELECT avg(val) FROM decimal_table;",
+				Expected: []sql.Row{{"-0.00000000000000033333"}},
+			},
+		},
+	},
+	{
+		Name: "sum() and avg() on non-DECIMAL type column returns the DOUBLE type result",
+		SetUpScript: []string{
+			"create table float_table (id int, val1 double, val2 float);",
+			"insert into float_table values (1,-2.5633000000000384, 2.3);",
+			"insert into float_table values (2,2.5633000000000370, 2.4);",
+			"insert into float_table values (3,0.0000000000000004, 5.3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
+				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+			},
+			{
+				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;;",
+				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
+			},
+		},
+	},
+	{
+		Name: "compare DECIMAL type columns with different precision and scale",
+		SetUpScript: []string{
+			"create table t (id int primary key, val1 decimal(2, 1), val2 decimal(3, 1));",
+			"insert into t values (1, 1.2, 1.1), (2, 1.2, 10.1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select if(val1 < val2, 'YES', 'NO') from t order by id;",
+				Expected: []sql.Row{{"NO"}, {"YES"}},
 			},
 		},
 	},

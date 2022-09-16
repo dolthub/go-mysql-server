@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -505,8 +506,8 @@ func TestUnaryMinus(t *testing.T) {
 		{"uint64", uint64(1), sql.Uint64, int64(-1)},
 		{"float32", float32(1), sql.Float32, float32(-1)},
 		{"float64", float64(1), sql.Float64, float64(-1)},
-		{"int text", "1", sql.LongText, float64(-1)},
-		{"float text", "1.2", sql.LongText, float64(-1.2)},
+		{"int text", "1", sql.LongText, "-1"},
+		{"float text", "1.2", sql.LongText, "-1.2"},
 		{"nil", nil, sql.LongText, nil},
 	}
 
@@ -515,7 +516,12 @@ func TestUnaryMinus(t *testing.T) {
 			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, result)
+			if dt, ok := result.(decimal.Decimal); ok {
+				require.Equal(t, tt.expected, dt.StringFixed(dt.Exponent()*-1))
+			} else {
+				require.Equal(t, tt.expected, result)
+			}
+
 		})
 	}
 }

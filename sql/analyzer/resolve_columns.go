@@ -243,17 +243,64 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
 		}
-		if _, ok := n.(*plan.RecursiveCte); ok {
-			return n, transform.SameTree, nil
-		}
-
 		symbols = getNodeAvailableNames(n, scope, symbols, nestingLevel)
 		nestingLevel++
 
-		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		// Updates need to have check constraints qualified since multiple tables could be involved
+		checkConstraintsUpdated := false
+		if nn, ok := n.(*plan.Update); ok {
+			newChecks, err := qualifyCheckConstraints(nn)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			nn.Checks = newChecks
+			n = nn
+			checkConstraintsUpdated = true
+		}
+
+		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
 		})
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+		if checkConstraintsUpdated {
+			identity = transform.NewTree
+		}
+		return newNode, identity, nil
 	})
+}
+
+// qualifyCheckConstraints returns a new set of CheckConstraints created by taking the specified Update node's checks
+// and qualifying them to the table involved in the update, including honoring any table aliases specified.
+func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) {
+	checks := update.Checks
+	table, alias := getResolvedTableAndAlias(update.Child)
+
+	newExprs := make([]sql.Expression, len(checks))
+	for i, checkExpr := range checks.ToExpressions() {
+		newExpr, _, err := transform.Expr(checkExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				if e.Table() == "" {
+					tableName := table.Name()
+					if alias != "" {
+						tableName = alias
+					}
+					return expression.NewUnresolvedQualifiedColumn(tableName, e.Name()), transform.NewTree, nil
+				}
+			default:
+				// nothing else needed for other types
+			}
+			return e, transform.SameTree, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		newExprs[i] = newExpr
+	}
+
+	return checks.FromExpressions(newExprs)
 }
 
 // getNodeAvailableSymbols returns the set of table and column names accessible to the node given and using the buildScope
@@ -568,6 +615,8 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	switch n.(type) {
 	case *plan.AddColumn, *plan.ModifyColumn:
 		shouldIndexChildNode = false
+	case *plan.RecursiveCte, *plan.Union:
+		shouldIndexChildNode = false
 	}
 
 	if shouldIndexChildNode {
@@ -631,6 +680,10 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	case *plan.ModifyColumn:
 		tbl := node.Table
 		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
+	case *plan.RecursiveCte, *plan.Union:
+		// opaque nodes have derived schemas
+		// TODO also subquery aliases?
+		indexChildNode(node.(sql.BinaryNode).Left())
 	}
 
 	return columns, nil

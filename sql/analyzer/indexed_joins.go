@@ -144,7 +144,8 @@ func countTableFactors(n sql.Node) int {
 		case *plan.InsertInto:
 			cnt += countTableFactors(n.Source)
 		case *plan.RecursiveCte:
-			cnt += countTableFactors(n.Rec)
+			// TODO subqueries and CTEs should contribute as a single table factor
+			cnt += countTableFactors(n.Right())
 		default:
 		}
 
@@ -278,7 +279,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, transform.SameTree, err
 		}
 
-		if scope != nil {
+		if !scope.IsEmpty() {
 			left = plan.NewStripRowNode(left, len(scope.Schema()))
 		}
 
@@ -288,7 +289,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, transform.SameTree, err
 		}
 
-		if scope != nil {
+		if !scope.IsEmpty() {
 			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 

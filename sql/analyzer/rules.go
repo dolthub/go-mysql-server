@@ -56,7 +56,7 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
-	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -130,7 +130,6 @@ var DefaultValidationRules = []Rule{
 	{validateSchemaSourceId, validateSchemaSource},
 	{validateIndexCreationId, validateIndexCreation},
 	{validateOperandsId, validateOperands},
-	{validateCaseResultTypesId, validateCaseResultTypes},
 	{validateIntervalUsageId, validateIntervalUsage},
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},

@@ -133,28 +133,19 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return node, transform.SameTree, nil
 	}
 
-	// Add a new filter node with all removed predicates above the top level InnerJoin. Or, if there is a filter node
-	// above that, combine into a new filter.
-	selector := func(c transform.Context) bool {
-		switch c.Parent.(type) {
-		case *plan.Filter:
-			return false
+	return transform.NodeWithCtx(node, func(transform.Context) bool { return true }, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		if c.Node != topJoin {
+			return c.Node, transform.SameTree, nil
 		}
-		return c.Parent != topJoin
-	}
-
-	return transform.NodeWithCtx(node, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch node := c.Node.(type) {
+		switch n := c.Parent.(type) {
 		case *plan.Filter:
 			return plan.NewFilter(
-				expression.JoinAnd(append([]sql.Expression{node.Expression}, nonJoinFilters...)...),
-				node.Child), transform.NewTree, nil
-		case *plan.InnerJoin, *plan.CrossJoin:
+				expression.JoinAnd(append([]sql.Expression{n.Expression}, nonJoinFilters...)...),
+				n.Child), transform.NewTree, nil
+		default:
 			return plan.NewFilter(
 				expression.JoinAnd(nonJoinFilters...),
-				node), transform.NewTree, nil
-		default:
-			return node, transform.SameTree, nil
+				c.Node), transform.NewTree, nil
 		}
 	})
 }
@@ -283,7 +274,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				}
 
 				return e, transform.SameTree, nil
-			case *expression.Literal, expression.Tuple, *expression.Interval:
+			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression:
 				return e, transform.SameTree, nil
 			default:
 				if !isEvaluable(e) {
