@@ -2052,7 +2052,10 @@ func getPkOrdinals(ts *sqlparser.TableSpec) []int {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
-	tableCollation := sql.Collation_Default
+	//TODO: this should not be pulling the context collation, that is incorrect. It should be pulling the database collation.
+	// Database collations aren't yet implemented, so for now this functions as a sort of workaround, but it is definitely
+	// the wrong behavior.
+	tableCollation := ctx.GetCollation()
 	if forceInvalidCollation {
 		tableCollation = sql.Collation_Invalid
 	} else {

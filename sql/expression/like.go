@@ -92,12 +92,20 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if right == nil {
 			return nil, nil
 		}
-		leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
-		rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
+		leftCollation, leftCoercibility := GetCollationViaCoercion(ctx, l.Left)
+		rightCollation, rightCoercibility := GetCollationViaCoercion(ctx, l.Right)
 		var collation sql.CollationID
 		collation, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 		if err != nil {
-			return nil, err
+			// If we're unable to resolve coercibility, we do a deeper comparison. This is NOT what MySQL does and will
+			// return incorrect results, but it may still be an improvement over not doing this step.
+			leftCollation, leftCoercibility = GetCollationViaCoercionDeep(ctx, l.Left)
+			rightCollation, rightCoercibility = GetCollationViaCoercionDeep(ctx, l.Right)
+			var nerr error
+			collation, nerr = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+			if nerr != nil {
+				return nil, err // return the original error
+			}
 		}
 		lm, err = constructLikeMatcher(collation, *right, escape)
 	} else {
@@ -108,11 +116,19 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 					if err != nil || right == nil {
 						return likeMatcherErrTuple{likeMatcher{}, err}
 					}
-					leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
-					rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
+					leftCollation, leftCoercibility := GetCollationViaCoercion(ctx, l.Left)
+					rightCollation, rightCoercibility := GetCollationViaCoercion(ctx, l.Right)
 					collation, err := ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 					if err != nil {
-						return likeMatcherErrTuple{likeMatcher{}, err}
+						// If we're unable to resolve coercibility, we do a deeper comparison. This is NOT what MySQL does and will
+						// return incorrect results, but it may still be an improvement over not doing this step.
+						leftCollation, leftCoercibility = GetCollationViaCoercionDeep(ctx, l.Left)
+						rightCollation, rightCoercibility = GetCollationViaCoercionDeep(ctx, l.Right)
+						var nerr error
+						collation, nerr = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+						if nerr != nil {
+							return likeMatcherErrTuple{likeMatcher{}, err} // return the original error
+						}
 					}
 					m, e := constructLikeMatcher(collation, *right, escape)
 					return likeMatcherErrTuple{m, e}

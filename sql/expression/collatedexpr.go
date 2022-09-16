@@ -126,7 +126,7 @@ func (ce *CollatedExpression) Child() sql.Expression {
 //
 // TODO: This function's implementation is extremely basic, and is sure to return an incorrect result in some cases. A
 // more accurate implementation would have each expression return its own collation and coercion values.
-func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
+func GetCollationViaCoercion(ctx *sql.Context, expr sql.Expression) (sql.CollationID, int) {
 	if expr == nil {
 		return sql.Collation_Default, 6
 	}
@@ -152,7 +152,7 @@ func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 				coercibility := 6
 				var childrenWithCoercibility []sql.CollationID
 				for _, child := range funcExpr.Children() {
-					childCollation, childCoercibility := GetCollationViaCoercion(child)
+					childCollation, childCoercibility := GetCollationViaCoercion(ctx, child)
 					if childCollation == sql.Collation_Invalid {
 						continue
 					}
@@ -186,6 +186,9 @@ func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 				return collation, 1
 			case "user", "current_user", "version":
 				return collation, 3
+			case "json_unquote":
+				//TODO: this is absolutely wrong, but it's a temporary fix for a customer-specific issue
+				return ctx.GetCollation(), 3
 			default:
 				// It appears that many functions return a value of 4 (using the function COERCIBILITY).
 				return collation, 4
@@ -194,6 +197,22 @@ func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 		// Some general expressions returns a value of 5, so we just return 5 for all unmatched expressions.
 		return collation, 5
 	}
+}
+
+// GetCollationViaCoercionDeep is similar to GetCollationViaCoercion, except that it walks all children and returns the
+// lowest coercibility. This is essentially a hack to make up for the (assumed behavior) lack of support for bubbling
+// up coercibility through expressions and functions. This is almost always the wrong function to call, it is advisable
+// to use GetCollationViaCoercion unless this functionality is explicitly desired (which it rarely should be).
+func GetCollationViaCoercionDeep(ctx *sql.Context, expr sql.Expression) (sql.CollationID, int) {
+	collation, coercibility := GetCollationViaCoercion(ctx, expr)
+	for _, childExpr := range expr.Children() {
+		childCollation, childCoercibility := GetCollationViaCoercionDeep(ctx, childExpr)
+		if childCoercibility < coercibility {
+			collation = childCollation
+			coercibility = childCoercibility
+		}
+	}
+	return collation, coercibility
 }
 
 // ResolveCoercibility returns the collation to use by comparing coercibility, along with giving priority to binary

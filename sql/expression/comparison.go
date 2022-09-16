@@ -125,11 +125,19 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		}
 	}
 	if sql.IsTextOnly(compareType) {
-		leftCollation, leftCoercibility := GetCollationViaCoercion(c.Left())
-		rightCollation, rightCoercibility := GetCollationViaCoercion(c.Right())
+		leftCollation, leftCoercibility := GetCollationViaCoercion(ctx, c.Left())
+		rightCollation, rightCoercibility := GetCollationViaCoercion(ctx, c.Right())
 		collationPreference, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 		if err != nil {
-			return 0, err
+			// If we're unable to resolve coercibility, we do a deeper comparison. This is NOT what MySQL does and will
+			// return incorrect results, but it may still be an improvement over not doing this step.
+			leftCollation, leftCoercibility = GetCollationViaCoercionDeep(ctx, c.Left())
+			rightCollation, rightCoercibility = GetCollationViaCoercionDeep(ctx, c.Right())
+			var nerr error
+			collationPreference, nerr = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+			if nerr != nil {
+				return 0, err // return the original error
+			}
 		}
 
 		stringCompareType := compareType.(sql.StringType)
