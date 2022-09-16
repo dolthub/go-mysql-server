@@ -775,8 +775,10 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
 	case *plan.TableAlias:
+		// use schema from TableAlias, and not children, so columns have right Source
 		indexSchema(node.Schema())
 	case *plan.ResolvedTable:
+		// ResolveTable has no children, so its columns are never indexed, failing unqualified column projection
 		indexSchema(node.Schema())
 	}
 
