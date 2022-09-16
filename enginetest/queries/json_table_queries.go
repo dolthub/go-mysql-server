@@ -193,6 +193,46 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "cross join json table",
+		SetUpScript: []string{
+			"create table organizations (organization varchar(10), members json)",
+			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
+		},
+		Query: "select o.organization, jt.names from organizations o CROSS JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Expected: []sql.Row{
+			{"orgA", "bob"},
+			{"orgA", "john"},
+			{"orgB", "alice"},
+			{"orgB", "mary"},
+		},
+	},
+	{
+		Name: "natural join json table",
+		SetUpScript: []string{
+			"create table organizations (organization varchar(10), members json)",
+			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
+		},
+		Query: "select o.organization, jt.names from organizations o NATURAL JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+		Expected: []sql.Row{
+			{"orgA", "bob"},
+			{"orgA", "john"},
+			{"orgB", "alice"},
+			{"orgB", "mary"},
+		},
+	},
+	{
+		Name: "inner join json table with condition",
+		SetUpScript: []string{
+			"create table organizations (organization varchar(10), members json)",
+			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
+		},
+		Query: "select o.organization, jt.names from organizations o INNER JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt on o.organization = 'orgA';",
+		Expected: []sql.Row{
+			{"orgA", "bob"},
+			{"orgA", "john"},
+		},
+	},
+	{
 		Name: "json table in subquery references parent data",
 		SetUpScript: []string{
 			"create table t (i int, j json)",
