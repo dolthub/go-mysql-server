@@ -2597,6 +2597,7 @@ func tableExprsToTable(
 	for i := 2; i < len(nodes); i++ {
 		join = plan.NewCrossJoin(join, nodes[i])
 	}
+
 	return join, nil
 }
 
