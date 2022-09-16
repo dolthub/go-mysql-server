@@ -17,14 +17,9 @@ package plan
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"reflect"
-
-	"github.com/oliveagle/jsonpath"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/oliveagle/jsonpath"
+	"io"
 )
 
 type jsonTablePartition struct {
@@ -225,91 +220,4 @@ func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPat
 		schema:   schema,
 		colPaths: colPaths,
 	}, nil
-}
-
-type JSONTableCrossJoin struct {
-	BinaryNode
-}
-
-var _ sql.OpaqueNode = (*JSONTableCrossJoin)(nil)
-
-// NewJSONTableCrossJoin creates a new cross join node where the right table is a JSONTable.
-func NewJSONTableCrossJoin(left sql.Node, right sql.Node) *JSONTableCrossJoin {
-	return &JSONTableCrossJoin{
-		BinaryNode: BinaryNode{
-			left:  left,
-			right: right,
-		},
-	}
-}
-
-// Schema implements the Node interface.
-func (p *JSONTableCrossJoin) Schema() sql.Schema {
-	return append(p.left.Schema(), p.right.Schema()...)
-}
-
-// Resolved implements the Resolvable interface.
-func (p *JSONTableCrossJoin) Resolved() bool {
-	return p.left.Resolved() && p.right.Resolved()
-}
-
-// RowIter implements the Node interface.
-func (p *JSONTableCrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var left, right string
-	if leftTable, ok := p.left.(sql.Nameable); ok {
-		left = leftTable.Name()
-	} else {
-		left = reflect.TypeOf(p.left).String()
-	}
-
-	if rightTable, ok := p.right.(sql.Nameable); ok {
-		right = rightTable.Name()
-	} else {
-		right = reflect.TypeOf(p.right).String()
-	}
-
-	span, ctx := ctx.Span("plan.JSONTableCrossJoin", trace.WithAttributes(attribute.String("left", left), attribute.String("right", right)))
-
-	li, err := p.left.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, &crossJoinIterator{
-		l:  li,
-		rp: p.right,
-	}), nil
-}
-
-// WithChildren implements the Node interface.
-func (p *JSONTableCrossJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
-	}
-
-	return NewJSONTableCrossJoin(children[0], children[1]), nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (p *JSONTableCrossJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.left.CheckPrivileges(ctx, opChecker) && p.right.CheckPrivileges(ctx, opChecker)
-}
-
-func (p *JSONTableCrossJoin) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("JSONTableCrossJoin")
-	_ = pr.WriteChildren(p.left.String(), p.right.String())
-	return pr.String()
-}
-
-func (p *JSONTableCrossJoin) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("JSONTableCrossJoin")
-	_ = pr.WriteChildren(sql.DebugString(p.left), sql.DebugString(p.right))
-	return pr.String()
-}
-
-func (p *JSONTableCrossJoin) Opaque() bool {
-	return true
 }
