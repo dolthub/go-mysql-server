@@ -555,81 +555,69 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			return n, transform.SameTree, nil
 		}
 
+		var jtNew, left sql.Node
+		var jtSame transform.TreeIdentity
+		var jtErr error
+		var isJoin transform.TreeIdentity
 		switch j := n.(type) {
 		case *plan.CrossJoin:
+			isJoin = true
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				newJt, same, err := resolveJSONTableInJoin(ctx, a, scope, j.Left(), jt)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if same {
-					return n, transform.SameTree, nil
-				}
-				return plan.NewCrossJoin(j.Left(), newJt), transform.NewTree, nil
+				left = j.Left()
+				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
 			}
 		case *plan.NaturalJoin:
+			isJoin = true
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				newJt, same, err := resolveJSONTableInJoin(ctx, a, scope, j.Left(), jt)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if same {
-					return n, transform.SameTree, nil
-				}
-				return plan.NewNaturalJoin(j.Left(), newJt), transform.NewTree, nil
+				left = j.Left()
+				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
 			}
 		case *plan.InnerJoin:
+			isJoin = true
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				newJt, same, err := resolveJSONTableInJoin(ctx, a, scope, j.Left(), jt)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if same {
-					return n, transform.SameTree, nil
-				}
-
-				// resolve condition
-				newJ := plan.NewInnerJoin(j.Left(), newJt, j.Cond)
-				columns, err := indexColumns(ctx, a, newJ, scope)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				newN, same, err := transform.OneNodeExprsWithNode(newJ, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					uc, ok := e.(column)
-					if !ok || e.Resolved() {
-						return e, transform.SameTree, nil
-					}
-
-					return resolveColumnExpression(a, n, uc, columns)
-				})
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				return newN, transform.NewTree, nil
+				left = j.Left()
+				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
+			}
+		case *plan.IndexedJoin:
+			isJoin = true
+			if jt, ok := j.Right().(*plan.JSONTable); ok {
+				left = j.Left()
+				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
 			}
 		}
 
-		if _, ok := n.(sql.Expressioner); !ok {
-			return n, transform.SameTree, nil
+		if jtErr != nil {
+			return nil, transform.SameTree, jtErr
+		}
+
+		nn := n
+		if isJoin && !jtSame {
+			newN, err := n.WithChildren(left, jtNew)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			nn = newN
+		}
+
+		if _, ok := nn.(sql.Expressioner); !ok {
+			return nn, jtSame, nil
 		}
 
 		// We need to use the schema, so all children must be resolved.
 		// TODO: also enforce the equivalent constraint for outer scopes. More complicated, because the outer scope can't
 		//  be Resolved() owing to a child expression (the one being evaluated) not being resolved yet.
-		for _, c := range n.Children() {
+		for _, c := range nn.Children() {
 			if !c.Resolved() {
 				return n, transform.SameTree, nil
 			}
 		}
 
-		columns, err := indexColumns(ctx, a, n, scope)
+		columns, err := indexColumns(ctx, a, nn, scope)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		newN, same, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		newN, same, err := transform.OneNodeExprsWithNode(nn, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, transform.SameTree, nil
@@ -645,7 +633,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			}
 		}
 
-		return newN, same, err
+		return newN, same && jtSame, err
 	})
 }
 
