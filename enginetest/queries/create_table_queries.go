@@ -148,6 +148,6 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 (i int PRIMARY KEY, j varchar(MAX))`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         `SHOW CREATE TABLE t1`,
-		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int PRIMARY KEY ,\n  `j` varchar(MAX)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` varchar(16383),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 }
