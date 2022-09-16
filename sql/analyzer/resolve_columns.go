@@ -509,8 +509,8 @@ const (
 	globalPrefix  = sqlparser.GlobalStr + "."
 )
 
-// todo: helper function resolveJSONTableInJoin
-// will always return a plan.JSONTable
+// resolveJSONTableInJoin is a helper function that resolves JSONTables in join as they have special visibility into the left side of the join
+// This function should return a *plan.JSONTable when there's no error
 func resolveJSONTableInJoin(ctx *sql.Context, a *Analyzer, scope *Scope, left sql.Node, jt *plan.JSONTable) (sql.Node, transform.TreeIdentity, error) {
 	if jt.Resolved() {
 		return jt, transform.SameTree, nil
@@ -555,10 +555,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			return n, transform.SameTree, nil
 		}
 
-		// TODO: special special case for inner joins
-
 		switch j := n.(type) {
-		// TODO: other valid joins here
 		case *plan.CrossJoin:
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
 				newJt, same, err := resolveJSONTableInJoin(ctx, a, scope, j.Left(), jt)
