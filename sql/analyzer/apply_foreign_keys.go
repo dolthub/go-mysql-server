@@ -317,7 +317,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	// MySQL has a CASCADE limit of a depth of 15
 	//TODO: figure out if MySQL errors once 15 has been hit, or if it just stops cascading (if the former, add a node that always errors)
 	if len(fks) == 0 || fkChain.Count() >= 15 {
-		return nil, nil
+		return nil, fmt.Errorf("foreign key chain depth limit reached")
 	}
 
 	tblSch := tbl.Schema()
