@@ -80,7 +80,6 @@ var DefaultRules = []Rule{
 	{flattenAggregationExprsId, flattenAggregationExpressions},
 	{reorderProjectionId, reorderProjection},
 	{resolveSubqueryExprsId, resolveSubqueryExpressions},
-	{resolveJSONTableCrossJoinId, resolveJSONTableCrossJoin},
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{evalFilterId, simplifyFilters},

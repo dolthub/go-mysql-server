@@ -63,7 +63,6 @@ const (
 	flattenAggregationExprsId      // flattenAggregationExprs
 	reorderProjectionId            // reorderProjection
 	resolveSubqueryExprsId         // resolveSubqueryExprs
-	resolveJSONTableCrossJoinId    // resolveJSONTableCrossJoin
 	replaceCrossJoinsId            // replaceCrossJoins
 	moveJoinCondsToFilterId        // moveJoinCondsToFilter
 	evalFilterId                   // evalFilter
