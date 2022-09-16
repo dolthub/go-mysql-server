@@ -17,9 +17,11 @@ package plan
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/oliveagle/jsonpath"
 	"io"
+
+	"github.com/oliveagle/jsonpath"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type jsonTablePartition struct {
