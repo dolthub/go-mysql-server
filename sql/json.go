@@ -114,8 +114,7 @@ func (t jsonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 	}
 	js := jsVal.(JSONValue)
 
-	// todo: making a context here is expensive
-	s, err := js.ToString(NewEmptyContext())
+	s, err := js.ToString(ctx)
 	if err != nil {
 		return sqltypes.NULL, err
 	}
