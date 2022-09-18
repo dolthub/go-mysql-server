@@ -329,7 +329,7 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "multiple json join",
+		Name: "join table, json_table, json_table",
 		SetUpScript: []string{
 			`create table tbl (i int primary key, j json)`,
 			`insert into tbl values (0, '[{"a":1,"b":2,"c":3},{"a":4,"b":5,"c":6},{"a":7,"b":8,"c":9}]')`,
@@ -363,6 +363,28 @@ var JSONTableScriptTests = []ScriptTest{
 			{7, 8, 3},
 			{7, 8, 6},
 			{7, 8, 9},
+		},
+	},
+	{
+		Name: "join table, json_table, json_table",
+		SetUpScript: []string{
+			`create table t1 (x int primary key)`,
+			`insert into t1 values (1), (2)`,
+			`create table t2 (y int primary key)`,
+			`insert into t2 values (3), (4)`,
+			`create table tbl (j json)`,
+			`insert into tbl values ('[{"a":5},{"a":6}]')`,
+		},
+		Query: "select t1.x, t2.y, jt.a from t1, t2, tbl, json_table(tbl.j, '$[*]' columns (a int path '$.a')) as jt",
+		Expected: []sql.Row{
+			{1, 3, 5},
+			{1, 3, 6},
+			{1, 4, 5},
+			{1, 4, 6},
+			{2, 3, 5},
+			{2, 3, 6},
+			{2, 4, 5},
+			{2, 4, 6},
 		},
 	},
 
