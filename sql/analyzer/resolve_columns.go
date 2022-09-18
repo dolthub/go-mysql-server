@@ -561,26 +561,26 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		var isJoin transform.TreeIdentity
 		switch j := n.(type) {
 		case *plan.CrossJoin:
-			isJoin = true
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
+				isJoin = true
 				left = j.Left()
 				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
 			}
 		case *plan.NaturalJoin:
-			isJoin = true
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
+				isJoin = true
 				left = j.Left()
 				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
 			}
 		case *plan.InnerJoin:
-			isJoin = true
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
+				isJoin = true
 				left = j.Left()
 				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
 			}
 		case *plan.IndexedJoin:
-			isJoin = true
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
+				isJoin = true
 				left = j.Left()
 				jtNew, jtSame, jtErr = resolveJSONTableInJoin(ctx, a, scope, left, jt)
 			}
