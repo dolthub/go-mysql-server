@@ -117,6 +117,28 @@ var JSONTableQueryTests = []QueryTest{
 			{nil, nil, nil, 4},
 		},
 	},
+	{
+		Query: "with c as (select jt.a from json_table('[{\"a\":1,\"b\":2,\"c\":3},{\"a\":4,\"b\":5,\"c\":6},{\"a\":7,\"b\":8,\"c\":9}]', '$[*]' columns (a int path '$.a')) as jt) select * from c",
+		Expected: []sql.Row{
+			{1},
+			{4},
+			{7},
+		},
+	},
+	{
+		Query: "select * from json_table('[{\"a\":1,\"b\":2,\"c\":3},{\"a\":4,\"b\":5,\"c\":6},{\"a\":7,\"b\":8,\"c\":9}]', '$[*]' columns (a int path '$.a')) as jt\nunion\nselect * from json_table('[{\"a\":1,\"b\":2,\"c\":3},{\"a\":4,\"b\":5,\"c\":6},{\"a\":7,\"b\":8,\"c\":9}]', '$[*]' columns (b int path '$.b')) as jt\nunion\nselect * from json_table('[{\"a\":1,\"b\":2,\"c\":3},{\"a\":4,\"b\":5,\"c\":6},{\"a\":7,\"b\":8,\"c\":9}]', '$[*]' columns (c int path '$.c')) as jt;",
+		Expected: []sql.Row{
+			{1},
+			{4},
+			{7},
+			{2},
+			{5},
+			{8},
+			{3},
+			{6},
+			{9},
+		},
+	},
 }
 
 var JSONTableScriptTests = []ScriptTest{
@@ -292,5 +314,81 @@ var JSONTableScriptTests = []ScriptTest{
 		Expected: []sql.Row{
 			{"test"},
 		},
+	},
+	{
+		Name: "json table in cte",
+		SetUpScript: []string{
+			`create table tbl (i int primary key, j json)`,
+			`insert into tbl values (0, '[{"a":1,"b":2,"c":3},{"a":4,"b":5,"c":6},{"a":7,"b":8,"c":9}]')`,
+		},
+		Query: "with c as (select jt.a from tbl, json_table(tbl.j, '$[*]' columns (a int path '$.a')) as jt) select * from c",
+		Expected: []sql.Row{
+			{1},
+			{4},
+			{7},
+		},
+	},
+	{
+		Name: "multiple json join",
+		SetUpScript: []string{
+			`create table tbl (i int primary key, j json)`,
+			`insert into tbl values (0, '[{"a":1,"b":2,"c":3},{"a":4,"b":5,"c":6},{"a":7,"b":8,"c":9}]')`,
+		},
+		Query: "select j1.a, j2.b, j3.c from tbl, json_table(tbl.j, '$[*]' columns (a int path '$.a')) as j1, json_table(tbl.j, '$[*]' columns (b int path '$.b')) as j2, json_table(tbl.j, '$[*]' columns (c int path '$.c')) as j3;",
+		Expected: []sql.Row{
+			{1, 2, 3},
+			{1, 2, 6},
+			{1, 2, 9},
+			{1, 5, 3},
+			{1, 5, 6},
+			{1, 5, 9},
+			{1, 8, 3},
+			{1, 8, 6},
+			{1, 8, 9},
+			{4, 2, 3},
+			{4, 2, 6},
+			{4, 2, 9},
+			{4, 5, 3},
+			{4, 5, 6},
+			{4, 5, 9},
+			{4, 8, 3},
+			{4, 8, 6},
+			{4, 8, 9},
+			{7, 2, 3},
+			{7, 2, 6},
+			{7, 2, 9},
+			{7, 5, 3},
+			{7, 5, 6},
+			{7, 5, 9},
+			{7, 8, 3},
+			{7, 8, 6},
+			{7, 8, 9},
+		},
+	},
+
+	// Error tests
+	{
+		Name: "non existent unqualified column",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+		},
+		Query:       "select j.a from t, json_table(k, '$[*]' columns (a INT path '$.a')) AS j",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Name: "non existent qualified column",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+		},
+		Query:       "select t.a from t, json_table(t.k, '$[*]' columns (a INT path '$.a')) AS j",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Name: "select from non existent json table column",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+		},
+		Query:       "select jt.b from t, json_table(t.k, '$[*]' columns (a INT path '$.a')) AS j",
+		ExpectedErr: sql.ErrTableNotFound, // Should be column not found
 	},
 }
