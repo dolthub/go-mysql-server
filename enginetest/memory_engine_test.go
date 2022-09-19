@@ -128,7 +128,7 @@ func TestJSONTableScripts(t *testing.T) {
 
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestBrokenJSONTableScripts(t *testing.T) {
-	//t.Skip("dummy schema, too permissive, wrong errors")
+	t.Skip("dummy schema, too permissive, wrong errors")
 	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
