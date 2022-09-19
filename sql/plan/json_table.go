@@ -215,6 +215,10 @@ func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, err
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
 func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
+	if _, ok := dataExpr.(*Subquery); ok {
+		return nil, sql.ErrInvalidArgument.New("JSON_TABLE")
+	}
+
 	return &JSONTable{
 		name:     alias,
 		dataExpr: dataExpr,

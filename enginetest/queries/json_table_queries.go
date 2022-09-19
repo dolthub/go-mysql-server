@@ -455,6 +455,15 @@ var JSONTableScriptTests = []ScriptTest{
 		Query:       "select j.b from t, json_table(t.j, '$[*]' columns (a INT path '$.a')) AS j",
 		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
+	{
+		Name: "subquery argument to json_table not allowed",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query:       "select * from json_table((select j from t), '$[*]' columns (a varchar(10) path '$')) as jt;",
+		ExpectedErr: sql.ErrInvalidArgument,
+	},
 }
 
 var BrokenJSONTableScriptTests = []ScriptTest{
@@ -499,16 +508,6 @@ var BrokenJSONTableScriptTests = []ScriptTest{
 			`insert into t values (1, '["test"]')`,
 		},
 		Query:       "with tt as (select * from t) select * from tt, json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
-		ExpectedErr: sql.ErrTableColumnNotFound, // should be Incorrect Arguments to JSON_table
-	},
-	{
-		// this should also error with incorrect arguments
-		Name: "subquery argument to json_table",
-		SetUpScript: []string{
-			"create table t (i int, j json)",
-			`insert into t values (1, '["test"]')`,
-		},
-		Query:       "select * from json_table((select j from t), '$[*]' columns (a varchar(10) path '$')) as jt;",
-		ExpectedErr: sql.ErrTableColumnNotFound, // should be Incorrect Arguments to JSON_table
+		ExpectedErr: sql.ErrInvalidArgument,
 	},
 }
