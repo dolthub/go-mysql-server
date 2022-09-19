@@ -258,6 +258,13 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			checkConstraintsUpdated = true
 		}
 
+		// don't qualify unresolved JSON tables, wait for joins
+		if jt, ok := n.(*plan.JSONTable); ok {
+			if !jt.Resolved() {
+				return n, transform.SameTree, nil
+			}
+		}
+
 		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
 		})
@@ -320,7 +327,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope, names availableNames, nesti
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess, *plan.JSONTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				names.indexTable(name, name, i)
 				return false

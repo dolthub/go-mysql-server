@@ -413,7 +413,7 @@ var JSONTableScriptTests = []ScriptTest{
 			"create table t (i int, j json)",
 		},
 		Query:       "select j.b from t, json_table(t.j, '$[*]' columns (a INT path '$.a')) AS j",
-		ExpectedErr: sql.ErrTableNotFound, // Should be column not found
+		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
 }
 
