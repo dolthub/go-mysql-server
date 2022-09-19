@@ -94,8 +94,8 @@ func (j *jsonTableRowIter) Close(ctx *sql.Context) error {
 }
 
 type JSONTable struct {
-	name     string
 	dataExpr sql.Expression
+	name     string
 	path     string
 	schema   sql.PrimaryKeySchema
 	colPaths []string
