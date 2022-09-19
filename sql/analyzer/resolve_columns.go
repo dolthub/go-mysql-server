@@ -573,6 +573,10 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			return nil, transform.SameTree, jtErr
 		}
 
+		if jtNew == nil {
+			return n, transform.SameTree, nil
+		}
+
 		newN, err := n.WithChildren(n.Children()[0], jtNew)
 		if err != nil {
 			return nil, transform.SameTree, err

@@ -366,7 +366,7 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "join table, json_table, json_table",
+		Name: "join table, table, json_table",
 		SetUpScript: []string{
 			`create table t1 (x int primary key)`,
 			`insert into t1 values (1), (2)`,
@@ -387,6 +387,8 @@ var JSONTableScriptTests = []ScriptTest{
 			{2, 4, 6},
 		},
 	},
+
+	// TODO: subquery alias and cte on left side
 
 	// Error tests
 	{
