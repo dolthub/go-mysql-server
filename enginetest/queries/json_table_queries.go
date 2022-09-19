@@ -329,6 +329,18 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "json table join with cte",
+		SetUpScript: []string{
+			`create table t (i int primary key)`,
+			`insert into t values (1), (2)`,
+		},
+		Query: "with tt as (select * from t) select * from tt, json_table('[{\"a\":3}]', '$[*]' columns (a int path '$.a')) as jt",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 3},
+		},
+	},
+	{
 		Name: "join table, json_table, json_table",
 		SetUpScript: []string{
 			`create table tbl (i int primary key, j json)`,
@@ -387,8 +399,36 @@ var JSONTableScriptTests = []ScriptTest{
 			{2, 4, 6},
 		},
 	},
-
-	// TODO: subquery alias and cte on left side
+	{
+		Name: "join table, table, json_table two references past one node",
+		SetUpScript: []string{
+			`create table t1 (i int, x json)`,
+			`insert into t1 values (1, '[{"a":5},{"a":6}]')`,
+			`create table t2 (y int primary key)`,
+			`insert into t2 values (3), (4)`,
+			`create table tbl (j json)`,
+			`insert into tbl values ('[{"a":5},{"a":6}]')`,
+		},
+		Query: "select t1.i, t2.y, jt.a from t1, t2, tbl, json_table(t1.x, '$[*]' columns (a int path '$.a')) as jt",
+		Expected: []sql.Row{
+			{1, 3, 5},
+			{1, 3, 6},
+			{1, 4, 5},
+			{1, 4, 6},
+		},
+	},
+	{
+		Name: "table union cross join with json table",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query: "select t.j from t union select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+		Expected: []sql.Row{
+			{"[\"test\"]"},
+			{"test"},
+		},
+	},
 
 	// Error tests
 	{
@@ -419,6 +459,7 @@ var JSONTableScriptTests = []ScriptTest{
 
 var BrokenJSONTableScriptTests = []ScriptTest{
 	{
+		// subqueries start using the dummy schema for some reason, not isolated to JSON_Tables
 		Name: "json table in cross join in subquery",
 		SetUpScript: []string{
 			"create table t (j json)",
@@ -429,6 +470,7 @@ var BrokenJSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// subqueries start using the dummy schema for some reason, not isolated to JSON_Tables
 		Name: "json table in cross join in subquery with reference to left",
 		SetUpScript: []string{
 			"create table t (i int, j json)",
@@ -438,5 +480,35 @@ var BrokenJSONTableScriptTests = []ScriptTest{
 		Expected: []sql.Row{
 			{1},
 		},
+	},
+	{
+		// wrong error
+		Name: "json_table out of cte",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query:       "with tt as (select * from t) select * from json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		// this should error with incorrect arguments
+		Name: "json_table out of cte with join",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query:       "with tt as (select * from t) select * from tt, json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+		ExpectedErr: sql.ErrTableColumnNotFound, // should be Incorrect Arguments to JSON_table
+	},
+	{
+		// this should also error with incorrect arguments
+		Name: "subquery argument to json_table",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query:       "select * from json_table((select j from t), '$[*]' columns (a varchar(10) path '$')) as jt;",
+		ExpectedErr: sql.ErrTableColumnNotFound, // should be Incorrect Arguments to JSON_table
 	},
 }

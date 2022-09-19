@@ -522,18 +522,22 @@ func resolveJSONTables(ctx *sql.Context, a *Analyzer, scope *Scope, left sql.Nod
 	if jt.Resolved() {
 		return jt, transform.SameTree, nil
 	}
+
+	// wrap left in project node to get scope.Schema to work correctly
+	proj := plan.NewProject([]sql.Expression{}, left)
+	rightScope := scope.newScope(proj)
 	// json table has visibility into columns on left of joins
-	columns, err := indexColumns(ctx, a, jt, scope)
+	columns, err := indexColumns(ctx, a, jt, rightScope)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	leftColumns, err := indexColumns(ctx, a, left, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	for k, v := range leftColumns {
-		columns[k] = v
-	}
+	//leftColumns, err := indexColumns(ctx, a, left, scope)
+	//if err != nil {
+	//	return nil, transform.SameTree, err
+	//}
+	//for k, v := range leftColumns {
+	//	columns[k] = v
+	//}
 
 	newJt, same, err := transform.OneNodeExprsWithNode(jt, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		uc, ok := e.(column)
@@ -726,8 +730,6 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		shouldIndexChildNode = false
 	case *plan.RecursiveCte, *plan.Union:
 		shouldIndexChildNode = false
-	case *plan.TableAlias:
-		shouldIndexChildNode = false
 	}
 
 	if shouldIndexChildNode {
@@ -795,12 +797,6 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
-	case *plan.TableAlias:
-		// use schema from TableAlias, and not children so columns have right Source
-		indexSchema(node.Schema())
-	case *plan.ResolvedTable:
-		// ResolveTable has no children, so its columns are never indexed, which fails unqualified column projection
-		indexSchema(node.Schema())
 	}
 
 	return columns, nil
