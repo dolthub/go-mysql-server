@@ -616,7 +616,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.End()
 
-	n1, same1, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, same1, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, transform.SameTree, nil
 		}
@@ -651,11 +651,11 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	n2, same2, err := resolveJSONTablesInJoin(ctx, a, n1, scope, sel)
+	n, same2, err := resolveJSONTablesInJoin(ctx, a, n, scope, sel)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	return n2, same1 && same2, nil
+	return n, same1 && same2, nil
 }
 
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
