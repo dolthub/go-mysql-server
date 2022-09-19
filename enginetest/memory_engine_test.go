@@ -128,7 +128,7 @@ func TestJSONTableScripts(t *testing.T) {
 
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestBrokenJSONTableScripts(t *testing.T) {
-	t.Skip("JSON Tables needs work")
+	t.Skip("these issues stem from the dual table having a schema")
 	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 

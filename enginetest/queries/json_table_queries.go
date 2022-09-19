@@ -434,7 +434,7 @@ var BrokenJSONTableScriptTests = []ScriptTest{
 			"create table t (i int, j json)",
 			`insert into t values (1, '["test"]')`,
 		},
-		Query: "select (select i from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt)",
+		Query: "select (select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt)",
 		Expected: []sql.Row{
 			{1},
 		},
