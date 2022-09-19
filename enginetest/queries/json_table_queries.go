@@ -109,15 +109,6 @@ var JSONTableQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT * FROM JSON_TABLE((select t from json_table_tables),'$[*]' COLUMNS(i int path '$.a', j int path '$.b', k int path '$.c', l int path '$.d')) as tt;",
-		Expected: []sql.Row{
-			{1, nil, nil, nil},
-			{nil, 2, nil, nil},
-			{nil, nil, 3, nil},
-			{nil, nil, nil, 4},
-		},
-	},
-	{
 		Query: "with c as (select jt.a from json_table('[{\"a\":1,\"b\":2,\"c\":3},{\"a\":4,\"b\":5,\"c\":6},{\"a\":7,\"b\":8,\"c\":9}]', '$[*]' columns (a int path '$.a')) as jt) select * from c",
 		Expected: []sql.Row{
 			{1},
