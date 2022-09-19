@@ -266,7 +266,7 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "left join json table with condition in subquery",
+		Name: "left join json table with condition",
 		SetUpScript: []string{
 			`create table p (i int primary key)`,
 			`insert into p values (1),(2),(3)`,
@@ -280,7 +280,7 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "right join json table with condition in subquery",
+		Name: "right join json table with condition",
 		SetUpScript: []string{
 			`create table p (i int primary key)`,
 			`insert into p values (1),(2),(3)`,
@@ -414,5 +414,29 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 		Query:       "select j.b from t, json_table(t.j, '$[*]' columns (a INT path '$.a')) AS j",
 		ExpectedErr: sql.ErrTableNotFound, // Should be column not found
+	},
+}
+
+var BrokenJSONTableScriptTests = []ScriptTest{
+	{
+		Name: "json table in cross join in subquery",
+		SetUpScript: []string{
+			"create table t (j json)",
+		},
+		Query: "select (select jt.a from t, json_table('[\"abc\"]', '$[*]' columns (a varchar(10) path '$')) as jt)",
+		Expected: []sql.Row{
+			{"abc"},
+		},
+	},
+	{
+		Name: "json table in cross join in subquery with reference to left",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Query: "select (select i from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt)",
+		Expected: []sql.Row{
+			{1},
+		},
 	},
 }

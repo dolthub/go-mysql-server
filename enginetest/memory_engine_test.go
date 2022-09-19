@@ -126,6 +126,12 @@ func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
+func TestBrokenJSONTableScripts(t *testing.T) {
+	t.Skip("JSON Tables needs work")
+	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	t.Skip()

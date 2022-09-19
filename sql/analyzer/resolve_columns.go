@@ -551,19 +551,20 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		}
 
 		var jtNew sql.Node
+		var jtSame transform.TreeIdentity
 		var jtErr error
 		switch j := n.(type) {
 		case *plan.CrossJoin:
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, _, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
 			}
 		case *plan.NaturalJoin:
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, _, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
 			}
 		case *plan.InnerJoin:
 			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, _, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -573,7 +574,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			return nil, transform.SameTree, jtErr
 		}
 
-		if jtNew == nil {
+		if jtNew == nil || jtSame {
 			return n, transform.SameTree, nil
 		}
 
