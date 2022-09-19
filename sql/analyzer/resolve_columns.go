@@ -531,13 +531,6 @@ func resolveJSONTables(ctx *sql.Context, a *Analyzer, scope *Scope, left sql.Nod
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	//leftColumns, err := indexColumns(ctx, a, left, scope)
-	//if err != nil {
-	//	return nil, transform.SameTree, err
-	//}
-	//for k, v := range leftColumns {
-	//	columns[k] = v
-	//}
 
 	newJt, same, err := transform.OneNodeExprsWithNode(jt, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		uc, ok := e.(column)
