@@ -2751,6 +2751,9 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 	}
 
 	sch, _, err := TableSpecToSchema(ctx, t.Spec, false)
+	for _, col := range sch.Schema {
+		col.Source = t.Alias.String()
+	}
 	if err != nil {
 		return nil, err
 	}
