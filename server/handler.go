@@ -63,7 +63,6 @@ const (
 
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
-	mu                sync.Mutex
 	e                 *sqle.Engine
 	sm                *SessionManager
 	readTimeout       time.Duration

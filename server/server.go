@@ -15,12 +15,15 @@
 package server
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"go.opentelemetry.io/otel/trace"
 
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/server/golden"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -46,30 +49,59 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 		tracer = sql.NoopTracer
 	}
 
+	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDB, e.MemoryManager, e.ProcessList, cfg.Address)
+	handler := NewHandler(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, listener)
+	return newServerFromHandler(cfg, e, sm, handler)
+}
+
+// NewValidatingServer creates a Server that validates its query results using a MySQL connection
+// as a source of golden-value query result sets.
+func NewValidatingServer(
+	cfg Config,
+	e *sqle.Engine,
+	sb SessionBuilder,
+	listener ServerEventListener,
+	mySqlConn string,
+) (*Server, error) {
+	var tracer trace.Tracer
+	if cfg.Tracer != nil {
+		tracer = cfg.Tracer
+	} else {
+		tracer = sql.NoopTracer
+	}
+
+	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDB, e.MemoryManager, e.ProcessList, cfg.Address)
+	h := NewHandler(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, listener)
+
+	resultsCB := func(c *mysql.Conn, actual, expected [][]sqltypes.Value) error {
+		sess, ok := sm.sessions[c.ConnectionID]
+		if !ok {
+			return fmt.Errorf("failed to log invalid results: can't find session for conn %d", c.ConnectionID)
+		}
+		if err := golden.ValidateResults(actual, expected); err != nil {
+			sess.session.GetLogger().Debugf(err.Error())
+		}
+		return nil
+	}
+
+	handler, err := golden.NewValidatingHandler(h, mySqlConn, resultsCB)
+	if err != nil {
+		return nil, err
+	}
+	return newServerFromHandler(cfg, e, sm, handler)
+}
+
+func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler) (*Server, error) {
 	if cfg.ConnReadTimeout < 0 {
 		cfg.ConnReadTimeout = 0
 	}
-
 	if cfg.ConnWriteTimeout < 0 {
 		cfg.ConnWriteTimeout = 0
 	}
-
 	if cfg.MaxConnections < 0 {
 		cfg.MaxConnections = 0
 	}
 
-	handler := NewHandler(e,
-		NewSessionManager(
-			sb,
-			tracer,
-			e.Analyzer.Catalog.HasDB,
-			e.MemoryManager,
-			e.ProcessList,
-			cfg.Address),
-		cfg.ConnReadTimeout,
-		cfg.DisableClientMultiStatements,
-		listener,
-	)
 	l, err := NewListener(cfg.Protocol, cfg.Address, cfg.Socket)
 	if err != nil {
 		return nil, err
@@ -96,7 +128,11 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 	vtListnr.TLSConfig = cfg.TLSConfig
 	vtListnr.RequireSecureTransport = cfg.RequireSecureTransport
 
-	return &Server{Listener: vtListnr, h: handler}, nil
+	return &Server{
+		Listener:   vtListnr,
+		handler:    handler,
+		sessionMgr: sm,
+	}, nil
 }
 
 // Start starts accepting connections on the server.
@@ -113,5 +149,5 @@ func (s *Server) Close() error {
 
 // SessionManager returns the session manager for this server.
 func (s *Server) SessionManager() *SessionManager {
-	return s.h.sm
+	return s.sessionMgr
 }
