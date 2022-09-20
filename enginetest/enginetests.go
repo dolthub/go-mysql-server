@@ -475,7 +475,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 func TestColumnAliases(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, tt := range queries.ColumnAliasQueries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestScript(t, harness, tt)
 	}
 }
 

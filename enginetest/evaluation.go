@@ -103,7 +103,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			} else {
 				t.Run(assertion.Query, func(t *testing.T) {
 					ctx := NewContext(harness)
-					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
+					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
 				})
 			}
 		}
