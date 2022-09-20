@@ -850,6 +850,247 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		// Self-referential foreign key analysis time used to take an exponential amount of time, roughly equivalent to:
+		// number_of_foreign_keys ^ 15, so this verifies that it no longer does this (as the test would take years to run)
+		Name: "Multiple self-referential foreign keys without data",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE, v2 BIGINT UNIQUE, v3 BIGINT UNIQUE, v4 BIGINT UNIQUE," +
+				"v5 BIGINT UNIQUE, v6 BIGINT UNIQUE, v7 BIGINT UNIQUE," +
+				"CONSTRAINT fk1 FOREIGN KEY (v1) REFERENCES test (pk)," +
+				"CONSTRAINT fk2 FOREIGN KEY (v2) REFERENCES test (pk)," +
+				"CONSTRAINT fk3 FOREIGN KEY (v3) REFERENCES test (pk)," +
+				"CONSTRAINT fk4 FOREIGN KEY (v4) REFERENCES test (pk)," +
+				"CONSTRAINT fk5 FOREIGN KEY (v5) REFERENCES test (pk)," +
+				"CONSTRAINT fk6 FOREIGN KEY (v6) REFERENCES test (pk)," +
+				"CONSTRAINT fk7 FOREIGN KEY (v7) REFERENCES test (pk));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE test SET v1 = NULL, v2 = NULL WHERE test.pk = 0;`,
+				Expected: []sql.Row{{sql.OkResult{
+					RowsAffected: 0,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  0,
+						Updated:  0,
+						Warnings: 0,
+					},
+				}}},
+			},
+		},
+	},
+	{
+		Name: "Self-referential delete cascade depth limit",
+		SetUpScript: []string{
+			"CREATE TABLE under_limit(pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX idx_v1(v1));",
+			"CREATE TABLE over_limit(pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX idx_v1(v1));",
+			"INSERT INTO under_limit VALUES (1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10),(10,11),(11,12),(12,13),(13,14),(14,1);",
+			"INSERT INTO over_limit VALUES (1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10),(10,11),(11,12),(12,13),(13,14),(14,15),(15,1);",
+			"ALTER TABLE under_limit ADD CONSTRAINT fk_under FOREIGN KEY (v1) REFERENCES under_limit(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"ALTER TABLE over_limit ADD CONSTRAINT fk_over FOREIGN KEY (v1) REFERENCES over_limit(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DELETE FROM under_limit WHERE pk = 1;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "DELETE FROM over_limit WHERE pk = 1;",
+				ExpectedErr: sql.ErrForeignKeyDepthLimit,
+			},
+			{
+				Query:    "DELETE FROM over_limit WHERE pk = 0;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query: "UPDATE over_limit SET pk = 1 WHERE pk = 1;",
+				Expected: []sql.Row{{sql.OkResult{
+					RowsAffected: 0,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  1,
+						Updated:  0,
+						Warnings: 0,
+					},
+				}}},
+			},
+			{
+				Query:       "UPDATE over_limit SET pk = 2 WHERE pk = 1;",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+		},
+	},
+	{
+		Name: "Cyclic 2-table delete cascade depth limit",
+		SetUpScript: []string{
+			"CREATE TABLE under_cycle1(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"CREATE TABLE under_cycle2(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"INSERT INTO under_cycle1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7);",
+			"INSERT INTO under_cycle2 VALUES (1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,1);",
+			"ALTER TABLE under_cycle1 ADD CONSTRAINT fk1 FOREIGN KEY (v1) REFERENCES under_cycle2(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"ALTER TABLE under_cycle2 ADD CONSTRAINT fk2 FOREIGN KEY (v1) REFERENCES under_cycle1(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"CREATE TABLE over_cycle1(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"CREATE TABLE over_cycle2(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"INSERT INTO over_cycle1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8);",
+			"INSERT INTO over_cycle2 VALUES (1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,1);",
+			"ALTER TABLE over_cycle1 ADD CONSTRAINT fk3 FOREIGN KEY (v1) REFERENCES over_cycle2(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"ALTER TABLE over_cycle2 ADD CONSTRAINT fk4 FOREIGN KEY (v1) REFERENCES over_cycle1(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DELETE FROM under_cycle1 WHERE pk = 1;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "DELETE FROM over_cycle1 WHERE pk = 1;",
+				ExpectedErr: sql.ErrForeignKeyDepthLimit,
+			},
+		},
+	},
+	{
+		Name: "Cyclic 3-table delete cascade depth limit",
+		SetUpScript: []string{
+			"CREATE TABLE under_cycle1(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"CREATE TABLE under_cycle2(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"CREATE TABLE under_cycle3(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"INSERT INTO under_cycle1 VALUES (1,1),(2,2),(3,3),(4,4);",
+			"INSERT INTO under_cycle2 VALUES (1,1),(2,2),(3,3),(4,4);",
+			"INSERT INTO under_cycle3 VALUES (1,2),(2,3),(3,4),(4,1);",
+			"ALTER TABLE under_cycle1 ADD CONSTRAINT fk1 FOREIGN KEY (v1) REFERENCES under_cycle2(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"ALTER TABLE under_cycle2 ADD CONSTRAINT fk2 FOREIGN KEY (v1) REFERENCES under_cycle3(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"ALTER TABLE under_cycle3 ADD CONSTRAINT fk3 FOREIGN KEY (v1) REFERENCES under_cycle1(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"CREATE TABLE over_cycle1(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"CREATE TABLE over_cycle2(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"CREATE TABLE over_cycle3(pk BIGINT PRIMARY KEY, v1 BIGINT UNIQUE);",
+			"INSERT INTO over_cycle1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5);",
+			"INSERT INTO over_cycle2 VALUES (1,1),(2,2),(3,3),(4,4),(5,5);",
+			"INSERT INTO over_cycle3 VALUES (1,2),(2,3),(3,4),(4,5),(5,1);",
+			"ALTER TABLE over_cycle1 ADD CONSTRAINT fk4 FOREIGN KEY (v1) REFERENCES over_cycle2(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"ALTER TABLE over_cycle2 ADD CONSTRAINT fk5 FOREIGN KEY (v1) REFERENCES over_cycle3(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+			"ALTER TABLE over_cycle3 ADD CONSTRAINT fk6 FOREIGN KEY (v1) REFERENCES over_cycle1(pk) ON UPDATE CASCADE ON DELETE CASCADE;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DELETE FROM under_cycle1 WHERE pk = 1;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "DELETE FROM over_cycle1 WHERE pk = 1;",
+				ExpectedErr: sql.ErrForeignKeyDepthLimit,
+			},
+		},
+	},
+	{
+		Name: "Acyclic delete cascade depth limit",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE t2(pk BIGINT PRIMARY KEY, CONSTRAINT fk1 FOREIGN KEY (pk) REFERENCES t1(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t3(pk BIGINT PRIMARY KEY, CONSTRAINT fk2 FOREIGN KEY (pk) REFERENCES t2(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t4(pk BIGINT PRIMARY KEY, CONSTRAINT fk3 FOREIGN KEY (pk) REFERENCES t3(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t5(pk BIGINT PRIMARY KEY, CONSTRAINT fk4 FOREIGN KEY (pk) REFERENCES t4(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t6(pk BIGINT PRIMARY KEY, CONSTRAINT fk5 FOREIGN KEY (pk) REFERENCES t5(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t7(pk BIGINT PRIMARY KEY, CONSTRAINT fk6 FOREIGN KEY (pk) REFERENCES t6(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t8(pk BIGINT PRIMARY KEY, CONSTRAINT fk7 FOREIGN KEY (pk) REFERENCES t7(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t9(pk BIGINT PRIMARY KEY, CONSTRAINT fk8 FOREIGN KEY (pk) REFERENCES t8(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t10(pk BIGINT PRIMARY KEY, CONSTRAINT fk9 FOREIGN KEY (pk) REFERENCES t9(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t11(pk BIGINT PRIMARY KEY, CONSTRAINT fk10 FOREIGN KEY (pk) REFERENCES t10(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t12(pk BIGINT PRIMARY KEY, CONSTRAINT fk11 FOREIGN KEY (pk) REFERENCES t11(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t13(pk BIGINT PRIMARY KEY, CONSTRAINT fk12 FOREIGN KEY (pk) REFERENCES t12(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t14(pk BIGINT PRIMARY KEY, CONSTRAINT fk13 FOREIGN KEY (pk) REFERENCES t13(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t15(pk BIGINT PRIMARY KEY, CONSTRAINT fk14 FOREIGN KEY (pk) REFERENCES t14(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t16(pk BIGINT PRIMARY KEY, CONSTRAINT fk15 FOREIGN KEY (pk) REFERENCES t15(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"INSERT INTO t1 VALUES (1);",
+			"INSERT INTO t2 VALUES (1);",
+			"INSERT INTO t3 VALUES (1);",
+			"INSERT INTO t4 VALUES (1);",
+			"INSERT INTO t5 VALUES (1);",
+			"INSERT INTO t6 VALUES (1);",
+			"INSERT INTO t7 VALUES (1);",
+			"INSERT INTO t8 VALUES (1);",
+			"INSERT INTO t9 VALUES (1);",
+			"INSERT INTO t10 VALUES (1);",
+			"INSERT INTO t11 VALUES (1);",
+			"INSERT INTO t12 VALUES (1);",
+			"INSERT INTO t13 VALUES (1);",
+			"INSERT INTO t14 VALUES (1);",
+			"INSERT INTO t15 VALUES (1);",
+			"INSERT INTO t16 VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "DELETE FROM t1;",
+				ExpectedErr: sql.ErrForeignKeyDepthLimit,
+			},
+			{
+				Query:    "DELETE FROM t16;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "DELETE FROM t1;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "Acyclic update cascade depth limit",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE t2(pk BIGINT PRIMARY KEY, CONSTRAINT fk1 FOREIGN KEY (pk) REFERENCES t1(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t3(pk BIGINT PRIMARY KEY, CONSTRAINT fk2 FOREIGN KEY (pk) REFERENCES t2(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t4(pk BIGINT PRIMARY KEY, CONSTRAINT fk3 FOREIGN KEY (pk) REFERENCES t3(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t5(pk BIGINT PRIMARY KEY, CONSTRAINT fk4 FOREIGN KEY (pk) REFERENCES t4(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t6(pk BIGINT PRIMARY KEY, CONSTRAINT fk5 FOREIGN KEY (pk) REFERENCES t5(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t7(pk BIGINT PRIMARY KEY, CONSTRAINT fk6 FOREIGN KEY (pk) REFERENCES t6(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t8(pk BIGINT PRIMARY KEY, CONSTRAINT fk7 FOREIGN KEY (pk) REFERENCES t7(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t9(pk BIGINT PRIMARY KEY, CONSTRAINT fk8 FOREIGN KEY (pk) REFERENCES t8(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t10(pk BIGINT PRIMARY KEY, CONSTRAINT fk9 FOREIGN KEY (pk) REFERENCES t9(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t11(pk BIGINT PRIMARY KEY, CONSTRAINT fk10 FOREIGN KEY (pk) REFERENCES t10(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t12(pk BIGINT PRIMARY KEY, CONSTRAINT fk11 FOREIGN KEY (pk) REFERENCES t11(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t13(pk BIGINT PRIMARY KEY, CONSTRAINT fk12 FOREIGN KEY (pk) REFERENCES t12(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t14(pk BIGINT PRIMARY KEY, CONSTRAINT fk13 FOREIGN KEY (pk) REFERENCES t13(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t15(pk BIGINT PRIMARY KEY, CONSTRAINT fk14 FOREIGN KEY (pk) REFERENCES t14(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"CREATE TABLE t16(pk BIGINT PRIMARY KEY, CONSTRAINT fk15 FOREIGN KEY (pk) REFERENCES t15(pk) ON UPDATE CASCADE ON DELETE CASCADE);",
+			"INSERT INTO t1 VALUES (1);",
+			"INSERT INTO t2 VALUES (1);",
+			"INSERT INTO t3 VALUES (1);",
+			"INSERT INTO t4 VALUES (1);",
+			"INSERT INTO t5 VALUES (1);",
+			"INSERT INTO t6 VALUES (1);",
+			"INSERT INTO t7 VALUES (1);",
+			"INSERT INTO t8 VALUES (1);",
+			"INSERT INTO t9 VALUES (1);",
+			"INSERT INTO t10 VALUES (1);",
+			"INSERT INTO t11 VALUES (1);",
+			"INSERT INTO t12 VALUES (1);",
+			"INSERT INTO t13 VALUES (1);",
+			"INSERT INTO t14 VALUES (1);",
+			"INSERT INTO t15 VALUES (1);",
+			"INSERT INTO t16 VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "UPDATE t1 SET pk = 2;",
+				ExpectedErr: sql.ErrForeignKeyDepthLimit,
+			},
+			{
+				Query:    "DELETE FROM t16;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query: "UPDATE t1 SET pk = 2;",
+				Expected: []sql.Row{{sql.OkResult{
+					RowsAffected: 1,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  1,
+						Updated:  1,
+						Warnings: 0,
+					},
+				}}},
+			},
+		},
+	},
+	{
 		Name: "VARCHAR child violation detection",
 		SetUpScript: []string{
 			"CREATE TABLE colors (id INT NOT NULL, color VARCHAR(32) NOT NULL, PRIMARY KEY (id), INDEX color_index(color));",
