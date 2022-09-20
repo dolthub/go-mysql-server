@@ -22,9 +22,16 @@ import (
 
 var ColumnAliasQueries = []ScriptTest{
 	{
-		Name: "column aliases in same scope",
+		Name: "column aliases in a single scope",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int);",
+			"create table uv (u int primary key, v int);",
+			"insert into xy values (0,0),(1,1),(2,2),(3,3);",
+			"insert into uv values (0,3),(3,0),(2,1),(1,2);",
+		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// Projections can create expression aliases
 				Query: `SELECT i AS cOl FROM mytable`,
 				ExpectedColumns: sql.Schema{
 					{
@@ -57,48 +64,39 @@ var ColumnAliasQueries = []ScriptTest{
 				},
 			},
 			{
-				// Projection expressions may not reference aliases defined in projection expressions
+				// Projection expressions may NOT reference aliases defined in projection expressions
 				// in the same scope
 				Query:       `SELECT i AS new1, new1 as new2 FROM mytable`,
 				ExpectedErr: sql.ErrMisusedAlias,
 			},
 			{
-				// TODO: this is actually inconsistent with MySQL, which doesn't allow column aliases in the where clause
-				Query: `SELECT i AS cOl, s as COL FROM mytable where cOl = 1`,
-				ExpectedColumns: sql.Schema{
-					{
-						Name: "cOl",
-						Type: sql.Int64,
-					},
-					{
-						Name: "COL",
-						Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
-					},
-				},
-				Expected: []sql.Row{
-					{int64(1), "first row"},
-				},
+				// The SQL standard disallows aliases from being used in filter conditions
+				Query:       `SELECT i AS cOl, s as COL FROM mytable where cOl = 1`,
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query: `SELECT s as COL1, SUM(i) COL2 FROM mytable group by s order by cOL2`,
-				ExpectedColumns: sql.Schema{
-					{
-						Name: "COL1",
-						Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
-					},
-					{
-						Name: "COL2",
-						Type: sql.Int64,
-					},
-				},
-				// TODO: SUM should be integer typed for integers
-				Expected: []sql.Row{
-					{"first row", float64(1)},
-					{"second row", float64(2)},
-					{"third row", float64(3)},
-				},
+				// Alias expressions may NOT be used in from clauses
+				Query:       "select t1.i as a, t1.s as b from mytable as t1 left join mytable as t2 on a = t2.i;",
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
+				// OrderBy clause may reference expression aliases at current scope
+				Query:    "select 1 as a order by a desc;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// If there is ambiguity between one table column and one alias, the alias gets precedence.
+				// This is opposite from subqueries in projection expressions.
+				Query:    "select v as u from uv order by u;",
+				Expected: []sql.Row{{0}, {1}, {2}, {3}},
+			},
+			{
+				// If there is ambiguity between multiple aliases, it is an error
+				Query:       "select u as u, v as u from uv order by u;",
+				ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
+			},
+			{
+				// GroupBy may use expression aliases in grouping expressions
 				Query: `SELECT s as COL1, SUM(i) COL2 FROM mytable group by col1 order by col2`,
 				ExpectedColumns: sql.Schema{
 					{
@@ -117,6 +115,23 @@ var ColumnAliasQueries = []ScriptTest{
 				},
 			},
 			{
+				// Having clause may reference expression aliases current scope
+				Query:    "select t1.u as a from uv as t1 having a > 0 order by a;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				// TODO: This test is currently failing with error "found HAVING clause with no GROUP BY"
+				// Having clause may reference expression aliases from current scope
+				Query:    "select t1.u as a from uv as t1 having a = t1.u order by a;",
+				Expected: []sql.Row{{0}, {1}, {2}, {3}},
+			},
+			{
+				// When there is ambiguity between alias and column name in a where clause, the column should be selected
+				Query:    "select 1 as u from uv where u > 1;",
+				Expected: []sql.Row{{1}, {1}},
+			},
+			{
+				// Expression aliases work when implicitly referenced by ordinal position
 				Query: `SELECT s as coL1, SUM(i) coL2 FROM mytable group by 1 order by 2`,
 				ExpectedColumns: sql.Schema{
 					{
@@ -135,6 +150,7 @@ var ColumnAliasQueries = []ScriptTest{
 				},
 			},
 			{
+				// Expression aliases work when implicitly referenced by ordinal position
 				Query: `SELECT s as Date, SUM(i) TimeStamp FROM mytable group by 1 order by 2`,
 				ExpectedColumns: sql.Schema{
 					{
@@ -151,6 +167,62 @@ var ColumnAliasQueries = []ScriptTest{
 					{"second row", float64(2)},
 					{"third row", float64(3)},
 				},
+			},
+		},
+	},
+	{
+		Name: "column aliases in two scopes",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int);",
+			"create table uv (u int primary key, v int);",
+			"insert into xy values (0,0),(1,1),(2,2),(3,3);",
+			"insert into uv values (0,3),(3,0),(2,1),(1,2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/4344
+				Query:    "select x as v, (select u from uv where v = y) as u from xy;",
+				Expected: []sql.Row{{0, 3}, {1, 2}, {2, 1}, {3, 0}},
+			},
+			{
+				Query:    "SELECT 1 as a, (select a) as a;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "SELECT 1 as a, (select a) as b;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "SELECT 1 as a, (select a) as b from dual;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "SELECT 1 as a, (select a) as b from xy;",
+				Expected: []sql.Row{{1, 1}, {1, 1}, {1, 1}, {1, 1}},
+			},
+			{
+				Query:    "select x, (select 1) as y from xy;",
+				Expected: []sql.Row{{0, 1}, {1, 1}, {2, 1}, {3, 1}},
+			},
+			{
+				Query:    "SELECT 1 as a, (select a) from xy;",
+				Expected: []sql.Row{{1, 1}, {1, 1}, {1, 1}, {1, 1}},
+			},
+		},
+	},
+	{
+		Name: "column aliases in three scopes",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int);",
+			"create table uv (u int primary key, v int);",
+			"insert into xy values (0,0),(1,1),(2,2),(3,3);",
+			"insert into uv values (0,3),(3,0),(2,1),(1,2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// FAILS: panic: runtime error: index out of range [0] with length 0
+				Query:    "select x, (select 1) as y, (select (select y as q)) as z from (select * from xy) as xy;",
+				Expected: []sql.Row{{0, 1, 0}, {1, 1, 1}, {2, 1, 2}, {3, 1, 3}},
 			},
 		},
 	},
