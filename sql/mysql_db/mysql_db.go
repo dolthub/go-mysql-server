@@ -267,12 +267,22 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 		})
 		for _, readUserEntry := range userEntries {
 			readUserEntry := readUserEntry.(*User)
-			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
-			if host == readUserEntry.Host ||
-				(host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
-				(host == "localhost" && readUserEntry.Host == "127.0.0.1") ||
-				(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
-				return readUserEntry
+			if strings.Contains(readUserEntry.Host, "/") {
+				_, network, cidrParseErr := net.ParseCIDR(readUserEntry.Host)
+				if cidrParseErr == nil {
+					hostIp := net.ParseIP(host)
+					if hostIp != nil && network.Contains(hostIp) {
+						return readUserEntry
+					}
+				}
+			} else {
+				//TODO: use the most specific match first, using "%" only if there isn't a more specific match
+				if host == readUserEntry.Host ||
+					(host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+					(host == "localhost" && readUserEntry.Host == "127.0.0.1") ||
+					(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
+					return readUserEntry
+				}
 			}
 		}
 	}
