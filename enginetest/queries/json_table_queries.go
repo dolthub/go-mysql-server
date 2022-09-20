@@ -61,7 +61,7 @@ var JSONTableQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select * from JSON_TABLE('[{\"a\":1},{\"a\":2}]', '$[*]' COLUMNS(x int path '$.a')) as t1 join one_pk order by x;",
+		Query: "select * from JSON_TABLE('[{\"a\":1},{\"a\":2}]', '$[*]' COLUMNS(x int path '$.a')) as t1 join one_pk order by x, pk;",
 		Expected: []sql.Row{
 			{1, 0, 0, 1, 2, 3, 4},
 			{1, 1, 10, 11, 12, 13, 14},
@@ -74,7 +74,7 @@ var JSONTableQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select * from one_pk join JSON_TABLE('[{\"a\":1},{\"a\":2}]', '$[*]' COLUMNS(x int path '$.a')) as t1 order by x;",
+		Query: "select * from one_pk join JSON_TABLE('[{\"a\":1},{\"a\":2}]', '$[*]' COLUMNS(x int path '$.a')) as t1 order by x, pk;",
 		Expected: []sql.Row{
 			{0, 0, 1, 2, 3, 4, 1},
 			{1, 10, 11, 12, 13, 14, 1},
