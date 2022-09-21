@@ -5572,9 +5572,12 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT (9))", sql.ErrInvalidDefaultValueOrder)
 	})
 
-	t.Run("TEXT literals", func(t *testing.T) {
+	t.Run("Blob types can't define defaults with literals", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)")
+		AssertErr(t, e, harness, "ALTER TABLE t34 alter column v1 set default '{}'", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "ALTER TABLE t34 alter column v1 set default ('{}')")
 	})
 
 	t.Run("Other types using NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
