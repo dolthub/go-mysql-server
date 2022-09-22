@@ -24,6 +24,47 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select i from mytable a where exists (select 1 from mytable b where a.i = b.i)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i]\n" +
+			" └─ SemiJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(mytable)\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `select i from mytable a where not exists (select 1 from mytable b where a.i = b.i)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i]\n" +
+			" └─ AntiJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(mytable)\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `select i from mytable full join othertable on mytable.i = othertable.i2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i]\n" +
+			" └─ Union distinct\n" +
+			"     ├─ LeftJoin(mytable.i = othertable.i2)\n" +
+			"     │   ├─ Table(mytable)\n" +
+			"     │   │   └─ columns: [i]\n" +
+			"     │   └─ Table(othertable)\n" +
+			"     │       └─ columns: [i2]\n" +
+			"     └─ RightJoin(mytable.i = othertable.i2)\n" +
+			"         ├─ Table(mytable)\n" +
+			"         │   └─ columns: [i]\n" +
+			"         └─ Table(othertable)\n" +
+			"             └─ columns: [i2]\n" +
+			"",
+	},
+	{
 		Query: `SELECT mytable.i FROM mytable INNER JOIN othertable ON (mytable.i = othertable.i2) LEFT JOIN othertable T4 ON (mytable.i = T4.i2) ORDER BY othertable.i2, T4.s2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i]\n" +

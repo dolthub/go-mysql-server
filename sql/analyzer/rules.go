@@ -96,6 +96,7 @@ var OnceAfterDefault = []Rule{
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{assignCatalogId, assignCatalog},
 	{pruneColumnsId, pruneColumns},
+	{hoistSelectExistsId, hoistSelectExists},
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
@@ -120,6 +121,7 @@ var OnceAfterDefault = []Rule{
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
 	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
+	{reifyFullOuterJoinId, reifyFullOuterJoin},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.

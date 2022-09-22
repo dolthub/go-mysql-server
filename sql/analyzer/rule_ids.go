@@ -78,6 +78,7 @@ const (
 	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
 	assignCatalogId               // assignCatalog
 	pruneColumnsId                // pruneColumns
+	hoistSelectExistsId           // hoistSelectExists
 	optimizeJoinsId               // optimizeJoins
 	pushdownFiltersId             // pushdownFilters
 	subqueryIndexesId             // subqueryIndexes
@@ -100,6 +101,7 @@ const (
 	applyRowUpdateAccumulatorsId  // applyRowUpdateAccumulators
 	wrapWithRollbackId            // rollback triggers
 	applyFKsId                    // applyFKs
+	reifyFullOuterJoinId          // reifyFullOuterJoin
 
 	// validate
 	validateResolvedId          // validateResolved

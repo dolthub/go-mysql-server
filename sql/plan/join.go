@@ -39,14 +39,15 @@ var useInMemoryJoins = shouldUseMemoryJoinsByEnv()
 type JoinType uint16
 
 const (
-	CrossJoinType     JoinType = iota // Inner
-	InnerJoinType                     // Left
-	SemiJoinType                      // Semi
-	AntiJoinType                      // Anti
-	LeftJoinType                      // Cross
-	FullOuterJoinType                 // FullOuter
-	GroupByJoinType                   // GroupBy
-	RightJoinType                     //Right
+	UnknownJoinType   JoinType = iota // UnknownJoinType
+	CrossJoinType                     // CrossJoin
+	InnerJoinType                     // InnerJoin
+	SemiJoinType                      // SemiJoin
+	AntiJoinType                      // AntiJoin
+	LeftJoinType                      // LeftJoin
+	FullOuterJoinType                 // FullOuterJoin
+	GroupByJoinType                   // GroupByJoin
+	RightJoinType                     // RightJoin
 )
 
 func shouldUseMemoryJoinsByEnv() bool {
@@ -103,8 +104,7 @@ func (j *joinBase) String() string {
 }
 
 func (j *joinBase) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO implement me
-	panic("implement me")
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
 }
 func (j *joinBase) JoinType() JoinType {
 	return j.Op
@@ -154,11 +154,6 @@ func (j *InnerJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nj := *j
 	nj.BinaryNode = BinaryNode{children[0], children[1]}
 	return &nj, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (j *InnerJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
 }
 
 func (j *InnerJoin) WithScopeLen(i int) JoinNode {
@@ -255,11 +250,6 @@ func (j *LeftJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nj, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (j *LeftJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
-}
-
 // WithExpressions implements the Expressioner interface.
 func (j *LeftJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
@@ -352,11 +342,6 @@ func (j *RightJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nj := *j
 	nj.BinaryNode = BinaryNode{children[0], children[1]}
 	return &nj, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (j *RightJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -770,12 +755,12 @@ func isRightOrLeftJoin(node sql.Node) bool {
 	return jn.JoinType() == LeftJoinType || jn.JoinType() == RightJoinType
 }
 
-var _ sql.Node = (*FullJoin)(nil)
-var _ JoinNode = (*FullJoin)(nil)
-var _ sql.Expressioner = (*FullJoin)(nil)
+var _ sql.Node = (*FullOuterJoin)(nil)
+var _ JoinNode = (*FullOuterJoin)(nil)
+var _ sql.Expressioner = (*FullOuterJoin)(nil)
 
-func NewFullJoin(left, right sql.Node, filter sql.Expression) *FullJoin {
-	return &FullJoin{
+func NewFullOuterJoin(left, right sql.Node, filter sql.Expression) *FullOuterJoin {
+	return &FullOuterJoin{
 		&joinBase{
 			Op:         FullOuterJoinType,
 			BinaryNode: BinaryNode{left: left, right: right},
@@ -784,35 +769,43 @@ func NewFullJoin(left, right sql.Node, filter sql.Expression) *FullJoin {
 	}
 }
 
-type FullJoin struct {
+type FullOuterJoin struct {
 	*joinBase
 }
 
-func (j *FullJoin) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
+func (j *FullOuterJoin) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
 	ret := *j
 	ret.Filter = expression[0]
 	return &ret, nil
 }
 
-func (j *FullJoin) WithScopeLen(i int) JoinNode {
+func (j *FullOuterJoin) WithScopeLen(i int) JoinNode {
 	ret := *j
 	ret.ScopeLen = i
 	return &ret
 }
 
-func (j *FullJoin) WithMultipassMode() JoinNode {
+func (j *FullOuterJoin) WithMultipassMode() JoinNode {
 	ret := *j
 	ret.JoinMode = multipassMode
 	return &ret
 }
 
-func (j *FullJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	//TODO implement me
-	panic("implement me")
+func (j *FullOuterJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	left, err := joinRowIter(ctx, LeftJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+	if err != nil {
+		return nil, err
+	}
+	return &unionIter{
+		cur: left,
+		nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+			return joinRowIter(ctx, RightJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+		},
+	}, nil
 }
 
-func (j *FullJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewFullJoin(children[0], children[1], j.Filter), nil
+func (j *FullOuterJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NewFullOuterJoin(children[0], children[1], j.Filter), nil
 }
 
 var _ sql.Node = (*SemiJoin)(nil)
