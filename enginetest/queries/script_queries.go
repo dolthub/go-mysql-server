@@ -60,6 +60,9 @@ type ScriptTestAssertion struct {
 	// query. The ExpectedWarning field must be set for warning messages to be checked.
 	ExpectedWarningMessageSubstring string
 
+	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
+	ExpectedColumns sql.Schema
+
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool
