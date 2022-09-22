@@ -64,32 +64,6 @@ const (
 	colKeyFulltextKey
 )
 
-func mustCastNumToInt64(x interface{}) int64 {
-	switch v := x.(type) {
-	case int8:
-		return int64(v)
-	case int16:
-		return int64(v)
-	case int32:
-		return int64(v)
-	case uint8:
-		return int64(v)
-	case uint16:
-		return int64(v)
-	case uint32:
-		return int64(v)
-	case int64:
-		return int64(v)
-	case uint64:
-		i64 := int64(v)
-		if v == uint64(i64) {
-			return i64
-		}
-	}
-
-	panic(fmt.Sprintf("failed to convert to int64: %v", x))
-}
-
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	n, _, _, err := parse(ctx, query, false)
@@ -940,9 +914,6 @@ func limitToLimitExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression,
 		return ExprToExpression(ctx, limit.Offset)
 	} else if limit != nil {
 		return ExprToExpression(ctx, limit.Rowcount)
-	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
-		limit := mustCastNumToInt64(val)
-		return expression.NewLiteral(limit, sql.Int64), nil
 	}
 	return nil, nil
 }
@@ -976,9 +947,6 @@ func nodeWithLimitAndOrderBy(ctx *sql.Context, node sql.Node, orderby sqlparser.
 		}
 
 		node = l
-	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
-		limit := mustCastNumToInt64(val)
-		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
 	}
 
 	return node, nil
