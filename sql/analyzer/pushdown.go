@@ -144,7 +144,7 @@ func filterPushdownChildSelector(c transform.Context) bool {
 		// again by the Transform function, starting at this node.
 		return false
 	case *plan.IndexedJoin:
-		if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
+		if n.JoinType() == plan.LeftJoinType || n.JoinType() == plan.RightJoinType {
 			return c.ChildNum == 0
 		}
 		return true

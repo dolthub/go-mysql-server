@@ -720,7 +720,7 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
-			if !(joinIndex.joinPosition == plan.JoinTypeRight && joinIndex.joinType == plan.JoinTypeRight) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+			if !(joinIndex.joinPosition == plan.LeftJoinType && joinIndex.joinType == plan.RightJoinType) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
 				// the first condition permits more flexible IndexedJoins
 				//todo(max): understand why right handed index positioning
 				// interferes with index join planning. zach thinks this might
@@ -872,8 +872,8 @@ func getEqualityIndexes(
 		ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rightCol.col.Table(), normalizeExpressions(ctx, tableAliases, cond.Right())...)
 
 	// Figure out which table is on the left and right in the join
-	leftJoinPosition := plan.JoinTypeLeft
-	rightJoinPosition := plan.JoinTypeRight
+	leftJoinPosition := plan.LeftJoinType
+	rightJoinPosition := plan.RightJoinType
 	if strings.ToLower(rightCol.col.Table()) != joinCond.rightHandTable {
 		leftJoinPosition, rightJoinPosition = rightJoinPosition, leftJoinPosition
 	}
@@ -948,9 +948,9 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 	cmpExprs := make([]sql.Expression, len(colExprs))
 
 	// Figure out which table is on the left and right in the join
-	joinPosition := plan.JoinTypeLeft
+	joinPosition := plan.LeftJoinType
 	if strings.ToLower(table) == joinCond.rightHandTable {
-		joinPosition = plan.JoinTypeRight
+		joinPosition = plan.RightJoinType
 	}
 
 	nullmask := make([]bool, len(colExprs))

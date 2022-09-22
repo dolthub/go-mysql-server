@@ -58,9 +58,9 @@ func (ij *IndexedJoin) String() string {
 	pr := sql.NewTreePrinter()
 	joinType := ""
 	switch ij.joinType {
-	case JoinTypeLeft:
+	case LeftJoinType:
 		joinType = "Left"
-	case JoinTypeRight:
+	case RightJoinType:
 		joinType = "Right"
 	}
 	_ = pr.WriteNode("%sIndexedJoin%s", joinType, ij.Cond)
@@ -72,9 +72,9 @@ func (ij *IndexedJoin) DebugString() string {
 	pr := sql.NewTreePrinter()
 	joinType := ""
 	switch ij.joinType {
-	case JoinTypeLeft:
+	case LeftJoinType:
 		joinType = "Left"
-	case JoinTypeRight:
+	case RightJoinType:
 		joinType = "Right"
 	}
 	_ = pr.WriteNode("%sIndexedJoin%s", joinType, sql.DebugString(ij.Cond))
@@ -212,7 +212,7 @@ func (i *indexedJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		secondary, err := i.loadSecondary(ctx)
 		if err != nil {
 			if err == io.EOF {
-				if !i.foundMatch && (i.joinType == JoinTypeLeft || i.joinType == JoinTypeRight) {
+				if !i.foundMatch && (i.joinType == LeftJoinType || i.joinType == RightJoinType) {
 					row := i.buildRow(primary, nil)
 					return i.removeParentRow(row), nil
 				}
