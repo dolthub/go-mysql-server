@@ -40,13 +40,11 @@ type MySqlProxy struct {
 
 // NewMySqlProxyHandler creates a new MySqlProxy.
 func NewMySqlProxyHandler(connStr string) (MySqlProxy, error) {
-	// eg: "user:pass@tcp(host:port)/database"
+	// ensure parseTime=true
 	cfg, err := mysql2.ParseDSN(connStr)
 	if err != nil {
 		return MySqlProxy{}, err
 	}
-
-	// ensure parseTime=true
 	cfg.ParseTime = true
 	connStr = cfg.FormatDSN()
 

@@ -15,11 +15,10 @@
 package server
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -73,18 +72,17 @@ func NewValidatingServer(
 	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDB, e.MemoryManager, e.ProcessList, cfg.Address)
 	h := NewHandler(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, listener)
 
-	resultsCB := func(c *mysql.Conn, actual, expected [][]sqltypes.Value) error {
-		sess, ok := sm.sessions[c.ConnectionID]
-		if !ok {
-			return fmt.Errorf("failed to log invalid results: can't find session for conn %d", c.ConnectionID)
+	logProvider := func(c *mysql.Conn) *logrus.Entry {
+		sess := sm.session(c)
+		if sess == nil {
+			lgr := logrus.NewEntry(logrus.StandardLogger())
+			lgr.Warnf("failed to find session for conn %s", c.ConnectionID)
+			return lgr
 		}
-		if err := golden.ValidateResults(actual, expected); err != nil {
-			sess.session.GetLogger().Warnf(err.Error())
-		}
-		return nil
+		return sess.GetLogger()
 	}
 
-	handler, err := golden.NewValidatingHandler(h, mySqlConn, resultsCB)
+	handler, err := golden.NewValidatingHandler(h, mySqlConn, logProvider)
 	if err != nil {
 		return nil, err
 	}

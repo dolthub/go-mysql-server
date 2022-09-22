@@ -21,6 +21,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -29,33 +31,16 @@ import (
 )
 
 type Validator struct {
-	handler   mysql.Handler
-	golden    MySqlProxy
-	resultsCB ResultCallback
+	handler  mysql.Handler
+	golden   MySqlProxy
+	loggerCB LoggerProvider
 }
 
-type ResultCallback func(c *mysql.Conn, actual, expected [][]sqltypes.Value) error
-
-func ValidateResults(actual, expected [][]sqltypes.Value) error {
-	if len(actual) != len(expected) {
-		return fmt.Errorf("Incorrect result set expected=%s actual=%s)",
-			formatRowSet(actual), formatRowSet(expected))
-	}
-	for i := range actual {
-		left, right := actual[i], expected[i]
-		cmp, err := compareRows(left, right)
-		if err != nil {
-			return fmt.Errorf("Error comparing result sets (%s)", err)
-		} else if cmp != 0 {
-			return fmt.Errorf("Incorrect result set expected=%s actual=%s)",
-				formatRowSet(actual), formatRowSet(expected))
-		}
-	}
-	return nil
-}
+// A LoggerProvider provides a logger for a connection.
+type LoggerProvider func(c *mysql.Conn) *logrus.Entry
 
 // NewValidatingHandler creates a new Validator wrapping a MySQL connection.
-func NewValidatingHandler(handler mysql.Handler, mySqlConn string, cb ResultCallback) (Validator, error) {
+func NewValidatingHandler(handler mysql.Handler, mySqlConn string, cb LoggerProvider) (Validator, error) {
 	golden, err := NewMySqlProxyHandler(mySqlConn)
 	if err != nil {
 		return Validator{}, err
@@ -67,9 +52,9 @@ func NewValidatingHandler(handler mysql.Handler, mySqlConn string, cb ResultCall
 	//  - possibly sync database set between both
 
 	return Validator{
-		handler:   handler,
-		golden:    golden,
-		resultsCB: cb,
+		handler:  handler,
+		golden:   golden,
+		loggerCB: cb,
 	}, nil
 }
 
@@ -129,7 +114,7 @@ func (v Validator) ComMultiQuery(
 	if err != nil {
 		return "", err
 	}
-	if err = ag.compareResults(c, v.resultsCB); err != nil {
+	if err = ag.compareResults(v.loggerCB(c)); err != nil {
 		return "", err
 	}
 	return remainder, nil
@@ -155,7 +140,7 @@ func (v Validator) ComQuery(
 	if err != nil {
 		return err
 	}
-	return ag.compareResults(c, v.resultsCB)
+	return ag.compareResults(v.loggerCB(c))
 }
 
 // WarningCount is called at the end of each query to obtain
@@ -193,7 +178,7 @@ func (ag *aggregator) processGoldenResults(result *sqltypes.Result, _ bool) erro
 	return nil
 }
 
-func (ag *aggregator) compareResults(c *mysql.Conn, cb ResultCallback) error {
+func (ag *aggregator) compareResults(logger *logrus.Entry) error {
 	if len(ag.results) > maxRows || len(ag.golden) > maxRows {
 		return fmt.Errorf("result set too large to validate")
 	}
@@ -201,11 +186,28 @@ func (ag *aggregator) compareResults(c *mysql.Conn, cb ResultCallback) error {
 	if err != nil {
 		return err
 	}
-	golden, err := sortResults(ag.golden)
+	expected, err := sortResults(ag.golden)
 	if err != nil {
 		return err
 	}
-	return cb(c, actual, golden)
+
+	if len(actual) != len(expected) {
+		logger.Warnf("Incorrect result set expected=%s actual=%s)",
+			formatRowSet(actual), formatRowSet(expected))
+		return nil
+	}
+	for i := range actual {
+		left, right := actual[i], expected[i]
+		cmp, err := compareRows(left, right)
+		if err != nil {
+			return fmt.Errorf("Error comparing result sets (%s)", err)
+		} else if cmp != 0 {
+			logger.Warnf("Incorrect result set expected=%s actual=%s)",
+				formatRowSet(actual), formatRowSet(expected))
+			return nil
+		}
+	}
+	return nil
 }
 
 func sortResults(results []*sqltypes.Result) ([][]sqltypes.Value, error) {
