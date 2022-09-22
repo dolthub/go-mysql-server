@@ -20,12 +20,11 @@ import (
 	"math"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
-	_ "github.com/go-sql-driver/mysql"
+	mysql2 "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 	"github.com/sirupsen/logrus"
 
@@ -42,6 +41,15 @@ type MySqlProxy struct {
 // NewMySqlProxyHandler creates a new MySqlProxy.
 func NewMySqlProxyHandler(connStr string) (MySqlProxy, error) {
 	// eg: "user:pass@tcp(host:port)/database"
+	cfg, err := mysql2.ParseDSN(connStr)
+	if err != nil {
+		return MySqlProxy{}, err
+	}
+
+	// ensure parseTime=true
+	cfg.ParseTime = true
+	connStr = cfg.FormatDSN()
+
 	conn, err := dbr.Open("mysql", connStr, nil)
 	if err != nil {
 		return MySqlProxy{}, err
@@ -258,8 +266,13 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 
 		row := make([]sqltypes.Value, len(fields))
 		for i := range row {
+			scanRow[i], err = types[i].Convert(scanRow[i])
+			if err != nil {
+				return nil, false, err
+			}
 			row[i], err = types[i].SQL(ctx, nil, scanRow[i])
 			if err != nil {
+				_, _ = types[i].SQL(ctx, nil, scanRow[i])
 				return nil, false, err
 			}
 		}
@@ -280,6 +293,8 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 }
 
 var typeStrTransforms = map[string]string{
+	"char":      "char(255)",
+	"binary":    "binary(255)",
 	"varchar":   "varchar(65535)",
 	"varbinary": "varbinary(65535)",
 }
@@ -291,7 +306,12 @@ func schemaToFields(ctx *sql.Context, cols []*dsql.ColumnType) ([]sql.Type, []*q
 	var err error
 	for i, col := range cols {
 		typeStr := strings.ToLower(col.DatabaseTypeName())
-		if ts, ok := typeStrTransforms[typeStr]; ok {
+		if length, ok := col.Length(); ok {
+			// append length specifier to type
+			typeStr = fmt.Sprintf("%s(%d)", typeStr, length)
+		} else if ts, ok := typeStrTransforms[typeStr]; ok {
+			// if no length specifier if given,
+			// default to the maximum width
 			typeStr = ts
 		}
 		types[i], err = parse.ParseColumnTypeString(ctx, typeStr)
@@ -329,42 +349,71 @@ func scanResultRow(results *dsql.Rows) (sql.Row, error) {
 	}
 
 	for i, columnType := range cols {
-		scanType := columnType.ScanType()
-		switch scanType {
-		case reflect.TypeOf(dsql.RawBytes{}):
-			scanType = reflect.TypeOf([]byte{})
-		case reflect.TypeOf(dsql.NullBool{}):
-			scanType = reflect.TypeOf(true)
-		case reflect.TypeOf(dsql.NullByte{}):
-			scanType = reflect.TypeOf(byte(0))
-		case reflect.TypeOf(dsql.NullFloat64{}):
-			scanType = reflect.TypeOf(float64(0))
-		case reflect.TypeOf(dsql.NullInt16{}):
-			scanType = reflect.TypeOf(int16(0))
-		case reflect.TypeOf(dsql.NullInt32{}):
-			scanType = reflect.TypeOf(int32(0))
-		case reflect.TypeOf(dsql.NullInt64{}):
-			scanType = reflect.TypeOf(int64(0))
-		case reflect.TypeOf(dsql.NullString{}):
-			scanType = reflect.TypeOf("")
-		case reflect.TypeOf(dsql.NullTime{}):
-			scanType = reflect.TypeOf(time.Time{})
-		}
-		scanRow[i] = reflect.New(scanType).Interface()
+		scanRow[i] = reflect.New(columnType.ScanType()).Interface()
 	}
 
 	if err = results.Scan(scanRow...); err != nil {
 		return nil, err
 	}
 	for i, val := range scanRow {
-		reflectVal := reflect.ValueOf(val)
-		if reflectVal.IsNil() {
-			scanRow[i] = nil
-		} else {
-			scanRow[i] = reflectVal.Elem().Interface()
-			if byteSlice, ok := val.([]byte); ok {
-				scanRow[i] = string(byteSlice)
+		v := reflect.ValueOf(val).Elem().Interface()
+		switch t := v.(type) {
+		case dsql.RawBytes:
+			if t == nil {
+				scanRow[i] = nil
+			} else {
+				scanRow[i] = string(t)
 			}
+		case dsql.NullBool:
+			if t.Valid {
+				scanRow[i] = t.Bool
+			} else {
+				scanRow[i] = nil
+			}
+		case dsql.NullByte:
+			if t.Valid {
+				scanRow[i] = t.Byte
+			} else {
+				scanRow[i] = nil
+			}
+		case dsql.NullFloat64:
+			if t.Valid {
+				scanRow[i] = t.Float64
+			} else {
+				scanRow[i] = nil
+			}
+		case dsql.NullInt16:
+			if t.Valid {
+				scanRow[i] = t.Int16
+			} else {
+				scanRow[i] = nil
+			}
+		case dsql.NullInt32:
+			if t.Valid {
+				scanRow[i] = t.Int32
+			} else {
+				scanRow[i] = nil
+			}
+		case dsql.NullInt64:
+			if t.Valid {
+				scanRow[i] = t.Int64
+			} else {
+				scanRow[i] = nil
+			}
+		case dsql.NullString:
+			if t.Valid {
+				scanRow[i] = t.String
+			} else {
+				scanRow[i] = nil
+			}
+		case dsql.NullTime:
+			if t.Valid {
+				scanRow[i] = t.Time
+			} else {
+				scanRow[i] = nil
+			}
+		default:
+			scanRow[i] = t
 		}
 	}
 	return scanRow, nil

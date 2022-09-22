@@ -79,7 +79,7 @@ func NewValidatingServer(
 			return fmt.Errorf("failed to log invalid results: can't find session for conn %d", c.ConnectionID)
 		}
 		if err := golden.ValidateResults(actual, expected); err != nil {
-			sess.session.GetLogger().Debugf(err.Error())
+			sess.session.GetLogger().Warnf(err.Error())
 		}
 		return nil
 	}

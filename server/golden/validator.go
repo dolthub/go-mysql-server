@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -38,13 +37,17 @@ type Validator struct {
 type ResultCallback func(c *mysql.Conn, actual, expected [][]sqltypes.Value) error
 
 func ValidateResults(actual, expected [][]sqltypes.Value) error {
+	if len(actual) != len(expected) {
+		return fmt.Errorf("Incorrect result set expected=%s actual=%s)",
+			formatRowSet(actual), formatRowSet(expected))
+	}
 	for i := range actual {
 		left, right := actual[i], expected[i]
 		cmp, err := compareRows(left, right)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error comparing result sets (%s)", err)
 		} else if cmp != 0 {
-			return fmt.Errorf("Incorrect result set (%s != %s)",
+			return fmt.Errorf("Incorrect result set expected=%s actual=%s)",
 				formatRowSet(actual), formatRowSet(expected))
 		}
 	}
@@ -255,9 +258,7 @@ func compareRows(left, right []sqltypes.Value) (cmp int, err error) {
 func formatRowSet(rows [][]sqltypes.Value) string {
 	var seenOne bool
 	var sb strings.Builder
-	sb.WriteString("{(len ")
-	sb.WriteString(strconv.Itoa(len(rows)))
-	sb.WriteString(")")
+	sb.WriteString("{")
 	for _, r := range rows {
 		if seenOne {
 			sb.WriteRune(',')
