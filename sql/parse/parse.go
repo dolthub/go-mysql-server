@@ -560,7 +560,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if filter != nil {
-			node = plan.NewFilter(filter, node)
+			node = plan.NewHaving(filter, node)
 		}
 		return node, nil
 	case "function status":
@@ -591,7 +591,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if filter != nil {
-			node = plan.NewFilter(filter, node)
+			node = plan.NewHaving(filter, node)
 		}
 		return node, nil
 	case "index":
@@ -774,7 +774,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewFilter(filterExpr, infoSchemaSelect), nil
+			return plan.NewHaving(filterExpr, infoSchemaSelect), nil
 		}
 
 		return infoSchemaSelect, nil
