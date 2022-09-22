@@ -22,7 +22,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func applyDefaultSelectLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// applyDefaultSelectLimit wraps the root node in a Limit clause
+// if 1) `sql_select_limit` is non-default and 2) there is no
+// user-provided Limit already applied to the root node.
+func applyDefaultSelectLimit(
+	ctx *sql.Context,
+	a *Analyzer,
+	n sql.Node,
+	scope *Scope,
+	sel RuleSelector,
+) (sql.Node, transform.TreeIdentity, error) {
 	if !scope.IsEmpty() || scope.RecursionDepth() > 0 {
 		return n, transform.SameTree, nil
 	}
