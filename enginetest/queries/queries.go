@@ -1605,7 +1605,7 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
-		Query: "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+		Query: "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = 2 ORDER BY foo, i;",
 		Expected: []sql.Row{
 			{1, 1, 2},
 			{2, 1, 2},
@@ -1617,7 +1617,7 @@ var QueryTests = []QueryTest{
 			{2, 1, 2}},
 	},
 	{
-		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
+		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = 1 ORDER BY foo, i;",
 		Expected: []sql.Row{},
 	},
 	{
@@ -3483,7 +3483,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT i AS foo FROM mytable WHERE foo NOT IN (1, 2, 5)`,
+		Query:    `SELECT i AS foo FROM mytable HAVING foo NOT IN (1, 2, 5)`,
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
