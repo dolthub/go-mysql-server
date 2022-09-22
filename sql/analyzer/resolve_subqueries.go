@@ -28,7 +28,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			// subqueries do not have access to outer scope, but we do need a scope object to track recursion depth
+			// SubqueryAliases never have access to outer scopes; they cannot see any outer aliases or tables
 			child, same, err := a.analyzeThroughBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", sel)
 			if err != nil {
 				return nil, same, err
@@ -58,7 +58,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			// subqueries do not have access to outer scope
+			// SubqueryAliases never have access to outer scopes; they cannot see any outer aliases or tables
 			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", sel)
 			if err != nil {
 				return nil, same, err
