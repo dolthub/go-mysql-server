@@ -427,6 +427,42 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 						tablesFound = append(tablesFound, tableName)
 					}
 				}
+
+				// TODO: How about if there is a column name that matches at the same scope, but there is an alias
+				//       available at an outer scope that should be preferred? Concrete test cases?
+				switch node.(type) {
+				case *plan.Sort, *plan.Having:
+					// For order by and having clauses... prefer an alias over a column when there is ambiguity
+					if len(aliasesFound) == 0 {
+						if len(tablesFound) == 1 {
+							return expression.NewUnresolvedQualifiedColumn(tablesFound[0], col.Name()), transform.NewTree, nil
+						} else if len(tablesFound) > 1 {
+							// TODO: This error is specific to OrderBy
+							return col, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(col.Name())
+						}
+					} else if len(aliasesFound) == 1 {
+						// TODO: Why are we checking this, too? Need to explain this in a comment...
+						if availableAliases, ok := symbols[scopeLevel].availableAliases[col.Name()]; ok {
+							if len(availableAliases) > 1 {
+								return col, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(col.Name())
+							}
+						}
+						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
+					} else if len(aliasesFound) > 1 {
+						// TODO: This error is specific to OrderBy
+						return col, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(col.Name())
+					}
+				default:
+					// TODO: Need to do more testing on this code and to clean up this nested switch in a switch; hard
+					//       to reason about and messy
+					// otherwise, prefer the table column...
+					if len(tablesFound) == 1 {
+						return expression.NewUnresolvedQualifiedColumn(tablesFound[0], col.Name()), transform.NewTree, nil
+					} else if len(aliasesFound) == 1 {
+						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
+					}
+				}
+
 				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
 			}
 		}
