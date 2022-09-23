@@ -162,6 +162,29 @@ func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
 	return table, alias
 }
 
+// getResolvedTableAndAlias returns the first resolved table in the specified node tree, along with its aliased name,
+// or the empty string if no table alias has been specified.
+func getRel(node sql.Node) sql.Node {
+	var rel sql.Node
+
+	transform.Inspect(node, func(node sql.Node) bool {
+		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
+		// only want the first ResolvedTable match.
+		if rel != nil {
+			return false
+		}
+
+		switch n := node.(type) {
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, plan.JoinNode, *plan.CrossJoin,
+			*plan.SubqueryAlias, *plan.GroupBy, *plan.Window, *plan.IndexedJoin:
+			rel = n
+			return false
+		}
+		return true
+	})
+	return rel
+}
+
 // Finds first ResolvedTable node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable

@@ -20,6 +20,11 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query: `
+				`,
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
 		// Repro for: https://github.com/dolthub/dolt/issues/4183
 		Query: "SELECT mytable.i " +
 			"FROM mytable " +

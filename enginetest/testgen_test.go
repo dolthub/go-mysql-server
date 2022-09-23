@@ -23,7 +23,7 @@ func TestWriteQueryPlans(t *testing.T) {
 	t.Skip()
 
 	harness := NewDefaultMemoryHarness()
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.PlanSetup...)
 	engine := mustNewEngine(t, harness)
 
 	tmp, err := ioutil.TempDir("", "*")

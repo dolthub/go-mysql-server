@@ -50,12 +50,7 @@ func hoistSelectExists(
 			return n, transform.SameTree, nil
 		}
 
-		rt, alias := getResolvedTableAndAlias(sq.Query)
-		var right sql.Node = rt
-		if len(alias) > 0 {
-			right = plan.NewTableAlias(alias, right)
-
-		}
+		right := getRel(sq.Query)
 		switch joinType {
 		case plan.AntiJoinType:
 			return plan.NewAntiJoin(left, right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
