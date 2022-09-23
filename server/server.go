@@ -72,17 +72,7 @@ func NewValidatingServer(
 	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDB, e.MemoryManager, e.ProcessList, cfg.Address)
 	h := NewHandler(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, listener)
 
-	logProvider := func(c *mysql.Conn) *logrus.Entry {
-		sess := sm.session(c)
-		if sess == nil {
-			lgr := logrus.NewEntry(logrus.StandardLogger())
-			lgr.Warnf("failed to find session for conn %s", c.ConnectionID)
-			return lgr
-		}
-		return sess.GetLogger()
-	}
-
-	handler, err := golden.NewValidatingHandler(h, mySqlConn, logProvider)
+	handler, err := golden.NewValidatingHandler(h, mySqlConn, logrus.StandardLogger())
 	if err != nil {
 		return nil, err
 	}

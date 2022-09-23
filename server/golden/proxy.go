@@ -20,6 +20,7 @@ import (
 	"math"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -33,13 +34,19 @@ import (
 )
 
 type MySqlProxy struct {
-	ctx   *sql.Context
-	conns map[uint32]*dbr.Connection
-	dsn   string
+	ctx     *sql.Context
+	connStr string
+	logger  *logrus.Logger
+	conns   map[uint32]proxyConn
+}
+
+type proxyConn struct {
+	*dbr.Connection
+	*logrus.Entry
 }
 
 // NewMySqlProxyHandler creates a new MySqlProxy.
-func NewMySqlProxyHandler(connStr string) (MySqlProxy, error) {
+func NewMySqlProxyHandler(logger *logrus.Logger, connStr string) (MySqlProxy, error) {
 	// ensure parseTime=true
 	cfg, err := mysql2.ParseDSN(connStr)
 	if err != nil {
@@ -48,7 +55,7 @@ func NewMySqlProxyHandler(connStr string) (MySqlProxy, error) {
 	cfg.ParseTime = true
 	connStr = cfg.FormatDSN()
 
-	conn, err := dbr.Open("mysql", connStr, nil)
+	conn, err := newConn(connStr, 0, logger)
 	if err != nil {
 		return MySqlProxy{}, err
 	}
@@ -59,31 +66,58 @@ func NewMySqlProxyHandler(connStr string) (MySqlProxy, error) {
 	}
 
 	return MySqlProxy{
-		ctx:   sql.NewEmptyContext(),
-		conns: make(map[uint32]*dbr.Connection),
-		dsn:   connStr,
+		ctx:     sql.NewEmptyContext(),
+		connStr: connStr,
+		logger:  logger,
+		conns:   make(map[uint32]proxyConn),
 	}, nil
 }
 
 var _ mysql.Handler = MySqlProxy{}
 
-func (h MySqlProxy) getConn(connId uint32) (conn *dbr.Connection, err error) {
-	var ok bool
-	conn, ok = h.conns[connId]
-	if ok {
-		return conn, nil
+func newConn(connStr string, connId uint32, lgr *logrus.Logger) (conn proxyConn, err error) {
+	l := logrus.NewEntry(lgr).WithField("dsn", connStr).WithField(sql.ConnectionIdLogField, connId)
+	var c *dbr.Connection
+	for d := 100.0; d < 10000.0; d *= 1.6 {
+		l.Debugf("Attempting connection to MySQL")
+		c, err = dbr.Open("mysql", connStr, nil)
+		if err == nil && c.Ping() == nil {
+			break
+		}
+		time.Sleep(time.Duration(d) * time.Millisecond)
 	}
-	conn, err = dbr.Open("mysql", h.dsn, nil)
 	if err != nil {
-		return nil, err
+		l.Debugf("Failed to establish connection %d", connId)
+		return proxyConn{}, err
 	}
-	h.conns[connId] = conn
-	return conn, nil
+	l.Debugf("Succesfully established connection")
+	return proxyConn{Connection: c, Entry: l}, nil
 }
 
 // NewConnection reports that a new connection has been established.
 func (h MySqlProxy) NewConnection(c *mysql.Conn) {
-	return
+	conn, err := newConn(h.connStr, c.ConnectionID, h.logger)
+	if err == nil {
+		h.conns[c.ConnectionID] = conn
+	}
+}
+
+func (h MySqlProxy) getConn(connId uint32) (conn proxyConn, err error) {
+	var ok bool
+	conn, ok = h.conns[connId]
+	if ok {
+		return conn, nil
+	} else {
+		conn, err = newConn(h.connStr, connId, h.logger)
+		if err != nil {
+			return proxyConn{}, err
+		}
+	}
+	if err = conn.Ping(); err != nil {
+		return proxyConn{}, err
+	}
+	h.conns[connId] = conn
+	return conn, nil
 }
 
 func (h MySqlProxy) ComInitDB(c *mysql.Conn, schemaName string) error {
@@ -128,7 +162,17 @@ func (h MySqlProxy) ComMultiQuery(
 	query string,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
-	return h.processQuery(c, query, true, nil, callback)
+	conn, err := h.getConn(c.ConnectionID)
+	if err != nil {
+		return "", err
+	}
+	conn.Entry = conn.Entry.WithField("query", query)
+
+	remainder, err := h.processQuery(c, conn, query, true, callback)
+	if err != nil {
+		conn.Errorf("Failed to process MySQL results: %s", err)
+	}
+	return remainder, err
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
@@ -137,15 +181,24 @@ func (h MySqlProxy) ComQuery(
 	query string,
 	callback func(*sqltypes.Result, bool) error,
 ) error {
-	_, err := h.processQuery(c, query, false, nil, callback)
+	conn, err := h.getConn(c.ConnectionID)
+	if err != nil {
+		return err
+	}
+	conn.Entry = conn.Entry.WithField("query", query)
+
+	_, err = h.processQuery(c, conn, query, false, callback)
+	if err != nil {
+		conn.Errorf("Failed to process MySQL results: %s", err)
+	}
 	return err
 }
 
 func (h MySqlProxy) processQuery(
 	c *mysql.Conn,
+	proxy proxyConn,
 	query string,
 	isMultiStatement bool,
-	_ map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
 	ctx := sql.NewContext(h.ctx)
@@ -157,11 +210,8 @@ func (h MySqlProxy) processQuery(
 	ctx = ctx.WithQuery(query)
 	more := remainder != ""
 
-	conn, err := h.getConn(c.ConnectionID)
-	if err != nil {
-		return "", err
-	}
-	rows, err := conn.Query(query)
+	proxy.Debugf("Sending query to MySQL")
+	rows, err := proxy.Query(query)
 	if err != nil {
 		return "", err
 	}
@@ -270,7 +320,6 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 			}
 			row[i], err = types[i].SQL(ctx, nil, scanRow[i])
 			if err != nil {
-				_, _ = types[i].SQL(ctx, nil, scanRow[i])
 				return nil, false, err
 			}
 		}
@@ -290,7 +339,7 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 	return
 }
 
-var typeStrTransforms = map[string]string{
+var typeDefaults = map[string]string{
 	"char":      "char(255)",
 	"binary":    "binary(255)",
 	"varchar":   "varchar(65535)",
@@ -307,7 +356,7 @@ func schemaToFields(ctx *sql.Context, cols []*dsql.ColumnType) ([]sql.Type, []*q
 		if length, ok := col.Length(); ok {
 			// append length specifier to type
 			typeStr = fmt.Sprintf("%s(%d)", typeStr, length)
-		} else if ts, ok := typeStrTransforms[typeStr]; ok {
+		} else if ts, ok := typeDefaults[typeStr]; ok {
 			// if no length specifier if given,
 			// default to the maximum width
 			typeStr = ts

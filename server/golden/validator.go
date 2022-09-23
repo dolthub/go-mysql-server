@@ -21,27 +21,25 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type Validator struct {
-	handler  mysql.Handler
-	golden   MySqlProxy
-	loggerCB LoggerProvider
+	handler mysql.Handler
+	golden  MySqlProxy
+	logger  *logrus.Logger
 }
 
-// A LoggerProvider provides a logger for a connection.
-type LoggerProvider func(c *mysql.Conn) *logrus.Entry
-
 // NewValidatingHandler creates a new Validator wrapping a MySQL connection.
-func NewValidatingHandler(handler mysql.Handler, mySqlConn string, cb LoggerProvider) (Validator, error) {
-	golden, err := NewMySqlProxyHandler(mySqlConn)
+func NewValidatingHandler(handler mysql.Handler, mySqlConn string, logger *logrus.Logger) (Validator, error) {
+	golden, err := NewMySqlProxyHandler(logger, mySqlConn)
 	if err != nil {
 		return Validator{}, err
 	}
@@ -52,9 +50,9 @@ func NewValidatingHandler(handler mysql.Handler, mySqlConn string, cb LoggerProv
 	//  - possibly sync database set between both
 
 	return Validator{
-		handler:  handler,
-		golden:   golden,
-		loggerCB: cb,
+		handler: handler,
+		golden:  golden,
+		logger:  logger,
 	}, nil
 }
 
@@ -98,25 +96,24 @@ func (v Validator) ComMultiQuery(
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
 	ag := newResultAggregator(callback)
-
 	var remainder string
 	eg, _ := errgroup.WithContext(context.Background())
 	eg.Go(func() (err error) {
 		remainder, err = v.handler.ComMultiQuery(c, query, ag.processResults)
 		return
 	})
-	eg.Go(func() (err error) {
-		_, err = v.golden.ComMultiQuery(c, query, ag.processGoldenResults)
-		return
+	eg.Go(func() error {
+		// ignore errors from MySQL connection
+		_, _ = v.golden.ComMultiQuery(c, query, ag.processGoldenResults)
+		return nil
 	})
 
 	err := eg.Wait()
 	if err != nil {
 		return "", err
 	}
-	if err = ag.compareResults(v.loggerCB(c)); err != nil {
-		return "", err
-	}
+	ag.compareResults(v.getLogger(c).WithField("query", query))
+
 	return remainder, nil
 }
 
@@ -127,20 +124,22 @@ func (v Validator) ComQuery(
 	callback func(*sqltypes.Result, bool) error,
 ) error {
 	ag := newResultAggregator(callback)
-
 	eg, _ := errgroup.WithContext(context.Background())
 	eg.Go(func() error {
 		return v.handler.ComQuery(c, query, ag.processResults)
 	})
 	eg.Go(func() error {
-		return v.golden.ComQuery(c, query, ag.processGoldenResults)
+		// ignore errors from MySQL connection
+		_ = v.golden.ComQuery(c, query, ag.processGoldenResults)
+		return nil
 	})
 
 	err := eg.Wait()
 	if err != nil {
 		return err
 	}
-	return ag.compareResults(v.loggerCB(c))
+	ag.compareResults(v.getLogger(c).WithField("query", query))
+	return nil
 }
 
 // WarningCount is called at the end of each query to obtain
@@ -150,6 +149,11 @@ func (v Validator) ComQuery(
 // or after the last ComQuery call completes.
 func (v Validator) WarningCount(c *mysql.Conn) uint16 {
 	return 0
+}
+
+func (v Validator) getLogger(c *mysql.Conn) *logrus.Entry {
+	return logrus.NewEntry(v.logger).WithField(
+		sql.ConnectionIdLogField, c.ConnectionID)
 }
 
 type aggregator struct {
@@ -178,36 +182,41 @@ func (ag *aggregator) processGoldenResults(result *sqltypes.Result, _ bool) erro
 	return nil
 }
 
-func (ag *aggregator) compareResults(logger *logrus.Entry) error {
-	if len(ag.results) > maxRows || len(ag.golden) > maxRows {
-		return fmt.Errorf("result set too large to validate")
-	}
+func (ag *aggregator) compareResults(logger *logrus.Entry) {
 	actual, err := sortResults(ag.results)
 	if err != nil {
-		return err
+		logger.Errorf("Error comparing result sets (%s)", err)
 	}
 	expected, err := sortResults(ag.golden)
 	if err != nil {
-		return err
+		logger.Errorf("Error comparing result sets (%s)", err)
+	}
+	logger.Debugf("Validting query expected=(%d) actual=(%d)",
+		len(actual), len(expected))
+
+	if len(actual) > maxRows || len(expected) > maxRows {
+		logger.Warnf("result set too large to validate")
+		return
 	}
 
 	if len(actual) != len(expected) {
 		logger.Warnf("Incorrect result set expected=%s actual=%s)",
 			formatRowSet(actual), formatRowSet(expected))
-		return nil
+		return
 	}
 	for i := range actual {
 		left, right := actual[i], expected[i]
 		cmp, err := compareRows(left, right)
 		if err != nil {
-			return fmt.Errorf("Error comparing result sets (%s)", err)
+			logger.Errorf("Error comparing result sets (%s)", err)
+			return
 		} else if cmp != 0 {
 			logger.Warnf("Incorrect result set expected=%s actual=%s)",
 				formatRowSet(actual), formatRowSet(expected))
-			return nil
+			return
 		}
 	}
-	return nil
+	return
 }
 
 func sortResults(results []*sqltypes.Result) ([][]sqltypes.Value, error) {
