@@ -69,7 +69,7 @@ func resolveNaturalJoin(
 			lcol.Nullable,
 		)
 		if idx, rcol := findCol(rightSchema, lcol.Name); rcol != nil {
-			common = append(common, expression.NewUnresolvedQualifiedColumn(lcol.Source, leftCol.Name()))
+			common = append(common, leftCol)
 			replacements[tableCol{strings.ToLower(rcol.Source), strings.ToLower(rcol.Name)}] = tableCol{
 				strings.ToLower(lcol.Source), strings.ToLower(lcol.Name),
 			}
