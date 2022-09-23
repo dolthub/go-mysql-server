@@ -6,7 +6,8 @@ type RuleId int
 
 const (
 	// once before
-	validateOffsetAndLimitId      RuleId = iota //validateOffsetAndLimit
+	applyDefaultSelectLimitId     RuleId = iota // applyDefaultSelectLimit
+	validateOffsetAndLimitId                    //validateOffsetAndLimit
 	validateCreateTableId                       // validateCreateTable
 	validateExprSemId                           // validateExprSem
 	resolveVariablesId                          // resolveVariables

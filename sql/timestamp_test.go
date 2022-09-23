@@ -16,6 +16,8 @@ package sql_test
 
 import (
 	connector "database/sql"
+	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -65,6 +67,16 @@ func Test_TimestampBindings_CanBeCompared(t *testing.T) {
 }
 
 func newDatabase() (*connector.DB, func()) {
+	// Grab an empty port so that tests do not fail if a specific port is already in use
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err = listener.Close(); err != nil {
+		panic(err)
+	}
+
 	provider := sql.NewDatabaseProvider(
 		memory.NewDatabase("mydb"),
 	)
@@ -73,7 +85,7 @@ func newDatabase() (*connector.DB, func()) {
 	})
 	cfg := server.Config{
 		Protocol: "tcp",
-		Address:  "localhost:3306",
+		Address:  fmt.Sprintf("localhost:%d", port),
 	}
 	srv, err := server.NewDefaultServer(cfg, engine)
 	if err != nil {
@@ -81,7 +93,7 @@ func newDatabase() (*connector.DB, func()) {
 	}
 	go srv.Start()
 
-	db, err := connector.Open("mysql", "root:@tcp(localhost:3306)/mydb")
+	db, err := connector.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/mydb", port))
 	if err != nil {
 		panic(err)
 	}

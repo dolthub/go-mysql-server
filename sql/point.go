@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -149,9 +148,8 @@ func (t PointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value
 	}
 
 	buf := SerializePoint(v.(Point))
-	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
+	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
