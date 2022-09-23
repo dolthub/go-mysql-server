@@ -34,15 +34,13 @@ select * from
 inner join xy on a = x;`,
 		ExpectedPlan: "IndexedJoin(alias2.a = xy.x)\n" +
 			" ├─ SubqueryAlias(alias2)\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [ab.a, ab.b, uv.u, uv.v]\n" +
-			" │       └─ SemiJoin(uv.u = pq.p)\n" +
-			" │           ├─ LeftJoin(ab.a = uv.u)\n" +
-			" │           │   ├─ Table(ab)\n" +
-			" │           │   └─ Table(uv)\n" +
-			" │           └─ IndexedTableAccess(pq)\n" +
-			" │               ├─ index: [pq.p]\n" +
-			" │               └─ columns: [p q]\n" +
+			" │   └─ SemiJoin(uv.u = pq.p)\n" +
+			" │       ├─ LeftJoin(ab.a = uv.u)\n" +
+			" │       │   ├─ Table(ab)\n" +
+			" │       │   └─ Table(uv)\n" +
+			" │       └─ IndexedTableAccess(pq)\n" +
+			" │           ├─ index: [pq.p]\n" +
+			" │           └─ columns: [p q]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     └─ columns: [x y]\n" +
@@ -56,19 +54,16 @@ where exists
   select * from uv
   left join pq on u = p
   where a = u
-);
-`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [ab.a, ab.b]\n" +
-			" └─ SemiJoin(ab.a = uv.u)\n" +
-			"     ├─ Table(ab)\n" +
-			"     └─ LeftIndexedJoin(uv.u = pq.p)\n" +
-			"         ├─ IndexedTableAccess(uv)\n" +
-			"         │   ├─ index: [uv.u]\n" +
-			"         │   └─ columns: [u v]\n" +
-			"         └─ IndexedTableAccess(pq)\n" +
-			"             ├─ index: [pq.p]\n" +
-			"             └─ columns: [p q]\n" +
+);`,
+		ExpectedPlan: "SemiJoin(ab.a = uv.u)\n" +
+			" ├─ Table(ab)\n" +
+			" └─ LeftIndexedJoin(uv.u = pq.p)\n" +
+			"     ├─ IndexedTableAccess(uv)\n" +
+			"     │   ├─ index: [uv.u]\n" +
+			"     │   └─ columns: [u v]\n" +
+			"     └─ IndexedTableAccess(pq)\n" +
+			"         ├─ index: [pq.p]\n" +
+			"         └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -80,20 +75,16 @@ select * from
 ) alias1
 where exists (select * from pq where a = p)
 `,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [alias1.a, alias1.b]\n" +
-			" └─ SemiJoin(alias1.a = pq.p)\n" +
-			"     ├─ SubqueryAlias(alias1)\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [ab.a, ab.b]\n" +
-			"     │       └─ AntiJoin(ab.a = uv.u)\n" +
-			"     │           ├─ Table(ab)\n" +
-			"     │           └─ IndexedTableAccess(uv)\n" +
-			"     │               ├─ index: [uv.u]\n" +
-			"     │               └─ columns: [u v]\n" +
-			"     └─ IndexedTableAccess(pq)\n" +
-			"         ├─ index: [pq.p]\n" +
-			"         └─ columns: [p q]\n" +
+		ExpectedPlan: "SemiJoin(alias1.a = pq.p)\n" +
+			" ├─ SubqueryAlias(alias1)\n" +
+			" │   └─ AntiJoin(ab.a = uv.u)\n" +
+			" │       ├─ Table(ab)\n" +
+			" │       └─ IndexedTableAccess(uv)\n" +
+			" │           ├─ index: [uv.u]\n" +
+			" │           └─ columns: [u v]\n" +
+			" └─ IndexedTableAccess(pq)\n" +
+			"     ├─ index: [pq.p]\n" +
+			"     └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -155,22 +146,18 @@ inner join pq on true
 	left join pq on alias1.a = p
 	where exists (select * from uv where a = u)
 	`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [alias1.a, alias1.b, pq.p, pq.q]\n" +
-			" └─ SemiJoin(alias1.a = uv.u)\n" +
-			"     ├─ LeftJoin(alias1.a = pq.p)\n" +
-			"     │   ├─ SubqueryAlias(alias1)\n" +
-			"     │   │   └─ Project\n" +
-			"     │   │       ├─ columns: [ab.a, ab.b]\n" +
-			"     │   │       └─ AntiJoin(ab.a = xy.x)\n" +
-			"     │   │           ├─ Table(ab)\n" +
-			"     │   │           └─ IndexedTableAccess(xy)\n" +
-			"     │   │               ├─ index: [xy.x]\n" +
-			"     │   │               └─ columns: [x y]\n" +
-			"     │   └─ Table(pq)\n" +
-			"     └─ IndexedTableAccess(uv)\n" +
-			"         ├─ index: [uv.u]\n" +
-			"         └─ columns: [u v]\n" +
+		ExpectedPlan: "SemiJoin(alias1.a = uv.u)\n" +
+			" ├─ LeftJoin(alias1.a = pq.p)\n" +
+			" │   ├─ SubqueryAlias(alias1)\n" +
+			" │   │   └─ AntiJoin(ab.a = xy.x)\n" +
+			" │   │       ├─ Table(ab)\n" +
+			" │   │       └─ IndexedTableAccess(xy)\n" +
+			" │   │           ├─ index: [xy.x]\n" +
+			" │   │           └─ columns: [x y]\n" +
+			" │   └─ Table(pq)\n" +
+			" └─ IndexedTableAccess(uv)\n" +
+			"     ├─ index: [uv.u]\n" +
+			"     └─ columns: [u v]\n" +
 			"",
 	},
 	{
@@ -2948,18 +2935,17 @@ inner join pq on true
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c RIGHT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
-			" └─ RightIndexedJoin((b.pk = c.pk) AND (b.pk = a.pk))\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ Table(one_pk)\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ CrossJoin\n" +
-			"         ├─ TableAlias(a)\n" +
-			"         │   └─ Table(one_pk)\n" +
-			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 └─ columns: [pk]\n" +
+			" └─ RightJoin((b.pk = c.pk) AND (b.pk = a.pk))\n" +
+			"     ├─ CrossJoin\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table(one_pk)\n" +
+			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Table(one_pk)\n" +
+			"     │           └─ columns: [pk]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(one_pk)\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -3043,19 +3029,18 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk, c.v2]\n" +
 			" └─ Filter(b.pk = 0)\n" +
-			"     └─ RightIndexedJoin(b.pk = c.v1)\n" +
-			"         ├─ Filter(c.v2 = 0)\n" +
-			"         │   └─ TableAlias(c)\n" +
+			"     └─ RightJoin(b.pk = c.v1)\n" +
+			"         ├─ CrossJoin\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ Table(one_pk_three_idx)\n" +
+			"         │   │       └─ columns: [pk]\n" +
+			"         │   └─ TableAlias(b)\n" +
 			"         │       └─ Table(one_pk_three_idx)\n" +
-			"         │           └─ columns: [v1 v2]\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
-			"             │   └─ Table(one_pk_three_idx)\n" +
-			"             │       └─ columns: [pk]\n" +
-			"             └─ TableAlias(b)\n" +
-			"                 └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"                     ├─ index: [one_pk_three_idx.pk]\n" +
-			"                     └─ columns: [pk]\n" +
+			"         │           └─ columns: [pk]\n" +
+			"         └─ Filter(c.v2 = 0)\n" +
+			"             └─ TableAlias(c)\n" +
+			"                 └─ Table(one_pk_three_idx)\n" +
+			"                     └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{

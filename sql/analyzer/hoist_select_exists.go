@@ -41,16 +41,28 @@ func hoistSelectExists(
 			return n, transform.SameTree, nil
 		}
 
-		left, sq, outerFilters, joinType := pluckCorrelatedExistsSubquery(f)
+		left, right, outerFilters, joinType := pluckCorrelatedExistsSubquery(f)
 		if left == nil {
 			panic("unexpected: no relation found in scope")
 		}
 
-		if sq == nil || len(outerFilters) == 0 {
+		if len(outerFilters) == 0 {
 			return n, transform.SameTree, nil
 		}
+		if right == nil {
+			panic("unexpected empty subquery")
+		}
 
-		right := getRel(sq.Query)
+		switch r := right.(type) {
+		case *plan.Project:
+			right = r.Child
+		}
+
+		outerFilters, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, append(left.Schema(), right.Schema()...), outerFilters...)
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+
 		switch joinType {
 		case plan.AntiJoinType:
 			return plan.NewAntiJoin(left, right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
@@ -65,9 +77,9 @@ func hoistSelectExists(
 // pluckCorrelatedExistsSubquery scans a filter for [note] WHERE EXISTS, and then attempts to
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
-func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, *plan.Subquery, []sql.Expression, plan.JoinType) {
+func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, sql.Node, []sql.Expression, plan.JoinType) {
 	// if filter has a correlated exists, we remove it from the filter and return the new sq and join condition
-	var sq *plan.Subquery
+	var decorrelated sql.Node
 	var outerFilters []sql.Expression
 
 	filters := splitConjunction(filter.Expression)
@@ -76,7 +88,7 @@ func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, *plan.Subquer
 	for _, f := range filters {
 		switch e := f.(type) {
 		case *plan.ExistsSubquery:
-			sq, outerFilters = decorrelateOuterCols(e.Query, len(filter.Schema()))
+			decorrelated, outerFilters = decorrelateOuterCols(e.Query, len(filter.Schema()))
 			if len(outerFilters) == 0 {
 				return filter, nil, nil, plan.UnknownJoinType
 			}
@@ -86,7 +98,7 @@ func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, *plan.Subquer
 			if !ok {
 				return filter, nil, nil, plan.UnknownJoinType
 			}
-			sq, outerFilters = decorrelateOuterCols(esq.Query, len(filter.Schema()))
+			decorrelated, outerFilters = decorrelateOuterCols(esq.Query, len(filter.Schema()))
 			if len(outerFilters) == 0 {
 				return filter, nil, nil, plan.UnknownJoinType
 			}
@@ -95,15 +107,15 @@ func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, *plan.Subquer
 		}
 	}
 	if len(newFilters) == 0 {
-		return filter.Child, sq, outerFilters, joinType
+		return filter.Child, decorrelated, outerFilters, joinType
 	}
 	newFilter := plan.NewFilter(expression.JoinAnd(newFilters...), filter.Child)
-	return newFilter, sq, outerFilters, joinType
+	return newFilter, decorrelated, outerFilters, joinType
 }
 
 // decorrelateOuterCols returns an optionally modified subquery and extracted
 // filters referencing an outer scope.
-func decorrelateOuterCols(e *plan.Subquery, scopeLen int) (*plan.Subquery, []sql.Expression) {
+func decorrelateOuterCols(e *plan.Subquery, scopeLen int) (sql.Node, []sql.Expression) {
 	var outerFilters []sql.Expression
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
@@ -142,7 +154,7 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int) (*plan.Subquery, []sql
 		}
 	})
 	if same {
-		return e, nil
+		return nil, nil
 	}
-	return e.WithQuery(n), outerFilters
+	return n, outerFilters
 }

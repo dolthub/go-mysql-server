@@ -292,7 +292,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {

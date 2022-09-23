@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"errors"
 	"io"
 	"os"
 	"reflect"
@@ -96,13 +97,6 @@ func (j *joinBase) Resolved() bool {
 	return j.left.Resolved() && j.right.Resolved() && j.Filter.Resolved()
 }
 
-func (j *joinBase) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("%s%s", j.Op, j.Filter)
-	_ = pr.WriteChildren(j.left.String(), j.right.String())
-	return pr.String()
-}
-
 func (j *joinBase) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
 }
@@ -112,7 +106,77 @@ func (j *joinBase) JoinType() JoinType {
 
 // Schema implements the Node interface.
 func (j *joinBase) Schema() sql.Schema {
-	return append(j.left.Schema(), j.right.Schema()...)
+	panic("join implementation should provide schema")
+}
+
+func constructNewJoin(base *joinBase) JoinNode {
+	switch base.Op {
+	case InnerJoinType:
+		return &InnerJoin{base}
+	case LeftJoinType:
+		return &LeftJoin{base}
+	case RightJoinType:
+		return &RightJoin{base}
+	case SemiJoinType:
+		return &SemiJoin{&existsJoinBase{base}}
+	case AntiJoinType:
+		return &AntiJoin{&existsJoinBase{base}}
+	case FullOuterJoinType:
+		return &FullOuterJoin{base}
+	default:
+		panic("unexpected exist join type: %T")
+	}
+}
+func (j *joinBase) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
+	}
+	ret := *j
+	ret.Filter = exprs[0]
+	return constructNewJoin(&ret), nil
+}
+
+func (j *joinBase) WithScopeLen(i int) JoinNode {
+	ret := *j
+	ret.ScopeLen = i
+	return constructNewJoin(&ret)
+}
+
+func (j *joinBase) WithMultipassMode() JoinNode {
+	ret := *j
+	ret.JoinMode = multipassMode
+	return constructNewJoin(&ret)
+}
+
+func (j *joinBase) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
+	}
+	ret := *j
+	ret.left = children[0]
+	ret.right = children[1]
+	return constructNewJoin(&ret), nil
+}
+
+// WithComment implements sql.CommentedNode
+func (j *joinBase) WithComment(comment string) sql.Node {
+	ret := *j
+	ret.CommentStr = comment
+	return constructNewJoin(&ret)
+}
+
+func (j *joinBase) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("%s%s", j.Op, j.Filter)
+	_ = pr.WriteChildren(j.left.String(), j.right.String())
+	return pr.String()
+}
+
+func (j *joinBase) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("%s%s, comment=%s", j.Op, sql.DebugString(j.Filter), j.Comment())
+	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
+	return pr.String()
 }
 
 // InnerJoin is an inner join between two tables.
@@ -131,6 +195,7 @@ func (j *InnerJoin) JoinType() JoinType {
 func NewInnerJoin(left, right sql.Node, cond sql.Expression) *InnerJoin {
 	return &InnerJoin{
 		&joinBase{
+			Op: InnerJoinType,
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -140,63 +205,14 @@ func NewInnerJoin(left, right sql.Node, cond sql.Expression) *InnerJoin {
 	}
 }
 
+// Schema implements the Node interface.
+func (j *InnerJoin) Schema() sql.Schema {
+	return append(j.left.Schema(), j.right.Schema()...)
+}
+
 // RowIter implements the Node interface.
 func (j *InnerJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return joinRowIter(ctx, InnerJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
-}
-
-// WithChildren implements the Node interface.
-func (j *InnerJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
-	}
-
-	nj := *j
-	nj.BinaryNode = BinaryNode{children[0], children[1]}
-	return &nj, nil
-}
-
-func (j *InnerJoin) WithScopeLen(i int) JoinNode {
-	nj := *j
-	nj.ScopeLen = i
-	return &nj
-}
-
-func (j InnerJoin) WithMultipassMode() JoinNode {
-	j.JoinMode = multipassMode
-	return &j
-}
-
-// WithExpressions implements the Expressioner interface.
-func (j *InnerJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
-	}
-
-	nj := *j
-	nj.Filter = exprs[0]
-	return &nj, nil
-}
-
-// WithComment implements sql.CommentedNode
-func (j *InnerJoin) WithComment(comment string) sql.Node {
-	nj := *j
-	nj.CommentStr = comment
-	return &nj
-}
-
-func (j *InnerJoin) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InnerJoin%s", j.Filter)
-	_ = pr.WriteChildren(j.left.String(), j.right.String())
-	return pr.String()
-}
-
-func (j *InnerJoin) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InnerJoin%s, comment=%s", sql.DebugString(j.Filter), j.Comment())
-	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
-	return pr.String()
 }
 
 // LeftJoin is a left join between two tables.
@@ -215,6 +231,7 @@ func (j *LeftJoin) JoinType() JoinType {
 func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	return &LeftJoin{
 		&joinBase{
+			Op: LeftJoinType,
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -229,68 +246,9 @@ func (j *LeftJoin) Schema() sql.Schema {
 	return append(j.left.Schema(), makeNullable(j.right.Schema())...)
 }
 
-// Resolved implements the Resolvable interface.
-func (j *LeftJoin) Resolved() bool {
-	return j.left.Resolved() && j.right.Resolved() && j.Filter.Resolved()
-}
-
 // RowIter implements the Node interface.
 func (j *LeftJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return joinRowIter(ctx, LeftJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
-}
-
-// WithChildren implements the Node interface.
-func (j *LeftJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 1)
-	}
-
-	nj := *j
-	nj.BinaryNode = BinaryNode{children[0], children[1]}
-	return &nj, nil
-}
-
-// WithExpressions implements the Expressioner interface.
-func (j *LeftJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
-	}
-
-	nj := *j
-	nj.Filter = exprs[0]
-	return &nj, nil
-}
-
-func (j *LeftJoin) WithScopeLen(i int) JoinNode {
-	nj := *j
-	nj.ScopeLen = i
-	return &nj
-}
-
-func (j LeftJoin) WithMultipassMode() JoinNode {
-	j.JoinMode = multipassMode
-	return &j
-}
-
-// WithComment implements sql.CommentedNode
-func (j *LeftJoin) WithComment(comment string) sql.Node {
-	nj := *j
-	nj.CommentStr = comment
-	return &nj
-}
-
-func (j *LeftJoin) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("LeftJoin%s", j.Filter)
-	_ = pr.WriteChildren(j.left.String(), j.right.String())
-	return pr.String()
-}
-
-func (j *LeftJoin) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("LeftJoin%s", sql.DebugString(j.Filter))
-	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
-	return pr.String()
 }
 
 // RightJoin is a left join between two tables.
@@ -309,6 +267,7 @@ var _ sql.CommentedNode = (*RightJoin)(nil)
 func NewRightJoin(left, right sql.Node, cond sql.Expression) *RightJoin {
 	return &RightJoin{
 		&joinBase{
+			Op: RightJoinType,
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -323,68 +282,9 @@ func (j *RightJoin) Schema() sql.Schema {
 	return append(makeNullable(j.left.Schema()), j.right.Schema()...)
 }
 
-// Resolved implements the Resolvable interface.
-func (j *RightJoin) Resolved() bool {
-	return j.left.Resolved() && j.right.Resolved() && j.Filter.Resolved()
-}
-
 // RowIter implements the Node interface.
 func (j *RightJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return joinRowIter(ctx, RightJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
-}
-
-// WithChildren implements the Node interface.
-func (j *RightJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
-	}
-
-	nj := *j
-	nj.BinaryNode = BinaryNode{children[0], children[1]}
-	return &nj, nil
-}
-
-// WithExpressions implements the Expressioner interface.
-func (j *RightJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 1)
-	}
-
-	nj := *j
-	nj.Filter = exprs[0]
-	return &nj, nil
-}
-
-func (j *RightJoin) WithScopeLen(i int) JoinNode {
-	nj := *j
-	nj.ScopeLen = i
-	return &nj
-}
-
-func (j RightJoin) WithMultipassMode() JoinNode {
-	j.JoinMode = multipassMode
-	return &j
-}
-
-// WithComment implements sql.CommentedNode
-func (j *RightJoin) WithComment(comment string) sql.Node {
-	nj := *j
-	nj.CommentStr = comment
-	return &nj
-}
-
-func (j *RightJoin) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("RightJoin%s", j.Filter)
-	_ = pr.WriteChildren(j.left.String(), j.right.String())
-	return pr.String()
-}
-
-func (j *RightJoin) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("RightJoin%s", sql.DebugString(j.Filter))
-	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
-	return pr.String()
 }
 
 func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row, scopeLen int, mode joinMode) (sql.RowIter, error) {
@@ -719,6 +619,120 @@ func (i *joinIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
+type existsIter struct {
+	typ               JoinType
+	primary           sql.RowIter
+	secondaryProvider rowIterProvider
+	secondary         sql.RowIter
+	cond              sql.Expression
+
+	primaryRow sql.Row
+
+	// scope variables from outer scope
+	originalRow sql.Row
+	scopeLen    int
+	rowSize     int
+}
+
+func (i *existsIter) loadPrimary(ctx *sql.Context) error {
+	if i.primaryRow == nil {
+		r, err := i.primary.Next(ctx)
+		if err != nil {
+			return err
+		}
+
+		i.primaryRow = i.originalRow.Append(r)
+	}
+
+	return nil
+}
+
+func (i *existsIter) loadSecondary(ctx *sql.Context, left sql.Row) (row sql.Row, err error) {
+	iter, err := i.secondaryProvider.RowIter(ctx, left)
+	return iter.Next(ctx)
+}
+
+func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
+	for {
+		r, err := i.primary.Next(ctx)
+		if err != nil {
+			return nil, err
+		}
+		left := i.originalRow.Append(r)
+		rIter, err := i.secondaryProvider.RowIter(ctx, left)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			right, err := rIter.Next(ctx)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					if i.typ == AntiJoinType {
+						return left, nil
+					}
+					break
+				}
+				return nil, err
+			}
+
+			row := i.buildRow(left, right)
+			matches, err := conditionIsTrue(ctx, row, i.cond)
+			if (i.typ == SemiJoinType && !matches) || (i.typ == AntiJoinType && matches) {
+				continue
+			}
+			return left, nil
+		}
+	}
+	return nil, io.EOF
+
+}
+
+func (i *existsIter) buildRow(primary, secondary sql.Row) sql.Row {
+	toCut := len(i.originalRow) - i.scopeLen
+	row := make(sql.Row, i.rowSize-toCut)
+
+	scope := primary[:i.scopeLen]
+	primary = primary[len(i.originalRow):]
+
+	var first, second sql.Row
+	var secondOffset int
+	switch i.typ {
+	case RightJoinType:
+		first = secondary
+		second = primary
+		secondOffset = len(row) - len(second)
+	default:
+		first = primary
+		second = secondary
+		secondOffset = i.scopeLen + len(first)
+	}
+
+	copy(row, scope)
+	copy(row[i.scopeLen:], first)
+	copy(row[secondOffset:], second)
+
+	return row
+}
+
+func (i *existsIter) Close(ctx *sql.Context) (err error) {
+	if i.primary != nil {
+		if err = i.primary.Close(ctx); err != nil {
+			if i.secondary != nil {
+				_ = i.secondary.Close(ctx)
+			}
+			return err
+		}
+
+	}
+
+	if i.secondary != nil {
+		err = i.secondary.Close(ctx)
+		i.secondary = nil
+	}
+
+	return err
+}
+
 // makeNullable will return a copy of the received columns, but all of them
 // will be turned into nullable columns.
 func makeNullable(cols []*sql.Column) []*sql.Column {
@@ -773,22 +787,8 @@ type FullOuterJoin struct {
 	*joinBase
 }
 
-func (j *FullOuterJoin) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
-	ret := *j
-	ret.Filter = expression[0]
-	return &ret, nil
-}
-
-func (j *FullOuterJoin) WithScopeLen(i int) JoinNode {
-	ret := *j
-	ret.ScopeLen = i
-	return &ret
-}
-
-func (j *FullOuterJoin) WithMultipassMode() JoinNode {
-	ret := *j
-	ret.JoinMode = multipassMode
-	return &ret
+func (j *FullOuterJoin) Schema() sql.Schema {
+	return append(makeNullable(j.left.Schema()), makeNullable(j.right.Schema())...)
 }
 
 func (j *FullOuterJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -804,100 +804,67 @@ func (j *FullOuterJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	}, nil
 }
 
-func (j *FullOuterJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewFullOuterJoin(children[0], children[1], j.Filter), nil
-}
-
-var _ sql.Node = (*SemiJoin)(nil)
-var _ JoinNode = (*SemiJoin)(nil)
-var _ sql.Expressioner = (*SemiJoin)(nil)
-
 func NewSemiJoin(left, right sql.Node, filter sql.Expression) *SemiJoin {
 	return &SemiJoin{
-		&joinBase{
-			Op:         SemiJoinType,
-			BinaryNode: BinaryNode{left: left, right: right},
-			Filter:     filter,
+		&existsJoinBase{
+			&joinBase{
+				Op:         SemiJoinType,
+				BinaryNode: BinaryNode{left: left, right: right},
+				Filter:     filter,
+			},
+		},
+	}
+}
+
+func NewAntiJoin(left, right sql.Node, filter sql.Expression) *AntiJoin {
+	return &AntiJoin{
+		&existsJoinBase{
+			&joinBase{
+				Op:         AntiJoinType,
+				BinaryNode: BinaryNode{left: left, right: right},
+				Filter:     filter,
+			},
 		},
 	}
 }
 
 type SemiJoin struct {
+	*existsJoinBase
+}
+
+type AntiJoin struct {
+	*existsJoinBase
+}
+
+type existsJoinBase struct {
 	*joinBase
-}
-
-func (j *SemiJoin) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
-	ret := *j
-	ret.Filter = expression[0]
-	return &ret, nil
-}
-
-func (j *SemiJoin) WithScopeLen(i int) JoinNode {
-	ret := *j
-	ret.ScopeLen = i
-	return &ret
-}
-
-func (j *SemiJoin) WithMultipassMode() JoinNode {
-	ret := *j
-	ret.JoinMode = multipassMode
-	return &ret
-}
-
-func (j *SemiJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// for every row in inner
-	// check whether any row in outer matches
-	// lookup? range?
-	panic("")
-}
-
-func (j *SemiJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewSemiJoin(children[0], children[1], j.Filter), nil
 }
 
 var _ sql.Node = (*AntiJoin)(nil)
 var _ JoinNode = (*AntiJoin)(nil)
 var _ sql.Expressioner = (*AntiJoin)(nil)
+var _ sql.Node = (*SemiJoin)(nil)
+var _ JoinNode = (*SemiJoin)(nil)
+var _ sql.Expressioner = (*SemiJoin)(nil)
 
-func NewAntiJoin(left, right sql.Node, filter sql.Expression) *AntiJoin {
-	return &AntiJoin{
-		&joinBase{
-			Op:         AntiJoinType,
-			BinaryNode: BinaryNode{left: left, right: right},
-			Filter:     filter,
-		},
+func (j *existsJoinBase) Schema() sql.Schema {
+	return j.left.Schema()
+}
+
+func (j *existsJoinBase) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	leftIter, err := j.left.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
 	}
-}
-
-type AntiJoin struct {
-	*joinBase
-}
-
-func (j *AntiJoin) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
-	ret := *j
-	ret.Filter = expression[0]
-	return &ret, nil
-}
-
-func (j *AntiJoin) WithScopeLen(i int) JoinNode {
-	ret := *j
-	ret.ScopeLen = i
-	return &ret
-}
-
-func (j *AntiJoin) WithMultipassMode() JoinNode {
-	ret := *j
-	ret.JoinMode = multipassMode
-	return &ret
-}
-
-func (j *AntiJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (j *AntiJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewAntiJoin(children[0], children[1], j.Filter), nil
+	return &existsIter{
+		originalRow:       row,
+		typ:               j.Op,
+		primary:           leftIter,
+		secondaryProvider: j.right,
+		cond:              j.Filter,
+		scopeLen:          j.ScopeLen,
+		rowSize:           len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+	}, nil
 }
 
 type GroupJoin struct{}

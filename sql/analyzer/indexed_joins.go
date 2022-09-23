@@ -720,7 +720,7 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
-			if !(joinIndex.joinPosition == plan.LeftJoinType && joinIndex.joinType == plan.RightJoinType) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+			if !(joinIndex.joinPosition == plan.RightJoinType && joinIndex.joinType == plan.RightJoinType) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
 				// the first condition permits more flexible IndexedJoins
 				//todo(max): understand why right handed index positioning
 				// interferes with index join planning. zach thinks this might

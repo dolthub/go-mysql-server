@@ -352,6 +352,9 @@ func convertFiltersToIndexedAccess(
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
 			// this probably fails for *plan.Union also, we just don't have tests for it
 			return false
+		case *plan.SemiJoin, *plan.AntiJoin:
+			// avoid changing anti and semi join condition indexes
+			return false
 		}
 
 		switch c.Parent.(type) {

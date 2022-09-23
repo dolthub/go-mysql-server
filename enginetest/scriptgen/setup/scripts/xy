@@ -1,21 +1,21 @@
 exec
-CREATE table xy (x int primary key, y int)
+CREATE table xy (x int primary key, y int);
 ----
 
 exec
-CREATE table uv (u int primary key, v int)
+CREATE table uv (u int primary key, v int);
 ----
 
 exec
-CREATE table ab (a int primary key, b int)
+CREATE table ab (a int primary key, b int);
 ----
 
 exec
-CREATE table pq (p int primary key, q int)
+CREATE table pq (p int primary key, q int);
 ----
 
 exec
-CREATE table mn (m int primary key, n int)
+CREATE table mn (m int primary key, n int);
 ----
 
 exec
