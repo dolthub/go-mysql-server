@@ -62,12 +62,9 @@ var PlanTests = []QueryPlanTest{
 		Query: `select * from uv where exists (select 1, count(a) from ab where u = a group by a)`,
 		ExpectedPlan: "SemiJoin(uv.u = ab.a)\n" +
 			" ├─ Table(uv)\n" +
-			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(ab.a, 1, COUNT(ab.a))\n" +
-			"     ├─ Grouping(ab.a)\n" +
-			"     └─ IndexedTableAccess(ab)\n" +
-			"         ├─ index: [ab.a]\n" +
-			"         └─ columns: [a]\n" +
+			" └─ IndexedTableAccess(ab)\n" +
+			"     ├─ index: [ab.a]\n" +
+			"     └─ columns: [a]\n" +
 			"",
 	},
 	{

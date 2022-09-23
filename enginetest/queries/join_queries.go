@@ -28,6 +28,10 @@ var JoinQueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
+		Query:    "select * from uv where exists (select 1, count(a) from ab where u = a group by a)",
+		Expected: []sql.Row{{0, 1}, {1, 1}, {2, 2}, {3, 2}},
+	},
+	{
 		Query: `
 select * from
 (

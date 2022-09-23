@@ -54,11 +54,7 @@ func hoistSelectExists(
 		}
 
 		if gb, ok := right.(*plan.GroupBy); ok {
-			var err error
-			right, err = passhroughGroupByCols(ctx, scope, a, gb)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
+			right = gb.Child
 		}
 
 		outerFilters, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, append(left.Schema(), right.Schema()...), outerFilters...)
@@ -163,25 +159,4 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int) (sql.Node, []sql.Expre
 		return nil, nil
 	}
 	return n, outerFilters
-}
-
-func passhroughGroupByCols(ctx *sql.Context, scope *Scope, a *Analyzer, n *plan.GroupBy) (*plan.GroupBy, error) {
-	relSch := n.Child.Schema()
-	newSch := append(n.Schema(), relSch...)
-	passthrough := make([]sql.Expression, len(relSch)+len(n.SelectedExprs))
-	for i, c := range n.Child.Schema() {
-		passthrough[i] = expression.NewGetFieldWithTable(i, c.Type, c.Source, c.Name, c.Nullable)
-	}
-	for i, e := range n.SelectedExprs {
-		passthrough[i+len(relSch)] = e
-	}
-	passthrough, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, newSch, passthrough...)
-	if err != nil {
-		return n, nil
-	}
-	groupByExprs, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, newSch, n.GroupByExprs...)
-	if err != nil {
-		return n, nil
-	}
-	return plan.NewGroupBy(passthrough, groupByExprs, n.Child), nil
 }
