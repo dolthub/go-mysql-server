@@ -67,6 +67,10 @@ type ScriptTestAssertion struct {
 	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool
 
+	// Skip is used to completely skip a test, not execute its query at all, and record it as a skipped test
+	// in the test suite results.
+	Skip bool
+
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]sql.Expression
 }
