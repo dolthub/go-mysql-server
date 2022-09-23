@@ -39,11 +39,7 @@ var ColumnAliasQueries = []ScriptTest{
 						Type: sql.Int64,
 					},
 				},
-				Expected: []sql.Row{
-					{int64(1)},
-					{int64(2)},
-					{int64(3)},
-				},
+				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 			},
 			{
 				Query: `SELECT i AS cOl, s as COL FROM mytable`,
@@ -57,11 +53,7 @@ var ColumnAliasQueries = []ScriptTest{
 						Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 					},
 				},
-				Expected: []sql.Row{
-					{int64(1), "first row"},
-					{int64(2), "second row"},
-					{int64(3), "third row"},
-				},
+				Expected: []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 			},
 			{
 				// Projection expressions may NOT reference aliases defined in projection expressions
@@ -70,7 +62,7 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedErr: sql.ErrMisusedAlias,
 			},
 			{
-				// The SQL standard disallows aliases from being used in filter conditions
+				// The SQL standard disallows aliases in the same scope from being used in filter conditions
 				Query:       `SELECT i AS cOl, s as COL FROM mytable where cOl = 1`,
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
@@ -85,8 +77,8 @@ var ColumnAliasQueries = []ScriptTest{
 				Expected: []sql.Row{{1}},
 			},
 			{
-				// If there is ambiguity between one table column and one alias, the alias gets precedence.
-				// This is opposite from subqueries in projection expressions.
+				// If there is ambiguity between one table column and one alias, the alias gets precedence in the order
+				// by clause. (This is different from subqueries in projection expressions.)
 				Query:    "select v as u from uv order by u;",
 				Expected: []sql.Row{{0}, {1}, {2}, {3}},
 			},
@@ -124,11 +116,6 @@ var ColumnAliasQueries = []ScriptTest{
 				// Having clause may reference expression aliases from current scope
 				Query:    "select t1.u as a from uv as t1 having a = t1.u order by a;",
 				Expected: []sql.Row{{0}, {1}, {2}, {3}},
-			},
-			{
-				// When there is ambiguity between alias and column name in a where clause, the column should be selected
-				Query:    "select 1 as u from uv where u > 1;",
-				Expected: []sql.Row{{1}, {1}},
 			},
 			{
 				// Expression aliases work when implicitly referenced by ordinal position
@@ -183,6 +170,12 @@ var ColumnAliasQueries = []ScriptTest{
 				// https://github.com/dolthub/dolt/issues/4344
 				Query:    "select x as v, (select u from uv where v = y) as u from xy;",
 				Expected: []sql.Row{{0, 3}, {1, 2}, {2, 1}, {3, 0}},
+			},
+			{
+				// When multiple aliases are defined with the same name, a subquery prefers the first definition
+				// TODO: GMS currently returns {0, 0, 0} The second a alias seems to get overwritten.
+				Query:    "select 0 as a, 1 as a, (SELECT x from xy where x = a);",
+				Expected: []sql.Row{{0, 1, 0}},
 			},
 			{
 				Query:    "SELECT 1 as a, (select a) as a;",
