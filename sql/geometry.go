@@ -17,7 +17,6 @@ package sql
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
 	"math"
 	"reflect"
 
@@ -373,9 +372,7 @@ func (t GeometryType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 		buf = SerializePolygon(val)
 	}
 
-	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
-
-	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
+	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.

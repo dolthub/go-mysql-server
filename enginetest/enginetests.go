@@ -4625,37 +4625,63 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	q := []queries.QueryTest{
 		{
-			Query:    "SELECT * FROM mytable ORDER BY i",
-			Expected: []sql.Row{{int64(1), "first row"}},
+			Query:    "SELECT i FROM mytable ORDER BY i",
+			Expected: []sql.Row{{1}, {2}},
 		},
 		{
-			Query: "SELECT * FROM mytable ORDER BY i LIMIT 2",
-			Expected: []sql.Row{
-				{int64(1), "first row"},
-				{int64(2), "second row"},
-			},
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 3) t",
+			Expected: []sql.Row{{1}, {2}},
 		},
 		{
-			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 2) t",
-			Expected: []sql.Row{{int64(1)}},
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
+			Expected: []sql.Row{{1}, {2}, {3}},
 		},
-		// TODO: this is broken: the session limit is applying inappropriately to the subquery
-		// {
-		// 	"SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 2",
-		// 	[]sql.Row{{int64(1)}},
-		// },
+		{
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
+			Expected: []sql.Row{{1}, {2}, {3}},
+		},
+		{
+			Query:    "select count(*), y from a group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "select count(*), y from (select y from a) b group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "select count(*), y from (select y from a) b group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "with b as (select y from a order by x) select * from b",
+			Expected: []sql.Row{{1}, {1}},
+		},
+		{
+			Query:    "select x, row_number() over (partition by y) from a order by x;",
+			Expected: []sql.Row{{0, 1}, {1, 2}},
+		},
+		{
+			Query:    "select y from a where x < 1 union select y from a where x > 1",
+			Expected: []sql.Row{{1}, {2}},
+		},
 	}
 
-	harness.Setup(setup.MydbData, setup.MytableData)
+	customSetup := []setup.SetupScript{{
+		"Create table a (x int primary key, y int);",
+		"Insert into a values (0,1), (1,1), (2,2), (3,2), (4,2), (5,3),(6,3);",
+	}}
+	harness.Setup(setup.MydbData, setup.MytableData, customSetup)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(1))
+	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(2))
 	require.NoError(t, err)
 
 	for _, tt := range q {
-		TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		})
 	}
 }
 
@@ -5572,9 +5598,12 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT (9))", sql.ErrInvalidDefaultValueOrder)
 	})
 
-	t.Run("TEXT literals", func(t *testing.T) {
+	t.Run("Blob types can't define defaults with literals", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)")
+		AssertErr(t, e, harness, "ALTER TABLE t34 alter column v1 set default '{}'", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "ALTER TABLE t34 alter column v1 set default ('{}')")
 	})
 
 	t.Run("Other types using NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
