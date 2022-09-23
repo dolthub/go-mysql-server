@@ -35,7 +35,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			}
 
 			if len(n.Columns) > 0 {
-				schemaLen := schemaLength(n.Child)
+				schemaLen := schemaLength(child)
 				if schemaLen != len(n.Columns) {
 					return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
 				}

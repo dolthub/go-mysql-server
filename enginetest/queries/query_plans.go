@@ -24,6 +24,103 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `with cte (a,b) as (select * from ab) select * from cte`,
+		ExpectedPlan: "SubqueryAlias(cte)\n" +
+			" └─ Table(ab)\n" +
+			"     └─ columns: [a b]\n" +
+			"",
+	},
+	{
+		Query: `select * from ab where exists (select * from uv where a = 1)`,
+		ExpectedPlan: "SemiJoin(ab.a = 1)\n" +
+			" ├─ Table(ab)\n" +
+			" └─ Table(uv)\n" +
+			"     └─ columns: [u v]\n" +
+			"",
+	},
+	{
+		Query: `select * from ab where exists (select * from ab where a = 1)`,
+		ExpectedPlan: "FilterEXISTS (IndexedTableAccess(ab)\n" +
+			" ├─ index: [ab.a]\n" +
+			" ├─ filters: [{[1, 1]}]\n" +
+			" └─ columns: [a b]\n" +
+			")\n" +
+			" └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `select * from ab s where exists (select * from ab where a = 1 or s.a = 1)`,
+		ExpectedPlan: "FilterEXISTS (Filter((ab.a = 1) OR (s.a = 1))\n" +
+			" └─ Table(ab)\n" +
+			"     └─ columns: [a b]\n" +
+			")\n" +
+			" └─ TableAlias(s)\n" +
+			"     └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `select * from uv where exists (select 1, count(a) from ab where u = a group by a)`,
+		ExpectedPlan: "SemiJoin(uv.u = ab.a)\n" +
+			" ├─ Table(uv)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(ab.a, 1, COUNT(ab.a))\n" +
+			"     ├─ Grouping(ab.a)\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ columns: [a]\n" +
+			"",
+	},
+	{
+		Query: `select count(*) cnt from ab where exists (select * from xy where x = a) group by a`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(*) as cnt]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(*))\n" +
+			"     ├─ Grouping(ab.a)\n" +
+			"     └─ FilterEXISTS (Filter(xy.x = ab.a)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             └─ columns: [x y]\n" +
+			"        )\n" +
+			"         └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `with cte(a,b) as (select * from ab) select * from xy where exists (select * from cte where a = x)`,
+		ExpectedPlan: "FilterEXISTS (Filter(cte.a = xy.x)\n" +
+			" └─ SubqueryAlias(cte)\n" +
+			"     └─ Table(ab)\n" +
+			"         └─ columns: [a b]\n" +
+			")\n" +
+			" └─ Table(xy)\n" +
+			"",
+	},
+	{
+		Query: `select * from xy where exists (select * from ab where a = x) order by x`,
+		ExpectedPlan: "Sort(xy.x ASC)\n" +
+			" └─ FilterEXISTS (Filter(ab.a = xy.x)\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ columns: [a b]\n" +
+			"    )\n" +
+			"     └─ Table(xy)\n" +
+			"",
+	},
+	{
+		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
+		ExpectedPlan: "Limit(5)\n" +
+			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
+			"     └─ FilterEXISTS (Limit(2)\n" +
+			"         └─ TopN(Limit: [2]; ab.a ASC)\n" +
+			"             └─ Filter(ab.a = xy.x)\n" +
+			"                 └─ IndexedTableAccess(ab)\n" +
+			"                     ├─ index: [ab.a]\n" +
+			"                     └─ columns: [a b]\n" +
+			"        )\n" +
+			"         └─ Table(xy)\n" +
+			"",
+	},
+	{
 		Query: `
 select * from
 (

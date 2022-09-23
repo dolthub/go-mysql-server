@@ -142,11 +142,7 @@ func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map
 		subquery := cte.Subquery
 
 		if len(cte.Columns) > 0 {
-			schemaLen := schemaLength(subquery)
-			if schemaLen != len(cte.Columns) {
-				return nil, sql.ErrColumnCountMismatch.New()
-			}
-
+			// wait until we've resolved stars to error for column mismatch
 			subquery = subquery.WithColumns(cte.Columns)
 		}
 

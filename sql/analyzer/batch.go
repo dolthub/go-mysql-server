@@ -69,6 +69,7 @@ func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	}
 
 	nodesEq := nodesEqual(prev, cur)
+	same := transform.TreeIdentity(nodesEq)
 	if b.Iterations == 1 {
 		return cur, transform.TreeIdentity(nodesEq), nil
 	}
@@ -92,10 +93,11 @@ func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		// modifications. False positives, where a rule incorrectly states
 		// report sql.NewTree, are the primary barrier.
 		nodesEq = nodesEqual(prev, cur)
+		same = same && transform.TreeIdentity(nodesEq)
 		i++
 	}
 
-	return cur, transform.TreeIdentity(!nodesEq), nil
+	return cur, same, nil
 }
 
 // evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result
