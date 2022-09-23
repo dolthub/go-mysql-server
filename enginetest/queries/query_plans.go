@@ -39,8 +39,7 @@ inner join xy on a = x;`,
 			" │       │   ├─ Table(ab)\n" +
 			" │       │   └─ Table(uv)\n" +
 			" │       └─ IndexedTableAccess(pq)\n" +
-			" │           ├─ index: [pq.p]\n" +
-			" │           └─ columns: [p q]\n" +
+			" │           └─ index: [pq.p]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     └─ columns: [x y]\n" +
@@ -57,13 +56,10 @@ where exists
 );`,
 		ExpectedPlan: "SemiJoin(ab.a = uv.u)\n" +
 			" ├─ Table(ab)\n" +
-			" └─ LeftIndexedJoin(uv.u = pq.p)\n" +
+			" └─ LeftJoin(uv.u = pq.p)\n" +
 			"     ├─ IndexedTableAccess(uv)\n" +
-			"     │   ├─ index: [uv.u]\n" +
-			"     │   └─ columns: [u v]\n" +
-			"     └─ IndexedTableAccess(pq)\n" +
-			"         ├─ index: [pq.p]\n" +
-			"         └─ columns: [p q]\n" +
+			"     │   └─ index: [uv.u]\n" +
+			"     └─ Table(pq)\n" +
 			"",
 	},
 	{
@@ -80,11 +76,9 @@ where exists (select * from pq where a = p)
 			" │   └─ AntiJoin(ab.a = uv.u)\n" +
 			" │       ├─ Table(ab)\n" +
 			" │       └─ IndexedTableAccess(uv)\n" +
-			" │           ├─ index: [uv.u]\n" +
-			" │           └─ columns: [u v]\n" +
+			" │           └─ index: [uv.u]\n" +
 			" └─ IndexedTableAccess(pq)\n" +
-			"     ├─ index: [pq.p]\n" +
-			"     └─ columns: [p q]\n" +
+			"     └─ index: [pq.p]\n" +
 			"",
 	},
 	{
@@ -93,23 +87,14 @@ select * from ab
 inner join uv on a = u
 full join pq on a = p
 `,
-		ExpectedPlan: "Union distinct\n" +
-			" ├─ LeftJoin(ab.a = pq.p)\n" +
-			" │   ├─ InnerJoin(ab.a = uv.u)\n" +
-			" │   │   ├─ Table(ab)\n" +
-			" │   │   │   └─ columns: [a b]\n" +
-			" │   │   └─ Table(uv)\n" +
-			" │   │       └─ columns: [u v]\n" +
-			" │   └─ Table(pq)\n" +
-			" │       └─ columns: [p q]\n" +
-			" └─ RightJoin(ab.a = pq.p)\n" +
-			"     ├─ InnerJoin(ab.a = uv.u)\n" +
-			"     │   ├─ Table(ab)\n" +
-			"     │   │   └─ columns: [a b]\n" +
-			"     │   └─ Table(uv)\n" +
-			"     │       └─ columns: [u v]\n" +
-			"     └─ Table(pq)\n" +
-			"         └─ columns: [p q]\n" +
+		ExpectedPlan: "FullOuterJoin(ab.a = pq.p)\n" +
+			" ├─ InnerJoin(ab.a = uv.u)\n" +
+			" │   ├─ Table(ab)\n" +
+			" │   │   └─ columns: [a b]\n" +
+			" │   └─ Table(uv)\n" +
+			" │       └─ columns: [u v]\n" +
+			" └─ Table(pq)\n" +
+			"     └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -152,12 +137,10 @@ inner join pq on true
 			" │   │   └─ AntiJoin(ab.a = xy.x)\n" +
 			" │   │       ├─ Table(ab)\n" +
 			" │   │       └─ IndexedTableAccess(xy)\n" +
-			" │   │           ├─ index: [xy.x]\n" +
-			" │   │           └─ columns: [x y]\n" +
+			" │   │           └─ index: [xy.x]\n" +
 			" │   └─ Table(pq)\n" +
 			" └─ IndexedTableAccess(uv)\n" +
-			"     ├─ index: [uv.u]\n" +
-			"     └─ columns: [u v]\n" +
+			"     └─ index: [uv.u]\n" +
 			"",
 	},
 	{
@@ -169,8 +152,7 @@ inner join pq on true
 			"     │   └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ index: [mytable.i]\n" +
 			"",
 	},
 	{
@@ -182,25 +164,18 @@ inner join pq on true
 			"     │   └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ index: [mytable.i]\n" +
 			"",
 	},
 	{
 		Query: `select i from mytable full join othertable on mytable.i = othertable.i2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i]\n" +
-			" └─ Union distinct\n" +
-			"     ├─ LeftJoin(mytable.i = othertable.i2)\n" +
-			"     │   ├─ Table(mytable)\n" +
-			"     │   │   └─ columns: [i]\n" +
-			"     │   └─ Table(othertable)\n" +
-			"     │       └─ columns: [i2]\n" +
-			"     └─ RightJoin(mytable.i = othertable.i2)\n" +
-			"         ├─ Table(mytable)\n" +
-			"         │   └─ columns: [i]\n" +
-			"         └─ Table(othertable)\n" +
-			"             └─ columns: [i2]\n" +
+			" └─ FullOuterJoin(mytable.i = othertable.i2)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ Table(othertable)\n" +
+			"         └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -1458,8 +1433,9 @@ inner join pq on true
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i = (SELECT i2 FROM othertable LIMIT 1)`,
 		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Limit(1)\n" +
-			" └─ Table(othertable)\n" +
-			"     └─ columns: [i2]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [othertable.i2]\n" +
+			"     └─ Table(othertable)\n" +
 			")))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     └─ index: [mytable.i]\n" +
@@ -1467,8 +1443,9 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable)`,
-		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Table(othertable)\n" +
-			" └─ columns: [i2]\n" +
+		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Project\n" +
+			" ├─ columns: [othertable.i2]\n" +
+			" └─ Table(othertable)\n" +
 			")))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     └─ index: [mytable.i]\n" +
@@ -1476,10 +1453,11 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable WHERE mytable.i = othertable.i2)`,
-		ExpectedPlan: "Filter(mytable.i IN (Filter(mytable.i = othertable.i2)\n" +
-			" └─ IndexedTableAccess(othertable)\n" +
-			"     ├─ index: [othertable.i2]\n" +
-			"     └─ columns: [i2]\n" +
+		ExpectedPlan: "Filter(mytable.i IN (Project\n" +
+			" ├─ columns: [othertable.i2]\n" +
+			" └─ Filter(mytable.i = othertable.i2)\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         └─ index: [othertable.i2]\n" +
 			"))\n" +
 			" └─ Table(mytable)\n" +
 			"",
@@ -2662,15 +2640,17 @@ inner join pq on true
 		AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
-			" └─ Filter((NOT((Filter(mytable.i = mt.i)\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{(2, ∞)}]\n" +
-			"         └─ columns: [i]\n" +
-			"    ) IS NULL)) AND (NOT((Filter(othertable.i2 = mt.i)\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         └─ columns: [i2]\n" +
+			" └─ Filter((NOT((Project\n" +
+			"     ├─ columns: [mytable.i]\n" +
+			"     └─ Filter(mytable.i = mt.i)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ filters: [{(2, ∞)}]\n" +
+			"    ) IS NULL)) AND (NOT((Project\n" +
+			"     ├─ columns: [othertable.i2]\n" +
+			"     └─ Filter(othertable.i2 = mt.i)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             └─ index: [othertable.i2]\n" +
 			"    ) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table(mytable)\n" +
@@ -2682,14 +2662,16 @@ inner join pq on true
 		AND (SELECT i2 FROM othertable where i2 = i and i > 2) IS NOT NULL`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
-			" └─ Filter((NOT((Filter(mytable.i = mt.i)\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         └─ columns: [i]\n" +
-			"    ) IS NULL)) AND (NOT((Filter((othertable.i2 = mt.i) AND (mt.i > 2))\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         └─ columns: [i2]\n" +
+			" └─ Filter((NOT((Project\n" +
+			"     ├─ columns: [mytable.i]\n" +
+			"     └─ Filter(mytable.i = mt.i)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             └─ index: [mytable.i]\n" +
+			"    ) IS NULL)) AND (NOT((Project\n" +
+			"     ├─ columns: [othertable.i2]\n" +
+			"     └─ Filter((othertable.i2 = mt.i) AND (mt.i > 2))\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             └─ index: [othertable.i2]\n" +
 			"    ) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table(mytable)\n" +
@@ -2700,10 +2682,11 @@ inner join pq on true
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [t1.pk, t2.pk2, (Limit(1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [one_pk.pk]\n" +
+			"     │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           └─ filters: [{[1, 1]}]\n" +
 			"     │  ) as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +

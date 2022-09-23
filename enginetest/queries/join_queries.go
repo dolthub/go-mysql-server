@@ -75,11 +75,11 @@ where exists (select * from xy where a = x);`,
 		Query: `
 select * from ab
 inner join uv on a = u
-full join pq on a = p;`,
+full join pq on a = p order by 1,2,3,4,5,6;`,
 		Expected: []sql.Row{
-			{1, 2, 0, 1, 0, 0},
+			{0, 2, 0, 1, 0, 0},
 			{1, 2, 1, 1, 1, 1},
-			{3, 2, 2, 2, 2, 2},
+			{2, 2, 2, 2, 2, 2},
 			{3, 1, 3, 2, 3, 3},
 		},
 	},
@@ -91,12 +91,12 @@ select * from
   inner join xy on true
 ) alias1
 inner join uv on true
-inner join pq on true order by 1,2,3 limit 5;`,
+inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		Expected: []sql.Row{
-			{0, 2, 0, 2, 0, 1, 2, 2},
-			{0, 2, 0, 2, 0, 1, 3, 3},
 			{0, 2, 0, 2, 0, 1, 0, 0},
 			{0, 2, 0, 2, 0, 1, 1, 1},
+			{0, 2, 0, 2, 0, 1, 2, 2},
+			{0, 2, 0, 2, 0, 1, 3, 3},
 			{0, 2, 0, 2, 1, 1, 0, 0},
 		},
 	},

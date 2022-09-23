@@ -632,6 +632,14 @@ type existsIter struct {
 	originalRow sql.Row
 	scopeLen    int
 	rowSize     int
+	dispose     sql.DisposeFunc
+}
+
+func (i *existsIter) Dispose() {
+	if i.dispose != nil {
+		i.dispose()
+		i.dispose = nil
+	}
 }
 
 func (i *existsIter) loadPrimary(ctx *sql.Context) error {
@@ -660,6 +668,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		left := i.originalRow.Append(r)
 		rIter, err := i.secondaryProvider.RowIter(ctx, left)
+		defer rIter.Close(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -667,22 +676,28 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			right, err := rIter.Next(ctx)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
-					if i.typ == AntiJoinType {
-						return left, nil
+					if i.typ == SemiJoinType {
+						// reset iter, no match
+						break
 					}
-					break
+					return left, nil
 				}
 				return nil, err
 			}
 
 			row := i.buildRow(left, right)
 			matches, err := conditionIsTrue(ctx, row, i.cond)
-			if (i.typ == SemiJoinType && !matches) || (i.typ == AntiJoinType && matches) {
+			if !matches {
 				continue
+			}
+			if i.typ == AntiJoinType {
+				// reset iter, found match -> no return row
+				break
 			}
 			return left, nil
 		}
 	}
+	i.primary.Close(ctx)
 	return nil, io.EOF
 
 }
@@ -783,6 +798,9 @@ func NewFullOuterJoin(left, right sql.Node, filter sql.Expression) *FullOuterJoi
 	}
 }
 
+// FullOuterJoin returns all rows from two tables, deduplicating
+// rows that match a join condition. This is equivalent to
+// FULL_JOIN(A,B) => UNION(LEFT_JOIN(A,B), RIGHT_JOIN(A,B)).
 type FullOuterJoin struct {
 	*joinBase
 }
@@ -792,16 +810,17 @@ func (j *FullOuterJoin) Schema() sql.Schema {
 }
 
 func (j *FullOuterJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	left, err := joinRowIter(ctx, LeftJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+	iter, err := joinRowIter(ctx, LeftJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
 	if err != nil {
 		return nil, err
 	}
-	return &unionIter{
-		cur: left,
+	iter = &unionIter{
+		cur: iter,
 		nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
 			return joinRowIter(ctx, RightJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
 		},
-	}, nil
+	}
+	return newDistinctIter(ctx, iter), nil
 }
 
 func NewSemiJoin(left, right sql.Node, filter sql.Expression) *SemiJoin {
@@ -828,10 +847,18 @@ func NewAntiJoin(left, right sql.Node, filter sql.Expression) *AntiJoin {
 	}
 }
 
+// SemiJoin represents a set intersect (WHERE EXISTS) between
+// two tables on a filter condition. In other words, a semi join
+// returns rows from the left table if one or more rows
+// from the right table match the join condition.
 type SemiJoin struct {
 	*existsJoinBase
 }
 
+// AntiJoin represents a NOT set intersect (WHERE NOT EXISTS) between
+// two tables on a filter condition. In other words, an anit join
+// returns rows from the left table only if zero rows
+// from the right table match the join condition.
 type AntiJoin struct {
 	*existsJoinBase
 }

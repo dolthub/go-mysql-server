@@ -397,7 +397,7 @@ func replanJoin(
 			// itself has already been analyzed. Do not inspect
 			// below here.
 			return false
-		case *plan.CrossJoin:
+		case *plan.CrossJoin, *plan.SemiJoin, *plan.AntiJoin, *plan.FullOuterJoin:
 			// cross join subtrees have to be planned in isolation,
 			// but otherwise are valid leafs for join planning.
 			return false
