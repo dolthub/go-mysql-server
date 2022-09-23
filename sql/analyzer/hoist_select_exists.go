@@ -42,15 +42,11 @@ func hoistSelectExists(
 		}
 
 		left, right, outerFilters, joinType := pluckCorrelatedExistsSubquery(f)
-		if left == nil {
-			panic("unexpected: no relation found in scope")
-		}
-
 		if len(outerFilters) == 0 {
 			return n, transform.SameTree, nil
 		}
-		if right == nil {
-			panic("unexpected empty subquery")
+		if right == nil || left == nil {
+			panic("unexpected empty scope")
 		}
 
 		switch r := right.(type) {
@@ -105,6 +101,9 @@ func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, sql.Node, []s
 			joinType = plan.AntiJoinType
 		default:
 		}
+	}
+	if len(outerFilters) == 0 {
+		return nil, nil, nil, plan.UnknownJoinType
 	}
 	if len(newFilters) == 0 {
 		return filter.Child, decorrelated, outerFilters, joinType

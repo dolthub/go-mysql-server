@@ -102,7 +102,6 @@ const (
 	applyRowUpdateAccumulatorsId  // applyRowUpdateAccumulators
 	wrapWithRollbackId            // rollback triggers
 	applyFKsId                    // applyFKs
-	reifyFullOuterJoinId          // reifyFullOuterJoin
 
 	// validate
 	validateResolvedId          // validateResolved

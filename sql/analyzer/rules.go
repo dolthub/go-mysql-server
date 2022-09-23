@@ -121,7 +121,6 @@ var OnceAfterDefault = []Rule{
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
 	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
-	//{reifyFullOuterJoinId, reifyFullOuterJoin},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.
