@@ -411,14 +411,17 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 				tablesFound := make([]string, 0, len(tablesForColumn))
 				for _, tableName := range tablesForColumn {
 					if tableName == "" {
-						aliasesFound = append(aliasesFound, tableName)
+						// Regardless of the number of aliases defined with a specific alias name, tablesForColumnAtLevel
+						// currently returns a single empty string to represent them, so check in another datastructure
+						// to see how many alias definitions actually used this name.
+						for range symbols[scopeLevel].availableAliases[name] {
+							aliasesFound = append(aliasesFound, tableName)
+						}
 					} else {
 						tablesFound = append(tablesFound, tableName)
 					}
 				}
 
-				// TODO: How about if there is a column name that matches at the same scope, but there is an alias
-				//       available at an outer scope that should be preferred? Concrete test cases?
 				switch node.(type) {
 				case *plan.Sort, *plan.Having:
 					// For order by and having clauses... prefer an alias over a column when there is ambiguity
@@ -429,23 +432,17 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 							return col, transform.SameTree, sql.ErrAmbiguousColumnOrAliasName.New(col.Name())
 						}
 					} else if len(aliasesFound) == 1 {
-						// TODO: Why are we checking this, too? Need to explain this in a comment...
-						if availableAliases, ok := symbols[scopeLevel].availableAliases[col.Name()]; ok {
-							if len(availableAliases) > 1 {
-								return col, transform.SameTree, sql.ErrAmbiguousColumnOrAliasName.New(col.Name())
-							}
-						}
 						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
 					} else if len(aliasesFound) > 1 {
 						return col, transform.SameTree, sql.ErrAmbiguousColumnOrAliasName.New(col.Name())
 					}
 				default:
-					// TODO: Need to do more testing on this code and to clean up this nested switch in a switch; hard
-					//       to reason about and messy
 					// otherwise, prefer the table column...
 					if len(tablesFound) == 1 {
 						return expression.NewUnresolvedQualifiedColumn(tablesFound[0], col.Name()), transform.NewTree, nil
-					} else if len(aliasesFound) == 1 {
+					} else if len(aliasesFound) > 0 {
+						// MySQL allows ambiguity with multiple alias names in some situations, so identify this as an
+						// alias reference and resolve the exact alias definition later
 						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
 					}
 				}
@@ -455,10 +452,7 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 		}
 
 		if !canAccessAliasAtCurrentScope {
-			// return an error if we can't find a column after searching all levels and we can't hope that this might be an alias
-			// TODO: When could this actually be an alias that we don't know about yet?
-			// TODO: is it safer to just return a deferred column? Should we do this for
-			//return col, transform.SameTree, sql.ErrColumnNotFound.New(col.Name())
+			// return a deferredColumn if we still can't find a column and know this couldn't be an alias reference
 			return &deferredColumn{expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name())}, transform.NewTree, nil
 		}
 
