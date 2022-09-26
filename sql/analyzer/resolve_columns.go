@@ -120,7 +120,7 @@ func newScopeLevelSymbols() *scopeLevelSymbols {
 }
 
 // availableNames tracks available table and column name symbols at each scope level for a query, where level 0
-// is the top-level, most outer scope and each additional level is one layer of query scope inward.
+// is the top-level, outermost scope and each additional level is one layer of query scope inward.
 type availableNames map[int]*scopeLevelSymbols
 
 // indexColumn adds a column with the given table and column name at the given scope level
@@ -280,6 +280,9 @@ func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) 
 	return checks.FromExpressions(newExprs)
 }
 
+// getAvailableNamesByScope searches the node |n|, the current query being analyzed, as well as any nodes from outer
+// scope levels contained in |scope| in order to calculate the available columns, tables, and aliases available to
+// the current scope.
 func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	symbols := make(availableNames)
 
@@ -288,13 +291,10 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	scopeNodes = append(scopeNodes, scope.InnerToOuter()...)
 	currentScopeLevel := len(scopeNodes)
 
-	// Scope 0 should be top level node, scope 1 should be the current/nested node
 	// Examine all columns, from the innermost scope (this node) outward.
-	getColumnsInNodes(n.Children(), symbols, currentScopeLevel-1) // TODO: Why don't we pass in the full node n?
+	getColumnsInNodes(n.Children(), symbols, currentScopeLevel-1)
 	for _, currentScopeNode := range scopeNodes {
 		getColumnsInNodes([]sql.Node{currentScopeNode}, symbols, currentScopeLevel-1)
-
-		// TODO: Can we remove this somehow?
 		currentScopeLevel--
 	}
 
@@ -340,6 +340,9 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	return symbols
 }
 
+// qualifyExpression examines the specified expression |e|, coming from the specified node |node|, and uses the |availableNames|
+// symbol map to identify the table or expression alias an unqualified column reference should map to. The updated,
+// qualified expression is returned along with the transform identity, or any error encountered.
 func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) (sql.Expression, transform.TreeIdentity, error) {
 	switch col := e.(type) {
 	case column:
@@ -379,15 +382,12 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 			}
 		}
 
-		// Look in all the scopes, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
-		// match for the column name. If any scope has ambiguity in available column names, that's an error.
-		name := strings.ToLower(col.Name())
+		// Look in all the scopes (reversing them so we go from inner to outer), to identify the column. Stop as soon as
+		// we have a scope with exactly 1 match for the column name. If there is ambiguity in available column names,
+		// that's an error.
 		levels := symbols.levels()
-
-		// Reverse the levels so that we go from inner scope to outer scopes looking for a match
 		sort.Sort(sort.Reverse(sort.IntSlice(levels)))
-		maxLevel := levels[0]
-
+		name := strings.ToLower(col.Name())
 		for _, scopeLevel := range levels {
 			tablesForColumn := symbols.tablesForColumnAtLevel(name, scopeLevel)
 			switch len(tablesForColumn) {
@@ -395,10 +395,9 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 				// This column could be in an outer scope, keep going
 				continue
 			case 1:
-				// This indicates we found a match with an alias definition.
 				if tablesForColumn[0] == "" {
-					if canAccessAliasAtCurrentScope || scopeLevel != maxLevel {
-						// TODO: Make sure there is only one alias registered, otherwise it's an error (or a warning sometimes)
+					// This indicates we found a match with an alias definition
+					if canAccessAliasAtCurrentScope || scopeLevel != levels[0] {
 						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
 					}
 				} else {
@@ -427,20 +426,18 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 						if len(tablesFound) == 1 {
 							return expression.NewUnresolvedQualifiedColumn(tablesFound[0], col.Name()), transform.NewTree, nil
 						} else if len(tablesFound) > 1 {
-							// TODO: This error is specific to OrderBy
-							return col, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(col.Name())
+							return col, transform.SameTree, sql.ErrAmbiguousColumnOrAliasName.New(col.Name())
 						}
 					} else if len(aliasesFound) == 1 {
 						// TODO: Why are we checking this, too? Need to explain this in a comment...
 						if availableAliases, ok := symbols[scopeLevel].availableAliases[col.Name()]; ok {
 							if len(availableAliases) > 1 {
-								return col, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(col.Name())
+								return col, transform.SameTree, sql.ErrAmbiguousColumnOrAliasName.New(col.Name())
 							}
 						}
 						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
 					} else if len(aliasesFound) > 1 {
-						// TODO: This error is specific to OrderBy
-						return col, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(col.Name())
+						return col, transform.SameTree, sql.ErrAmbiguousColumnOrAliasName.New(col.Name())
 					}
 				default:
 					// TODO: Need to do more testing on this code and to clean up this nested switch in a switch; hard

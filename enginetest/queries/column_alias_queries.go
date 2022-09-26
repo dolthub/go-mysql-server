@@ -83,9 +83,9 @@ var ColumnAliasQueries = []ScriptTest{
 				Expected: []sql.Row{{0}, {1}, {2}, {3}},
 			},
 			{
-				// If there is ambiguity between multiple aliases, it is an error
+				// If there is ambiguity between multiple aliases in an order by clause, it is an error
 				Query:       "select u as u, v as u from uv order by u;",
-				ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
+				ExpectedErr: sql.ErrAmbiguousColumnOrAliasName,
 			},
 			{
 				// GroupBy may use expression aliases in grouping expressions

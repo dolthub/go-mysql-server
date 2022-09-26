@@ -61,6 +61,9 @@ var (
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
 
+	// ErrAmbiguousColumnOrAliasName is returned when a column or alias name can't be qualified to a table or alias definition
+	ErrAmbiguousColumnOrAliasName = errors.NewKind("ambiguous column or alias name %q")
+
 	// ErrAmbiguousColumnInOrderBy is returned when an order by column is ambiguous
 	ErrAmbiguousColumnInOrderBy = errors.NewKind("Column %q in order clause is ambiguous")
 
