@@ -80,9 +80,10 @@ func newConn(connStr string, connId uint32, lgr *logrus.Logger) (conn proxyConn,
 	var c *dbr.Connection
 	for d := 100.0; d < 10000.0; d *= 1.6 {
 		l.Debugf("Attempting connection to MySQL")
-		c, err = dbr.Open("mysql", connStr, nil)
-		if err == nil && c.Ping() == nil {
-			break
+		if c, err = dbr.Open("mysql", connStr, nil); err == nil {
+			if err = c.Ping(); err == nil {
+				break
+			}
 		}
 		time.Sleep(time.Duration(d) * time.Millisecond)
 	}
