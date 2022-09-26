@@ -120,7 +120,7 @@ func newScopeLevelSymbols() *scopeLevelSymbols {
 }
 
 // availableNames tracks available table and column name symbols at each scope level for a query, where level 0
-// is the node being analyzed, and each additional level is one layer of query scope outward.
+// is the top-level, most outer scope and each additional level is one layer of query scope inward.
 type availableNames map[int]*scopeLevelSymbols
 
 // indexColumn adds a column with the given table and column name at the given scope level
@@ -137,7 +137,7 @@ func (a availableNames) indexColumn(table, col string, scopeLevel int) {
 	}
 }
 
-// levels returns a sorted list of the available nesting scope levels
+// levels returns a sorted list of the scope levels for these available name symbols
 func (a availableNames) levels() []int {
 	levels := make([]int, len(a))
 	i := 0
@@ -171,16 +171,6 @@ func (a availableNames) indexTable(alias, name string, scopeLevel int) {
 		a[scopeLevel] = newScopeLevelSymbols()
 	}
 	a[scopeLevel].availableTables[alias] = strings.ToLower(name)
-}
-
-// nesting levels returns all levels present, from inner to outer
-func (a availableNames) nestingLevels() []int {
-	levels := make([]int, len(a))
-	for level := range a {
-		levels = append(levels, level)
-	}
-	sort.Ints(levels)
-	return levels
 }
 
 func (a availableNames) tablesAtLevel(scopeLevel int) map[string]string {
@@ -481,7 +471,6 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 	case *expression.Star:
 		// Make sure that any qualified stars reference known tables
 		if col.Table != "" {
-			//nestingLevels := symbols.nestingLevels()
 			tableFound := false
 			for level := range symbols {
 				tables := symbols.tablesAtLevel(level)
