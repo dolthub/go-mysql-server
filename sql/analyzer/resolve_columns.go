@@ -101,17 +101,17 @@ type column interface {
 	sql.Expression
 }
 
-// nestingLevelSymbols tracks available table and column name symbols at a specific scope level for a query. Each nested
+// scopeLevelSymbols tracks available table and column name symbols at a specific scope level for a query. Each nested
 // subquery in a statement represents an additional scope level.
-type nestingLevelSymbols struct {
+type scopeLevelSymbols struct {
 	availableColumns   map[string][]string
 	availableAliases   map[string][]*expression.Alias
 	availableTables    map[string]string
 	availableTableCols map[tableCol]struct{}
 }
 
-func newNestingLevelSymbols() *nestingLevelSymbols {
-	return &nestingLevelSymbols{
+func newScopeLevelSymbols() *scopeLevelSymbols {
+	return &scopeLevelSymbols{
 		availableColumns:   make(map[string][]string),
 		availableAliases:   make(map[string][]*expression.Alias),
 		availableTables:    make(map[string]string),
@@ -121,14 +121,14 @@ func newNestingLevelSymbols() *nestingLevelSymbols {
 
 // availableNames tracks available table and column name symbols at each scope level for a query, where level 0
 // is the node being analyzed, and each additional level is one layer of query scope outward.
-type availableNames map[int]*nestingLevelSymbols
+type availableNames map[int]*scopeLevelSymbols
 
 // indexColumn adds a column with the given table and column name at the given scope level
 func (a availableNames) indexColumn(table, col string, scopeLevel int) {
 	col = strings.ToLower(col)
 	_, ok := a[scopeLevel]
 	if !ok {
-		a[scopeLevel] = newNestingLevelSymbols()
+		a[scopeLevel] = newScopeLevelSymbols()
 	}
 	tableLower := strings.ToLower(table)
 	if !stringContains(a[scopeLevel].availableColumns[col], tableLower) {
@@ -154,7 +154,7 @@ func (a availableNames) indexAlias(e *expression.Alias, scopeLevel int) {
 	name := strings.ToLower(e.Name())
 	_, ok := a[scopeLevel]
 	if !ok {
-		a[scopeLevel] = newNestingLevelSymbols()
+		a[scopeLevel] = newScopeLevelSymbols()
 	}
 	_, ok = a[scopeLevel].availableAliases[name]
 	if !ok {
@@ -168,7 +168,7 @@ func (a availableNames) indexTable(alias, name string, scopeLevel int) {
 	alias = strings.ToLower(alias)
 	_, ok := a[scopeLevel]
 	if !ok {
-		a[scopeLevel] = newNestingLevelSymbols()
+		a[scopeLevel] = newScopeLevelSymbols()
 	}
 	a[scopeLevel].availableTables[alias] = strings.ToLower(name)
 }
