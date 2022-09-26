@@ -192,7 +192,8 @@ func addIntermediateProjections(
 
 	// If any subqueries reference these aliases, the child of the project also needs it. A subquery expression is just
 	// like a child node in this respect -- it draws its outer scope schema from the child of the node in which it's
-	// embedded. We identify any missing subquery columns by their being deferred from a previous analyzer step.
+	// embedded. We identify any missing subquery columns by their being deferred or marked as an AliasReference
+	// from a previous analyzer step.
 	var deferredColumns []column
 	for _, e := range project.Projections {
 		if a, ok := e.(*expression.Alias); ok {
@@ -203,7 +204,7 @@ func addIntermediateProjections(
 			continue
 		}
 
-		deferredColumns = append(deferredColumns, findDeferredColumns(s.Query)...)
+		deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(s.Query)...)
 	}
 
 	if len(deferredColumns) > 0 {
@@ -229,8 +230,8 @@ func addIntermediateProjections(
 	return child, same, err
 }
 
-// findDeferredColumns returns all the deferredColumn expressions in the node given
-func findDeferredColumns(n sql.Node) []column {
+// findDeferredColumnsAndAliasReferences returns all the deferredColumn and AliasReference expressions in the node given
+func findDeferredColumnsAndAliasReferences(n sql.Node) []column {
 	var cols []column
 	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		switch ee := e.(type) {
