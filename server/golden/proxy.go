@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ func newConn(connStr string, connId uint32, lgr *logrus.Logger) (conn proxyConn,
 	return proxyConn{Connection: c, Entry: l}, nil
 }
 
-// NewConnection reports that a new connection has been established.
+// NewConnection implements mysql.Handler.
 func (h MySqlProxy) NewConnection(c *mysql.Conn) {
 	conn, err := newConn(h.connStr, c.ConnectionID, h.logger)
 	if err == nil {
@@ -121,6 +121,7 @@ func (h MySqlProxy) getConn(connId uint32) (conn proxyConn, err error) {
 	return conn, nil
 }
 
+// ComInitDB implements mysql.Handler.
 func (h MySqlProxy) ComInitDB(c *mysql.Conn, schemaName string) error {
 	conn, err := h.getConn(c.ConnectionID)
 	if err != nil {
@@ -132,21 +133,22 @@ func (h MySqlProxy) ComInitDB(c *mysql.Conn, schemaName string) error {
 	return err
 }
 
-// ComPrepare parses, partially analyzes, and caches a prepared statement's plan
-// with the given [c.ConnectionID].
+// ComPrepare implements mysql.Handler.
 func (h MySqlProxy) ComPrepare(c *mysql.Conn, query string) ([]*querypb.Field, error) {
 	return nil, fmt.Errorf("ComPrepare unsupported")
 }
 
+// ComStmtExecute implements mysql.Handler.
 func (h MySqlProxy) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	return fmt.Errorf("ComStmtExecute unsupported")
 }
 
+// ComResetConnection implements mysql.Handler.
 func (h MySqlProxy) ComResetConnection(c *mysql.Conn) {
 	return
 }
 
-// ConnectionClosed reports that a connection has been closed.
+// ConnectionClosed implements mysql.Handler.
 func (h MySqlProxy) ConnectionClosed(c *mysql.Conn) {
 	conn, ok := h.conns[c.ConnectionID]
 	if !ok {
@@ -156,8 +158,10 @@ func (h MySqlProxy) ConnectionClosed(c *mysql.Conn) {
 		lgr := logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID)
 		lgr.Errorf("Error closing connection")
 	}
+	delete(h.conns, c.ConnectionID)
 }
 
+// ComMultiQuery implements mysql.Handler.
 func (h MySqlProxy) ComMultiQuery(
 	c *mysql.Conn,
 	query string,
@@ -176,7 +180,7 @@ func (h MySqlProxy) ComMultiQuery(
 	return remainder, err
 }
 
-// ComQuery executes a SQL query on the SQLe engine.
+// ComQuery implements mysql.Handler.
 func (h MySqlProxy) ComQuery(
 	c *mysql.Conn,
 	query string,
@@ -222,7 +226,7 @@ func (h MySqlProxy) processQuery(
 		}
 	}()
 
-	var proccesedAtLeastOneBatch bool
+	var processedAtLeastOneBatch bool
 	res := &sqltypes.Result{}
 	ok := true
 	for ok {
@@ -232,7 +236,7 @@ func (h MySqlProxy) processQuery(
 		if err := callback(res, more); err != nil {
 			return "", err
 		}
-		proccesedAtLeastOneBatch = true
+		processedAtLeastOneBatch = true
 	}
 
 	if err := setConnStatusFlags(ctx, c); err != nil {
@@ -252,7 +256,7 @@ func (h MySqlProxy) processQuery(
 
 	// processedAtLeastOneBatch means we already called resultsCB() at least
 	// once, so no need to call it if RowsAffected == 0.
-	if res != nil && (res.RowsAffected == 0 && proccesedAtLeastOneBatch) {
+	if res != nil && (res.RowsAffected == 0 && processedAtLeastOneBatch) {
 		return remainder, nil
 	}
 
@@ -308,6 +312,11 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 
 	rows := make([][]sqltypes.Value, 0, count)
 	for results.Next() {
+		if len(rows) == count {
+			more = true
+			break
+		}
+
 		scanRow, err := scanResultRow(results)
 		if err != nil {
 			return nil, false, err
@@ -325,11 +334,6 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 			}
 		}
 		rows = append(rows, row)
-
-		if len(rows) == count {
-			more = true
-			break
-		}
 	}
 
 	res = &sqltypes.Result{
