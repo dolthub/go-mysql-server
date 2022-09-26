@@ -21,6 +21,7 @@ import (
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
+	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},

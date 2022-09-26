@@ -86,11 +86,6 @@ var Invert_pkData = []SetupScript{{
 	`insert into invert_pk values    (0, 2, 2),    (1, 1, 0),    (2, 0, 1)`,
 }}
 
-var Json_table_tablesData = []SetupScript{{
-	"CREATE TABLE `json_table_tables` (  `t` varchar(100))",
-	`insert into json_table_tables values    ('[{"a": 1},{"b": 2},{"c": 3},{"d": 4}]');`,
-}}
-
 var JsontableData = []SetupScript{{
 	`create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)`,
 	`insert into jsontable values    (1, 'row one', '[1,2]', '{"a": 2}'),    (2, 'row two', '[3,4]', '{"b": 2}'),    (3, 'row three', '[5,6]', '{"c": 2}'),    (4, 'row four', '[7,8]', '{"d": 2}')`,

@@ -114,7 +114,7 @@ func (d *AlterDefaultSet) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 
 // Resolved implements the sql.Node interface.
 func (d *AlterDefaultSet) Resolved() bool {
-	return d.Table.Resolved() && d.ddlNode.Resolved()
+	return d.Table.Resolved() && d.ddlNode.Resolved() && d.Default.Resolved()
 }
 
 func (d *AlterDefaultSet) Expressions() []sql.Expression {
