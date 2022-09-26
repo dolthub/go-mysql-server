@@ -59,6 +59,8 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		var projectedAliases = make(map[string]sql.Expression)
 		for _, col := range project.Projections {
 			alias, ok := col.(*expression.Alias)
+			// If there are duplicate alias names defined in the same projection, we need to be careful about
+			// which one we select. We have moved closer to MySQL's behavior by keeping only the first seen
 			if ok {
 				if _, ok := projectedAliases[alias.Name()]; !ok {
 					projectedAliases[alias.Name()] = col
