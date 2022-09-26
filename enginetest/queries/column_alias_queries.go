@@ -217,7 +217,6 @@ var ColumnAliasQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// FAILS: panic: runtime error: index out of range [0] with length 0
 				Query:    "select x, (select 1) as y, (select (select y as q)) as z from (select * from xy) as xy;",
 				Expected: []sql.Row{{0, 1, 0}, {1, 1, 1}, {2, 1, 2}, {3, 1, 3}},
 			},
