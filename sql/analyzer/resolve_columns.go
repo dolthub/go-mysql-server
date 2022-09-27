@@ -137,7 +137,8 @@ func (a availableNames) indexColumn(table, col string, scopeLevel int) {
 	}
 }
 
-// levels returns a sorted list of the scope levels for these available name symbols
+// levels returns a sorted list of the scope levels for these available name symbols, starting with the most specific,
+// or innermost, level and ending with the outermost level (i.e. the top level query).
 func (a availableNames) levels() []int {
 	levels := make([]int, len(a))
 	i := 0
@@ -145,7 +146,7 @@ func (a availableNames) levels() []int {
 		levels[i] = l
 		i++
 	}
-	sort.Ints(levels)
+	sort.Sort(sort.Reverse(sort.IntSlice(levels)))
 	return levels
 }
 
@@ -187,8 +188,27 @@ func (a availableNames) allTables() []string {
 	return dedupStrings(allTables)
 }
 
-func (a availableNames) tablesForColumnAtLevel(column string, scopeLevel int) []string {
-	return a[scopeLevel].availableColumns[column]
+// aliasesAndTablesForColumnAtLevel returns a slice of strings indicating how many distinct alias definitions are available
+// for the specified column name, as well as a slice of strings indicating which distinct tables are available with that
+// column name.
+func (a availableNames) aliasesAndTablesForColumnAtLevel(column string, scopeLevel int) ([]string, []string) {
+	tableNames := a[scopeLevel].availableColumns[column]
+	aliasesFound := make([]string, 0, len(tableNames))
+	tablesFound := make([]string, 0, len(tableNames))
+	for _, tableName := range tableNames {
+		if tableName == "" {
+			// Regardless of the number of aliases defined with a specific alias name, availableColumns
+			// currently tracks a single empty string to represent them, so check in another datastructure
+			// to see how many alias definitions actually used this name.
+			for range a[scopeLevel].availableAliases[column] {
+				aliasesFound = append(aliasesFound, tableName)
+			}
+		} else {
+			tablesFound = append(tablesFound, tableName)
+		}
+	}
+
+	return aliasesFound, tablesFound
 }
 
 func (a availableNames) hasTableCol(tc tableCol) bool {
@@ -394,46 +414,28 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 			}
 		}
 
-		// Look in all the scopes (reversing them so we go from inner to outer), to identify the column. Stop as soon as
-		// we have a scope with exactly 1 match for the column name. If there is ambiguity in available column names,
-		// that's an error.
-		levels := symbols.levels()
-		sort.Sort(sort.Reverse(sort.IntSlice(levels)))
+		// Look in all the scopes (from inner to outer), to identify the column. Stop as soon as we have a scope with
+		// exactly 1 match for the column name. If there is ambiguity in available column names, that's an error.
 		name := strings.ToLower(col.Name())
-		for _, scopeLevel := range levels {
-			tablesForColumn := symbols.tablesForColumnAtLevel(name, scopeLevel)
-			switch len(tablesForColumn) {
+		for _, scopeLevel := range symbols.levels() {
+			aliasesFound, tablesFound := symbols.aliasesAndTablesForColumnAtLevel(name, scopeLevel)
+			switch len(aliasesFound) + len(tablesFound) {
 			case 0:
 				// This column could be in an outer scope, keep going
 				continue
 			case 1:
-				if tablesForColumn[0] == "" {
+				if len(aliasesFound) > 0 {
 					// This indicates we found a match with an alias definition
-					if canAccessAliasAtCurrentScope || scopeLevel != levels[0] {
+					if canAccessAliasAtCurrentScope || scopeLevel != symbols.levels()[0] {
 						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
 					}
 				} else {
 					return expression.NewUnresolvedQualifiedColumn(
-						tablesForColumn[0],
+						tablesFound[0],
 						col.Name(),
 					), transform.NewTree, nil
 				}
 			default:
-				aliasesFound := make([]string, 0, len(tablesForColumn))
-				tablesFound := make([]string, 0, len(tablesForColumn))
-				for _, tableName := range tablesForColumn {
-					if tableName == "" {
-						// Regardless of the number of aliases defined with a specific alias name, tablesForColumnAtLevel
-						// currently returns a single empty string to represent them, so check in another datastructure
-						// to see how many alias definitions actually used this name.
-						for range symbols[scopeLevel].availableAliases[name] {
-							aliasesFound = append(aliasesFound, tableName)
-						}
-					} else {
-						tablesFound = append(tablesFound, tableName)
-					}
-				}
-
 				switch node.(type) {
 				case *plan.Sort, *plan.Having:
 					// For order by and having clauses... prefer an alias over a column when there is ambiguity
@@ -459,7 +461,7 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 					}
 				}
 
-				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
+				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesFound, ", "))
 			}
 		}
 
@@ -1054,24 +1056,24 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 // replaceExpressionsWithAliases replaces any expressions in the slice given that match the map of aliases given with
 // their alias expression or alias name. This is necessary when pushing aliases down the tree, since we introduce a
 // projection node that effectively erases the original columns of a table.
-func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[string]string) ([]sql.Expression, transform.TreeIdentity) {
-	newMap := make(map[string]struct{})
-	for _, aliasName := range replacedAliases {
-		newMap[aliasName] = struct{}{}
+func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliasesByExpression map[string]string) ([]sql.Expression, transform.TreeIdentity) {
+	replacedAliasesByName := make(map[string]struct{})
+	for _, aliasName := range replacedAliasesByExpression {
+		replacedAliasesByName[aliasName] = struct{}{}
 	}
 
 	var newExprs []sql.Expression
 	var expr sql.Expression
 	for i := range exprs {
 		expr = exprs[i]
-		if alias, ok := replacedAliases[expr.String()]; ok {
+		if alias, ok := replacedAliasesByExpression[expr.String()]; ok {
 			if newExprs == nil {
 				newExprs = make([]sql.Expression, len(exprs))
 				copy(newExprs, exprs)
 			}
 			newExprs[i] = expression.NewAliasReference(alias)
 		} else if uc, ok := expr.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
-			if _, ok := newMap[uc.Name()]; ok {
+			if _, ok := replacedAliasesByName[uc.Name()]; ok {
 				if newExprs == nil {
 					newExprs = make([]sql.Expression, len(exprs))
 					copy(newExprs, exprs)
