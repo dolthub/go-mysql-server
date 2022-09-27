@@ -139,7 +139,7 @@ type Session interface {
 	GetCharacterSetResults() CharacterSetID
 	// GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
 	GetCollation() CollationID
-	// ValidateSession validates a working set if there are a valid sessionState with non-nil working set.
+	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is executed in it. For example, Dolt uses this hook to validate that the session's working set is valid. 
 	ValidateSession(ctx *Context, dbName string) error
 }
 
