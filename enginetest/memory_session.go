@@ -15,8 +15,9 @@
 package enginetest
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/sirupsen/logrus"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type InMemoryBaseSession struct {
