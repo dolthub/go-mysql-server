@@ -5716,6 +5716,37 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 }
 
+func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sql.Context) sql.Session) {
+	q := []struct {
+		Query    string
+		Expected []sql.Row
+	}{
+		{
+			Query:    "SHOW TABLES;",
+			Expected: []sql.Row{{"mytable"}, {"myview"}},
+		}, {
+			Query:    "SELECT i from mytable;",
+			Expected: []sql.Row{{1}, {2}, {3}},
+		},
+	}
+
+	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	sql.InitSystemVariables()
+	ctx := NewContext(harness)
+	ctx.Session = newSessFunc(ctx)
+
+	for _, tt := range q {
+		t.Run("test running queries to check callbacks on ValidateSession()", func(t *testing.T) {
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		})
+	}
+
+	require.Equal(t, len(q), ctx.Session.(*InMemoryBaseSession).GetIdx())
+}
+
 func TestPrepared(t *testing.T, harness Harness) {
 	qtests := []queries.QueryTest{
 		{

@@ -56,7 +56,7 @@ func (s *InMemoryPersistedSession) RemoveAllPersistedGlobals() error {
 	return nil
 }
 
-// RemoveAllPersistedGlobals implements sql.PersistableSession
+// GetPersistedValue implements sql.PersistableSession
 func (s *InMemoryPersistedSession) GetPersistedValue(k string) (interface{}, error) {
 	return s.persistedGlobals[k], nil
 }

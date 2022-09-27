@@ -148,11 +148,11 @@ type PersistableSession interface {
 	Session
 	// PersistGlobal writes to the persisted global system variables file
 	PersistGlobal(sysVarName string, value interface{}) error
-	// RemovePersisted deletes a variable from the persisted globals file
+	// RemovePersistedGlobal deletes a variable from the persisted globals file
 	RemovePersistedGlobal(sysVarName string) error
-	// RemoveAllPersisted clears the contents of the persisted globals file
+	// RemoveAllPersistedGlobals clears the contents of the persisted globals file
 	RemoveAllPersistedGlobals() error
-	// GetPersistedValue
+	// GetPersistedValue returns persisted value for a global system variable
 	GetPersistedValue(k string) (interface{}, error)
 }
 
@@ -226,7 +226,7 @@ func (s *BaseSession) Address() string { return s.addr }
 // Client returns session's client information.
 func (s *BaseSession) Client() Client { return s.client }
 
-// WithClient implements Session.
+// SetClient implements the Session interface.
 func (s *BaseSession) SetClient(c Client) {
 	s.client = c
 	return
@@ -366,7 +366,7 @@ func (s *BaseSession) GetCollation() CollationID {
 	return collation
 }
 
-// ValidateSession validates a working set if there are a valid sessionState with non-nil working set.
+// ValidateSession provides integrators a chance to do any custom validation of this session before any query is executed in it.
 func (s *BaseSession) ValidateSession(ctx *Context, dbName string) error {
 	return nil
 }
