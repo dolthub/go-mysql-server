@@ -44,6 +44,8 @@ var OnceBeforeDefault = []Rule{
 	{resolveDropConstraintId, resolveDropConstraint},
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
+	// TODO: If SubqueryAliases have outer scope access now, do they need to be analyzed as part of the default rules now?
+	//       Seems like we need to combine resolveSubqueires and resolveSubqueryExpressions in order to handle scopes properly
 	{resolveSubqueriesId, resolveSubqueries},
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},

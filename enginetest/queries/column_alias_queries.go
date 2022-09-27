@@ -243,6 +243,7 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// Fails with an unresolved *plan.Project node error
 				// The second Project in the union subquery doens't seem to get its alias reference resolved
+				// TODO: Something with opaque nodes not being processed? the qualifyExpresions code need to run here? Or resolveColumns?
 				Skip:     true,
 				Query:    `SELECT 1 as a, (select a union select a) as b;`,
 				Expected: []sql.Row{{1, 1}},
@@ -257,6 +258,7 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// GMS returns the error "found HAVING clause with no GROUP BY", but MySQL executes
 				// this query without any problems.
+				// https://github.com/dolthub/go-mysql-server/issues/1289
 				Skip:     true,
 				Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
 				Expected: []sql.Row{{1}, {2}, {3}},
@@ -267,6 +269,73 @@ var ColumnAliasQueries = []ScriptTest{
 				Skip:     true,
 				Query:    "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
 				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		// TODO: This isn't specific to column aliases, so this might not be the best place for these tests, but getting them started.
+		Name: "outer scope visibility for derived tables",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int, c int, d int, e int);",
+			"create table t2 (a int primary key, b int, c int, d int, e int);",
+			"create table t3 (a int primary key, b int, c int, d int, e int);",
+			"create table numbers (val int);",
+			"insert into numbers values (1), (1), (2), (3), (3), (3), (4), (5), (6), (6), (6);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// A subquery containing a derived table, used in the WHERE clause of a top-level query, has visibility
+				// to tables and columns in the top-level query.
+				Query:    "SELECT * FROM t1 WHERE t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
+				Expected: []sql.Row{},
+			},
+			{
+				// A subquery containing a derived table, used in the HAVING clause of a top-level query, has visibility
+				// to tables and columns in the top-level query.
+				Query:    "SELECT * FROM t1 HAVING t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
+				Expected: []sql.Row{},
+			},
+			{
+				// A subquery containing a derived table, projected in a SELECT query, has visibility to tables and columns
+				// in the top-level query.
+				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
+				Query:    "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+				Expected: []sql.Row{},
+			},
+			{
+				// A subquery containing a derived table, projected in a GROUPBY query, has visibility to tables and columns
+				// in the top-level query.
+				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
+				Query:    "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1 GROUP BY t1.a;",
+				Expected: []sql.Row{},
+			},
+			{
+				// A subquery containing a derived table, projected in a WINDOW query, has visibility to tables and columns
+				// in the top-level query.
+				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
+				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers;",
+				Expected: []sql.Row{},
+			},
+			{
+				// A subquery containing a derived table, used in the WINDOW clause of a top-level query, has visibility
+				// to tables and columns in the top-level query.
+				// TODO: This is the same as the test above...
+				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers;",
+				Expected: []sql.Row{},
+			},
+			{
+				// A subquery containing a derived table, used in the GROUP BY clause of a top-level query as a grouping
+				// expression, has visibility to tables and columns in the top-level query.
+				Query:    "SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",
+				Expected: []sql.Row{},
+			},
+			// Negative Tests
+			{
+				// A derived table inside a derived table does not have visibility to outer scopes.
+				Query: "SELECT 1 as a1, dt.* from (select * from (select * from numbers having val = a1) as dt2(val)) as dt(val);",
+				// TODO: error expected
+				// Currently returns: found HAVING clause with no GROUP BY
+				ExpectedErr: sql.ErrUnknownColumn,
 			},
 		},
 	},
