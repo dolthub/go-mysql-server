@@ -139,6 +139,8 @@ type Session interface {
 	GetCharacterSetResults() CharacterSetID
 	// GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
 	GetCollation() CollationID
+	// ValidateSession validates a working set if there are a valid sessionState with non-nil working set.
+	ValidateSession(ctx *Context, dbName string) error
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -362,6 +364,11 @@ func (s *BaseSession) GetCollation() CollationID {
 		panic(err) // shouldn't happen
 	}
 	return collation
+}
+
+// ValidateSession validates a working set if there are a valid sessionState with non-nil working set.
+func (s *BaseSession) ValidateSession(ctx *Context, dbName string) error {
+	return nil
 }
 
 // GetCurrentDatabase gets the current database for this session
