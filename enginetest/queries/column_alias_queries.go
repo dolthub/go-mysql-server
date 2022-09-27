@@ -223,4 +223,51 @@ var ColumnAliasQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "various broken alias queries",
+		Assertions: []ScriptTestAssertion{
+			{
+				// The dual table's schema collides with this alias name
+				// https://github.com/dolthub/dolt/issues/4256
+				Skip:     true,
+				Query:    `select "foo" as dummy, (select dummy)`,
+				Expected: []sql.Row{{"foo", "foo"}},
+			},
+			{
+				// The second query in the union subquery returns "x" instead of mytable.i
+				// https://github.com/dolthub/dolt/issues/4256
+				Skip:     true,
+				Query:    `SELECT *, (select i union select i) as a from mytable;`,
+				Expected: []sql.Row{{1, "first row", 1}, {2, "second row", 2}, {3, "third row", 3}},
+			},
+			{
+				// Fails with an unresolved *plan.Project node error
+				// The second Project in the union subquery doens't seem to get its alias reference resolved
+				Skip:     true,
+				Query:    `SELECT 1 as a, (select a union select a) as b;`,
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				// GMS executes this query, but it is not valid because of the forward ref of alias b.
+				// GMS should return an error about an invalid forward-ref.
+				Skip:        true,
+				Query:       `select 1 as a, (select b), 0 as b;`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				// GMS returns the error "found HAVING clause with no GROUP BY", but MySQL executes
+				// this query without any problems.
+				Skip:     true,
+				Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
+				// this query.
+				Skip:     true,
+				Query:    "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
 }
