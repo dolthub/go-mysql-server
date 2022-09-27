@@ -84,7 +84,6 @@ type hoistExistsSubquery struct {
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
 func pluckCorrelatedExistsSubquery(filter *plan.Filter, scopeLen int) *hoistExistsSubquery {
-	// if filter has a correlated exists, we remove it from the filter and return the new sq and join condition
 	var decorrelated sql.Node
 	var outerFilters []sql.Expression
 
