@@ -188,8 +188,27 @@ func (a availableNames) allTables() []string {
 	return dedupStrings(allTables)
 }
 
-func (a availableNames) tablesForColumnAtLevel(column string, scopeLevel int) []string {
-	return a[scopeLevel].availableColumns[column]
+// aliasesAndTablesForColumnAtLevel returns a slice of strings indicating how many distinct alias definitions are available
+// for the specified column name, as well as a slice of strings indicating which distinct tables are available with that
+// column name.
+func (a availableNames) aliasesAndTablesForColumnAtLevel(column string, scopeLevel int) ([]string, []string) {
+	tableNames := a[scopeLevel].availableColumns[column]
+	aliasesFound := make([]string, 0, len(tableNames))
+	tablesFound := make([]string, 0, len(tableNames))
+	for _, tableName := range tableNames {
+		if tableName == "" {
+			// Regardless of the number of aliases defined with a specific alias name, availableColumns
+			// currently tracks a single empty string to represent them, so check in another datastructure
+			// to see how many alias definitions actually used this name.
+			for range a[scopeLevel].availableAliases[column] {
+				aliasesFound = append(aliasesFound, tableName)
+			}
+		} else {
+			tablesFound = append(tablesFound, tableName)
+		}
+	}
+
+	return aliasesFound, tablesFound
 }
 
 func (a availableNames) hasTableCol(tc tableCol) bool {
@@ -394,39 +413,24 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 		// exactly 1 match for the column name. If there is ambiguity in available column names, that's an error.
 		name := strings.ToLower(col.Name())
 		for _, scopeLevel := range symbols.levels() {
-			tablesForColumn := symbols.tablesForColumnAtLevel(name, scopeLevel)
-			switch len(tablesForColumn) {
+			aliasesFound, tablesFound := symbols.aliasesAndTablesForColumnAtLevel(name, scopeLevel)
+			switch len(aliasesFound) + len(tablesFound) {
 			case 0:
 				// This column could be in an outer scope, keep going
 				continue
 			case 1:
-				if tablesForColumn[0] == "" {
+				if len(aliasesFound) > 0 {
 					// This indicates we found a match with an alias definition
 					if canAccessAliasAtCurrentScope || scopeLevel != symbols.levels()[0] {
 						return expression.NewAliasReference(col.Name()), transform.NewTree, nil
 					}
 				} else {
 					return expression.NewUnresolvedQualifiedColumn(
-						tablesForColumn[0],
+						tablesFound[0],
 						col.Name(),
 					), transform.NewTree, nil
 				}
 			default:
-				aliasesFound := make([]string, 0, len(tablesForColumn))
-				tablesFound := make([]string, 0, len(tablesForColumn))
-				for _, tableName := range tablesForColumn {
-					if tableName == "" {
-						// Regardless of the number of aliases defined with a specific alias name, tablesForColumnAtLevel
-						// currently returns a single empty string to represent them, so check in another datastructure
-						// to see how many alias definitions actually used this name.
-						for range symbols[scopeLevel].availableAliases[name] {
-							aliasesFound = append(aliasesFound, tableName)
-						}
-					} else {
-						tablesFound = append(tablesFound, tableName)
-					}
-				}
-
 				switch node.(type) {
 				case *plan.Sort, *plan.Having:
 					// For order by and having clauses... prefer an alias over a column when there is ambiguity
@@ -452,7 +456,7 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 					}
 				}
 
-				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
+				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesFound, ", "))
 			}
 		}
 
