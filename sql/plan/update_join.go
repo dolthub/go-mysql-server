@@ -166,9 +166,9 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 	var cond sql.Expression
 	switch n := jn.(type) {
 	case *RightJoin:
-		cond = n.Cond
+		cond = n.Filter
 	case *LeftJoin:
-		cond = n.Cond
+		cond = n.Filter
 	default:
 		return true, fmt.Errorf("error: should only consider left or right join.")
 	}

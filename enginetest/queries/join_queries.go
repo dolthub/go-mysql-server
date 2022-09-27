@@ -20,6 +20,103 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query:    `select a from ab where exists (select 1 from xy where a =x)`,
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
+		Query:    "select a from ab where exists (select 1 from xy where a = x and b = 2 and y = 2);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select * from uv where exists (select 1, count(a) from ab where u = a group by a)",
+		Expected: []sql.Row{{0, 1}, {1, 1}, {2, 2}, {3, 2}},
+	},
+	{
+		Query: `
+select * from
+(
+  select * from ab
+  left join uv on a = u
+  where exists (select * from pq where u = p)
+) alias2
+inner join xy on a = x;`,
+		Expected: []sql.Row{
+			{0, 2, 0, 1, 0, 2},
+			{1, 2, 1, 1, 1, 0},
+			{2, 2, 2, 2, 2, 1},
+			{3, 1, 3, 2, 3, 3},
+		},
+	},
+	{
+		Query: `
+select * from ab
+where exists
+(
+  select * from uv
+  left join pq on u = p
+  where a = u
+);`,
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 2},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
+		Query: `
+select * from
+(
+  select * from ab
+  where not exists (select * from uv where a = v)
+) alias1
+where exists (select * from xy where a = x);`,
+		Expected: []sql.Row{
+			{0, 2},
+			{3, 1},
+		}},
+	{
+		Query: `
+select * from ab
+inner join uv on a = u
+full join pq on a = p order by 1,2,3,4,5,6;`,
+		Expected: []sql.Row{
+			{0, 2, 0, 1, 0, 0},
+			{1, 2, 1, 1, 1, 1},
+			{2, 2, 2, 2, 2, 2},
+			{3, 1, 3, 2, 3, 3},
+		},
+	},
+	{
+		Query: `
+select * from
+(
+  select * from ab
+  inner join xy on true
+) alias1
+inner join uv on true
+inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
+		Expected: []sql.Row{
+			{0, 2, 0, 2, 0, 1, 0, 0},
+			{0, 2, 0, 2, 0, 1, 1, 1},
+			{0, 2, 0, 2, 0, 1, 2, 2},
+			{0, 2, 0, 2, 0, 1, 3, 3},
+			{0, 2, 0, 2, 1, 1, 0, 0},
+		},
+	},
+	{
+		Query: `
+	select * from
+	(
+	 select * from ab
+	 where not exists (select * from xy where a = y+1)
+	) alias1
+	left join pq on alias1.a = p
+	where exists (select * from uv where a = u);`,
+		Expected: []sql.Row{
+			{0, 2, 0, 0},
+		}},
+	{
 		// Repro for: https://github.com/dolthub/dolt/issues/4183
 		Query: "SELECT mytable.i " +
 			"FROM mytable " +

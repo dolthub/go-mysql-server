@@ -373,6 +373,16 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 	}
 }
 
+func NewSubqueryExprResolveSelector(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case pruneColumnsId, optimizeJoinsId:
+			return false
+		}
+		return sel(id)
+	}
+}
+
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {

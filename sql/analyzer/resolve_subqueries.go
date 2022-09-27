@@ -40,7 +40,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			}
 
 			if len(n.Columns) > 0 {
-				schemaLen := schemaLength(n.Child)
+				schemaLen := schemaLength(child)
 				if schemaLen != len(n.Columns) {
 					return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
 				}
@@ -111,6 +111,14 @@ func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return resolveSubqueryExpressionsHelper(ctx, a, n, scope, SelectAllBatches, NewSubqueryExprResolveSelector(sel))
+}
+
+func finalizeSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return resolveSubqueryExpressionsHelper(ctx, a, n, scope, SelectAllBatches, sel)
+}
+
+func resolveSubqueryExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, batchSel BatchSelector, ruleSel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		s, ok := e.(*plan.Subquery)
 		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
@@ -123,7 +131,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		defer cancelFunc()
 		subScope := scope.newScope(n)
 
-		analyzed, _, err := a.analyzeWithSelector(subqueryCtx, s.Query, subScope, SelectAllBatches, sel)
+		analyzed, _, err := a.analyzeWithSelector(subqueryCtx, s.Query, subScope, batchSel, ruleSel)
 		if err != nil {
 			// We ignore certain errors, deferring them to later analysis passes. Specifically, if the subquery isn't
 			// resolved or a column can't be found in the scope node, wait until a later pass.
