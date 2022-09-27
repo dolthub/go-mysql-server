@@ -487,7 +487,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 func TestColumnAliases(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, tt := range queries.ColumnAliasQueries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -5727,7 +5727,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a WHERE bar = :var ORDER BY foo, i",
+			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a HAVING bar = :var ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
 			Bindings: map[string]sql.Expression{
@@ -5735,14 +5735,14 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = ? ORDER BY foo, i;",
+			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? ORDER BY foo, i;",
 			Expected: []sql.Row{},
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(int64(1), sql.Int64),
 			},
 		},
 		{
-			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = :bar AND foo = :foo ORDER BY foo, i;",
+			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = :bar AND foo = :foo ORDER BY foo, i;",
 			Expected: []sql.Row{},
 			Bindings: map[string]sql.Expression{
 				"bar": expression.NewLiteral(int64(1), sql.Int64),

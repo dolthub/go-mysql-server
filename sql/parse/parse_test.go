@@ -2633,7 +2633,7 @@ CREATE TABLE t2
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	"SHOW COLLATION": showCollationProjection,
-	"SHOW COLLATION LIKE 'foo'": plan.NewFilter(
+	"SHOW COLLATION LIKE 'foo'": plan.NewHaving(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("collation"),
 			expression.NewLiteral("foo", sql.LongText),
@@ -2641,7 +2641,7 @@ CREATE TABLE t2
 		),
 		showCollationProjection,
 	),
-	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewFilter(
+	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewHaving(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Charset"),
 			expression.NewLiteral("foo", sql.LongText),

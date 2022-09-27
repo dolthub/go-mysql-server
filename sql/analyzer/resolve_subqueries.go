@@ -28,7 +28,12 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			// subqueries do not have access to outer scope, but we do need a scope object to track recursion depth
+			// SubqueryAliases never have access to outer scopes; they cannot see any outer aliases or tables
+			// TODO: In MySQL 8.0.14 and higher, SubqueryAliases can access the outer scopes of the clause that defined them.
+			//       Note: They still do not have access to the other tables defined in the same scope as derived table,
+			//       and from testing... they don't seem to be able to access expression aliases (only tables and table aliases),
+			//       but documentation doesn't seem to indicate that limitation.
+			//       https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
 			child, same, err := a.analyzeThroughBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", sel)
 			if err != nil {
 				return nil, same, err
@@ -58,7 +63,12 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			// subqueries do not have access to outer scope
+			// SubqueryAliases never have access to outer scopes; they cannot see any outer aliases or tables
+			// TODO: In MySQL 8.0.14 and higher, SubqueryAliases can access the outer scopes of the clause that defined them.
+			//       Note: They still do not have access to the other tables defined in the same scope as derived table,
+			//       and from testing... they don't seem to be able to access expression aliases (only tables and table aliases),
+			//       but documentation doesn't seem to indicate that limitation.
+			//       https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
 			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", sel)
 			if err != nil {
 				return nil, same, err

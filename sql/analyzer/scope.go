@@ -23,7 +23,7 @@ import (
 // Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
 type Scope struct {
 	// Stack of nested node scopes, with innermost scope first. A scope node is the node in which the subquery is
-	// defined, or an appropriate sibling.
+	// defined, or an appropriate sibling, NOT the child node of the Subquery node.
 	nodes []sql.Node
 	// Memo nodes are nodes in the execution context that shouldn't be considered for name resolution, but are still
 	// important for analysis.
