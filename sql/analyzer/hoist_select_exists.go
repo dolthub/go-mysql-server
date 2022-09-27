@@ -41,42 +41,49 @@ func hoistSelectExists(
 			return n, transform.SameTree, nil
 		}
 
-		left, right, outerFilters, joinType := pluckCorrelatedExistsSubquery(f)
-		if len(outerFilters) == 0 {
+		s := pluckCorrelatedExistsSubquery(f, len(f.Schema())+len(scope.Schema()))
+		if s == nil {
 			return n, transform.SameTree, nil
 		}
-		if right == nil || left == nil {
+		if s.right == nil || s.left == nil {
 			panic("unexpected empty scope")
 		}
 
-		if p, ok := right.(*plan.Project); ok {
-			right = p.Child
+		if p, ok := s.right.(*plan.Project); ok {
+			s.right = p.Child
 		}
 
-		if gb, ok := right.(*plan.GroupBy); ok {
-			right = gb.Child
+		if gb, ok := s.right.(*plan.GroupBy); ok {
+			s.right = gb.Child
 		}
 
-		outerFilters, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, append(left.Schema(), right.Schema()...), outerFilters...)
+		outerFilters, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, append(s.left.Schema(), s.right.Schema()...), s.outerFilters...)
 		if err != nil {
 			return n, transform.SameTree, err
 		}
 
-		switch joinType {
-		case plan.AntiJoinType:
-			return plan.NewAntiJoin(left, right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
-		case plan.SemiJoinType:
-			return plan.NewSemiJoin(left, right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
+		switch s.joinType {
+		case plan.JoinTypeAnti:
+			return plan.NewAntiJoin(s.left, s.right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
+		case plan.JoinTypeSemi:
+			return plan.NewSemiJoin(s.left, s.right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
 		default:
-			panic("expected SemiJoinType or AntiJoinType")
+			panic("expected JoinTypeSemi or JoinTypeAnti")
 		}
 	})
 }
 
-// pluckCorrelatedExistsSubquery scans a filter for [note] WHERE EXISTS, and then attempts to
+type hoistExistsSubquery struct {
+	left         sql.Node
+	right        sql.Node
+	outerFilters []sql.Expression
+	joinType     plan.JoinType
+}
+
+// pluckCorrelatedExistsSubquery scans a filter for [NOT] WHERE EXISTS, and then attempts to
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
-func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, sql.Node, []sql.Expression, plan.JoinType) {
+func pluckCorrelatedExistsSubquery(filter *plan.Filter, scopeLen int) *hoistExistsSubquery {
 	// if filter has a correlated exists, we remove it from the filter and return the new sq and join condition
 	var decorrelated sql.Node
 	var outerFilters []sql.Expression
@@ -87,32 +94,43 @@ func pluckCorrelatedExistsSubquery(filter *plan.Filter) (sql.Node, sql.Node, []s
 	for _, f := range filters {
 		switch e := f.(type) {
 		case *plan.ExistsSubquery:
-			decorrelated, outerFilters = decorrelateOuterCols(e.Query, len(filter.Schema()))
+			decorrelated, outerFilters = decorrelateOuterCols(e.Query, scopeLen)
 			if len(outerFilters) == 0 {
-				return filter, nil, nil, plan.UnknownJoinType
+				return nil
 			}
-			joinType = plan.SemiJoinType
+			joinType = plan.JoinTypeSemi
 		case *expression.Not:
 			esq, ok := e.Child.(*plan.ExistsSubquery)
 			if !ok {
-				return filter, nil, nil, plan.UnknownJoinType
+				return nil
 			}
-			decorrelated, outerFilters = decorrelateOuterCols(esq.Query, len(filter.Schema()))
+			decorrelated, outerFilters = decorrelateOuterCols(esq.Query, scopeLen)
 			if len(outerFilters) == 0 {
-				return filter, nil, nil, plan.UnknownJoinType
+				return nil
 			}
-			joinType = plan.AntiJoinType
+			joinType = plan.JoinTypeAnti
 		default:
 		}
 	}
 	if len(outerFilters) == 0 {
-		return nil, nil, nil, plan.UnknownJoinType
+		return nil
 	}
 	if len(newFilters) == 0 {
-		return filter.Child, decorrelated, outerFilters, joinType
+		return &hoistExistsSubquery{
+			left:         filter.Child,
+			right:        decorrelated,
+			outerFilters: outerFilters,
+			joinType:     joinType,
+		}
 	}
 	newFilter := plan.NewFilter(expression.JoinAnd(newFilters...), filter.Child)
-	return newFilter, decorrelated, outerFilters, joinType
+
+	return &hoistExistsSubquery{
+		left:         newFilter,
+		right:        decorrelated,
+		outerFilters: outerFilters,
+		joinType:     joinType,
+	}
 }
 
 // decorrelateOuterCols returns an optionally modified subquery and extracted

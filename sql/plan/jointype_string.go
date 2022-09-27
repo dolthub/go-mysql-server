@@ -8,20 +8,20 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[UnknownJoinType-0]
-	_ = x[CrossJoinType-1]
-	_ = x[InnerJoinType-2]
-	_ = x[SemiJoinType-3]
-	_ = x[AntiJoinType-4]
-	_ = x[LeftJoinType-5]
-	_ = x[FullOuterJoinType-6]
-	_ = x[GroupByJoinType-7]
-	_ = x[RightJoinType-8]
+	_ = x[JoinTypeUnknown-0]
+	_ = x[JoinTypeCross-1]
+	_ = x[JoinTypeInner-2]
+	_ = x[JoinTypeSemi-3]
+	_ = x[JoinTypeAnti-4]
+	_ = x[JoinTypeLeft-5]
+	_ = x[JoinTypeFullOuter-6]
+	_ = x[JoinTypeGroupBy-7]
+	_ = x[JoinTypeRight-8]
 }
 
-const _JoinType_name = "UnknownJoinTypeCrossJoinInnerJoinSemiJoinAntiJoinLeftJoinFullOuterJoinGroupByJoinRightJoin"
+const _JoinType_name = "UnknownJoinCrossJoinInnerJoinSemiJoinAntiJoinLeftJoinFullOuterJoinGroupByJoinRightJoin"
 
-var _JoinType_index = [...]uint8{0, 15, 24, 33, 41, 49, 57, 70, 81, 90}
+var _JoinType_index = [...]uint8{0, 11, 20, 29, 37, 45, 53, 66, 77, 86}
 
 func (i JoinType) String() string {
 	if i >= JoinType(len(_JoinType_index)-1) {

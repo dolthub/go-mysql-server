@@ -423,9 +423,9 @@ func newJoinOrderNode(node sql.Node) (*joinOrderNode, int) {
 	case plan.JoinNode:
 		ljo, lcnt := newJoinOrderNode(node.Left())
 		rjo, rcnt := newJoinOrderNode(node.Right())
-		if node.JoinType() == plan.LeftJoinType {
+		if node.JoinType() == plan.JoinTypeLeft {
 			return &joinOrderNode{left: ljo, right: rjo}, lcnt + rcnt
-		} else if node.JoinType() == plan.RightJoinType {
+		} else if node.JoinType() == plan.JoinTypeRight {
 			return &joinOrderNode{left: rjo, right: ljo}, lcnt + rcnt
 		} else {
 			commutes := append(ljo.commutes, rjo.commutes...)

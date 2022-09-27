@@ -24,6 +24,20 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select x, 1 in (select a from ab where exists (select * from uv where a = u)) s from xy`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x, (1 IN (Project\n" +
+			" │   ├─ columns: [ab.a]\n" +
+			" │   └─ SemiJoin(ab.a = uv.u)\n" +
+			" │       ├─ Table(ab)\n" +
+			" │       └─ IndexedTableAccess(uv)\n" +
+			" │           ├─ index: [uv.u]\n" +
+			" │           └─ columns: [u v]\n" +
+			" │  )) as s]\n" +
+			" └─ Table(xy)\n" +
+			"",
+	},
+	{
 		Query: `with cte (a,b) as (select * from ab) select * from cte`,
 		ExpectedPlan: "SubqueryAlias(cte)\n" +
 			" └─ Table(ab)\n" +

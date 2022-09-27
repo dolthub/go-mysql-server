@@ -16,6 +16,7 @@ package plan
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"reflect"
@@ -40,15 +41,15 @@ var useInMemoryJoins = shouldUseMemoryJoinsByEnv()
 type JoinType uint16
 
 const (
-	UnknownJoinType   JoinType = iota // UnknownJoinType
-	CrossJoinType                     // CrossJoin
-	InnerJoinType                     // InnerJoin
-	SemiJoinType                      // SemiJoin
-	AntiJoinType                      // AntiJoin
-	LeftJoinType                      // LeftJoin
-	FullOuterJoinType                 // FullOuterJoin
-	GroupByJoinType                   // GroupByJoin
-	RightJoinType                     // RightJoin
+	JoinTypeUnknown   JoinType = iota // UnknownJoin
+	JoinTypeCross                     // CrossJoin
+	JoinTypeInner                     // InnerJoin
+	JoinTypeSemi                      // SemiJoin
+	JoinTypeAnti                      // AntiJoin
+	JoinTypeLeft                      // LeftJoin
+	JoinTypeFullOuter                 // FullOuterJoin
+	JoinTypeGroupBy                   // GroupByJoin
+	JoinTypeRight                     // RightJoin
 )
 
 func shouldUseMemoryJoinsByEnv() bool {
@@ -67,7 +68,7 @@ type JoinNode interface {
 	WithMultipassMode() JoinNode
 }
 
-// joinStruct contains all the common data fields and implements the commom sql.Node getters for all join types.
+// joinBase contains all the common data fields and implements the commom sql.Node getters for all join types.
 type joinBase struct {
 	BinaryNode
 	Filter     sql.Expression
@@ -111,17 +112,17 @@ func (j *joinBase) Schema() sql.Schema {
 
 func constructNewJoin(base *joinBase) JoinNode {
 	switch base.Op {
-	case InnerJoinType:
+	case JoinTypeInner:
 		return &InnerJoin{base}
-	case LeftJoinType:
+	case JoinTypeLeft:
 		return &LeftJoin{base}
-	case RightJoinType:
+	case JoinTypeRight:
 		return &RightJoin{base}
-	case SemiJoinType:
+	case JoinTypeSemi:
 		return &SemiJoin{&existsJoinBase{base}}
-	case AntiJoinType:
+	case JoinTypeAnti:
 		return &AntiJoin{&existsJoinBase{base}}
-	case FullOuterJoinType:
+	case JoinTypeFullOuter:
 		return &FullOuterJoin{base}
 	default:
 		panic("unexpected exist join type: %T")
@@ -188,14 +189,14 @@ var _ JoinNode = (*InnerJoin)(nil)
 var _ sql.CommentedNode = (*InnerJoin)(nil)
 
 func (j *InnerJoin) JoinType() JoinType {
-	return InnerJoinType
+	return JoinTypeInner
 }
 
 // NewInnerJoin creates a new inner join node from two tables.
 func NewInnerJoin(left, right sql.Node, cond sql.Expression) *InnerJoin {
 	return &InnerJoin{
 		&joinBase{
-			Op: InnerJoinType,
+			Op: JoinTypeInner,
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -212,7 +213,7 @@ func (j *InnerJoin) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (j *InnerJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, InnerJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+	return joinRowIter(ctx, JoinTypeInner, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
 }
 
 // LeftJoin is a left join between two tables.
@@ -224,14 +225,14 @@ var _ JoinNode = (*LeftJoin)(nil)
 var _ sql.CommentedNode = (*LeftJoin)(nil)
 
 func (j *LeftJoin) JoinType() JoinType {
-	return LeftJoinType
+	return JoinTypeLeft
 }
 
 // NewLeftJoin creates a new left join node from two tables.
 func NewLeftJoin(left, right sql.Node, cond sql.Expression) *LeftJoin {
 	return &LeftJoin{
 		&joinBase{
-			Op: LeftJoinType,
+			Op: JoinTypeLeft,
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -248,7 +249,7 @@ func (j *LeftJoin) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (j *LeftJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, LeftJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+	return joinRowIter(ctx, JoinTypeLeft, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
 }
 
 // RightJoin is a left join between two tables.
@@ -257,7 +258,7 @@ type RightJoin struct {
 }
 
 func (j *RightJoin) JoinType() JoinType {
-	return RightJoinType
+	return JoinTypeRight
 }
 
 var _ JoinNode = (*RightJoin)(nil)
@@ -267,7 +268,7 @@ var _ sql.CommentedNode = (*RightJoin)(nil)
 func NewRightJoin(left, right sql.Node, cond sql.Expression) *RightJoin {
 	return &RightJoin{
 		&joinBase{
-			Op: RightJoinType,
+			Op: JoinTypeRight,
 			BinaryNode: BinaryNode{
 				left:  left,
 				right: right,
@@ -284,7 +285,7 @@ func (j *RightJoin) Schema() sql.Schema {
 
 // RowIter implements the Node interface.
 func (j *RightJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, RightJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+	return joinRowIter(ctx, JoinTypeRight, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
 }
 
 func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row, scopeLen int, mode joinMode) (sql.RowIter, error) {
@@ -319,7 +320,7 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 	}
 
 	cache, dispose := ctx.Memory.NewRowsCache()
-	if typ == RightJoinType {
+	if typ == JoinTypeRight {
 		r, err := right.RowIter(ctx, row)
 		if err != nil {
 			span.End()
@@ -545,7 +546,7 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		secondary, err := i.loadSecondary(ctx)
 		if err != nil {
 			if err == io.EOF {
-				if !i.foundMatch && (i.typ == LeftJoinType || i.typ == RightJoinType) {
+				if !i.foundMatch && (i.typ == JoinTypeLeft || i.typ == JoinTypeRight) {
 					row := i.buildRow(primary, nil)
 					return row, nil
 				}
@@ -581,7 +582,7 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	var first, second sql.Row
 	var secondOffset int
 	switch i.typ {
-	case RightJoinType:
+	case JoinTypeRight:
 		first = secondary
 		second = primary
 		secondOffset = len(row) - len(second)
@@ -623,7 +624,6 @@ type existsIter struct {
 	typ               JoinType
 	primary           sql.RowIter
 	secondaryProvider rowIterProvider
-	secondary         sql.RowIter
 	cond              sql.Expression
 
 	primaryRow sql.Row
@@ -668,15 +668,18 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		left := i.originalRow.Append(r)
 		rIter, err := i.secondaryProvider.RowIter(ctx, left)
-		defer rIter.Close(ctx)
 		if err != nil {
 			return nil, err
 		}
 		for {
 			right, err := rIter.Next(ctx)
 			if err != nil {
+				iterErr := rIter.Close(ctx)
+				if iterErr != nil {
+					return nil, fmt.Errorf("%w; error on close: %s", err, iterErr)
+				}
 				if errors.Is(err, io.EOF) {
-					if i.typ == SemiJoinType {
+					if i.typ == JoinTypeSemi {
 						// reset iter, no match
 						break
 					}
@@ -687,19 +690,24 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 			row := i.buildRow(left, right)
 			matches, err := conditionIsTrue(ctx, row, i.cond)
+			if err != nil {
+				return nil, err
+			}
 			if !matches {
 				continue
 			}
-			if i.typ == AntiJoinType {
+			err = rIter.Close(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if i.typ == JoinTypeAnti {
 				// reset iter, found match -> no return row
 				break
 			}
 			return left, nil
 		}
 	}
-	i.primary.Close(ctx)
 	return nil, io.EOF
-
 }
 
 func (i *existsIter) buildRow(primary, secondary sql.Row) sql.Row {
@@ -712,7 +720,7 @@ func (i *existsIter) buildRow(primary, secondary sql.Row) sql.Row {
 	var first, second sql.Row
 	var secondOffset int
 	switch i.typ {
-	case RightJoinType:
+	case JoinTypeRight:
 		first = secondary
 		second = primary
 		secondOffset = len(row) - len(second)
@@ -732,19 +740,9 @@ func (i *existsIter) buildRow(primary, secondary sql.Row) sql.Row {
 func (i *existsIter) Close(ctx *sql.Context) (err error) {
 	if i.primary != nil {
 		if err = i.primary.Close(ctx); err != nil {
-			if i.secondary != nil {
-				_ = i.secondary.Close(ctx)
-			}
 			return err
 		}
-
 	}
-
-	if i.secondary != nil {
-		err = i.secondary.Close(ctx)
-		i.secondary = nil
-	}
-
 	return err
 }
 
@@ -781,7 +779,7 @@ func isRightOrLeftJoin(node sql.Node) bool {
 		return false
 	}
 
-	return jn.JoinType() == LeftJoinType || jn.JoinType() == RightJoinType
+	return jn.JoinType() == JoinTypeLeft || jn.JoinType() == JoinTypeRight
 }
 
 var _ sql.Node = (*FullOuterJoin)(nil)
@@ -791,7 +789,7 @@ var _ sql.Expressioner = (*FullOuterJoin)(nil)
 func NewFullOuterJoin(left, right sql.Node, filter sql.Expression) *FullOuterJoin {
 	return &FullOuterJoin{
 		&joinBase{
-			Op:         FullOuterJoinType,
+			Op:         JoinTypeFullOuter,
 			BinaryNode: BinaryNode{left: left, right: right},
 			Filter:     filter,
 		},
@@ -810,14 +808,14 @@ func (j *FullOuterJoin) Schema() sql.Schema {
 }
 
 func (j *FullOuterJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	iter, err := joinRowIter(ctx, LeftJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+	iter, err := joinRowIter(ctx, JoinTypeLeft, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
 	if err != nil {
 		return nil, err
 	}
 	iter = &unionIter{
 		cur: iter,
 		nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
-			return joinRowIter(ctx, RightJoinType, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
+			return joinRowIter(ctx, JoinTypeRight, j.left, j.right, j.Filter, row, j.ScopeLen, j.JoinMode)
 		},
 	}
 	return newDistinctIter(ctx, iter), nil
@@ -827,7 +825,7 @@ func NewSemiJoin(left, right sql.Node, filter sql.Expression) *SemiJoin {
 	return &SemiJoin{
 		&existsJoinBase{
 			&joinBase{
-				Op:         SemiJoinType,
+				Op:         JoinTypeSemi,
 				BinaryNode: BinaryNode{left: left, right: right},
 				Filter:     filter,
 			},
@@ -839,7 +837,7 @@ func NewAntiJoin(left, right sql.Node, filter sql.Expression) *AntiJoin {
 	return &AntiJoin{
 		&existsJoinBase{
 			&joinBase{
-				Op:         AntiJoinType,
+				Op:         JoinTypeAnti,
 				BinaryNode: BinaryNode{left: left, right: right},
 				Filter:     filter,
 			},

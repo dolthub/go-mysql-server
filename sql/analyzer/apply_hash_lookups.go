@@ -36,7 +36,7 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			// primary or secondary table in memory. This hash lookup implementation is expecting
 			// multipass mode, so we apply that here if we have a JoinNode whose secondary child
 			// is a HashLookup.
-			if j.JoinType() == plan.RightJoinType {
+			if j.JoinType() == plan.JoinTypeRight {
 				if _, ok := j.Left().(*plan.HashLookup); ok {
 					return j.WithMultipassMode(), transform.NewTree, nil
 				}
@@ -60,12 +60,12 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 				primaryIndex := len(c.SchemaPrefix) + len(scope.Schema())
 				primaryGetter = getFieldIndexRange(0, primaryIndex, 0)
 				secondaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
-			case pj != nil && pj.JoinType() != plan.RightJoinType && c.ChildNum == 1:
+			case pj != nil && pj.JoinType() != plan.JoinTypeRight && c.ChildNum == 1:
 				cond = pj.JoinCond()
 				primaryIndex := len(c.SchemaPrefix) + len(scope.Schema())
 				primaryGetter = getFieldIndexRange(0, primaryIndex, 0)
 				secondaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
-			case pj != nil && pj.JoinType() == plan.RightJoinType && c.ChildNum == 0:
+			case pj != nil && pj.JoinType() == plan.JoinTypeRight && c.ChildNum == 0:
 				// The columns from the primary row are on the right.
 				cond = pj.JoinCond()
 				primaryIndex := len(c.SchemaPrefix) + len(c.Node.Schema()) + len(scope.Schema())

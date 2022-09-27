@@ -131,7 +131,14 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	return n, sameC && sameN, nil
 }
 
-func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map[string]sql.Node, sel RuleSelector) (sql.Node, error) {
+func stripWith(
+	ctx *sql.Context,
+	a *Analyzer,
+	scope *Scope,
+	n sql.Node,
+	ctes map[string]sql.Node,
+	sel RuleSelector,
+) (sql.Node, error) {
 	with, ok := n.(*plan.With)
 	if !ok {
 		return n, nil
@@ -142,7 +149,8 @@ func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map
 		subquery := cte.Subquery
 
 		if len(cte.Columns) > 0 {
-			// wait until we've resolved stars to error for column mismatch
+			// We don't validate the number of columns in the CTE schema until later,
+			//see resolveSubqueries
 			subquery = subquery.WithColumns(cte.Columns)
 		}
 

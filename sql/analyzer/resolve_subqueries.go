@@ -281,7 +281,7 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			if _, isIndexedJoin := c.Parent.(*plan.IndexedJoin); isIndexedJoin {
 				return c.ChildNum == 0
 			} else if j, isJoin := c.Parent.(plan.JoinNode); isJoin {
-				if j.JoinType() == plan.RightJoinType {
+				if j.JoinType() == plan.JoinTypeRight {
 					return c.ChildNum == 1
 				} else {
 					return c.ChildNum == 0
