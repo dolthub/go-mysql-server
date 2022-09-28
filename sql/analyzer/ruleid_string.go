@@ -101,27 +101,28 @@ func _() {
 	_ = x[applyRowUpdateAccumulatorsId-90]
 	_ = x[wrapWithRollbackId-91]
 	_ = x[applyFKsId-92]
-	_ = x[validateResolvedId-93]
-	_ = x[validateOrderById-94]
-	_ = x[validateGroupById-95]
-	_ = x[validateSchemaSourceId-96]
-	_ = x[validateIndexCreationId-97]
-	_ = x[validateOperandsId-98]
-	_ = x[validateCaseResultTypesId-99]
-	_ = x[validateIntervalUsageId-100]
-	_ = x[validateExplodeUsageId-101]
-	_ = x[validateSubqueryColumnsId-102]
-	_ = x[validateUnionSchemasMatchId-103]
-	_ = x[validateAggregationsId-104]
-	_ = x[AutocommitId-105]
-	_ = x[TrackProcessId-106]
-	_ = x[parallelizeId-107]
-	_ = x[clearWarningsId-108]
+	_ = x[fakeBlobIndexesId-93]
+	_ = x[validateResolvedId-94]
+	_ = x[validateOrderById-95]
+	_ = x[validateGroupById-96]
+	_ = x[validateSchemaSourceId-97]
+	_ = x[validateIndexCreationId-98]
+	_ = x[validateOperandsId-99]
+	_ = x[validateCaseResultTypesId-100]
+	_ = x[validateIntervalUsageId-101]
+	_ = x[validateExplodeUsageId-102]
+	_ = x[validateSubqueryColumnsId-103]
+	_ = x[validateUnionSchemasMatchId-104]
+	_ = x[validateAggregationsId-105]
+	_ = x[AutocommitId-106]
+	_ = x[TrackProcessId-107]
+	_ = x[parallelizeId-108]
+	_ = x[clearWarningsId-109]
 }
 
-const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateCreateTablevalidateExprSemresolveVariablesresolveNamedWindowsresolveSetVariablesresolveViewsliftCtesresolveCtesliftRecursiveCtesresolveDatabasesresolveTablesloadStoredProceduresvalidateDropTablessetTargetSchemasresolveCreateLikeparseColumnDefaultsresolveDropConstraintvalidateDropConstraintloadCheckConstraintsresolveCreateSelectresolveSubqueriessetViewTargetSchemaresolveUnionsresolveDescribeQuerycheckUniqueTableNamesresolveTableFunctionsresolveDeclarationsvalidateCreateTriggervalidateCreateProcedureloadInfoSchemavalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesreresolveTablesvalidateJoinComplexityresolveNaturalJoinsresolveOrderbyLiteralsresolveFunctionsflattenTableAliasespushdownSortpushdownGroupbyAliasespushdownSubqueryAliasFiltersqualifyColumnsresolveColumnsresolveColumnDefaultsvalidateCheckConstraintresolveBarewordSetVariablesexpandStarsresolveHavingmergeUnionSchemasflattenAggregationExprsreorderProjectionresolveSubqueryExprsfinalizeSubqueryExprsreplaceCrossJoinsmoveJoinCondsToFilterevalFilteroptimizeDistinctfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateresolveAlterColumnresolveGeneratorsremoveUnnecessaryConvertsassignCatalogpruneColumnshoistSelectExistsoptimizeJoinspushdownFilterssubqueryIndexesinSubqueryIndexespruneTablessetJoinScopeLeneraseProjectionreplaceSortPkinsertTopNcacheSubqueryResultscacheSubqueryAliasesInJoinsapplyHashLookupsapplyHashInresolveInsertRowsresolvePreparedInsertapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyRowUpdateAccumulatorsrollback triggersapplyFKsvalidateResolvedvalidateOrderByvalidateGroupByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateCaseResultTypesvalidateIntervalUsagevalidateExplodeUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsaddAutocommitNodetrackProcessparallelizeclearWarnings"
+const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateCreateTablevalidateExprSemresolveVariablesresolveNamedWindowsresolveSetVariablesresolveViewsliftCtesresolveCtesliftRecursiveCtesresolveDatabasesresolveTablesloadStoredProceduresvalidateDropTablessetTargetSchemasresolveCreateLikeparseColumnDefaultsresolveDropConstraintvalidateDropConstraintloadCheckConstraintsresolveCreateSelectresolveSubqueriessetViewTargetSchemaresolveUnionsresolveDescribeQuerycheckUniqueTableNamesresolveTableFunctionsresolveDeclarationsvalidateCreateTriggervalidateCreateProcedureloadInfoSchemavalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesreresolveTablesvalidateJoinComplexityresolveNaturalJoinsresolveOrderbyLiteralsresolveFunctionsflattenTableAliasespushdownSortpushdownGroupbyAliasespushdownSubqueryAliasFiltersqualifyColumnsresolveColumnsresolveColumnDefaultsvalidateCheckConstraintresolveBarewordSetVariablesexpandStarsresolveHavingmergeUnionSchemasflattenAggregationExprsreorderProjectionresolveSubqueryExprsfinalizeSubqueryExprsreplaceCrossJoinsmoveJoinCondsToFilterevalFilteroptimizeDistinctfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateresolveAlterColumnresolveGeneratorsremoveUnnecessaryConvertsassignCatalogpruneColumnshoistSelectExistsoptimizeJoinspushdownFilterssubqueryIndexesinSubqueryIndexespruneTablessetJoinScopeLeneraseProjectionreplaceSortPkinsertTopNcacheSubqueryResultscacheSubqueryAliasesInJoinsapplyHashLookupsapplyHashInresolveInsertRowsresolvePreparedInsertapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyRowUpdateAccumulatorsrollback triggersapplyFKsadd sorts when accessing indexes on blobsvalidateResolvedvalidateOrderByvalidateGroupByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateCaseResultTypesvalidateIntervalUsagevalidateExplodeUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsaddAutocommitNodetrackProcessparallelizeclearWarnings"
 
-var _RuleId_index = [...]uint16{0, 23, 45, 64, 79, 95, 114, 133, 145, 153, 164, 181, 197, 210, 230, 248, 264, 281, 300, 321, 343, 363, 382, 399, 418, 431, 451, 472, 493, 512, 533, 556, 570, 594, 621, 640, 658, 673, 695, 714, 736, 752, 771, 783, 805, 833, 847, 861, 882, 905, 932, 943, 956, 973, 996, 1013, 1033, 1054, 1071, 1092, 1102, 1118, 1136, 1150, 1162, 1177, 1195, 1212, 1237, 1250, 1262, 1279, 1292, 1307, 1322, 1339, 1350, 1365, 1380, 1393, 1403, 1423, 1450, 1466, 1477, 1494, 1515, 1528, 1543, 1557, 1581, 1607, 1624, 1632, 1648, 1663, 1678, 1698, 1719, 1735, 1758, 1779, 1799, 1822, 1847, 1867, 1884, 1896, 1907, 1920}
+var _RuleId_index = [...]uint16{0, 23, 45, 64, 79, 95, 114, 133, 145, 153, 164, 181, 197, 210, 230, 248, 264, 281, 300, 321, 343, 363, 382, 399, 418, 431, 451, 472, 493, 512, 533, 556, 570, 594, 621, 640, 658, 673, 695, 714, 736, 752, 771, 783, 805, 833, 847, 861, 882, 905, 932, 943, 956, 973, 996, 1013, 1033, 1054, 1071, 1092, 1102, 1118, 1136, 1150, 1162, 1177, 1195, 1212, 1237, 1250, 1262, 1279, 1292, 1307, 1322, 1339, 1350, 1365, 1380, 1393, 1403, 1423, 1450, 1466, 1477, 1494, 1515, 1528, 1543, 1557, 1581, 1607, 1624, 1632, 1673, 1689, 1704, 1719, 1739, 1760, 1776, 1799, 1820, 1840, 1863, 1888, 1908, 1925, 1937, 1948, 1961}
 
 func (i RuleId) String() string {
 	if i < 0 || i >= RuleId(len(_RuleId_index)-1) {
