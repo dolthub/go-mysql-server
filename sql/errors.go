@@ -645,6 +645,9 @@ var (
 	// This error is temporary, and will be removed once all character sets have been added.
 	ErrCharSetNotYetImplementedTemp = errors.NewKind("The character set `%s` has not yet been implemented, " +
 		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
+
+	// ErrNoTablesUsed is returned when there is no table provided or dual table is defined with column access.
+	ErrNoTablesUsed = errors.NewKind("No tables used")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

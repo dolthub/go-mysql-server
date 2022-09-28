@@ -653,6 +653,19 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	defer span.End()
 
 	n, same1, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch p := n.(type) {
+		case *plan.Project:
+			if dt, ok := p.UnaryNode.Child.(*plan.ResolvedTable); ok {
+				if plan.IsDualTable(dt.Table) {
+					for _, projection := range p.Projections {
+						if _, ok := projection.(*expression.GetField); ok {
+							return n, transform.SameTree, sql.ErrNoTablesUsed.New()
+						}
+					}
+				}
+			}
+		}
+
 		if n.Resolved() {
 			return n, transform.SameTree, nil
 		}

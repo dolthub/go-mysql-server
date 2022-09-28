@@ -2544,7 +2544,7 @@ func tableExprsToTable(
 	te sqlparser.TableExprs,
 ) (sql.Node, error) {
 	if len(te) == 0 {
-		return nil, sql.ErrUnsupportedFeature.New("zero tables in FROM")
+		return plan.NewResolvedDualTable(), nil
 	}
 
 	var nodes []sql.Node

@@ -2240,6 +2240,31 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "basic test on tables dual and `dual`",
+		SetUpScript: []string{
+			"CREATE TABLE `dual` (id int)",
+			"INSERT INTO `dual` VALUES (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from `dual`;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT 3 from dual;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:       "SELECT * from dual;",
+				ExpectedErr: sql.ErrNoTablesUsed,
+			},
+			//{
+			//	Query:    "select 0 as dummy, (select dummy);",
+			//	Expected: []sql.Row{{0}, {0}},
+			//},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
