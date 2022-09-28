@@ -5716,6 +5716,25 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 }
 
+func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sql.Context) sql.PersistableSession, count *int) {
+	queries := []string{"SHOW TABLES;", "SELECT i from mytable;"}
+	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	sql.InitSystemVariables()
+	ctx := NewContext(harness)
+	ctx.Session = newSessFunc(ctx)
+
+	for _, q := range queries {
+		t.Run("test running queries to check callbacks on ValidateSession()", func(t *testing.T) {
+			RunQueryWithContext(t, e, harness, ctx, q)
+		})
+	}
+	// This asserts that ValidateSession() method was called once for every statement.
+	require.Equal(t, len(queries), *count)
+}
+
 func TestPrepared(t *testing.T, harness Harness) {
 	qtests := []queries.QueryTest{
 		{
