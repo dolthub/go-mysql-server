@@ -1990,7 +1990,7 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "ALTER AUTO INCREMENT TABLE ADD column",
 		SetUpScript: []string{
-			"CREATE TABLE test (pk int UNIQUE KEY auto_increment);",
+			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
