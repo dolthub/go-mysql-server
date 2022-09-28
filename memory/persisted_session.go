@@ -19,13 +19,18 @@ import "github.com/dolthub/go-mysql-server/sql"
 type GlobalsMap = map[string]interface{}
 type InMemoryPersistedSession struct {
 	sql.Session
-	persistedGlobals GlobalsMap
-	validateCount    int
+	persistedGlobals  GlobalsMap
+	incrementValidate func()
 }
 
 // NewInMemoryPersistedSession is a sql.PersistableSession that writes global variables to an im-memory map
 func NewInMemoryPersistedSession(sess sql.Session, persistedGlobals GlobalsMap) *InMemoryPersistedSession {
-	return &InMemoryPersistedSession{Session: sess, persistedGlobals: persistedGlobals, validateCount: 0}
+	return &InMemoryPersistedSession{Session: sess, persistedGlobals: persistedGlobals}
+}
+
+// NewInMemoryPersistedSessionWithValidationCallback is a sql.PersistableSession that defines increment function to count number of calls on ValidateSession().
+func NewInMemoryPersistedSessionWithValidationCallback(sess sql.Session, incValidate func()) *InMemoryPersistedSession {
+	return &InMemoryPersistedSession{Session: sess, incrementValidate: incValidate}
 }
 
 // PersistGlobal implements sql.PersistableSession
@@ -64,11 +69,6 @@ func (s *InMemoryPersistedSession) GetPersistedValue(k string) (interface{}, err
 
 // ValidateSession counts the number of times this method is called.
 func (s *InMemoryPersistedSession) ValidateSession(ctx *sql.Context, dbName string) error {
-	s.validateCount++
+	s.incrementValidate()
 	return s.Session.ValidateSession(ctx, dbName)
-}
-
-// GetValidateCount returns validateCount, the number of times ValidateSession() method called.
-func (s *InMemoryPersistedSession) GetValidateCount() int {
-	return s.validateCount
 }
