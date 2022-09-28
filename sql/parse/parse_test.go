@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -1706,7 +1707,7 @@ CREATE TABLE t2
 		&expression.DefaultColumn{},
 	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 	`INSERT INTO test (decimal_col) VALUES (11981.5923291839784651)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
-		expression.NewLiteral("11981.5923291839784651", sql.LongText),
+		expression.NewLiteral(decimal.RequireFromString("11981.5923291839784651"), sql.MustCreateDecimalType(21, 16)),
 	}}), false, []string{"decimal_col"}, []sql.Expression{}, false),
 	`INSERT INTO test (decimal_col) VALUES (119815923291839784651.11981592329183978465111981592329183978465144)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("119815923291839784651.11981592329183978465111981592329183978465144", sql.LongText),
@@ -2235,8 +2236,8 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewAlias("1.0 * a + 2.0 * b",
 				expression.NewPlus(
-					expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
-					expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
+					expression.NewMult(expression.NewLiteral(decimal.RequireFromString("1.0"), sql.MustCreateDecimalType(2, 1)), expression.NewUnresolvedColumn("a")),
+					expression.NewMult(expression.NewLiteral(decimal.RequireFromString("2.0"), sql.MustCreateDecimalType(2, 1)), expression.NewUnresolvedColumn("b")),
 				),
 			),
 		},
@@ -2632,7 +2633,7 @@ CREATE TABLE t2
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	"SHOW COLLATION": showCollationProjection,
-	"SHOW COLLATION LIKE 'foo'": plan.NewFilter(
+	"SHOW COLLATION LIKE 'foo'": plan.NewHaving(
 		expression.NewLike(
 			expression.NewUnresolvedColumn("collation"),
 			expression.NewLiteral("foo", sql.LongText),
@@ -2640,7 +2641,7 @@ CREATE TABLE t2
 		),
 		showCollationProjection,
 	),
-	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewFilter(
+	"SHOW COLLATION WHERE Charset = 'foo'": plan.NewHaving(
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("Charset"),
 			expression.NewLiteral("foo", sql.LongText),

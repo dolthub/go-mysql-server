@@ -33,19 +33,13 @@ func applyForeignKeys(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 	if fkChecks.(int8) == 0 {
 		return n, transform.SameTree, nil
 	}
-	return applyForeignKeysToNodes(ctx, a, n, newForeignKeyTableCache())
+	return applyForeignKeysToNodes(ctx, a, n, newForeignKeyCache())
 }
 
 // applyForeignKeysToNodes handles the resolution and application of foreign key tables, along with recursive searching
 // and caching of table editors.
-func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *foreignKeyTableCache) (sql.Node, transform.TreeIdentity, error) {
-	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	if fkChecks.(int8) == 0 {
-		return n, transform.SameTree, nil
-	}
+func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *foreignKeyCache) (sql.Node, transform.TreeIdentity, error) {
+	var err error
 	fkChain := foreignKeyChain{
 		fkUpdate: make(map[foreignKeyTableName]sql.ForeignKeyUpdater),
 	}
@@ -155,7 +149,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain)
+		fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -192,34 +186,17 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 }
 
 // getForeignKeyEditor merges both getForeignKeyReferences and getForeignKeyRefActions and returns a single editor.
-func getForeignKeyEditor(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyTableCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
+func getForeignKeyEditor(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
 	fkEditor, err := getForeignKeyReferences(ctx, a, tbl, cache, fkChain)
 	if err != nil {
 		return nil, err
 	}
-	fkEditor2, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain)
-	if err != nil {
-		return nil, err
-	}
-	// Due to tables not containing their database, we have to grab the table's database from the foreign key definition.
-	// This is so we may make proper use of cached updaters. Therefore, both calls return a full editor rather than just
-	// their respective specialties (and may be used independently).
-	//TODO: once we add a Database() function to sql.Table, this should be updated
-	if fkEditor == nil && fkEditor2 == nil {
-		return nil, nil
-	} else if fkEditor != nil && fkEditor2 != nil {
-		fkEditor.RefActions = fkEditor2.RefActions
-		return fkEditor, nil
-	} else if fkEditor != nil {
-		return fkEditor, nil
-	} else {
-		return fkEditor2, nil
-	}
+	return getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, fkEditor)
 }
 
 // getForeignKeyReferences returns an editor containing only the references for the given table.
-func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyTableCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
-	var editor sql.ForeignKeyUpdater
+func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
+	var updater sql.ForeignKeyUpdater
 	fks, err := tbl.GetDeclaredForeignKeys(ctx)
 	if err != nil {
 		return nil, err
@@ -238,25 +215,23 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	if len(fks) == 0 {
 		return nil, nil
 	}
+	// Tables do not include their database. As a workaround, we'll use the first foreign key to tell us the database.
+	updater, err = cache.AddUpdater(ctx, tbl, fks[0].Database, fks[0].Table)
+	if err != nil {
+		return nil, err
+	}
+	fkChain = fkChain.AddTable(fks[0].ParentDatabase, fks[0].ParentTable).AddTableUpdater(fks[0].ParentDatabase, fks[0].ParentTable, updater)
 
+	tblSch := tbl.Schema()
 	fkEditor := &plan.ForeignKeyEditor{
-		Schema:     tbl.Schema(),
-		Editor:     nil,
+		Schema:     tblSch,
+		Editor:     updater,
 		References: make([]*plan.ForeignKeyReferenceHandler, len(fks)),
 		RefActions: nil,
+		Cyclical:   false,
 	}
 	for i, fk := range fks {
-		// Tables do not include their database. As a workaround, we'll use one of foreign keys to tell us the database.
-		if editor == nil {
-			editor, err = cache.Add(ctx, tbl, fk.Database, fk.Table)
-			if err != nil {
-				return nil, err
-			}
-			fkEditor.Editor = editor
-			fkChain = fkChain.AddTable(fk.ParentDatabase, fk.ParentTable).AddTableUpdater(fk.ParentDatabase, fk.ParentTable, editor)
-		}
-
-		parentTbl, parentUpdater, err := cache.Get(ctx, a, fk.ParentDatabase, fk.ParentTable)
+		parentTbl, parentUpdater, err := cache.GetUpdater(ctx, a, fk.ParentDatabase, fk.ParentTable)
 		if err != nil {
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
@@ -288,7 +263,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		var selfCols map[string]int
 		if fk.IsSelfReferential() {
 			selfCols = make(map[string]int)
-			for i, col := range tbl.Schema() {
+			for i, col := range tblSch {
 				selfCols[strings.ToLower(col.Name)] = i
 			}
 		}
@@ -298,7 +273,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			RowMapper: plan.ForeignKeyRowMapper{
 				Index:          parentIndex,
 				Updater:        parentUpdater,
-				SourceSch:      tbl.Schema(),
+				SourceSch:      tblSch,
 				IndexPositions: indexPositions,
 				AppendTypes:    appendTypes,
 			},
@@ -307,38 +282,52 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	return fkEditor, nil
 }
 
-// getForeignKeyRefActions returns an editor containing only the referential actions to enforce on the given table.
-func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyTableCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
-	var editor sql.ForeignKeyUpdater
+// getForeignKeyRefActions adds referential actions to enforce on the given table. If this is being called after
+// getForeignKeyReferences, then that foreign key editor should be passed in. Otherwise, nil should be passed in.
+// This also handles caching of the foreign key editor (when the editor does not have any references).
+func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, fkEditor *plan.ForeignKeyEditor) (*plan.ForeignKeyEditor, error) {
 	fks, err := tbl.GetReferencedForeignKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
-	// MySQL has a CASCADE limit of a depth of 15
-	//TODO: figure out if MySQL errors once 15 has been hit, or if it just stops cascading (if the former, add a node that always errors)
-	if len(fks) == 0 || fkChain.Count() >= 15 {
-		return nil, nil
+	// Return early if there are no foreign keys that reference the table
+	if len(fks) == 0 {
+		return fkEditor, nil
 	}
 
+	// Check if we already have an editor that we can reuse. If we can, we'll return that instead.
+	// Tables do not include their database. As a workaround, we'll use the first foreign key to tell us the database.
+	cachedFkEditor := cache.GetEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentTable)
+	if cachedFkEditor != nil {
+		// Reusing an editor means that we've hit a cycle, so we update the cached editor.
+		cachedFkEditor.Cyclical = true
+		return cachedFkEditor, nil
+	}
+	// No matching editor was cached, so we either create a new one or add to the existing one
 	tblSch := tbl.Schema()
-	fkEditor := &plan.ForeignKeyEditor{
-		Schema:     tbl.Schema(),
-		Editor:     nil,
-		References: nil,
-		RefActions: make([]plan.ForeignKeyRefActionData, len(fks)),
-	}
-	for i, fk := range fks {
-		// Tables do not include their database. As a workaround, we'll use one of foreign keys to tell us the database.
-		if editor == nil {
-			editor, err = cache.Add(ctx, tbl, fk.ParentDatabase, fk.ParentTable)
-			if err != nil {
-				return nil, err
-			}
-			fkEditor.Editor = editor
-			fkChain = fkChain.AddTable(fk.ParentDatabase, fk.ParentTable).AddTableUpdater(fk.ParentDatabase, fk.ParentTable, editor)
+	if fkEditor == nil {
+		fkEditor = &plan.ForeignKeyEditor{
+			Schema:     tblSch,
+			Editor:     nil,
+			References: nil,
+			RefActions: make([]plan.ForeignKeyRefActionData, len(fks)),
+			Cyclical:   false,
 		}
+		fkEditor.Editor, err = cache.AddUpdater(ctx, tbl, fks[0].ParentDatabase, fks[0].ParentTable)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// The editor has already been created, so we need to create the referential actions array
+		fkEditor.RefActions = make([]plan.ForeignKeyRefActionData, len(fks))
+	}
+	// Add the editor to the cache
+	cache.AddEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentTable)
+	// Ensure that the chain has the table and updater
+	fkChain = fkChain.AddTable(fks[0].ParentDatabase, fks[0].ParentTable).AddTableUpdater(fks[0].ParentDatabase, fks[0].ParentTable, fkEditor.Editor)
 
-		childTbl, childUpdater, err := cache.Get(ctx, a, fk.Database, fk.Table)
+	for i, fk := range fks {
+		childTbl, childUpdater, err := cache.GetUpdater(ctx, a, fk.Database, fk.Table)
 		if err != nil {
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
@@ -368,7 +357,8 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		if err != nil {
 			return nil, err
 		}
-		childParentMapping, err := plan.GetChildParentMapping(tblSch, childTbl.Schema(), fk)
+		childTblSch := childTbl.Schema()
+		childParentMapping, err := plan.GetChildParentMapping(tblSch, childTblSch, fk)
 		if err != nil {
 			return nil, err
 		}
@@ -380,12 +370,15 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		// May return nil if we recursively loop onto a foreign key previously declared
 		if childEditor == nil {
 			childEditor = &plan.ForeignKeyEditor{
-				Schema:     childTbl.Schema(),
+				Schema:     childTblSch,
 				Editor:     childUpdater,
 				References: nil,
 				RefActions: nil,
+				Cyclical:   false,
 			}
 		}
+		// If a child editor is cyclical, then this editor is a part of that cycle
+		fkEditor.Cyclical = fkEditor.Cyclical || childEditor.Cyclical
 		// If "ON UPDATE CASCADE" or "ON UPDATE SET NULL" recurses onto the same table that has been previously updated
 		// in the same cascade then it's treated like a RESTRICT (does not apply to "ON DELETE")
 		if fkChain.HasTable(fk.Database, fk.Table) {
@@ -419,44 +412,59 @@ type foreignKeyTableUpdater struct {
 	updater sql.ForeignKeyUpdater
 }
 
-// foreignKeyTableCache is a cache of table editors for foreign keys.
-type foreignKeyTableCache struct {
-	cache map[foreignKeyTableName]foreignKeyTableUpdater
+// foreignKeyCache is a cache of updaters and editors for foreign keys.
+type foreignKeyCache struct {
+	updaterCache map[foreignKeyTableName]foreignKeyTableUpdater
+	editorsCache map[foreignKeyTableName][]*plan.ForeignKeyEditor
 }
 
-// newForeignKeyTableCache returns a new *foreignKeyTableCache.
-func newForeignKeyTableCache() *foreignKeyTableCache {
-	return &foreignKeyTableCache{
-		cache: make(map[foreignKeyTableName]foreignKeyTableUpdater),
+// newForeignKeyCache returns a new *foreignKeyCache.
+func newForeignKeyCache() *foreignKeyCache {
+	return &foreignKeyCache{
+		updaterCache: make(map[foreignKeyTableName]foreignKeyTableUpdater),
+		editorsCache: make(map[foreignKeyTableName][]*plan.ForeignKeyEditor),
 	}
 }
 
-// Add will add the given foreign key table (and updater) to the cache and returns its updater. If it already exists, it
-// is not added, and instead the cached updater is returned. This is so that the same updater is referenced by all
-// foreign key instances.
-func (cache *foreignKeyTableCache) Add(ctx *sql.Context, tbl sql.ForeignKeyTable, dbName string, tblName string) (sql.ForeignKeyUpdater, error) {
+// AddUpdater will add the given foreign key table (and updater) to the cache and returns its updater. If it already
+// exists, it is not added, and instead the cached updater is returned. This is so that the same updater is referenced
+// by all foreign key instances.
+func (cache *foreignKeyCache) AddUpdater(ctx *sql.Context, tbl sql.ForeignKeyTable, dbName string, tblName string) (sql.ForeignKeyUpdater, error) {
 	fkTableName := foreignKeyTableName{
 		dbName:  strings.ToLower(dbName),
 		tblName: strings.ToLower(tblName),
 	}
-	if cachedEditor, ok := cache.cache[fkTableName]; ok {
+	if cachedEditor, ok := cache.updaterCache[fkTableName]; ok {
 		return cachedEditor.updater, nil
 	}
 	editor := foreignKeyTableUpdater{
 		tbl:     tbl,
 		updater: tbl.GetForeignKeyUpdater(ctx),
 	}
-	cache.cache[fkTableName] = editor
+	cache.updaterCache[fkTableName] = editor
 	return editor.updater, nil
 }
 
-// Get returns the given foreign key table updater.
-func (cache *foreignKeyTableCache) Get(ctx *sql.Context, a *Analyzer, dbName string, tblName string) (sql.ForeignKeyTable, sql.ForeignKeyUpdater, error) {
+// AddEditor will add the given foreign key editor to the cache. Does not validate that the editor is unique, therefore
+// GetEditor should be called before this function.
+func (cache *foreignKeyCache) AddEditor(editor *plan.ForeignKeyEditor, dbName string, tblName string) {
+	if editor == nil {
+		panic("cannot pass in nil editor") // Should never be hit
+	}
 	fkTableName := foreignKeyTableName{
 		dbName:  strings.ToLower(dbName),
 		tblName: strings.ToLower(tblName),
 	}
-	if fkTblEditor, ok := cache.cache[fkTableName]; ok {
+	cache.editorsCache[fkTableName] = append(cache.editorsCache[fkTableName], editor)
+}
+
+// GetUpdater returns the given foreign key table updater.
+func (cache *foreignKeyCache) GetUpdater(ctx *sql.Context, a *Analyzer, dbName string, tblName string) (sql.ForeignKeyTable, sql.ForeignKeyUpdater, error) {
+	fkTableName := foreignKeyTableName{
+		dbName:  strings.ToLower(dbName),
+		tblName: strings.ToLower(tblName),
+	}
+	if fkTblEditor, ok := cache.updaterCache[fkTableName]; ok {
 		return fkTblEditor.tbl, fkTblEditor.updater, nil
 	}
 	tbl, _, err := a.Catalog.Table(ctx, dbName, tblName)
@@ -471,17 +479,48 @@ func (cache *foreignKeyTableCache) Get(ctx *sql.Context, a *Analyzer, dbName str
 		tbl:     fkTbl,
 		updater: fkTbl.GetForeignKeyUpdater(ctx),
 	}
-	cache.cache[fkTableName] = editor
+	cache.updaterCache[fkTableName] = editor
 	return editor.tbl, editor.updater, nil
 }
 
-// foreignKeyChain holds all previously used foreign keys and modified tables in the chain. Also keeps track of how many
-// times a foreign key was added (or attempted to be added). This is all used for cycle detection.
+// GetEditor returns a foreign key editor that matches the given editor in all ways except for the referential actions.
+// Returns nil if no such editors have been cached.
+func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName string, tblName string) *plan.ForeignKeyEditor {
+	fkTableName := foreignKeyTableName{
+		dbName:  strings.ToLower(dbName),
+		tblName: strings.ToLower(tblName),
+	}
+	// It is safe to assume that the index and schema will match for a table that has the same name on the same database,
+	// so we only need to check that the references match. As long as they refer to the same foreign key, they should
+	// match, so we only need to check the names.
+	for _, cachedEditor := range cache.editorsCache[fkTableName] {
+		if fkEditor == nil {
+			if len(cachedEditor.References) == 0 {
+				return cachedEditor
+			} else {
+				continue
+			}
+		}
+		if len(fkEditor.References) != len(cachedEditor.References) {
+			continue
+		}
+		for i := range fkEditor.References {
+			if fkEditor.References[i].ForeignKey.Name != cachedEditor.References[i].ForeignKey.Name {
+				continue
+			}
+		}
+		return cachedEditor
+	}
+	return nil
+}
+
+// foreignKeyChain holds all previously used foreign keys and modified tables in the chain. Also keeps track of all
+// updaters that have been used in the chain. This differs from the updaters in the cache, as the cache may contain
+// updaters that are not a part of this chain.
 type foreignKeyChain struct {
 	fkNames  map[string]struct{}
 	fkTables map[foreignKeyTableName]struct{}
 	fkUpdate map[foreignKeyTableName]sql.ForeignKeyUpdater
-	count    int
 }
 
 // AddTable returns a new chain with the added table.
@@ -502,7 +541,6 @@ func (chain foreignKeyChain) AddTable(dbName string, tblName string) foreignKeyC
 		fkNames:  newFkNames,
 		fkTables: newFkTables,
 		fkUpdate: chain.fkUpdate,
-		count:    chain.count,
 	}
 }
 
@@ -530,7 +568,6 @@ func (chain foreignKeyChain) AddForeignKey(fkName string) foreignKeyChain {
 		fkNames:  newFkNames,
 		fkTables: newFkTables,
 		fkUpdate: chain.fkUpdate,
-		count:    chain.count + 1,
 	}
 }
 
@@ -560,10 +597,4 @@ func (chain foreignKeyChain) GetUpdaters() []sql.ForeignKeyUpdater {
 		updaters = append(updaters, updater)
 	}
 	return updaters
-}
-
-// Count returns how many times a foreign key has been added (or an attempt was made). This is representative of the
-// referential action depth.
-func (chain foreignKeyChain) Count() int {
-	return chain.count
 }

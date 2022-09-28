@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -83,28 +84,26 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 		}
 
 		for _, assertion := range assertions {
-			if assertion.ExpectedErr != nil {
-				t.Run(assertion.Query, func(t *testing.T) {
+			t.Run(assertion.Query, func(t *testing.T) {
+				if assertion.Skip {
+					t.Skip()
+				}
+
+				if assertion.ExpectedErr != nil {
 					AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-				})
-			} else if assertion.ExpectedErrStr != "" {
-				t.Run(assertion.Query, func(t *testing.T) {
+				} else if assertion.ExpectedErrStr != "" {
 					AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-				})
-			} else if assertion.ExpectedWarning != 0 {
-				t.Run(assertion.Query, func(t *testing.T) {
+				} else if assertion.ExpectedWarning != 0 {
 					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
-				})
-			} else if assertion.SkipResultsCheck {
-				RunQuery(t, e, harness, assertion.Query)
-			} else {
-				t.Run(assertion.Query, func(t *testing.T) {
+				} else if assertion.SkipResultsCheck {
+					RunQuery(t, e, harness, assertion.Query)
+				} else {
 					ctx := NewContext(harness)
-					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
-				})
-			}
+					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+				}
+			})
 		}
 	})
 }
@@ -429,6 +428,19 @@ func checkResults(
 			for i, val := range widenedRow {
 				if _, ok := val.(time.Time); ok {
 					widenedRow[i] = time.Unix(0, 0).UTC()
+				}
+			}
+		}
+	}
+
+	// The result from SELECT or WITH queries can be decimal.Decimal type.
+	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
+	// which is the value we get on sql shell.
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") {
+		for _, widenedRow := range widenedRows {
+			for i, val := range widenedRow {
+				if d, ok := val.(decimal.Decimal); ok {
+					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
 				}
 			}
 		}

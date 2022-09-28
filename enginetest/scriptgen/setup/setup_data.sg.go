@@ -86,11 +86,6 @@ var Invert_pkData = []SetupScript{{
 	`insert into invert_pk values    (0, 2, 2),    (1, 1, 0),    (2, 0, 1)`,
 }}
 
-var Json_table_tablesData = []SetupScript{{
-	"CREATE TABLE `json_table_tables` (  `t` varchar(100))",
-	`insert into json_table_tables values    ('[{"a": 1},{"b": 2},{"c": 3},{"d": 4}]');`,
-}}
-
 var JsontableData = []SetupScript{{
 	`create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)`,
 	`insert into jsontable values    (1, 'row one', '[1,2]', '{"a": 2}'),    (2, 'row two', '[3,4]', '{"b": 2}'),    (3, 'row three', '[5,6]', '{"c": 2}'),    (4, 'row four', '[7,8]', '{"d": 2}')`,
@@ -245,4 +240,17 @@ var TypestableData = []SetupScript{{
 var ViewsData = []SetupScript{{
 	`CREATE VIEW myview1 AS SELECT * FROM myhistorytable`,
 	`CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1`,
+}}
+
+var XyData = []SetupScript{{
+	`CREATE table xy (x int primary key, y int);`,
+	`CREATE table uv (u int primary key, v int);`,
+	`CREATE table ab (a int primary key, b int);`,
+	`CREATE table pq (p int primary key, q int);`,
+	`CREATE table mn (m int primary key, n int);`,
+	`insert into xy values  (1,0),  (2,1),  (0,2),  (3,3);`,
+	`insert into uv values  (0,1),  (1,1),  (2,2),  (3,2);`,
+	`insert into ab values  (0,2),  (1,2),  (2,2),  (3,1);`,
+	`insert into pq values  (0,0),  (1,1),  (2,2),  (3,3);`,
+	`insert into mn values  (2,0),  (3,1),  (4,2),  (5,3);`,
 }}

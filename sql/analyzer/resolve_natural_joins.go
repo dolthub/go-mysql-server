@@ -73,6 +73,9 @@ func resolveNaturalJoin(
 			replacements[tableCol{strings.ToLower(rcol.Source), strings.ToLower(rcol.Name)}] = tableCol{
 				strings.ToLower(lcol.Source), strings.ToLower(lcol.Name),
 			}
+			replacements[tableCol{"", strings.ToLower(rcol.Name)}] = tableCol{
+				strings.ToLower(lcol.Source), strings.ToLower(lcol.Name),
+			}
 
 			conditions = append(
 				conditions,
@@ -136,8 +139,7 @@ func replaceExpressionsForNaturalJoin(
 	return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
-			var tableName = strings.ToLower(e.(sql.Tableable).Table())
-
+			tableName := strings.ToLower(e.(sql.Tableable).Table())
 			name := e.(sql.Nameable).Name()
 			if col, ok := replacements[tableCol{strings.ToLower(tableName), strings.ToLower(name)}]; ok {
 				return expression.NewUnresolvedQualifiedColumn(col.table, col.col), transform.NewTree, nil

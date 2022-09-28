@@ -92,7 +92,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		rightSources := nodeSources(join.Right())
 		filtersMoved := 0
 		var condFilters []sql.Expression
-		for _, e := range splitConjunction(join.Cond) {
+		for _, e := range splitConjunction(join.Filter) {
 			sources := expressionSources(e)
 
 			belongsToLeftTable := containsSources(leftSources, sources)

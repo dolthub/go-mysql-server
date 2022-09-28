@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/shopspring/decimal"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -151,7 +152,7 @@ func (a *Arithmetic) Type() sql.Type {
 			return sql.Int64
 		}
 
-		return sql.Float64
+		return a.getArithmeticTypeFromExpr()
 
 	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
 		return sql.Uint64
@@ -163,7 +164,80 @@ func (a *Arithmetic) Type() sql.Type {
 		return sql.Int64
 	}
 
-	return sql.Float64
+	return a.getArithmeticTypeFromExpr()
+}
+
+// getArithmeticTypeFromExpr returns a type that left and right values to be converted into.
+// If there is system variable, return type should be the type of that system variable.
+// For any non-DECIMAL column type, it will use default sql.Float64 type.
+// For DECIMAL column type, or any Literal values, the return type will the DECIMAL type with
+// the highest precision and scale calculated out of all Literals and DECIMAL column type definition.
+func (a *Arithmetic) getArithmeticTypeFromExpr() sql.Type {
+	var resType sql.Type
+	var precision uint8
+	var scale uint8
+	sql.Inspect(a, func(expr sql.Expression) bool {
+		switch c := expr.(type) {
+		case *SystemVar:
+			resType = c.Type()
+			return false
+		case *GetField:
+			if sql.IsDecimal(resType) {
+				resType = c.Type()
+				dt, _ := resType.(sql.DecimalType)
+				if dt.Precision() > (precision) {
+					precision = dt.Precision()
+				}
+				if dt.Scale() > scale {
+					scale = dt.Precision()
+				}
+			} else {
+				resType = sql.Float64
+			}
+		case *Literal:
+			val, err := c.Eval(nil, nil)
+			if err != nil {
+				return false
+			}
+			var v string
+			switch val.(type) {
+			case float64:
+				v = fmt.Sprintf("%f", val)
+			default:
+				v = fmt.Sprintf("%v", val)
+			}
+			p, s := GetDecimalPrecisionAndScale(v)
+			if p > precision {
+				precision = p
+			}
+			if s > scale {
+				scale = s
+			}
+		}
+		return true
+	})
+
+	if sql.IsDecimal(resType) {
+		r, err := sql.CreateDecimalType(precision, scale)
+		if err == nil {
+			resType = r
+		}
+	} else if resType == nil {
+		return sql.Float64
+	}
+
+	return resType
+}
+
+// GetDecimalPrecisionAndScale returns precision and scale for given string formatted float/double number.
+func GetDecimalPrecisionAndScale(val string) (uint8, uint8) {
+	scale := 0
+	precScale := strings.Split(strings.TrimPrefix(val, "-"), ".")
+	if len(precScale) != 1 {
+		scale = len(precScale[1])
+	}
+	precision := len((precScale)[0]) + scale
+	return uint8(precision), uint8(scale)
 }
 
 func isInterval(expr sql.Expression) bool {
@@ -281,22 +355,60 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 
 func plus(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			return l + r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			return l + r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			return l + r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			return l + r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			return l + r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			return l + r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
 			return l + r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
 			return l + r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			return l + r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
 			return l + r, nil
+		}
+	case decimal.Decimal:
+		switch r := rval.(type) {
+		case decimal.Decimal:
+			return l.Add(r), nil
 		}
 	case time.Time:
 		switch r := rval.(type) {
@@ -317,22 +429,60 @@ func plus(lval, rval interface{}) (interface{}, error) {
 
 func minus(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			return l - r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			return l - r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			return l - r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			return l - r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			return l - r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			return l - r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
 			return l - r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
 			return l - r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			return l - r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
 			return l - r, nil
+		}
+	case decimal.Decimal:
+		switch r := rval.(type) {
+		case decimal.Decimal:
+			return l.Sub(r), nil
 		}
 	case time.Time:
 		switch r := rval.(type) {
@@ -348,22 +498,60 @@ func minus(lval, rval interface{}) (interface{}, error) {
 
 func mult(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			return l * r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			return l * r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			return l * r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			return l * r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			return l * r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			return l * r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
 			return l * r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
 			return l * r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			return l * r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
 			return l * r, nil
+		}
+	case decimal.Decimal:
+		switch r := rval.(type) {
+		case decimal.Decimal:
+			return l.Mul(r).BigInt(), nil
 		}
 	}
 
@@ -372,6 +560,54 @@ func mult(lval, rval interface{}) (interface{}, error) {
 
 func div(lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
+	case uint8:
+		switch r := rval.(type) {
+		case uint8:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case int8:
+		switch r := rval.(type) {
+		case int8:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case uint16:
+		switch r := rval.(type) {
+		case uint16:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case int16:
+		switch r := rval.(type) {
+		case int16:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case uint32:
+		switch r := rval.(type) {
+		case uint32:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case int32:
+		switch r := rval.(type) {
+		case int32:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
 	case uint64:
 		switch r := rval.(type) {
 		case uint64:
@@ -380,7 +616,6 @@ func div(lval, rval interface{}) (interface{}, error) {
 			}
 			return l / r, nil
 		}
-
 	case int64:
 		switch r := rval.(type) {
 		case int64:
@@ -389,7 +624,14 @@ func div(lval, rval interface{}) (interface{}, error) {
 			}
 			return l / r, nil
 		}
-
+	case float32:
+		switch r := rval.(type) {
+		case float32:
+			if r == 0 {
+				return nil, nil
+			}
+			return l / r, nil
+		}
 	case float64:
 		switch r := rval.(type) {
 		case float64:
@@ -397,6 +639,15 @@ func div(lval, rval interface{}) (interface{}, error) {
 				return nil, nil
 			}
 			return l / r, nil
+		}
+	case decimal.Decimal:
+		switch r := rval.(type) {
+		case decimal.Decimal:
+			if r.String() == "0" {
+				return nil, nil
+			}
+			exp := (l.Exponent() * -1) + 4
+			return l.DivRound(r, exp), nil
 		}
 	}
 
@@ -551,7 +802,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !sql.IsNumber(e.Child.Type()) {
-		child, err = sql.Float64.Convert(child)
+		child, err = decimal.NewFromString(fmt.Sprintf("%v", child))
 		if err != nil {
 			child = 0.0
 		}
@@ -582,6 +833,8 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -int32(n), nil
 	case uint64:
 		return -int64(n), nil
+	case decimal.Decimal:
+		return n.Neg(), err
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 	}

@@ -63,7 +63,6 @@ const (
 
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
-	mu                sync.Mutex
 	e                 *sqle.Engine
 	sm                *SessionManager
 	readTimeout       time.Duration
@@ -139,7 +138,11 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		}
 	}()
 
-	ctx, _ := h.sm.NewContextWithQuery(c, "")
+	ctx, err := h.sm.NewContextWithQuery(c, "")
+	if err != nil {
+		h.sm.CloseConn(c)
+		return
+	}
 	h.sm.CloseConn(c)
 
 	// If connection was closed, kill its associated queries.
@@ -431,7 +434,7 @@ func (h *Handler) doQuery(
 	defer timer.Stop()
 
 	var r *sqltypes.Result
-	var proccesedAtLeastOneBatch bool
+	var processedAtLeastOneBatch bool
 
 	// reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
@@ -448,7 +451,7 @@ func (h *Handler) doQuery(
 					return err
 				}
 				r = nil
-				proccesedAtLeastOneBatch = true
+				processedAtLeastOneBatch = true
 				continue
 			}
 
@@ -558,7 +561,7 @@ func (h *Handler) doQuery(
 
 	// processedAtLeastOneBatch means we already called callback() at least
 	// once, so no need to call it if RowsAffected == 0.
-	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
+	if r != nil && (r.RowsAffected == 0 && processedAtLeastOneBatch) {
 		return remainder, nil
 	}
 

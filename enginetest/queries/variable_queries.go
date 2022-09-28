@@ -58,9 +58,8 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select @myvar, @@autocommit, @myvar2, @myvar3",
-				// TODO: unclear why the last var is getting a float type, should be an int
 				Expected: []sql.Row{
-					{1, 1, 0, 0.0},
+					{1, 1, 0, 0},
 				},
 			},
 		},

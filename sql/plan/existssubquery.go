@@ -18,31 +18,25 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ExistsSubquery is an expression that checks that a subquery returns a non-empty result set. It's in the plan package,
 // instead of the expression package, because Subquery is itself in the plan package (because it functions more like a
 // plan node than an expression in its evaluation).
 type ExistsSubquery struct {
-	subquery expression.UnaryExpression
+	Query *Subquery
 }
 
 var _ sql.Expression = (*ExistsSubquery)(nil)
 
 // NewExistsSubquery created an ExistsSubquery expression.
-func NewExistsSubquery(query sql.Expression) *ExistsSubquery {
-	return &ExistsSubquery{expression.UnaryExpression{Child: query}}
+func NewExistsSubquery(sq *Subquery) *ExistsSubquery {
+	return &ExistsSubquery{sq}
 }
 
 // Eval implements the Expression interface.
 func (e *ExistsSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	subquery, ok := e.subquery.Child.(*Subquery)
-	if !ok {
-		return nil, fmt.Errorf("error: exists operator should only work with a subquery")
-	}
-
-	hasResultRow, err := subquery.HasResultRow(ctx, row)
+	hasResultRow, err := e.Query.HasResultRow(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +50,18 @@ func (e *ExistsSubquery) WithChildren(children ...sql.Expression) (sql.Expressio
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
 
-	return NewExistsSubquery(children[0]), nil
+	sq, ok := children[0].(*Subquery)
+	if !ok {
+		return nil, fmt.Errorf("expected subquery expression, found: %T", children[0])
+	}
+	ret := *e
+	ret.Query = sq
+	return &ret, nil
 }
 
 // Resolved implements the Expression interface.
 func (e *ExistsSubquery) Resolved() bool {
-	return e.subquery.Resolved()
+	return e.Query.Resolved()
 }
 
 // IsNullable implements the Expression interface.
@@ -71,12 +71,12 @@ func (e *ExistsSubquery) IsNullable() bool {
 
 // Children implements the Expression interface.
 func (e *ExistsSubquery) Children() []sql.Expression {
-	return []sql.Expression{e.subquery.Child}
+	return []sql.Expression{e.Query}
 }
 
 // String implements the Expression interface.
 func (e *ExistsSubquery) String() string {
-	return fmt.Sprintf("EXISTS %s", e.subquery)
+	return fmt.Sprintf("EXISTS %s", e.Query)
 }
 
 // Type implements the Expression interface.

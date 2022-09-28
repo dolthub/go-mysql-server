@@ -60,9 +60,16 @@ type ScriptTestAssertion struct {
 	// query. The ExpectedWarning field must be set for warning messages to be checked.
 	ExpectedWarningMessageSubstring string
 
+	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
+	ExpectedColumns sql.Schema
+
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool
+
+	// Skip is used to completely skip a test, not execute its query at all, and record it as a skipped test
+	// in the test suite results.
+	Skip bool
 
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]sql.Expression
@@ -1280,7 +1287,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
-				Expected: []sql.Row{{float64(-1455)}},
+				Expected: []sql.Row{{int64(-1455)}},
 			},
 			{
 				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
@@ -2175,6 +2182,61 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SHOW CREATE TABLE test2;",
 				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "sum() and avg() on DECIMAL type column returns the DECIMAL type result",
+		SetUpScript: []string{
+			"create table decimal_table (id int, val decimal(18,16));",
+			"insert into decimal_table values (1,-2.5633000000000384);",
+			"insert into decimal_table values (2,2.5633000000000370);",
+			"insert into decimal_table values (3,0.0000000000000004);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT val FROM decimal_table;",
+				Expected: []sql.Row{{"-2.5633000000000384"}, {"2.5633000000000370"}, {"0.0000000000000004"}},
+			},
+			{
+				Query:    "SELECT sum(val) FROM decimal_table;",
+				Expected: []sql.Row{{"-0.0000000000000010"}},
+			},
+			{
+				Query:    "SELECT avg(val) FROM decimal_table;",
+				Expected: []sql.Row{{"-0.00000000000000033333"}},
+			},
+		},
+	},
+	{
+		Name: "sum() and avg() on non-DECIMAL type column returns the DOUBLE type result",
+		SetUpScript: []string{
+			"create table float_table (id int, val1 double, val2 float);",
+			"insert into float_table values (1,-2.5633000000000384, 2.3);",
+			"insert into float_table values (2,2.5633000000000370, 2.4);",
+			"insert into float_table values (3,0.0000000000000004, 5.3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
+				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+			},
+			{
+				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;;",
+				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
+			},
+		},
+	},
+	{
+		Name: "compare DECIMAL type columns with different precision and scale",
+		SetUpScript: []string{
+			"create table t (id int primary key, val1 decimal(2, 1), val2 decimal(3, 1));",
+			"insert into t values (1, 1.2, 1.1), (2, 1.2, 10.1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select if(val1 < val2, 'YES', 'NO') from t order by id;",
+				Expected: []sql.Row{{"NO"}, {"YES"}},
 			},
 		},
 	},

@@ -24,6 +24,278 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select x, 1 in (select a from ab where exists (select * from uv where a = u)) s from xy`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x, (1 IN (Project\n" +
+			" │   ├─ columns: [ab.a]\n" +
+			" │   └─ SemiJoin(ab.a = uv.u)\n" +
+			" │       ├─ Table(ab)\n" +
+			" │       └─ IndexedTableAccess(uv)\n" +
+			" │           ├─ index: [uv.u]\n" +
+			" │           └─ columns: [u v]\n" +
+			" │  )) as s]\n" +
+			" └─ Table(xy)\n" +
+			"",
+	},
+	{
+		Query: `with cte (a,b) as (select * from ab) select * from cte`,
+		ExpectedPlan: "SubqueryAlias(cte)\n" +
+			" └─ Table(ab)\n" +
+			"     └─ columns: [a b]\n" +
+			"",
+	},
+	{
+		Query: `select * from ab where exists (select * from uv where a = 1)`,
+		ExpectedPlan: "SemiJoin(ab.a = 1)\n" +
+			" ├─ Table(ab)\n" +
+			" └─ Table(uv)\n" +
+			"     └─ columns: [u v]\n" +
+			"",
+	},
+	{
+		Query: `select * from ab where exists (select * from ab where a = 1)`,
+		ExpectedPlan: "FilterEXISTS (IndexedTableAccess(ab)\n" +
+			" ├─ index: [ab.a]\n" +
+			" ├─ filters: [{[1, 1]}]\n" +
+			" └─ columns: [a b]\n" +
+			")\n" +
+			" └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `select * from ab s where exists (select * from ab where a = 1 or s.a = 1)`,
+		ExpectedPlan: "FilterEXISTS (Filter((ab.a = 1) OR (s.a = 1))\n" +
+			" └─ Table(ab)\n" +
+			"     └─ columns: [a b]\n" +
+			")\n" +
+			" └─ TableAlias(s)\n" +
+			"     └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `select * from uv where exists (select 1, count(a) from ab where u = a group by a)`,
+		ExpectedPlan: "SemiJoin(uv.u = ab.a)\n" +
+			" ├─ Table(uv)\n" +
+			" └─ IndexedTableAccess(ab)\n" +
+			"     ├─ index: [ab.a]\n" +
+			"     └─ columns: [a]\n" +
+			"",
+	},
+	{
+		Query: `select count(*) cnt from ab where exists (select * from xy where x = a) group by a`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(*) as cnt]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(*))\n" +
+			"     ├─ Grouping(ab.a)\n" +
+			"     └─ FilterEXISTS (Filter(xy.x = ab.a)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             └─ columns: [x y]\n" +
+			"        )\n" +
+			"         └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `with cte(a,b) as (select * from ab) select * from xy where exists (select * from cte where a = x)`,
+		ExpectedPlan: "FilterEXISTS (Filter(cte.a = xy.x)\n" +
+			" └─ SubqueryAlias(cte)\n" +
+			"     └─ Table(ab)\n" +
+			"         └─ columns: [a b]\n" +
+			")\n" +
+			" └─ Table(xy)\n" +
+			"",
+	},
+	{
+		Query: `select * from xy where exists (select * from ab where a = x) order by x`,
+		ExpectedPlan: "Sort(xy.x ASC)\n" +
+			" └─ FilterEXISTS (Filter(ab.a = xy.x)\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ columns: [a b]\n" +
+			"    )\n" +
+			"     └─ Table(xy)\n" +
+			"",
+	},
+	{
+		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
+		ExpectedPlan: "Limit(5)\n" +
+			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
+			"     └─ FilterEXISTS (Limit(2)\n" +
+			"         └─ TopN(Limit: [2]; ab.a ASC)\n" +
+			"             └─ Filter(ab.a = xy.x)\n" +
+			"                 └─ IndexedTableAccess(ab)\n" +
+			"                     ├─ index: [ab.a]\n" +
+			"                     └─ columns: [a b]\n" +
+			"        )\n" +
+			"         └─ Table(xy)\n" +
+			"",
+	},
+	{
+		Query: `
+select * from
+(
+  select * from ab
+  left join uv on a = u
+  where exists (select * from pq where u = p)
+) alias2
+inner join xy on a = x;`,
+		ExpectedPlan: "IndexedJoin(alias2.a = xy.x)\n" +
+			" ├─ SubqueryAlias(alias2)\n" +
+			" │   └─ SemiJoin(uv.u = pq.p)\n" +
+			" │       ├─ LeftJoin(ab.a = uv.u)\n" +
+			" │       │   ├─ Table(ab)\n" +
+			" │       │   └─ Table(uv)\n" +
+			" │       └─ IndexedTableAccess(pq)\n" +
+			" │           ├─ index: [pq.p]\n" +
+			" │           └─ columns: [p q]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: `
+select * from ab
+where exists
+(
+  select * from uv
+  left join pq on u = p
+  where a = u
+);`,
+		ExpectedPlan: "SemiJoin(ab.a = uv.u)\n" +
+			" ├─ Table(ab)\n" +
+			" └─ LeftJoin(uv.u = pq.p)\n" +
+			"     ├─ IndexedTableAccess(uv)\n" +
+			"     │   ├─ index: [uv.u]\n" +
+			"     │   └─ columns: [u v]\n" +
+			"     └─ Table(pq)\n" +
+			"         └─ columns: [p q]\n" +
+			"",
+	},
+	{
+		Query: `
+select * from
+(
+  select * from ab
+  where not exists (select * from uv where a = u)
+) alias1
+where exists (select * from pq where a = p)
+`,
+		ExpectedPlan: "SemiJoin(alias1.a = pq.p)\n" +
+			" ├─ SubqueryAlias(alias1)\n" +
+			" │   └─ AntiJoin(ab.a = uv.u)\n" +
+			" │       ├─ Table(ab)\n" +
+			" │       └─ IndexedTableAccess(uv)\n" +
+			" │           ├─ index: [uv.u]\n" +
+			" │           └─ columns: [u v]\n" +
+			" └─ IndexedTableAccess(pq)\n" +
+			"     ├─ index: [pq.p]\n" +
+			"     └─ columns: [p q]\n" +
+			"",
+	},
+	{
+		Query: `
+select * from ab
+inner join uv on a = u
+full join pq on a = p
+`,
+		ExpectedPlan: "FullOuterJoin(ab.a = pq.p)\n" +
+			" ├─ InnerJoin(ab.a = uv.u)\n" +
+			" │   ├─ Table(ab)\n" +
+			" │   │   └─ columns: [a b]\n" +
+			" │   └─ Table(uv)\n" +
+			" │       └─ columns: [u v]\n" +
+			" └─ Table(pq)\n" +
+			"     └─ columns: [p q]\n" +
+			"",
+	},
+	{
+		Query: `
+select * from
+(
+  select * from ab
+  inner join xy on true
+) alias1
+inner join uv on true
+inner join pq on true
+`,
+		ExpectedPlan: "CrossJoin\n" +
+			" ├─ CrossJoin\n" +
+			" │   ├─ SubqueryAlias(alias1)\n" +
+			" │   │   └─ CrossJoin\n" +
+			" │   │       ├─ Table(ab)\n" +
+			" │   │       │   └─ columns: [a b]\n" +
+			" │   │       └─ Table(xy)\n" +
+			" │   │           └─ columns: [x y]\n" +
+			" │   └─ Table(uv)\n" +
+			" │       └─ columns: [u v]\n" +
+			" └─ Table(pq)\n" +
+			"     └─ columns: [p q]\n" +
+			"",
+	},
+	{
+		Query: `
+	select * from
+	(
+	 select * from ab
+	 where not exists (select * from xy where a = x)
+	) alias1
+	left join pq on alias1.a = p
+	where exists (select * from uv where a = u)
+	`,
+		ExpectedPlan: "SemiJoin(alias1.a = uv.u)\n" +
+			" ├─ LeftJoin(alias1.a = pq.p)\n" +
+			" │   ├─ SubqueryAlias(alias1)\n" +
+			" │   │   └─ AntiJoin(ab.a = xy.x)\n" +
+			" │   │       ├─ Table(ab)\n" +
+			" │   │       └─ IndexedTableAccess(xy)\n" +
+			" │   │           ├─ index: [xy.x]\n" +
+			" │   │           └─ columns: [x y]\n" +
+			" │   └─ Table(pq)\n" +
+			" └─ IndexedTableAccess(uv)\n" +
+			"     ├─ index: [uv.u]\n" +
+			"     └─ columns: [u v]\n" +
+			"",
+	},
+	{
+		Query: `select i from mytable a where exists (select 1 from mytable b where a.i = b.i)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i]\n" +
+			" └─ SemiJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `select i from mytable a where not exists (select 1 from mytable b where a.i = b.i)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i]\n" +
+			" └─ AntiJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `select i from mytable full join othertable on mytable.i = othertable.i2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i]\n" +
+			" └─ FullOuterJoin(mytable.i = othertable.i2)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ Table(othertable)\n" +
+			"         └─ columns: [i2]\n" +
+			"",
+	},
+	{
 		Query: `SELECT mytable.i FROM mytable INNER JOIN othertable ON (mytable.i = othertable.i2) LEFT JOIN othertable T4 ON (mytable.i = T4.i2) ORDER BY othertable.i2, T4.s2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i]\n" +
