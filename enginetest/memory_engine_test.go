@@ -785,12 +785,12 @@ func TestPersist(t *testing.T) {
 
 func TestValidateSession(t *testing.T) {
 	count := 0
-	incValidate := func() {
+	incrementValidateCb := func() {
 		count++
 	}
 
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
-		sess := memory.NewInMemoryPersistedSessionWithValidationCallback(ctx.Session, incValidate)
+		sess := memory.NewInMemoryPersistedSessionWithValidationCallback(ctx.Session, incrementValidateCb)
 		return sess
 	}
 	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness(), newSess, &count)
