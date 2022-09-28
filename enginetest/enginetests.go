@@ -122,7 +122,7 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
 	for _, tt := range queries.JoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
@@ -296,7 +296,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
@@ -5722,6 +5722,25 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 			}
 		})
 	}
+}
+
+func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sql.Context) sql.PersistableSession, count *int) {
+	queries := []string{"SHOW TABLES;", "SELECT i from mytable;"}
+	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	sql.InitSystemVariables()
+	ctx := NewContext(harness)
+	ctx.Session = newSessFunc(ctx)
+
+	for _, q := range queries {
+		t.Run("test running queries to check callbacks on ValidateSession()", func(t *testing.T) {
+			RunQueryWithContext(t, e, harness, ctx, q)
+		})
+	}
+	// This asserts that ValidateSession() method was called once for every statement.
+	require.Equal(t, len(queries), *count)
 }
 
 func TestPrepared(t *testing.T, harness Harness) {

@@ -154,7 +154,7 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, a *Analyzer, node sql.Node,
 	var cond sql.Expression
 	switch j := n.(type) {
 	case *plan.InnerJoin:
-		cond, sameJ, err = FixFieldIndexes(ctx, scope, a, j.Schema(), j.Cond)
+		cond, sameJ, err = FixFieldIndexes(ctx, scope, a, j.Schema(), j.Filter)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -165,7 +165,7 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, a *Analyzer, node sql.Node,
 			}
 		}
 	case *plan.RightJoin:
-		cond, sameJ, err = FixFieldIndexes(ctx, scope, a, j.Schema(), j.Cond)
+		cond, sameJ, err = FixFieldIndexes(ctx, scope, a, j.Schema(), j.Filter)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -176,7 +176,7 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, a *Analyzer, node sql.Node,
 			}
 		}
 	case *plan.LeftJoin:
-		cond, sameJ, err = FixFieldIndexes(ctx, scope, a, j.Schema(), j.Cond)
+		cond, sameJ, err = FixFieldIndexes(ctx, scope, a, j.Schema(), j.Filter)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

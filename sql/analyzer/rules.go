@@ -110,6 +110,7 @@ var OnceAfterDefault = []Rule{
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{assignCatalogId, assignCatalog},
 	{pruneColumnsId, pruneColumns},
+	{hoistSelectExistsId, hoistSelectExists},
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
@@ -120,11 +121,10 @@ var OnceAfterDefault = []Rule{
 	{insertTopNId, insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
-	//{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	//{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
 	// Switching to the resolveSubqueries rule, instead of resolveSubqueryExpressions, which probably
 	// breaks all subquery query tests, since subquery expressions don't seem to be getting analyzed correctly.
 	{resolveSubqueriesId, resolveSubqueries},
-
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
 	{applyHashLookupsId, applyHashLookups},

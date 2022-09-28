@@ -180,7 +180,17 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 	}
 
-	_, err = e.beginTransaction(ctx, parsed)
+	// Before we begin a transaction, we need to know if the database being operated on is not the one
+	// currently selected
+	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
+
+	// This validates that we have valid working set and branch regardless of autocommit status
+	err = ctx.Session.ValidateSession(ctx, transactionDatabase)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = e.beginTransaction(ctx, transactionDatabase)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -449,11 +459,7 @@ func init() {
 	}
 }
 
-func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
-	// Before we begin a transaction, we need to know if the database being operated on is not the one
-	// currently selected
-	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
-
+func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) error {
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
@@ -462,9 +468,9 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 			database, err := e.Analyzer.Catalog.Database(ctx, transactionDatabase)
 			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
 			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
-				return "", nil
+				return nil
 			} else if err != nil {
-				return "", err
+				return err
 			}
 
 			if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
@@ -474,7 +480,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 			if ok {
 				tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)
 				if err != nil {
-					return "", err
+					return err
 				}
 
 				ctx.SetTransaction(tx)
@@ -482,7 +488,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 		}
 	}
 
-	return transactionDatabase, nil
+	return nil
 }
 
 func (e *Engine) Close() error {

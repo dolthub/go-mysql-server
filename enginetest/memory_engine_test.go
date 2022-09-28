@@ -749,6 +749,19 @@ func TestPersist(t *testing.T) {
 	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
 }
 
+func TestValidateSession(t *testing.T) {
+	count := 0
+	incrementValidateCb := func() {
+		count++
+	}
+
+	newSess := func(ctx *sql.Context) sql.PersistableSession {
+		sess := memory.NewInMemoryPersistedSessionWithValidationCallback(ctx.Session, incrementValidateCb)
+		return sess
+	}
+	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness(), newSess, &count)
+}
+
 func TestPrepared(t *testing.T) {
 	enginetest.TestPrepared(t, enginetest.NewDefaultMemoryHarness())
 }

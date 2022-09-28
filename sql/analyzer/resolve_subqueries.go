@@ -147,6 +147,26 @@ func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	})
 }
 
+func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return resolveSubqueryExpressionsHelper(ctx, a, n, scope, SelectAllBatches, NewSubqueryExprResolveSelector(sel))
+}
+
+func finalizeSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return resolveSubqueryExpressionsHelper(ctx, a, n, scope, SelectAllBatches, sel)
+}
+
+func resolveSubqueryExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, batchSel BatchSelector, ruleSel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		s, ok := e.(*plan.Subquery)
+		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
+		// query might cause them to need to shift their field indexes.
+		if !ok {
+			return e, transform.SameTree, nil
+		}
+
+		subqueryCtx, cancelFunc := ctx.NewSubContext()
+		defer cancelFunc()
+		subScope := scope.newScope(n)
 func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *plan.Subquery, scope *Scope, sel RuleSelector) (sql.Expression, transform.TreeIdentity, error) {
 	// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 	// query might cause them to need to shift their field indexes.

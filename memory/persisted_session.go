@@ -20,11 +20,17 @@ type GlobalsMap = map[string]interface{}
 type InMemoryPersistedSession struct {
 	sql.Session
 	persistedGlobals GlobalsMap
+	validateCallback func()
 }
 
 // NewInMemoryPersistedSession is a sql.PersistableSession that writes global variables to an im-memory map
 func NewInMemoryPersistedSession(sess sql.Session, persistedGlobals GlobalsMap) *InMemoryPersistedSession {
 	return &InMemoryPersistedSession{Session: sess, persistedGlobals: persistedGlobals}
+}
+
+// NewInMemoryPersistedSessionWithValidationCallback is a sql.PersistableSession that defines increment function to count number of calls on ValidateSession().
+func NewInMemoryPersistedSessionWithValidationCallback(sess sql.Session, validateCb func()) *InMemoryPersistedSession {
+	return &InMemoryPersistedSession{Session: sess, validateCallback: validateCb}
 }
 
 // PersistGlobal implements sql.PersistableSession
@@ -56,7 +62,15 @@ func (s *InMemoryPersistedSession) RemoveAllPersistedGlobals() error {
 	return nil
 }
 
-// RemoveAllPersistedGlobals implements sql.PersistableSession
+// GetPersistedValue implements sql.PersistableSession
 func (s *InMemoryPersistedSession) GetPersistedValue(k string) (interface{}, error) {
 	return s.persistedGlobals[k], nil
+}
+
+// ValidateSession counts the number of times this method is called.
+func (s *InMemoryPersistedSession) ValidateSession(ctx *sql.Context, dbName string) error {
+	if s.validateCallback != nil {
+		s.validateCallback()
+	}
+	return s.Session.ValidateSession(ctx, dbName)
 }

@@ -2702,6 +2702,8 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 		return plan.NewLeftJoin(left, right, cond), nil
 	case sqlparser.RightJoinStr:
 		return plan.NewRightJoin(left, right, cond), nil
+	case sqlparser.FullOuterJoinStr:
+		return plan.NewFullOuterJoin(left, right, cond), nil
 	default:
 		return nil, sql.ErrUnsupportedFeature.New("Join type " + t.Join)
 	}
@@ -3268,8 +3270,11 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-
-		return plan.NewExistsSubquery(subqueryExp), nil
+		sq, ok := subqueryExp.(*plan.Subquery)
+		if !ok {
+			return nil, fmt.Errorf("expected subquery expression, found: %T", subqueryExp)
+		}
+		return plan.NewExistsSubquery(sq), nil
 	case *sqlparser.TimestampFuncExpr:
 		var (
 			unit  sql.Expression
