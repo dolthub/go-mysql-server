@@ -156,6 +156,12 @@ func finalizeSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 }
 
 func resolveSubqueryExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, batchSel BatchSelector, ruleSel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// TODO: When we combine this one with resolveSubqueries, we won't need to have this one listed in the analyzer rules anymore
+
+	// NOTE: This operates ONLY on the current node. Looking at all expressions in the tree to find all Subqueries.
+	// Any subqueries identified in the expression trees will have the correct scope because subqueries cannot directly
+	// contain expressions for other subqueries (only through their Query nodes can they embed more subqueries).
+
 	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		s, ok := e.(*plan.Subquery)
 		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
@@ -164,9 +170,10 @@ func resolveSubqueryExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node,
 			return e, transform.SameTree, nil
 		}
 
-		subqueryCtx, cancelFunc := ctx.NewSubContext()
-		defer cancelFunc()
-		subScope := scope.newScope(n)
+		return analyzeSubqueryExpression(ctx, a, n, s, scope, ruleSel)
+	})
+}
+
 func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *plan.Subquery, scope *Scope, sel RuleSelector) (sql.Expression, transform.TreeIdentity, error) {
 	// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 	// query might cause them to need to shift their field indexes.
@@ -226,23 +233,6 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, 
 	}
 	newn, err := n.WithChildren(StripPassthroughNodes(child))
 	return newn, transform.NewTree, err
-}
-
-func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-
-	// TODO: When we combine this one with resolveSubqueries, we won't need to have this one listed in the analyzer rules anymore
-
-	// NOTE: This operates ONLY on the current node. Looking at all expressions in the tree to find all Subqueries.
-	// Any subqueries identified in the expression trees will have the correct scope because subqueries cannot directly
-	// contain expressions for other subqueries (only through their Query nodes can they embed more subqueries).
-
-	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		sq, ok := e.(*plan.Subquery)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-		return analyzeSubqueryExpression(ctx, a, n, sq, scope, sel)
-	})
 }
 
 // StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query
