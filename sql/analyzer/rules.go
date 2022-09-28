@@ -44,8 +44,9 @@ var OnceBeforeDefault = []Rule{
 	{resolveDropConstraintId, resolveDropConstraint},
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
-	// TODO: If SubqueryAliases have outer scope access now, do they need to be analyzed as part of the default rules now?
-	//       Seems like we need to combine resolveSubqueires and resolveSubqueryExpressions in order to handle scopes properly
+	// We still need to do an initial round of resolveSubqueries up front and try to resolve as much as we can, since
+	// analyzing the top-level scope depends on knowing the types/schemas for the subscopes. Before, we could resolve
+	// all the SubqueryAliases
 	{resolveSubqueriesId, resolveSubqueries},
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
@@ -82,7 +83,17 @@ var DefaultRules = []Rule{
 	{mergeUnionSchemasId, mergeUnionSchemas},
 	{flattenAggregationExprsId, flattenAggregationExpressions},
 	{reorderProjectionId, reorderProjection},
-	{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	// TODO: If SubqueryAliases have outer scope access now, do they need to be analyzed as part of the default rules now?
+	//       Seems like we need to combine resolveSubqueires and resolveSubqueryExpressions in order to handle scopes properly
+	{resolveSubqueriesId, resolveSubqueries},
+	// TODO: We shouldn't need this rule AND resolveSubqueries... resolveSubqueries is supposed to be doing everything,
+	//       but it seems like it's not working.
+	//       Adding back resolveSubqueryExpressions makes MANY more TestQueries pass, but we're still failing on
+	//
+	//{resolveSubqueryExprsId, resolveSubqueryExpressions}, // TODO: This should be resolveSubqueries?
+
+	// TODO: My theory is that between the transforms and re-running analyze, the changes to the nodes are getting
+	//       lost somewhere.
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{evalFilterId, simplifyFilters},
@@ -109,7 +120,11 @@ var OnceAfterDefault = []Rule{
 	{insertTopNId, insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
-	{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	//{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	// Switching to the resolveSubqueries rule, instead of resolveSubqueryExpressions, which probably
+	// breaks all subquery query tests, since subquery expressions don't seem to be getting analyzed correctly.
+	{resolveSubqueriesId, resolveSubqueries},
+
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
 	{applyHashLookupsId, applyHashLookups},

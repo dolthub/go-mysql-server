@@ -190,7 +190,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{
@@ -202,42 +202,8 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
-				},
-				{
-					Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
-SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
-INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
-					ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
-				},
-				{
-					Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:    "CALL add_entry(4, 'aaa');",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
-				},
-				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
-				},
-				{
-					Query:    "SELECT * FROM t1;",
-					Expected: []sql.Row{{1, 8, "aaa"}},
-				},
-				{
-					Query:          "CALL add_entry(54, 'bbb');",
-					ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
+					Query:    "SELECT id, (SELECT max(id) from t0) FROM t0;",
+					Expected: []sql.Row{{1, 2}, {2, 2}},
 				},
 			},
 		},
@@ -249,8 +215,8 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		if err != nil {
 			panic(err)
 		}
-		// engine.Analyzer.Debug = true
-		// engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

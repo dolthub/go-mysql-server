@@ -52,6 +52,10 @@ import (
 func TestQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.SimpleSetup...)
 	e := mustNewEngine(t, harness)
+
+	// TODO: temporary for testing
+	e.Analyzer.Debug = true
+	e.Analyzer.Verbose = true
 	defer e.Close()
 	ctx := NewContext(harness)
 	for _, tt := range queries.QueryTests {
