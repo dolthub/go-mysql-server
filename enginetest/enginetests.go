@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/memory"
 	"io"
 	"net"
 	"strings"
@@ -5716,7 +5717,7 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 }
 
-func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sql.Context) sql.Session) {
+func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sql.Context) sql.PersistableSession) {
 	q := []struct {
 		Query    string
 		Expected []sql.Row
@@ -5744,7 +5745,8 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 		})
 	}
 
-	require.Equal(t, len(q), ctx.Session.(*InMemoryBaseSession).GetIdx())
+	// This asserts that ValidateSession() method was called once for every statement.
+	require.Equal(t, len(q), ctx.Session.(*memory.InMemoryPersistedSession).GetValidateCount())
 }
 
 func TestPrepared(t *testing.T, harness Harness) {

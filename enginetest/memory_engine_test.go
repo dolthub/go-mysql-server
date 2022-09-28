@@ -784,8 +784,10 @@ func TestPersist(t *testing.T) {
 }
 
 func TestValidateSession(t *testing.T) {
-	newSess := func(ctx *sql.Context) sql.Session {
-		return enginetest.NewInMemoryBaseSession(ctx.Session)
+	newSess := func(ctx *sql.Context) sql.PersistableSession {
+		persistedGlobals := memory.GlobalsMap{}
+		persistedSess := memory.NewInMemoryPersistedSession(ctx.Session, persistedGlobals)
+		return persistedSess
 	}
 	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness(), newSess)
 }

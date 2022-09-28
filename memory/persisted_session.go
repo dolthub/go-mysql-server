@@ -20,11 +20,12 @@ type GlobalsMap = map[string]interface{}
 type InMemoryPersistedSession struct {
 	sql.Session
 	persistedGlobals GlobalsMap
+	validateCount    int
 }
 
 // NewInMemoryPersistedSession is a sql.PersistableSession that writes global variables to an im-memory map
 func NewInMemoryPersistedSession(sess sql.Session, persistedGlobals GlobalsMap) *InMemoryPersistedSession {
-	return &InMemoryPersistedSession{Session: sess, persistedGlobals: persistedGlobals}
+	return &InMemoryPersistedSession{Session: sess, persistedGlobals: persistedGlobals, validateCount: 0}
 }
 
 // PersistGlobal implements sql.PersistableSession
@@ -59,4 +60,15 @@ func (s *InMemoryPersistedSession) RemoveAllPersistedGlobals() error {
 // GetPersistedValue implements sql.PersistableSession
 func (s *InMemoryPersistedSession) GetPersistedValue(k string) (interface{}, error) {
 	return s.persistedGlobals[k], nil
+}
+
+// ValidateSession counts the number of times this method is called.
+func (s *InMemoryPersistedSession) ValidateSession(ctx *sql.Context, dbName string) error {
+	s.validateCount++
+	return s.Session.ValidateSession(ctx, dbName)
+}
+
+// GetValidateCount returns validateCount, the number of times ValidateSession() method called.
+func (s *InMemoryPersistedSession) GetValidateCount() int {
+	return s.validateCount
 }
