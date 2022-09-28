@@ -74,6 +74,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			return false
 		case *plan.AddColumn:
 			sch = n.Table.Schema()
+			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.DropColumn:
 			sch = n.Table.Schema()
