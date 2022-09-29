@@ -44,9 +44,6 @@ var OnceBeforeDefault = []Rule{
 	{resolveDropConstraintId, resolveDropConstraint},
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
-	// We still need to do an initial round of resolveSubqueries up front and try to resolve as much as we can, since
-	// analyzing the top-level scope depends on knowing the types/schemas for the subscopes. Before, we could resolve
-	// all the SubqueryAliases
 	{resolveSubqueriesId, resolveSubqueries},
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},

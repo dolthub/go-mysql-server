@@ -377,11 +377,6 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 			return col, transform.SameTree, nil
 		}
 
-		if col.Name() == "b" && col.Table() == "t1" {
-			// TODO: Debugging breakpoint...
-			fmt.Println()
-		}
-
 		// Skip qualification if an expression has already been identified as an alias reference
 		if _, ok := col.(*expression.AliasReference); ok {
 			return col, transform.SameTree, nil

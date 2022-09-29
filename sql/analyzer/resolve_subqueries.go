@@ -283,18 +283,11 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 					return false
 				}
 			}
-		} else if _, ok := node.(*plan.SubqueryAlias); ok {
-			// SubqueryAliases are always cacheable.  In fact, we
-			// do not go far enough here yet. CTEs must be cached /
-			// materialized and the same result set used throughout
-			// the query when they are non-determinstic in order to
-			// give correct results.
-			// TODO: This isn't true anymore now that we are supporting outer scope visibility for
-			//       derived tables.
-			//       How can we determine if a SubqueryAlias is referencing anything outside of their scope?
-			//       Can we look at the GetField expressions to see what index they use?
-			//       When does this method get called during analyzes
-			cacheable = false
+		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
+			// If a subquery alias has visibility to its outer scopes, then we cannot cache its results
+			// TODO: Need more testing with CTEs. For example, CTEs that are non-deterministic MUST be
+			//       cached and have their result sets reused, otherwise query result will be incorrect.
+			cacheable = !sqa.OuterScopeVisibility
 			return false
 		}
 		return true
