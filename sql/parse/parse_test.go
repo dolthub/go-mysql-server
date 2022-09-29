@@ -1945,7 +1945,7 @@ CREATE TABLE t2
 				expression.NewLiteral([]byte{1, 175}, sql.LongBlob),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT X'41'`: plan.NewProject(
 		[]sql.Expression{
@@ -1953,7 +1953,7 @@ CREATE TABLE t2
 				expression.NewLiteral([]byte{'A'}, sql.LongBlob),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT * FROM b WHERE SOMEFUNC((1, 2), (3, 4))`: plan.NewProject(
 		[]sql.Expression{expression.NewStar()},
@@ -2174,7 +2174,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT + - - i FROM mytable`: plan.NewProject(
 		[]sql.Expression{
@@ -2193,14 +2193,14 @@ CREATE TABLE t2
 			expression.NewAlias("1 + 1",
 				expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT 1 + 1 as foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("foo",
 				expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
@@ -2209,7 +2209,7 @@ CREATE TABLE t2
 					expression.NewPlus(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT (0 - 1) * (1 | 1);`: plan.NewProject(
 		[]sql.Expression{
@@ -2220,7 +2220,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT (1 << 3) % (2 div 1);`: plan.NewProject(
 		[]sql.Expression{
@@ -2230,7 +2230,7 @@ CREATE TABLE t2
 					expression.NewIntDiv(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT 1.0 * a + 2.0 * b FROM t;`: plan.NewProject(
 		[]sql.Expression{
@@ -2251,7 +2251,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT '1' + '2';`: plan.NewProject(
 		[]sql.Expression{
@@ -2261,7 +2261,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`CREATE INDEX foo USING qux ON bar (baz)`: plan.NewCreateIndex(
 		"foo",
@@ -2362,7 +2362,7 @@ CREATE TABLE t2
 	`SHOW PROCESSLIST`:      plan.NewShowProcessList(),
 	`SELECT @@allowed_max_packet`: plan.NewProject([]sql.Expression{
 		expression.NewUnresolvedColumn("@@allowed_max_packet"),
-	}, plan.NewUnresolvedTable("dual", "")),
+	}, plan.NewResolvedDualTable()),
 	`SET autocommit=1, foo="bar", baz=ON, qux=bareword`: plan.NewSet(
 		[]sql.Expression{
 			expression.NewSetField(expression.NewUnresolvedColumn("autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
@@ -2582,7 +2582,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	"SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' END": plan.NewProject(
 		[]sql.Expression{
@@ -2603,7 +2603,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	"SELECT CASE WHEN foo = 1 THEN 'foo' WHEN foo = 2 THEN 'bar' ELSE 'baz' END": plan.NewProject(
 		[]sql.Expression{
@@ -2630,7 +2630,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	"SHOW COLLATION": showCollationProjection,
 	"SHOW COLLATION LIKE 'foo'": plan.NewHaving(
@@ -2693,7 +2693,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT '2018-05-01' - INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{
@@ -2708,7 +2708,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT INTERVAL 1 DAY + '2018-05-01'`: plan.NewProject(
 		[]sql.Expression{
@@ -2723,7 +2723,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{
@@ -2745,7 +2745,7 @@ CREATE TABLE t2
 				),
 			),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`SELECT bar, AVG(baz) FROM foo GROUP BY bar HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(
@@ -3448,12 +3448,12 @@ CREATE TABLE t2
 			plan.NewUnresolvedTable("cte1", "")),
 		[]*plan.CommonTableExpression{
 			plan.NewCommonTableExpression(
-				plan.NewSubqueryAlias("cte1", "select 1 from dual union select n + 1 from cte1 where n < 10",
+				plan.NewSubqueryAlias("cte1", "select 1 union select n + 1 from cte1 where n < 10",
 					plan.NewUnion(plan.NewProject(
 						[]sql.Expression{
 							expression.NewLiteral(int8(1), sql.Int8),
 						},
-						plan.NewUnresolvedTable("dual", ""),
+						plan.NewResolvedDualTable(),
 					), plan.NewProject(
 						[]sql.Expression{
 							expression.NewArithmetic(
@@ -3603,7 +3603,7 @@ CREATE TABLE t2
 			expression.NewLiteral(int64(math.MaxInt64), sql.Int64),
 			expression.NewLiteral(uint64(math.MaxUint64), sql.Uint64),
 		},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	),
 	`CREATE VIEW v AS SELECT * FROM foo`: plan.NewCreateView(
 		sql.UnresolvedDatabase(""),
@@ -3649,104 +3649,104 @@ CREATE TABLE t2
 	),
 	`SELECT 2 UNION SELECT 3`: plan.NewUnion(plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), true, nil, nil),
 	`(SELECT 2) UNION (SELECT 3)`: plan.NewUnion(plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), true, nil, nil),
 	`SELECT 2 UNION ALL SELECT 3 UNION DISTINCT SELECT 4`: plan.NewUnion(plan.NewUnion(plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), false, nil, nil),
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, nil),
 	`SELECT 2 UNION SELECT 3 UNION ALL SELECT 4`: plan.NewUnion(
 		plan.NewUnion(plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, nil),
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), false, nil, nil),
 	`SELECT 2 UNION SELECT 3 UNION SELECT 4`: plan.NewUnion(
 		plan.NewUnion(plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, nil),
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, nil),
 	`SELECT 2 UNION (SELECT 3 UNION SELECT 4)`: plan.NewUnion(
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		),
 		plan.NewUnion(plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, nil),
 		true, nil, nil,
 	),
 	`SELECT 2 UNION ALL SELECT 3`: plan.NewUnion(plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), false, nil, nil),
 	`SELECT 2 UNION DISTINCT SELECT 3`: plan.NewUnion(plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), plan.NewProject(
 		[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-		plan.NewUnresolvedTable("dual", ""),
+		plan.NewResolvedDualTable(),
 	), true, nil, nil),
 	`SELECT 2 UNION SELECT 3 UNION SELECT 4 LIMIT 10`: plan.NewUnion(
 		plan.NewUnion(plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, nil),
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, expression.NewLiteral(int8(10), sql.Int8), nil),
 	`SELECT 2 UNION SELECT 3 UNION SELECT 4 ORDER BY 2`: plan.NewUnion(
 		plan.NewUnion(plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, nil),
 		plan.NewProject(
 			[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
-			plan.NewUnresolvedTable("dual", ""),
+			plan.NewResolvedDualTable(),
 		), true, nil, []sql.SortField{
 			{
 				Column:       expression.NewLiteral(int8(2), sql.Int8),
