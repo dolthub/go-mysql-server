@@ -132,7 +132,7 @@ func (p *prependRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	newRow := p.row.Append(next)
 	// TODO: Remove after debugging...
-	fmt.Println(" prependRowIter.Next: " + sql.FormatRow(newRow))
+	fmt.Printf(" prependRowIter(%-20T).Next: %s \n", p.childIter, sql.FormatRow(newRow))
 	return newRow, nil
 }
 
@@ -220,8 +220,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		// TODO: Do Filter nodes need to be included here?
-		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, *IndexedTableAccess, sql.Table, *ValueDerivedTable, *Union:
+		case *Project, *GroupBy, *Having, *Window, *IndexedTableAccess, sql.Table, *ValueDerivedTable, *Union:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,

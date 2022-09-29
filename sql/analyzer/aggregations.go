@@ -36,6 +36,13 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 		return n, transform.SameTree, nil
 	}
 
+	// Index the columns at this level and in outer scopes so that we can calculate the correct
+	// base index for GetField expressions later to account for prepended, outer scope columns.
+	columns, err := indexColumns(ctx, a, n, scope)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Window:
@@ -43,21 +50,23 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 				return n, transform.SameTree, nil
 			}
 
-			return flattenedWindow(ctx, n.SelectExprs, n.Child)
+			// TODO: flattenedWindow has the same subquery GetField index issue as we hit with flattenedGroupBy.
+			//       Need to make sure we have a test case covering this
+			return flattenedWindow(ctx, n.SelectExprs, n.Child, columns)
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs) {
 				return n, transform.SameTree, nil
 			}
 
-			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child)
+			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child, columns)
 		default:
 			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
+func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node, columns map[tableCol]indexedCol) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection, columns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -75,7 +84,7 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 // new set of project expressions, and the new set of aggregations. The former always matches the size of the projection
 // expressions passed in. The latter will have the size of the number of aggregate expressions contained in the input
 // slice.
-func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
+func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.Expression, columns map[tableCol]indexedCol) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
 	allGetFields := make(map[int]sql.Expression)
@@ -94,8 +103,20 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 			}
 
 			newAggregates = append(newAggregates, e)
+			// To account for any outer scope schema that will be prepended to the rows visible to these nodes,
+			// we need to take the largest column index available at this scope level and use it as our base.
+			// TODO: Is this the right logic? Seems like this would break for a top-level query?
+			baseIndex := 0
+			if len(columns) > 0 {
+				for _, value := range columns {
+					if value.index > baseIndex {
+						baseIndex = value.index
+					}
+				}
+			}
+
 			return expression.NewGetField(
-				len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
+				len(newAggregates)-1+baseIndex, e.Type(), e.String(), e.IsNullable(),
 			), transform.NewTree, nil
 		})
 		if err != nil {
@@ -134,8 +155,8 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 	return newProjection, newAggregates, transform.NewTree, nil
 }
 
-func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
+func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node, columns map[tableCol]indexedCol) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection, columns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}

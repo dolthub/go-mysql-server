@@ -274,6 +274,9 @@ var ColumnAliasQueries = []ScriptTest{
 	},
 	{
 		// TODO: This isn't specific to column aliases, so this might not be the best place for these tests, but getting them started.
+		// TODO: We should also include the NTC example query that errors out, too
+		// Include that as a separate/third ScriptTest, to keep the SetupScripts separate
+		// Use a separate/second ScriptTest for error cases
 		Name: "outer scope visibility for derived tables",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int, c int, d int, e int);",
@@ -297,6 +300,21 @@ var ColumnAliasQueries = []ScriptTest{
 				Expected: []sql.Row{{2, 2, 2, 200, 200}},
 			},
 			{
+				// TODO: Remove this assertion after finished debugging/testing
+				// Interesting! This query works and correctly returns null... but... when it's executed as a subquery,
+				// it somehow returns 1 for the same data?
+				Query:    "SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = 1) dt;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				// TODO: Testing a simpler query with the missing NULL repro
+				//       flattenAggregationExprs is setting this GetField index incorrectly!!
+				//       Running this without an aggregation function would probably make it pass? YUP!!!
+				//Query:    "SELECT (SELECT dt.z FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+				Query:    "SELECT (SELECT max(dt.z) FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+				Expected: []sql.Row{{nil}, {2}},
+			},
+			{
 				// A subquery containing a derived table, projected in a SELECT query, has visibility to tables and columns
 				// in the top-level query.
 				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
@@ -312,25 +330,25 @@ var ColumnAliasQueries = []ScriptTest{
 				// in the top-level query.
 				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
 				// TODO: Currently failing with: expression 't1.b' doesn't appear in the group by expressions
-				//       Seems like the root of this error is really a GroupBy issue
-				Query:    "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1 GROUP BY t1.a;",
-				Expected: []sql.Row{{1, 1, 1, 100, 100, nil}, {2, 2, 2, 200, 200, 2}},
+				//       Seems like the root of this error is really a separate GroupBy issue where Dolt/GMS is more
+				//       restrictive than MySQL.
+				// TODO: Can we repro this in another scenario, cut an issue, and get Jennifer to tackle it?
+				// TODO: Now we're getting this query to run, but we're still seeing the same problem as above where
+				//       we don't get the expected NULL value and instead get "1".
+				// https://github.com/dolthub/dolt/issues/1448
+				Query: "SELECT t1.a, t1.b, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1 GROUP BY 1, 2, 3;",
+				//Expected: []sql.Row{{1, 1, 1, 100, 100, nil}, {2, 2, 2, 200, 200, 2}},
+				Expected: []sql.Row{{1, 1, nil}, {2, 2, 2}},
 			},
 			{
 				// A subquery containing a derived table, projected in a WINDOW query, has visibility to tables and columns
 				// in the top-level query.
-				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
-				// TODO: These are failing with incorrect results:
-				//       []sql.Row{{6, 1, 12}, {6, 2, 12}, {6, 3, 12}},
 				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers having a1 > 10;",
 				Expected: []sql.Row{{4, 1, 12}, {5, 1, 15}, {6, 1, 18}, {6, 2, 18}, {6, 3, 18}},
 			},
 			{
 				// A subquery containing a derived table, used in the WINDOW clause of a top-level query, has visibility
 				// to tables and columns in the top-level query.
-				// TODO: This is the same as the test above... (?)
-				// TODO: These are failing with incorrect results:
-				//       []sql.Row{{6, 1, 12}, {6, 2, 12}, {6, 3, 12}},
 				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers having a1 > 10;",
 				Expected: []sql.Row{{4, 1, 12}, {5, 1, 15}, {6, 1, 18}, {6, 2, 18}, {6, 3, 18}},
 			},
