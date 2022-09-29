@@ -70,6 +70,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			return false
 		case *plan.AddColumn:
 			sch = n.Table.Schema()
+			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.DropColumn:
 			sch = n.Table.Schema()
@@ -130,7 +131,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
+			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -215,7 +216,7 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	return renameInSchema(sch, rc.ColumnName, rc.NewColumnName, nameable.Name()), nil
 }
 
-func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
+func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := ac.Table
 	nameable := table.(sql.Nameable)
 
@@ -245,7 +246,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// TODO: more validation possible to do here
-	err := validateAutoIncrement(newSch, nil)
+	err := validateAutoIncrement(newSch, keyedColumns)
 	if err != nil {
 		return nil, err
 	}
