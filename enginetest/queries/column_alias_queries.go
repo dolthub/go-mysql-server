@@ -278,7 +278,8 @@ var ColumnAliasQueries = []ScriptTest{
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int, c int, d int, e int);",
 			"create table t2 (a int primary key, b int, c int, d int, e int);",
-			"create table t3 (a int primary key, b int, c int, d int, e int);",
+			"insert into t1 values (1, 1, 1, 100, 100), (2, 2, 2, 200, 200);",
+			"insert into t2 values (2, 2, 2, 2, 2);",
 			"create table numbers (val int);",
 			"insert into numbers values (1), (1), (2), (3), (3), (3), (4), (5), (6), (6), (6);",
 		},
@@ -287,54 +288,66 @@ var ColumnAliasQueries = []ScriptTest{
 				// A subquery containing a derived table, used in the WHERE clause of a top-level query, has visibility
 				// to tables and columns in the top-level query.
 				Query:    "SELECT * FROM t1 WHERE t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{2, 2, 2, 200, 200}},
 			},
 			{
 				// A subquery containing a derived table, used in the HAVING clause of a top-level query, has visibility
 				// to tables and columns in the top-level query.
 				Query:    "SELECT * FROM t1 HAVING t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{2, 2, 2, 200, 200}},
 			},
 			{
 				// A subquery containing a derived table, projected in a SELECT query, has visibility to tables and columns
 				// in the top-level query.
 				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
+				// TODO: Was failing with: unable to find field with index 6 in row of 2 columns
+				//       Updated to prepend the row with the additional columns from the Child results, but now failing
+				//       with unexpected results: (1 instead of nil in the first record)
+				//       []sql.Row{{1, 1, 1, 100, 100, 1}, {2, 2, 2, 200, 200, 2}},
 				Query:    "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{1, 1, 1, 100, 100, nil}, {2, 2, 2, 200, 200, 2}},
 			},
 			{
 				// A subquery containing a derived table, projected in a GROUPBY query, has visibility to tables and columns
 				// in the top-level query.
 				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
+				// TODO: Currently failing with: expression 't1.b' doesn't appear in the group by expressions
+				//       Seems like the root of this error is really a GroupBy issue
 				Query:    "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1 GROUP BY t1.a;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{1, 1, 1, 100, 100, nil}, {2, 2, 2, 200, 200, 2}},
 			},
 			{
 				// A subquery containing a derived table, projected in a WINDOW query, has visibility to tables and columns
 				// in the top-level query.
 				// TODO: Does it have visibility to alias expressions, too? or just tables/columns?
-				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers;",
-				Expected: []sql.Row{},
+				// TODO: These are failing with incorrect results:
+				//       []sql.Row{{6, 1, 12}, {6, 2, 12}, {6, 3, 12}},
+				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers having a1 > 10;",
+				Expected: []sql.Row{{4, 1, 12}, {5, 1, 15}, {6, 1, 18}, {6, 2, 18}, {6, 3, 18}},
 			},
 			{
 				// A subquery containing a derived table, used in the WINDOW clause of a top-level query, has visibility
 				// to tables and columns in the top-level query.
-				// TODO: This is the same as the test above...
-				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers;",
-				Expected: []sql.Row{},
+				// TODO: This is the same as the test above... (?)
+				// TODO: These are failing with incorrect results:
+				//       []sql.Row{{6, 1, 12}, {6, 2, 12}, {6, 3, 12}},
+				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers having a1 > 10;",
+				Expected: []sql.Row{{4, 1, 12}, {5, 1, 15}, {6, 1, 18}, {6, 2, 18}, {6, 3, 18}},
 			},
 			{
 				// A subquery containing a derived table, used in the GROUP BY clause of a top-level query as a grouping
 				// expression, has visibility to tables and columns in the top-level query.
 				Query:    "SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}},
 			},
-			// Negative Tests
 			{
-				// A derived table inside a derived table does not have visibility to outer scopes.
-				Query: "SELECT 1 as a1, dt.* from (select * from (select * from numbers having val = a1) as dt2(val)) as dt(val);",
-				// TODO: error expected
+				// Error Tests...
 				// Currently returns: found HAVING clause with no GROUP BY
+				// https://github.com/dolthub/go-mysql-server/issues/1289
+				Skip: true,
+
+				// A derived table inside a derived table does not have visibility to outer scopes.
+				Query:       "SELECT 1 as a1, dt.* from (select * from (select * from numbers having val = a1) as dt2(val)) as dt(val);",
 				ExpectedErr: sql.ErrUnknownColumn,
 			},
 		},
