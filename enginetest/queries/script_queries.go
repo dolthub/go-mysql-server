@@ -1988,6 +1988,18 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER AUTO INCREMENT TABLE ADD column",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test add column j int;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
