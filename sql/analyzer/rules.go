@@ -83,17 +83,7 @@ var DefaultRules = []Rule{
 	{mergeUnionSchemasId, mergeUnionSchemas},
 	{flattenAggregationExprsId, flattenAggregationExpressions},
 	{reorderProjectionId, reorderProjection},
-	// TODO: If SubqueryAliases have outer scope access now, do they need to be analyzed as part of the default rules now?
-	//       Seems like we need to combine resolveSubqueires and resolveSubqueryExpressions in order to handle scopes properly
 	{resolveSubqueriesId, resolveSubqueries},
-	// TODO: We shouldn't need this rule AND resolveSubqueries... resolveSubqueries is supposed to be doing everything,
-	//       but it seems like it's not working.
-	//       Adding back resolveSubqueryExpressions makes MANY more TestQueries pass, but we're still failing on
-	//
-	//{resolveSubqueryExprsId, resolveSubqueryExpressions}, // TODO: This should be resolveSubqueries?
-
-	// TODO: My theory is that between the transforms and re-running analyze, the changes to the nodes are getting
-	//       lost somewhere.
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{evalFilterId, simplifyFilters},
@@ -119,11 +109,8 @@ var OnceAfterDefault = []Rule{
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
-	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
-	// previous rules.
-	//{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
-	// Switching to the resolveSubqueries rule, instead of resolveSubqueryExpressions, which probably
-	// breaks all subquery query tests, since subquery expressions don't seem to be getting analyzed correctly.
+	// One final pass at analyzing subqueries to handle rewriting field indexes after
+	// changes to outer scope by previous rules.
 	{resolveSubqueriesId, resolveSubqueries},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},

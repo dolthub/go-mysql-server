@@ -203,18 +203,15 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 }
 
 func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// TODO: In MySQL 8.0.14 and higher, SubqueryAliases can access the OUTER scopes of the clause that defined them.
-	//       Note: They still do not have access to the other tables defined in the same scope as derived table,
-	//       and from testing... they don't seem to be able to access expression aliases (only tables and table aliases),
-	//       but documentation doesn't seem to indicate that limitation.
-	//       https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
 	subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
-	if scope != nil && len(scope.nodes) > 1 {
-		// As of MySQL 8.0.14 MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
+	if scope != nil && len(scope.nodes) > 0 {
+		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
 		// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
 		// gives a derived table visibility to the OUTER scope where the subquery is defined.
-		// In this case, we rip off the current inner node so that the outer scope nodes are still present, but not the lateral nodes
-		subScope.nodes = scope.InnerToOuter()[1:]
+		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
+		// TODO: Confirm that expression aliases are or are not available
+		// To support this, we rip off the current inner node so that the outer scope nodes are still present, but not the lateral nodes
+		subScope.nodes = scope.InnerToOuter()
 	}
 
 	child, same, err := a.analyzeThroughBatch(ctx, n.Child, subScope, "default-rules", sel)
@@ -291,6 +288,12 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 			// materialized and the same result set used throughout
 			// the query when they are non-determinstic in order to
 			// give correct results.
+			// TODO: This isn't true anymore now that we are supporting outer scope visibility for
+			//       derived tables.
+			//       How can we determine if a SubqueryAlias is referencing anything outside of their scope?
+			//       Can we look at the GetField expressions to see what index they use?
+			//       When does this method get called during analyzes
+			cacheable = false
 			return false
 		}
 		return true

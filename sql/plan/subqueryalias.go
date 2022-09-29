@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // SubqueryAlias is a node that gives a subquery a name.
@@ -62,8 +63,14 @@ func (sq *SubqueryAlias) Schema() sql.Schema {
 func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
 
-	// subqueries do not have access to outer scope
-	iter, err := sq.Child.RowIter(ctx, nil)
+	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// result rows are prepended with the scope row.
+	newChild, _, err := transform.Node(sq.Child, prependRowInPlan(row))
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := newChild.RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
