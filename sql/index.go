@@ -44,6 +44,8 @@ type Index interface {
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
 	CanSupport(...Range) bool
+	// PrefixLengths returns the prefix lengths for each column in this index
+	PrefixLengths() []uint64
 }
 
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary

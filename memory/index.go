@@ -66,6 +66,11 @@ func (idx *Index) Comment() string {
 	return idx.CommentStr
 }
 
+func (idx *Index) PrefixLengths() []uint64 {
+	// TODO: implement it
+	return nil
+}
+
 func (idx *Index) IndexType() string {
 	if len(idx.DriverName) > 0 {
 		return idx.DriverName
