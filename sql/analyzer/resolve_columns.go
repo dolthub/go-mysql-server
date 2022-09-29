@@ -658,7 +658,8 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			if dt, ok := p.UnaryNode.Child.(*plan.ResolvedTable); ok {
 				if plan.IsDualTable(dt.Table) {
 					for _, projection := range p.Projections {
-						if _, ok := projection.(*expression.GetField); ok {
+						switch projection.(type) {
+						case *expression.GetField:
 							return n, transform.SameTree, sql.ErrNoTablesUsed.New()
 						}
 					}

@@ -2271,10 +2271,10 @@ var ScriptTests = []ScriptTest{
 				Query:       "SELECT * from dual;",
 				ExpectedErr: sql.ErrNoTablesUsed,
 			},
-			//{
-			//	Query:    "select 0 as dummy, (select dummy);",
-			//	Expected: []sql.Row{{0}, {0}},
-			//},
+			{
+				Query:    "select 0 as dummy, (select dummy);",
+				Expected: []sql.Row{{0, 0}},
+			},
 		},
 	},
 }

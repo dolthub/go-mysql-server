@@ -207,27 +207,61 @@ func addIntermediateProjections(
 		deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(s.Query)...)
 	}
 
-	if len(deferredColumns) > 0 {
-		schema := child.Schema()
-		var projections = make([]sql.Expression, 0, len(schema)+len(deferredColumns))
+	if len(deferredColumns) == 0 {
+		return child, same, err
+	}
+
+	schema := child.Schema()
+	var projections = make([]sql.Expression, 0, len(schema)+len(deferredColumns))
+
+	replaceDeferredColumnsOfDualTable(project, projectedAliases)
+	if rt, ok := child.(*plan.ResolvedTable); !(ok && plan.IsDualTable(rt)) {
 		for i, col := range schema {
 			projections = append(projections, expression.NewGetFieldWithTable(
 				i, col.Type, col.Source, col.Name, col.Nullable,
 			))
 		}
-
-		// Add a projection for each missing column from the subqueries that has an alias
-		for _, dc := range deferredColumns {
-			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
-				projections = append(projections, c)
-				same = transform.NewTree
-			}
-		}
-
-		child = plan.NewProject(projections, child)
 	}
 
-	return child, same, err
+	// Add a projection for each missing column from the subqueries that has an alias
+	for _, dc := range deferredColumns {
+		if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
+			projections = append(projections, c)
+			same = transform.NewTree
+		}
+	}
+
+	return plan.NewProject(projections, child), same, err
+}
+
+// replaceDeferredColumnsOfDualTable traverses Project node and replaces all deferredColumn in any Subquery in its
+// projections with projectedAliases map
+func replaceDeferredColumnsOfDualTable(project *plan.Project, projectedAliases map[string]sql.Expression) {
+	transform.InspectExpressionsWithNode(project, func(n sql.Node, e sql.Expression) bool {
+		switch e := e.(type) {
+		case *plan.Subquery:
+			switch p := e.Query.(type) {
+			case *plan.Project:
+				if dt, ok := p.UnaryNode.Child.(*plan.ResolvedTable); ok && plan.IsDualTable(dt.Table) {
+					var projections = make([]sql.Expression, 0, len(p.Projections))
+					for _, projection := range p.Projections {
+						switch dc := projection.(type) {
+						case *deferredColumn:
+							if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
+								projections = append(projections, c)
+							} else {
+								projections = append(projections, projection)
+							}
+						default:
+							projections = append(projections, projection)
+						}
+					}
+					p.Child = plan.NewProject(projections, p.Child)
+				}
+			}
+		}
+		return true
+	})
 }
 
 // findDeferredColumnsAndAliasReferences returns all the deferredColumn and AliasReference expressions in the node given

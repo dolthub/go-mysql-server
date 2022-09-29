@@ -755,7 +755,7 @@ inner join pq on true
 			" ├─ columns: [mytable.i, selfjoin.i]\n" +
 			" └─ Filter(selfjoin.i IN (Project\n" +
 			"     ├─ columns: [1]\n" +
-			"     └─ Table(dual)\n" +
+			"     └─ Table()\n" +
 			"    ))\n" +
 			"     └─ IndexedJoin(mytable.i = selfjoin.i)\n" +
 			"         ├─ Table(mytable)\n" +
@@ -3517,12 +3517,12 @@ inner join pq on true
 			"     └─ Filter(1 IN (Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1]\n" +
-			"         │   └─ Table(dual)\n" +
+			"         │   └─ Table()\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [2]\n" +
-			"             └─ Table(dual)\n" +
+			"             └─ Table()\n" +
 			"        ))\n" +
-			"         └─ Table(dual)\n" +
+			"         └─ Table()\n" +
 			"",
 	},
 	{
@@ -3551,18 +3551,18 @@ inner join pq on true
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1]\n" +
-			" │       │   └─ Table(dual)\n" +
+			" │       │   └─ Table()\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2]\n" +
-			" │           └─ Table(dual)\n" +
+			" │           └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1]\n" +
-			"         │   └─ Table(dual)\n" +
+			"         │   └─ Table()\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [2]\n" +
-			"             └─ Table(dual)\n" +
+			"             └─ Table()\n" +
 			"",
 	},
 	{
@@ -3573,19 +3573,19 @@ inner join pq on true
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1]\n" +
-			" │           │   └─ Table(dual)\n" +
+			" │           │   └─ Table()\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [2]\n" +
-			" │               └─ Table(dual)\n" +
+			" │               └─ Table()\n" +
 			" └─ Having((a.x > 1))\n" +
 			"     └─ SubqueryAlias(a)\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1]\n" +
-			"             │   └─ Table(dual)\n" +
+			"             │   └─ Table()\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [2]\n" +
-			"                 └─ Table(dual)\n" +
+			"                 └─ Table()\n" +
 			"",
 	},
 	{
@@ -3596,19 +3596,19 @@ inner join pq on true
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1]\n" +
-			" │           │   └─ Table(dual)\n" +
+			" │           │   └─ Table()\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [2]\n" +
-			" │               └─ Table(dual)\n" +
+			" │               └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Filter(1 > 1)\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1]\n" +
-			"             │   └─ Table(dual)\n" +
+			"             │   └─ Table()\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [2]\n" +
-			"                 └─ Table(dual)\n" +
+			"                 └─ Table()\n" +
 			"",
 	},
 	{
@@ -3618,10 +3618,10 @@ inner join pq on true
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1]\n" +
-			" │       │   └─ Table(dual)\n" +
+			" │       │   └─ Table()\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2]\n" +
-			" │           └─ Table(dual)\n" +
+			" │           └─ Table()\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(a.x)\n" +
 			"     ├─ Grouping(a.x)\n" +
@@ -3629,10 +3629,10 @@ inner join pq on true
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1]\n" +
-			"             │   └─ Table(dual)\n" +
+			"             │   └─ Table()\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [2]\n" +
-			"                 └─ Table(dual)\n" +
+			"                 └─ Table()\n" +
 			"",
 	},
 	{
@@ -3643,18 +3643,18 @@ inner join pq on true
 			" │   └─ Union distinct\n" +
 			" │       ├─ Project\n" +
 			" │       │   ├─ columns: [1]\n" +
-			" │       │   └─ Table(dual)\n" +
+			" │       │   └─ Table()\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2]\n" +
-			" │           └─ Table(dual)\n" +
+			" │           └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1]\n" +
-			"         │   └─ Table(dual)\n" +
+			"         │   └─ Table()\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [2]\n" +
-			"             └─ Table(dual)\n" +
+			"             └─ Table()\n" +
 			"",
 	},
 	{
@@ -3670,7 +3670,7 @@ inner join pq on true
 			"                 ├─ limit: 5\n" +
 			"                 ├─ Project\n" +
 			"                 │   ├─ columns: [1]\n" +
-			"                 │   └─ Table(dual)\n" +
+			"                 │   └─ Table()\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i + 1)]\n" +
 			"                     └─ Filter((n.i + 1) <= 10)\n" +
@@ -3689,7 +3689,7 @@ inner join pq on true
 			"             └─ Union all\n" +
 			"                 ├─ Project\n" +
 			"                 │   ├─ columns: [1]\n" +
-			"                 │   └─ Table(dual)\n" +
+			"                 │   └─ Table()\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i + 1)]\n" +
 			"                     └─ Having(((n.i + 1) <= 10))\n" +
@@ -3713,7 +3713,7 @@ inner join pq on true
 			"                 ├─ limit: 5\n" +
 			"                 ├─ Project\n" +
 			"                 │   ├─ columns: [1]\n" +
-			"                 │   └─ Table(dual)\n" +
+			"                 │   └─ Table()\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i + 1)]\n" +
 			"                     └─ Having(((n.i + 1) <= 10))\n" +
@@ -3737,7 +3737,7 @@ inner join pq on true
 			"                 ├─ limit: 1\n" +
 			"                 ├─ Project\n" +
 			"                 │   ├─ columns: [1]\n" +
-			"                 │   └─ Table(dual)\n" +
+			"                 │   └─ Table()\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i + 1)]\n" +
 			"                     └─ Filter((n.i + 1) <= 10)\n" +
@@ -3752,12 +3752,12 @@ inner join pq on true
 			"     └─ Filter(1 IN (Union distinct\n" +
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [1]\n" +
-			"         │   └─ Table(dual)\n" +
+			"         │   └─ Table()\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [2]\n" +
-			"             └─ Table(dual)\n" +
+			"             └─ Table()\n" +
 			"        ))\n" +
-			"         └─ Table(dual)\n" +
+			"         └─ Table()\n" +
 			"",
 	},
 	{
@@ -3766,18 +3766,18 @@ inner join pq on true
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
 			" │   │   ├─ columns: [1]\n" +
-			" │   │   └─ Table(dual)\n" +
+			" │   │   └─ Table()\n" +
 			" │   └─ SubqueryAlias(a)\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2]\n" +
-			" │           │   └─ Table(dual)\n" +
+			" │           │   └─ Table()\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [3]\n" +
-			" │               └─ Table(dual)\n" +
+			" │               └─ Table()\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4]\n" +
-			"     └─ Table(dual)\n" +
+			"     └─ Table()\n" +
 			"",
 	},
 	{
@@ -3786,18 +3786,18 @@ inner join pq on true
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
 			" │   │   ├─ columns: [1]\n" +
-			" │   │   └─ Table(dual)\n" +
+			" │   │   └─ Table()\n" +
 			" │   └─ SubqueryAlias(a)\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2]\n" +
-			" │           │   └─ Table(dual)\n" +
+			" │           │   └─ Table()\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [3]\n" +
-			" │               └─ Table(dual)\n" +
+			" │               └─ Table()\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [4]\n" +
-			"     └─ Table(dual)\n" +
+			"     └─ Table()\n" +
 			"",
 	},
 	{
@@ -3814,18 +3814,18 @@ inner join pq on true
 			"                 │   ├─ Union distinct\n" +
 			"                 │   │   ├─ Project\n" +
 			"                 │   │   │   ├─ columns: [1]\n" +
-			"                 │   │   │   └─ Table(dual)\n" +
+			"                 │   │   │   └─ Table()\n" +
 			"                 │   │   └─ Project\n" +
 			"                 │   │       ├─ columns: [4]\n" +
-			"                 │   │       └─ Table(dual)\n" +
+			"                 │   │       └─ Table()\n" +
 			"                 │   └─ SubqueryAlias(b)\n" +
 			"                 │       └─ Union distinct\n" +
 			"                 │           ├─ Project\n" +
 			"                 │           │   ├─ columns: [2]\n" +
-			"                 │           │   └─ Table(dual)\n" +
+			"                 │           │   └─ Table()\n" +
 			"                 │           └─ Project\n" +
 			"                 │               ├─ columns: [3]\n" +
-			"                 │               └─ Table(dual)\n" +
+			"                 │               └─ Table()\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(a.x + 1)]\n" +
 			"                     └─ Filter(a.x < 10)\n" +
@@ -3839,16 +3839,16 @@ inner join pq on true
 			" │   ├─ SubqueryAlias(a)\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1]\n" +
-			" │   │       └─ Table(dual)\n" +
+			" │   │       └─ Table()\n" +
 			" │   └─ Sort(b.i DESC)\n" +
 			" │       └─ SubqueryAlias(b)\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [2]\n" +
-			" │               └─ Table(dual)\n" +
+			" │               └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1]\n" +
-			"         └─ Table(dual)\n" +
+			"         └─ Table()\n" +
 			"",
 	},
 	{
@@ -3863,21 +3863,21 @@ inner join pq on true
 			" │   │       ├─ SubqueryAlias(t1)\n" +
 			" │   │       │   └─ Project\n" +
 			" │   │       │       ├─ columns: [1]\n" +
-			" │   │       │       └─ Table(dual)\n" +
+			" │   │       │       └─ Table()\n" +
 			" │   │       └─ HashLookup(child: (t2.j), lookup: (t1.j))\n" +
 			" │   │           └─ CachedResults\n" +
 			" │   │               └─ SubqueryAlias(t2)\n" +
 			" │   │                   └─ Project\n" +
 			" │   │                       ├─ columns: [1]\n" +
-			" │   │                       └─ Table(dual)\n" +
+			" │   │                       └─ Table()\n" +
 			" │   └─ SubqueryAlias(b)\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2]\n" +
-			" │           └─ Table(dual)\n" +
+			" │           └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1]\n" +
-			"         └─ Table(dual)\n" +
+			"         └─ Table()\n" +
 			"",
 	},
 	{
@@ -3894,13 +3894,13 @@ inner join pq on true
 			" │   │       │       ├─ Union distinct\n" +
 			" │   │       │       │   ├─ Project\n" +
 			" │   │       │       │   │   ├─ columns: [1]\n" +
-			" │   │       │       │   │   └─ Table(dual)\n" +
+			" │   │       │       │   │   └─ Table()\n" +
 			" │   │       │       │   └─ Project\n" +
 			" │   │       │       │       ├─ columns: [2]\n" +
-			" │   │       │       │       └─ Table(dual)\n" +
+			" │   │       │       │       └─ Table()\n" +
 			" │   │       │       └─ Project\n" +
 			" │   │       │           ├─ columns: [3]\n" +
-			" │   │       │           └─ Table(dual)\n" +
+			" │   │       │           └─ Table()\n" +
 			" │   │       └─ HashLookup(child: (t2.j), lookup: (t1.j))\n" +
 			" │   │           └─ CachedResults\n" +
 			" │   │               └─ SubqueryAlias(t2)\n" +
@@ -3908,33 +3908,33 @@ inner join pq on true
 			" │   │                       ├─ Union distinct\n" +
 			" │   │                       │   ├─ Project\n" +
 			" │   │                       │   │   ├─ columns: [1]\n" +
-			" │   │                       │   │   └─ Table(dual)\n" +
+			" │   │                       │   │   └─ Table()\n" +
 			" │   │                       │   └─ Project\n" +
 			" │   │                       │       ├─ columns: [2]\n" +
-			" │   │                       │       └─ Table(dual)\n" +
+			" │   │                       │       └─ Table()\n" +
 			" │   │                       └─ Project\n" +
 			" │   │                           ├─ columns: [3]\n" +
-			" │   │                           └─ Table(dual)\n" +
+			" │   │                           └─ Table()\n" +
 			" │   └─ SubqueryAlias(b)\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [2]\n" +
-			" │           │   └─ Table(dual)\n" +
+			" │           │   └─ Table()\n" +
 			" │           └─ Project\n" +
 			" │               ├─ columns: [3]\n" +
-			" │               └─ Table(dual)\n" +
+			" │               └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Union distinct\n" +
 			"         │   ├─ Project\n" +
 			"         │   │   ├─ columns: [1]\n" +
-			"         │   │   └─ Table(dual)\n" +
+			"         │   │   └─ Table()\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [2]\n" +
-			"         │       └─ Table(dual)\n" +
+			"         │       └─ Table()\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [3]\n" +
-			"             └─ Table(dual)\n" +
+			"             └─ Table()\n" +
 			"",
 	},
 	{
@@ -3946,15 +3946,15 @@ inner join pq on true
 			" │   ├─ SubqueryAlias(a)\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1]\n" +
-			" │   │       └─ Table(dual)\n" +
+			" │   │       └─ Table()\n" +
 			" │   └─ SubqueryAlias(b)\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2]\n" +
-			" │           └─ Table(dual)\n" +
+			" │           └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1]\n" +
-			"         └─ Table(dual)\n" +
+			"         └─ Table()\n" +
 			"",
 	},
 	{
@@ -3966,15 +3966,15 @@ inner join pq on true
 			" │   ├─ SubqueryAlias(a)\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1]\n" +
-			" │   │       └─ Table(dual)\n" +
+			" │   │       └─ Table()\n" +
 			" │   └─ SubqueryAlias(b)\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [2]\n" +
-			" │           └─ Table(dual)\n" +
+			" │           └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1]\n" +
-			"         └─ Table(dual)\n" +
+			"         └─ Table()\n" +
 			"",
 	},
 	{
@@ -3984,15 +3984,15 @@ inner join pq on true
 			" │   ├─ SubqueryAlias(a)\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [1]\n" +
-			" │   │       └─ Table(dual)\n" +
+			" │   │       └─ Table()\n" +
 			" │   └─ SubqueryAlias(b)\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [1]\n" +
-			" │           └─ Table(dual)\n" +
+			" │           └─ Table()\n" +
 			" └─ SubqueryAlias(a)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [1]\n" +
-			"         └─ Table(dual)\n" +
+			"         └─ Table()\n" +
 			"",
 	},
 	{
