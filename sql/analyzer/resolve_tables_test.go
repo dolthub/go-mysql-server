@@ -55,16 +55,6 @@ func TestResolveTables(t *testing.T) {
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table, db, nil), analyzed)
 
-	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(plan.NewResolvedTable(dualTable, nil, nil), analyzed)
-
-	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(plan.NewResolvedTable(dualTable, nil, nil), analyzed)
-
 	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
 	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
@@ -95,11 +85,6 @@ func TestResolveTablesNoCurrentDB(t *testing.T) {
 	_, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.Error(err)
 	require.True(sql.ErrDatabaseNotFound.Is(err), "wrong error kind")
-
-	notAnalyzed = plan.NewUnresolvedTable("dual", "")
-	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(plan.NewResolvedTable(dualTable, nil, nil), analyzed)
 }
 
 func TestResolveTablesNested(t *testing.T) {

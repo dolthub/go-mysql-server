@@ -161,7 +161,7 @@ func TestResolveColumnsSession(t *testing.T) {
 			uc("@@autocommit"),
 			uc("@myvar"),
 		},
-		plan.NewResolvedTable(dualTable, nil, nil),
+		plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 	)
 
 	result, _, err := resolveVariables(ctx, NewDefault(nil), node, nil, DefaultRuleSelector)
@@ -174,7 +174,7 @@ func TestResolveColumnsSession(t *testing.T) {
 			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
 			expression.NewUserVar("myvar"),
 		},
-		plan.NewResolvedTable(dualTable, nil, nil),
+		plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 	)
 
 	require.Equal(expected, result)
