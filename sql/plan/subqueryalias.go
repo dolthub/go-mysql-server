@@ -25,14 +25,17 @@ type SubqueryAlias struct {
 	Columns        []string
 	name           string
 	TextDefinition string
+	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery expression
+	OuterScopeVisibility bool
 }
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
 	return &SubqueryAlias{
-		UnaryNode:      UnaryNode{Child: node},
-		name:           name,
-		TextDefinition: textDefinition,
+		UnaryNode:            UnaryNode{Child: node},
+		name:                 name,
+		TextDefinition:       textDefinition,
+		OuterScopeVisibility: false,
 	}
 }
 
@@ -65,12 +68,17 @@ func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	newChild, _, err := transform.Node(sq.Child, prependRowInPlan(row))
-	if err != nil {
-		return nil, err
+	node := sq.Child
+	if sq.OuterScopeVisibility {
+		// TODO: Is it correct to switch on this? Will GetField expressions have the correct indexes?
+		newChild, _, err := transform.Node(sq.Child, prependRowInPlan(row))
+		if err != nil {
+			return nil, err
+		}
+		node = newChild
 	}
 
-	iter, err := newChild.RowIter(ctx, row)
+	iter, err := node.RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err

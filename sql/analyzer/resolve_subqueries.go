@@ -212,6 +212,7 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, 
 		// TODO: Confirm that expression aliases are or are not available
 		// To support this, we rip off the current inner node so that the outer scope nodes are still present, but not the lateral nodes
 		subScope.nodes = scope.InnerToOuter()
+		n.OuterScopeVisibility = true
 	}
 
 	child, same, err := a.analyzeThroughBatch(ctx, n.Child, subScope, "default-rules", sel)
