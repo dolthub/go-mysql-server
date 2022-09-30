@@ -34,6 +34,9 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return nil, transform.SameTree, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", ct.Like())
 	}
 	likeTable := resolvedLikeTable.Table
+	if w, ok := likeTable.(sql.TableWrapper); ok {
+		likeTable = w.Underlying()
+	}
 	var idxDefs []*plan.IndexDefinition
 	if indexableTable, ok := likeTable.(sql.IndexAddressableTable); ok {
 		indexes, err := indexableTable.GetIndexes(ctx)

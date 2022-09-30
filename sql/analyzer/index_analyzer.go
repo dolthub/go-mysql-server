@@ -15,9 +15,8 @@
 package analyzer
 
 import (
-	"sort"
-
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -41,7 +40,12 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 	indexes := make(map[string][]sql.Index)
 
 	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
-		it, ok := rt.Table.(sql.IndexAddressableTable)
+		table := rt.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		it, ok := table.(sql.IndexAddressableTable)
+
 		if !ok {
 			return nil
 		}
