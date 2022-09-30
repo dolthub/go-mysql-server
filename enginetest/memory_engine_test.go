@@ -362,6 +362,10 @@ func TestColumnAliases(t *testing.T) {
 	enginetest.TestColumnAliases(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDerivedTableOuterScopeVisibility(t *testing.T) {
+	enginetest.TestDerivedTableOuterScopeVisibility(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, enginetest.NewDefaultMemoryHarness())
 }

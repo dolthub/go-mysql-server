@@ -492,6 +492,16 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, tt := range queries.ColumnAliasQueries {
 		e := mustNewEngine(t, harness)
+		//e.Analyzer.Debug = true
+		//e.Analyzer.Verbose = true
+		defer e.Close()
+		TestScriptWithEngine(t, e, harness, tt)
+	}
+}
+
+func TestDerivedTableOuterScopeVisibility(t *testing.T, harness Harness) {
+	for _, tt := range queries.DerivedTableOuterScopeVisibilityQueries {
+		e := mustNewEngine(t, harness)
 		e.Analyzer.Debug = true
 		e.Analyzer.Verbose = true
 		defer e.Close()
