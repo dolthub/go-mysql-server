@@ -30,27 +30,27 @@ type ShowColumns struct {
 	targetSchema sql.Schema
 }
 
-var VarChar1000 = sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1000)
+var VarChar25000 = sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
 var (
 	showColumnsSchema = sql.Schema{
-		{Name: "Field", Type: VarChar1000},
-		{Name: "Type", Type: VarChar1000},
-		{Name: "Null", Type: VarChar1000},
-		{Name: "Key", Type: VarChar1000},
-		{Name: "Default", Type: VarChar1000, Nullable: true},
-		{Name: "Extra", Type: VarChar1000},
+		{Name: "Field", Type: VarChar25000},
+		{Name: "Type", Type: VarChar25000},
+		{Name: "Null", Type: VarChar25000},
+		{Name: "Key", Type: VarChar25000},
+		{Name: "Default", Type: VarChar25000, Nullable: true},
+		{Name: "Extra", Type: VarChar25000},
 	}
 
 	showColumnsFullSchema = sql.Schema{
-		{Name: "Field", Type: VarChar1000},
-		{Name: "Type", Type: VarChar1000},
-		{Name: "Collation", Type: VarChar1000, Nullable: true},
-		{Name: "Null", Type: VarChar1000},
-		{Name: "Key", Type: VarChar1000},
-		{Name: "Default", Type: VarChar1000, Nullable: true},
-		{Name: "Extra", Type: VarChar1000},
-		{Name: "Privileges", Type: VarChar1000},
-		{Name: "Comment", Type: VarChar1000},
+		{Name: "Field", Type: VarChar25000},
+		{Name: "Type", Type: VarChar25000},
+		{Name: "Collation", Type: VarChar25000, Nullable: true},
+		{Name: "Null", Type: VarChar25000},
+		{Name: "Key", Type: VarChar25000},
+		{Name: "Default", Type: VarChar25000, Nullable: true},
+		{Name: "Extra", Type: VarChar25000},
+		{Name: "Privileges", Type: VarChar25000},
+		{Name: "Comment", Type: VarChar25000},
 	}
 )
 

@@ -4060,3 +4060,4314 @@ var QueryPlanTODOs = []QueryPlanTest{
 			"",
 	},
 }
+
+var IntegrationPlanTests = []QueryPlanTest{
+	{
+		Query: `SELECT
+    JQVV, RMLT
+FROM
+    ARFu
+WHERE
+    JQVV NOT IN (SELECT TuFQ FROM ZYCA)
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ARFu.JQVV, ARFu.RMLT]\n" +
+			" └─ Filter(NOT((ARFu.JQVV IN (Table(ZYCA)\n" +
+			"     └─ columns: [tufq]\n" +
+			"    ))))\n" +
+			"     └─ Table(ARFu)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    nd_for_JQVVs.JQVV AS JQVV,
+    nd_for_JQVVs.ACQC AS to_rebuild_ACQC,
+    nd_for_JQVVs.VYLM AS to_rebuild_VYLM
+FROM
+    (
+        SELECT
+            VYLM AS VYLM,
+            COUNT(VYLM) AS num_of_nodes,
+            MIN(ism_count) AS min_ism_num_partIRKF,
+            SUM(ism_count) AS sum_ism_num_partIRKF
+        FROM
+            (
+            SELECT
+                nd.JQVV AS JQVV,
+                nd.VYLM AS VYLM,
+                (SELECT COUNT(*) FROM QKKD WHERE XuWE = nd.JQVV) AS ism_count
+            FROM
+                ANBH nd
+            WHERE nd.VYLM IS NOT NULL
+            ) nd_with_ism_counts
+        GROUP BY
+            VYLM
+        HAVING
+            num_of_nodes > 1
+    ) multi_VYLMs_with_min_and_sum_count
+INNER JOIN
+    ANBH nd_for_JQVVs
+ON
+    nd_for_JQVVs.VYLM IS NOT NULL AND nd_for_JQVVs.VYLM = multi_VYLMs_with_min_and_sum_count.VYLM
+WHERE
+        multi_VYLMs_with_min_and_sum_count.min_ism_num_partIRKF = 0
+    AND
+        multi_VYLMs_with_min_and_sum_count.sum_ism_num_partIRKF > 0
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [nd_for_JQVVs.JQVV as JQVV, nd_for_JQVVs.ACQC as to_rebuild_ACQC, nd_for_JQVVs.VYLM as to_rebuild_VYLM]\n" +
+			" └─ InnerJoin(nd_for_JQVVs.VYLM = multi_VYLMs_with_min_and_sum_count.VYLM)\n" +
+			"     ├─ SubqueryAlias(multi_VYLMs_with_min_and_sum_count)\n" +
+			"     │   └─ Filter((min_ism_num_partIRKF = 0) AND (sum_ism_num_partIRKF > 0))\n" +
+			"     │       └─ Filter((min_ism_num_partIRKF = 0) AND (sum_ism_num_partIRKF > 0))\n" +
+			"     │           └─ Having((num_of_nodes > 1))\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [VYLM, COUNT(nd_with_ism_counts.VYLM) as num_of_nodes, MIN(nd_with_ism_counts.ism_count) as min_ism_num_partIRKF, SUM(nd_with_ism_counts.ism_count) as sum_ism_num_partIRKF]\n" +
+			"     │                   └─ GroupBy\n" +
+			"     │                       ├─ SelectedExprs(VYLM, COUNT(nd_with_ism_counts.VYLM), MIN(nd_with_ism_counts.ism_count), SUM(nd_with_ism_counts.ism_count))\n" +
+			"     │                       ├─ Grouping(VYLM)\n" +
+			"     │                       └─ Project\n" +
+			"     │                           ├─ columns: [nd_with_ism_counts.VYLM as VYLM, nd_with_ism_counts.VYLM, nd_with_ism_counts.ism_count]\n" +
+			"     │                           └─ SubqueryAlias(nd_with_ism_counts)\n" +
+			"     │                               └─ Project\n" +
+			"     │                                   ├─ columns: [nd.JQVV as JQVV, nd.VYLM as VYLM, (GroupBy\n" +
+			"     │                                   │   ├─ SelectedExprs(COUNT(*))\n" +
+			"     │                                   │   ├─ Grouping()\n" +
+			"     │                                   │   └─ Filter(QKKD.XuWE = nd.JQVV)\n" +
+			"     │                                   │       └─ Table(QKKD)\n" +
+			"     │                                   │           └─ columns: [jqvv mxjt xuwe bkyy iekv vbaf qnuy hpfl bfuk]\n" +
+			"     │                                   │  ) as ism_count]\n" +
+			"     │                                   └─ Filter(NOT(nd.VYLM IS NULL))\n" +
+			"     │                                       └─ TableAlias(nd)\n" +
+			"     │                                           └─ IndexedTableAccess(ANBH)\n" +
+			"     │                                               ├─ index: [ANBH.VYLM]\n" +
+			"     │                                               └─ filters: [{(NULL, ∞)}]\n" +
+			"     └─ TableAlias(nd_for_JQVVs)\n" +
+			"         └─ Table(ANBH)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ism.*
+FROM
+    QKKD ism
+WHERE
+(
+        ism.QNuY IS NOT NULL
+    AND
+        (
+                (SELECT coism.JCTA FROM FZDJ coism WHERE coism.JQVV = ism.QNuY) = 1
+            OR
+                (
+                        (
+                            ism.MXJT IS NOT NULL
+                        AND
+                            (SELECT nd.JQVV FROM ANBH nd WHERE nd.ACQC = 
+                                (SELECT coism.QKHO FROM FZDJ coism
+                                WHERE coism.JQVV = ism.QNuY))
+                            <> ism.MXJT
+                        )
+                    OR
+                        (
+                            ism.XuWE IS NOT NULL
+                        AND
+                            (SELECT nd.JQVV FROM ANBH nd WHERE nd.ACQC = 
+                                (SELECT coism.LQJN FROM FZDJ coism
+                                WHERE coism.JQVV = ism.QNuY))
+                            <> ism.XuWE
+                        )
+                )
+        )
+)
+OR
+(
+        ism.VBAF IS NOT NULL
+    AND
+        ism.VBAF IN
+        (
+        SELECT
+            uism.JQVV AS uism_JQVV
+        FROM
+            FZDJ coism
+        INNER JOIN
+            RDPF uism
+        ON
+                uism.FIEH = coism.YBTP
+            AND
+                uism.FQVL = coism.JAHM
+            AND
+                uism.BHPM = coism.BHPM
+            AND
+                uism.QOAP = coism.QOAP
+        WHERE
+                coism.JCTA = 0
+            AND
+                coism.JQVV NOT IN (SELECT QNuY FROM QKKD WHERE QNuY IS NOT NULL)
+        )
+)
+`,
+		ExpectedPlan: "Filter(((NOT(ism.QNuY IS NULL)) AND (((Project\n" +
+			" ├─ columns: [coism.JCTA]\n" +
+			" └─ Filter(coism.JQVV = ism.QNuY)\n" +
+			"     └─ TableAlias(coism)\n" +
+			"         └─ IndexedTableAccess(FZDJ)\n" +
+			"             └─ index: [FZDJ.JQVV]\n" +
+			") = 1) OR (((NOT(ism.MXJT IS NULL)) AND (NOT(((Project\n" +
+			" ├─ columns: [nd.JQVV]\n" +
+			" └─ Filter(nd.ACQC = (Project\n" +
+			"     ├─ columns: [coism.QKHO]\n" +
+			"     └─ Filter(coism.JQVV = ism.QNuY)\n" +
+			"         └─ TableAlias(coism)\n" +
+			"             └─ IndexedTableAccess(FZDJ)\n" +
+			"                 └─ index: [FZDJ.JQVV]\n" +
+			"    ))\n" +
+			"     └─ TableAlias(nd)\n" +
+			"         └─ Table(ANBH)\n" +
+			") = ism.MXJT)))) OR ((NOT(ism.XuWE IS NULL)) AND (NOT(((Project\n" +
+			" ├─ columns: [nd.JQVV]\n" +
+			" └─ Filter(nd.ACQC = (Project\n" +
+			"     ├─ columns: [coism.LQJN]\n" +
+			"     └─ Filter(coism.JQVV = ism.QNuY)\n" +
+			"         └─ TableAlias(coism)\n" +
+			"             └─ IndexedTableAccess(FZDJ)\n" +
+			"                 └─ index: [FZDJ.JQVV]\n" +
+			"    ))\n" +
+			"     └─ TableAlias(nd)\n" +
+			"         └─ Table(ANBH)\n" +
+			") = ism.XuWE))))))) OR ((NOT(ism.VBAF IS NULL)) AND (ism.VBAF IN (Project\n" +
+			" ├─ columns: [uism.JQVV as uism_JQVV]\n" +
+			" └─ Filter(NOT((coism.JQVV IN (Filter(NOT(QKKD.QNuY IS NULL))\n" +
+			"     └─ IndexedTableAccess(QKKD)\n" +
+			"         ├─ index: [QKKD.QNuY]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
+			"         └─ columns: [qnuy]\n" +
+			"    ))))\n" +
+			"     └─ InnerJoin((((uism.FIEH = coism.YBTP) AND (uism.FQVL = coism.JAHM)) AND (uism.BHPM = coism.BHPM)) AND (uism.QOAP = coism.QOAP))\n" +
+			"         ├─ Filter(coism.JCTA = 0)\n" +
+			"         │   └─ TableAlias(coism)\n" +
+			"         │       └─ Table(FZDJ)\n" +
+			"         └─ TableAlias(uism)\n" +
+			"             └─ Table(RDPF)\n" +
+			"))))\n" +
+			" └─ TableAlias(ism)\n" +
+			"     └─ Table(QKKD)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    uism.*
+FROM
+    RDPF uism
+WHERE JQVV IN
+    (
+        SELECT DISTINCT
+            uism.JQVV
+        FROM
+            RDPF uism
+        INNER JOIN
+            ANBH mutant_nd
+        ON
+            mutant_nd.VYLM = uism.FIEH
+        INNER JOIN
+            ANBH partIRKF_nd
+        ON
+            partIRKF_nd.VYLM = uism.FQVL
+        INNER JOIN
+            RCXK mf ON mf.FHMZ = mutant_nd.JQVV
+        INNER JOIN
+            XAWV aac ON aac.JQVV = mf.BKYY
+        WHERE
+            aac.MRCu = uism.BHPM
+    )
+    AND
+        uism.JQVV NOT IN (SELECT VBAF FROM QKKD)
+`,
+		ExpectedPlan: "Filter((uism.JQVV IN (Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [uism.JQVV]\n" +
+			"     └─ Filter(aac.MRCu = uism.BHPM)\n" +
+			"         └─ InnerJoin(aac.JQVV = mf.BKYY)\n" +
+			"             ├─ InnerJoin(mf.FHMZ = mutant_nd.JQVV)\n" +
+			"             │   ├─ InnerJoin(partIRKF_nd.VYLM = uism.FQVL)\n" +
+			"             │   │   ├─ InnerJoin(mutant_nd.VYLM = uism.FIEH)\n" +
+			"             │   │   │   ├─ TableAlias(uism)\n" +
+			"             │   │   │   │   └─ Table(RDPF)\n" +
+			"             │   │   │   └─ TableAlias(mutant_nd)\n" +
+			"             │   │   │       └─ Table(ANBH)\n" +
+			"             │   │   └─ TableAlias(partIRKF_nd)\n" +
+			"             │   │       └─ Table(ANBH)\n" +
+			"             │   └─ TableAlias(mf)\n" +
+			"             │       └─ Table(RCXK)\n" +
+			"             └─ TableAlias(aac)\n" +
+			"                 └─ Table(XAWV)\n" +
+			")) AND (NOT((uism.JQVV IN (Table(QKKD)\n" +
+			" └─ columns: [vbaf]\n" +
+			")))))\n" +
+			" └─ TableAlias(uism)\n" +
+			"     └─ Table(RDPF)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    nd_for_JQVVs.JQVV AS JQVV,
+    nd_for_JQVVs.ACQC AS to_rebuild_ACQC,
+    nd_for_JQVVs.VYLM AS to_rebuild_VYLM
+FROM
+    (
+        SELECT
+            VYLM AS VYLM,
+            COUNT(VYLM) AS num_of_nodes,
+            MIN(PDPL_count) AS min_ct_num,
+            SUM(PDPL_count) AS sum_ct_num
+        FROM
+            (
+            SELECT
+                nd.JQVV AS JQVV,
+                nd.VYLM AS VYLM,
+                (SELECT COUNT(*) FROM PDPL WHERE FHMZ = nd.JQVV) AS PDPL_count
+            FROM
+                ANBH nd
+            WHERE nd.VYLM IS NOT NULL
+            ) nd_with_PDPL_counts
+        GROUP BY
+            VYLM
+        HAVING
+            num_of_nodes > 1
+    ) multi_VYLMs_with_min_and_sum_count
+INNER JOIN
+    ANBH nd_for_JQVVs
+ON
+    nd_for_JQVVs.VYLM IS NOT NULL AND nd_for_JQVVs.VYLM = multi_VYLMs_with_min_and_sum_count.VYLM
+WHERE
+        multi_VYLMs_with_min_and_sum_count.min_ct_num = 0
+    AND
+        multi_VYLMs_with_min_and_sum_count.sum_ct_num > 0
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [nd_for_JQVVs.JQVV as JQVV, nd_for_JQVVs.ACQC as to_rebuild_ACQC, nd_for_JQVVs.VYLM as to_rebuild_VYLM]\n" +
+			" └─ InnerJoin(nd_for_JQVVs.VYLM = multi_VYLMs_with_min_and_sum_count.VYLM)\n" +
+			"     ├─ SubqueryAlias(multi_VYLMs_with_min_and_sum_count)\n" +
+			"     │   └─ Filter((min_ct_num = 0) AND (sum_ct_num > 0))\n" +
+			"     │       └─ Filter((min_ct_num = 0) AND (sum_ct_num > 0))\n" +
+			"     │           └─ Having((num_of_nodes > 1))\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [VYLM, COUNT(nd_with_PDPL_counts.VYLM) as num_of_nodes, MIN(nd_with_PDPL_counts.PDPL_count) as min_ct_num, SUM(nd_with_PDPL_counts.PDPL_count) as sum_ct_num]\n" +
+			"     │                   └─ GroupBy\n" +
+			"     │                       ├─ SelectedExprs(VYLM, COUNT(nd_with_PDPL_counts.VYLM), MIN(nd_with_PDPL_counts.PDPL_count), SUM(nd_with_PDPL_counts.PDPL_count))\n" +
+			"     │                       ├─ Grouping(VYLM)\n" +
+			"     │                       └─ Project\n" +
+			"     │                           ├─ columns: [nd_with_PDPL_counts.VYLM as VYLM, nd_with_PDPL_counts.PDPL_count, nd_with_PDPL_counts.VYLM]\n" +
+			"     │                           └─ SubqueryAlias(nd_with_PDPL_counts)\n" +
+			"     │                               └─ Project\n" +
+			"     │                                   ├─ columns: [nd.JQVV as JQVV, nd.VYLM as VYLM, (GroupBy\n" +
+			"     │                                   │   ├─ SelectedExprs(COUNT(*))\n" +
+			"     │                                   │   ├─ Grouping()\n" +
+			"     │                                   │   └─ Filter(PDPL.FHMZ = nd.JQVV)\n" +
+			"     │                                   │       └─ Table(PDPL)\n" +
+			"     │                                   │           └─ columns: [jqvv kewq fhmz bkyy wkhr lfva ljnz sujn fazw esdh fcjy bfuk]\n" +
+			"     │                                   │  ) as PDPL_count]\n" +
+			"     │                                   └─ Filter(NOT(nd.VYLM IS NULL))\n" +
+			"     │                                       └─ TableAlias(nd)\n" +
+			"     │                                           └─ IndexedTableAccess(ANBH)\n" +
+			"     │                                               ├─ index: [ANBH.VYLM]\n" +
+			"     │                                               └─ filters: [{(NULL, ∞)}]\n" +
+			"     └─ TableAlias(nd_for_JQVVs)\n" +
+			"         └─ Table(ANBH)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ct.JQVV AS JQVV,
+    ci.RMLT AS compound,
+    nd.ACQC AS node,
+    aac.MRCu AS XAWV,
+    ct.FAZW AS FAZW,
+    ct.ESDH AS ESDH,
+    ct.FCJY AS FCJY
+FROM
+    PDPL ct
+INNER JOIN
+    VNRO ci
+ON
+    ci.JQVV = ct.KEWQ
+INNER JOIN
+    ANBH nd
+ON
+    nd.JQVV = ct.FHMZ
+INNER JOIN
+    XAWV aac
+ON
+    aac.JQVV = ct.BKYY
+WHERE
+(
+        ct.LJNZ IS NOT NULL
+    AND
+        (
+                (SELECT coct.JCTA FROM PPDB coct WHERE coct.JQVV = ct.LJNZ) = 1
+            OR
+                (SELECT nd.JQVV FROM ANBH nd WHERE nd.ACQC = 
+                    (SELECT coct.KMuG FROM PPDB coct
+                    WHERE coct.JQVV = ct.LJNZ))
+                <> ct.FHMZ
+        )
+)
+OR
+(
+        ct.LFVA IS NOT NULL
+    AND
+        ct.LFVA IN
+        (
+        SELECT
+            uct.JQVV AS uct_JQVV
+        FROM
+            PPDB coct
+        INNER JOIN
+            MBAH uct
+        ON
+                uct.RMLT = coct.BPHC
+            AND
+                uct.VYLM = coct.WIIu
+            AND
+                uct.SXuV = coct.MRCu
+        WHERE
+                coct.JCTA = 0
+            AND
+                coct.JQVV NOT IN (SELECT LJNZ FROM PDPL WHERE LJNZ IS NOT NULL)
+        )
+)
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ct.JQVV as JQVV, ci.RMLT as compound, nd.ACQC as node, aac.MRCu as XAWV, ct.FAZW as FAZW, ct.ESDH as ESDH, ct.FCJY as FCJY]\n" +
+			" └─ Filter(((NOT(ct.LJNZ IS NULL)) AND (((Project\n" +
+			"     ├─ columns: [coct.JCTA]\n" +
+			"     └─ Filter(coct.JQVV = ct.LJNZ)\n" +
+			"         └─ TableAlias(coct)\n" +
+			"             └─ IndexedTableAccess(PPDB)\n" +
+			"                 └─ index: [PPDB.JQVV]\n" +
+			"    ) = 1) OR (NOT(((Project\n" +
+			"     ├─ columns: [nd.JQVV]\n" +
+			"     └─ Filter(nd.ACQC = (Project\n" +
+			"         ├─ columns: [coct.KMuG]\n" +
+			"         └─ Filter(coct.JQVV = ct.LJNZ)\n" +
+			"             └─ TableAlias(coct)\n" +
+			"                 └─ IndexedTableAccess(PPDB)\n" +
+			"                     └─ index: [PPDB.JQVV]\n" +
+			"        ))\n" +
+			"         └─ TableAlias(nd)\n" +
+			"             └─ Table(ANBH)\n" +
+			"    ) = ct.FHMZ))))) OR ((NOT(ct.LFVA IS NULL)) AND (ct.LFVA IN (Project\n" +
+			"     ├─ columns: [uct.JQVV as uct_JQVV]\n" +
+			"     └─ Filter(NOT((coct.JQVV IN (Filter(NOT(PDPL.LJNZ IS NULL))\n" +
+			"         └─ IndexedTableAccess(PDPL)\n" +
+			"             ├─ index: [PDPL.LJNZ]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
+			"             └─ columns: [ljnz]\n" +
+			"        ))))\n" +
+			"         └─ InnerJoin(((uct.RMLT = coct.BPHC) AND (uct.VYLM = coct.WIIu)) AND (uct.SXuV = coct.MRCu))\n" +
+			"             ├─ Filter(coct.JCTA = 0)\n" +
+			"             │   └─ TableAlias(coct)\n" +
+			"             │       └─ Table(PPDB)\n" +
+			"             └─ TableAlias(uct)\n" +
+			"                 └─ Table(MBAH)\n" +
+			"    ))))\n" +
+			"     └─ IndexedJoin(aac.JQVV = ct.BKYY)\n" +
+			"         ├─ IndexedJoin(nd.JQVV = ct.FHMZ)\n" +
+			"         │   ├─ IndexedJoin(ci.JQVV = ct.KEWQ)\n" +
+			"         │   │   ├─ TableAlias(ct)\n" +
+			"         │   │   │   └─ Table(PDPL)\n" +
+			"         │   │   └─ TableAlias(ci)\n" +
+			"         │   │       └─ IndexedTableAccess(VNRO)\n" +
+			"         │   │           └─ index: [VNRO.JQVV]\n" +
+			"         │   └─ TableAlias(nd)\n" +
+			"         │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │           └─ index: [ANBH.JQVV]\n" +
+			"         └─ TableAlias(aac)\n" +
+			"             └─ IndexedTableAccess(XAWV)\n" +
+			"                 └─ index: [XAWV.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    uct.*
+FROM
+(
+    SELECT DISTINCT
+        uct_to_fitler.JQVV AS uct_JQVV
+    FROM
+        MBAH uct_to_fitler
+    INNER JOIN
+        VNRO ci
+    ON
+        ci.RMLT = uct_to_fitler.RMLT
+    INNER JOIN
+        ANBH nd
+    ON
+        nd.VYLM = uct_to_fitler.VYLM
+    INNER JOIN
+        XAWV aac
+    ON
+        aac.MRCu = uct_to_fitler.SXuV
+    WHERE
+        uct_to_fitler.SXuV NOT LIKE '%|%'
+    AND
+        uct_to_fitler.JQVV NOT IN (SELECT LFVA FROM PDPL WHERE LFVA IS NOT NULL)
+) just_uct_JQVVs
+INNER JOIN
+    MBAH uct
+ON
+    uct.JQVV = just_uct_JQVVs.uct_JQVV
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [uct.JQVV, uct.RMLT, uct.VYLM, uct.XJXA, uct.FAZW, uct.SXuV, uct.QZBA, uct.QKJQ, uct.FCJY, uct.FYVA, uct.HPFL, uct.BFuK, uct.CVJB]\n" +
+			" └─ IndexedJoin(uct.JQVV = just_uct_JQVVs.uct_JQVV)\n" +
+			"     ├─ TableAlias(uct)\n" +
+			"     │   └─ Table(MBAH)\n" +
+			"     │       └─ columns: [jqvv rmlt vylm xjxa fazw sxuv qzba qkjq fcjy fyva hpfl bfuk cvjb]\n" +
+			"     └─ HashLookup(child: (just_uct_JQVVs.uct_JQVV), lookup: (uct.JQVV))\n" +
+			"         └─ CachedResults\n" +
+			"             └─ SubqueryAlias(just_uct_JQVVs)\n" +
+			"                 └─ Distinct\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [uct_to_fitler.JQVV as uct_JQVV]\n" +
+			"                         └─ Filter(NOT((uct_to_fitler.JQVV IN (Filter(NOT(PDPL.LFVA IS NULL))\n" +
+			"                             └─ IndexedTableAccess(PDPL)\n" +
+			"                                 ├─ index: [PDPL.LFVA]\n" +
+			"                                 ├─ filters: [{(NULL, ∞)}]\n" +
+			"                                 └─ columns: [lfva]\n" +
+			"                            ))))\n" +
+			"                             └─ IndexedJoin(aac.MRCu = uct_to_fitler.SXuV)\n" +
+			"                                 ├─ IndexedJoin(nd.VYLM = uct_to_fitler.VYLM)\n" +
+			"                                 │   ├─ IndexedJoin(ci.RMLT = uct_to_fitler.RMLT)\n" +
+			"                                 │   │   ├─ Filter(NOT(uct_to_fitler.SXuV LIKE '%|%'))\n" +
+			"                                 │   │   │   └─ TableAlias(uct_to_fitler)\n" +
+			"                                 │   │   │       └─ Table(MBAH)\n" +
+			"                                 │   │   └─ TableAlias(ci)\n" +
+			"                                 │   │       └─ IndexedTableAccess(VNRO)\n" +
+			"                                 │   │           └─ index: [VNRO.RMLT]\n" +
+			"                                 │   └─ TableAlias(nd)\n" +
+			"                                 │       └─ IndexedTableAccess(ANBH)\n" +
+			"                                 │           └─ index: [ANBH.VYLM]\n" +
+			"                                 └─ TableAlias(aac)\n" +
+			"                                     └─ IndexedTableAccess(XAWV)\n" +
+			"                                         └─ index: [XAWV.MRCu]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ct.JQVV AS JQVV,
+    ci.RMLT AS compound,
+    nd.ACQC AS node,
+    aac.MRCu AS XAWV,
+    ct.FAZW AS FAZW,
+    ct.ESDH AS ESDH,
+    ct.FCJY AS FCJY
+FROM
+    PDPL ct
+INNER JOIN
+    LHuW cact
+ON
+    cact.JQVV = ct.SuJN
+INNER JOIN
+    VNRO ci
+ON
+    ci.JQVV = ct.KEWQ
+INNER JOIN
+    ANBH nd
+ON
+    nd.JQVV = ct.FHMZ
+INNER JOIN
+    XAWV aac
+ON
+    aac.JQVV = ct.BKYY
+WHERE
+    cact.JCTA = 1
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ct.JQVV as JQVV, ci.RMLT as compound, nd.ACQC as node, aac.MRCu as XAWV, ct.FAZW as FAZW, ct.ESDH as ESDH, ct.FCJY as FCJY]\n" +
+			" └─ IndexedJoin(aac.JQVV = ct.BKYY)\n" +
+			"     ├─ IndexedJoin(nd.JQVV = ct.FHMZ)\n" +
+			"     │   ├─ IndexedJoin(ci.JQVV = ct.KEWQ)\n" +
+			"     │   │   ├─ IndexedJoin(cact.JQVV = ct.SuJN)\n" +
+			"     │   │   │   ├─ TableAlias(ct)\n" +
+			"     │   │   │   │   └─ Table(PDPL)\n" +
+			"     │   │   │   └─ Filter(cact.JCTA = 1)\n" +
+			"     │   │   │       └─ TableAlias(cact)\n" +
+			"     │   │   │           └─ IndexedTableAccess(LHuW)\n" +
+			"     │   │   │               └─ index: [LHuW.JQVV]\n" +
+			"     │   │   └─ TableAlias(ci)\n" +
+			"     │   │       └─ IndexedTableAccess(VNRO)\n" +
+			"     │   │           └─ index: [VNRO.JQVV]\n" +
+			"     │   └─ TableAlias(nd)\n" +
+			"     │       └─ IndexedTableAccess(ANBH)\n" +
+			"     │           └─ index: [ANBH.JQVV]\n" +
+			"     └─ TableAlias(aac)\n" +
+			"         └─ IndexedTableAccess(XAWV)\n" +
+			"             └─ index: [XAWV.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    *
+FROM
+    LHuW
+WHERE
+        JQVV NOT IN
+        (
+            SELECT
+                SuJN
+            FROM
+                PDPL
+            WHERE SuJN IS NOT NULL
+        )
+    AND
+        JCTA = 0
+`,
+		ExpectedPlan: "Filter((NOT((LHuW.JQVV IN (Filter(NOT(PDPL.SuJN IS NULL))\n" +
+			" └─ IndexedTableAccess(PDPL)\n" +
+			"     ├─ index: [PDPL.SuJN]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
+			"     └─ columns: [sujn]\n" +
+			")))) AND (LHuW.JCTA = 0))\n" +
+			" └─ Table(LHuW)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    rn.JQVV AS JQVV,
+    CONCAT(upstream_source_nd.ACQC, ' -> ', upstream_target_nd.ACQC) AS upstream_edge,
+    CONCAT(downstream_source_nd.ACQC, ' -> ', downstream_target_nd.ACQC) AS downstream_edge,
+    rn.CAAI AS CAAI
+FROM
+    DHWQ rn
+INNER JOIN
+    OPHR upstream_sn
+ON
+    rn.ANuC = upstream_sn.JQVV
+INNER JOIN
+    OPHR downstream_sn
+ON
+    rn.VTAP = downstream_sn.JQVV
+INNER JOIN
+    ANBH upstream_source_nd
+ON
+    upstream_source_nd.JQVV = upstream_sn.EXKR
+INNER JOIN
+    ANBH upstream_target_nd
+ON
+    upstream_target_nd.JQVV = upstream_sn.XAOO
+INNER JOIN
+    ANBH downstream_source_nd
+ON
+    downstream_source_nd.JQVV = downstream_sn.EXKR
+INNER JOIN
+    ANBH downstream_target_nd
+ON
+    downstream_target_nd.JQVV = downstream_sn.XAOO
+WHERE
+        upstream_sn.XAOO <> downstream_sn.EXKR
+    OR
+        upstream_sn.EFTO <> 1
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [rn.JQVV as JQVV, concat(upstream_source_nd.ACQC, ' -> ', upstream_target_nd.ACQC) as upstream_edge, concat(downstream_source_nd.ACQC, ' -> ', downstream_target_nd.ACQC) as downstream_edge, rn.CAAI as CAAI]\n" +
+			" └─ Filter((NOT((upstream_sn.XAOO = downstream_sn.EXKR))) OR (NOT((upstream_sn.EFTO = 1))))\n" +
+			"     └─ IndexedJoin(downstream_target_nd.JQVV = downstream_sn.XAOO)\n" +
+			"         ├─ IndexedJoin(downstream_source_nd.JQVV = downstream_sn.EXKR)\n" +
+			"         │   ├─ IndexedJoin(upstream_target_nd.JQVV = upstream_sn.XAOO)\n" +
+			"         │   │   ├─ IndexedJoin(upstream_source_nd.JQVV = upstream_sn.EXKR)\n" +
+			"         │   │   │   ├─ IndexedJoin(rn.VTAP = downstream_sn.JQVV)\n" +
+			"         │   │   │   │   ├─ IndexedJoin(rn.ANuC = upstream_sn.JQVV)\n" +
+			"         │   │   │   │   │   ├─ TableAlias(rn)\n" +
+			"         │   │   │   │   │   │   └─ Table(DHWQ)\n" +
+			"         │   │   │   │   │   └─ TableAlias(upstream_sn)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"         │   │   │   │   │           └─ index: [OPHR.JQVV]\n" +
+			"         │   │   │   │   └─ TableAlias(downstream_sn)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"         │   │   │   │           └─ index: [OPHR.JQVV]\n" +
+			"         │   │   │   └─ TableAlias(upstream_source_nd)\n" +
+			"         │   │   │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │   │   │           └─ index: [ANBH.JQVV]\n" +
+			"         │   │   └─ TableAlias(upstream_target_nd)\n" +
+			"         │   │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │   │           └─ index: [ANBH.JQVV]\n" +
+			"         │   └─ TableAlias(downstream_source_nd)\n" +
+			"         │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │           └─ index: [ANBH.JQVV]\n" +
+			"         └─ TableAlias(downstream_target_nd)\n" +
+			"             └─ IndexedTableAccess(ANBH)\n" +
+			"                 └─ index: [ANBH.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    sn.JQVV AS potential_ANuC,
+    CONCAT(potential_upstream_source_nd.ACQC, ' -> ', potential_upstream_target_nd.ACQC) AS potential_upstream_edge,
+    sn_by_source_node.JQVV AS potential_VTAP,
+    CONCAT(potential_downstream_source_nd.ACQC, ' -> ', potential_downstream_target_nd.ACQC) AS potential_downstream_edge,
+    1.0 AS default_CAAI_to_insert
+FROM
+    OPHR sn
+INNER JOIN
+    OPHR sn_by_source_node
+ON
+    sn_by_source_node.EXKR = sn.XAOO
+LEFT JOIN
+    DHWQ rn
+ON
+        rn.ANuC = sn.JQVV
+    AND
+        rn.VTAP = sn_by_source_node.JQVV
+INNER JOIN
+    ANBH potential_upstream_source_nd
+ON
+    potential_upstream_source_nd.JQVV = sn.EXKR
+INNER JOIN
+    ANBH potential_upstream_target_nd
+ON
+    potential_upstream_target_nd.JQVV = sn.XAOO
+INNER JOIN
+    ANBH potential_downstream_source_nd
+ON
+    potential_downstream_source_nd.JQVV = sn_by_source_node.EXKR
+INNER JOIN
+    ANBH potential_downstream_target_nd
+ON
+    potential_downstream_target_nd.JQVV = sn_by_source_node.XAOO
+WHERE
+        sn.EFTO = 1
+    AND
+        rn.ANuC IS NULL AND rn.VTAP IS NULL
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sn.JQVV as potential_ANuC, concat(potential_upstream_source_nd.ACQC, ' -> ', potential_upstream_target_nd.ACQC) as potential_upstream_edge, sn_by_source_node.JQVV as potential_VTAP, concat(potential_downstream_source_nd.ACQC, ' -> ', potential_downstream_target_nd.ACQC) as potential_downstream_edge, 1.0 as default_CAAI_to_insert]\n" +
+			" └─ Filter(rn.ANuC IS NULL AND rn.VTAP IS NULL)\n" +
+			"     └─ IndexedJoin(potential_upstream_source_nd.JQVV = sn.EXKR)\n" +
+			"         ├─ TableAlias(potential_upstream_source_nd)\n" +
+			"         │   └─ Table(ANBH)\n" +
+			"         └─ IndexedJoin(potential_upstream_target_nd.JQVV = sn.XAOO)\n" +
+			"             ├─ TableAlias(potential_upstream_target_nd)\n" +
+			"             │   └─ Table(ANBH)\n" +
+			"             └─ IndexedJoin(potential_downstream_target_nd.JQVV = sn_by_source_node.XAOO)\n" +
+			"                 ├─ IndexedJoin(potential_downstream_source_nd.JQVV = sn_by_source_node.EXKR)\n" +
+			"                 │   ├─ LeftIndexedJoin((rn.ANuC = sn.JQVV) AND (rn.VTAP = sn_by_source_node.JQVV))\n" +
+			"                 │   │   ├─ IndexedJoin(sn_by_source_node.EXKR = sn.XAOO)\n" +
+			"                 │   │   │   ├─ Filter(sn.EFTO = 1)\n" +
+			"                 │   │   │   │   └─ TableAlias(sn)\n" +
+			"                 │   │   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"                 │   │   │   │           └─ index: [OPHR.XAOO]\n" +
+			"                 │   │   │   └─ TableAlias(sn_by_source_node)\n" +
+			"                 │   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"                 │   │   │           └─ index: [OPHR.EXKR]\n" +
+			"                 │   │   └─ TableAlias(rn)\n" +
+			"                 │   │       └─ IndexedTableAccess(DHWQ)\n" +
+			"                 │   │           └─ index: [DHWQ.ANuC]\n" +
+			"                 │   └─ TableAlias(potential_downstream_source_nd)\n" +
+			"                 │       └─ IndexedTableAccess(ANBH)\n" +
+			"                 │           └─ index: [ANBH.JQVV]\n" +
+			"                 └─ TableAlias(potential_downstream_target_nd)\n" +
+			"                     └─ IndexedTableAccess(ANBH)\n" +
+			"                         └─ index: [ANBH.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    JQVV, LHTS, MKOT, XJXA
+FROM
+    EDPQ
+WHERE
+    JQVV IN
+    (SELECT
+        (SELECT JQVV FROM EDPQ WHERE MKOT = ltnm_MKOT_and_XJXA.MKOT ORDER BY JQVV LIMIT 1) AS JQVV
+    FROM
+        (SELECT DISTINCT
+            ltnm.MKOT AS MKOT,
+            ltnm.XJXA AS XJXA
+        FROM
+            EDPQ ltnm
+        INNER JOIN
+            ANBH nd
+        ON
+            nd.LHTS = ltnm.LHTS) ltnm_MKOT_and_XJXA
+    WHERE
+        ltnm_MKOT_and_XJXA.MKOT NOT IN (SELECT MKOT FROM AuKP)
+    )
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [EDPQ.JQVV, EDPQ.LHTS, EDPQ.MKOT, EDPQ.XJXA]\n" +
+			" └─ Filter(EDPQ.JQVV IN (Project\n" +
+			"     ├─ columns: [(Limit(1)\n" +
+			"     │   └─ TopN(Limit: [1]; EDPQ.JQVV ASC)\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [EDPQ.JQVV]\n" +
+			"     │           └─ Filter(EDPQ.MKOT = ltnm_MKOT_and_XJXA.MKOT)\n" +
+			"     │               └─ Table(EDPQ)\n" +
+			"     │                   └─ columns: [jqvv mkot]\n" +
+			"     │  ) as JQVV]\n" +
+			"     └─ Filter(NOT((ltnm_MKOT_and_XJXA.MKOT IN (Table(AuKP)\n" +
+			"         └─ columns: [mkot]\n" +
+			"        ))))\n" +
+			"         └─ SubqueryAlias(ltnm_MKOT_and_XJXA)\n" +
+			"             └─ Distinct\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [ltnm.MKOT as MKOT, ltnm.XJXA as XJXA]\n" +
+			"                     └─ IndexedJoin(nd.LHTS = ltnm.LHTS)\n" +
+			"                         ├─ TableAlias(ltnm)\n" +
+			"                         │   └─ Table(EDPQ)\n" +
+			"                         └─ TableAlias(nd)\n" +
+			"                             └─ IndexedTableAccess(ANBH)\n" +
+			"                                 └─ index: [ANBH.LHTS]\n" +
+			"    ))\n" +
+			"     └─ Table(EDPQ)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    nd_for_JQVVs.JQVV AS JQVV,
+    nd_for_JQVVs.ACQC AS to_rebuild_ufc_for_ACQC,
+    nd_for_JQVVs.VYLM AS to_rebuild_ufc_for_VYLM
+FROM
+    (
+        SELECT
+            VYLM AS VYLM,
+            COUNT(VYLM) AS num_of_nodes,
+            MIN(GRuH_count) AS min_fc_num,
+            SUM(GRuH_count) AS sum_fc_num
+        FROM
+            (
+            SELECT
+                nd.JQVV AS JQVV,
+                nd.VYLM AS VYLM,
+                (SELECT COUNT(*) FROM GRuH WHERE FHMZ = nd.JQVV) AS GRuH_count
+            FROM
+                ANBH nd
+            WHERE nd.VYLM IS NOT NULL
+            ) nd_with_GRuH_counts
+        GROUP BY
+            VYLM
+        HAVING
+            num_of_nodes > 1
+    ) multi_VYLMs_with_min_and_sum_count
+INNER JOIN
+    ANBH nd_for_JQVVs
+ON
+    nd_for_JQVVs.VYLM IS NOT NULL AND nd_for_JQVVs.VYLM = multi_VYLMs_with_min_and_sum_count.VYLM
+WHERE
+        multi_VYLMs_with_min_and_sum_count.min_fc_num = 0
+    AND
+        multi_VYLMs_with_min_and_sum_count.sum_fc_num > 0
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [nd_for_JQVVs.JQVV as JQVV, nd_for_JQVVs.ACQC as to_rebuild_ufc_for_ACQC, nd_for_JQVVs.VYLM as to_rebuild_ufc_for_VYLM]\n" +
+			" └─ InnerJoin(nd_for_JQVVs.VYLM = multi_VYLMs_with_min_and_sum_count.VYLM)\n" +
+			"     ├─ SubqueryAlias(multi_VYLMs_with_min_and_sum_count)\n" +
+			"     │   └─ Filter((min_fc_num = 0) AND (sum_fc_num > 0))\n" +
+			"     │       └─ Filter((min_fc_num = 0) AND (sum_fc_num > 0))\n" +
+			"     │           └─ Having((num_of_nodes > 1))\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [VYLM, COUNT(nd_with_GRuH_counts.VYLM) as num_of_nodes, MIN(nd_with_GRuH_counts.GRuH_count) as min_fc_num, SUM(nd_with_GRuH_counts.GRuH_count) as sum_fc_num]\n" +
+			"     │                   └─ GroupBy\n" +
+			"     │                       ├─ SelectedExprs(VYLM, COUNT(nd_with_GRuH_counts.VYLM), MIN(nd_with_GRuH_counts.GRuH_count), SUM(nd_with_GRuH_counts.GRuH_count))\n" +
+			"     │                       ├─ Grouping(VYLM)\n" +
+			"     │                       └─ Project\n" +
+			"     │                           ├─ columns: [nd_with_GRuH_counts.VYLM as VYLM, nd_with_GRuH_counts.GRuH_count, nd_with_GRuH_counts.VYLM]\n" +
+			"     │                           └─ SubqueryAlias(nd_with_GRuH_counts)\n" +
+			"     │                               └─ Project\n" +
+			"     │                                   ├─ columns: [nd.JQVV as JQVV, nd.VYLM as VYLM, (GroupBy\n" +
+			"     │                                   │   ├─ SelectedExprs(COUNT(*))\n" +
+			"     │                                   │   ├─ Grouping()\n" +
+			"     │                                   │   └─ Filter(GRuH.FHMZ = nd.JQVV)\n" +
+			"     │                                   │       └─ Table(GRuH)\n" +
+			"     │                                   │           └─ columns: [jqvv mbig fhmz lrbc gruh gwch mmjg nlhw]\n" +
+			"     │                                   │  ) as GRuH_count]\n" +
+			"     │                                   └─ Filter(NOT(nd.VYLM IS NULL))\n" +
+			"     │                                       └─ TableAlias(nd)\n" +
+			"     │                                           └─ IndexedTableAccess(ANBH)\n" +
+			"     │                                               ├─ index: [ANBH.VYLM]\n" +
+			"     │                                               └─ filters: [{(NULL, ∞)}]\n" +
+			"     └─ TableAlias(nd_for_JQVVs)\n" +
+			"         └─ Table(ANBH)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT /*+ JOIN_ORDER(ufc, nd, cla) */ DISTINCT
+    ufc.*
+FROM
+    uNKJ ufc
+INNER JOIN
+    ANBH nd
+ON
+    nd.VYLM = ufc.VYLM
+INNER JOIN
+    ARFu cla
+ON
+    cla.RMLT = ufc.CLDu
+WHERE
+        nd.VYLM IS NOT NULL
+    AND
+        ufc.JQVV NOT IN (SELECT NLHW FROM GRuH)
+`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [ufc.JQVV, ufc.CLDu, ufc.VYLM, ufc.GRuH, ufc.ORZF, ufc.JAFQ, ufc.EHVL, ufc.MNNJ, ufc.QIZO, ufc.WKDA, ufc.CVJB]\n" +
+			"     └─ Filter(NOT((ufc.JQVV IN (Table(GRuH)\n" +
+			"         └─ columns: [nlhw]\n" +
+			"        ))))\n" +
+			"         └─ IndexedJoin(cla.RMLT = ufc.CLDu)\n" +
+			"             ├─ IndexedJoin(nd.VYLM = ufc.VYLM)\n" +
+			"             │   ├─ TableAlias(ufc)\n" +
+			"             │   │   └─ Table(uNKJ)\n" +
+			"             │   └─ Filter(NOT(nd.VYLM IS NULL))\n" +
+			"             │       └─ TableAlias(nd)\n" +
+			"             │           └─ IndexedTableAccess(ANBH)\n" +
+			"             │               └─ index: [ANBH.VYLM]\n" +
+			"             └─ TableAlias(cla)\n" +
+			"                 └─ IndexedTableAccess(ARFu)\n" +
+			"                     └─ index: [ARFu.RMLT]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT DISTINCT
+    ufc.*
+FROM
+    uNKJ ufc
+INNER JOIN
+    ANBH nd
+ON
+    nd.VYLM = ufc.VYLM
+INNER JOIN
+    ARFu cla
+ON
+    cla.RMLT = ufc.CLDu
+WHERE
+        nd.VYLM IS NOT NULL
+    AND
+        ufc.JQVV NOT IN (SELECT NLHW FROM GRuH)
+`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [ufc.JQVV, ufc.CLDu, ufc.VYLM, ufc.GRuH, ufc.ORZF, ufc.JAFQ, ufc.EHVL, ufc.MNNJ, ufc.QIZO, ufc.WKDA, ufc.CVJB]\n" +
+			"     └─ Filter(NOT((ufc.JQVV IN (Table(GRuH)\n" +
+			"         └─ columns: [nlhw]\n" +
+			"        ))))\n" +
+			"         └─ IndexedJoin(cla.RMLT = ufc.CLDu)\n" +
+			"             ├─ IndexedJoin(nd.VYLM = ufc.VYLM)\n" +
+			"             │   ├─ TableAlias(ufc)\n" +
+			"             │   │   └─ Table(uNKJ)\n" +
+			"             │   └─ Filter(NOT(nd.VYLM IS NULL))\n" +
+			"             │       └─ TableAlias(nd)\n" +
+			"             │           └─ IndexedTableAccess(ANBH)\n" +
+			"             │               └─ index: [ANBH.VYLM]\n" +
+			"             └─ TableAlias(cla)\n" +
+			"                 └─ IndexedTableAccess(ARFu)\n" +
+			"                     └─ index: [ARFu.RMLT]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ums.*
+FROM
+    LRFV ums
+INNER JOIN
+    ARFu cla
+ON
+    cla.RMLT = ums.CLDu
+WHERE
+    ums.JQVV NOT IN (SELECT XYuA FROM BSSW)
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ums.JQVV, ums.CLDu, ums.IRKF, ums.WNZB, ums.DRPM, ums.CZSQ, ums.CVJB]\n" +
+			" └─ Filter(NOT((ums.JQVV IN (Table(BSSW)\n" +
+			"     └─ columns: [xyua]\n" +
+			"    ))))\n" +
+			"     └─ IndexedJoin(cla.RMLT = ums.CLDu)\n" +
+			"         ├─ TableAlias(ums)\n" +
+			"         │   └─ Table(LRFV)\n" +
+			"         └─ TableAlias(cla)\n" +
+			"             └─ IndexedTableAccess(ARFu)\n" +
+			"                 └─ index: [ARFu.RMLT]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    mf.JQVV AS JQVV,
+    cla.RMLT AS CLDu,
+    nd.ACQC AS node,
+    aac.MRCu AS XAWV,
+    mf.IIOY AS IIOY
+FROM
+    RCXK mf
+INNER JOIN
+    ZYCA bs
+ON
+    bs.JQVV = mf.MBIG
+INNER JOIN
+    ARFu cla
+ON
+    cla.JQVV = bs.TuFQ
+INNER JOIN
+    ANBH nd
+ON
+    nd.JQVV = mf.FHMZ
+INNER JOIN
+    XAWV aac
+ON
+    aac.JQVV = mf.BKYY
+WHERE
+(
+        mf.FASP IS NOT NULL
+    AND
+        (
+                (SELECT comf.JCTA FROM BIKY comf WHERE comf.JQVV = mf.FASP) = 1
+            OR
+                (SELECT nd.JQVV FROM ANBH nd WHERE nd.ACQC = 
+                    (SELECT comf.JHFJ FROM BIKY comf
+                    WHERE comf.JQVV = mf.FASP))
+                <> mf.FHMZ
+        )
+)
+OR
+(
+        mf.XPPS IS NOT NULL
+    AND
+        mf.XPPS IN
+        (
+        SELECT
+            umf.JQVV AS umf_JQVV
+        FROM
+            BIKY comf
+        INNER JOIN
+            AFTE umf
+        ON
+                umf.CLDu = comf.CLDu
+            AND
+                umf.LHTS = comf.GSXB
+            AND
+                umf.BHPM = comf.BHPM
+        WHERE
+                comf.JCTA = 0
+            AND
+                comf.JQVV NOT IN (SELECT FASP FROM RCXK WHERE FASP IS NOT NULL)
+        )
+)
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mf.JQVV as JQVV, cla.RMLT as CLDu, nd.ACQC as node, aac.MRCu as XAWV, mf.IIOY as IIOY]\n" +
+			" └─ Filter(((NOT(mf.FASP IS NULL)) AND (((Project\n" +
+			"     ├─ columns: [comf.JCTA]\n" +
+			"     └─ Filter(comf.JQVV = mf.FASP)\n" +
+			"         └─ TableAlias(comf)\n" +
+			"             └─ IndexedTableAccess(BIKY)\n" +
+			"                 └─ index: [BIKY.JQVV]\n" +
+			"    ) = 1) OR (NOT(((Project\n" +
+			"     ├─ columns: [nd.JQVV]\n" +
+			"     └─ Filter(nd.ACQC = (Project\n" +
+			"         ├─ columns: [comf.JHFJ]\n" +
+			"         └─ Filter(comf.JQVV = mf.FASP)\n" +
+			"             └─ TableAlias(comf)\n" +
+			"                 └─ IndexedTableAccess(BIKY)\n" +
+			"                     └─ index: [BIKY.JQVV]\n" +
+			"        ))\n" +
+			"         └─ TableAlias(nd)\n" +
+			"             └─ Table(ANBH)\n" +
+			"    ) = mf.FHMZ))))) OR ((NOT(mf.XPPS IS NULL)) AND (mf.XPPS IN (Project\n" +
+			"     ├─ columns: [umf.JQVV as umf_JQVV]\n" +
+			"     └─ Filter(NOT((comf.JQVV IN (Filter(NOT(RCXK.FASP IS NULL))\n" +
+			"         └─ IndexedTableAccess(RCXK)\n" +
+			"             ├─ index: [RCXK.FASP]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
+			"             └─ columns: [fasp]\n" +
+			"        ))))\n" +
+			"         └─ InnerJoin(((umf.CLDu = comf.CLDu) AND (umf.LHTS = comf.GSXB)) AND (umf.BHPM = comf.BHPM))\n" +
+			"             ├─ Filter(comf.JCTA = 0)\n" +
+			"             │   └─ TableAlias(comf)\n" +
+			"             │       └─ Table(BIKY)\n" +
+			"             └─ TableAlias(umf)\n" +
+			"                 └─ Table(AFTE)\n" +
+			"    ))))\n" +
+			"     └─ IndexedJoin(aac.JQVV = mf.BKYY)\n" +
+			"         ├─ IndexedJoin(nd.JQVV = mf.FHMZ)\n" +
+			"         │   ├─ IndexedJoin(bs.JQVV = mf.MBIG)\n" +
+			"         │   │   ├─ TableAlias(mf)\n" +
+			"         │   │   │   └─ Table(RCXK)\n" +
+			"         │   │   └─ IndexedJoin(cla.JQVV = bs.TuFQ)\n" +
+			"         │   │       ├─ TableAlias(bs)\n" +
+			"         │   │       │   └─ IndexedTableAccess(ZYCA)\n" +
+			"         │   │       │       └─ index: [ZYCA.JQVV]\n" +
+			"         │   │       └─ TableAlias(cla)\n" +
+			"         │   │           └─ IndexedTableAccess(ARFu)\n" +
+			"         │   │               └─ index: [ARFu.JQVV]\n" +
+			"         │   └─ TableAlias(nd)\n" +
+			"         │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │           └─ index: [ANBH.JQVV]\n" +
+			"         └─ TableAlias(aac)\n" +
+			"             └─ IndexedTableAccess(XAWV)\n" +
+			"                 └─ index: [XAWV.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    umf.*
+FROM
+    AFTE umf
+INNER JOIN
+    ANBH nd
+ON
+    nd.LHTS = umf.LHTS
+INNER JOIN
+    ARFu cla
+ON
+    cla.RMLT = umf.CLDu
+WHERE
+        nd.LHTS IS NOT NULL
+    AND
+        umf.ERMY <> 'N/A'
+    AND
+        umf.JQVV NOT IN (SELECT XPPS FROM RCXK)
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [umf.JQVV, umf.CLDu, umf.LHTS, umf.MKOT, umf.WDYF, umf.XJXA, umf.BTJR, umf.ERMY, umf.BHPM, umf.VQKS, umf.GuPI, umf.QMQI, umf.IIOY, umf.RYTK, umf.WKHN, umf.ZCuN, umf.BGYJ, umf.HQCJ, umf.YEHW, umf.YPKG, umf.BSOI, umf.YKEV, umf.SHTD, umf.BFuK, umf.CVJB]\n" +
+			" └─ Filter(NOT((umf.JQVV IN (Table(RCXK)\n" +
+			"     └─ columns: [xpps]\n" +
+			"    ))))\n" +
+			"     └─ IndexedJoin(cla.RMLT = umf.CLDu)\n" +
+			"         ├─ IndexedJoin(nd.LHTS = umf.LHTS)\n" +
+			"         │   ├─ Filter(NOT((umf.ERMY = 'N/A')))\n" +
+			"         │   │   └─ TableAlias(umf)\n" +
+			"         │   │       └─ Table(AFTE)\n" +
+			"         │   └─ Filter(NOT(nd.LHTS IS NULL))\n" +
+			"         │       └─ TableAlias(nd)\n" +
+			"         │           └─ IndexedTableAccess(ANBH)\n" +
+			"         │               └─ index: [ANBH.LHTS]\n" +
+			"         └─ TableAlias(cla)\n" +
+			"             └─ IndexedTableAccess(ARFu)\n" +
+			"                 └─ index: [ARFu.RMLT]\n" +
+			"",
+	},
+	{
+		Query: `SELECT 
+    CAAI 
+FROM 
+    DHWQ 
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [DHWQ.CAAI]\n" +
+			" └─ IndexedTableAccess(DHWQ)\n" +
+			"     ├─ index: [DHWQ.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv caai]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    cla.RMLT AS CLDu,
+    ceam.BPHC AS drug,
+    sn.JQVV AS OPHR_JQVV,
+    ceam.QuGX AS QuGX,
+    (SELECT aac.MRCu FROM XAWV aac WHERE aac.JQVV = ceam.BKYY) AS XAWV,
+    ceam.QKJQ AS QKJQ,
+    ceam.QZBA AS QZBA
+FROM
+    ARFu cla
+INNER JOIN ZYCA bs ON cla.JQVV = bs.TuFQ
+INNER JOIN RCXK mf ON bs.JQVV = mf.MBIG
+INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+INNER JOIN
+    (
+    SELECT /*+ JOIN_ORDER( ci, ct, cec, aacosn_d ) */
+        aacosn_d.OPHR_JQVV AS OPHR_JQVV,
+        ci.RMLT AS BPHC,
+        ct.BKYY AS BKYY,
+        cec.QuGX AS QuGX,
+        cec.QKJQ AS QKJQ,
+        ct.ESDH AS QZBA
+    FROM
+        (
+        SELECT DISTINCT
+            mf.BKYY AS BKYY,
+            sn.JQVV AS OPHR_JQVV,
+            mf.FHMZ AS FHMZ
+        FROM
+            RCXK mf
+        INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+        ) aacosn_d
+    INNER JOIN
+        PDPL ct
+    ON
+            ct.BKYY = aacosn_d.BKYY
+        AND
+            ct.FHMZ = aacosn_d.FHMZ
+    INNER JOIN VNRO ci ON  ci.JQVV = ct.KEWQ AND ct.FCJY = '='
+    INNER JOIN HGuC cec ON cec.JQVV = ct.WKHR
+    WHERE
+        ci.RMLT IN ('SQ1')
+    ) ceam
+ON
+        ceam.OPHR_JQVV = sn.JQVV
+    AND
+        ceam.BKYY = mf.BKYY
+WHERE
+    cla.RMLT IN ('SQ1')
+UNION ALL
+
+SELECT
+    CLDus.*,
+    edges.*
+FROM (
+SELECT
+    ceam.BPHC AS drug,
+    sn.JQVV AS OPHR_JQVV,
+    ceam.QuGX AS QuGX,
+    (SELECT aac.MRCu FROM XAWV aac WHERE aac.JQVV = ceam.BKYY) AS XAWV,
+    ceam.QKJQ AS QKJQ,
+    ceam.QZBA AS QZBA
+FROM
+    OPHR sn
+INNER JOIN
+    (
+    SELECT
+        sn.JQVV AS OPHR_JQVV,
+        ci.RMLT AS BPHC,
+        ct.BKYY AS BKYY,
+        cec.QuGX AS QuGX,
+        cec.QKJQ AS QKJQ,
+        ct.ESDH AS QZBA
+    FROM
+        OPHR sn
+    INNER JOIN
+        PDPL ct
+    ON
+            ct.BKYY = (SELECT aac.JQVV FROM XAWV aac WHERE MRCu = 'WT')
+        AND
+            ct.FHMZ = sn.EXKR
+    INNER JOIN VNRO ci ON  ci.JQVV = ct.KEWQ AND ct.FCJY = '='
+    INNER JOIN HGuC cec ON cec.JQVV = ct.WKHR
+    WHERE
+        ci.RMLT IN ('SQ1')
+    ) ceam
+ON
+        ceam.OPHR_JQVV = sn.JQVV ) edges
+CROSS JOIN
+    (
+    SELECT * FROM (VALUES
+       ROW("1"),
+       ROW("2"),
+       ROW("3"),
+       ROW("4"),
+       ROW("5")
+        ) AS temp_CLDus(CLDu)
+    ) CLDus`,
+		ExpectedPlan: "Union all\n" +
+			" ├─ Project\n" +
+			" │   ├─ columns: [convert(CLDu, char) as CLDu, drug, OPHR_JQVV, QuGX, XAWV, QKJQ, QZBA]\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [cla.RMLT as CLDu, ceam.BPHC as drug, sn.JQVV as OPHR_JQVV, ceam.QuGX as QuGX, (Project\n" +
+			" │       │   ├─ columns: [aac.MRCu]\n" +
+			" │       │   └─ Filter(aac.JQVV = ceam.BKYY)\n" +
+			" │       │       └─ TableAlias(aac)\n" +
+			" │       │           └─ IndexedTableAccess(XAWV)\n" +
+			" │       │               └─ index: [XAWV.JQVV]\n" +
+			" │       │  ) as XAWV, ceam.QKJQ as QKJQ, ceam.QZBA as QZBA]\n" +
+			" │       └─ InnerJoin((ceam.OPHR_JQVV = sn.JQVV) AND (ceam.BKYY = mf.BKYY))\n" +
+			" │           ├─ InnerJoin(sn.EXKR = mf.FHMZ)\n" +
+			" │           │   ├─ InnerJoin(bs.JQVV = mf.MBIG)\n" +
+			" │           │   │   ├─ InnerJoin(cla.JQVV = bs.TuFQ)\n" +
+			" │           │   │   │   ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			" │           │   │   │   │   └─ TableAlias(cla)\n" +
+			" │           │   │   │   │       └─ IndexedTableAccess(ARFu)\n" +
+			" │           │   │   │   │           ├─ index: [ARFu.RMLT]\n" +
+			" │           │   │   │   │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			" │           │   │   │   └─ TableAlias(bs)\n" +
+			" │           │   │   │       └─ Table(ZYCA)\n" +
+			" │           │   │   └─ TableAlias(mf)\n" +
+			" │           │   │       └─ Table(RCXK)\n" +
+			" │           │   └─ TableAlias(sn)\n" +
+			" │           │       └─ Table(OPHR)\n" +
+			" │           └─ HashLookup(child: (ceam.OPHR_JQVV, ceam.BKYY), lookup: (sn.JQVV, mf.BKYY))\n" +
+			" │               └─ CachedResults\n" +
+			" │                   └─ SubqueryAlias(ceam)\n" +
+			" │                       └─ Project\n" +
+			" │                           ├─ columns: [aacosn_d.OPHR_JQVV as OPHR_JQVV, ci.RMLT as BPHC, ct.BKYY as BKYY, cec.QuGX as QuGX, cec.QKJQ as QKJQ, ct.ESDH as QZBA]\n" +
+			" │                           └─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			" │                               └─ IndexedJoin(ci.JQVV = ct.KEWQ)\n" +
+			" │                                   ├─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			" │                                   │   └─ TableAlias(ci)\n" +
+			" │                                   │       └─ IndexedTableAccess(VNRO)\n" +
+			" │                                   │           ├─ index: [VNRO.RMLT]\n" +
+			" │                                   │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			" │                                   └─ IndexedJoin((ct.BKYY = aacosn_d.BKYY) AND (ct.FHMZ = aacosn_d.FHMZ))\n" +
+			" │                                       ├─ IndexedJoin(cec.JQVV = ct.WKHR)\n" +
+			" │                                       │   ├─ Filter(ct.FCJY = '=')\n" +
+			" │                                       │   │   └─ TableAlias(ct)\n" +
+			" │                                       │   │       └─ IndexedTableAccess(PDPL)\n" +
+			" │                                       │   │           └─ index: [PDPL.KEWQ]\n" +
+			" │                                       │   └─ TableAlias(cec)\n" +
+			" │                                       │       └─ IndexedTableAccess(HGuC)\n" +
+			" │                                       │           └─ index: [HGuC.JQVV]\n" +
+			" │                                       └─ HashLookup(child: (aacosn_d.BKYY, aacosn_d.FHMZ), lookup: (ct.BKYY, ct.FHMZ))\n" +
+			" │                                           └─ CachedResults\n" +
+			" │                                               └─ SubqueryAlias(aacosn_d)\n" +
+			" │                                                   └─ Distinct\n" +
+			" │                                                       └─ Project\n" +
+			" │                                                           ├─ columns: [mf.BKYY as BKYY, sn.JQVV as OPHR_JQVV, mf.FHMZ as FHMZ]\n" +
+			" │                                                           └─ IndexedJoin(sn.EXKR = mf.FHMZ)\n" +
+			" │                                                               ├─ TableAlias(mf)\n" +
+			" │                                                               │   └─ Table(RCXK)\n" +
+			" │                                                               └─ TableAlias(sn)\n" +
+			" │                                                                   └─ IndexedTableAccess(OPHR)\n" +
+			" │                                                                       └─ index: [OPHR.EXKR]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [CLDus.CLDu as CLDu, edges.drug, edges.OPHR_JQVV, edges.QuGX, edges.XAWV, edges.QKJQ, edges.QZBA]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [CLDus.CLDu, edges.drug, edges.OPHR_JQVV, edges.QuGX, edges.XAWV, edges.QKJQ, edges.QZBA]\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ SubqueryAlias(edges)\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [ceam.BPHC as drug, sn.JQVV as OPHR_JQVV, ceam.QuGX as QuGX, (Project\n" +
+			"             │       │   ├─ columns: [aac.MRCu]\n" +
+			"             │       │   └─ Filter(aac.JQVV = ceam.BKYY)\n" +
+			"             │       │       └─ TableAlias(aac)\n" +
+			"             │       │           └─ IndexedTableAccess(XAWV)\n" +
+			"             │       │               └─ index: [XAWV.JQVV]\n" +
+			"             │       │  ) as XAWV, ceam.QKJQ as QKJQ, ceam.QZBA as QZBA]\n" +
+			"             │       └─ InnerJoin(ceam.OPHR_JQVV = sn.JQVV)\n" +
+			"             │           ├─ TableAlias(sn)\n" +
+			"             │           │   └─ Table(OPHR)\n" +
+			"             │           └─ HashLookup(child: (ceam.OPHR_JQVV), lookup: (sn.JQVV))\n" +
+			"             │               └─ CachedResults\n" +
+			"             │                   └─ SubqueryAlias(ceam)\n" +
+			"             │                       └─ Project\n" +
+			"             │                           ├─ columns: [sn.JQVV as OPHR_JQVV, ci.RMLT as BPHC, ct.BKYY as BKYY, cec.QuGX as QuGX, cec.QKJQ as QKJQ, ct.ESDH as QZBA]\n" +
+			"             │                           └─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			"             │                               └─ Filter(ct.BKYY = (Project\n" +
+			"             │                                   ├─ columns: [aac.JQVV]\n" +
+			"             │                                   └─ Filter(aac.MRCu = 'WT')\n" +
+			"             │                                       └─ TableAlias(aac)\n" +
+			"             │                                           └─ IndexedTableAccess(XAWV)\n" +
+			"             │                                               ├─ index: [XAWV.MRCu]\n" +
+			"             │                                               └─ filters: [{[WT, WT]}]\n" +
+			"             │                                  ))\n" +
+			"             │                                   └─ IndexedJoin(ct.FHMZ = sn.EXKR)\n" +
+			"             │                                       ├─ TableAlias(sn)\n" +
+			"             │                                       │   └─ Table(OPHR)\n" +
+			"             │                                       └─ IndexedJoin(cec.JQVV = ct.WKHR)\n" +
+			"             │                                           ├─ IndexedJoin(ci.JQVV = ct.KEWQ)\n" +
+			"             │                                           │   ├─ Filter(ct.FCJY = '=')\n" +
+			"             │                                           │   │   └─ TableAlias(ct)\n" +
+			"             │                                           │   │       └─ IndexedTableAccess(PDPL)\n" +
+			"             │                                           │   │           └─ index: [PDPL.FHMZ]\n" +
+			"             │                                           │   └─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			"             │                                           │       └─ TableAlias(ci)\n" +
+			"             │                                           │           └─ IndexedTableAccess(VNRO)\n" +
+			"             │                                           │               └─ index: [VNRO.JQVV]\n" +
+			"             │                                           └─ TableAlias(cec)\n" +
+			"             │                                               └─ IndexedTableAccess(HGuC)\n" +
+			"             │                                                   └─ index: [HGuC.JQVV]\n" +
+			"             └─ SubqueryAlias(CLDus)\n" +
+			"                 └─ Values() as temp_CLDus\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '1')\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '2')\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '3')\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '4')\n" +
+			"                     └─ Row(\n" +
+			"                        '5')\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    cla.RMLT AS CLDu,
+    ceam.BPHC AS drug,
+    sn.JQVV AS OPHR_JQVV,
+    ceam.QuGX AS QuGX,
+    (SELECT aac.MRCu FROM XAWV aac WHERE aac.JQVV = ceam.BKYY) AS XAWV,
+    ceam.QKJQ AS QKJQ,
+    ceam.QZBA AS QZBA
+FROM
+    ARFu cla
+INNER JOIN ZYCA bs ON cla.JQVV = bs.TuFQ
+INNER JOIN RCXK mf ON bs.JQVV = mf.MBIG
+INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+INNER JOIN
+    (
+    SELECT
+        aacosn_d.OPHR_JQVV AS OPHR_JQVV,
+        ci.RMLT AS BPHC,
+        ct.BKYY AS BKYY,
+        cec.QuGX AS QuGX,
+        cec.QKJQ AS QKJQ,
+        ct.ESDH AS QZBA
+    FROM
+        (
+        SELECT DISTINCT
+            mf.BKYY AS BKYY,
+            sn.JQVV AS OPHR_JQVV,
+            mf.FHMZ AS FHMZ
+        FROM
+            RCXK mf
+        INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+        ) aacosn_d
+    INNER JOIN
+        PDPL ct
+    ON
+            ct.BKYY = aacosn_d.BKYY
+        AND
+            ct.FHMZ = aacosn_d.FHMZ
+    INNER JOIN VNRO ci ON  ci.JQVV = ct.KEWQ AND ct.FCJY = '='
+    INNER JOIN HGuC cec ON cec.JQVV = ct.WKHR
+    WHERE
+        ci.RMLT IN ('SQ1')
+    ) ceam
+ON
+        ceam.OPHR_JQVV = sn.JQVV
+    AND
+        ceam.BKYY = mf.BKYY
+WHERE
+    cla.RMLT IN ('SQ1')
+UNION ALL
+
+SELECT
+    CLDus.*,
+    edges.*
+FROM (
+SELECT
+    ceam.BPHC AS drug,
+    sn.JQVV AS OPHR_JQVV,
+    ceam.QuGX AS QuGX,
+    (SELECT aac.MRCu FROM XAWV aac WHERE aac.JQVV = ceam.BKYY) AS XAWV,
+    ceam.QKJQ AS QKJQ,
+    ceam.QZBA AS QZBA
+FROM
+    OPHR sn
+INNER JOIN
+    (
+    SELECT
+        sn.JQVV AS OPHR_JQVV,
+        ci.RMLT AS BPHC,
+        ct.BKYY AS BKYY,
+        cec.QuGX AS QuGX,
+        cec.QKJQ AS QKJQ,
+        ct.ESDH AS QZBA
+    FROM
+        OPHR sn
+    INNER JOIN
+        PDPL ct
+    ON
+            ct.BKYY = (SELECT aac.JQVV FROM XAWV aac WHERE MRCu = 'WT')
+        AND
+            ct.FHMZ = sn.EXKR
+    INNER JOIN VNRO ci ON  ci.JQVV = ct.KEWQ AND ct.FCJY = '='
+    INNER JOIN HGuC cec ON cec.JQVV = ct.WKHR
+    WHERE
+        ci.RMLT IN ('SQ1')
+    ) ceam
+ON
+        ceam.OPHR_JQVV = sn.JQVV ) edges
+CROSS JOIN
+    (
+    SELECT * FROM (VALUES
+       ROW("1"),
+       ROW("2"),
+       ROW("3"),
+       ROW("4"),
+       ROW("5")
+        ) AS temp_CLDus(CLDu)
+    ) CLDus`,
+		ExpectedPlan: "Union all\n" +
+			" ├─ Project\n" +
+			" │   ├─ columns: [convert(CLDu, char) as CLDu, drug, OPHR_JQVV, QuGX, XAWV, QKJQ, QZBA]\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [cla.RMLT as CLDu, ceam.BPHC as drug, sn.JQVV as OPHR_JQVV, ceam.QuGX as QuGX, (Project\n" +
+			" │       │   ├─ columns: [aac.MRCu]\n" +
+			" │       │   └─ Filter(aac.JQVV = ceam.BKYY)\n" +
+			" │       │       └─ TableAlias(aac)\n" +
+			" │       │           └─ IndexedTableAccess(XAWV)\n" +
+			" │       │               └─ index: [XAWV.JQVV]\n" +
+			" │       │  ) as XAWV, ceam.QKJQ as QKJQ, ceam.QZBA as QZBA]\n" +
+			" │       └─ InnerJoin((ceam.OPHR_JQVV = sn.JQVV) AND (ceam.BKYY = mf.BKYY))\n" +
+			" │           ├─ InnerJoin(sn.EXKR = mf.FHMZ)\n" +
+			" │           │   ├─ InnerJoin(bs.JQVV = mf.MBIG)\n" +
+			" │           │   │   ├─ InnerJoin(cla.JQVV = bs.TuFQ)\n" +
+			" │           │   │   │   ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			" │           │   │   │   │   └─ TableAlias(cla)\n" +
+			" │           │   │   │   │       └─ IndexedTableAccess(ARFu)\n" +
+			" │           │   │   │   │           ├─ index: [ARFu.RMLT]\n" +
+			" │           │   │   │   │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			" │           │   │   │   └─ TableAlias(bs)\n" +
+			" │           │   │   │       └─ Table(ZYCA)\n" +
+			" │           │   │   └─ TableAlias(mf)\n" +
+			" │           │   │       └─ Table(RCXK)\n" +
+			" │           │   └─ TableAlias(sn)\n" +
+			" │           │       └─ Table(OPHR)\n" +
+			" │           └─ HashLookup(child: (ceam.OPHR_JQVV, ceam.BKYY), lookup: (sn.JQVV, mf.BKYY))\n" +
+			" │               └─ CachedResults\n" +
+			" │                   └─ SubqueryAlias(ceam)\n" +
+			" │                       └─ Project\n" +
+			" │                           ├─ columns: [aacosn_d.OPHR_JQVV as OPHR_JQVV, ci.RMLT as BPHC, ct.BKYY as BKYY, cec.QuGX as QuGX, cec.QKJQ as QKJQ, ct.ESDH as QZBA]\n" +
+			" │                           └─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			" │                               └─ IndexedJoin(cec.JQVV = ct.WKHR)\n" +
+			" │                                   ├─ IndexedJoin(ci.JQVV = ct.KEWQ)\n" +
+			" │                                   │   ├─ IndexedJoin((ct.BKYY = aacosn_d.BKYY) AND (ct.FHMZ = aacosn_d.FHMZ))\n" +
+			" │                                   │   │   ├─ Filter(ct.FCJY = '=')\n" +
+			" │                                   │   │   │   └─ TableAlias(ct)\n" +
+			" │                                   │   │   │       └─ Table(PDPL)\n" +
+			" │                                   │   │   └─ HashLookup(child: (aacosn_d.BKYY, aacosn_d.FHMZ), lookup: (ct.BKYY, ct.FHMZ))\n" +
+			" │                                   │   │       └─ CachedResults\n" +
+			" │                                   │   │           └─ SubqueryAlias(aacosn_d)\n" +
+			" │                                   │   │               └─ Distinct\n" +
+			" │                                   │   │                   └─ Project\n" +
+			" │                                   │   │                       ├─ columns: [mf.BKYY as BKYY, sn.JQVV as OPHR_JQVV, mf.FHMZ as FHMZ]\n" +
+			" │                                   │   │                       └─ IndexedJoin(sn.EXKR = mf.FHMZ)\n" +
+			" │                                   │   │                           ├─ TableAlias(mf)\n" +
+			" │                                   │   │                           │   └─ Table(RCXK)\n" +
+			" │                                   │   │                           └─ TableAlias(sn)\n" +
+			" │                                   │   │                               └─ IndexedTableAccess(OPHR)\n" +
+			" │                                   │   │                                   └─ index: [OPHR.EXKR]\n" +
+			" │                                   │   └─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			" │                                   │       └─ TableAlias(ci)\n" +
+			" │                                   │           └─ IndexedTableAccess(VNRO)\n" +
+			" │                                   │               └─ index: [VNRO.JQVV]\n" +
+			" │                                   └─ TableAlias(cec)\n" +
+			" │                                       └─ IndexedTableAccess(HGuC)\n" +
+			" │                                           └─ index: [HGuC.JQVV]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [CLDus.CLDu as CLDu, edges.drug, edges.OPHR_JQVV, edges.QuGX, edges.XAWV, edges.QKJQ, edges.QZBA]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [CLDus.CLDu, edges.drug, edges.OPHR_JQVV, edges.QuGX, edges.XAWV, edges.QKJQ, edges.QZBA]\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ SubqueryAlias(edges)\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [ceam.BPHC as drug, sn.JQVV as OPHR_JQVV, ceam.QuGX as QuGX, (Project\n" +
+			"             │       │   ├─ columns: [aac.MRCu]\n" +
+			"             │       │   └─ Filter(aac.JQVV = ceam.BKYY)\n" +
+			"             │       │       └─ TableAlias(aac)\n" +
+			"             │       │           └─ IndexedTableAccess(XAWV)\n" +
+			"             │       │               └─ index: [XAWV.JQVV]\n" +
+			"             │       │  ) as XAWV, ceam.QKJQ as QKJQ, ceam.QZBA as QZBA]\n" +
+			"             │       └─ InnerJoin(ceam.OPHR_JQVV = sn.JQVV)\n" +
+			"             │           ├─ TableAlias(sn)\n" +
+			"             │           │   └─ Table(OPHR)\n" +
+			"             │           └─ HashLookup(child: (ceam.OPHR_JQVV), lookup: (sn.JQVV))\n" +
+			"             │               └─ CachedResults\n" +
+			"             │                   └─ SubqueryAlias(ceam)\n" +
+			"             │                       └─ Project\n" +
+			"             │                           ├─ columns: [sn.JQVV as OPHR_JQVV, ci.RMLT as BPHC, ct.BKYY as BKYY, cec.QuGX as QuGX, cec.QKJQ as QKJQ, ct.ESDH as QZBA]\n" +
+			"             │                           └─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			"             │                               └─ Filter(ct.BKYY = (Project\n" +
+			"             │                                   ├─ columns: [aac.JQVV]\n" +
+			"             │                                   └─ Filter(aac.MRCu = 'WT')\n" +
+			"             │                                       └─ TableAlias(aac)\n" +
+			"             │                                           └─ IndexedTableAccess(XAWV)\n" +
+			"             │                                               ├─ index: [XAWV.MRCu]\n" +
+			"             │                                               └─ filters: [{[WT, WT]}]\n" +
+			"             │                                  ))\n" +
+			"             │                                   └─ IndexedJoin(ct.FHMZ = sn.EXKR)\n" +
+			"             │                                       ├─ TableAlias(sn)\n" +
+			"             │                                       │   └─ Table(OPHR)\n" +
+			"             │                                       └─ IndexedJoin(cec.JQVV = ct.WKHR)\n" +
+			"             │                                           ├─ IndexedJoin(ci.JQVV = ct.KEWQ)\n" +
+			"             │                                           │   ├─ Filter(ct.FCJY = '=')\n" +
+			"             │                                           │   │   └─ TableAlias(ct)\n" +
+			"             │                                           │   │       └─ IndexedTableAccess(PDPL)\n" +
+			"             │                                           │   │           └─ index: [PDPL.FHMZ]\n" +
+			"             │                                           │   └─ Filter(ci.RMLT HASH IN ('SQ1'))\n" +
+			"             │                                           │       └─ TableAlias(ci)\n" +
+			"             │                                           │           └─ IndexedTableAccess(VNRO)\n" +
+			"             │                                           │               └─ index: [VNRO.JQVV]\n" +
+			"             │                                           └─ TableAlias(cec)\n" +
+			"             │                                               └─ IndexedTableAccess(HGuC)\n" +
+			"             │                                                   └─ index: [HGuC.JQVV]\n" +
+			"             └─ SubqueryAlias(CLDus)\n" +
+			"                 └─ Values() as temp_CLDus\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '1')\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '2')\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '3')\n" +
+			"                     ├─ Row(\n" +
+			"                     │  '4')\n" +
+			"                     └─ Row(\n" +
+			"                        '5')\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT COUNT(*) FROM OPHR`,
+		ExpectedPlan: "GroupBy\n" +
+			" ├─ SelectedExprs(COUNT(*))\n" +
+			" ├─ Grouping()\n" +
+			" └─ Table(OPHR)\n" +
+			"     └─ columns: [jqvv exkr xaoo ltow yzwj kqol efto ymwm hpfl bfuk]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    with_edge_JQVVx.edge_JQVVx AS edge_JQVVx,
+    source_nd.ACQC AS source_node_name,
+    target_nd.ACQC AS target_node_name,
+    with_edge_JQVVx.EFTO AS EFTO,
+    with_edge_JQVVx.YMWM AS YMWM
+FROM
+    (SELECT 
+        ROW_NUMBER() OVER (ORDER BY JQVV ASC) edge_JQVVx,
+        JQVV,
+        EXKR,
+        XAOO,
+        EFTO,
+        YMWM
+    FROM 
+        OPHR
+    ORDER BY JQVV ASC) with_edge_JQVVx
+INNER JOIN
+    ANBH source_nd
+ON
+    source_nd.JQVV = with_edge_JQVVx.EXKR
+INNER JOIN
+    ANBH target_nd
+ON
+    target_nd.JQVV = with_edge_JQVVx.XAOO
+ORDER BY edge_JQVVx`,
+		ExpectedPlan: "Sort(edge_JQVVx ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [with_edge_JQVVx.edge_JQVVx as edge_JQVVx, source_nd.ACQC as source_node_name, target_nd.ACQC as target_node_name, with_edge_JQVVx.EFTO as EFTO, with_edge_JQVVx.YMWM as YMWM]\n" +
+			"     └─ IndexedJoin(source_nd.JQVV = with_edge_JQVVx.EXKR)\n" +
+			"         ├─ TableAlias(source_nd)\n" +
+			"         │   └─ Table(ANBH)\n" +
+			"         └─ IndexedJoin(target_nd.JQVV = with_edge_JQVVx.XAOO)\n" +
+			"             ├─ CachedResults\n" +
+			"             │   └─ SubqueryAlias(with_edge_JQVVx)\n" +
+			"             │       └─ Sort(OPHR.JQVV ASC)\n" +
+			"             │           └─ Project\n" +
+			"             │               ├─ columns: [row_number() over ( order by OPHR.JQVV ASC) as edge_JQVVx, OPHR.JQVV, OPHR.EXKR, OPHR.XAOO, OPHR.EFTO, OPHR.YMWM]\n" +
+			"             │               └─ Window(row_number() over ( order by OPHR.JQVV ASC), OPHR.JQVV, OPHR.EXKR, OPHR.XAOO, OPHR.EFTO, OPHR.YMWM)\n" +
+			"             │                   └─ Table(OPHR)\n" +
+			"             │                       └─ columns: [jqvv exkr xaoo efto ymwm]\n" +
+			"             └─ TableAlias(target_nd)\n" +
+			"                 └─ IndexedTableAccess(ANBH)\n" +
+			"                     └─ index: [ANBH.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    nd.ACQC AS ACQC,
+    with_edge_JQVVx.edge_JQVVx AS edge_JQVVx
+FROM 
+    (SELECT 
+        ROW_NUMBER() OVER (ORDER BY JQVV ASC) edge_JQVVx,
+        JQVV,
+        EXKR,
+        XAOO,
+        EFTO,
+        YMWM
+    FROM 
+        OPHR
+    ORDER BY JQVV ASC) with_edge_JQVVx
+INNER JOIN
+    ANBH nd
+ON
+    nd.JQVV = with_edge_JQVVx.EXKR
+ORDER BY ACQC, edge_JQVVx`,
+		ExpectedPlan: "Sort(ACQC ASC, edge_JQVVx ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [nd.ACQC as ACQC, with_edge_JQVVx.edge_JQVVx as edge_JQVVx]\n" +
+			"     └─ IndexedJoin(nd.JQVV = with_edge_JQVVx.EXKR)\n" +
+			"         ├─ TableAlias(nd)\n" +
+			"         │   └─ Table(ANBH)\n" +
+			"         └─ HashLookup(child: (with_edge_JQVVx.EXKR), lookup: (nd.JQVV))\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias(with_edge_JQVVx)\n" +
+			"                     └─ Sort(OPHR.JQVV ASC)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [row_number() over ( order by OPHR.JQVV ASC) as edge_JQVVx, OPHR.JQVV, OPHR.EXKR, OPHR.XAOO, OPHR.EFTO, OPHR.YMWM]\n" +
+			"                             └─ Window(row_number() over ( order by OPHR.JQVV ASC), OPHR.JQVV, OPHR.EXKR, OPHR.XAOO, OPHR.EFTO, OPHR.YMWM)\n" +
+			"                                 └─ Table(OPHR)\n" +
+			"                                     └─ columns: [jqvv exkr xaoo efto ymwm]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ROW_NUMBER() OVER (ORDER BY sn.JQVV ASC) - 1 edge_index,
+    source_nd.ACQC source_node_name,
+    target_nd.ACQC target_node_name,
+    EFTO,
+    YMWM,
+    sn.JQVV signet_JQVV
+FROM
+    OPHR sn
+INNER JOIN
+    ANBH source_nd ON (sn.EXKR = source_nd.JQVV)
+INNER JOIN
+    ANBH target_nd ON (sn.XAOO = target_nd.JQVV)
+ORDER BY edge_index ASC`,
+		ExpectedPlan: "Sort(edge_index ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(row_number() over ( order by sn.JQVV ASC) - 1) as edge_index, source_node_name, target_node_name, sn.EFTO, sn.YMWM, signet_JQVV]\n" +
+			"     └─ Window(row_number() over ( order by sn.JQVV ASC), source_nd.ACQC as source_node_name, target_nd.ACQC as target_node_name, sn.EFTO, sn.YMWM, sn.JQVV as signet_JQVV)\n" +
+			"         └─ IndexedJoin(sn.XAOO = target_nd.JQVV)\n" +
+			"             ├─ IndexedJoin(sn.EXKR = source_nd.JQVV)\n" +
+			"             │   ├─ TableAlias(sn)\n" +
+			"             │   │   └─ Table(OPHR)\n" +
+			"             │   └─ TableAlias(source_nd)\n" +
+			"             │       └─ IndexedTableAccess(ANBH)\n" +
+			"             │           └─ index: [ANBH.JQVV]\n" +
+			"             └─ TableAlias(target_nd)\n" +
+			"                 └─ IndexedTableAccess(ANBH)\n" +
+			"                     └─ index: [ANBH.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT JQVV edge_JQVV, ROW_NUMBER() OVER (ORDER BY sn.JQVV ASC) - 1 edge_index FROM OPHR sn`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [edge_JQVV, (row_number() over ( order by sn.JQVV ASC) - 1) as edge_index]\n" +
+			" └─ Window(sn.JQVV as edge_JQVV, row_number() over ( order by sn.JQVV ASC))\n" +
+			"     └─ TableAlias(sn)\n" +
+			"         └─ Table(OPHR)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    nd.ACQC,
+    il.GDXW,
+    il.XONG,
+    il.XDRS,
+    il.ERKD
+FROM MRPP il
+INNER JOIN ANBH nd
+    ON il.FHMZ = nd.JQVV
+INNER JOIN CSAW nt
+    ON nd.YFHZ = nt.JQVV
+WHERE nt.NKBA <> 'logical'
+
+ORDER BY nd.ACQC`,
+		ExpectedPlan: "Sort(nd.ACQC ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [nd.ACQC, il.GDXW, il.XONG, il.XDRS, il.ERKD]\n" +
+			"     └─ IndexedJoin(il.FHMZ = nd.JQVV)\n" +
+			"         ├─ TableAlias(il)\n" +
+			"         │   └─ Table(MRPP)\n" +
+			"         └─ IndexedJoin(nd.YFHZ = nt.JQVV)\n" +
+			"             ├─ TableAlias(nd)\n" +
+			"             │   └─ IndexedTableAccess(ANBH)\n" +
+			"             │       └─ index: [ANBH.JQVV]\n" +
+			"             └─ Filter(NOT((nt.NKBA = 'logical')))\n" +
+			"                 └─ TableAlias(nt)\n" +
+			"                     └─ IndexedTableAccess(CSAW)\n" +
+			"                         └─ index: [CSAW.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    RMLT, ELSM
+FROM ARFu 
+WHERE RMLT IN ('SQ1')`,
+		ExpectedPlan: "Filter(ARFu.RMLT HASH IN ('SQ1'))\n" +
+			" └─ IndexedTableAccess(ARFu)\n" +
+			"     ├─ index: [ARFu.RMLT]\n" +
+			"     ├─ filters: [{[SQ1, SQ1]}]\n" +
+			"     └─ columns: [rmlt elsm]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    cl_nd.CLDu AS CLDu,
+    cl_nd.ACQC AS ACQC,
+    CASE
+        WHEN fc.GWCH IS NULL THEN 0
+        WHEN cl_nd.CSAW_NKBA IN ('log', 'com', 'ex') THEN 0
+        WHEN cl_nd.nd_DuFO = 'no_fc' THEN 0
+        WHEN cl_nd.nd_DuFO = 'z' THEN fc.GWCH
+        WHEN cl_nd.nd_DuFO = 'o' THEN fc.GWCH - 1
+    END AS GWCH
+FROM
+(
+    SELECT
+        bs_JQVV,
+        CLDu,
+        nd.JQVV AS nd_JQVV,
+        nd.ACQC AS ACQC,
+        nd.DuFO AS nd_DuFO,
+        (SELECT nt.NKBA FROM CSAW nt WHERE nt.JQVV = nd.YFHZ) AS CSAW_NKBA
+    FROM 
+    (
+        SELECT
+            bs.JQVV AS bs_JQVV,
+            cla.RMLT AS CLDu
+        FROM
+            ARFu cla
+        INNER JOIN
+            ZYCA bs
+        ON
+            bs.TuFQ = cla.JQVV
+        WHERE
+            cla.RMLT IN ('SQ1')
+    ) relevant_cl
+    CROSS JOIN
+        ANBH nd
+) cl_nd
+LEFT JOIN
+    GRuH fc
+ON
+    fc.FHMZ = nd_JQVV
+    AND
+    fc.MBIG = bs_JQVV
+ORDER BY
+    nd_JQVV
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [cl_nd.CLDu as CLDu, cl_nd.ACQC as ACQC, CASE  WHEN fc.GWCH IS NULL THEN 0 WHEN (cl_nd.CSAW_NKBA IN ('log', 'com', 'ex')) THEN 0 WHEN (cl_nd.nd_DuFO = 'no_fc') THEN 0 WHEN (cl_nd.nd_DuFO = 'z') THEN fc.GWCH WHEN (cl_nd.nd_DuFO = 'o') THEN (fc.GWCH - 1) END as GWCH]\n" +
+			" └─ Sort(cl_nd.nd_JQVV ASC)\n" +
+			"     └─ LeftIndexedJoin((fc.FHMZ = cl_nd.nd_JQVV) AND (fc.MBIG = cl_nd.bs_JQVV))\n" +
+			"         ├─ SubqueryAlias(cl_nd)\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [relevant_cl.bs_JQVV, relevant_cl.CLDu, nd.JQVV as nd_JQVV, nd.ACQC as ACQC, nd.DuFO as nd_DuFO, (Project\n" +
+			"         │       │   ├─ columns: [nt.NKBA]\n" +
+			"         │       │   └─ Filter(nt.JQVV = nd.YFHZ)\n" +
+			"         │       │       └─ TableAlias(nt)\n" +
+			"         │       │           └─ IndexedTableAccess(CSAW)\n" +
+			"         │       │               └─ index: [CSAW.JQVV]\n" +
+			"         │       │  ) as CSAW_NKBA]\n" +
+			"         │       └─ CrossJoin\n" +
+			"         │           ├─ SubqueryAlias(relevant_cl)\n" +
+			"         │           │   └─ Project\n" +
+			"         │           │       ├─ columns: [bs.JQVV as bs_JQVV, cla.RMLT as CLDu]\n" +
+			"         │           │       └─ IndexedJoin(bs.TuFQ = cla.JQVV)\n" +
+			"         │           │           ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"         │           │           │   └─ TableAlias(cla)\n" +
+			"         │           │           │       └─ IndexedTableAccess(ARFu)\n" +
+			"         │           │           │           ├─ index: [ARFu.RMLT]\n" +
+			"         │           │           │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"         │           │           └─ TableAlias(bs)\n" +
+			"         │           │               └─ IndexedTableAccess(ZYCA)\n" +
+			"         │           │                   └─ index: [ZYCA.TuFQ]\n" +
+			"         │           └─ TableAlias(nd)\n" +
+			"         │               └─ Table(ANBH)\n" +
+			"         └─ TableAlias(fc)\n" +
+			"             └─ IndexedTableAccess(GRuH)\n" +
+			"                 └─ index: [GRuH.MBIG,GRuH.FHMZ]\n" +
+			"",
+	},
+	{
+		Query: `
+WITH LMLA AS
+    (SELECT
+        bs.CLDu AS CLDu,
+        pa.NKBA AS pathway,
+        pga.NKBA AS pathway_group,
+        pog.KIDQ,
+        fc.GWCH,
+        mfxac.predicted_effect,
+        nd.ACQC AS ACQC
+    FROM
+        BSSW ms
+    INNER JOIN ETNA pa
+        ON ms.MSEA = pa.JQVV
+    LEFT JOIN KTWP pog
+        ON pa.JQVV = pog.MSEA
+    INNER JOIN OQNB pga
+        ON pog.LNSN = pga.JQVV
+    INNER JOIN LJBu ndxpog
+        ON pog.JQVV = ndxpog.AADO
+    INNER JOIN ANBH nd
+        ON ndxpog.FHMZ = nd.JQVV
+    RIGHT JOIN (
+        SELECT
+            ZYCA.JQVV,
+            ARFu.RMLT AS CLDu
+        FROM ZYCA
+        INNER JOIN ARFu
+        ON TuFQ = ARFu.JQVV
+    ) bs
+        ON ms.MBIG = bs.JQVV
+    LEFT JOIN GRuH fc
+        ON bs.JQVV = fc.MBIG AND nd.JQVV = fc.FHMZ
+    LEFT JOIN (
+        SELECT
+            iq.CLDu,
+            iq.EXKR,
+            iq.PXMP,
+            CASE
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ = 'HIGH' AND iq.ZMOM_NKBA = 'EXCLUSIVE_LOF'
+                THEN 0
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ = 'HIGH' AND iq.ZMOM_NKBA = 'OG'
+                THEN 0
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ = 'HIGH' AND iq.ZMOM_NKBA = 'TSG'
+                THEN 0
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ <> 'HIGH' AND iq.ZMOM_NKBA = 'EXCLUSIVE_GOF'
+                THEN 1
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ <> 'HIGH' AND iq.ZMOM_NKBA = 'OG'
+                THEN 1
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ <> 'HIGH' AND iq.ZMOM_NKBA = 'TSG'
+                THEN 0
+                ELSE NULL
+            END AS predicted_effect
+        FROM (
+            SELECT /*+ JOIN_ORDER( cla, bs, mf, nd, nma, sn ) */
+                cla.RMLT AS CLDu,
+                sn.EXKR,
+                mf.JQVV AS PXMP,
+                mf.IIOY,
+                nma.NKBA AS ZMOM_NKBA
+            FROM
+                RCXK mf
+            INNER JOIN ZYCA bs
+                ON mf.MBIG = bs.JQVV
+            INNER JOIN ARFu cla
+                ON bs.TuFQ = cla.JQVV
+            INNER JOIN ANBH nd
+                ON mf.FHMZ = nd.JQVV
+            INNER JOIN ZMOM nma
+                ON nd.XTIG = nma.JQVV
+            INNER JOIN OPHR sn
+                ON sn.EXKR = nd.JQVV
+            WHERE cla.RMLT IN ('SQ1')
+        ) iq
+        LEFT JOIN RHED mfxvc
+            ON iq.PXMP = mfxvc.PXMP
+        LEFT JOIN OAWM vc
+            ON mfxvc.GuSZ = vc.JQVV
+    ) mfxac
+        ON mfxac.CLDu = bs.CLDu AND mfxac.EXKR = nd.JQVV
+    LEFT JOIN ZMOM nma
+        ON nd.XTIG = nma.JQVV
+    WHERE bs.CLDu IN ('SQ1') AND ms.QDSR = TRUE)
+SELECT
+    distinct_result_per_group.CLDu AS CLDu,
+    distinct_result_per_group.pathway AS pathway,
+    SUM(distinct_result_per_group.KIDQ) AS KIDQ,
+    SUM(distinct_result_per_group.found_perturbations) AS found_perturbations
+FROM (
+    SELECT
+        distinct_result_by_node.CLDu AS CLDu,
+        distinct_result_by_node.pathway AS pathway,
+        distinct_result_by_node.pathway_group AS pathway_group,
+        distinct_result_by_node.KIDQ AS KIDQ,
+        SUM(CASE
+                WHEN distinct_result_by_node.GWCH < 0.5 OR distinct_result_by_node.predicted_effect = 0 THEN 1
+                ELSE 0
+            END) AS found_perturbations
+    FROM (
+        SELECT DISTINCT
+            CLDu,
+            pathway,
+            pathway_group,
+            KIDQ,
+            ACQC,
+            GWCH,
+            predicted_effect
+        FROM
+            LMLA) distinct_result_by_node
+    GROUP BY CLDu, pathway, pathway_group
+) distinct_result_per_group
+GROUP BY CLDu, pathway`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [CLDu, pathway, SUM(distinct_result_per_group.KIDQ) as KIDQ, SUM(distinct_result_per_group.found_perturbations) as found_perturbations]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(CLDu, pathway, SUM(distinct_result_per_group.KIDQ), SUM(distinct_result_per_group.found_perturbations))\n" +
+			"     ├─ Grouping(CLDu, pathway)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [distinct_result_per_group.CLDu as CLDu, distinct_result_per_group.pathway as pathway, distinct_result_per_group.KIDQ, distinct_result_per_group.found_perturbations]\n" +
+			"         └─ SubqueryAlias(distinct_result_per_group)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [CLDu, pathway, pathway_group, KIDQ, SUM(CASE  WHEN ((distinct_result_by_node.GWCH < 0.5) OR (distinct_result_by_node.predicted_effect = 0)) THEN 1 ELSE 0 END) as found_perturbations]\n" +
+			"                 └─ GroupBy\n" +
+			"                     ├─ SelectedExprs(CLDu, pathway, pathway_group, distinct_result_by_node.KIDQ as KIDQ, SUM(CASE  WHEN ((distinct_result_by_node.GWCH < 0.5) OR (distinct_result_by_node.predicted_effect = 0)) THEN 1 ELSE 0 END))\n" +
+			"                     ├─ Grouping(CLDu, pathway, pathway_group)\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [distinct_result_by_node.CLDu as CLDu, distinct_result_by_node.pathway as pathway, distinct_result_by_node.pathway_group as pathway_group, distinct_result_by_node.GWCH, distinct_result_by_node.KIDQ, distinct_result_by_node.predicted_effect]\n" +
+			"                         └─ SubqueryAlias(distinct_result_by_node)\n" +
+			"                             └─ Distinct\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [LMLA.CLDu, LMLA.pathway, LMLA.pathway_group, LMLA.KIDQ, LMLA.GWCH, LMLA.predicted_effect]\n" +
+			"                                     └─ SubqueryAlias(LMLA)\n" +
+			"                                         └─ Project\n" +
+			"                                             ├─ columns: [bs.CLDu as CLDu, pa.NKBA as pathway, pga.NKBA as pathway_group, pog.KIDQ, fc.GWCH, mfxac.predicted_effect, nd.ACQC as ACQC]\n" +
+			"                                             └─ Filter(ms.QDSR = true)\n" +
+			"                                                 └─ LeftIndexedJoin(nd.XTIG = nma.JQVV)\n" +
+			"                                                     ├─ LeftIndexedJoin((mfxac.CLDu = bs.CLDu) AND (mfxac.EXKR = nd.JQVV))\n" +
+			"                                                     │   ├─ LeftIndexedJoin((bs.JQVV = fc.MBIG) AND (nd.JQVV = fc.FHMZ))\n" +
+			"                                                     │   │   ├─ RightIndexedJoin(ms.MBIG = bs.JQVV)\n" +
+			"                                                     │   │   │   ├─ SubqueryAlias(bs)\n" +
+			"                                                     │   │   │   │   └─ Filter(CLDu HASH IN ('SQ1'))\n" +
+			"                                                     │   │   │   │       └─ Project\n" +
+			"                                                     │   │   │   │           ├─ columns: [ZYCA.JQVV, ARFu.RMLT as CLDu]\n" +
+			"                                                     │   │   │   │           └─ InnerJoin(ZYCA.TuFQ = ARFu.JQVV)\n" +
+			"                                                     │   │   │   │               ├─ Table(ZYCA)\n" +
+			"                                                     │   │   │   │               │   └─ columns: [jqvv tufq]\n" +
+			"                                                     │   │   │   │               └─ Table(ARFu)\n" +
+			"                                                     │   │   │   │                   └─ columns: [jqvv rmlt]\n" +
+			"                                                     │   │   │   └─ IndexedJoin(pog.LNSN = pga.JQVV)\n" +
+			"                                                     │   │   │       ├─ TableAlias(pga)\n" +
+			"                                                     │   │   │       │   └─ Table(OQNB)\n" +
+			"                                                     │   │   │       └─ IndexedJoin(ndxpog.FHMZ = nd.JQVV)\n" +
+			"                                                     │   │   │           ├─ IndexedJoin(pog.JQVV = ndxpog.AADO)\n" +
+			"                                                     │   │   │           │   ├─ TableAlias(ndxpog)\n" +
+			"                                                     │   │   │           │   │   └─ Table(LJBu)\n" +
+			"                                                     │   │   │           │   └─ LeftIndexedJoin(pa.JQVV = pog.MSEA)\n" +
+			"                                                     │   │   │           │       ├─ IndexedJoin(ms.MSEA = pa.JQVV)\n" +
+			"                                                     │   │   │           │       │   ├─ TableAlias(ms)\n" +
+			"                                                     │   │   │           │       │   │   └─ IndexedTableAccess(BSSW)\n" +
+			"                                                     │   │   │           │       │   │       └─ index: [BSSW.MBIG]\n" +
+			"                                                     │   │   │           │       │   └─ TableAlias(pa)\n" +
+			"                                                     │   │   │           │       │       └─ IndexedTableAccess(ETNA)\n" +
+			"                                                     │   │   │           │       │           └─ index: [ETNA.JQVV]\n" +
+			"                                                     │   │   │           │       └─ TableAlias(pog)\n" +
+			"                                                     │   │   │           │           └─ IndexedTableAccess(KTWP)\n" +
+			"                                                     │   │   │           │               └─ index: [KTWP.JQVV]\n" +
+			"                                                     │   │   │           └─ TableAlias(nd)\n" +
+			"                                                     │   │   │               └─ IndexedTableAccess(ANBH)\n" +
+			"                                                     │   │   │                   └─ index: [ANBH.JQVV]\n" +
+			"                                                     │   │   └─ TableAlias(fc)\n" +
+			"                                                     │   │       └─ IndexedTableAccess(GRuH)\n" +
+			"                                                     │   │           └─ index: [GRuH.MBIG,GRuH.FHMZ]\n" +
+			"                                                     │   └─ HashLookup(child: (mfxac.CLDu, mfxac.EXKR), lookup: (bs.CLDu, nd.JQVV))\n" +
+			"                                                     │       └─ CachedResults\n" +
+			"                                                     │           └─ SubqueryAlias(mfxac)\n" +
+			"                                                     │               └─ Project\n" +
+			"                                                     │                   ├─ columns: [iq.CLDu, iq.EXKR, iq.PXMP, CASE  WHEN (((iq.IIOY IN ('dam', 'posd')) AND (vc.ABGZ = 'HIGH')) AND (iq.ZMOM_NKBA = 'EXCLUSIVE_LOF')) THEN 0 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (vc.ABGZ = 'HIGH')) AND (iq.ZMOM_NKBA = 'OG')) THEN 0 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (vc.ABGZ = 'HIGH')) AND (iq.ZMOM_NKBA = 'TSG')) THEN 0 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (NOT((vc.ABGZ = 'HIGH')))) AND (iq.ZMOM_NKBA = 'EXCLUSIVE_GOF')) THEN 1 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (NOT((vc.ABGZ = 'HIGH')))) AND (iq.ZMOM_NKBA = 'OG')) THEN 1 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (NOT((vc.ABGZ = 'HIGH')))) AND (iq.ZMOM_NKBA = 'TSG')) THEN 0 ELSE NULL END as predicted_effect]\n" +
+			"                                                     │                   └─ LeftIndexedJoin(mfxvc.GuSZ = vc.JQVV)\n" +
+			"                                                     │                       ├─ LeftIndexedJoin(iq.PXMP = mfxvc.PXMP)\n" +
+			"                                                     │                       │   ├─ SubqueryAlias(iq)\n" +
+			"                                                     │                       │   │   └─ Project\n" +
+			"                                                     │                       │   │       ├─ columns: [cla.RMLT as CLDu, sn.EXKR, mf.JQVV as PXMP, mf.IIOY, nma.NKBA as ZMOM_NKBA]\n" +
+			"                                                     │                       │   │       └─ IndexedJoin(bs.TuFQ = cla.JQVV)\n" +
+			"                                                     │                       │   │           ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"                                                     │                       │   │           │   └─ TableAlias(cla)\n" +
+			"                                                     │                       │   │           │       └─ IndexedTableAccess(ARFu)\n" +
+			"                                                     │                       │   │           │           ├─ index: [ARFu.RMLT]\n" +
+			"                                                     │                       │   │           │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"                                                     │                       │   │           └─ IndexedJoin(mf.MBIG = bs.JQVV)\n" +
+			"                                                     │                       │   │               ├─ TableAlias(bs)\n" +
+			"                                                     │                       │   │               │   └─ IndexedTableAccess(ZYCA)\n" +
+			"                                                     │                       │   │               │       └─ index: [ZYCA.TuFQ]\n" +
+			"                                                     │                       │   │               └─ IndexedJoin(mf.FHMZ = nd.JQVV)\n" +
+			"                                                     │                       │   │                   ├─ TableAlias(mf)\n" +
+			"                                                     │                       │   │                   │   └─ IndexedTableAccess(RCXK)\n" +
+			"                                                     │                       │   │                   │       └─ index: [RCXK.MBIG]\n" +
+			"                                                     │                       │   │                   └─ IndexedJoin(sn.EXKR = nd.JQVV)\n" +
+			"                                                     │                       │   │                       ├─ IndexedJoin(nd.XTIG = nma.JQVV)\n" +
+			"                                                     │                       │   │                       │   ├─ TableAlias(nd)\n" +
+			"                                                     │                       │   │                       │   │   └─ IndexedTableAccess(ANBH)\n" +
+			"                                                     │                       │   │                       │   │       └─ index: [ANBH.JQVV]\n" +
+			"                                                     │                       │   │                       │   └─ TableAlias(nma)\n" +
+			"                                                     │                       │   │                       │       └─ IndexedTableAccess(ZMOM)\n" +
+			"                                                     │                       │   │                       │           └─ index: [ZMOM.JQVV]\n" +
+			"                                                     │                       │   │                       └─ TableAlias(sn)\n" +
+			"                                                     │                       │   │                           └─ IndexedTableAccess(OPHR)\n" +
+			"                                                     │                       │   │                               └─ index: [OPHR.EXKR]\n" +
+			"                                                     │                       │   └─ TableAlias(mfxvc)\n" +
+			"                                                     │                       │       └─ IndexedTableAccess(RHED)\n" +
+			"                                                     │                       │           └─ index: [RHED.PXMP]\n" +
+			"                                                     │                       └─ TableAlias(vc)\n" +
+			"                                                     │                           └─ IndexedTableAccess(OAWM)\n" +
+			"                                                     │                               └─ index: [OAWM.JQVV]\n" +
+			"                                                     └─ TableAlias(nma)\n" +
+			"                                                         └─ IndexedTableAccess(ZMOM)\n" +
+			"                                                             └─ index: [ZMOM.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+WITH LMLA AS
+    (SELECT
+        bs.CLDu AS CLDu,
+        pa.NKBA AS pathway,
+        pga.NKBA AS pathway_group,
+        pog.KIDQ,
+        fc.GWCH,
+        mfxac.predicted_effect,
+        nd.ACQC AS ACQC
+    FROM
+        BSSW ms
+    INNER JOIN ETNA pa
+        ON ms.MSEA = pa.JQVV
+    LEFT JOIN KTWP pog
+        ON pa.JQVV = pog.MSEA
+    INNER JOIN OQNB pga
+        ON pog.LNSN = pga.JQVV
+    INNER JOIN LJBu ndxpog
+        ON pog.JQVV = ndxpog.AADO
+    INNER JOIN ANBH nd
+        ON ndxpog.FHMZ = nd.JQVV
+    RIGHT JOIN (
+        SELECT
+            ZYCA.JQVV,
+            ARFu.RMLT AS CLDu
+        FROM ZYCA
+        INNER JOIN ARFu
+        ON TuFQ = ARFu.JQVV
+    ) bs
+        ON ms.MBIG = bs.JQVV
+    LEFT JOIN GRuH fc
+        ON bs.JQVV = fc.MBIG AND nd.JQVV = fc.FHMZ
+    LEFT JOIN (
+        SELECT
+            iq.CLDu,
+            iq.EXKR,
+            iq.PXMP,
+            CASE
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ = 'HIGH' AND iq.ZMOM_NKBA = 'EXCLUSIVE_LOF'
+                THEN 0
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ = 'HIGH' AND iq.ZMOM_NKBA = 'OG'
+                THEN 0
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ = 'HIGH' AND iq.ZMOM_NKBA = 'TSG'
+                THEN 0
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ <> 'HIGH' AND iq.ZMOM_NKBA = 'EXCLUSIVE_GOF'
+                THEN 1
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ <> 'HIGH' AND iq.ZMOM_NKBA = 'OG'
+                THEN 1
+                WHEN iq.IIOY IN ('dam','posd') AND vc.ABGZ <> 'HIGH' AND iq.ZMOM_NKBA = 'TSG'
+                THEN 0
+                ELSE NULL
+            END AS predicted_effect
+        FROM (
+            SELECT
+                cla.RMLT AS CLDu,
+                sn.EXKR,
+                mf.JQVV AS PXMP,
+                mf.IIOY,
+                nma.NKBA AS ZMOM_NKBA
+            FROM
+                RCXK mf
+            INNER JOIN ZYCA bs
+                ON mf.MBIG = bs.JQVV
+            INNER JOIN ARFu cla
+                ON bs.TuFQ = cla.JQVV
+            INNER JOIN ANBH nd
+                ON mf.FHMZ = nd.JQVV
+            INNER JOIN ZMOM nma
+                ON nd.XTIG = nma.JQVV
+            INNER JOIN OPHR sn
+                ON sn.EXKR = nd.JQVV
+            WHERE cla.RMLT IN ('SQ1')
+        ) iq
+        LEFT JOIN RHED mfxvc
+            ON iq.PXMP = mfxvc.PXMP
+        LEFT JOIN OAWM vc
+            ON mfxvc.GuSZ = vc.JQVV
+    ) mfxac
+        ON mfxac.CLDu = bs.CLDu AND mfxac.EXKR = nd.JQVV
+    LEFT JOIN ZMOM nma
+        ON nd.XTIG = nma.JQVV
+    WHERE bs.CLDu IN ('SQ1') AND ms.QDSR = TRUE)
+SELECT
+    distinct_result_per_group.CLDu AS CLDu,
+    distinct_result_per_group.pathway AS pathway,
+    SUM(distinct_result_per_group.KIDQ) AS KIDQ,
+    SUM(distinct_result_per_group.found_perturbations) AS found_perturbations
+FROM (
+    SELECT
+        distinct_result_by_node.CLDu AS CLDu,
+        distinct_result_by_node.pathway AS pathway,
+        distinct_result_by_node.pathway_group AS pathway_group,
+        distinct_result_by_node.KIDQ AS KIDQ,
+        SUM(CASE
+                WHEN distinct_result_by_node.GWCH < 0.5 OR distinct_result_by_node.predicted_effect = 0 THEN 1
+                ELSE 0
+            END) AS found_perturbations
+    FROM (
+        SELECT DISTINCT
+            CLDu,
+            pathway,
+            pathway_group,
+            KIDQ,
+            ACQC,
+            GWCH,
+            predicted_effect
+        FROM
+            LMLA) distinct_result_by_node
+    GROUP BY CLDu, pathway, pathway_group
+) distinct_result_per_group
+GROUP BY CLDu, pathway`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [CLDu, pathway, SUM(distinct_result_per_group.KIDQ) as KIDQ, SUM(distinct_result_per_group.found_perturbations) as found_perturbations]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(CLDu, pathway, SUM(distinct_result_per_group.KIDQ), SUM(distinct_result_per_group.found_perturbations))\n" +
+			"     ├─ Grouping(CLDu, pathway)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [distinct_result_per_group.CLDu as CLDu, distinct_result_per_group.pathway as pathway, distinct_result_per_group.KIDQ, distinct_result_per_group.found_perturbations]\n" +
+			"         └─ SubqueryAlias(distinct_result_per_group)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [CLDu, pathway, pathway_group, KIDQ, SUM(CASE  WHEN ((distinct_result_by_node.GWCH < 0.5) OR (distinct_result_by_node.predicted_effect = 0)) THEN 1 ELSE 0 END) as found_perturbations]\n" +
+			"                 └─ GroupBy\n" +
+			"                     ├─ SelectedExprs(CLDu, pathway, pathway_group, distinct_result_by_node.KIDQ as KIDQ, SUM(CASE  WHEN ((distinct_result_by_node.GWCH < 0.5) OR (distinct_result_by_node.predicted_effect = 0)) THEN 1 ELSE 0 END))\n" +
+			"                     ├─ Grouping(CLDu, pathway, pathway_group)\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [distinct_result_by_node.CLDu as CLDu, distinct_result_by_node.pathway as pathway, distinct_result_by_node.pathway_group as pathway_group, distinct_result_by_node.GWCH, distinct_result_by_node.KIDQ, distinct_result_by_node.predicted_effect]\n" +
+			"                         └─ SubqueryAlias(distinct_result_by_node)\n" +
+			"                             └─ Distinct\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [LMLA.CLDu, LMLA.pathway, LMLA.pathway_group, LMLA.KIDQ, LMLA.GWCH, LMLA.predicted_effect]\n" +
+			"                                     └─ SubqueryAlias(LMLA)\n" +
+			"                                         └─ Project\n" +
+			"                                             ├─ columns: [bs.CLDu as CLDu, pa.NKBA as pathway, pga.NKBA as pathway_group, pog.KIDQ, fc.GWCH, mfxac.predicted_effect, nd.ACQC as ACQC]\n" +
+			"                                             └─ Filter(ms.QDSR = true)\n" +
+			"                                                 └─ LeftIndexedJoin(nd.XTIG = nma.JQVV)\n" +
+			"                                                     ├─ LeftIndexedJoin((mfxac.CLDu = bs.CLDu) AND (mfxac.EXKR = nd.JQVV))\n" +
+			"                                                     │   ├─ LeftIndexedJoin((bs.JQVV = fc.MBIG) AND (nd.JQVV = fc.FHMZ))\n" +
+			"                                                     │   │   ├─ RightIndexedJoin(ms.MBIG = bs.JQVV)\n" +
+			"                                                     │   │   │   ├─ SubqueryAlias(bs)\n" +
+			"                                                     │   │   │   │   └─ Filter(CLDu HASH IN ('SQ1'))\n" +
+			"                                                     │   │   │   │       └─ Project\n" +
+			"                                                     │   │   │   │           ├─ columns: [ZYCA.JQVV, ARFu.RMLT as CLDu]\n" +
+			"                                                     │   │   │   │           └─ InnerJoin(ZYCA.TuFQ = ARFu.JQVV)\n" +
+			"                                                     │   │   │   │               ├─ Table(ZYCA)\n" +
+			"                                                     │   │   │   │               │   └─ columns: [jqvv tufq]\n" +
+			"                                                     │   │   │   │               └─ Table(ARFu)\n" +
+			"                                                     │   │   │   │                   └─ columns: [jqvv rmlt]\n" +
+			"                                                     │   │   │   └─ IndexedJoin(pog.LNSN = pga.JQVV)\n" +
+			"                                                     │   │   │       ├─ TableAlias(pga)\n" +
+			"                                                     │   │   │       │   └─ Table(OQNB)\n" +
+			"                                                     │   │   │       └─ IndexedJoin(ndxpog.FHMZ = nd.JQVV)\n" +
+			"                                                     │   │   │           ├─ IndexedJoin(pog.JQVV = ndxpog.AADO)\n" +
+			"                                                     │   │   │           │   ├─ TableAlias(ndxpog)\n" +
+			"                                                     │   │   │           │   │   └─ Table(LJBu)\n" +
+			"                                                     │   │   │           │   └─ LeftIndexedJoin(pa.JQVV = pog.MSEA)\n" +
+			"                                                     │   │   │           │       ├─ IndexedJoin(ms.MSEA = pa.JQVV)\n" +
+			"                                                     │   │   │           │       │   ├─ TableAlias(ms)\n" +
+			"                                                     │   │   │           │       │   │   └─ IndexedTableAccess(BSSW)\n" +
+			"                                                     │   │   │           │       │   │       └─ index: [BSSW.MBIG]\n" +
+			"                                                     │   │   │           │       │   └─ TableAlias(pa)\n" +
+			"                                                     │   │   │           │       │       └─ IndexedTableAccess(ETNA)\n" +
+			"                                                     │   │   │           │       │           └─ index: [ETNA.JQVV]\n" +
+			"                                                     │   │   │           │       └─ TableAlias(pog)\n" +
+			"                                                     │   │   │           │           └─ IndexedTableAccess(KTWP)\n" +
+			"                                                     │   │   │           │               └─ index: [KTWP.JQVV]\n" +
+			"                                                     │   │   │           └─ TableAlias(nd)\n" +
+			"                                                     │   │   │               └─ IndexedTableAccess(ANBH)\n" +
+			"                                                     │   │   │                   └─ index: [ANBH.JQVV]\n" +
+			"                                                     │   │   └─ TableAlias(fc)\n" +
+			"                                                     │   │       └─ IndexedTableAccess(GRuH)\n" +
+			"                                                     │   │           └─ index: [GRuH.MBIG,GRuH.FHMZ]\n" +
+			"                                                     │   └─ HashLookup(child: (mfxac.CLDu, mfxac.EXKR), lookup: (bs.CLDu, nd.JQVV))\n" +
+			"                                                     │       └─ CachedResults\n" +
+			"                                                     │           └─ SubqueryAlias(mfxac)\n" +
+			"                                                     │               └─ Project\n" +
+			"                                                     │                   ├─ columns: [iq.CLDu, iq.EXKR, iq.PXMP, CASE  WHEN (((iq.IIOY IN ('dam', 'posd')) AND (vc.ABGZ = 'HIGH')) AND (iq.ZMOM_NKBA = 'EXCLUSIVE_LOF')) THEN 0 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (vc.ABGZ = 'HIGH')) AND (iq.ZMOM_NKBA = 'OG')) THEN 0 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (vc.ABGZ = 'HIGH')) AND (iq.ZMOM_NKBA = 'TSG')) THEN 0 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (NOT((vc.ABGZ = 'HIGH')))) AND (iq.ZMOM_NKBA = 'EXCLUSIVE_GOF')) THEN 1 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (NOT((vc.ABGZ = 'HIGH')))) AND (iq.ZMOM_NKBA = 'OG')) THEN 1 WHEN (((iq.IIOY IN ('dam', 'posd')) AND (NOT((vc.ABGZ = 'HIGH')))) AND (iq.ZMOM_NKBA = 'TSG')) THEN 0 ELSE NULL END as predicted_effect]\n" +
+			"                                                     │                   └─ LeftIndexedJoin(mfxvc.GuSZ = vc.JQVV)\n" +
+			"                                                     │                       ├─ LeftIndexedJoin(iq.PXMP = mfxvc.PXMP)\n" +
+			"                                                     │                       │   ├─ SubqueryAlias(iq)\n" +
+			"                                                     │                       │   │   └─ Project\n" +
+			"                                                     │                       │   │       ├─ columns: [cla.RMLT as CLDu, sn.EXKR, mf.JQVV as PXMP, mf.IIOY, nma.NKBA as ZMOM_NKBA]\n" +
+			"                                                     │                       │   │       └─ IndexedJoin(mf.FHMZ = nd.JQVV)\n" +
+			"                                                     │                       │   │           ├─ IndexedJoin(mf.MBIG = bs.JQVV)\n" +
+			"                                                     │                       │   │           │   ├─ TableAlias(mf)\n" +
+			"                                                     │                       │   │           │   │   └─ Table(RCXK)\n" +
+			"                                                     │                       │   │           │   └─ IndexedJoin(bs.TuFQ = cla.JQVV)\n" +
+			"                                                     │                       │   │           │       ├─ TableAlias(bs)\n" +
+			"                                                     │                       │   │           │       │   └─ IndexedTableAccess(ZYCA)\n" +
+			"                                                     │                       │   │           │       │       └─ index: [ZYCA.JQVV]\n" +
+			"                                                     │                       │   │           │       └─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"                                                     │                       │   │           │           └─ TableAlias(cla)\n" +
+			"                                                     │                       │   │           │               └─ IndexedTableAccess(ARFu)\n" +
+			"                                                     │                       │   │           │                   └─ index: [ARFu.JQVV]\n" +
+			"                                                     │                       │   │           └─ IndexedJoin(sn.EXKR = nd.JQVV)\n" +
+			"                                                     │                       │   │               ├─ IndexedJoin(nd.XTIG = nma.JQVV)\n" +
+			"                                                     │                       │   │               │   ├─ TableAlias(nd)\n" +
+			"                                                     │                       │   │               │   │   └─ IndexedTableAccess(ANBH)\n" +
+			"                                                     │                       │   │               │   │       └─ index: [ANBH.JQVV]\n" +
+			"                                                     │                       │   │               │   └─ TableAlias(nma)\n" +
+			"                                                     │                       │   │               │       └─ IndexedTableAccess(ZMOM)\n" +
+			"                                                     │                       │   │               │           └─ index: [ZMOM.JQVV]\n" +
+			"                                                     │                       │   │               └─ TableAlias(sn)\n" +
+			"                                                     │                       │   │                   └─ IndexedTableAccess(OPHR)\n" +
+			"                                                     │                       │   │                       └─ index: [OPHR.EXKR]\n" +
+			"                                                     │                       │   └─ TableAlias(mfxvc)\n" +
+			"                                                     │                       │       └─ IndexedTableAccess(RHED)\n" +
+			"                                                     │                       │           └─ index: [RHED.PXMP]\n" +
+			"                                                     │                       └─ TableAlias(vc)\n" +
+			"                                                     │                           └─ IndexedTableAccess(OAWM)\n" +
+			"                                                     │                               └─ index: [OAWM.JQVV]\n" +
+			"                                                     └─ TableAlias(nma)\n" +
+			"                                                         └─ IndexedTableAccess(ZMOM)\n" +
+			"                                                             └─ index: [ZMOM.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    signet_part.edge_JQVVx AS ANuCx
+FROM
+    (SELECT 
+        JQVV AS regnet_JQVV,
+        ANuC AS ANuC, 
+        CAAI AS CAAI 
+    FROM 
+        DHWQ) regnet_part
+INNER JOIN
+    (SELECT 
+        ROW_NUMBER() OVER (ORDER BY JQVV ASC) edge_JQVVx, 
+        JQVV AS signet_JQVV
+    FROM 
+        OPHR) signet_part
+
+    ON regnet_part.ANuC = signet_part.signet_JQVV
+ORDER BY regnet_JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [signet_part.edge_JQVVx as ANuCx]\n" +
+			" └─ Sort(regnet_part.regnet_JQVV ASC)\n" +
+			"     └─ InnerJoin(regnet_part.ANuC = signet_part.signet_JQVV)\n" +
+			"         ├─ SubqueryAlias(regnet_part)\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [DHWQ.JQVV as regnet_JQVV, DHWQ.ANuC as ANuC, DHWQ.CAAI as CAAI]\n" +
+			"         │       └─ Table(DHWQ)\n" +
+			"         │           └─ columns: [jqvv anuc caai]\n" +
+			"         └─ HashLookup(child: (signet_part.signet_JQVV), lookup: (regnet_part.ANuC))\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias(signet_part)\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [row_number() over ( order by OPHR.JQVV ASC) as edge_JQVVx, signet_JQVV]\n" +
+			"                         └─ Window(row_number() over ( order by OPHR.JQVV ASC), OPHR.JQVV as signet_JQVV)\n" +
+			"                             └─ Table(OPHR)\n" +
+			"                                 └─ columns: [jqvv]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    SQIT 
+FROM 
+    ANBH 
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ANBH.SQIT]\n" +
+			" └─ IndexedTableAccess(ANBH)\n" +
+			"     ├─ index: [ANBH.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv sqit]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    CASE 
+        WHEN WKDAs_with_nulls.MMJG IS NOT NULL THEN WKDAs_with_nulls.MMJG
+        ELSE -1
+    END AS WKDAulated_final_form
+    FROM
+    (SELECT 
+        nd.FHMZ_from_nd,
+        fc.MMJG
+    FROM
+        (SELECT 
+            JQVV AS FHMZ_from_nd
+        FROM 
+            ANBH) nd
+        LEFT JOIN
+        (SELECT 
+            FHMZ AS FHMZ_from_fc,
+            MAX(MMJG) AS MMJG
+        FROM GRuH
+        GROUP BY FHMZ) fc
+        ON nd.FHMZ_from_nd = fc.FHMZ_from_fc
+    ORDER BY nd.FHMZ_from_nd ASC) WKDAs_with_nulls`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [CASE  WHEN (NOT(WKDAs_with_nulls.MMJG IS NULL)) THEN WKDAs_with_nulls.MMJG ELSE -1 END as WKDAulated_final_form]\n" +
+			" └─ SubqueryAlias(WKDAs_with_nulls)\n" +
+			"     └─ Sort(nd.FHMZ_from_nd ASC)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [nd.FHMZ_from_nd, fc.MMJG]\n" +
+			"             └─ LeftJoin(nd.FHMZ_from_nd = fc.FHMZ_from_fc)\n" +
+			"                 ├─ SubqueryAlias(nd)\n" +
+			"                 │   └─ Project\n" +
+			"                 │       ├─ columns: [ANBH.JQVV as FHMZ_from_nd]\n" +
+			"                 │       └─ Table(ANBH)\n" +
+			"                 │           └─ columns: [jqvv]\n" +
+			"                 └─ HashLookup(child: (fc.FHMZ_from_fc), lookup: (nd.FHMZ_from_nd))\n" +
+			"                     └─ CachedResults\n" +
+			"                         └─ SubqueryAlias(fc)\n" +
+			"                             └─ Project\n" +
+			"                                 ├─ columns: [FHMZ_from_fc, MAX(GRuH.MMJG) as MMJG]\n" +
+			"                                 └─ GroupBy\n" +
+			"                                     ├─ SelectedExprs(GRuH.FHMZ as FHMZ_from_fc, MAX(GRuH.MMJG))\n" +
+			"                                     ├─ Grouping(GRuH.FHMZ)\n" +
+			"                                     └─ Table(GRuH)\n" +
+			"                                         └─ columns: [fhmz mmjg]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    CASE 
+        WHEN 
+            LHTS IS NULL 
+            THEN 0
+        WHEN 
+            JQVV IN (SELECT JQVV FROM ANBH WHERE NOT JQVV IN (SELECT FHMZ FROM GRuH))
+            THEN 1
+        WHEN 
+            DuFO = 'z'
+            THEN 2
+        WHEN 
+            DuFO = 'no_fc'
+            THEN 0
+        ELSE 3
+    END AS max_conc_behaviour
+    FROM ANBH
+    ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [CASE  WHEN ANBH.LHTS IS NULL THEN 0 WHEN (ANBH.JQVV IN (Project\n" +
+			" │   ├─ columns: [ANBH.JQVV]\n" +
+			" │   └─ Filter(NOT((ANBH.JQVV IN (Table(GRuH)\n" +
+			" │       └─ columns: [fhmz]\n" +
+			" │      ))))\n" +
+			" │       └─ Table(ANBH)\n" +
+			" │  )) THEN 1 WHEN (ANBH.DuFO = 'z') THEN 2 WHEN (ANBH.DuFO = 'no_fc') THEN 0 ELSE 3 END as max_conc_behaviour]\n" +
+			" └─ IndexedTableAccess(ANBH)\n" +
+			"     ├─ index: [ANBH.JQVV]\n" +
+			"     └─ filters: [{[NULL, ∞)}]\n" +
+			"",
+	},
+	{
+		Query: `
+WITH 
+    signetJQVV_x_SXuV_parameters AS
+            (SELECT /*+ JOIN_ORDER( cla, bs, mf, sn, aac, mfxvc, vc ) */
+                cla.RMLT AS CLDu,
+                sn.JQVV AS OPHR_JQVV,
+                aac.MRCu AS MRCu,
+                mf.JQVV AS PXMP,
+                CASE 
+                    WHEN mf.CCMF IS NOT NULL THEN mf.CCMF
+                    ELSE mf.RFuY
+                END AS BGYJ,
+                CASE
+                    WHEN mf.YEHW IS NOT NULL THEN YEHW
+                    ELSE 0.5
+                END AS YEHW,
+                CASE
+                    WHEN vc.ABGZ = 'HIGH' THEN 1
+                    ELSE 0
+                END AS is_high_ABGZ
+            FROM ARFu cla
+            INNER JOIN ZYCA bs ON bs.TuFQ = cla.JQVV
+            INNER JOIN RCXK mf ON mf.MBIG = bs.JQVV
+            INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+            INNER JOIN XAWV aac ON aac.JQVV = mf.BKYY
+            INNER JOIN RHED mfxvc ON mfxvc.PXMP = mf.JQVV
+            INNER JOIN OAWM vc ON vc.JQVV = mfxvc.GuSZ
+            WHERE cla.RMLT IN ('SQ1')
+AND mf.IIOY IN ('dam', 'posd')),
+    signetJQVV_x_node_parameters AS
+            (SELECT
+                nd.ACQC AS source_ACQC,
+                sn.JQVV AS OPHR_JQVV,
+                nma.NKBA AS nma_NKBA,
+                CASE 
+                    WHEN nd.VVRE < 0.9 THEN 1
+                    ELSE 0
+                END AS is_hapPOR
+            FROM OPHR sn
+            LEFT JOIN ANBH nd ON sn.EXKR = nd.JQVV
+            LEFT JOIN ZMOM nma ON nd.XTIG = nma.JQVV
+            WHERE nma.NKBA != 'INCOMPATIBLE'
+            ORDER BY sn.JQVV ASC)
+SELECT DISTINCT
+    signet_mp.CLDu,
+    signet_mp.PXMP, 
+    signHYS.source_ACQC,
+    signet_mp.OPHR_JQVV,
+    sn_for_edge_index.edge_index,
+    signet_mp.MRCu as MRCu,
+    signet_mp.BGYJ as BGYJ,
+    signet_mp.YEHW as YEHW,
+    signet_mp.is_high_ABGZ as is_high_ABGZ,
+    signHYS.nma_NKBA as nma_NKBA,
+    signHYS.is_hapPOR as is_hapPOR
+FROM 
+    signetJQVV_x_SXuV_parameters signet_mp
+INNER JOIN signetJQVV_x_node_parameters signHYS ON signHYS.OPHR_JQVV = signet_mp.OPHR_JQVV
+INNER JOIN 
+    (SELECT 
+        OPHR.JQVV as sn_JQVV,
+        ROW_NUMBER() OVER (ORDER BY OPHR.JQVV ASC) edge_index
+    FROM OPHR) sn_for_edge_index
+ON sn_for_edge_index.sn_JQVV = signet_mp.OPHR_JQVV
+ORDER BY sn_for_edge_index.edge_index ASC`,
+		ExpectedPlan: "Sort(sn_for_edge_index.edge_index ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [signet_mp.CLDu, signet_mp.PXMP, signHYS.source_ACQC, signet_mp.OPHR_JQVV, sn_for_edge_index.edge_index, signet_mp.MRCu as MRCu, signet_mp.BGYJ as BGYJ, signet_mp.YEHW as YEHW, signet_mp.is_high_ABGZ as is_high_ABGZ, signHYS.nma_NKBA as nma_NKBA, signHYS.is_hapPOR as is_hapPOR]\n" +
+			"         └─ InnerJoin(sn_for_edge_index.sn_JQVV = signet_mp.OPHR_JQVV)\n" +
+			"             ├─ InnerJoin(signHYS.OPHR_JQVV = signet_mp.OPHR_JQVV)\n" +
+			"             │   ├─ SubqueryAlias(signet_mp)\n" +
+			"             │   │   └─ Project\n" +
+			"             │   │       ├─ columns: [cla.RMLT as CLDu, sn.JQVV as OPHR_JQVV, aac.MRCu as MRCu, mf.JQVV as PXMP, CASE  WHEN (NOT(mf.CCMF IS NULL)) THEN mf.CCMF ELSE mf.RFuY END as BGYJ, CASE  WHEN (NOT(mf.YEHW IS NULL)) THEN mf.YEHW ELSE 0.5 END as YEHW, CASE  WHEN (vc.ABGZ = 'HIGH') THEN 1 ELSE 0 END as is_high_ABGZ]\n" +
+			"             │   │       └─ IndexedJoin(bs.TuFQ = cla.JQVV)\n" +
+			"             │   │           ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"             │   │           │   └─ TableAlias(cla)\n" +
+			"             │   │           │       └─ IndexedTableAccess(ARFu)\n" +
+			"             │   │           │           ├─ index: [ARFu.RMLT]\n" +
+			"             │   │           │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"             │   │           └─ IndexedJoin(mf.MBIG = bs.JQVV)\n" +
+			"             │   │               ├─ TableAlias(bs)\n" +
+			"             │   │               │   └─ IndexedTableAccess(ZYCA)\n" +
+			"             │   │               │       └─ index: [ZYCA.TuFQ]\n" +
+			"             │   │               └─ IndexedJoin(mfxvc.PXMP = mf.JQVV)\n" +
+			"             │   │                   ├─ IndexedJoin(aac.JQVV = mf.BKYY)\n" +
+			"             │   │                   │   ├─ IndexedJoin(sn.EXKR = mf.FHMZ)\n" +
+			"             │   │                   │   │   ├─ Filter(mf.IIOY HASH IN ('dam', 'posd'))\n" +
+			"             │   │                   │   │   │   └─ TableAlias(mf)\n" +
+			"             │   │                   │   │   │       └─ IndexedTableAccess(RCXK)\n" +
+			"             │   │                   │   │   │           └─ index: [RCXK.MBIG]\n" +
+			"             │   │                   │   │   └─ TableAlias(sn)\n" +
+			"             │   │                   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"             │   │                   │   │           └─ index: [OPHR.EXKR]\n" +
+			"             │   │                   │   └─ TableAlias(aac)\n" +
+			"             │   │                   │       └─ IndexedTableAccess(XAWV)\n" +
+			"             │   │                   │           └─ index: [XAWV.JQVV]\n" +
+			"             │   │                   └─ IndexedJoin(vc.JQVV = mfxvc.GuSZ)\n" +
+			"             │   │                       ├─ TableAlias(mfxvc)\n" +
+			"             │   │                       │   └─ IndexedTableAccess(RHED)\n" +
+			"             │   │                       │       └─ index: [RHED.PXMP]\n" +
+			"             │   │                       └─ TableAlias(vc)\n" +
+			"             │   │                           └─ IndexedTableAccess(OAWM)\n" +
+			"             │   │                               └─ index: [OAWM.JQVV]\n" +
+			"             │   └─ HashLookup(child: (signHYS.OPHR_JQVV), lookup: (signet_mp.OPHR_JQVV))\n" +
+			"             │       └─ CachedResults\n" +
+			"             │           └─ SubqueryAlias(signHYS)\n" +
+			"             │               └─ Project\n" +
+			"             │                   ├─ columns: [nd.ACQC as source_ACQC, sn.JQVV as OPHR_JQVV, nma.NKBA as nma_NKBA, CASE  WHEN (nd.VVRE < 0.9) THEN 1 ELSE 0 END as is_hapPOR]\n" +
+			"             │                   └─ Sort(sn.JQVV ASC)\n" +
+			"             │                       └─ Filter(NOT((nma.NKBA = 'INCOMPATIBLE')))\n" +
+			"             │                           └─ LeftIndexedJoin(nd.XTIG = nma.JQVV)\n" +
+			"             │                               ├─ LeftIndexedJoin(sn.EXKR = nd.JQVV)\n" +
+			"             │                               │   ├─ TableAlias(sn)\n" +
+			"             │                               │   │   └─ Table(OPHR)\n" +
+			"             │                               │   └─ TableAlias(nd)\n" +
+			"             │                               │       └─ IndexedTableAccess(ANBH)\n" +
+			"             │                               │           └─ index: [ANBH.JQVV]\n" +
+			"             │                               └─ TableAlias(nma)\n" +
+			"             │                                   └─ IndexedTableAccess(ZMOM)\n" +
+			"             │                                       └─ index: [ZMOM.JQVV]\n" +
+			"             └─ HashLookup(child: (sn_for_edge_index.sn_JQVV), lookup: (signet_mp.OPHR_JQVV))\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ SubqueryAlias(sn_for_edge_index)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [sn_JQVV, row_number() over ( order by OPHR.JQVV ASC) as edge_index]\n" +
+			"                             └─ Window(OPHR.JQVV as sn_JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                                 └─ Table(OPHR)\n" +
+			"                                     └─ columns: [jqvv]\n" +
+			"",
+	},
+	{
+		Query: `
+WITH 
+    signetJQVV_x_SXuV_parameters AS
+            (SELECT
+                cla.RMLT AS CLDu,
+                sn.JQVV AS OPHR_JQVV,
+                aac.MRCu AS MRCu,
+                mf.JQVV AS PXMP,
+                CASE 
+                    WHEN mf.CCMF IS NOT NULL THEN mf.CCMF
+                    ELSE mf.RFuY
+                END AS BGYJ,
+                CASE
+                    WHEN mf.YEHW IS NOT NULL THEN YEHW
+                    ELSE 0.5
+                END AS YEHW,
+                CASE
+                    WHEN vc.ABGZ = 'HIGH' THEN 1
+                    ELSE 0
+                END AS is_high_ABGZ
+            FROM ARFu cla
+            INNER JOIN ZYCA bs ON bs.TuFQ = cla.JQVV
+            INNER JOIN RCXK mf ON mf.MBIG = bs.JQVV
+            INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+            INNER JOIN XAWV aac ON aac.JQVV = mf.BKYY
+            INNER JOIN RHED mfxvc ON mfxvc.PXMP = mf.JQVV
+            INNER JOIN OAWM vc ON vc.JQVV = mfxvc.GuSZ
+            WHERE cla.RMLT IN ('SQ1')
+AND mf.IIOY IN ('dam', 'pos')),
+    signetJQVV_x_node_parameters AS
+            (SELECT
+                nd.ACQC AS source_ACQC,
+                sn.JQVV AS OPHR_JQVV,
+                nma.NKBA AS nma_NKBA,
+                CASE 
+                    WHEN nd.VVRE < 0.9 THEN 1
+                    ELSE 0
+                END AS is_hapPOR
+            FROM OPHR sn
+            LEFT JOIN ANBH nd ON sn.EXKR = nd.JQVV
+            LEFT JOIN ZMOM nma ON nd.XTIG = nma.JQVV
+            WHERE nma.NKBA != 'INCOMPATIBLE'
+            ORDER BY sn.JQVV ASC)
+SELECT DISTINCT
+    signet_mp.CLDu,
+    signet_mp.PXMP, 
+    signHYS.source_ACQC,
+    signet_mp.OPHR_JQVV,
+    sn_for_edge_index.edge_index,
+    signet_mp.MRCu as MRCu,
+    signet_mp.BGYJ as BGYJ,
+    signet_mp.YEHW as YEHW,
+    signet_mp.is_high_ABGZ as is_high_ABGZ,
+    signHYS.nma_NKBA as nma_NKBA,
+    signHYS.is_hapPOR as is_hapPOR
+FROM 
+    signetJQVV_x_SXuV_parameters signet_mp
+INNER JOIN signetJQVV_x_node_parameters signHYS ON signHYS.OPHR_JQVV = signet_mp.OPHR_JQVV
+INNER JOIN 
+    (SELECT 
+        OPHR.JQVV as sn_JQVV,
+        ROW_NUMBER() OVER (ORDER BY OPHR.JQVV ASC) edge_index
+    FROM OPHR) sn_for_edge_index
+ON sn_for_edge_index.sn_JQVV = signet_mp.OPHR_JQVV
+ORDER BY sn_for_edge_index.edge_index ASC`,
+		ExpectedPlan: "Sort(sn_for_edge_index.edge_index ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [signet_mp.CLDu, signet_mp.PXMP, signHYS.source_ACQC, signet_mp.OPHR_JQVV, sn_for_edge_index.edge_index, signet_mp.MRCu as MRCu, signet_mp.BGYJ as BGYJ, signet_mp.YEHW as YEHW, signet_mp.is_high_ABGZ as is_high_ABGZ, signHYS.nma_NKBA as nma_NKBA, signHYS.is_hapPOR as is_hapPOR]\n" +
+			"         └─ InnerJoin(sn_for_edge_index.sn_JQVV = signet_mp.OPHR_JQVV)\n" +
+			"             ├─ InnerJoin(signHYS.OPHR_JQVV = signet_mp.OPHR_JQVV)\n" +
+			"             │   ├─ SubqueryAlias(signet_mp)\n" +
+			"             │   │   └─ Project\n" +
+			"             │   │       ├─ columns: [cla.RMLT as CLDu, sn.JQVV as OPHR_JQVV, aac.MRCu as MRCu, mf.JQVV as PXMP, CASE  WHEN (NOT(mf.CCMF IS NULL)) THEN mf.CCMF ELSE mf.RFuY END as BGYJ, CASE  WHEN (NOT(mf.YEHW IS NULL)) THEN mf.YEHW ELSE 0.5 END as YEHW, CASE  WHEN (vc.ABGZ = 'HIGH') THEN 1 ELSE 0 END as is_high_ABGZ]\n" +
+			"             │   │       └─ IndexedJoin(bs.TuFQ = cla.JQVV)\n" +
+			"             │   │           ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"             │   │           │   └─ TableAlias(cla)\n" +
+			"             │   │           │       └─ IndexedTableAccess(ARFu)\n" +
+			"             │   │           │           ├─ index: [ARFu.RMLT]\n" +
+			"             │   │           │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"             │   │           └─ IndexedJoin(mf.MBIG = bs.JQVV)\n" +
+			"             │   │               ├─ TableAlias(bs)\n" +
+			"             │   │               │   └─ IndexedTableAccess(ZYCA)\n" +
+			"             │   │               │       └─ index: [ZYCA.TuFQ]\n" +
+			"             │   │               └─ IndexedJoin(mfxvc.PXMP = mf.JQVV)\n" +
+			"             │   │                   ├─ IndexedJoin(aac.JQVV = mf.BKYY)\n" +
+			"             │   │                   │   ├─ IndexedJoin(sn.EXKR = mf.FHMZ)\n" +
+			"             │   │                   │   │   ├─ Filter(mf.IIOY HASH IN ('dam', 'pos'))\n" +
+			"             │   │                   │   │   │   └─ TableAlias(mf)\n" +
+			"             │   │                   │   │   │       └─ IndexedTableAccess(RCXK)\n" +
+			"             │   │                   │   │   │           └─ index: [RCXK.MBIG]\n" +
+			"             │   │                   │   │   └─ TableAlias(sn)\n" +
+			"             │   │                   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"             │   │                   │   │           └─ index: [OPHR.EXKR]\n" +
+			"             │   │                   │   └─ TableAlias(aac)\n" +
+			"             │   │                   │       └─ IndexedTableAccess(XAWV)\n" +
+			"             │   │                   │           └─ index: [XAWV.JQVV]\n" +
+			"             │   │                   └─ IndexedJoin(vc.JQVV = mfxvc.GuSZ)\n" +
+			"             │   │                       ├─ TableAlias(mfxvc)\n" +
+			"             │   │                       │   └─ IndexedTableAccess(RHED)\n" +
+			"             │   │                       │       └─ index: [RHED.PXMP]\n" +
+			"             │   │                       └─ TableAlias(vc)\n" +
+			"             │   │                           └─ IndexedTableAccess(OAWM)\n" +
+			"             │   │                               └─ index: [OAWM.JQVV]\n" +
+			"             │   └─ HashLookup(child: (signHYS.OPHR_JQVV), lookup: (signet_mp.OPHR_JQVV))\n" +
+			"             │       └─ CachedResults\n" +
+			"             │           └─ SubqueryAlias(signHYS)\n" +
+			"             │               └─ Project\n" +
+			"             │                   ├─ columns: [nd.ACQC as source_ACQC, sn.JQVV as OPHR_JQVV, nma.NKBA as nma_NKBA, CASE  WHEN (nd.VVRE < 0.9) THEN 1 ELSE 0 END as is_hapPOR]\n" +
+			"             │                   └─ Sort(sn.JQVV ASC)\n" +
+			"             │                       └─ Filter(NOT((nma.NKBA = 'INCOMPATIBLE')))\n" +
+			"             │                           └─ LeftIndexedJoin(nd.XTIG = nma.JQVV)\n" +
+			"             │                               ├─ LeftIndexedJoin(sn.EXKR = nd.JQVV)\n" +
+			"             │                               │   ├─ TableAlias(sn)\n" +
+			"             │                               │   │   └─ Table(OPHR)\n" +
+			"             │                               │   └─ TableAlias(nd)\n" +
+			"             │                               │       └─ IndexedTableAccess(ANBH)\n" +
+			"             │                               │           └─ index: [ANBH.JQVV]\n" +
+			"             │                               └─ TableAlias(nma)\n" +
+			"             │                                   └─ IndexedTableAccess(ZMOM)\n" +
+			"             │                                       └─ index: [ZMOM.JQVV]\n" +
+			"             └─ HashLookup(child: (sn_for_edge_index.sn_JQVV), lookup: (signet_mp.OPHR_JQVV))\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ SubqueryAlias(sn_for_edge_index)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [sn_JQVV, row_number() over ( order by OPHR.JQVV ASC) as edge_index]\n" +
+			"                             └─ Window(OPHR.JQVV as sn_JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                                 └─ Table(OPHR)\n" +
+			"                                     └─ columns: [jqvv]\n" +
+			"",
+	},
+	{
+		Query: `
+WITH
+    edge_indices AS (
+        SELECT JQVV, ROW_NUMBER() OVER (ORDER BY JQVV ASC) - 1 AS edge_index FROM OPHR),
+    GHPDF AS (
+        SELECT
+        ism.MXJT AS actual_MXJT,
+        LDP_node_nd.JQVV AS original_MXJT,
+        LDP_node_nd.ACQC AS t_ANBH_ACQC,
+        ism.BKYY AS BKYY,
+        ismm.LTZA,
+        ismm.XRuX,
+        ismm.AuYL,
+        CASE 
+            WHEN ismm.XEZO IN ('2226', '0118') THEN 0
+            WHEN ismm.XEZO IN ('0382', '1131', '1132', '0119', '1133', '1130') THEN 1
+            WHEN ismm.XEZO IN ('0573', '1128', '1129') THEN 2
+            WHEN ismm.XEZO IN ('2227') THEN 3
+        END AS PLDAL,
+        ismm.XEZO AS XEZO,
+        sn_as_source.JQVV AS applicable_edge_JQVV,
+        sn_as_target.JQVV AS applicable_edge_JQVV
+        FROM
+        QKKD ism
+        INNER JOIN LHQS ismm ON ismm.JQVV = ism.IEKV
+        LEFT JOIN
+        FZDJ coism
+        ON
+        coism.JQVV = ism.QNuY
+        LEFT JOIN
+        ANBH LDP_node_nd
+        ON
+        LDP_node_nd.VYLM = coism.YBTP AND LDP_node_nd.JQVV <> ism.MXJT
+        LEFT JOIN
+        OPHR sn_as_source
+        ON
+            sn_as_source.EXKR = ism.MXJT
+        AND
+            sn_as_source.XAOO = ism.XuWE
+        LEFT JOIN
+        OPHR sn_as_target
+        ON
+            sn_as_target.EXKR = ism.XuWE
+        AND
+            sn_as_target.XAOO = ism.MXJT
+        WHERE
+            sn_as_source.JQVV IS NOT NULL
+        OR
+            sn_as_target.JQVV IS NOT NULL
+),
+existing_edge_filtered_ism AS (
+    SELECT
+        actual_MXJT,
+        original_MXJT,
+        t_ANBH_ACQC,
+        BKYY,
+        LTZA,
+        XRuX,
+        AuYL,
+        PLDAL,
+        XEZO,
+        applicable_edge_JQVV,
+        applicable_edge_JQVV
+    FROM
+        GHPDF
+    WHERE
+            (applicable_edge_JQVV IS NOT NULL AND applicable_edge_JQVV IS NULL)
+        OR
+            (applicable_edge_JQVV IS NULL AND applicable_edge_JQVV IS NOT NULL)
+    UNION
+    SELECT
+        actual_MXJT,
+        original_MXJT,
+        t_ANBH_ACQC,
+        BKYY,
+        LTZA,
+        XRuX,
+        AuYL,
+        PLDAL,
+        XEZO,
+        applicable_edge_JQVV,
+        NULL AS applicable_edge_JQVV
+    FROM
+        GHPDF
+    WHERE
+        (applicable_edge_JQVV IS NOT NULL AND applicable_edge_JQVV IS NOT NULL)
+    UNION
+    SELECT
+        actual_MXJT,
+        original_MXJT,
+        t_ANBH_ACQC,
+        BKYY,
+        LTZA,
+        XRuX,
+        AuYL,
+        PLDAL,
+        XEZO,
+        NULL AS applicable_edge_JQVV,
+        applicable_edge_JQVV
+    FROM
+        GHPDF
+    WHERE
+        (applicable_edge_JQVV IS NOT NULL AND applicable_edge_JQVV IS NOT NULL)
+)
+SELECT
+mf.RMLT AS CLDu,
+
+CASE
+    WHEN eefism.applicable_edge_JQVV IS NOT NULL
+    THEN (SELECT ei.edge_index FROM edge_indices ei WHERE ei.JQVV = eefism.applicable_edge_JQVV)
+    WHEN eefism.applicable_edge_JQVV IS NOT NULL
+    THEN (SELECT ei.edge_index FROM edge_indices ei WHERE ei.JQVV = eefism.applicable_edge_JQVV)
+END AS edge_index,
+
+LTZA AS LTZA,
+XRuX AS XRuX,
+PLDAL AS PLDAL,
+XEZO AS XEZO,
+aac.MRCu AS mutant_MRCu,
+t_ANBH_ACQC
+
+FROM
+existing_edge_filtered_ism eefism
+LEFT JOIN
+OPHR sn
+ON
+(
+    applicable_edge_JQVV IS NOT NULL
+    AND
+    sn.JQVV = eefism.applicable_edge_JQVV
+    AND
+    eefism.original_MXJT IS NULL
+)
+OR
+(
+    applicable_edge_JQVV IS NOT NULL
+    AND
+    eefism.original_MXJT IS NOT NULL
+    AND
+    sn.JQVV IN (SELECT inIRKF_sn_1.JQVV FROM OPHR inIRKF_sn_1 WHERE EXKR = eefism.original_MXJT)
+)
+OR
+(
+    applicable_edge_JQVV IS NOT NULL
+    AND
+    eefism.original_MXJT IS NULL
+    AND
+    sn.JQVV IN (SELECT inIRKF_sn_2.JQVV FROM OPHR inIRKF_sn_2 WHERE EXKR = eefism.actual_MXJT)
+)
+OR
+(
+    applicable_edge_JQVV IS NOT NULL
+    AND
+    eefism.original_MXJT IS NOT NULL
+    AND
+    sn.JQVV IN (SELECT inIRKF_sn_2.JQVV FROM OPHR inIRKF_sn_2 WHERE EXKR = eefism.original_MXJT)
+)
+INNER JOIN
+(
+    SELECT RMLT, mf.FHMZ, mf.BKYY
+    FROM ARFu cla
+    INNER JOIN ZYCA bs ON cla.JQVV = bs.TuFQ
+    INNER JOIN RCXK mf ON bs.JQVV = mf.MBIG
+    WHERE cla.RMLT IN ('SQ1')
+) mf
+ON mf.FHMZ = sn.EXKR AND mf.BKYY = eefism.BKYY
+INNER JOIN
+    (SELECT * FROM XAWV) aac
+ON aac.JQVV = eefism.BKYY`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mf.RMLT as CLDu, CASE  WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			" │   ├─ columns: [ei.edge_index]\n" +
+			" │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			" │       └─ SubqueryAlias(ei)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			" │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			" │                   └─ Table(OPHR)\n" +
+			" │                       └─ columns: [jqvv]\n" +
+			" │  ) WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			" │   ├─ columns: [ei.edge_index]\n" +
+			" │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			" │       └─ SubqueryAlias(ei)\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			" │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			" │                   └─ Table(OPHR)\n" +
+			" │                       └─ columns: [jqvv]\n" +
+			" │  ) END as edge_index, eefism.LTZA as LTZA, eefism.XRuX as XRuX, eefism.PLDAL as PLDAL, eefism.XEZO as XEZO, aac.MRCu as mutant_MRCu, eefism.t_ANBH_ACQC]\n" +
+			" └─ InnerJoin(aac.JQVV = eefism.BKYY)\n" +
+			"     ├─ InnerJoin((mf.FHMZ = sn.EXKR) AND (mf.BKYY = eefism.BKYY))\n" +
+			"     │   ├─ LeftJoin((((((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV = eefism.applicable_edge_JQVV)) AND eefism.original_MXJT IS NULL) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (NOT(eefism.original_MXJT IS NULL))) AND (sn.JQVV IN (Project\n" +
+			"     │   │   ├─ columns: [inIRKF_sn_1.JQVV]\n" +
+			"     │   │   └─ Filter(inIRKF_sn_1.EXKR = eefism.original_MXJT)\n" +
+			"     │   │       └─ TableAlias(inIRKF_sn_1)\n" +
+			"     │   │           └─ Table(OPHR)\n" +
+			"     │   │  )))) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND eefism.original_MXJT IS NULL) AND (sn.JQVV IN (Project\n" +
+			"     │   │   ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"     │   │   └─ Filter(inIRKF_sn_2.EXKR = eefism.actual_MXJT)\n" +
+			"     │   │       └─ TableAlias(inIRKF_sn_2)\n" +
+			"     │   │           └─ Table(OPHR)\n" +
+			"     │   │  )))) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (NOT(eefism.original_MXJT IS NULL))) AND (sn.JQVV IN (Project\n" +
+			"     │   │   ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"     │   │   └─ Filter(inIRKF_sn_2.EXKR = eefism.original_MXJT)\n" +
+			"     │   │       └─ TableAlias(inIRKF_sn_2)\n" +
+			"     │   │           └─ Table(OPHR)\n" +
+			"     │   │  ))))\n" +
+			"     │   │   ├─ SubqueryAlias(eefism)\n" +
+			"     │   │   │   └─ Union distinct\n" +
+			"     │   │   │       ├─ Project\n" +
+			"     │   │   │       │   ├─ columns: [GHPDF.actual_MXJT, GHPDF.original_MXJT, GHPDF.t_ANBH_ACQC, GHPDF.BKYY, GHPDF.LTZA, GHPDF.XRuX, GHPDF.AuYL, GHPDF.PLDAL, GHPDF.XEZO, convert(GHPDF.applicable_edge_JQVV, char) as applicable_edge_JQVV, applicable_edge_JQVV as applicable_edge_JQVV]\n" +
+			"     │   │   │       │   └─ Union distinct\n" +
+			"     │   │   │       │       ├─ Project\n" +
+			"     │   │   │       │       │   ├─ columns: [GHPDF.actual_MXJT, GHPDF.original_MXJT, GHPDF.t_ANBH_ACQC, GHPDF.BKYY, GHPDF.LTZA, GHPDF.XRuX, GHPDF.AuYL, GHPDF.PLDAL, GHPDF.XEZO, GHPDF.applicable_edge_JQVV, convert(GHPDF.applicable_edge_JQVV, char) as applicable_edge_JQVV]\n" +
+			"     │   │   │       │       │   └─ SubqueryAlias(GHPDF)\n" +
+			"     │   │   │       │       │       └─ Filter(((NOT(applicable_edge_JQVV IS NULL)) AND applicable_edge_JQVV IS NULL) OR (applicable_edge_JQVV IS NULL AND (NOT(applicable_edge_JQVV IS NULL))))\n" +
+			"     │   │   │       │       │           └─ Project\n" +
+			"     │   │   │       │       │               ├─ columns: [ism.MXJT as actual_MXJT, LDP_node_nd.JQVV as original_MXJT, LDP_node_nd.ACQC as t_ANBH_ACQC, ism.BKYY as BKYY, ismm.LTZA, ismm.XRuX, ismm.AuYL, CASE  WHEN (ismm.XEZO IN ('2226', '0118')) THEN 0 WHEN (ismm.XEZO IN ('0382', '1131', '1132', '0119', '1133', '1130')) THEN 1 WHEN (ismm.XEZO IN ('0573', '1128', '1129')) THEN 2 WHEN (ismm.XEZO IN ('2227')) THEN 3 END as PLDAL, ismm.XEZO as XEZO, sn_as_source.JQVV as applicable_edge_JQVV, sn_as_target.JQVV as applicable_edge_JQVV]\n" +
+			"     │   │   │       │       │               └─ Filter((NOT(sn_as_source.JQVV IS NULL)) OR (NOT(sn_as_target.JQVV IS NULL)))\n" +
+			"     │   │   │       │       │                   └─ LeftIndexedJoin((sn_as_target.EXKR = ism.XuWE) AND (sn_as_target.XAOO = ism.MXJT))\n" +
+			"     │   │   │       │       │                       ├─ LeftIndexedJoin((sn_as_source.EXKR = ism.MXJT) AND (sn_as_source.XAOO = ism.XuWE))\n" +
+			"     │   │   │       │       │                       │   ├─ LeftIndexedJoin((LDP_node_nd.VYLM = coism.YBTP) AND (NOT((LDP_node_nd.JQVV = ism.MXJT))))\n" +
+			"     │   │   │       │       │                       │   │   ├─ LeftIndexedJoin(coism.JQVV = ism.QNuY)\n" +
+			"     │   │   │       │       │                       │   │   │   ├─ IndexedJoin(ismm.JQVV = ism.IEKV)\n" +
+			"     │   │   │       │       │                       │   │   │   │   ├─ TableAlias(ism)\n" +
+			"     │   │   │       │       │                       │   │   │   │   │   └─ Table(QKKD)\n" +
+			"     │   │   │       │       │                       │   │   │   │   └─ TableAlias(ismm)\n" +
+			"     │   │   │       │       │                       │   │   │   │       └─ IndexedTableAccess(LHQS)\n" +
+			"     │   │   │       │       │                       │   │   │   │           └─ index: [LHQS.JQVV]\n" +
+			"     │   │   │       │       │                       │   │   │   └─ TableAlias(coism)\n" +
+			"     │   │   │       │       │                       │   │   │       └─ IndexedTableAccess(FZDJ)\n" +
+			"     │   │   │       │       │                       │   │   │           └─ index: [FZDJ.JQVV]\n" +
+			"     │   │   │       │       │                       │   │   └─ TableAlias(LDP_node_nd)\n" +
+			"     │   │   │       │       │                       │   │       └─ Table(ANBH)\n" +
+			"     │   │   │       │       │                       │   └─ TableAlias(sn_as_source)\n" +
+			"     │   │   │       │       │                       │       └─ IndexedTableAccess(OPHR)\n" +
+			"     │   │   │       │       │                       │           └─ index: [OPHR.EXKR]\n" +
+			"     │   │   │       │       │                       └─ TableAlias(sn_as_target)\n" +
+			"     │   │   │       │       │                           └─ IndexedTableAccess(OPHR)\n" +
+			"     │   │   │       │       │                               └─ index: [OPHR.EXKR]\n" +
+			"     │   │   │       │       └─ Project\n" +
+			"     │   │   │       │           ├─ columns: [GHPDF.actual_MXJT, GHPDF.original_MXJT, GHPDF.t_ANBH_ACQC, GHPDF.BKYY, GHPDF.LTZA, GHPDF.XRuX, GHPDF.AuYL, GHPDF.PLDAL, GHPDF.XEZO, GHPDF.applicable_edge_JQVV, convert(applicable_edge_JQVV, char) as applicable_edge_JQVV]\n" +
+			"     │   │   │       │           └─ Project\n" +
+			"     │   │   │       │               ├─ columns: [GHPDF.actual_MXJT, GHPDF.original_MXJT, GHPDF.t_ANBH_ACQC, GHPDF.BKYY, GHPDF.LTZA, GHPDF.XRuX, GHPDF.AuYL, GHPDF.PLDAL, GHPDF.XEZO, GHPDF.applicable_edge_JQVV, NULL as applicable_edge_JQVV]\n" +
+			"     │   │   │       │               └─ SubqueryAlias(GHPDF)\n" +
+			"     │   │   │       │                   └─ Filter((NOT(applicable_edge_JQVV IS NULL)) AND (NOT(applicable_edge_JQVV IS NULL)))\n" +
+			"     │   │   │       │                       └─ Project\n" +
+			"     │   │   │       │                           ├─ columns: [ism.MXJT as actual_MXJT, LDP_node_nd.JQVV as original_MXJT, LDP_node_nd.ACQC as t_ANBH_ACQC, ism.BKYY as BKYY, ismm.LTZA, ismm.XRuX, ismm.AuYL, CASE  WHEN (ismm.XEZO IN ('2226', '0118')) THEN 0 WHEN (ismm.XEZO IN ('0382', '1131', '1132', '0119', '1133', '1130')) THEN 1 WHEN (ismm.XEZO IN ('0573', '1128', '1129')) THEN 2 WHEN (ismm.XEZO IN ('2227')) THEN 3 END as PLDAL, ismm.XEZO as XEZO, sn_as_source.JQVV as applicable_edge_JQVV, sn_as_target.JQVV as applicable_edge_JQVV]\n" +
+			"     │   │   │       │                           └─ Filter((NOT(sn_as_source.JQVV IS NULL)) OR (NOT(sn_as_target.JQVV IS NULL)))\n" +
+			"     │   │   │       │                               └─ LeftIndexedJoin((sn_as_target.EXKR = ism.XuWE) AND (sn_as_target.XAOO = ism.MXJT))\n" +
+			"     │   │   │       │                                   ├─ LeftIndexedJoin((sn_as_source.EXKR = ism.MXJT) AND (sn_as_source.XAOO = ism.XuWE))\n" +
+			"     │   │   │       │                                   │   ├─ LeftIndexedJoin((LDP_node_nd.VYLM = coism.YBTP) AND (NOT((LDP_node_nd.JQVV = ism.MXJT))))\n" +
+			"     │   │   │       │                                   │   │   ├─ LeftIndexedJoin(coism.JQVV = ism.QNuY)\n" +
+			"     │   │   │       │                                   │   │   │   ├─ IndexedJoin(ismm.JQVV = ism.IEKV)\n" +
+			"     │   │   │       │                                   │   │   │   │   ├─ TableAlias(ism)\n" +
+			"     │   │   │       │                                   │   │   │   │   │   └─ Table(QKKD)\n" +
+			"     │   │   │       │                                   │   │   │   │   └─ TableAlias(ismm)\n" +
+			"     │   │   │       │                                   │   │   │   │       └─ IndexedTableAccess(LHQS)\n" +
+			"     │   │   │       │                                   │   │   │   │           └─ index: [LHQS.JQVV]\n" +
+			"     │   │   │       │                                   │   │   │   └─ TableAlias(coism)\n" +
+			"     │   │   │       │                                   │   │   │       └─ IndexedTableAccess(FZDJ)\n" +
+			"     │   │   │       │                                   │   │   │           └─ index: [FZDJ.JQVV]\n" +
+			"     │   │   │       │                                   │   │   └─ TableAlias(LDP_node_nd)\n" +
+			"     │   │   │       │                                   │   │       └─ Table(ANBH)\n" +
+			"     │   │   │       │                                   │   └─ TableAlias(sn_as_source)\n" +
+			"     │   │   │       │                                   │       └─ IndexedTableAccess(OPHR)\n" +
+			"     │   │   │       │                                   │           └─ index: [OPHR.EXKR]\n" +
+			"     │   │   │       │                                   └─ TableAlias(sn_as_target)\n" +
+			"     │   │   │       │                                       └─ IndexedTableAccess(OPHR)\n" +
+			"     │   │   │       │                                           └─ index: [OPHR.EXKR]\n" +
+			"     │   │   │       └─ Project\n" +
+			"     │   │   │           ├─ columns: [GHPDF.actual_MXJT, GHPDF.original_MXJT, GHPDF.t_ANBH_ACQC, GHPDF.BKYY, GHPDF.LTZA, GHPDF.XRuX, GHPDF.AuYL, GHPDF.PLDAL, GHPDF.XEZO, convert(applicable_edge_JQVV, char) as applicable_edge_JQVV, convert(GHPDF.applicable_edge_JQVV, char) as applicable_edge_JQVV]\n" +
+			"     │   │   │           └─ Project\n" +
+			"     │   │   │               ├─ columns: [GHPDF.actual_MXJT, GHPDF.original_MXJT, GHPDF.t_ANBH_ACQC, GHPDF.BKYY, GHPDF.LTZA, GHPDF.XRuX, GHPDF.AuYL, GHPDF.PLDAL, GHPDF.XEZO, NULL as applicable_edge_JQVV, GHPDF.applicable_edge_JQVV]\n" +
+			"     │   │   │               └─ SubqueryAlias(GHPDF)\n" +
+			"     │   │   │                   └─ Filter((NOT(applicable_edge_JQVV IS NULL)) AND (NOT(applicable_edge_JQVV IS NULL)))\n" +
+			"     │   │   │                       └─ Project\n" +
+			"     │   │   │                           ├─ columns: [ism.MXJT as actual_MXJT, LDP_node_nd.JQVV as original_MXJT, LDP_node_nd.ACQC as t_ANBH_ACQC, ism.BKYY as BKYY, ismm.LTZA, ismm.XRuX, ismm.AuYL, CASE  WHEN (ismm.XEZO IN ('2226', '0118')) THEN 0 WHEN (ismm.XEZO IN ('0382', '1131', '1132', '0119', '1133', '1130')) THEN 1 WHEN (ismm.XEZO IN ('0573', '1128', '1129')) THEN 2 WHEN (ismm.XEZO IN ('2227')) THEN 3 END as PLDAL, ismm.XEZO as XEZO, sn_as_source.JQVV as applicable_edge_JQVV, sn_as_target.JQVV as applicable_edge_JQVV]\n" +
+			"     │   │   │                           └─ Filter((NOT(sn_as_source.JQVV IS NULL)) OR (NOT(sn_as_target.JQVV IS NULL)))\n" +
+			"     │   │   │                               └─ LeftIndexedJoin((sn_as_target.EXKR = ism.XuWE) AND (sn_as_target.XAOO = ism.MXJT))\n" +
+			"     │   │   │                                   ├─ LeftIndexedJoin((sn_as_source.EXKR = ism.MXJT) AND (sn_as_source.XAOO = ism.XuWE))\n" +
+			"     │   │   │                                   │   ├─ LeftIndexedJoin((LDP_node_nd.VYLM = coism.YBTP) AND (NOT((LDP_node_nd.JQVV = ism.MXJT))))\n" +
+			"     │   │   │                                   │   │   ├─ LeftIndexedJoin(coism.JQVV = ism.QNuY)\n" +
+			"     │   │   │                                   │   │   │   ├─ IndexedJoin(ismm.JQVV = ism.IEKV)\n" +
+			"     │   │   │                                   │   │   │   │   ├─ TableAlias(ism)\n" +
+			"     │   │   │                                   │   │   │   │   │   └─ Table(QKKD)\n" +
+			"     │   │   │                                   │   │   │   │   └─ TableAlias(ismm)\n" +
+			"     │   │   │                                   │   │   │   │       └─ IndexedTableAccess(LHQS)\n" +
+			"     │   │   │                                   │   │   │   │           └─ index: [LHQS.JQVV]\n" +
+			"     │   │   │                                   │   │   │   └─ TableAlias(coism)\n" +
+			"     │   │   │                                   │   │   │       └─ IndexedTableAccess(FZDJ)\n" +
+			"     │   │   │                                   │   │   │           └─ index: [FZDJ.JQVV]\n" +
+			"     │   │   │                                   │   │   └─ TableAlias(LDP_node_nd)\n" +
+			"     │   │   │                                   │   │       └─ Table(ANBH)\n" +
+			"     │   │   │                                   │   └─ TableAlias(sn_as_source)\n" +
+			"     │   │   │                                   │       └─ IndexedTableAccess(OPHR)\n" +
+			"     │   │   │                                   │           └─ index: [OPHR.EXKR]\n" +
+			"     │   │   │                                   └─ TableAlias(sn_as_target)\n" +
+			"     │   │   │                                       └─ IndexedTableAccess(OPHR)\n" +
+			"     │   │   │                                           └─ index: [OPHR.EXKR]\n" +
+			"     │   │   └─ TableAlias(sn)\n" +
+			"     │   │       └─ Table(OPHR)\n" +
+			"     │   └─ HashLookup(child: (mf.FHMZ, mf.BKYY), lookup: (sn.EXKR, eefism.BKYY))\n" +
+			"     │       └─ CachedResults\n" +
+			"     │           └─ SubqueryAlias(mf)\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [cla.RMLT, mf.FHMZ, mf.BKYY]\n" +
+			"     │                   └─ IndexedJoin(cla.JQVV = bs.TuFQ)\n" +
+			"     │                       ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"     │                       │   └─ TableAlias(cla)\n" +
+			"     │                       │       └─ IndexedTableAccess(ARFu)\n" +
+			"     │                       │           ├─ index: [ARFu.RMLT]\n" +
+			"     │                       │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"     │                       └─ IndexedJoin(bs.JQVV = mf.MBIG)\n" +
+			"     │                           ├─ TableAlias(bs)\n" +
+			"     │                           │   └─ IndexedTableAccess(ZYCA)\n" +
+			"     │                           │       └─ index: [ZYCA.TuFQ]\n" +
+			"     │                           └─ TableAlias(mf)\n" +
+			"     │                               └─ IndexedTableAccess(RCXK)\n" +
+			"     │                                   └─ index: [RCXK.MBIG]\n" +
+			"     └─ HashLookup(child: (aac.JQVV), lookup: (eefism.BKYY))\n" +
+			"         └─ CachedResults\n" +
+			"             └─ SubqueryAlias(aac)\n" +
+			"                 └─ Table(XAWV)\n" +
+			"                     └─ columns: [jqvv mrcu bfuk]\n" +
+			"",
+	},
+	{
+		Query: `
+WITH
+    edge_indices AS (
+        SELECT JQVV, ROW_NUMBER() OVER (ORDER BY JQVV ASC) - 1 AS edge_index FROM OPHR
+    ),
+    existing_edge_filtered_ism AS (
+        SELECT DISTINCT
+        ism.MXJT AS actual_MXJT,
+        LDP_node_nd.JQVV AS original_MXJT,
+        ism.BKYY AS BKYY,
+        ismm.YHEY AS YHEY,
+        ismm.AuYL AS AuYL,
+        sn_as_source.JQVV AS applicable_edge_JQVV,
+        sn_as_target.JQVV AS applicable_edge_JQVV
+        FROM
+        QKKD ism
+        INNER JOIN LHQS ismm ON ismm.JQVV = ism.IEKV
+        LEFT JOIN
+        FZDJ coism
+        ON
+        coism.JQVV = ism.QNuY
+        LEFT JOIN
+        ANBH LDP_node_nd
+        ON
+        LDP_node_nd.VYLM = coism.YBTP AND LDP_node_nd.JQVV <> ism.MXJT
+        LEFT JOIN
+        OPHR sn_as_source
+        ON
+            sn_as_source.EXKR = ism.MXJT
+        AND
+            sn_as_source.XAOO = ism.XuWE
+        LEFT JOIN
+        OPHR sn_as_target
+        ON
+            sn_as_target.EXKR = ism.XuWE
+        AND
+            sn_as_target.XAOO = ism.MXJT
+        WHERE
+            ismm.YHEY IS NOT NULL 
+        AND
+            (sn_as_source.JQVV IS NOT NULL
+        OR
+            sn_as_target.JQVV IS NOT NULL)
+    ),
+
+    CLDu_data AS (
+        SELECT /*+ JOIN_ORDER(cla, bs, mf, sn) */
+            cla.RMLT AS CLDu,
+            sn.JQVV AS OPHR_JQVV,
+            mf.BKYY AS BKYY
+        FROM RCXK mf
+        INNER JOIN ZYCA bs ON bs.JQVV = mf.MBIG
+        INNER JOIN ARFu cla ON cla.JQVV = bs.TuFQ
+        INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+        WHERE cla.RMLT IN ('SQ1')
+    ),
+    summed_edge_spec_SXuV_info AS (
+        SELECT
+            CASE
+                    WHEN eefism.applicable_edge_JQVV IS NOT NULL
+                        THEN (SELECT ei.edge_index FROM edge_indices ei WHERE ei.JQVV = eefism.applicable_edge_JQVV)
+                    WHEN eefism.applicable_edge_JQVV IS NOT NULL
+                        THEN (SELECT ei.edge_index FROM edge_indices ei WHERE ei.JQVV = eefism.applicable_edge_JQVV)
+            END AS edge_index,
+
+            aac.MRCu AS MRCu,
+            aac.JQVV AS aac_JQVV,
+            sn.JQVV AS sn_JQVV,
+            eefism.YHEY AS YHEY
+            FROM 
+                existing_edge_filtered_ism eefism
+            INNER JOIN XAWV aac ON aac.JQVV = eefism.BKYY
+            LEFT JOIN
+            OPHR sn
+            ON
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV = eefism.applicable_edge_JQVV
+                AND
+                eefism.original_MXJT IS NULL
+            )
+            OR 
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV IN (SELECT inIRKF_sn_1.JQVV FROM OPHR inIRKF_sn_1 WHERE EXKR = eefism.original_MXJT)
+                AND
+                eefism.original_MXJT IS NOT NULL
+            )
+            OR 
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV IN (SELECT inIRKF_sn_2.JQVV FROM OPHR inIRKF_sn_2 WHERE EXKR = eefism.actual_MXJT)
+                AND
+                eefism.original_MXJT IS NULL
+            )
+            OR
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV IN (SELECT inIRKF_sn_2.JQVV FROM OPHR inIRKF_sn_2 WHERE EXKR = eefism.original_MXJT)
+                AND
+                eefism.original_MXJT IS NOT NULL
+            )
+    ),
+
+    full_set AS (
+        SELECT
+            CLDu_list.CLDu AS CLDu,
+            plistO.edge_index AS edge_index,
+            plistO.MRCu AS MRCu,
+            plistO.YHEY AS YHEY
+        FROM
+            (SELECT DISTINCT edge_index, MRCu, YHEY FROM summed_edge_spec_SXuV_info) plistO
+        CROSS JOIN
+            (SELECT DISTINCT CLDu FROM CLDu_data) CLDu_list
+    ),
+
+    skip_set AS (
+        SELECT DISTINCT
+            cld.CLDu AS CLDu,
+            sesmi.edge_index AS edge_index,
+            sesmi.MRCu AS MRCu,
+            sesmi.YHEY AS YHEY
+        FROM
+            CLDu_data cld
+        LEFT JOIN
+            summed_edge_spec_SXuV_info sesmi
+        ON sesmi.sn_JQVV = cld.OPHR_JQVV AND sesmi.aac_JQVV = cld.BKYY
+        WHERE
+                sesmi.edge_index IS NOT NULL
+    )
+SELECT
+    fs.CLDu AS CLDu,
+    fs.edge_index AS edge_index,
+    fs.YHEY AS YHEY,
+    fs.MRCu AS mutant_MRCu
+FROM
+    full_set fs
+WHERE
+    (fs.CLDu, fs.edge_index, fs.MRCu, fs.YHEY)
+    NOT IN (
+        SELECT
+            skip_set.CLDu,
+            skip_set.edge_index,
+            skip_set.MRCu,
+            skip_set.YHEY
+        FROM
+            skip_set
+    )`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [fs.CLDu as CLDu, fs.edge_index as edge_index, fs.YHEY as YHEY, fs.MRCu as mutant_MRCu]\n" +
+			" └─ Filter(NOT(((fs.CLDu, fs.edge_index, fs.MRCu, fs.YHEY) IN (SubqueryAlias(skip_set)\n" +
+			"     └─ Distinct\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [cld.CLDu as CLDu, sesmi.edge_index as edge_index, sesmi.MRCu as MRCu, sesmi.YHEY as YHEY]\n" +
+			"             └─ Filter(NOT(sesmi.edge_index IS NULL))\n" +
+			"                 └─ LeftJoin((sesmi.sn_JQVV = cld.OPHR_JQVV) AND (sesmi.aac_JQVV = cld.BKYY))\n" +
+			"                     ├─ SubqueryAlias(cld)\n" +
+			"                     │   └─ Project\n" +
+			"                     │       ├─ columns: [cla.RMLT as CLDu, sn.JQVV as OPHR_JQVV, mf.BKYY as BKYY]\n" +
+			"                     │       └─ InnerJoin(sn.EXKR = mf.FHMZ)\n" +
+			"                     │           ├─ InnerJoin(cla.JQVV = bs.TuFQ)\n" +
+			"                     │           │   ├─ InnerJoin(bs.JQVV = mf.MBIG)\n" +
+			"                     │           │   │   ├─ TableAlias(mf)\n" +
+			"                     │           │   │   │   └─ Table(RCXK)\n" +
+			"                     │           │   │   └─ TableAlias(bs)\n" +
+			"                     │           │   │       └─ Table(ZYCA)\n" +
+			"                     │           │   └─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"                     │           │       └─ TableAlias(cla)\n" +
+			"                     │           │           └─ IndexedTableAccess(ARFu)\n" +
+			"                     │           │               ├─ index: [ARFu.RMLT]\n" +
+			"                     │           │               └─ filters: [{[SQ1, SQ1]}]\n" +
+			"                     │           └─ TableAlias(sn)\n" +
+			"                     │               └─ Table(OPHR)\n" +
+			"                     └─ HashLookup(child: (sesmi.sn_JQVV, sesmi.aac_JQVV), lookup: (cld.OPHR_JQVV, cld.BKYY))\n" +
+			"                         └─ CachedResults\n" +
+			"                             └─ SubqueryAlias(sesmi)\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [CASE  WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                                     │   ├─ columns: [ei.edge_index]\n" +
+			"                                     │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                                     │       └─ SubqueryAlias(ei)\n" +
+			"                                     │           └─ Project\n" +
+			"                                     │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                                     │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                                     │                   └─ Table(OPHR)\n" +
+			"                                     │                       └─ columns: [jqvv]\n" +
+			"                                     │  ) WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                                     │   ├─ columns: [ei.edge_index]\n" +
+			"                                     │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                                     │       └─ SubqueryAlias(ei)\n" +
+			"                                     │           └─ Project\n" +
+			"                                     │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                                     │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                                     │                   └─ Table(OPHR)\n" +
+			"                                     │                       └─ columns: [jqvv]\n" +
+			"                                     │  ) END as edge_index, aac.MRCu as MRCu, aac.JQVV as aac_JQVV, sn.JQVV as sn_JQVV, eefism.YHEY as YHEY]\n" +
+			"                                     └─ LeftJoin((((((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV = eefism.applicable_edge_JQVV)) AND eefism.original_MXJT IS NULL) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                                         ├─ columns: [inIRKF_sn_1.JQVV]\n" +
+			"                                         └─ Filter(inIRKF_sn_1.EXKR = eefism.original_MXJT)\n" +
+			"                                             └─ TableAlias(inIRKF_sn_1)\n" +
+			"                                                 └─ Table(OPHR)\n" +
+			"                                        ))) AND (NOT(eefism.original_MXJT IS NULL)))) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                                         ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                                         └─ Filter(inIRKF_sn_2.EXKR = eefism.actual_MXJT)\n" +
+			"                                             └─ TableAlias(inIRKF_sn_2)\n" +
+			"                                                 └─ Table(OPHR)\n" +
+			"                                        ))) AND eefism.original_MXJT IS NULL)) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                                         ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                                         └─ Filter(inIRKF_sn_2.EXKR = eefism.original_MXJT)\n" +
+			"                                             └─ TableAlias(inIRKF_sn_2)\n" +
+			"                                                 └─ Table(OPHR)\n" +
+			"                                        ))) AND (NOT(eefism.original_MXJT IS NULL))))\n" +
+			"                                         ├─ InnerJoin(aac.JQVV = eefism.BKYY)\n" +
+			"                                         │   ├─ SubqueryAlias(eefism)\n" +
+			"                                         │   │   └─ Distinct\n" +
+			"                                         │   │       └─ Project\n" +
+			"                                         │   │           ├─ columns: [ism.MXJT as actual_MXJT, LDP_node_nd.JQVV as original_MXJT, ism.BKYY as BKYY, ismm.YHEY as YHEY, ismm.AuYL as AuYL, sn_as_source.JQVV as applicable_edge_JQVV, sn_as_target.JQVV as applicable_edge_JQVV]\n" +
+			"                                         │   │           └─ Filter((NOT(sn_as_source.JQVV IS NULL)) OR (NOT(sn_as_target.JQVV IS NULL)))\n" +
+			"                                         │   │               └─ LeftJoin((sn_as_target.EXKR = ism.XuWE) AND (sn_as_target.XAOO = ism.MXJT))\n" +
+			"                                         │   │                   ├─ LeftJoin((sn_as_source.EXKR = ism.MXJT) AND (sn_as_source.XAOO = ism.XuWE))\n" +
+			"                                         │   │                   │   ├─ LeftJoin((LDP_node_nd.VYLM = coism.YBTP) AND (NOT((LDP_node_nd.JQVV = ism.MXJT))))\n" +
+			"                                         │   │                   │   │   ├─ LeftJoin(coism.JQVV = ism.QNuY)\n" +
+			"                                         │   │                   │   │   │   ├─ InnerJoin(ismm.JQVV = ism.IEKV)\n" +
+			"                                         │   │                   │   │   │   │   ├─ TableAlias(ism)\n" +
+			"                                         │   │                   │   │   │   │   │   └─ Table(QKKD)\n" +
+			"                                         │   │                   │   │   │   │   └─ Filter(NOT(ismm.YHEY IS NULL))\n" +
+			"                                         │   │                   │   │   │   │       └─ TableAlias(ismm)\n" +
+			"                                         │   │                   │   │   │   │           └─ Table(LHQS)\n" +
+			"                                         │   │                   │   │   │   └─ TableAlias(coism)\n" +
+			"                                         │   │                   │   │   │       └─ Table(FZDJ)\n" +
+			"                                         │   │                   │   │   └─ TableAlias(LDP_node_nd)\n" +
+			"                                         │   │                   │   │       └─ Table(ANBH)\n" +
+			"                                         │   │                   │   └─ TableAlias(sn_as_source)\n" +
+			"                                         │   │                   │       └─ Table(OPHR)\n" +
+			"                                         │   │                   └─ TableAlias(sn_as_target)\n" +
+			"                                         │   │                       └─ Table(OPHR)\n" +
+			"                                         │   └─ TableAlias(aac)\n" +
+			"                                         │       └─ Table(XAWV)\n" +
+			"                                         └─ TableAlias(sn)\n" +
+			"                                             └─ Table(OPHR)\n" +
+			"    ))))\n" +
+			"     └─ SubqueryAlias(fs)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [CLDu_list.CLDu as CLDu, plistO.edge_index as edge_index, plistO.MRCu as MRCu, plistO.YHEY as YHEY]\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ SubqueryAlias(plistO)\n" +
+			"                 │   └─ Distinct\n" +
+			"                 │       └─ Project\n" +
+			"                 │           ├─ columns: [summed_edge_spec_SXuV_info.edge_index, summed_edge_spec_SXuV_info.MRCu, summed_edge_spec_SXuV_info.YHEY]\n" +
+			"                 │           └─ SubqueryAlias(summed_edge_spec_SXuV_info)\n" +
+			"                 │               └─ Project\n" +
+			"                 │                   ├─ columns: [CASE  WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                 │                   │   ├─ columns: [ei.edge_index]\n" +
+			"                 │                   │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                 │                   │       └─ SubqueryAlias(ei)\n" +
+			"                 │                   │           └─ Project\n" +
+			"                 │                   │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                 │                   │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                 │                   │                   └─ Table(OPHR)\n" +
+			"                 │                   │                       └─ columns: [jqvv]\n" +
+			"                 │                   │  ) WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                 │                   │   ├─ columns: [ei.edge_index]\n" +
+			"                 │                   │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                 │                   │       └─ SubqueryAlias(ei)\n" +
+			"                 │                   │           └─ Project\n" +
+			"                 │                   │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                 │                   │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                 │                   │                   └─ Table(OPHR)\n" +
+			"                 │                   │                       └─ columns: [jqvv]\n" +
+			"                 │                   │  ) END as edge_index, aac.MRCu as MRCu, aac.JQVV as aac_JQVV, sn.JQVV as sn_JQVV, eefism.YHEY as YHEY]\n" +
+			"                 │                   └─ LeftJoin((((((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV = eefism.applicable_edge_JQVV)) AND eefism.original_MXJT IS NULL) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                 │                       ├─ columns: [inIRKF_sn_1.JQVV]\n" +
+			"                 │                       └─ Filter(inIRKF_sn_1.EXKR = eefism.original_MXJT)\n" +
+			"                 │                           └─ TableAlias(inIRKF_sn_1)\n" +
+			"                 │                               └─ Table(OPHR)\n" +
+			"                 │                      ))) AND (NOT(eefism.original_MXJT IS NULL)))) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                 │                       ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                 │                       └─ Filter(inIRKF_sn_2.EXKR = eefism.actual_MXJT)\n" +
+			"                 │                           └─ TableAlias(inIRKF_sn_2)\n" +
+			"                 │                               └─ Table(OPHR)\n" +
+			"                 │                      ))) AND eefism.original_MXJT IS NULL)) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                 │                       ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                 │                       └─ Filter(inIRKF_sn_2.EXKR = eefism.original_MXJT)\n" +
+			"                 │                           └─ TableAlias(inIRKF_sn_2)\n" +
+			"                 │                               └─ Table(OPHR)\n" +
+			"                 │                      ))) AND (NOT(eefism.original_MXJT IS NULL))))\n" +
+			"                 │                       ├─ InnerJoin(aac.JQVV = eefism.BKYY)\n" +
+			"                 │                       │   ├─ SubqueryAlias(eefism)\n" +
+			"                 │                       │   │   └─ Distinct\n" +
+			"                 │                       │   │       └─ Project\n" +
+			"                 │                       │   │           ├─ columns: [ism.MXJT as actual_MXJT, LDP_node_nd.JQVV as original_MXJT, ism.BKYY as BKYY, ismm.YHEY as YHEY, ismm.AuYL as AuYL, sn_as_source.JQVV as applicable_edge_JQVV, sn_as_target.JQVV as applicable_edge_JQVV]\n" +
+			"                 │                       │   │           └─ Filter((NOT(sn_as_source.JQVV IS NULL)) OR (NOT(sn_as_target.JQVV IS NULL)))\n" +
+			"                 │                       │   │               └─ LeftIndexedJoin((sn_as_target.EXKR = ism.XuWE) AND (sn_as_target.XAOO = ism.MXJT))\n" +
+			"                 │                       │   │                   ├─ LeftIndexedJoin((sn_as_source.EXKR = ism.MXJT) AND (sn_as_source.XAOO = ism.XuWE))\n" +
+			"                 │                       │   │                   │   ├─ LeftIndexedJoin((LDP_node_nd.VYLM = coism.YBTP) AND (NOT((LDP_node_nd.JQVV = ism.MXJT))))\n" +
+			"                 │                       │   │                   │   │   ├─ LeftIndexedJoin(coism.JQVV = ism.QNuY)\n" +
+			"                 │                       │   │                   │   │   │   ├─ IndexedJoin(ismm.JQVV = ism.IEKV)\n" +
+			"                 │                       │   │                   │   │   │   │   ├─ TableAlias(ism)\n" +
+			"                 │                       │   │                   │   │   │   │   │   └─ Table(QKKD)\n" +
+			"                 │                       │   │                   │   │   │   │   └─ Filter(NOT(ismm.YHEY IS NULL))\n" +
+			"                 │                       │   │                   │   │   │   │       └─ TableAlias(ismm)\n" +
+			"                 │                       │   │                   │   │   │   │           └─ IndexedTableAccess(LHQS)\n" +
+			"                 │                       │   │                   │   │   │   │               └─ index: [LHQS.JQVV]\n" +
+			"                 │                       │   │                   │   │   │   └─ TableAlias(coism)\n" +
+			"                 │                       │   │                   │   │   │       └─ IndexedTableAccess(FZDJ)\n" +
+			"                 │                       │   │                   │   │   │           └─ index: [FZDJ.JQVV]\n" +
+			"                 │                       │   │                   │   │   └─ TableAlias(LDP_node_nd)\n" +
+			"                 │                       │   │                   │   │       └─ Table(ANBH)\n" +
+			"                 │                       │   │                   │   └─ TableAlias(sn_as_source)\n" +
+			"                 │                       │   │                   │       └─ IndexedTableAccess(OPHR)\n" +
+			"                 │                       │   │                   │           └─ index: [OPHR.EXKR]\n" +
+			"                 │                       │   │                   └─ TableAlias(sn_as_target)\n" +
+			"                 │                       │   │                       └─ IndexedTableAccess(OPHR)\n" +
+			"                 │                       │   │                           └─ index: [OPHR.EXKR]\n" +
+			"                 │                       │   └─ TableAlias(aac)\n" +
+			"                 │                       │       └─ Table(XAWV)\n" +
+			"                 │                       └─ TableAlias(sn)\n" +
+			"                 │                           └─ Table(OPHR)\n" +
+			"                 └─ SubqueryAlias(CLDu_list)\n" +
+			"                     └─ Distinct\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [CLDu_data.CLDu]\n" +
+			"                             └─ SubqueryAlias(CLDu_data)\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [cla.RMLT as CLDu, sn.JQVV as OPHR_JQVV, mf.BKYY as BKYY]\n" +
+			"                                     └─ IndexedJoin(cla.JQVV = bs.TuFQ)\n" +
+			"                                         ├─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"                                         │   └─ TableAlias(cla)\n" +
+			"                                         │       └─ IndexedTableAccess(ARFu)\n" +
+			"                                         │           ├─ index: [ARFu.RMLT]\n" +
+			"                                         │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"                                         └─ IndexedJoin(bs.JQVV = mf.MBIG)\n" +
+			"                                             ├─ TableAlias(bs)\n" +
+			"                                             │   └─ IndexedTableAccess(ZYCA)\n" +
+			"                                             │       └─ index: [ZYCA.TuFQ]\n" +
+			"                                             └─ IndexedJoin(sn.EXKR = mf.FHMZ)\n" +
+			"                                                 ├─ TableAlias(mf)\n" +
+			"                                                 │   └─ IndexedTableAccess(RCXK)\n" +
+			"                                                 │       └─ index: [RCXK.MBIG]\n" +
+			"                                                 └─ TableAlias(sn)\n" +
+			"                                                     └─ IndexedTableAccess(OPHR)\n" +
+			"                                                         └─ index: [OPHR.EXKR]\n" +
+			"",
+	},
+	{
+		Query: `
+WITH
+
+    edge_indices AS (
+        SELECT JQVV, ROW_NUMBER() OVER (ORDER BY JQVV ASC) - 1 AS edge_index FROM OPHR
+    ),
+    existing_edge_filtered_ism AS (
+        SELECT DISTINCT
+        ism.MXJT AS actual_MXJT,
+        LDP_node_nd.JQVV AS original_MXJT,
+        ism.BKYY AS BKYY,
+        ismm.YHEY AS YHEY,
+        ismm.AuYL AS AuYL,
+        sn_as_source.JQVV AS applicable_edge_JQVV,
+        sn_as_target.JQVV AS applicable_edge_JQVV
+        FROM
+        QKKD ism
+        INNER JOIN LHQS ismm ON ismm.JQVV = ism.IEKV
+        LEFT JOIN
+        FZDJ coism
+        ON
+        coism.JQVV = ism.QNuY
+        LEFT JOIN
+        ANBH LDP_node_nd
+        ON
+        LDP_node_nd.VYLM = coism.YBTP AND LDP_node_nd.JQVV <> ism.MXJT
+        LEFT JOIN
+        OPHR sn_as_source
+        ON
+            sn_as_source.EXKR = ism.MXJT
+        AND
+            sn_as_source.XAOO = ism.XuWE
+        LEFT JOIN
+        OPHR sn_as_target
+        ON
+            sn_as_target.EXKR = ism.XuWE
+        AND
+            sn_as_target.XAOO = ism.MXJT
+        WHERE
+            ismm.YHEY IS NOT NULL 
+        AND
+            (sn_as_source.JQVV IS NOT NULL
+        OR
+            sn_as_target.JQVV IS NOT NULL)
+    ),
+
+    CLDu_data AS (
+        SELECT
+            cla.RMLT AS CLDu,
+            sn.JQVV AS OPHR_JQVV,
+            mf.BKYY AS BKYY
+        FROM RCXK mf
+        INNER JOIN ZYCA bs ON bs.JQVV = mf.MBIG
+        INNER JOIN ARFu cla ON cla.JQVV = bs.TuFQ
+        INNER JOIN OPHR sn ON sn.EXKR = mf.FHMZ
+        WHERE cla.RMLT IN ('SQ1')
+    ),
+    summed_edge_spec_SXuV_info AS (
+        SELECT
+            CASE
+                    WHEN eefism.applicable_edge_JQVV IS NOT NULL
+                        THEN (SELECT ei.edge_index FROM edge_indices ei WHERE ei.JQVV = eefism.applicable_edge_JQVV)
+                    WHEN eefism.applicable_edge_JQVV IS NOT NULL
+                        THEN (SELECT ei.edge_index FROM edge_indices ei WHERE ei.JQVV = eefism.applicable_edge_JQVV)
+            END AS edge_index,
+
+            aac.MRCu AS MRCu,
+            aac.JQVV AS aac_JQVV,
+            sn.JQVV AS sn_JQVV,
+            eefism.YHEY AS YHEY
+            FROM 
+                existing_edge_filtered_ism eefism
+            INNER JOIN XAWV aac ON aac.JQVV = eefism.BKYY
+            LEFT JOIN
+            OPHR sn
+            ON
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV = eefism.applicable_edge_JQVV
+                AND
+                eefism.original_MXJT IS NULL
+            )
+            OR 
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV IN (SELECT inIRKF_sn_1.JQVV FROM OPHR inIRKF_sn_1 WHERE EXKR = eefism.original_MXJT)
+                AND
+                eefism.original_MXJT IS NOT NULL
+            )
+            OR 
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV IN (SELECT inIRKF_sn_2.JQVV FROM OPHR inIRKF_sn_2 WHERE EXKR = eefism.actual_MXJT)
+                AND
+                eefism.original_MXJT IS NULL
+            )
+            OR
+            (
+                applicable_edge_JQVV IS NOT NULL
+                AND
+                sn.JQVV IN (SELECT inIRKF_sn_2.JQVV FROM OPHR inIRKF_sn_2 WHERE EXKR = eefism.original_MXJT)
+                AND
+                eefism.original_MXJT IS NOT NULL
+            )
+    ),
+
+    full_set AS (
+        SELECT
+            CLDu_list.CLDu AS CLDu,
+            plistO.edge_index AS edge_index,
+            plistO.MRCu AS MRCu,
+            plistO.YHEY AS YHEY
+        FROM
+            (SELECT DISTINCT edge_index, MRCu, YHEY FROM summed_edge_spec_SXuV_info) plistO
+        CROSS JOIN
+            (SELECT DISTINCT CLDu FROM CLDu_data) CLDu_list
+    ),
+
+    skip_set AS (
+        SELECT DISTINCT
+            cld.CLDu AS CLDu,
+            sesmi.edge_index AS edge_index,
+            sesmi.MRCu AS MRCu,
+            sesmi.YHEY AS YHEY
+        FROM
+            CLDu_data cld
+        LEFT JOIN
+            summed_edge_spec_SXuV_info sesmi
+        ON sesmi.sn_JQVV = cld.OPHR_JQVV AND sesmi.aac_JQVV = cld.BKYY
+        WHERE
+                sesmi.edge_index IS NOT NULL
+    )
+SELECT
+    fs.CLDu AS CLDu,
+    fs.edge_index AS edge_index,
+    fs.YHEY AS YHEY,
+    fs.MRCu AS mutant_MRCu
+FROM
+    full_set fs
+WHERE
+    (fs.CLDu, fs.edge_index, fs.MRCu, fs.YHEY)
+    NOT IN (
+        SELECT
+            skip_set.CLDu,
+            skip_set.edge_index,
+            skip_set.MRCu,
+            skip_set.YHEY
+        FROM
+            skip_set
+    )`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [fs.CLDu as CLDu, fs.edge_index as edge_index, fs.YHEY as YHEY, fs.MRCu as mutant_MRCu]\n" +
+			" └─ Filter(NOT(((fs.CLDu, fs.edge_index, fs.MRCu, fs.YHEY) IN (SubqueryAlias(skip_set)\n" +
+			"     └─ Distinct\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [cld.CLDu as CLDu, sesmi.edge_index as edge_index, sesmi.MRCu as MRCu, sesmi.YHEY as YHEY]\n" +
+			"             └─ Filter(NOT(sesmi.edge_index IS NULL))\n" +
+			"                 └─ LeftJoin((sesmi.sn_JQVV = cld.OPHR_JQVV) AND (sesmi.aac_JQVV = cld.BKYY))\n" +
+			"                     ├─ SubqueryAlias(cld)\n" +
+			"                     │   └─ Project\n" +
+			"                     │       ├─ columns: [cla.RMLT as CLDu, sn.JQVV as OPHR_JQVV, mf.BKYY as BKYY]\n" +
+			"                     │       └─ InnerJoin(sn.EXKR = mf.FHMZ)\n" +
+			"                     │           ├─ InnerJoin(cla.JQVV = bs.TuFQ)\n" +
+			"                     │           │   ├─ InnerJoin(bs.JQVV = mf.MBIG)\n" +
+			"                     │           │   │   ├─ TableAlias(mf)\n" +
+			"                     │           │   │   │   └─ Table(RCXK)\n" +
+			"                     │           │   │   └─ TableAlias(bs)\n" +
+			"                     │           │   │       └─ Table(ZYCA)\n" +
+			"                     │           │   └─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"                     │           │       └─ TableAlias(cla)\n" +
+			"                     │           │           └─ IndexedTableAccess(ARFu)\n" +
+			"                     │           │               ├─ index: [ARFu.RMLT]\n" +
+			"                     │           │               └─ filters: [{[SQ1, SQ1]}]\n" +
+			"                     │           └─ TableAlias(sn)\n" +
+			"                     │               └─ Table(OPHR)\n" +
+			"                     └─ HashLookup(child: (sesmi.sn_JQVV, sesmi.aac_JQVV), lookup: (cld.OPHR_JQVV, cld.BKYY))\n" +
+			"                         └─ CachedResults\n" +
+			"                             └─ SubqueryAlias(sesmi)\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [CASE  WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                                     │   ├─ columns: [ei.edge_index]\n" +
+			"                                     │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                                     │       └─ SubqueryAlias(ei)\n" +
+			"                                     │           └─ Project\n" +
+			"                                     │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                                     │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                                     │                   └─ Table(OPHR)\n" +
+			"                                     │                       └─ columns: [jqvv]\n" +
+			"                                     │  ) WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                                     │   ├─ columns: [ei.edge_index]\n" +
+			"                                     │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                                     │       └─ SubqueryAlias(ei)\n" +
+			"                                     │           └─ Project\n" +
+			"                                     │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                                     │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                                     │                   └─ Table(OPHR)\n" +
+			"                                     │                       └─ columns: [jqvv]\n" +
+			"                                     │  ) END as edge_index, aac.MRCu as MRCu, aac.JQVV as aac_JQVV, sn.JQVV as sn_JQVV, eefism.YHEY as YHEY]\n" +
+			"                                     └─ LeftJoin((((((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV = eefism.applicable_edge_JQVV)) AND eefism.original_MXJT IS NULL) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                                         ├─ columns: [inIRKF_sn_1.JQVV]\n" +
+			"                                         └─ Filter(inIRKF_sn_1.EXKR = eefism.original_MXJT)\n" +
+			"                                             └─ TableAlias(inIRKF_sn_1)\n" +
+			"                                                 └─ Table(OPHR)\n" +
+			"                                        ))) AND (NOT(eefism.original_MXJT IS NULL)))) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                                         ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                                         └─ Filter(inIRKF_sn_2.EXKR = eefism.actual_MXJT)\n" +
+			"                                             └─ TableAlias(inIRKF_sn_2)\n" +
+			"                                                 └─ Table(OPHR)\n" +
+			"                                        ))) AND eefism.original_MXJT IS NULL)) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                                         ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                                         └─ Filter(inIRKF_sn_2.EXKR = eefism.original_MXJT)\n" +
+			"                                             └─ TableAlias(inIRKF_sn_2)\n" +
+			"                                                 └─ Table(OPHR)\n" +
+			"                                        ))) AND (NOT(eefism.original_MXJT IS NULL))))\n" +
+			"                                         ├─ InnerJoin(aac.JQVV = eefism.BKYY)\n" +
+			"                                         │   ├─ SubqueryAlias(eefism)\n" +
+			"                                         │   │   └─ Distinct\n" +
+			"                                         │   │       └─ Project\n" +
+			"                                         │   │           ├─ columns: [ism.MXJT as actual_MXJT, LDP_node_nd.JQVV as original_MXJT, ism.BKYY as BKYY, ismm.YHEY as YHEY, ismm.AuYL as AuYL, sn_as_source.JQVV as applicable_edge_JQVV, sn_as_target.JQVV as applicable_edge_JQVV]\n" +
+			"                                         │   │           └─ Filter((NOT(sn_as_source.JQVV IS NULL)) OR (NOT(sn_as_target.JQVV IS NULL)))\n" +
+			"                                         │   │               └─ LeftJoin((sn_as_target.EXKR = ism.XuWE) AND (sn_as_target.XAOO = ism.MXJT))\n" +
+			"                                         │   │                   ├─ LeftJoin((sn_as_source.EXKR = ism.MXJT) AND (sn_as_source.XAOO = ism.XuWE))\n" +
+			"                                         │   │                   │   ├─ LeftJoin((LDP_node_nd.VYLM = coism.YBTP) AND (NOT((LDP_node_nd.JQVV = ism.MXJT))))\n" +
+			"                                         │   │                   │   │   ├─ LeftJoin(coism.JQVV = ism.QNuY)\n" +
+			"                                         │   │                   │   │   │   ├─ InnerJoin(ismm.JQVV = ism.IEKV)\n" +
+			"                                         │   │                   │   │   │   │   ├─ TableAlias(ism)\n" +
+			"                                         │   │                   │   │   │   │   │   └─ Table(QKKD)\n" +
+			"                                         │   │                   │   │   │   │   └─ Filter(NOT(ismm.YHEY IS NULL))\n" +
+			"                                         │   │                   │   │   │   │       └─ TableAlias(ismm)\n" +
+			"                                         │   │                   │   │   │   │           └─ Table(LHQS)\n" +
+			"                                         │   │                   │   │   │   └─ TableAlias(coism)\n" +
+			"                                         │   │                   │   │   │       └─ Table(FZDJ)\n" +
+			"                                         │   │                   │   │   └─ TableAlias(LDP_node_nd)\n" +
+			"                                         │   │                   │   │       └─ Table(ANBH)\n" +
+			"                                         │   │                   │   └─ TableAlias(sn_as_source)\n" +
+			"                                         │   │                   │       └─ Table(OPHR)\n" +
+			"                                         │   │                   └─ TableAlias(sn_as_target)\n" +
+			"                                         │   │                       └─ Table(OPHR)\n" +
+			"                                         │   └─ TableAlias(aac)\n" +
+			"                                         │       └─ Table(XAWV)\n" +
+			"                                         └─ TableAlias(sn)\n" +
+			"                                             └─ Table(OPHR)\n" +
+			"    ))))\n" +
+			"     └─ SubqueryAlias(fs)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [CLDu_list.CLDu as CLDu, plistO.edge_index as edge_index, plistO.MRCu as MRCu, plistO.YHEY as YHEY]\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ SubqueryAlias(plistO)\n" +
+			"                 │   └─ Distinct\n" +
+			"                 │       └─ Project\n" +
+			"                 │           ├─ columns: [summed_edge_spec_SXuV_info.edge_index, summed_edge_spec_SXuV_info.MRCu, summed_edge_spec_SXuV_info.YHEY]\n" +
+			"                 │           └─ SubqueryAlias(summed_edge_spec_SXuV_info)\n" +
+			"                 │               └─ Project\n" +
+			"                 │                   ├─ columns: [CASE  WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                 │                   │   ├─ columns: [ei.edge_index]\n" +
+			"                 │                   │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                 │                   │       └─ SubqueryAlias(ei)\n" +
+			"                 │                   │           └─ Project\n" +
+			"                 │                   │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                 │                   │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                 │                   │                   └─ Table(OPHR)\n" +
+			"                 │                   │                       └─ columns: [jqvv]\n" +
+			"                 │                   │  ) WHEN (NOT(eefism.applicable_edge_JQVV IS NULL)) THEN (Project\n" +
+			"                 │                   │   ├─ columns: [ei.edge_index]\n" +
+			"                 │                   │   └─ Filter(ei.JQVV = eefism.applicable_edge_JQVV)\n" +
+			"                 │                   │       └─ SubqueryAlias(ei)\n" +
+			"                 │                   │           └─ Project\n" +
+			"                 │                   │               ├─ columns: [OPHR.JQVV, (row_number() over ( order by OPHR.JQVV ASC) - 1) as edge_index]\n" +
+			"                 │                   │               └─ Window(OPHR.JQVV, row_number() over ( order by OPHR.JQVV ASC))\n" +
+			"                 │                   │                   └─ Table(OPHR)\n" +
+			"                 │                   │                       └─ columns: [jqvv]\n" +
+			"                 │                   │  ) END as edge_index, aac.MRCu as MRCu, aac.JQVV as aac_JQVV, sn.JQVV as sn_JQVV, eefism.YHEY as YHEY]\n" +
+			"                 │                   └─ LeftJoin((((((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV = eefism.applicable_edge_JQVV)) AND eefism.original_MXJT IS NULL) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                 │                       ├─ columns: [inIRKF_sn_1.JQVV]\n" +
+			"                 │                       └─ Filter(inIRKF_sn_1.EXKR = eefism.original_MXJT)\n" +
+			"                 │                           └─ TableAlias(inIRKF_sn_1)\n" +
+			"                 │                               └─ Table(OPHR)\n" +
+			"                 │                      ))) AND (NOT(eefism.original_MXJT IS NULL)))) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                 │                       ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                 │                       └─ Filter(inIRKF_sn_2.EXKR = eefism.actual_MXJT)\n" +
+			"                 │                           └─ TableAlias(inIRKF_sn_2)\n" +
+			"                 │                               └─ Table(OPHR)\n" +
+			"                 │                      ))) AND eefism.original_MXJT IS NULL)) OR (((NOT(eefism.applicable_edge_JQVV IS NULL)) AND (sn.JQVV IN (Project\n" +
+			"                 │                       ├─ columns: [inIRKF_sn_2.JQVV]\n" +
+			"                 │                       └─ Filter(inIRKF_sn_2.EXKR = eefism.original_MXJT)\n" +
+			"                 │                           └─ TableAlias(inIRKF_sn_2)\n" +
+			"                 │                               └─ Table(OPHR)\n" +
+			"                 │                      ))) AND (NOT(eefism.original_MXJT IS NULL))))\n" +
+			"                 │                       ├─ InnerJoin(aac.JQVV = eefism.BKYY)\n" +
+			"                 │                       │   ├─ SubqueryAlias(eefism)\n" +
+			"                 │                       │   │   └─ Distinct\n" +
+			"                 │                       │   │       └─ Project\n" +
+			"                 │                       │   │           ├─ columns: [ism.MXJT as actual_MXJT, LDP_node_nd.JQVV as original_MXJT, ism.BKYY as BKYY, ismm.YHEY as YHEY, ismm.AuYL as AuYL, sn_as_source.JQVV as applicable_edge_JQVV, sn_as_target.JQVV as applicable_edge_JQVV]\n" +
+			"                 │                       │   │           └─ Filter((NOT(sn_as_source.JQVV IS NULL)) OR (NOT(sn_as_target.JQVV IS NULL)))\n" +
+			"                 │                       │   │               └─ LeftIndexedJoin((sn_as_target.EXKR = ism.XuWE) AND (sn_as_target.XAOO = ism.MXJT))\n" +
+			"                 │                       │   │                   ├─ LeftIndexedJoin((sn_as_source.EXKR = ism.MXJT) AND (sn_as_source.XAOO = ism.XuWE))\n" +
+			"                 │                       │   │                   │   ├─ LeftIndexedJoin((LDP_node_nd.VYLM = coism.YBTP) AND (NOT((LDP_node_nd.JQVV = ism.MXJT))))\n" +
+			"                 │                       │   │                   │   │   ├─ LeftIndexedJoin(coism.JQVV = ism.QNuY)\n" +
+			"                 │                       │   │                   │   │   │   ├─ IndexedJoin(ismm.JQVV = ism.IEKV)\n" +
+			"                 │                       │   │                   │   │   │   │   ├─ TableAlias(ism)\n" +
+			"                 │                       │   │                   │   │   │   │   │   └─ Table(QKKD)\n" +
+			"                 │                       │   │                   │   │   │   │   └─ Filter(NOT(ismm.YHEY IS NULL))\n" +
+			"                 │                       │   │                   │   │   │   │       └─ TableAlias(ismm)\n" +
+			"                 │                       │   │                   │   │   │   │           └─ IndexedTableAccess(LHQS)\n" +
+			"                 │                       │   │                   │   │   │   │               └─ index: [LHQS.JQVV]\n" +
+			"                 │                       │   │                   │   │   │   └─ TableAlias(coism)\n" +
+			"                 │                       │   │                   │   │   │       └─ IndexedTableAccess(FZDJ)\n" +
+			"                 │                       │   │                   │   │   │           └─ index: [FZDJ.JQVV]\n" +
+			"                 │                       │   │                   │   │   └─ TableAlias(LDP_node_nd)\n" +
+			"                 │                       │   │                   │   │       └─ Table(ANBH)\n" +
+			"                 │                       │   │                   │   └─ TableAlias(sn_as_source)\n" +
+			"                 │                       │   │                   │       └─ IndexedTableAccess(OPHR)\n" +
+			"                 │                       │   │                   │           └─ index: [OPHR.EXKR]\n" +
+			"                 │                       │   │                   └─ TableAlias(sn_as_target)\n" +
+			"                 │                       │   │                       └─ IndexedTableAccess(OPHR)\n" +
+			"                 │                       │   │                           └─ index: [OPHR.EXKR]\n" +
+			"                 │                       │   └─ TableAlias(aac)\n" +
+			"                 │                       │       └─ Table(XAWV)\n" +
+			"                 │                       └─ TableAlias(sn)\n" +
+			"                 │                           └─ Table(OPHR)\n" +
+			"                 └─ SubqueryAlias(CLDu_list)\n" +
+			"                     └─ Distinct\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [CLDu_data.CLDu]\n" +
+			"                             └─ SubqueryAlias(CLDu_data)\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [cla.RMLT as CLDu, sn.JQVV as OPHR_JQVV, mf.BKYY as BKYY]\n" +
+			"                                     └─ IndexedJoin(sn.EXKR = mf.FHMZ)\n" +
+			"                                         ├─ IndexedJoin(bs.JQVV = mf.MBIG)\n" +
+			"                                         │   ├─ TableAlias(mf)\n" +
+			"                                         │   │   └─ Table(RCXK)\n" +
+			"                                         │   └─ IndexedJoin(cla.JQVV = bs.TuFQ)\n" +
+			"                                         │       ├─ TableAlias(bs)\n" +
+			"                                         │       │   └─ IndexedTableAccess(ZYCA)\n" +
+			"                                         │       │       └─ index: [ZYCA.JQVV]\n" +
+			"                                         │       └─ Filter(cla.RMLT HASH IN ('SQ1'))\n" +
+			"                                         │           └─ TableAlias(cla)\n" +
+			"                                         │               └─ IndexedTableAccess(ARFu)\n" +
+			"                                         │                   └─ index: [ARFu.JQVV]\n" +
+			"                                         └─ TableAlias(sn)\n" +
+			"                                             └─ IndexedTableAccess(OPHR)\n" +
+			"                                                 └─ index: [OPHR.EXKR]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ACQC
+FROM 
+    ANBH 
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ANBH.ACQC]\n" +
+			" └─ IndexedTableAccess(ANBH)\n" +
+			"     ├─ index: [ANBH.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv acqc]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ACQC, LHTS
+FROM 
+    ANBH 
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ANBH.ACQC, ANBH.LHTS]\n" +
+			" └─ IndexedTableAccess(ANBH)\n" +
+			"     ├─ index: [ANBH.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv acqc lhts]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT COUNT(*) FROM ANBH`,
+		ExpectedPlan: "GroupBy\n" +
+			" ├─ SelectedExprs(COUNT(*))\n" +
+			" ├─ Grouping()\n" +
+			" └─ Table(ANBH)\n" +
+			"     └─ columns: [jqvv yfhz lifq acqc lzbq sqit lhts vylm dufo lrbc vvre fdvu xtig incb bfuk ddoe hlaz]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    ROW_NUMBER() OVER (ORDER BY JQVV ASC) -1 node_JQVVx,
+    ACQC
+FROM
+    ANBH`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [(row_number() over ( order by ANBH.JQVV ASC) - 1) as node_JQVVx, ANBH.ACQC]\n" +
+			" └─ Window(row_number() over ( order by ANBH.JQVV ASC), ANBH.ACQC)\n" +
+			"     └─ Table(ANBH)\n" +
+			"         └─ columns: [jqvv acqc]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    signet_part.edge_JQVVx AS VTAPx
+FROM
+    (SELECT 
+        JQVV AS regnet_JQVV,
+        VTAP AS VTAP, 
+        CAAI AS CAAI 
+    FROM 
+        DHWQ) regnet_part
+INNER JOIN
+    (SELECT 
+        ROW_NUMBER() OVER (ORDER BY JQVV ASC) edge_JQVVx, 
+        JQVV AS signet_JQVV
+    FROM 
+        OPHR) signet_part
+    ON regnet_part.VTAP = signet_part.signet_JQVV
+ORDER BY regnet_JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [signet_part.edge_JQVVx as VTAPx]\n" +
+			" └─ Sort(regnet_part.regnet_JQVV ASC)\n" +
+			"     └─ InnerJoin(regnet_part.VTAP = signet_part.signet_JQVV)\n" +
+			"         ├─ SubqueryAlias(regnet_part)\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [DHWQ.JQVV as regnet_JQVV, DHWQ.VTAP as VTAP, DHWQ.CAAI as CAAI]\n" +
+			"         │       └─ Table(DHWQ)\n" +
+			"         │           └─ columns: [jqvv vtap caai]\n" +
+			"         └─ HashLookup(child: (signet_part.signet_JQVV), lookup: (regnet_part.VTAP))\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias(signet_part)\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [row_number() over ( order by OPHR.JQVV ASC) as edge_JQVVx, signet_JQVV]\n" +
+			"                         └─ Window(row_number() over ( order by OPHR.JQVV ASC), OPHR.JQVV as signet_JQVV)\n" +
+			"                             └─ Table(OPHR)\n" +
+			"                                 └─ columns: [jqvv]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    mut_mask_node.random_SXuV_mask
+FROM
+    (SELECT
+        JQVV AS signet_JQVV,
+        EXKR
+    FROM
+        OPHR
+    ORDER BY JQVV ASC) sn
+    LEFT JOIN
+    (SELECT
+        nd.FHMZ,
+    CASE
+        WHEN nma.NKBA = 'INCOMPATIBLE' THEN 1
+        ELSE 0
+        END AS random_SXuV_mask
+    FROM
+        (SELECT 
+            JQVV AS FHMZ, 
+            XTIG AS XTIG
+        FROM 
+            ANBH) nd 
+        LEFT JOIN
+        (SELECT 
+            JQVV AS nma_JQVV, 
+            NKBA
+        FROM 
+            ZMOM) nma
+        ON nd.XTIG = nma.nma_JQVV) mut_mask_node
+    ON sn.EXKR = mut_mask_node.FHMZ
+ORDER BY sn.signet_JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mut_mask_node.random_SXuV_mask]\n" +
+			" └─ Sort(sn.signet_JQVV ASC)\n" +
+			"     └─ LeftJoin(sn.EXKR = mut_mask_node.FHMZ)\n" +
+			"         ├─ SubqueryAlias(sn)\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [OPHR.JQVV as signet_JQVV, OPHR.EXKR]\n" +
+			"         │       └─ IndexedTableAccess(OPHR)\n" +
+			"         │           ├─ index: [OPHR.JQVV]\n" +
+			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           └─ columns: [jqvv exkr]\n" +
+			"         └─ HashLookup(child: (mut_mask_node.FHMZ), lookup: (sn.EXKR))\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias(mut_mask_node)\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [nd.FHMZ, CASE  WHEN (nma.NKBA = 'INCOMPATIBLE') THEN 1 ELSE 0 END as random_SXuV_mask]\n" +
+			"                         └─ LeftJoin(nd.XTIG = nma.nma_JQVV)\n" +
+			"                             ├─ SubqueryAlias(nd)\n" +
+			"                             │   └─ Project\n" +
+			"                             │       ├─ columns: [ANBH.JQVV as FHMZ, ANBH.XTIG as XTIG]\n" +
+			"                             │       └─ Table(ANBH)\n" +
+			"                             │           └─ columns: [jqvv xtig]\n" +
+			"                             └─ HashLookup(child: (nma.nma_JQVV), lookup: (nd.XTIG))\n" +
+			"                                 └─ CachedResults\n" +
+			"                                     └─ SubqueryAlias(nma)\n" +
+			"                                         └─ Project\n" +
+			"                                             ├─ columns: [ZMOM.JQVV as nma_JQVV, ZMOM.NKBA]\n" +
+			"                                             └─ Table(ZMOM)\n" +
+			"                                                 └─ columns: [jqvv nkba]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    nd_part.node_JQVVx AS node_JQVVx
+FROM
+    (SELECT 
+        JQVV AS signet_JQVV,
+        EXKR AS source_node_JQVV
+    FROM
+        OPHR) sn_part
+LEFT JOIN
+    (SELECT 
+        ROW_NUMBER() OVER (ORDER BY JQVV ASC) node_JQVVx, 
+        JQVV AS node_def_JQVV
+    FROM 
+        ANBH) nd_part
+    ON nd_part.node_def_JQVV = sn_part.source_node_JQVV
+ORDER BY sn_part.signet_JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [nd_part.node_JQVVx as node_JQVVx]\n" +
+			" └─ Sort(sn_part.signet_JQVV ASC)\n" +
+			"     └─ LeftJoin(nd_part.node_def_JQVV = sn_part.source_node_JQVV)\n" +
+			"         ├─ SubqueryAlias(sn_part)\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [OPHR.JQVV as signet_JQVV, OPHR.EXKR as source_node_JQVV]\n" +
+			"         │       └─ Table(OPHR)\n" +
+			"         │           └─ columns: [jqvv exkr]\n" +
+			"         └─ HashLookup(child: (nd_part.node_def_JQVV), lookup: (sn_part.source_node_JQVV))\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias(nd_part)\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [row_number() over ( order by ANBH.JQVV ASC) as node_JQVVx, node_def_JQVV]\n" +
+			"                         └─ Window(row_number() over ( order by ANBH.JQVV ASC), ANBH.JQVV as node_def_JQVV)\n" +
+			"                             └─ Table(ANBH)\n" +
+			"                                 └─ columns: [jqvv]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    DISTINCT cla.RMLT
+FROM
+    ARFu cla
+WHERE
+    cla.JQVV IN (
+        SELECT bs.TuFQ
+        FROM ZYCA bs
+        WHERE
+            bs.JQVV IN (SELECT MBIG FROM RCXK)
+            AND bs.JQVV IN (SELECT MBIG FROM GRuH)
+    )
+ORDER BY cla.RMLT ASC`,
+		ExpectedPlan: "Sort(cla.RMLT ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.RMLT]\n" +
+			"         └─ Filter(cla.JQVV IN (Project\n" +
+			"             ├─ columns: [bs.TuFQ]\n" +
+			"             └─ Filter((bs.JQVV IN (Table(RCXK)\n" +
+			"                 └─ columns: [mbig]\n" +
+			"                )) AND (bs.JQVV IN (Table(GRuH)\n" +
+			"                 └─ columns: [mbig]\n" +
+			"                )))\n" +
+			"                 └─ TableAlias(bs)\n" +
+			"                     └─ Table(ZYCA)\n" +
+			"            ))\n" +
+			"             └─ TableAlias(cla)\n" +
+			"                 └─ Table(ARFu)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    DISTINCT cla.RMLT
+FROM RCXK mf
+INNER JOIN ZYCA bs
+    ON mf.MBIG = bs.JQVV
+INNER JOIN ARFu cla
+    ON bs.TuFQ = cla.JQVV
+ORDER BY cla.RMLT ASC`,
+		ExpectedPlan: "Sort(cla.RMLT ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.RMLT]\n" +
+			"         └─ IndexedJoin(mf.MBIG = bs.JQVV)\n" +
+			"             ├─ TableAlias(mf)\n" +
+			"             │   └─ Table(RCXK)\n" +
+			"             └─ IndexedJoin(bs.TuFQ = cla.JQVV)\n" +
+			"                 ├─ TableAlias(bs)\n" +
+			"                 │   └─ IndexedTableAccess(ZYCA)\n" +
+			"                 │       └─ index: [ZYCA.JQVV]\n" +
+			"                 └─ TableAlias(cla)\n" +
+			"                     └─ IndexedTableAccess(ARFu)\n" +
+			"                         └─ index: [ARFu.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    DISTINCT cla.RMLT
+FROM ARFu cla
+WHERE cla.JQVV IN
+    (SELECT TuFQ FROM ZYCA bs
+        WHERE bs.JQVV IN (SELECT MBIG FROM GRuH))
+ORDER BY cla.RMLT ASC`,
+		ExpectedPlan: "Sort(cla.RMLT ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.RMLT]\n" +
+			"         └─ Filter(cla.JQVV IN (Project\n" +
+			"             ├─ columns: [bs.TuFQ]\n" +
+			"             └─ Filter(bs.JQVV IN (Table(GRuH)\n" +
+			"                 └─ columns: [mbig]\n" +
+			"                ))\n" +
+			"                 └─ TableAlias(bs)\n" +
+			"                     └─ Table(ZYCA)\n" +
+			"            ))\n" +
+			"             └─ TableAlias(cla)\n" +
+			"                 └─ Table(ARFu)\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    DISTINCT ci.RMLT
+FROM PDPL ct
+INNER JOIN VNRO ci
+    ON ct.KEWQ = ci.JQVV
+ORDER BY ci.RMLT`,
+		ExpectedPlan: "Sort(ci.RMLT ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ci.RMLT]\n" +
+			"         └─ IndexedJoin(ct.KEWQ = ci.JQVV)\n" +
+			"             ├─ TableAlias(ct)\n" +
+			"             │   └─ Table(PDPL)\n" +
+			"             └─ TableAlias(ci)\n" +
+			"                 └─ IndexedTableAccess(VNRO)\n" +
+			"                     └─ index: [VNRO.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+        inIRKF_q.FHMZ AS FHMZ,
+        inIRKF_q.ACQC AS ACQC,
+        inIRKF_q.ENST AS ENST,
+        '' AS ZQGD,
+        inIRKF_q.LZBQ AS LZBQ,
+        inIRKF_q.output AS output,
+        inIRKF_q.max_conc_default AS max_conc_default,
+        inIRKF_q.SXuV_info AS SXuV_info,
+        inIRKF_q.SXuV_info_comment AS SXuV_info_comment,
+        '' AS pathway,
+        '' AS manual_fc_column,
+        CASE
+            WHEN fcvt.NKBA = 's_30' THEN 's30'
+            WHEN fcvt.NKBA = 'r_90' THEN 'r90'
+            WHEN fcvt.NKBA = 'r_50' THEN 'r50'
+            WHEN fcvt.NKBA = 's' THEN 's'
+            WHEN fcvt.NKBA = 'r_70' THEN 'r70'
+            WHEN fcvt.NKBA IS NULL then ''
+            ELSE fcvt.NKBA
+        END AS fcvt_NKBA,
+        inIRKF_q.xpos AS xpos,
+        inIRKF_q.ypos AS ypos,
+        inIRKF_q.fc_behaviour AS fc_behaviour
+FROM
+    (SELECT 
+        nd.JQVV AS FHMZ,
+        nd.ACQC AS ACQC,
+        nd.LHTS AS ENST,
+        nd.LZBQ AS LZBQ,
+        nd.FDVu AS output,
+        nd.SQIT AS max_conc_default,
+        nma.NKBA AS SXuV_info,
+        nd.INCB AS SXuV_info_comment,
+        (SELECT
+            LRBC
+            FROM GRuH
+            WHERE FHMZ = nd.JQVV 
+            LIMIT 1) AS use_fc_column,
+        nd.DDOE AS xpos,
+        nd.HLAZ AS ypos,
+        nd.DuFO AS fc_behaviour
+    FROM ANBH nd
+    LEFT JOIN ZMOM nma
+        ON nma.JQVV = nd.XTIG) inIRKF_q
+LEFT JOIN GKRF fcvt
+    ON inIRKF_q.use_fc_column = fcvt.JQVV
+ORDER BY FHMZ`,
+		ExpectedPlan: "Sort(FHMZ ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [inIRKF_q.FHMZ as FHMZ, inIRKF_q.ACQC as ACQC, inIRKF_q.ENST as ENST, '' as ZQGD, inIRKF_q.LZBQ as LZBQ, inIRKF_q.output as output, inIRKF_q.max_conc_default as max_conc_default, inIRKF_q.SXuV_info as SXuV_info, inIRKF_q.SXuV_info_comment as SXuV_info_comment, '' as pathway, '' as manual_fc_column, CASE  WHEN (fcvt.NKBA = 's_30') THEN 's30' WHEN (fcvt.NKBA = 'r_90') THEN 'r90' WHEN (fcvt.NKBA = 'r_50') THEN 'r50' WHEN (fcvt.NKBA = 's') THEN 's' WHEN (fcvt.NKBA = 'r_70') THEN 'r70' WHEN fcvt.NKBA IS NULL THEN '' ELSE fcvt.NKBA END as fcvt_NKBA, inIRKF_q.xpos as xpos, inIRKF_q.ypos as ypos, inIRKF_q.fc_behaviour as fc_behaviour]\n" +
+			"     └─ LeftIndexedJoin(inIRKF_q.use_fc_column = fcvt.JQVV)\n" +
+			"         ├─ SubqueryAlias(inIRKF_q)\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [nd.JQVV as FHMZ, nd.ACQC as ACQC, nd.LHTS as ENST, nd.LZBQ as LZBQ, nd.FDVu as output, nd.SQIT as max_conc_default, nma.NKBA as SXuV_info, nd.INCB as SXuV_info_comment, (Limit(1)\n" +
+			"         │       │   └─ Project\n" +
+			"         │       │       ├─ columns: [GRuH.LRBC]\n" +
+			"         │       │       └─ Filter(GRuH.FHMZ = nd.JQVV)\n" +
+			"         │       │           └─ Table(GRuH)\n" +
+			"         │       │               └─ columns: [fhmz lrbc]\n" +
+			"         │       │  ) as use_fc_column, nd.DDOE as xpos, nd.HLAZ as ypos, nd.DuFO as fc_behaviour]\n" +
+			"         │       └─ LeftIndexedJoin(nma.JQVV = nd.XTIG)\n" +
+			"         │           ├─ TableAlias(nd)\n" +
+			"         │           │   └─ Table(ANBH)\n" +
+			"         │           └─ TableAlias(nma)\n" +
+			"         │               └─ IndexedTableAccess(ZMOM)\n" +
+			"         │                   └─ index: [ZMOM.JQVV]\n" +
+			"         └─ TableAlias(fcvt)\n" +
+			"             └─ IndexedTableAccess(GKRF)\n" +
+			"                 └─ index: [GKRF.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT FHMZ, XZNC FROM uOJF`,
+		ExpectedPlan: "Table(uOJF)\n" +
+			" └─ columns: [fhmz xznc]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT JQVV, NKBA FROM ZQGD`,
+		ExpectedPlan: "Table(ZQGD)\n" +
+			" └─ columns: [jqvv nkba]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    nd_source.ACQC
+        AS source_node_name,
+    nd_target.ACQC
+        AS target_node_name,
+    sn.EFTO
+        AS EFTO,
+    CASE
+        WHEN it.NKBA IS NULL
+        THEN "N/A"
+        ELSE it.NKBA
+    END
+        AS interaction_info,
+    sn.KQOL
+        AS KQOL,
+    sn.YZWJ
+        AS YZWJ,
+    CASE
+        WHEN sn.HPFL IS NULL
+        THEN "N/A"
+        ELSE sn.HPFL
+    END
+        AS ZXVK,
+    CASE
+        WHEN sn.BFuK IS NULL
+        THEN "N/A"
+        ELSE sn.BFuK
+    END
+        AS comment,
+    sn.YMWM
+        AS YMWM
+FROM
+    OPHR sn
+LEFT JOIN
+    ANBH nd_source
+    ON sn.EXKR = nd_source.JQVV
+LEFT JOIN
+    ANBH nd_target
+    ON sn.XAOO = nd_target.JQVV
+LEFT JOIN
+    JJFP it
+    ON sn.LTOW = it.JQVV
+ORDER BY sn.JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [nd_source.ACQC as source_node_name, nd_target.ACQC as target_node_name, sn.EFTO as EFTO, CASE  WHEN it.NKBA IS NULL THEN 'N/A' ELSE it.NKBA END as interaction_info, sn.KQOL as KQOL, sn.YZWJ as YZWJ, CASE  WHEN sn.HPFL IS NULL THEN 'N/A' ELSE sn.HPFL END as ZXVK, CASE  WHEN sn.BFuK IS NULL THEN 'N/A' ELSE sn.BFuK END as comment, sn.YMWM as YMWM]\n" +
+			" └─ Sort(sn.JQVV ASC)\n" +
+			"     └─ LeftIndexedJoin(sn.LTOW = it.JQVV)\n" +
+			"         ├─ LeftIndexedJoin(sn.XAOO = nd_target.JQVV)\n" +
+			"         │   ├─ LeftIndexedJoin(sn.EXKR = nd_source.JQVV)\n" +
+			"         │   │   ├─ TableAlias(sn)\n" +
+			"         │   │   │   └─ Table(OPHR)\n" +
+			"         │   │   └─ TableAlias(nd_source)\n" +
+			"         │   │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │   │           └─ index: [ANBH.JQVV]\n" +
+			"         │   └─ TableAlias(nd_target)\n" +
+			"         │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │           └─ index: [ANBH.JQVV]\n" +
+			"         └─ TableAlias(it)\n" +
+			"             └─ IndexedTableAccess(JJFP)\n" +
+			"                 └─ index: [JJFP.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    YZWJ 
+FROM 
+    OPHR 
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [OPHR.YZWJ]\n" +
+			" └─ IndexedTableAccess(OPHR)\n" +
+			"     ├─ index: [OPHR.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv yzwj]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    nd_up_source.ACQC
+        AS regulator_node_name,
+    sn_up.YMWM
+        AS upstream_YMWM,
+    nd_up_target.ACQC
+        AS enzyme_node_name,
+    sn_down.EFTO
+        AS downstream_EFTO ,
+    sn_down.YMWM
+        AS downstream_YMWM,
+    nd_down_target.ACQC
+        AS substrate_node_name,
+    rn.CAAI
+        AS CAAI,
+    CASE
+        WHEN rn.HPFL IS NULL
+        THEN "N/A"
+        ELSE rn.HPFL
+    END
+        AS ZXVK,
+    CASE
+        WHEN rn.BFuK IS NULL
+        THEN "N/A"
+        ELSE rn.BFuK
+    END
+        AS comment
+FROM
+    DHWQ rn
+LEFT JOIN
+    OPHR sn_up
+    ON  rn.ANuC = sn_up.JQVV
+LEFT JOIN
+    OPHR sn_down
+    ON  rn.VTAP = sn_down.JQVV
+LEFT JOIN
+    ANBH nd_up_source
+    ON sn_up.EXKR = nd_up_source.JQVV
+LEFT JOIN
+    ANBH nd_up_target
+    ON sn_up.XAOO = nd_up_target.JQVV
+LEFT JOIN
+    ANBH nd_down_target
+    ON sn_down.XAOO = nd_down_target.JQVV
+ORDER BY rn.JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [nd_up_source.ACQC as regulator_node_name, sn_up.YMWM as upstream_YMWM, nd_up_target.ACQC as enzyme_node_name, sn_down.EFTO as downstream_EFTO, sn_down.YMWM as downstream_YMWM, nd_down_target.ACQC as substrate_node_name, rn.CAAI as CAAI, CASE  WHEN rn.HPFL IS NULL THEN 'N/A' ELSE rn.HPFL END as ZXVK, CASE  WHEN rn.BFuK IS NULL THEN 'N/A' ELSE rn.BFuK END as comment]\n" +
+			" └─ Sort(rn.JQVV ASC)\n" +
+			"     └─ LeftIndexedJoin(sn_down.XAOO = nd_down_target.JQVV)\n" +
+			"         ├─ LeftIndexedJoin(sn_up.XAOO = nd_up_target.JQVV)\n" +
+			"         │   ├─ LeftIndexedJoin(sn_up.EXKR = nd_up_source.JQVV)\n" +
+			"         │   │   ├─ LeftIndexedJoin(rn.VTAP = sn_down.JQVV)\n" +
+			"         │   │   │   ├─ LeftIndexedJoin(rn.ANuC = sn_up.JQVV)\n" +
+			"         │   │   │   │   ├─ TableAlias(rn)\n" +
+			"         │   │   │   │   │   └─ Table(DHWQ)\n" +
+			"         │   │   │   │   └─ TableAlias(sn_up)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"         │   │   │   │           └─ index: [OPHR.JQVV]\n" +
+			"         │   │   │   └─ TableAlias(sn_down)\n" +
+			"         │   │   │       └─ IndexedTableAccess(OPHR)\n" +
+			"         │   │   │           └─ index: [OPHR.JQVV]\n" +
+			"         │   │   └─ TableAlias(nd_up_source)\n" +
+			"         │   │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │   │           └─ index: [ANBH.JQVV]\n" +
+			"         │   └─ TableAlias(nd_up_target)\n" +
+			"         │       └─ IndexedTableAccess(ANBH)\n" +
+			"         │           └─ index: [ANBH.JQVV]\n" +
+			"         └─ TableAlias(nd_down_target)\n" +
+			"             └─ IndexedTableAccess(ANBH)\n" +
+			"                 └─ index: [ANBH.JQVV]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    LZBQ 
+FROM 
+    ANBH 
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ANBH.LZBQ]\n" +
+			" └─ IndexedTableAccess(ANBH)\n" +
+			"     ├─ index: [ANBH.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv lzbq]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT 
+    sn.edge_JQVVx,
+    sn.KQOL
+FROM 
+    (SELECT
+        ROW_NUMBER() OVER (ORDER BY JQVV ASC) edge_JQVVx, 
+        JQVV,
+        EFTO,
+        KQOL
+    FROM
+    OPHR) sn
+WHERE EFTO = 4
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sn.edge_JQVVx, sn.KQOL]\n" +
+			" └─ Sort(sn.JQVV ASC)\n" +
+			"     └─ SubqueryAlias(sn)\n" +
+			"         └─ Filter(OPHR.EFTO = 4)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [row_number() over ( order by OPHR.JQVV ASC) as edge_JQVVx, OPHR.JQVV, OPHR.EFTO, OPHR.KQOL]\n" +
+			"                 └─ Window(row_number() over ( order by OPHR.JQVV ASC), OPHR.JQVV, OPHR.EFTO, OPHR.KQOL)\n" +
+			"                     └─ Table(OPHR)\n" +
+			"                         └─ columns: [jqvv kqol efto]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT JQVV, EFTO, KQOL
+FROM OPHR
+ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [OPHR.JQVV, OPHR.EFTO, OPHR.KQOL]\n" +
+			" └─ IndexedTableAccess(OPHR)\n" +
+			"     ├─ index: [OPHR.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv kqol efto]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    CASE 
+        WHEN EFTO = 2 THEN KQOL
+        ELSE 0
+    END AS concentration_weight
+    FROM OPHR
+    ORDER BY JQVV ASC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [CASE  WHEN (OPHR.EFTO = 2) THEN OPHR.KQOL ELSE 0 END as concentration_weight]\n" +
+			" └─ IndexedTableAccess(OPHR)\n" +
+			"     ├─ index: [OPHR.JQVV]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [jqvv kqol efto]\n" +
+			"",
+	},
+	{
+		Query: `
+SELECT
+    pa.NKBA as pathway,
+    nd.ACQC
+FROM ZDVT ddrpdn
+INNER JOIN ANBH nd
+    ON ddrpdn.FHMZ = nd.JQVV
+INNER JOIN ETNA pa
+    ON ddrpdn.MSEA = pa.JQVV`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [pa.NKBA as pathway, nd.ACQC]\n" +
+			" └─ IndexedJoin(ddrpdn.MSEA = pa.JQVV)\n" +
+			"     ├─ IndexedJoin(ddrpdn.FHMZ = nd.JQVV)\n" +
+			"     │   ├─ TableAlias(ddrpdn)\n" +
+			"     │   │   └─ Table(ZDVT)\n" +
+			"     │   └─ TableAlias(nd)\n" +
+			"     │       └─ IndexedTableAccess(ANBH)\n" +
+			"     │           └─ index: [ANBH.JQVV]\n" +
+			"     └─ TableAlias(pa)\n" +
+			"         └─ IndexedTableAccess(ETNA)\n" +
+			"             └─ index: [ETNA.JQVV]\n" +
+			"",
+	},
+}
