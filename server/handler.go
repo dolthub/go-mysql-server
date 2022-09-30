@@ -63,7 +63,6 @@ const (
 
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
-	mu                sync.Mutex
 	e                 *sqle.Engine
 	sm                *SessionManager
 	readTimeout       time.Duration
@@ -139,7 +138,11 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		}
 	}()
 
-	ctx, _ := h.sm.NewContextWithQuery(c, "")
+	ctx, err := h.sm.NewContextWithQuery(c, "")
+	if err != nil {
+		h.sm.CloseConn(c)
+		return
+	}
 	h.sm.CloseConn(c)
 
 	// If connection was closed, kill its associated queries.
@@ -314,7 +317,10 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	if parsed == nil {
-		parsed, _ = parse.Parse(ctx, query)
+		parsed, err = parse.Parse(ctx, query)
+	}
+	if err != nil {
+		return "", err
 	}
 
 	ctx.GetLogger().Tracef("beginning execution")
@@ -428,7 +434,7 @@ func (h *Handler) doQuery(
 	defer timer.Stop()
 
 	var r *sqltypes.Result
-	var proccesedAtLeastOneBatch bool
+	var processedAtLeastOneBatch bool
 
 	// reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
@@ -445,7 +451,7 @@ func (h *Handler) doQuery(
 					return err
 				}
 				r = nil
-				proccesedAtLeastOneBatch = true
+				processedAtLeastOneBatch = true
 				continue
 			}
 
@@ -497,7 +503,7 @@ func (h *Handler) doQuery(
 						continue
 					}
 
-					outputRow, err := rowToSQL(schema, row)
+					outputRow, err := rowToSQL(ctx, schema, row)
 					if err != nil {
 						return err
 					}
@@ -555,7 +561,7 @@ func (h *Handler) doQuery(
 
 	// processedAtLeastOneBatch means we already called callback() at least
 	// once, so no need to call it if RowsAffected == 0.
-	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
+	if r != nil && (r.RowsAffected == 0 && processedAtLeastOneBatch) {
 		return remainder, nil
 	}
 
@@ -708,7 +714,7 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
-func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
+func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
 	var err error
 	for i, v := range row {
@@ -717,7 +723,7 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 			continue
 		}
 
-		o[i], err = s[i].Type.SQL(nil, v)
+		o[i], err = s[i].Type.SQL(ctx, nil, v)
 		if err != nil {
 			return nil, err
 		}

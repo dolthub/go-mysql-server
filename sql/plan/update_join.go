@@ -126,7 +126,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 			}
 
-			// Determine whether this row in the table has already been update
+			// Determine whether this row in the table has already been updated
 			cache := u.getOrCreateCache(ctx, tableName)
 			hash, err := sql.HashOf(oldTableRow)
 			if err != nil {
@@ -166,9 +166,9 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 	var cond sql.Expression
 	switch n := jn.(type) {
 	case *RightJoin:
-		cond = n.Cond
+		cond = n.Filter
 	case *LeftJoin:
-		cond = n.Cond
+		cond = n.Filter
 	default:
 		return true, fmt.Errorf("error: should only consider left or right join.")
 	}
@@ -244,6 +244,11 @@ func (u *updatableJoinTable) String() string {
 // Schema implements the sql.UpdatableTable interface.
 func (u *updatableJoinTable) Schema() sql.Schema {
 	return u.joinNode.Schema()
+}
+
+// Collation implements the sql.Table interface.
+func (u *updatableJoinTable) Collation() sql.CollationID {
+	return sql.Collation_Default
 }
 
 // Updater implements the sql.UpdatableTable interface.

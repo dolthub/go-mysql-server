@@ -23,13 +23,20 @@ import (
 // Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
 type Scope struct {
 	// Stack of nested node scopes, with innermost scope first. A scope node is the node in which the subquery is
-	// defined, or an appropriate sibling.
+	// defined, or an appropriate sibling, NOT the child node of the Subquery node.
 	nodes []sql.Node
 	// Memo nodes are nodes in the execution context that shouldn't be considered for name resolution, but are still
 	// important for analysis.
 	memos []sql.Node
+	// recursionDepth tracks how many times we've recursed with analysis, to avoid stack overflows from infinite recursion
+	recursionDepth int
 
 	procedures *ProcedureCache
+}
+
+func (s *Scope) IsEmpty() bool {
+	return s == nil || len(s.nodes) == 0
+
 }
 
 // newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
@@ -42,10 +49,16 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.nodes...)
 	return &Scope{
-		nodes:      newNodes,
-		memos:      s.memos,
-		procedures: s.procedures,
+		nodes:          newNodes,
+		memos:          s.memos,
+		recursionDepth: s.recursionDepth + 1,
+		procedures:     s.procedures,
 	}
+}
+
+// newScopeWithDepth returns a new scope object with the recursion depth given
+func newScopeWithDepth(depth int) *Scope {
+	return &Scope{recursionDepth: depth}
 }
 
 // memo creates a new Scope object with the memo node given. Memo nodes don't affect name resolution, but are used in
@@ -81,6 +94,13 @@ func (s *Scope) MemoNodes() []sql.Node {
 		return nil
 	}
 	return s.memos
+}
+
+func (s *Scope) RecursionDepth() int {
+	if s == nil {
+		return 0
+	}
+	return s.recursionDepth
 }
 
 func (s *Scope) procedureCache() *ProcedureCache {

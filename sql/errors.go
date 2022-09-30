@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -59,6 +60,9 @@ var (
 	// ErrAmbiguousColumnName is returned when there is a column reference that
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
+
+	// ErrAmbiguousColumnOrAliasName is returned when a column or alias name can't be qualified to a table or alias definition
+	ErrAmbiguousColumnOrAliasName = errors.NewKind("ambiguous column or alias name %q")
 
 	// ErrAmbiguousColumnInOrderBy is returned when an order by column is ambiguous
 	ErrAmbiguousColumnInOrderBy = errors.NewKind("Column %q in order clause is ambiguous")
@@ -374,6 +378,9 @@ var (
 	// ErrForeignKeyTypeChange is returned when attempting to change the type of some column used in a foreign key.
 	ErrForeignKeyTypeChange = errors.NewKind("unable to change type of column `%s` as it is used by foreign keys")
 
+	// ErrForeignKeyDepthLimit is returned when the CASCADE depth limit has been reached.
+	ErrForeignKeyDepthLimit = errors.NewKind("Foreign key cascade delete/update exceeds max depth of 15.")
+
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 
@@ -427,6 +434,9 @@ var (
 
 	// ErrFunctionNotFound is thrown when a function is not found
 	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
+
+	// ErrConflictingExternalQuery is thrown when a scope's parent has a conflicting sort or limit node
+	ErrConflictingExternalQuery = errors.NewKind("found external scope with conflicting ORDER BY/LIMIT")
 
 	// ErrTableFunctionNotFound is thrown when a table function is not found
 	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
@@ -598,6 +608,43 @@ var (
 	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server
 	ErrDatabaseWriteLocked = errors.NewKind("database is locked to writes")
+
+	// ErrCollationMalformedString is returned when a malformed string is encountered during a collation-related operation.
+	ErrCollationMalformedString = errors.NewKind("malformed string encountered while %s")
+
+	// ErrCollatedExprWrongType is returned when the wrong type is given to a CollatedExpression.
+	ErrCollatedExprWrongType = errors.NewKind("wrong type in collated expression")
+
+	// ErrCollationInvalidForCharSet is returned when the wrong collation is given for the character set when parsing.
+	ErrCollationInvalidForCharSet = errors.NewKind("COLLATION '%s' is not valid for CHARACTER SET '%s'")
+
+	// ErrCollationUnknown is returned when the collation is not a recognized MySQL collation.
+	ErrCollationUnknown = errors.NewKind("Unknown collation: %v")
+
+	// ErrCollationNotYetImplementedTemp is returned when the collation is valid but has not yet been implemented.
+	// This error is temporary, and will be removed once all collations have been added.
+	ErrCollationNotYetImplementedTemp = errors.NewKind("The collation `%s` has not yet been implemented, " +
+		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
+
+	// ErrCollationIllegalMix is returned when two different collations are used in a scenario where they are not compatible.
+	ErrCollationIllegalMix = errors.NewKind("Illegal mix of collations (%v) and (%v)")
+
+	// ErrCharSetIntroducer is returned when a character set introducer is not attached to a string
+	ErrCharSetIntroducer = errors.NewKind("CHARACTER SET introducer must be attached to a string")
+
+	// ErrCharSetInvalidString is returned when an invalid string is given for a character set.
+	ErrCharSetInvalidString = errors.NewKind("invalid string for character set `%s`: \"%s\"")
+
+	// ErrCharSetFailedToEncode is returned when a character set fails encoding
+	ErrCharSetFailedToEncode = errors.NewKind("failed to encode `%s`")
+
+	// ErrCharSetUnknown is returned when the character set is not a recognized MySQL character set
+	ErrCharSetUnknown = errors.NewKind("Unknown character set: %v")
+
+	// ErrCharSetNotYetImplementedTemp is returned when the character set is valid but has not yet been implemented.
+	// This error is temporary, and will be removed once all character sets have been added.
+	ErrCharSetNotYetImplementedTemp = errors.NewKind("The character set `%s` has not yet been implemented, " +
+		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
@@ -671,7 +718,8 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = mysql.ERUnknownError
 	}
 
-	return mysql.NewSQLError(code, sqlState, err.Error()), err, false // return the original error as well
+	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
+	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1)), err, false // return the original error as well
 }
 
 type UniqueKeyError struct {

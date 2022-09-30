@@ -130,7 +130,7 @@ func (t systemSetType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t systemSetType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemSetType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -150,7 +150,7 @@ func (t systemSetType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t systemSetType) String() string {
-	return "SYSTEM_SET"
+	return "system_set"
 }
 
 // Type implements Type interface.

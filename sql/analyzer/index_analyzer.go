@@ -41,7 +41,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 	indexes := make(map[string][]sql.Index)
 
 	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
-		it, ok := rt.Table.(sql.IndexedTable)
+		it, ok := rt.Table.(sql.IndexAddressableTable)
 		if !ok {
 			return nil
 		}
@@ -133,10 +133,13 @@ func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, db string, table string,
 // MatchingIndexes returns a list of all matching indexes for the given expressions. The returned order of the indexes
 // are deterministic and follow the given rules, from the highest priority in descending order:
 //
-// 1. Expressions exactly match the index
-// 2. Expressions match as much of the index prefix as possible
-// 3. Largest index by expression count
-// 4. Index ID in ascending order
+//  1. Expressions exactly match the index
+//  2. Expressions match as much of the index prefix as possible
+//  3. Primary Key index ordered before secondary indexes
+//     TODO: for rule 3, we want to prioritize "covering" indexes over non-covering indexes, but sql.Index doesn't
+//     provide the necessary information to evaluate this condition. Primary Key status approximates it.
+//  4. Largest index by expression count
+//  5. Index ID in ascending order
 //
 // It is worth noting that all returned indexes will have at least the first index expression satisfied (creating a
 // partial index), as otherwise the index would be no better than a table scan (for which integrators may have
@@ -189,6 +192,9 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 			return false
 		} else if idxI.prefixCount != idxJ.prefixCount {
 			return idxI.prefixCount > idxJ.prefixCount
+			// TODO: ID() == "PRIMARY" is purely convention
+		} else if idxI.ID() == "PRIMARY" || idxJ.ID() == "PRIMARY" {
+			return idxI.ID() == "PRIMARY"
 		} else if idxI.exprLen != idxJ.exprLen {
 			return idxI.exprLen > idxJ.exprLen
 		} else {

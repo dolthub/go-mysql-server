@@ -36,7 +36,7 @@ const (
 
 var (
 	ErrConvertingToDecimal   = errors.NewKind("value %v is not a valid Decimal")
-	ErrConvertToDecimalLimit = errors.NewKind("value of Decimal is too large for type")
+	ErrConvertToDecimalLimit = errors.NewKind("Out of range value for column of Decimal type ")
 	ErrMarshalNullDecimal    = errors.NewKind("Decimal cannot marshal a null value")
 
 	decimalValueType = reflect.TypeOf(decimal.Decimal{})
@@ -84,15 +84,16 @@ var InternalDecimalType DecimalType = decimalType{
 
 // CreateDecimalType creates a DecimalType.
 func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
+	if scale > DecimalTypeMaxScale {
+		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
+	}
 	if precision > DecimalTypeMaxPrecision {
-		return nil, fmt.Errorf("%v is beyond the max precision", precision)
+		return nil, fmt.Errorf("Too big precision %v specified. Maximum is %v.", precision, DecimalTypeMaxPrecision)
 	}
 	if scale > precision {
-		return nil, fmt.Errorf("%v cannot be larger than the precision %v", scale, precision)
+		return nil, fmt.Errorf("Scale %v cannot be larger than the precision %v", scale, precision)
 	}
-	if scale > DecimalTypeMaxScale {
-		return nil, fmt.Errorf("%v is beyond the max scale", scale)
-	}
+
 	if precision == 0 {
 		precision = 10
 	}
@@ -127,20 +128,12 @@ func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	ad, err := t.BoundsCheck(af.Decimal)
-	if err != nil {
-		return 0, err
-	}
 	bf, err := t.ConvertToNullDecimal(b)
 	if err != nil {
 		return 0, err
 	}
-	bd, err := t.BoundsCheck(bf.Decimal)
-	if err != nil {
-		return 0, err
-	}
 
-	return ad.Cmp(bd), nil
+	return af.Decimal.Cmp(bf.Decimal), nil
 }
 
 // Convert implements Type interface.
@@ -236,6 +229,7 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 
 func (t decimalType) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
 	if -v.Exponent() > int32(t.scale) {
+		// TODO : add 'Data truncated' warning
 		v = v.Round(int32(t.scale))
 	}
 	// TODO add shortcut for common case
@@ -281,7 +275,7 @@ func (t decimalType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -297,7 +291,7 @@ func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t decimalType) String() string {
-	return fmt.Sprintf("DECIMAL(%v,%v)", t.precision, t.scale)
+	return fmt.Sprintf("decimal(%v,%v)", t.precision, t.scale)
 }
 
 // ValueType implements Type interface.

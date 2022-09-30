@@ -43,7 +43,7 @@ var _ sql.RowDeleter = (*ForeignKeyHandler)(nil)
 
 // Resolved implements the interface sql.Node.
 func (n *ForeignKeyHandler) Resolved() bool {
-	return n.OriginalNode.Resolved() && n.Editor.IsInitialized()
+	return n.OriginalNode.Resolved() && n.Editor.IsInitialized(make(map[*ForeignKeyEditor]struct{}))
 }
 
 // String implements the interface sql.Node.
@@ -54,6 +54,15 @@ func (n *ForeignKeyHandler) String() string {
 // Schema implements the interface sql.Node.
 func (n *ForeignKeyHandler) Schema() sql.Schema {
 	return n.OriginalNode.Schema()
+}
+
+// Collation implements the interface sql.Node.
+func (n *ForeignKeyHandler) Collation() sql.CollationID {
+	originalTable, ok := n.OriginalNode.(sql.Table)
+	if !ok {
+		return sql.Collation_Default
+	}
+	return originalTable.Collation()
 }
 
 // Children implements the interface sql.Node.
@@ -167,12 +176,12 @@ func (n *ForeignKeyHandler) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Update implements the interface sql.RowUpdater.
 func (n *ForeignKeyHandler) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
-	return n.Editor.Update(ctx, old, new)
+	return n.Editor.Update(ctx, old, new, 1)
 }
 
 // Delete implements the interface sql.RowDeleter.
 func (n *ForeignKeyHandler) Delete(ctx *sql.Context, row sql.Row) error {
-	return n.Editor.Delete(ctx, row)
+	return n.Editor.Delete(ctx, row, 1)
 }
 
 // Close implements the interface sql.Closer.

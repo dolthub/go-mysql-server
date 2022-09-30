@@ -133,6 +133,7 @@ func TestUnixTimestamp(t *testing.T) {
 	result, err := ut.Eval(ctx2, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
+	require.Equal(uint16(0), ctx.WarningCount())
 
 	ut, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", sql.LongText))
 	require.NoError(err)
@@ -140,6 +141,7 @@ func TestUnixTimestamp(t *testing.T) {
 	result, err = ut.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
+	require.Equal(uint16(0), ctx.WarningCount())
 
 	ut, err = NewUnixTimestamp(expression.NewLiteral(nil, sql.Null))
 	require.NoError(err)
@@ -147,6 +149,31 @@ func TestUnixTimestamp(t *testing.T) {
 	result, err = ut.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
+	require.Equal(uint16(0), ctx.WarningCount())
+
+	// When MySQL can't convert the expression to a date, it always returns 0 and sets a warning
+	ut, err = NewUnixTimestamp(expression.NewLiteral(1577995200, sql.Int64))
+	require.NoError(err)
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(0, result)
+	require.Equal(uint16(1), ctx.WarningCount())
+	require.Equal("Incorrect datetime value: 1577995200", ctx.Warnings()[0].Message)
+	require.Equal(1292, ctx.Warnings()[0].Code)
+
+	// When MySQL can't convert the expression to a date, it always returns 0 and sets a warning
+	ctx.ClearWarnings()
+	// TODO: ClearWarnings has to be called twice to actually clear the warnings because of the way it sets its
+	//       warncnt member var. This should be fixed, but existing behavior depends on this behavior currently.
+	ctx.ClearWarnings()
+	ut, err = NewUnixTimestamp(expression.NewLiteral("d0lthub", sql.Text))
+	require.NoError(err)
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(0, result)
+	require.Equal(uint16(1), ctx.WarningCount())
+	require.Equal("Incorrect datetime value: 'd0lthub'", ctx.Warnings()[0].Message)
+	require.Equal(1292, ctx.Warnings()[0].Code)
 }
 
 func TestFromUnixtime(t *testing.T) {

@@ -60,9 +60,16 @@ type ScriptTestAssertion struct {
 	// query. The ExpectedWarning field must be set for warning messages to be checked.
 	ExpectedWarningMessageSubstring string
 
+	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
+	ExpectedColumns sql.Schema
+
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool
+
+	// Skip is used to completely skip a test, not execute its query at all, and record it as a skipped test
+	// in the test suite results.
+	Skip bool
 
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]sql.Expression
@@ -72,6 +79,101 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
+			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				// enginetests returns the enum id, but the text representation is sent over the wire
+				Query:    "SELECT * FROM enumtest1;",
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}, {3, uint64(2)}},
+			},
+			{
+				// enum values must match EXACTLY for case-sensitive collations
+				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				ExpectedErrStr: "value ABC is not valid for this Enum",
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
+				Query: "SHOW CREATE TABLE enumtest2;",
+				Expected: []sql.Row{{
+					"enumtest2",
+					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('abc','XYZ')", "YES", "", "NULL", ""}},
+			},
+			{
+				Query: "DESCRIBE enumtest2;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('x','X','y','Y')", "YES", "", "NULL", ""}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
+				Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
+			},
+		},
+	},
+	{
+		Name: "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", "NULL", ""}},
+			},
+			{
+				Query: "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{
+					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci",
+					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci"}},
+			},
+			{
+				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+		},
+	},
+
 	{
 		Name: "failed statements data validation for INSERT, UPDATE",
 		SetUpScript: []string{
@@ -599,6 +701,30 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "select last_insert_id()",
 				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		Name: "last_insert_id(expr) behavior",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
@@ -1161,7 +1287,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
-				Expected: []sql.Row{{float64(-1455)}},
+				Expected: []sql.Row{{int64(-1455)}},
 			},
 			{
 				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
@@ -1516,6 +1642,56 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Ensure scale is not rounded when inserting to DECIMAL type through float64",
+		SetUpScript: []string{
+			"create table test (number decimal(40,16));",
+			"insert into test values ('11981.5923291839784651');",
+			"create table small_test (n decimal(3,2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (11981.5923291839784651);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (119815923291839784651.11981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('119815923291839784651.1198159232918398', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1.1981592329183978465111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183978', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1.1981592329183978545111981592329183978465111981592329183978465144);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183979', DECIMAL)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:       "INSERT INTO small_test VALUES (12.1);",
+				ExpectedErr: sql.ErrConvertToDecimalLimit,
+			},
+		},
+	},
+	{
 		Name: "JOIN on non-index-prefix columns do not panic (Dolt Issue #2366)",
 		SetUpScript: []string{
 			"CREATE TABLE `player_season_stat_totals` (`player_id` int NOT NULL, `team_id` int NOT NULL, `season_id` int NOT NULL, `minutes` int, `games_started` int, `games_played` int, `2pm` int, `2pa` int, `3pm` int, `3pa` int, `ftm` int, `fta` int, `ast` int, `stl` int, `blk` int, `tov` int, `pts` int, `orb` int, `drb` int, `trb` int, `pf` int, `season_type_id` int NOT NULL, `league_id` int NOT NULL DEFAULT 0, PRIMARY KEY (`player_id`,`team_id`,`season_id`,`season_type_id`,`league_id`));",
@@ -1812,6 +1988,18 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER AUTO INCREMENT TABLE ADD column",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test add column j int;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
@@ -1997,7 +2185,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) collate utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4 BINARY);",
@@ -2005,7 +2193,62 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SHOW CREATE TABLE test2;",
-				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) collate utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "sum() and avg() on DECIMAL type column returns the DECIMAL type result",
+		SetUpScript: []string{
+			"create table decimal_table (id int, val decimal(18,16));",
+			"insert into decimal_table values (1,-2.5633000000000384);",
+			"insert into decimal_table values (2,2.5633000000000370);",
+			"insert into decimal_table values (3,0.0000000000000004);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT val FROM decimal_table;",
+				Expected: []sql.Row{{"-2.5633000000000384"}, {"2.5633000000000370"}, {"0.0000000000000004"}},
+			},
+			{
+				Query:    "SELECT sum(val) FROM decimal_table;",
+				Expected: []sql.Row{{"-0.0000000000000010"}},
+			},
+			{
+				Query:    "SELECT avg(val) FROM decimal_table;",
+				Expected: []sql.Row{{"-0.00000000000000033333"}},
+			},
+		},
+	},
+	{
+		Name: "sum() and avg() on non-DECIMAL type column returns the DOUBLE type result",
+		SetUpScript: []string{
+			"create table float_table (id int, val1 double, val2 float);",
+			"insert into float_table values (1,-2.5633000000000384, 2.3);",
+			"insert into float_table values (2,2.5633000000000370, 2.4);",
+			"insert into float_table values (3,0.0000000000000004, 5.3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
+				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+			},
+			{
+				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;;",
+				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
+			},
+		},
+	},
+	{
+		Name: "compare DECIMAL type columns with different precision and scale",
+		SetUpScript: []string{
+			"create table t (id int primary key, val1 decimal(2, 1), val2 decimal(3, 1));",
+			"insert into t values (1, 1.2, 1.1), (2, 1.2, 10.1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select if(val1 < val2, 'YES', 'NO') from t order by id;",
+				Expected: []sql.Row{{"NO"}, {"YES"}},
 			},
 		},
 	},
@@ -2624,6 +2867,16 @@ var BrokenScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "ALTER TABLE RENAME on a column when another column has a default dependency on it",
+		SetUpScript: []string{"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));"},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table test rename column v2 to mycol",
+				ExpectedErr: sql.ErrAlterTableNotSupported, // Not the correct error. The point is that this query needs to fail.
+			},
+		},
+	},
 	// TODO: We should implement unique indexes with GMS
 	{
 		Name: "Keyless Table with Unique Index",
@@ -2684,6 +2937,52 @@ var BrokenScriptTests = []ScriptTest{
 					{"v6", "int", "NO", "", "", ""},
 					{"v7", "int", "NO", "", "", ""},
 				},
+			},
+		},
+	},
+	{
+		Name: "REGEXP operator",
+		SetUpScript: []string{
+			"CREATE TABLE IF NOT EXISTS `person` (`id` INTEGER AUTO_INCREMENT NOT NULL PRIMARY KEY, `name` VARCHAR(255) NOT NULL);",
+			"INSERT INTO `person` (`name`) VALUES ('n1'), ('n2'), ('n3')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT `t1`.`id`, `t1`.`name` FROM `person` AS `t1` WHERE (`t1`.`name` REGEXP 'N[1,3]') ORDER BY `t1`.`name`;",
+				Expected: []sql.Row{{1, "n1"}, {3, "n3"}},
+			},
+		},
+	},
+	{
+		Name: "Drop a column with a check constraint",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable DROP COLUMN col2",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE XA(YW VARCHAR(24) NOT NULL, XB VARCHAR(100), XC VARCHAR(2500),\n  XD VARCHAR(2500), XE VARCHAR(100), XF VARCHAR(100), XG VARCHAR(100),\n  XI VARCHAR(100), XJ VARCHAR(100), XK VARCHAR(100), XL VARCHAR(100),\n  XM VARCHAR(1000), XN TEXT, XO TEXT, PRIMARY KEY (YW));",
+			"CREATE TABLE XP(YW VARCHAR(24) NOT NULL, XQ VARCHAR(100) NOT NULL,\n  XR VARCHAR(1000), PRIMARY KEY (YW));",
+			"CREATE TABLE XS(YW VARCHAR(24) NOT NULL, XT VARCHAR(24) NOT NULL,\n  XU VARCHAR(24), XV VARCHAR(100) NOT NULL, XW DOUBLE NOT NULL,\n  XX DOUBLE NOT NULL, XY VARCHAR(100), XC VARCHAR(100), XZ VARCHAR(100) NOT NULL,\n  YA DOUBLE, YB VARCHAR(24) NOT NULL, YC VARCHAR(1000), XO VARCHAR(1000),\n  YD DOUBLE NOT NULL, YE DOUBLE NOT NULL, PRIMARY KEY (YW));",
+			"CREATE TABLE YF(YW VARCHAR(24) NOT NULL, XB VARCHAR(100) NOT NULL, YG VARCHAR(100),\n  YH VARCHAR(100), XO TEXT, PRIMARY KEY (YW));",
+			"CREATE TABLE yp(YW VARCHAR(24) NOT NULL, XJ VARCHAR(100) NOT NULL, XL VARCHAR(100),\n  XT VARCHAR(24) NOT NULL, YI INT NOT NULL, XO VARCHAR(1000), PRIMARY KEY (YW),\n  FOREIGN KEY (XT) REFERENCES XP (YW));",
+			"INSERT INTO XS VALUES ('', '', NULL, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC', 0, 0,\n  NULL, NULL, '', NULL, '', NULL, NULL, 0, 0);",
+			"INSERT INTO YF VALUES ('', '', NULL, NULL, NULL);",
+			"INSERT INTO XA VALUES ('', '', '', '', '', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC',\n  '', '', '', '', '', '', '', '');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT DISTINCT YM.YW AS YW,\n  (SELECT YW FROM YF WHERE YF.XB = YM.XB) AS YF_YW,\n  (\n    SELECT YW\n    FROM yp\n    WHERE\n      yp.XJ = YM.XJ AND\n      (yp.XL = YM.XL OR (yp.XL IS NULL AND YM.XL IS NULL)) AND\n      yp.XT = nd.XT\n    ) AS YJ,\n  XE AS XE,\n  XI AS YO,\n  XK AS XK,\n  XM AS XM,\n  CASE\n    WHEN YM.XO <> 'Z'\n  THEN YM.XO\n  ELSE NULL\n  END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n    FROM XA\n  ) YM\n  INNER JOIN XS nd\n    ON nd.XV = XF\n  WHERE\n    XB IN (SELECT XB FROM YF) AND\n    (XF IS NOT NULL AND XF <> 'Z')\n  UNION\n  SELECT DISTINCT YL.YW AS YW,\n    (\n      SELECT YW\n      FROM YF\n      WHERE YF.XB = YL.XB\n    ) AS YF_YW,\n    (\n      SELECT YW FROM yp\n      WHERE\n        yp.XJ = YL.XJ AND\n        (yp.XL = YL.XL OR (yp.XL IS NULL AND YL.XL IS NULL)) AND\n        yp.XT = YN.XT\n    ) AS YJ,\n    XE AS XE,\n    XI AS YO,\n    XK AS XK,\n    XM AS XM,\n    CASE WHEN YL.XO <> 'Z' THEN YL.XO ELSE NULL END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n      FROM XA\n  ) YL\n  INNER JOIN XS YN\n    ON YN.XC = YL.XC\n  WHERE\n    XB IN (SELECT XB FROM YF) AND \n    (XF IS NULL OR XF = 'Z');",
+				Expected: []sql.Row{{"", "", "", "", "", "", "", ""}},
 			},
 		},
 	},

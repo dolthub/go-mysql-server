@@ -94,6 +94,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
+
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -143,7 +144,8 @@ func countTableFactors(n sql.Node) int {
 		case *plan.InsertInto:
 			cnt += countTableFactors(n.Source)
 		case *plan.RecursiveCte:
-			cnt += countTableFactors(n.Rec)
+			// TODO subqueries and CTEs should contribute as a single table factor
+			cnt += countTableFactors(n.Right())
 		default:
 		}
 
@@ -226,7 +228,11 @@ func replaceTableAccessWithIndexedAccess(
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return plan.NewIndexedTableAccess(node, plan.NewLookupBuilder(ctx, indexToApply.index, keyExprs, matchesNullMask)), transform.NewTree, nil
+			ret, err := plan.NewIndexedAccessForResolvedTable(node, plan.NewLookupBuilder(ctx, indexToApply.index, keyExprs, matchesNullMask))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return ret, transform.NewTree, nil
 		} else {
 			ln, sameL, lerr := toIndexedTableAccess(node, indexToApply.disjunction[0])
 			if lerr != nil {
@@ -273,7 +279,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, transform.SameTree, err
 		}
 
-		if scope != nil {
+		if !scope.IsEmpty() {
 			left = plan.NewStripRowNode(left, len(scope.Schema()))
 		}
 
@@ -283,7 +289,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, transform.SameTree, err
 		}
 
-		if scope != nil {
+		if !scope.IsEmpty() {
 			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 
@@ -391,7 +397,7 @@ func replanJoin(
 			// itself has already been analyzed. Do not inspect
 			// below here.
 			return false
-		case *plan.CrossJoin:
+		case *plan.CrossJoin, *plan.SemiJoin, *plan.AntiJoin, *plan.FullOuterJoin:
 			// cross join subtrees have to be planned in isolation,
 			// but otherwise are valid leafs for join planning.
 			return false
@@ -763,21 +769,22 @@ func getJoinIndexes(
 		return result
 	case *expression.And:
 		exprs := splitConjunction(jc.cond)
+		var eqs []sql.Expression
 		for _, expr := range exprs {
 			switch e := expr.(type) {
 			case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+				eqs = append(eqs, e)
 			case *expression.Not:
 				switch e.Child.(type) {
 				case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+					eqs = append(eqs, e)
 				default:
-					return nil
 				}
 			default:
-				return nil
 			}
 		}
 
-		return getJoinIndex(ctx, jc, exprs, ia, tableAliases)
+		return getJoinIndex(ctx, jc, eqs, ia, tableAliases)
 	case *expression.Or:
 		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable}
 		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable}

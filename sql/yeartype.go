@@ -166,7 +166,7 @@ func (t yearType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t yearType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t yearType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -185,7 +185,7 @@ func (t yearType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t yearType) String() string {
-	return "YEAR"
+	return "year"
 }
 
 // Type implements Type interface.

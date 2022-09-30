@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"fmt"
 	"reflect"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -151,7 +150,7 @@ func (t LineStringType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t LineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -162,14 +161,13 @@ func (t LineStringType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) 
 	}
 
 	buf := SerializeLineString(v.(LineString))
-	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
+	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
 func (t LineStringType) String() string {
-	return "LINESTRING"
+	return "linestring"
 }
 
 // Type implements Type interface.

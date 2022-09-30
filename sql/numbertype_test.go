@@ -237,13 +237,23 @@ func TestNumberConvert(t *testing.T) {
 }
 
 func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
-	val, err := Boolean.SQL(nil, true)
+	val, err := Boolean.SQL(NewEmptyContext(), nil, true)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(1)", val.String())
 
-	val, err = Boolean.SQL(nil, false)
+	val, err = Boolean.SQL(NewEmptyContext(), nil, false)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(0)", val.String())
+}
+
+func TestNumberSQL_NumberFromString(t *testing.T) {
+	val, err := Int64.SQL(NewEmptyContext(), nil, "not a number")
+	require.NoError(t, err)
+	assert.Equal(t, "not a number", val.ToString())
+
+	val, err = Float64.SQL(NewEmptyContext(), nil, "also not a number")
+	require.NoError(t, err)
+	assert.Equal(t, "also not a number", val.ToString())
 }
 
 func TestNumberString(t *testing.T) {
@@ -251,19 +261,19 @@ func TestNumberString(t *testing.T) {
 		typ         Type
 		expectedStr string
 	}{
-		{Boolean, "TINYINT"},
-		{Int8, "TINYINT"},
-		{Int16, "SMALLINT"},
-		{Int24, "MEDIUMINT"},
-		{Int32, "INT"},
-		{Int64, "BIGINT"},
-		{Uint8, "TINYINT UNSIGNED"},
-		{Uint16, "SMALLINT UNSIGNED"},
-		{Uint24, "MEDIUMINT UNSIGNED"},
-		{Uint32, "INT UNSIGNED"},
-		{Uint64, "BIGINT UNSIGNED"},
-		{Float32, "FLOAT"},
-		{Float64, "DOUBLE"},
+		{Boolean, "tinyint"},
+		{Int8, "tinyint"},
+		{Int16, "smallint"},
+		{Int24, "mediumint"},
+		{Int32, "int"},
+		{Int64, "bigint"},
+		{Uint8, "tinyint unsigned"},
+		{Uint16, "smallint unsigned"},
+		{Uint24, "mediumint unsigned"},
+		{Uint32, "int unsigned"},
+		{Uint64, "bigint unsigned"},
+		{Float32, "float"},
+		{Float64, "double"},
 	}
 
 	for _, test := range tests {

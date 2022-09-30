@@ -45,6 +45,7 @@ type IndexDriver interface {
 // execution.
 type DriverIndexableTable interface {
 	IndexAddressableTable
+	WithDriverIndexLookup(DriverIndexLookup) Table
 	// IndexKeyValues returns an iterator over partitions and ultimately the rows of the table to compute the value of an
 	// index for every row in this table. Used when creating an index for access through an IndexDriver.
 	IndexKeyValues(*Context, []string) (PartitionIndexKeyValueIter, error)
@@ -60,7 +61,7 @@ type DriverIndex interface {
 // DriverIndexLookup is a subset of an index. More specific interfaces can be
 // implemented to grant more capabilities to the index lookup.
 type DriverIndexLookup interface {
-	IndexLookup
+	Lookup() IndexLookup
 
 	// Values returns the values in the subset of the index. These are used to populate the index via the driver.
 	Values(Partition) (IndexValueIter, error)

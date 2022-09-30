@@ -36,6 +36,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Insert multiple character sets",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
 		},
 		Queries: []CharsetCollationWireTestQuery{
@@ -60,6 +61,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Sorting differences",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf8mb4_0900_bin);",
 			"CREATE TABLE test2 (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
 		},
@@ -85,6 +87,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Order by behaves differently according to case-sensitivity",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16_unicode_ci, INDEX(v1));",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin, INDEX(v1));",
 			"INSERT INTO test1 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
@@ -120,6 +123,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "Proper index access",
 		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16_unicode_ci, INDEX(v1));",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin, INDEX(v1));",
 			"INSERT INTO test1 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
@@ -194,6 +198,744 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 IN ('abc') ORDER BY v1, pk;",
 				Expected: []sql.Row{
 					{"abc", "1"},
+				},
+			},
+		},
+	},
+	{
+		Name: "SET NAMES does not interfere with column charset",
+		SetUpScript: []string{
+			"SET NAMES utf8mb3;",
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 VARCHAR(100) COLLATE utf8mb4_0900_bin);",
+			"INSERT INTO test VALUES (1, 'a'), (2, 'b');",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "SELECT * FROM test ORDER BY v1 COLLATE utf8mb4_bin ASC;",
+				Expected: []sql.Row{{"1", "a"}, {"2", "b"}},
+			},
+			{
+				Query: "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
+				Error: true,
+			},
+			{
+				Query:    "SELECT 'a' COLLATE utf8mb3_bin;",
+				Expected: []sql.Row{{"a"}},
+			},
+			{
+				Query: "SELECT 'a' COLLATE utf8mb4_bin;",
+				Error: true,
+			},
+		},
+	},
+	{
+		Name: "Coercibility test using HEX",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
+				Expected: []sql.Row{{"1"}},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
+				Expected: []sql.Row{{"0"}},
+			},
+		},
+	},
+	{
+		Name: "ENUM collation handling",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf16_unicode_ci);",
+			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf8mb4_0900_bin);",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "INSERT INTO test1 VALUES (1, 'ABC');",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "INSERT INTO test2 VALUES (1, 'ABC');",
+				Error: true,
+			},
+			{
+				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM test1 ORDER BY pk;",
+				Expected: []sql.Row{
+					{"1", "\x00a\x00b\x00c"}, {"2", "\x00d\x00e\x00f"},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2 ORDER BY pk;",
+				Expected: []sql.Row{
+					{"2", "def"},
+				},
+			},
+		},
+	},
+	{
+		Name: "SET collation handling",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 SET('a','b','c') COLLATE utf16_unicode_ci);",
+			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 SET('a','b','c') COLLATE utf8mb4_0900_bin);",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "INSERT INTO test1 VALUES (1, 'A');",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "INSERT INTO test2 VALUES (1, 'A');",
+				Error: true,
+			},
+			{
+				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM test1 ORDER BY pk;",
+				Expected: []sql.Row{
+					{"1", "\x00a"}, {"2", "\x00b\x00,\x00c"},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2 ORDER BY pk;",
+				Expected: []sql.Row{
+					{"2", "b,c"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Correct behavior with `character_set_results`",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+			"CREATE TABLE test (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
+			"INSERT INTO test VALUES (_utf8mb4'hey');",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{"\x00h\x00e\x00y"}},
+			},
+			{
+				Query:    "SET character_set_results = 'utf8mb4';",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{"hey"}},
+			},
+			{
+				Query:    "SET character_set_results = 'utf32';",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
+			},
+		},
+	},
+	{
+		Name: "LIKE respects table collations",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+			"CREATE TABLE test(v1 VARCHAR(100) COLLATE utf8mb4_0900_bin, v2 VARCHAR(100) COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO test VALUES ('abc', 'abc'), ('ABC', 'ABC');",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'A%';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'A%';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE '%C';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE '%C';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{"2"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LIKE respects connection collation",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT _utf8mb4'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE _utf8mb4'ABC';",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LENGTH() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT LENGTH(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"6"},
+				},
+			},
+			{
+				Query: "SELECT LENGTH(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"3"},
+				},
+			},
+			{
+				Query: "SELECT LENGTH(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"6"},
+				},
+			},
+		},
+	},
+	{
+		Name: "CHAR_LENGTH() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT CHAR_LENGTH(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"3"},
+				},
+			},
+			{
+				Query: "SELECT CHAR_LENGTH(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"3"},
+				},
+			},
+			{
+				Query: "SELECT CHAR_LENGTH(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"6"},
+				},
+			},
+		},
+	},
+	{
+		Name: "UPPER() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT UPPER(_utf16'\x00a\x00B\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00A\x00B\x00C"},
+				},
+			},
+			{
+				Query: "SELECT UPPER(_utf8mb4'aBc' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"ABC"},
+				},
+			},
+			{
+				Query: "SELECT UPPER(_utf8mb4'\x00a\x00B\x00c' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"\x00A\x00B\x00C"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOWER() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT LOWER(_utf16'\x00A\x00b\x00C' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT LOWER(_utf8mb4'AbC' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT LOWER(_utf8mb4'\x00A\x00b\x00C' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+		},
+	},
+	{
+		Name: "RPAD() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT RPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, 'z');",
+				Expected: []sql.Row{
+					{"abczzz"},
+				},
+			},
+			{
+				Query: "SELECT RPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abczzz"},
+				},
+			},
+			{
+				Query: "SELECT RPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"abczzz"},
+				},
+			},
+			{
+				Query: "SELECT RPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abczzz"},
+				},
+			},
+			{
+				Query: "SELECT RPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"abczzz"},
+				},
+			},
+			{
+				Query: "SELECT RPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT RPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 9, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00czzz"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LPAD() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT LPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, 'z');",
+				Expected: []sql.Row{
+					{"zzzabc"},
+				},
+			},
+			{
+				Query: "SELECT LPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"zzzabc"},
+				},
+			},
+			{
+				Query: "SELECT LPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"zzzabc"},
+				},
+			},
+			{
+				Query: "SELECT LPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"zzzabc"},
+				},
+			},
+			{
+				Query: "SELECT LPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"zzzabc"},
+				},
+			},
+			{
+				Query: "SELECT LPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT LPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 9, _utf16'\x00z' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"zzz\x00a\x00b\x00c"},
+				},
+			},
+		},
+	},
+	{
+		Name: "HEX() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT HEX(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"006100620063"},
+				},
+			},
+			{
+				Query: "SELECT HEX(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"616263"},
+				},
+			},
+			{
+				Query: "SELECT HEX(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"006100620063"},
+				},
+			},
+		},
+	},
+	{
+		Name: "UNHEX() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT UNHEX(_utf16'\x006\x001\x006\x002\x006\x003' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT UNHEX(_utf8mb4'616263' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+		},
+	},
+	{
+		Name: "SUBSTRING() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT SUBSTRING(_utf16'\x00a\x00b\x00c\x00d' COLLATE utf16_unicode_ci, 2, 2);",
+				Expected: []sql.Row{
+					{"\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT SUBSTRING(_utf8mb4'abcd' COLLATE utf8mb4_0900_bin, 2, 2);",
+				Expected: []sql.Row{
+					{"bc"},
+				},
+			},
+			{
+				Query: "SELECT SUBSTRING(_utf8mb4'\x00a\x00b\x00c\x00d' COLLATE utf8mb4_0900_bin, 2, 2);",
+				Expected: []sql.Row{
+					{"a\x00"},
+				},
+			},
+		},
+	},
+	{
+		Name: "TO_BASE64() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT TO_BASE64(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"AGEAYgBj"},
+				},
+			},
+			{
+				Query: "SELECT TO_BASE64(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"YWJj"},
+				},
+			},
+			{
+				Query: "SELECT TO_BASE64(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"AGEAYgBj"},
+				},
+			},
+		},
+	},
+	{
+		Name: "FROM_BASE64() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT FROM_BASE64(_utf16'\x00Y\x00W\x00J\x00j' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT FROM_BASE64(_utf8mb4'YWJj' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+		},
+	},
+	{
+		Name: "TRIM() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT TRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT TRIM(_utf8mb4' abc ' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT TRIM(_utf8mb4'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"\x00 \x00a\x00b\x00c\x00"},
+				},
+			},
+		},
+	},
+	{
+		Name: "RTRIM() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT RTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00 \x00a\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT RTRIM(_utf8mb4' abc ' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{" abc"},
+				},
+			},
+			{
+				Query: "SELECT RTRIM(_utf8mb4'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"\x00 \x00a\x00b\x00c\x00"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LTRIM() function",
+		SetUpScript: []string{
+			"SET character_set_results = 'binary';",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT LTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c\x00 "},
+				},
+			},
+			{
+				Query: "SELECT LTRIM(_utf8mb4' abc ' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abc "},
+				},
+			},
+			{
+				Query: "SELECT LTRIM(_utf8mb4'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"\x00 \x00a\x00b\x00c\x00 "},
+				},
+			},
+		},
+	},
+	{
+		Name: "BINARY() function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT BINARY(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT BINARY(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT BINARY(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+		},
+	},
+	{
+		Name: "CAST(... AS BINARY) function",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SELECT CAST(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci AS BINARY);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
+				},
+			},
+			{
+				Query: "SELECT CAST(_utf8mb4'abc' COLLATE utf8mb4_0900_bin AS BINARY);",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT CAST(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin AS BINARY);",
+				Expected: []sql.Row{
+					{"\x00a\x00b\x00c"},
 				},
 			},
 		},

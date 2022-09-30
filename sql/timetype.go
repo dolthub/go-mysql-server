@@ -252,7 +252,7 @@ func (t timespanType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t timespanType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t timespanType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -268,7 +268,7 @@ func (t timespanType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t timespanType) String() string {
-	return "TIME(6)"
+	return "time(6)"
 }
 
 // Type implements Type interface.

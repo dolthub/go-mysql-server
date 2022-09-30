@@ -128,8 +128,7 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		for len(content) > 0 {
 			cr, cRead := charSetEncoder.NextRune(content)
 			if cRead == 0 || cr == utf8.RuneError {
-				//TODO: return a real error
-				return 0, fmt.Errorf("malformed string encountered while checking length")
+				return 0, sql.ErrCollationMalformedString.New("checking length")
 			}
 			content = content[cRead:]
 			contentLen++

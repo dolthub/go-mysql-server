@@ -119,7 +119,7 @@ func (t TupleType) Promote() Type {
 	return t
 }
 
-func (t TupleType) SQL([]byte, interface{}) (sqltypes.Value, error) {
+func (t TupleType) SQL(*Context, []byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 
@@ -128,7 +128,7 @@ func (t TupleType) String() string {
 	for i, el := range t {
 		elems[i] = el.String()
 	}
-	return fmt.Sprintf("TUPLE(%s)", strings.Join(elems, ", "))
+	return fmt.Sprintf("tuple(%s)", strings.Join(elems, ", "))
 }
 
 func (t TupleType) Type() query.Type {

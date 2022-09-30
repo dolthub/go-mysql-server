@@ -134,7 +134,7 @@ func (t systemDoubleType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t systemDoubleType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemDoubleType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -153,7 +153,7 @@ func (t systemDoubleType) SQL(dest []byte, v interface{}) (sqltypes.Value, error
 
 // String implements Type interface.
 func (t systemDoubleType) String() string {
-	return "SYSTEM_DOUBLE"
+	return "system_double"
 }
 
 // Type implements Type interface.

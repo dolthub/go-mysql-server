@@ -30,7 +30,7 @@ import (
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
 func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if scope == nil {
+	if scope.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
 
@@ -99,9 +99,10 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode NameableNode,
 			if table == nil {
 				return n, transform.SameTree, nil
 			}
-			if _, ok := table.(sql.IndexAddressableTable); ok {
+			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				return plan.NewIndexedTableAccess(n, plan.NewLookupBuilder(ctx, index, keyExpr, nullmask)), transform.NewTree, nil
+				ret := plan.NewIndexedTableAccess(n, iat.IndexedAccess(index), plan.NewLookupBuilder(ctx, index, keyExpr, nullmask))
+				return ret, transform.NewTree, nil
 			}
 		}
 		return n, transform.SameTree, nil

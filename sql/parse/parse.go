@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +45,10 @@ var (
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
+
+	tableCharsetOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+CHARACTER\s+SET((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
+
+	tableCollationOptionRegex = regexp.MustCompile(`(?i)(DEFAULT)?\s+COLLATE((\s*=?\s*)|\s+)([A-Za-z0-9_]+)`)
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -58,32 +63,6 @@ const (
 	colKey
 	colKeyFulltextKey
 )
-
-func mustCastNumToInt64(x interface{}) int64 {
-	switch v := x.(type) {
-	case int8:
-		return int64(v)
-	case int16:
-		return int64(v)
-	case int32:
-		return int64(v)
-	case uint8:
-		return int64(v)
-	case uint16:
-		return int64(v)
-	case uint32:
-		return int64(v)
-	case int64:
-		return int64(v)
-	case uint64:
-		i64 := int64(v)
-		if v == uint64(i64) {
-			return i64
-		}
-	}
-
-	panic(fmt.Sprintf("failed to convert to int64: %v", x))
-}
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, query string) (sql.Node, error) {
@@ -361,7 +340,6 @@ func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql
 	case *sqlparser.Select:
 		return convertSelect(ctx, n)
 	case *sqlparser.Union:
-		// TODO: support for WITH
 		return convertUnion(ctx, n)
 	case *sqlparser.ParenSelect:
 		return convertSelectStatement(ctx, n.Select)
@@ -398,9 +376,7 @@ func convertUse(n *sqlparser.Use) (sql.Node, error) {
 }
 
 func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
-	// Special case: SET NAMES expands to 3 different system variables. The parser doesn't yet support the optional
-	// collation string, which is fine since our support for it is mostly fake anyway.
-	// See https://dev.mysql.com/doc/refman/8.0/en/set-names.html
+	// Special case: SET NAMES expands to 3 different system variables.
 	if isSetNames(n.Exprs) {
 		return convertSet(ctx, &sqlparser.Set{
 			Exprs: sqlparser.SetVarExprs{
@@ -421,10 +397,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		})
 	}
 
-	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables. Although we do not support very
-	// many character sets, changing these variables should not have any effect currently as our character set support is
-	// mostly hardcoded to utf8mb4.
-	// See https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html.
+	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables.
 	if isCharset(n.Exprs) {
 		csd, err := ctx.GetSessionVariable(ctx, "character_set_database")
 		if err != nil {
@@ -561,7 +534,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if filter != nil {
-			node = plan.NewFilter(filter, node)
+			node = plan.NewHaving(filter, node)
 		}
 		return node, nil
 	case "function status":
@@ -592,7 +565,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if filter != nil {
-			node = plan.NewFilter(filter, node)
+			node = plan.NewHaving(filter, node)
 		}
 		return node, nil
 	case "index":
@@ -775,7 +748,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewFilter(filterExpr, infoSchemaSelect), nil
+			return plan.NewHaving(filterExpr, infoSchemaSelect), nil
 		}
 
 		return infoSchemaSelect, nil
@@ -832,19 +805,50 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 		return nil, err
 	}
 
-	var node sql.Node
-	if u.Type == sqlparser.UnionAllStr {
-		node = plan.NewUnion(left, right)
-	} else { // default is DISTINCT (either explicit or implicit)
-		// TODO: this creates redundant Distinct nodes that we can't easily remove after the fact. With this construct,
-		//  we can't in all cases tell the difference between `union distinct (select ...)` and
-		//  `union (select distinct ...)`. We need something like a Distinct property on Union nodes to be able to prune
-		//  redundant Distinct nodes and thereby avoid doing extra work.
-		node = plan.NewDistinct(plan.NewUnion(left, right))
+	// TODO: CalcFoundRows?
+	distinct := u.Type != sqlparser.UnionAllStr
+	l, err := limitToLimitExpr(ctx, u.Limit)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO: CalcFoundRows?
-	return nodeWithLimitAndOrderBy(ctx, node, u.OrderBy, u.Limit, false)
+	var sortFields sql.SortFields
+	if len(u.OrderBy) > 0 {
+		sortFields, err = orderByToSortFields(ctx, u.OrderBy)
+		if err != nil {
+			return nil, err
+		}
+	}
+	union, err := buildUnion(left, right, distinct, l, sortFields)
+	if err != nil {
+		return nil, err
+	}
+	if u.With != nil {
+		return ctesToWith(ctx, u.With, union)
+	}
+	return union, nil
+}
+
+func buildUnion(left, right sql.Node, distinct bool, limit sql.Expression, sf sql.SortFields) (*plan.Union, error) {
+	// propagate sortFields, limit from child
+	n, ok := left.(*plan.Union)
+	if ok {
+		if len(n.SortFields) > 0 {
+			if len(sf) > 0 {
+				return nil, sql.ErrConflictingExternalQuery.New()
+			}
+			sf = n.SortFields
+		}
+		if n.Limit != nil {
+			if limit != nil {
+				return nil, fmt.Errorf("conflicing external ORDER BY")
+			}
+			limit = n.Limit
+		}
+		left = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil)
+		// TODO recurse and put more union-specific rules after
+	}
+	return plan.NewUnion(left, right, distinct, limit, sf), nil
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -904,6 +908,16 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
+func limitToLimitExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil && limit.Offset != nil {
+		return ExprToExpression(ctx, limit.Offset)
+	} else if limit != nil {
+		return ExprToExpression(ctx, limit.Rowcount)
+	}
+	return nil, nil
+}
+
 func nodeWithLimitAndOrderBy(ctx *sql.Context, node sql.Node, orderby sqlparser.OrderBy, limit *sqlparser.Limit, calcfoundrows bool) (sql.Node, error) {
 	var err error
 
@@ -933,9 +947,6 @@ func nodeWithLimitAndOrderBy(ctx *sql.Context, node sql.Node, orderby sqlparser.
 		}
 
 		node = l
-	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
-		limit := mustCastNumToInt64(val)
-		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
 	}
 
 	return node, nil
@@ -1382,7 +1393,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.ColumnAction != "" {
 		switch strings.ToLower(ddl.ColumnAction) {
 		case sqlparser.AddStr:
-			sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
+			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
 			if err != nil {
 				return nil, err
 			}
@@ -1392,7 +1403,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.RenameStr:
 			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
 		case sqlparser.ModifyStr, sqlparser.ChangeStr:
-			sch, err := TableSpecToSchema(ctx, ddl.TableSpec)
+			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
 			if err != nil {
 				return nil, err
 			}
@@ -1696,16 +1707,17 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	qualifier := c.Table.Qualifier.String()
 
-	schema, err := TableSpecToSchema(ctx, c.TableSpec)
+	schema, collation, err := TableSpecToSchema(ctx, c.TableSpec, false)
 	if err != nil {
 		return nil, err
 	}
 
 	tableSpec := &plan.TableSpec{
-		Schema:  schema,
-		IdxDefs: idxDefs,
-		FkDefs:  fkDefs,
-		ChDefs:  chDefs,
+		Schema:    schema,
+		IdxDefs:   idxDefs,
+		FkDefs:    fkDefs,
+		ChDefs:    chDefs,
+		Collation: collation,
 	}
 
 	if c.OptSelect != nil {
@@ -2007,22 +2019,55 @@ func getPkOrdinals(ts *sqlparser.TableSpec) []int {
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.PrimaryKeySchema, error) {
+func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
+	tableCollation := sql.Collation_Default
+	if forceInvalidCollation {
+		tableCollation = sql.Collation_Invalid
+	} else {
+		if len(tableSpec.Options) > 0 {
+			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
+			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)
+			if len(charsetSubmatches) == 5 && len(collationSubmatches) == 5 {
+				var err error
+				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+				}
+			} else if len(charsetSubmatches) == 5 {
+				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+				}
+				tableCollation = charset.DefaultCollation()
+			} else if len(collationSubmatches) == 5 {
+				var err error
+				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+				}
+			}
+		}
+	}
+
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
+		// Use the table's collation if no character or collation was specified for the table
+		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
+			cd.Type.Collate = tableCollation.Name()
+		}
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
 		if err != nil {
-			return sql.PrimaryKeySchema{}, err
+			return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
 		}
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
-			return sql.PrimaryKeySchema{}, ErrPrimaryKeyOnNullField.New()
+			return sql.PrimaryKeySchema{}, sql.Collation_Invalid, ErrPrimaryKeyOnNullField.New()
 		}
 
 		schema = append(schema, column)
 	}
 
-	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), nil
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, nil
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
@@ -2255,12 +2300,10 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 				authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
 			} else if len(user.Auth1.Plugin) > 0 {
 				authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
-			} else if user.Auth1.Plugin == "" && len(user.Auth1.Password) > 0 {
-				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			} else {
-				return nil, fmt.Errorf(`the given authentication format is not yet supported`)
+				// We default to using the password, even if it's empty
+				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
 			}
-
 		}
 		if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
 			return nil, fmt.Errorf(`multi-factor authentication is not yet supported`)
@@ -2605,6 +2648,9 @@ func tableExprToTable(
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)
 
+	case *sqlparser.JSONTableExpr:
+		return jsonTableExpr(ctx, t)
+
 	case *sqlparser.ParenTableExpr:
 		if len(t.Exprs) == 1 {
 			switch j := t.Exprs[0].(type) {
@@ -2656,9 +2702,33 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 		return plan.NewLeftJoin(left, right, cond), nil
 	case sqlparser.RightJoinStr:
 		return plan.NewRightJoin(left, right, cond), nil
+	case sqlparser.FullOuterJoinStr:
+		return plan.NewFullOuterJoin(left, right, cond), nil
 	default:
 		return nil, sql.ErrUnsupportedFeature.New("Join type " + t.Join)
 	}
+}
+
+func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, error) {
+	data, err := ExprToExpression(ctx, t.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	paths := make([]string, len(t.Spec.Columns))
+	for i, col := range t.Spec.Columns {
+		paths[i] = col.Type.Path
+	}
+
+	sch, _, err := TableSpecToSchema(ctx, t.Spec, false)
+	for _, col := range sch.Schema {
+		col.Source = t.Alias.String()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewJSONTable(ctx, data, t.Path, paths, t.Alias.String(), sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
@@ -3200,8 +3270,11 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-
-		return plan.NewExistsSubquery(subqueryExp), nil
+		sq, ok := subqueryExp.(*plan.Subquery)
+		if !ok {
+			return nil, fmt.Errorf("expected subquery expression, found: %T", subqueryExp)
+		}
+		return plan.NewExistsSubquery(sq), nil
 	case *sqlparser.TimestampFuncExpr:
 		var (
 			unit  sql.Expression
@@ -3225,24 +3298,19 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 // handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
 func handleCollateExpr(ctx *sql.Context, charSet sql.CharacterSetID, expr *sqlparser.CollateExpr) (sql.Expression, error) {
+	innerExpr, err := ExprToExpression(ctx, expr.Expr)
+	if err != nil {
+		return nil, err
+	}
 	//TODO: rename this from Charset to Collation
 	collation, err := sql.ParseCollation(nil, &expr.Charset, false)
 	if err != nil {
 		return nil, err
 	}
-	// This is a temporary measure while all of the collations are being added. We could maintain a public list/enum of
-	// which collations are unsupported, however since this logic is temporary anyway it is easier to do this check.
-	// Once all of the collations have been added, this `if` statement will be removed.
-	if collation.Sorter() == nil {
-		return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
-	}
-	if collation.CharacterSet() != charSet {
-		//TODO: actual error
-		return nil, fmt.Errorf("COLLATION '%s' is not valid for CHARACTER SET '%s'", collation.Name(), charSet.Name())
-	}
-	innerExpr, err := ExprToExpression(ctx, expr.Expr)
-	if err != nil {
-		return nil, err
+	// If we're collating a string literal, we check that the charset and collation match now. Other string sources
+	// (such as from tables) will have their own charset, which we won't know until after the parsing stage.
+	if _, isLiteral := innerExpr.(*expression.Literal); isLiteral && collation.CharacterSet() != charSet {
+		return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
 	}
 	return expression.NewCollatedExpression(innerExpr, collation), nil
 }
@@ -3329,6 +3397,25 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
+		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
+			ogVal := string(v.Val)
+			floatVal := fmt.Sprintf("%v", val)
+			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
+				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
+				dt, err := sql.CreateDecimalType(p, s)
+				if err != nil {
+					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+				}
+				dVal, err := dt.Convert(ogVal)
+				if err != nil {
+					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+				}
+				return expression.NewLiteral(dVal, dt), nil
+			}
+		}
+
 		return expression.NewLiteral(val, sql.Float64), nil
 	case sqlparser.HexNum:
 		//TODO: binary collation?
@@ -3564,12 +3651,8 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 				if err != nil {
 					return nil, err
 				}
-				if collation.Sorter() == nil {
-					return nil, sql.ErrUnsupportedFeature.New("unsupported collation: " + collation.Name())
-				}
 				if collation.CharacterSet() != charSet {
-					//TODO: actual error
-					return nil, fmt.Errorf("COLLATION '%s' is not valid for CHARACTER SET '%s'", collation.Name(), charSet.Name())
+					return nil, sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
 				}
 			}
 
@@ -3579,8 +3662,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 				return nil, err
 			}
 			if _, ok := expr.(*expression.Literal); !ok || !sql.IsText(expr.Type()) {
-				//TODO: return actual error
-				return nil, fmt.Errorf("CHARACTER SET introducer must be attached to a string")
+				return nil, sql.ErrCharSetIntroducer.New()
 			}
 			literal, err := expr.Eval(ctx, nil)
 			if err != nil {
@@ -3591,15 +3673,13 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			if strLiteral, ok := literal.(string); ok {
 				decodedLiteral, ok := charSet.Encoder().Decode(encodings.StringToBytes(strLiteral))
 				if !ok {
-					//TODO: return actual error
-					return nil, fmt.Errorf("invalid string for character set `%s`: \"%s\"", charSet.Name(), strLiteral)
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
 				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), sql.CreateLongText(collation)), nil
 			} else if byteLiteral, ok := literal.([]byte); ok {
 				decodedLiteral, ok := charSet.Encoder().Decode(byteLiteral)
 				if !ok {
-					//TODO: return actual error
-					return nil, fmt.Errorf("invalid string for character set `%s`: \"%s\"", charSet.Name(), strLiteral)
+					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
 				return expression.NewLiteral(decodedLiteral, sql.CreateLongText(collation)), nil
 			} else {

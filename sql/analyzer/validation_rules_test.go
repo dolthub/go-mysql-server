@@ -158,26 +158,18 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(memory.NewTable(
-				"mytable",
-				sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "foo", Source: "mytable"},
-					{Name: "bar", Source: "mytable"},
-				}),
-				nil,
-			), nil, nil),
+			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "foo", Source: "mytable"},
+				{Name: "bar", Source: "mytable"},
+			}), nil), nil, nil),
 			true,
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(memory.NewTable(
-				"mytable",
-				sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "foo", Source: ""},
-					{Name: "bar", Source: "something"},
-				}),
-				nil,
-			), nil, nil),
+			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "foo", Source: ""},
+				{Name: "bar", Source: "something"},
+			}), nil), nil, nil),
 			false,
 		},
 		{
@@ -219,17 +211,13 @@ func TestValidateSchemaSource(t *testing.T) {
 }
 
 func TestValidateUnionSchemasMatch(t *testing.T) {
-	table := plan.NewResolvedTable(memory.NewTable(
-		"mytable",
-		sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "foo", Source: "mytable", Type: sql.Text},
-			{Name: "bar", Source: "mytable", Type: sql.Int64},
-			{Name: "rab", Source: "mytable", Type: sql.Text},
-			{Name: "zab", Source: "mytable", Type: sql.Int64},
-			{Name: "quuz", Source: "mytable", Type: sql.Boolean},
-		}),
-		nil,
-	), nil, nil)
+	table := plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "foo", Source: "mytable", Type: sql.Text},
+		{Name: "bar", Source: "mytable", Type: sql.Int64},
+		{Name: "rab", Source: "mytable", Type: sql.Text},
+		{Name: "zab", Source: "mytable", Type: sql.Int64},
+		{Name: "quuz", Source: "mytable", Type: sql.Boolean},
+	}), nil), nil, nil)
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -248,106 +236,91 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with matching schemas",
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "bar", false),
-						expression.NewGetField(1, sql.Int64, "baz", false),
-					},
-					table,
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(2, sql.Text, "rab", false),
-						expression.NewGetField(3, sql.Int64, "zab", false),
-					},
-					table,
-				),
-			),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(0, sql.Text, "bar", false),
+					expression.NewGetField(1, sql.Int64, "baz", false),
+				},
+				table,
+			), plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(2, sql.Text, "rab", false),
+					expression.NewGetField(3, sql.Int64, "zab", false),
+				},
+				table,
+			), false, nil, nil),
 			true,
 		},
 		{
 			"top-level union with longer left schema",
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "bar", false),
-						expression.NewGetField(1, sql.Int64, "baz", false),
-						expression.NewGetField(4, sql.Boolean, "quuz", false),
-					},
-					table,
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(2, sql.Text, "rab", false),
-						expression.NewGetField(3, sql.Int64, "zab", false),
-					},
-					table,
-				),
-			),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(0, sql.Text, "bar", false),
+					expression.NewGetField(1, sql.Int64, "baz", false),
+					expression.NewGetField(4, sql.Boolean, "quuz", false),
+				},
+				table,
+			), plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(2, sql.Text, "rab", false),
+					expression.NewGetField(3, sql.Int64, "zab", false),
+				},
+				table,
+			), false, nil, nil),
 			false,
 		},
 		{
 			"top-level union with longer right schema",
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "bar", false),
-						expression.NewGetField(1, sql.Int64, "baz", false),
-					},
-					table,
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(2, sql.Text, "rab", false),
-						expression.NewGetField(3, sql.Int64, "zab", false),
-						expression.NewGetField(4, sql.Boolean, "quuz", false),
-					},
-					table,
-				),
-			),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(0, sql.Text, "bar", false),
+					expression.NewGetField(1, sql.Int64, "baz", false),
+				},
+				table,
+			), plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(2, sql.Text, "rab", false),
+					expression.NewGetField(3, sql.Int64, "zab", false),
+					expression.NewGetField(4, sql.Boolean, "quuz", false),
+				},
+				table,
+			), false, nil, nil),
 			false,
 		},
 		{
 			"top-level union with mismatched type in schema",
-			plan.NewUnion(
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "bar", false),
-						expression.NewGetField(1, sql.Int64, "baz", false),
-					},
-					table,
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(2, sql.Text, "rab", false),
-						expression.NewGetField(3, sql.Boolean, "zab", false),
-					},
-					table,
-				),
-			),
+			plan.NewUnion(plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(0, sql.Text, "bar", false),
+					expression.NewGetField(1, sql.Int64, "baz", false),
+				},
+				table,
+			), plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetField(2, sql.Text, "rab", false),
+					expression.NewGetField(3, sql.Boolean, "zab", false),
+				},
+				table,
+			), false, nil, nil),
 			false,
 		},
 		{
 			"subquery union",
 			plan.NewSubqueryAlias(
 				"aliased", "select bar, baz from mytable union select rab, zab from mytable",
-				plan.NewUnion(
-					plan.NewProject(
-						[]sql.Expression{
-							expression.NewGetField(0, sql.Text, "bar", false),
-							expression.NewGetField(1, sql.Int64, "baz", false),
-						},
-						table,
-					),
-					plan.NewProject(
-						[]sql.Expression{
-							expression.NewGetField(2, sql.Text, "rab", false),
-							expression.NewGetField(3, sql.Boolean, "zab", false),
-						},
-						table,
-					),
-				),
+				plan.NewUnion(plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, sql.Text, "bar", false),
+						expression.NewGetField(1, sql.Int64, "baz", false),
+					},
+					table,
+				), plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, sql.Text, "rab", false),
+						expression.NewGetField(3, sql.Boolean, "zab", false),
+					},
+					table,
+				), false, nil, nil),
 			),
 			false,
 		},
@@ -542,102 +515,6 @@ func TestValidateIndexCreation(t *testing.T) {
 			} else {
 				require.Error(err)
 				require.True(ErrUnknownIndexColumns.Is(err))
-			}
-		})
-	}
-}
-
-func TestValidateCaseResultTypes(t *testing.T) {
-	rule := getValidationRule(validateCaseResultTypesId)
-
-	testCases := []struct {
-		name string
-		expr *expression.Case
-		ok   bool
-	}{
-		{
-			"one of the branches does not match",
-			expression.NewCase(
-				expression.NewGetField(0, sql.Int64, "foo", false),
-				[]expression.CaseBranch{
-					{
-						Cond:  expression.NewLiteral(int64(1), sql.Int64),
-						Value: expression.NewLiteral("foo", sql.LongText),
-					},
-					{
-						Cond:  expression.NewLiteral(int64(2), sql.Int64),
-						Value: expression.NewLiteral(int64(1), sql.Int64),
-					},
-				},
-				expression.NewLiteral("foo", sql.LongText),
-			),
-			false,
-		},
-		{
-			"else is not exact but matches",
-			expression.NewCase(
-				expression.NewGetField(0, sql.Int64, "foo", false),
-				[]expression.CaseBranch{
-					{
-						Cond:  expression.NewLiteral(int64(1), sql.Int64),
-						Value: expression.NewLiteral(int64(2), sql.Int64),
-					},
-				},
-				expression.NewLiteral(int64(3), sql.Int8),
-			),
-			true,
-		},
-		{
-			"else does not match",
-			expression.NewCase(
-				expression.NewGetField(0, sql.Int64, "foo", false),
-				[]expression.CaseBranch{
-					{
-						Cond:  expression.NewLiteral(int64(1), sql.Int64),
-						Value: expression.NewLiteral("foo", sql.LongText),
-					},
-					{
-						Cond:  expression.NewLiteral(int64(2), sql.Int64),
-						Value: expression.NewLiteral("bar", sql.Text),
-					},
-				},
-				expression.NewLiteral(int64(1), sql.Int64),
-			),
-			false,
-		},
-		{
-			"all ok",
-			expression.NewCase(
-				expression.NewGetField(0, sql.Int64, "foo", false),
-				[]expression.CaseBranch{
-					{
-						Cond:  expression.NewLiteral(int64(1), sql.Int64),
-						Value: expression.NewLiteral("foo", sql.LongText),
-					},
-					{
-						Cond:  expression.NewLiteral(int64(2), sql.Int64),
-						Value: expression.NewLiteral("bar", sql.LongText),
-					},
-				},
-				expression.NewLiteral("baz", sql.LongText),
-			),
-			true,
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewProject(
-				[]sql.Expression{tt.expr},
-				plan.NewResolvedTable(dualTable, nil, nil),
-			), nil, DefaultRuleSelector)
-
-			if tt.ok {
-				require.NoError(err)
-			} else {
-				require.Error(err)
-				require.True(ErrCaseResultType.Is(err))
 			}
 		})
 	}

@@ -102,7 +102,7 @@ func (t jsonType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t jsonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -114,8 +114,7 @@ func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 	js := jsVal.(JSONValue)
 
-	// todo: making a context here is expensive
-	s, err := js.ToString(NewEmptyContext())
+	s, err := js.ToString(ctx)
 	if err != nil {
 		return sqltypes.NULL, err
 	}
@@ -127,7 +126,7 @@ func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t jsonType) String() string {
-	return "JSON"
+	return "json"
 }
 
 // Type implements Type interface.

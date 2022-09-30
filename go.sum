@@ -55,14 +55,10 @@ github.com/dolthub/jsonpath v0.0.0-20210609232853-d49537a30474 h1:xTrR+l5l+1Lfq0
 github.com/dolthub/jsonpath v0.0.0-20210609232853-d49537a30474/go.mod h1:kMz7uXOXq4qRriCEyZ/LUeTqraLJCjf0WVZcUi6TxUY=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81 h1:7/v8q9XGFa6q5Ap4Z/OhNkAMBaK5YeuEzwJt+NZdhiE=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
-github.com/dolthub/vitess v0.0.0-20220809164912-4bb30c793f1b h1:KDimfMuvlB0be3XhBBBF5QWIJGzazleccRlHyf/dXX8=
-github.com/dolthub/vitess v0.0.0-20220809164912-4bb30c793f1b/go.mod h1:oVFIBdqMFEkt4Xz2fzFJBNtzKhDEjwdCF0dzde39iKs=
-github.com/dolthub/vitess v0.0.0-20220810172629-f4bdb4a721c0 h1:u8yIimnhg5CHQZlBoJxfV+yezvNEmtgXUsmZvvlJ6uo=
-github.com/dolthub/vitess v0.0.0-20220810172629-f4bdb4a721c0/go.mod h1:oVFIBdqMFEkt4Xz2fzFJBNtzKhDEjwdCF0dzde39iKs=
-github.com/dolthub/vitess v0.0.0-20220811180048-dec9dd483049 h1:rw68oRFvBt9QdaGrNCEr2TE5NCYax7JfytLQlGsvTg8=
-github.com/dolthub/vitess v0.0.0-20220811180048-dec9dd483049/go.mod h1:oVFIBdqMFEkt4Xz2fzFJBNtzKhDEjwdCF0dzde39iKs=
-github.com/dolthub/vitess v0.0.0-20220815185950-4c05d27a8d7a h1:DcxBveHH+uSVvL45QhK5Up2R9AwodDRT3ScaennMCBE=
-github.com/dolthub/vitess v0.0.0-20220815185950-4c05d27a8d7a/go.mod h1:oVFIBdqMFEkt4Xz2fzFJBNtzKhDEjwdCF0dzde39iKs=
+github.com/dolthub/vitess v0.0.0-20220927165657-8eb73ed0ff24 h1:2ARLp21egNaEvWIN4/tfprcyAlWsRj4bdey+Hv7HMEM=
+github.com/dolthub/vitess v0.0.0-20220927165657-8eb73ed0ff24/go.mod h1:oVFIBdqMFEkt4Xz2fzFJBNtzKhDEjwdCF0dzde39iKs=
+github.com/dolthub/vitess v0.0.0-20220929061157-c71cf6a7768e h1:vC5OgmUm1Dd8vQP1YqgRvYMbHvrLNdQkd3S7udbS3BQ=
+github.com/dolthub/vitess v0.0.0-20220929061157-c71cf6a7768e/go.mod h1:oVFIBdqMFEkt4Xz2fzFJBNtzKhDEjwdCF0dzde39iKs=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
@@ -301,8 +297,6 @@ github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72 h1:qLC7fQah7D6K1
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/spf13/cobra v0.0.3/go.mod h1:1l0Ry5zgKvJasoi3XT1TypsSe7PqH0Sj9dhYf7v3XqQ=
 github.com/spf13/pflag v1.0.1/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
-github.com/src-d/go-oniguruma v1.1.0 h1:EG+Nm5n2JqWUaCjtM0NtutPxU7ZN5Tp50GWrrV8bTww=
-github.com/src-d/go-oniguruma v1.1.0/go.mod h1:chVbff8kcVtmrhxtZ3yBVLLquXbzCS6DrxQaAK/CeqM=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a/go.mod h1:qNTQ5P5JnDBl6z3cMAg/SywNDC5ABu5ApDIw6lUbRmI=

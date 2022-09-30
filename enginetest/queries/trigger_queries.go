@@ -2345,7 +2345,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:          "update a set i = 'not int'",
-				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'int'",
 			},
 			{
 				Query: "select * from b",
@@ -2384,7 +2384,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:          "update a set i = 'not int'",
-				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'int'",
 			},
 			{
 				Query: "select * from b",
@@ -2424,7 +2424,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:          "update a set i = 'not int'",
-				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'int'",
 			},
 			{
 				Query: "select * from b",
@@ -2464,7 +2464,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:          "update a set i = 'not int'",
-				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'int'",
 			},
 			{
 				Query: "select * from b",
@@ -2504,7 +2504,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:          "update a set i = 'not int'",
-				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'int'",
 			},
 			{
 				Query: "select * from b",
@@ -2544,7 +2544,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:          "update a set i = 'not int'",
-				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'int'",
 			},
 			{
 				Query: "select * from b",
@@ -2664,7 +2664,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:          "update a set i = 'not int'",
-				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
+				ExpectedErrStr: "error: 'not int' is not a valid value for 'int'",
 			},
 			{
 				Query: "select * from b",

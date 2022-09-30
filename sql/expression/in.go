@@ -198,6 +198,10 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 }
 
 func hashOfSimple(i interface{}, t sql.Type) (uint64, error) {
+	if i == nil {
+		return 0, nil
+	}
+
 	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
 	if sql.IsTextOnly(t) {
 		if str, ok := i.(string); ok {

@@ -39,12 +39,19 @@ var _ sql.TruncateableTable = Table{}
 var _ sql.IndexAddressableTable = Table{}
 var _ sql.AlterableTable = Table{}
 var _ sql.IndexAlterableTable = Table{}
-var _ sql.IndexedTable = Table{}
 var _ sql.ForeignKeyTable = Table{}
 var _ sql.CheckAlterableTable = Table{}
 var _ sql.CheckTable = Table{}
 var _ sql.StatisticsTable = Table{}
 var _ sql.PrimaryKeyAlterableTable = Table{}
+
+func (t Table) IndexedAccess(sql.Index) sql.IndexedTable {
+	panic("not implemented")
+}
+
+func (t Table) IndexedPartitions(ctx *sql.Context, _ sql.IndexLookup) (sql.PartitionIter, error) {
+	return t.Partitions(ctx)
+}
 
 // Name implements the interface sql.Table.
 func (t Table) Name() string {
@@ -63,6 +70,11 @@ func (t Table) Schema() sql.Schema {
 		panic(err)
 	}
 	return createTable.Schema()
+}
+
+// Collation implements the interface sql.Table.
+func (t Table) Collation() sql.CollationID {
+	return sql.Collation_Default
 }
 
 // Pks implements sql.PrimaryKeyAlterableTable
@@ -132,11 +144,6 @@ func (t Table) Truncate(ctx *sql.Context) (int, error) {
 	}
 	err = t.db.shim.Exec("", fmt.Sprintf("TRUNCATE TABLE `%s`;", t.name))
 	return int(rowCount.(int64)), err
-}
-
-// WithIndexLookup implements the interface sql.IndexAddressableTable.
-func (t Table) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	return t
 }
 
 // AddColumn implements the interface sql.AlterableTable.

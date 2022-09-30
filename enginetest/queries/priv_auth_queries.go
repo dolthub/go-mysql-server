@@ -93,10 +93,12 @@ type ServerAuthenticationTest struct {
 
 // ServerAuthenticationTestAssertion is within a ServerAuthenticationTest to assert functionality.
 type ServerAuthenticationTestAssertion struct {
-	Username    string
-	Password    string
-	Query       string
-	ExpectedErr bool
+	Username        string
+	Password        string
+	Query           string
+	ExpectedErr     bool
+	ExpectedErrKind *errors.Kind
+	ExpectedErrStr  string
 }
 
 // UserPrivTests test the user and privilege systems. These tests always have the root account available, and the root
@@ -371,6 +373,42 @@ var UserPrivTests = []UserPrivilegeTest{
 					{"localhost", "root"},
 					{"localhost", "testuser2"},
 					{"127.0.0.1", "testuser"},
+				},
+			},
+		},
+	},
+	{
+		Name: "user creation no host",
+		SetUpScript: []string{
+			"CREATE USER testuser;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query: "SELECT user, host from mysql.user",
+				Expected: []sql.Row{
+					{"root", "localhost"},
+					{"testuser", "%"},
+				},
+			},
+		},
+	},
+	{
+		Name: "grants at various scopes no host",
+		SetUpScript: []string{
+			"CREATE USER tester;",
+			"GRANT SELECT ON *.* to tester",
+			"GRANT SELECT ON db.* to tester",
+			"GRANT SELECT ON db.tbl to tester",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT ON *.* TO `tester`@`%`"},
+					{"GRANT SELECT ON `db`.* TO `tester`@`%`"},
+					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`%`"},
 				},
 			},
 		},
@@ -1096,6 +1134,210 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "SHOW DATABASES shows `mysql` database",
+		SetUpScript: []string{
+			"CREATE USER testuser;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT user FROM mysql.user;",
+				Expected: []sql.Row{
+					{"root"},
+					{"testuser"},
+				},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT USER();",
+				Expected: []sql.Row{
+					{"root@localhost"},
+				},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW DATABASES",
+				Expected: []sql.Row{
+					{"information_schema"},
+					{"mydb"},
+					{"mysql"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Anonymous User",
+		SetUpScript: []string{
+			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO mydb.test VALUES (0, 0), (1, 1);",
+			"INSERT INTO mydb.test2 VALUES (0, 1), (1, 2);",
+			"CREATE USER 'rand_user'@'localhost';",
+			"CREATE USER ''@'%';",
+			"GRANT SELECT ON mydb.test TO 'rand_user'@'localhost';",
+			"GRANT SELECT ON mydb.test2 TO ''@'%';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "rand_user",
+				Host:  "localhost",
+				Query: "SELECT * FROM mydb.test;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+				},
+			},
+			{
+				User:        "rand_user",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:        "rand_user",
+				Host:        "non_existent_host",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:  "rand_user",
+				Host:  "non_existent_host",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:        "non_existent_user",
+				Host:        "non_existent_host",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:  "non_existent_user",
+				Host:  "non_existent_host",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:        "",
+				Host:        "%",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:  "",
+				Host:  "%",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "IPv4 Loopback == localhost",
+		SetUpScript: []string{
+			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO mydb.test VALUES (0, 0), (1, 1);",
+			"INSERT INTO mydb.test2 VALUES (0, 1), (1, 2);",
+			"CREATE USER 'rand_user1'@'localhost';",
+			"CREATE USER 'rand_user2'@'127.0.0.1';",
+			"GRANT SELECT ON mydb.test TO 'rand_user1'@'localhost';",
+			"GRANT SELECT ON mydb.test2 TO 'rand_user2'@'127.0.0.1';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "rand_user1",
+				Host:  "localhost",
+				Query: "SELECT * FROM mydb.test;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+				},
+			},
+			{
+				User:  "rand_user1",
+				Host:  "127.0.0.1",
+				Query: "SELECT * FROM mydb.test;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+				},
+			},
+			{
+				User:        "rand_user1",
+				Host:        "54.244.85.252",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:  "rand_user2",
+				Host:  "localhost",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:  "rand_user2",
+				Host:  "127.0.0.1",
+				Query: "SELECT * FROM mydb.test2;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 2},
+				},
+			},
+			{
+				User:        "rand_user2",
+				Host:        "54.244.85.252",
+				Query:       "SELECT * FROM mydb.test2;",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+		},
+	},
+	{
+		Name: "DROP USER without a host designation",
+		SetUpScript: []string{
+			"CREATE USER admin;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT user FROM mysql.user",
+				Expected: []sql.Row{
+					{"root"},
+					{"admin"},
+				},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "DROP USER admin;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT user FROM mysql.user",
+				Expected: []sql.Row{
+					{"root"},
+				},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
@@ -1110,6 +1352,46 @@ func (p *NoopPlaintextPlugin) Authenticate(db *mysql_db.MySQLDb, user string, us
 // ServerAuthTests test the server authentication system. These tests always have the root account available, and the
 // root account is used with any queries in the SetUpScript, along as being set to the context passed to SetUpFunc.
 var ServerAuthTests = []ServerAuthenticationTest{
+	{
+		Name: "DROP USER reports correct string for missing address",
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:       "root",
+				Password:       "",
+				Query:          "DROP USER xyz;",
+				ExpectedErrStr: "Error 1105: Operation DROP USER failed for 'xyz'@'%'",
+			},
+		},
+	},
+	{
+		Name: "CREATE USER with an empty password",
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
+				ExpectedErr: false,
+			},
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER rand_user@localhost IDENTIFIED BY '';",
+				ExpectedErr: false,
+			},
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT ALL ON *.* TO rand_user@localhost;",
+				ExpectedErr: false,
+			},
+			{
+				Username:    "rand_user",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+		},
+	},
 	{
 		Name: "Basic root authentication",
 		Assertions: []ServerAuthenticationTestAssertion{

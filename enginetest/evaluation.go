@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -83,28 +84,26 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 		}
 
 		for _, assertion := range assertions {
-			if assertion.ExpectedErr != nil {
-				t.Run(assertion.Query, func(t *testing.T) {
+			t.Run(assertion.Query, func(t *testing.T) {
+				if assertion.Skip {
+					t.Skip()
+				}
+
+				if assertion.ExpectedErr != nil {
 					AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-				})
-			} else if assertion.ExpectedErrStr != "" {
-				t.Run(assertion.Query, func(t *testing.T) {
+				} else if assertion.ExpectedErrStr != "" {
 					AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-				})
-			} else if assertion.ExpectedWarning != 0 {
-				t.Run(assertion.Query, func(t *testing.T) {
+				} else if assertion.ExpectedWarning != 0 {
 					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
-				})
-			} else if assertion.SkipResultsCheck {
-				RunQuery(t, e, harness, assertion.Query)
-			} else {
-				t.Run(assertion.Query, func(t *testing.T) {
+				} else if assertion.SkipResultsCheck {
+					RunQuery(t, e, harness, assertion.Query)
+				} else {
 					ctx := NewContext(harness)
-					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil, assertion.Bindings)
-				})
-			}
+					TestQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+				}
+			})
 		}
 	})
 }
@@ -169,6 +168,8 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 			})
+		} else if assertion.SkipResultsCheck {
+			runQueryPreparedWithCtx(t, ctx, e, assertion.Query)
 		} else {
 			TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil)
 		}
@@ -323,7 +324,6 @@ func runQueryPreparedWithCtx(
 	e *sqle.Engine,
 	q string,
 ) ([]sql.Row, sql.Schema, error) {
-	require := require.New(t)
 	parsed, err := parse.Parse(ctx, q)
 	if err != nil {
 		return nil, nil, err
@@ -346,7 +346,9 @@ func runQueryPreparedWithCtx(
 	if isDatabaser && !isInsert {
 		// DDL statements don't support prepared statements
 		sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, nil)
-		require.NoError(err, "Unexpected error for query %s", q)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		rows, err := sql.RowIterToRows(ctx, sch, iter)
 		return rows, sch, err
@@ -397,7 +399,9 @@ func runQueryPreparedWithCtx(
 	e.CachePreparedStmt(ctx, prepared, q)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
-	require.NoError(err, "Unexpected error for query %s", q)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	return rows, sch, err
@@ -424,6 +428,19 @@ func checkResults(
 			for i, val := range widenedRow {
 				if _, ok := val.(time.Time); ok {
 					widenedRow[i] = time.Unix(0, 0).UTC()
+				}
+			}
+		}
+	}
+
+	// The result from SELECT or WITH queries can be decimal.Decimal type.
+	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
+	// which is the value we get on sql shell.
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") {
+		for _, widenedRow := range widenedRows {
+			for i, val := range widenedRow {
+				if d, ok := val.(decimal.Decimal); ok {
+					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
 				}
 			}
 		}
@@ -768,7 +785,12 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 		}
 		e := mustNewEngine(t, h)
 		defer e.Close()
-		AssertErr(t, e, h, tt.Query, tt.ExpectedErr)
+		if tt.ExpectedErrStr == "" {
+			AssertErr(t, e, h, tt.Query, tt.ExpectedErr)
+		} else {
+			AssertErr(t, e, h, tt.Query, tt.ExpectedErr, tt.ExpectedErrStr)
+		}
+
 	})
 }
 

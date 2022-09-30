@@ -21,6 +21,7 @@ import (
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
+	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
@@ -56,7 +57,7 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
-	{validatePriviledgesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -96,6 +97,7 @@ var OnceAfterDefault = []Rule{
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{assignCatalogId, assignCatalog},
 	{pruneColumnsId, pruneColumns},
+	{hoistSelectExistsId, hoistSelectExists},
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
@@ -106,7 +108,7 @@ var OnceAfterDefault = []Rule{
 	{insertTopNId, insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
-	{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
 	{applyHashLookupsId, applyHashLookups},
@@ -130,7 +132,6 @@ var DefaultValidationRules = []Rule{
 	{validateSchemaSourceId, validateSchemaSource},
 	{validateIndexCreationId, validateIndexCreation},
 	{validateOperandsId, validateOperands},
-	{validateCaseResultTypesId, validateCaseResultTypes},
 	{validateIntervalUsageId, validateIntervalUsage},
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},

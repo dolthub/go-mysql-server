@@ -373,6 +373,16 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 	}
 }
 
+func NewSubqueryExprResolveSelector(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case pruneColumnsId, optimizeJoinsId:
+			return false
+		}
+		return sel(id)
+	}
+}
+
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
@@ -384,27 +394,29 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 // are applied
 func prePrepareRuleSelector(id RuleId) bool {
 	switch id {
-	case resolvePreparedInsertId,
-		insertTopNId,
-		inSubqueryIndexesId,
-		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
-		clearWarningsId,
+	case
+		// OnceBeforeDefault
 		reresolveTablesId,
-		pruneTablesId,
+		validatePrivilegesId,
+
+		// Default
+
+		// OnceAfterDefault
+		insertTopNId,
+		resolvePreparedInsertId,
+
+		// DefaultValidation
 		validateResolvedId,
 		validateOrderById,
 		validateGroupById,
 		validateSchemaSourceId,
 		validateIndexCreationId,
 		validateOperandsId,
-		validateCaseResultTypesId,
 		validateIntervalUsageId,
-		validateExplodeUsageId,
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
-		validateAggregationsId:
+		validateAggregationsId,
+		validateExplodeUsageId:
 		return false
 	default:
 		return true
@@ -417,7 +429,7 @@ func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql
 	return n, err
 }
 
-// prePrepareRuleSelector are applied to a cached prepared statement plan
+// postPrepareRuleSelector are applied to a cached prepared statement plan
 // after bindvars are applied
 func postPrepareRuleSelector(id RuleId) bool {
 	switch id {
@@ -428,6 +440,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 		reresolveTablesId,
 		setTargetSchemasId,
 		parseColumnDefaultsId,
+		resolveTableFunctionsId,
+		validatePrivilegesId,
 
 		// DefaultRules
 		resolveOrderbyLiteralsId,
@@ -439,20 +453,14 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolveColumnsId,
 		resolveColumnDefaultsId,
 		expandStarsId,
+		flattenAggregationExprsId,
 
 		// OnceAfterDefault
-		pushdownFiltersId,
 		subqueryIndexesId,
 		inSubqueryIndexesId,
-		resolvePreparedInsertId,
-
+		resolvePreparedInsertId:
 		// DefaultValidationRules
-
 		// OnceAfterAll
-		AutocommitId,
-		TrackProcessId,
-		parallelizeId,
-		clearWarningsId:
 		return true
 	}
 	return false
@@ -509,8 +517,16 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 	}, sel)
 }
 
+// Every time we recursively invoke the analyzer we increment a depth counter to avoid analyzing queries that could
+// cause infinite recursion. This limit is high but arbitrary
+const maxBatchRecursion = 100
+
 func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze")
+
+	if scope.RecursionDepth() > maxBatchRecursion {
+		return n, transform.SameTree, ErrMaxAnalysisIters.New(maxBatchRecursion)
+	}
 
 	var (
 		same    = transform.SameTree

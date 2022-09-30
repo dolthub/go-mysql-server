@@ -1,0 +1,59 @@
+exec
+CREATE table xy (x int primary key, y int);
+----
+
+exec
+CREATE table uv (u int primary key, v int);
+----
+
+exec
+CREATE table ab (a int primary key, b int);
+----
+
+exec
+CREATE table pq (p int primary key, q int);
+----
+
+exec
+CREATE table mn (m int primary key, n int);
+----
+
+exec
+insert into xy values
+  (1,0),
+  (2,1),
+  (0,2),
+  (3,3);
+----
+
+exec
+insert into uv values
+  (0,1),
+  (1,1),
+  (2,2),
+  (3,2);
+----
+
+exec
+insert into ab values
+  (0,2),
+  (1,2),
+  (2,2),
+  (3,1);
+----
+
+exec
+insert into pq values
+  (0,0),
+  (1,1),
+  (2,2),
+  (3,3);
+----
+
+exec
+insert into mn values
+  (2,0),
+  (3,1),
+  (4,2),
+  (5,3);
+----

@@ -72,6 +72,11 @@ func (r *routineTable) Schema() Schema {
 	return r.schema
 }
 
+// Collation implements the sql.Table interface.
+func (r *routineTable) Collation() CollationID {
+	return Collation_Default
+}
+
 func (r *routineTable) String() string {
 	return printTable(r.Name(), r.Schema())
 }

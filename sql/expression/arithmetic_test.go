@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -405,11 +406,17 @@ func TestMod(t *testing.T) {
 		name        string
 		left, right int64
 		expected    int64
+		null        bool
 	}{
-		{"1 % 1", 1, 1, 0},
-		{"8 % 3", 8, 3, 2},
-		{"1 % 3", 1, 3, 1},
-		{"0 % -1024", 0, -1024, 0},
+		{"1 % 1", 1, 1, 0, false},
+		{"8 % 3", 8, 3, 2, false},
+		{"1 % 3", 1, 3, 1, false},
+		{"0 % -1024", 0, -1024, 0, false},
+		{"-1 % 2", -1, 2, -1, false},
+		{"1 % -2", 1, -2, 1, false},
+		{"-1 % -2", -1, -2, -1, false},
+		{"1 % 0", 1, 0, 0, true},
+		{"0 % 0", 0, 0, 0, true},
 	}
 
 	for _, tt := range testCases {
@@ -420,7 +427,11 @@ func TestMod(t *testing.T) {
 				NewLiteral(tt.right, sql.Int64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if tt.null {
+				require.Nil(result)
+			} else {
+				require.Equal(tt.expected, result)
+			}
 		})
 	}
 }
@@ -495,8 +506,8 @@ func TestUnaryMinus(t *testing.T) {
 		{"uint64", uint64(1), sql.Uint64, int64(-1)},
 		{"float32", float32(1), sql.Float32, float32(-1)},
 		{"float64", float64(1), sql.Float64, float64(-1)},
-		{"int text", "1", sql.LongText, float64(-1)},
-		{"float text", "1.2", sql.LongText, float64(-1.2)},
+		{"int text", "1", sql.LongText, "-1"},
+		{"float text", "1.2", sql.LongText, "-1.2"},
 		{"nil", nil, sql.LongText, nil},
 	}
 
@@ -505,7 +516,12 @@ func TestUnaryMinus(t *testing.T) {
 			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, result)
+			if dt, ok := result.(decimal.Decimal); ok {
+				require.Equal(t, tt.expected, dt.StringFixed(dt.Exponent()*-1))
+			} else {
+				require.Equal(t, tt.expected, result)
+			}
+
 		})
 	}
 }

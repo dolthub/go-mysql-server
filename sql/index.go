@@ -14,9 +14,7 @@
 
 package sql
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Index is the representation of an index, and also creates an IndexLookup when given a collection of ranges.
 type Index interface {
@@ -39,16 +37,47 @@ type Index interface {
 	// IsGenerated returns whether this index was generated. Generated indexes
 	// are used for index access, but are not displayed (such as with SHOW INDEXES).
 	IsGenerated() bool
-	// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns. Each Range
-	// is ordered by the column expressions (as returned by Expressions) with the RangeColumnExpr representing the
-	// searchable area for each column expression. Each Range given will not overlap with any other ranges. Additionally,
-	// all ranges will have the same length, and may represent a partial index (matching a prefix rather than the entire
-	// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
-	// returned only in the event that an error occurred.
-	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
-	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
-	// match the string returned from Index.Expressions().
+	// ColumnExpressionTypes returns each expression and its associated Type.
+	// Each expression string should exactly match the string returned from
+	// Index.Expressions().
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
+	// CanSupport returns whether this index supports lookups on the given
+	// range filters.
+	CanSupport(...Range) bool
+}
+
+// IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
+// information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
+// Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
+type IndexLookup struct {
+	Index  Index
+	Ranges RangeCollection
+	// IsPointLookup is true if the lookup will return one or zero
+	// values; the range is null safe, the index is unique, every index
+	// column has a range expression, and every range expression is an
+	// exact equality.
+	IsPointLookup bool
+	IsEmptyRange  bool
+}
+
+var emptyLookup = IndexLookup{}
+
+func (il IndexLookup) IsEmpty() bool {
+	return il.Index == nil
+}
+
+func (il IndexLookup) String() string {
+	pr := NewTreePrinter()
+	_ = pr.WriteNode("IndexLookup")
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String()))
+	return pr.String()
+}
+
+func (il IndexLookup) DebugString() string {
+	pr := NewTreePrinter()
+	_ = pr.WriteNode("IndexLookup")
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString()))
+	return pr.String()
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
@@ -74,17 +103,6 @@ type OrderedIndex interface {
 	Index
 	// Order returns the order of results for reads from this index
 	Order() IndexOrder
-}
-
-// IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
-// information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
-// Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
-type IndexLookup interface {
-	fmt.Stringer
-	// Index returns the index that created this IndexLookup.
-	Index() Index
-	// Ranges returns each Range that created this IndexLookup.
-	Ranges() RangeCollection
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

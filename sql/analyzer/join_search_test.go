@@ -37,36 +37,16 @@ func TestBuildJoinTree(t *testing.T) {
 	db := memory.NewDatabase("db")
 	cat := map[string]*plan.ResolvedTable{
 		"A": plan.NewResolvedTable(
-			memory.NewTable(
-				"A",
-				sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "A"}}),
-				nil,
-			), db, nil),
+			memory.NewTable("A", sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "A"}}), nil), db, nil),
 
 		"B": plan.NewResolvedTable(
-			memory.NewTable(
-				"A",
-				sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "B"}}),
-				nil,
-			), db, nil),
+			memory.NewTable("A", sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "B"}}), nil), db, nil),
 		"C": plan.NewResolvedTable(
-			memory.NewTable(
-				"A",
-				sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "C"}}),
-				nil,
-			), db, nil),
+			memory.NewTable("A", sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "C"}}), nil), db, nil),
 		"D": plan.NewResolvedTable(
-			memory.NewTable(
-				"A",
-				sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "D"}}),
-				nil,
-			), db, nil),
+			memory.NewTable("A", sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "D"}}), nil), db, nil),
 		"E": plan.NewResolvedTable(
-			memory.NewTable(
-				"A",
-				sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "E"}}),
-				nil,
-			), db, nil),
+			memory.NewTable("A", sql.NewPrimaryKeySchema(sql.Schema{{Name: "col", Type: sql.Text, Nullable: true, Source: "E"}}), nil), db, nil),
 	}
 
 	// These tests are a little fragile: for many of these joins, there is more than one correct join tree.

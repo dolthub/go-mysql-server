@@ -14,7 +14,11 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 // CharsetCollationEngineTest is used to test character sets.
 type CharsetCollationEngineTest struct {
@@ -23,11 +27,15 @@ type CharsetCollationEngineTest struct {
 	Queries     []CharsetCollationEngineTestQuery
 }
 
-// CharsetCollationEngineTestQuery is a query within a CharsetCollationEngineTest.
+// CharsetCollationEngineTestQuery is a query within a CharsetCollationEngineTest. If `Error` is true but `ErrKind` is
+// nil, then just tests that an error has occurred. If `ErrKind` is not nil, then tests that an error is returned and
+// matches the stated kind (has higher precedence than the `Error` field). Only checks the `Expected` rows when both
+// `Error` and `ErrKind` are nil.
 type CharsetCollationEngineTestQuery struct {
 	Query    string
 	Expected []sql.Row
 	Error    bool
+	ErrKind  *errors.Kind
 }
 
 // CharsetCollationEngineTests are used to ensure that character sets and collations have the correct behavior over the
@@ -92,6 +100,31 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT _utf16'\x00a' COLLATE binary;",
 				Error: true,
+			},
+		},
+	},
+	{
+		Name: "Properly block using not-yet-implemented character sets/collations",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query:   "CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf16le);",
+				ErrKind: sql.ErrCharSetNotYetImplementedTemp,
+			},
+			{
+				Query:   "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16le_general_ci);",
+				ErrKind: sql.ErrCharSetNotYetImplementedTemp,
+			},
+			{
+				Query:    "CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf16);",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:   "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf16_croatian_ci;",
+				ErrKind: sql.ErrCollationNotYetImplementedTemp,
+			},
+			{
+				Query:   "CREATE TABLE test4 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16_croatian_ci);",
+				ErrKind: sql.ErrCollationNotYetImplementedTemp,
 			},
 		},
 	},
@@ -212,6 +245,130 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		},
 	},
 	{
+		Name: "Table collation is respected",
+		SetUpScript: []string{
+			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255)) COLLATE utf16_unicode_ci;",
+			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255)) COLLATE utf8mb4_unicode_ci;",
+			"CREATE TABLE test3 LIKE test2;",
+			"INSERT INTO test1 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
+			"INSERT INTO test2 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
+			"INSERT INTO test3 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
+			"CREATE TABLE test4 AS SELECT * FROM test2;",
+		},
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: "SELECT v1, pk FROM test1 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "ALTER TABLE test2 MODIFY COLUMN v1 VARCHAR(100);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "SELECT v1, pk FROM test3 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "SELECT v1, pk FROM test4 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test1;",
+				Expected: []sql.Row{
+					{"test1", "CREATE TABLE `test1` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) CHARACTER SET utf16 COLLATE utf16_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_unicode_ci"},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2;",
+				Expected: []sql.Row{
+					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(100) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test3;",
+				Expected: []sql.Row{
+					{"test3", "CREATE TABLE `test3` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test4;",
+				Expected: []sql.Row{
+					{"test4", "CREATE TABLE `test4` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "ALTER TABLE test3 ADD COLUMN v2 VARCHAR(255);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test3;",
+				Expected: []sql.Row{
+					{"test3", "CREATE TABLE `test3` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_unicode_ci,\n  `v2` varchar(255) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+				},
+			},
+			{
+				Query: "ALTER TABLE test2 CHANGE COLUMN v1 v1 VARCHAR(220);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2;",
+				Expected: []sql.Row{
+					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+				},
+			},
+		},
+	},
+	{
+		Name: "SET NAMES does not interfere with column charset",
+		SetUpScript: []string{
+			"SET NAMES utf8mb3;",
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 VARCHAR(100) COLLATE utf8mb4_0900_bin);",
+			"INSERT INTO test VALUES (1, 'a'), (2, 'b');",
+		},
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query:    "SELECT * FROM test ORDER BY v1 COLLATE utf8mb4_bin ASC;",
+				Expected: []sql.Row{{int64(1), "a"}, {int64(2), "b"}},
+			},
+			{
+				Query:   "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
+				ErrKind: sql.ErrCollationInvalidForCharSet,
+			},
+			{
+				Query:    "SELECT 'a' COLLATE utf8mb3_bin;",
+				Expected: []sql.Row{{"a"}},
+			},
+			{
+				Query:   "SELECT 'a' COLLATE utf8mb4_bin;",
+				ErrKind: sql.ErrCollationInvalidForCharSet,
+			},
+		},
+	},
+	{
 		Name: "ENUM collation handling",
 		SetUpScript: []string{
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf16_unicode_ci);",
@@ -293,6 +450,158 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				Query: "SELECT * FROM test2 ORDER BY pk;",
 				Expected: []sql.Row{
 					{int64(2), uint64(6)},
+				},
+			},
+		},
+	},
+	{
+		Name: "LIKE respects table collations",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+			"CREATE TABLE test(v1 VARCHAR(100) COLLATE utf8mb4_0900_bin, v2 VARCHAR(100) COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO test VALUES ('abc', 'abc'), ('ABC', 'ABC');",
+		},
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'A%';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'A%';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE '%C';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE '%C';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(1)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+		},
+	},
+	{
+		Name: "LIKE respects connection collation",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4;",
+		},
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT _utf8mb4'abc' LIKE 'ABC';",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT 'abc' LIKE _utf8mb4'ABC';",
+				Expected: []sql.Row{
+					{false},
 				},
 			},
 		},

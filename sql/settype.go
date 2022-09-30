@@ -23,11 +23,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 const (
@@ -234,7 +235,7 @@ func (t setType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t setType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -247,14 +248,22 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, value)
+	resultCharset := ctx.GetCharacterSetResults()
+	if resultCharset == CharacterSet_Invalid || resultCharset == CharacterSet_binary {
+		resultCharset = t.collation.CharacterSet()
+	}
+	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
+	if !ok {
+		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+	}
+	val := appendAndSliceBytes(dest, encodedBytes)
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
 
 // String implements Type interface.
 func (t setType) String() string {
-	s := fmt.Sprintf("SET('%v')", strings.Join(t.Values(), `','`))
+	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
@@ -308,6 +317,11 @@ func (t setType) Values() []string {
 		valArray[i] = t.bitToVal[bit]
 	}
 	return valArray
+}
+
+// WithNewCollation implements TypeWithCollation interface.
+func (t setType) WithNewCollation(collation CollationID) Type {
+	return MustCreateSetType(t.Values(), collation)
 }
 
 // allValuesBitField returns a bit field that references every value that the set contains.

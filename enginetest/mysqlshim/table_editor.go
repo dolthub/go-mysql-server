@@ -36,6 +36,16 @@ var _ sql.RowDeleter = (*tableEditor)(nil)
 var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
 
+func (t *tableEditor) IndexedAccess(sql.Index) sql.IndexedTable {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // StatementBegin implements the interface sql.TableEditor.
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
 	err := t.table.db.shim.Exec(t.table.db.name, "BEGIN;")
@@ -88,12 +98,6 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 		sb.WriteString(fmt.Sprintf(" `%s` = %s", t.sch[i].Name, t.rowValToString(val)))
 	}
 	return t.table.db.shim.Exec(t.table.db.name, fmt.Sprintf("DELETE FROM `%s` WHERE%s;", t.table.name, sb.String()))
-}
-
-// WithIndexLookup implements the interface sql.ForeignKeyUpdater.
-func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	// Not sure what to do here, will worry about that when the shim fully supports foreign keys
-	return nil
 }
 
 // Close implements the interface sql.TableEditor.

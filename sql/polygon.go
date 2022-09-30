@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"fmt"
 	"reflect"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -151,7 +150,7 @@ func (t PolygonType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t PolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -162,14 +161,13 @@ func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 
 	buf := SerializePolygon(v.(Polygon))
-	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
+	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
 func (t PolygonType) String() string {
-	return "POLYGON"
+	return "polygon"
 }
 
 // Type implements Type interface.

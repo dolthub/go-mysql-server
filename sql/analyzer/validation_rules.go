@@ -360,42 +360,6 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	return n, transform.SameTree, nil
 }
 
-func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("validate_case_result_types")
-	defer span.End()
-
-	var err error
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.Case:
-			typ := e.Type()
-			for _, b := range e.Branches {
-				if !sql.AreComparable(b.Value.Type(), typ) && b.Value.Type() != sql.Null {
-					err = ErrCaseResultType.New(typ, b.Value, b.Value.Type(), e)
-					return false
-				}
-			}
-
-			if e.Else != nil {
-				if !sql.AreComparable(e.Else.Type(), typ) && e.Else.Type() != sql.Null {
-					err = ErrCaseResultType.New(typ, e.Else, e.Else.Type(), e)
-					return false
-				}
-			}
-
-			return false
-		default:
-			return true
-		}
-	})
-
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return n, transform.SameTree, nil
-}
-
 func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var invalid bool
 	transform.InspectExpressions(n, func(e sql.Expression) bool {
@@ -482,6 +446,8 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						}
 					case expression.Tuple:
 						// Tuple expressions can contain tuples...
+					case *plan.ExistsSubquery:
+						// Any number of columns are allowed.
 					default:
 						for _, e := range e.Children() {
 							nc := sql.NumColumns(e.Type())

@@ -58,9 +58,8 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select @myvar, @@autocommit, @myvar2, @myvar3",
-				// TODO: unclear why the last var is getting a float type, should be an int
 				Expected: []sql.Row{
-					{1, 1, 0, 0.0},
+					{1, 1, 0, 0},
 				},
 			},
 		},
@@ -162,11 +161,11 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set names quoted",
 		SetUpScript: []string{
-			`set NAMES "charset"`,
+			`set NAMES "utf8mb3"`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
 		Expected: []sql.Row{
-			{"charset", "charset", "charset"},
+			{"utf8mb3", "utf8mb3", "utf8mb3"},
 		},
 	},
 	{

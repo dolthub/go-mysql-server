@@ -125,6 +125,13 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		}
 	}
 	if sql.IsTextOnly(compareType) {
+		leftCollation, leftCoercibility := GetCollationViaCoercion(c.Left())
+		rightCollation, rightCoercibility := GetCollationViaCoercion(c.Right())
+		collationPreference, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+		if err != nil {
+			return 0, err
+		}
+
 		stringCompareType := compareType.(sql.StringType)
 		compareType = sql.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
@@ -151,6 +158,15 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	rightType := c.Right().Type()
 	if sql.IsTuple(leftType) && sql.IsTuple(rightType) {
 		return left, right, c.Left().Type(), nil
+	}
+
+	if sql.IsTime(leftType) || sql.IsTime(rightType) {
+		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return l, r, sql.Datetime, nil
 	}
 
 	if sql.IsBinaryType(leftType) || sql.IsBinaryType(rightType) {
@@ -200,15 +216,6 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		}
 
 		return l, r, sql.Uint64, nil
-	}
-
-	if sql.IsTime(leftType) || sql.IsTime(rightType) {
-		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		return l, r, sql.Datetime, nil
 	}
 
 	left, right, err := convertLeftAndRight(left, right, ConvertToChar)

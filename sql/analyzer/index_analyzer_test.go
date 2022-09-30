@@ -130,6 +130,10 @@ type dummyIdx struct {
 
 var _ sql.Index = (*dummyIdx)(nil)
 
+func (i dummyIdx) CanSupport(r ...sql.Range) bool {
+	return false
+}
+
 func (i dummyIdx) Expressions() []string {
 	var exprs []string
 	for _, e := range i.expr {

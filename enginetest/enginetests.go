@@ -118,7 +118,7 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
 	for _, tt := range queries.JoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
@@ -126,6 +126,29 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+	}
+
+	for _, ts := range queries.SkippedJoinScripts {
+		TestScript(t, harness, ts)
+	}
+}
+
+func TestJSONTableQueries(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Pk_tablesData)
+	for _, tt := range queries.JSONTableQueryTests {
+		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+	}
+}
+
+func TestJSONTableScripts(t *testing.T, harness Harness) {
+	for _, tt := range queries.JSONTableScriptTests {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestBrokenJSONTableScripts(t *testing.T, harness Harness) {
+	for _, tt := range queries.BrokenJSONTableScriptTests {
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -209,6 +232,13 @@ func TestInfoSchema(t *testing.T, h Harness) {
 
 		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
 	})
+
+	for _, tt := range queries.SkippedInfoSchemaQueries {
+		t.Run(tt.Query, func(t *testing.T) {
+			t.Skip()
+			TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		})
+	}
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
@@ -262,7 +292,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
@@ -457,7 +487,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 func TestColumnAliases(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, tt := range queries.ColumnAliasQueries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -530,7 +560,7 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 }
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
-	for _, script := range queries.InsertScripts {
+	for _, script := range queries.InsertBrokenScripts {
 		t.Skip()
 		TestScript(t, harness, script)
 	}
@@ -1240,13 +1270,16 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true",
 					assertion.Username, assertion.Password, port), nil)
 				require.NoError(t, err)
-				if assertion.ExpectedErr {
-					r, err := conn.Query(assertion.Query)
+				r, err := conn.Query(assertion.Query)
+				if assertion.ExpectedErr || len(assertion.ExpectedErrStr) > 0 || assertion.ExpectedErrKind != nil {
 					if !assert.Error(t, err) {
 						require.NoError(t, r.Close())
+					} else if len(assertion.ExpectedErrStr) > 0 {
+						assert.Equal(t, assertion.ExpectedErrStr, err.Error())
+					} else if assertion.ExpectedErrKind != nil {
+						assert.True(t, assertion.ExpectedErrKind.Is(err))
 					}
 				} else {
-					r, err := conn.Query(assertion.Query)
 					if assert.NoError(t, err) {
 						require.NoError(t, r.Close())
 					}
@@ -1656,6 +1689,28 @@ func TestViews(t *testing.T, harness Harness) {
 	})
 }
 
+func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+
+	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+	require.NoError(t, err)
+
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
+	vdb, ok := db.(sql.ViewDatabase)
+	require.True(t, ok, "expected sql.ViewDatabase")
+
+	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView")
+	require.NoError(t, err)
+
+	AssertErr(t, e, harness, "select * from recursiveView", analyzer.ErrMaxAnalysisIters)
+}
+
 func TestViewsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
@@ -1776,7 +1831,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		t9TableIndexable, ok := t12Table.(sql.IndexedTable)
+		t9TableIndexable, ok := t12Table.(sql.IndexAddressableTable)
 		require.True(t, ok)
 		t9Indexes, err := t9TableIndexable.GetIndexes(ctx)
 		require.NoError(t, err)
@@ -3323,31 +3378,11 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(*) FROM t1 where a = 4`, []sql.Row{{1}}, nil, nil)
 }
 
-// todo(max): rewrite into []ScriptTest
 func TestChecksOnUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK ((a + b) / 2 >= 1) ENFORCED")
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
-	}, nil, nil)
-
-	AssertErr(t, e, harness, "UPDATE t1 set b = 0", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set a = 0, b = 1", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set b = 0 WHERE b = 1", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "UPDATE t1 set a = 0, b = 1 WHERE b = 1", sql.ErrCheckConstraintViolated)
-
-	TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
-	}, nil, nil)
+	for _, script := range queries.ChecksOnUpdateScriptTests {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
@@ -3586,6 +3621,50 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
+	RunQuery(t, e, harness, "CREATE TABLE empty_tbl (a int, b int)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE results (name varchar(20), subject varchar(20), mark int)")
+	RunQuery(t, e, harness, "INSERT INTO results VALUES ('Pratibha', 'Maths', 100),('Ankita','Science',80),('Swarna','English',100),('Ankita','Maths',65),('Pratibha','Science',80),('Swarna','Science',50),('Pratibha','English',70),('Swarna','Maths',85),('Ankita','English',90)")
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+		{"English", "Swarna", 100, uint64(1)},
+		{"English", "Ankita", 90, uint64(2)},
+		{"English", "Pratibha", 70, uint64(3)},
+		{"Maths", "Pratibha", 100, uint64(1)},
+		{"Maths", "Swarna", 85, uint64(2)},
+		{"Maths", "Ankita", 65, uint64(3)},
+		{"Science", "Ankita", 80, uint64(1)},
+		{"Science", "Pratibha", 80, uint64(1)},
+		{"Science", "Swarna", 50, uint64(3)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, dense_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+		{"English", "Swarna", 100, uint64(1)},
+		{"English", "Ankita", 90, uint64(2)},
+		{"English", "Pratibha", 70, uint64(3)},
+		{"Maths", "Pratibha", 100, uint64(1)},
+		{"Maths", "Swarna", 85, uint64(2)},
+		{"Maths", "Ankita", 65, uint64(3)},
+		{"Science", "Ankita", 80, uint64(1)},
+		{"Science", "Pratibha", 80, uint64(1)},
+		{"Science", "Swarna", 50, uint64(2)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, percent_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+		{"English", "Swarna", 100, float64(0)},
+		{"English", "Ankita", 90, float64(0.5)},
+		{"English", "Pratibha", 70, float64(1)},
+		{"Maths", "Pratibha", 100, float64(0)},
+		{"Maths", "Swarna", 85, float64(0.5)},
+		{"Maths", "Ankita", 65, float64(1)},
+		{"Science", "Ankita", 80, float64(0)},
+		{"Science", "Pratibha", 80, float64(0)},
+		{"Science", "Swarna", 50, float64(1)},
+	}, nil, nil)
+
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0,0), (1,1,1), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
@@ -3598,6 +3677,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil)
 
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(3)},
+		{2, uint64(5)},
+		{3, uint64(1)},
+		{4, uint64(3)},
+		{5, uint64(6)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(3)},
+		{3, uint64(1)},
+		{4, uint64(2)},
+		{5, uint64(4)},
+	}, nil, nil)
+
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
 		{0, 0.8},
 		{1, 0.4},
@@ -3605,6 +3702,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.8},
 		{4, 0.4},
 		{5, 0.0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+		{0, uint64(5)},
+		{1, uint64(3)},
+		{2, uint64(2)},
+		{3, uint64(5)},
+		{4, uint64(3)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+		{0, uint64(4)},
+		{1, uint64(3)},
+		{2, uint64(2)},
+		{3, uint64(4)},
+		{4, uint64(3)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
@@ -3616,6 +3731,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil)
 
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(4)},
+		{3, uint64(1)},
+		{4, uint64(3)},
+		{5, uint64(5)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(3)},
+		{3, uint64(1)},
+		{4, uint64(2)},
+		{5, uint64(4)},
+	}, nil, nil)
+
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
 		{0, 0.0},
 		{1, 1.0},
@@ -3623,6 +3756,24 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.0},
 		{4, 0.0},
 		{5, 0.0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(2)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	// no order by clause -> all rows are peers
@@ -3633,6 +3784,26 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{3, 0.0},
 		{4, 0.0},
 		{5, 0.0},
+	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
+	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, uint64(1)},
+		{1, uint64(1)},
+		{2, uint64(1)},
+		{3, uint64(1)},
+		{4, uint64(1)},
+		{5, uint64(1)},
 	}, nil, nil)
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
@@ -3668,6 +3839,114 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{1, 1},
 		{2, 0},
 		{4, 1},
+		{5, 0},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, nil},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, nil},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 4},
+		{1, nil},
+		{2, 5},
+		{3, 6},
+		{4, 7},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, 0},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, 4},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 2},
+		{1, -1},
+		{2, 3},
+		{3, 4},
+		{4, 5},
+		{5, -1},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 4},
+		{1, -1},
+		{2, 5},
+		{3, -1},
+		{4, -1},
+		{5, -1},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, "s"},
+		{1, nil},
+		{2, "s"},
+		{3, "s"},
+		{4, "s"},
+		{5, nil},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 0},
+		{4, 1},
+		{5, 3},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a-1) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, 0},
+		{2, 1},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(c) over (partition by b order by c) FROM t1 order by a*b,a`, []sql.Row{
+		{0, 0},
+		{3, 0},
+		{1, 1},
+		{2, 0},
+		{4, 0},
 		{5, 0},
 	}, nil, nil)
 
@@ -3746,6 +4025,34 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", expression.ErrInvalidOffset)
 	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", expression.ErrInvalidOffset)
 
+	RunQuery(t, e, harness, "CREATE TABLE t2 (a int, b int, c int)")
+	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (1,1,1), (3,2,2), (7,4,5)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(a), bit_or(b), bit_xor(c) FROM t2`, []sql.Row{
+		{uint64(1), uint64(7), uint64(6)},
+	}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE t3 (x varchar(100))")
+	RunQuery(t, e, harness, "INSERT INTO t3 VALUES ('these'), ('are'), ('strings')")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t3`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t3`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t3`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE t4 (x int)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t4`, []sql.Row{
+		{^uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t4`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t4`, []sql.Row{
+		{uint64(0)},
+	}, nil, nil)
 }
 
 func TestWindowRowFrames(t *testing.T, harness Harness) {
@@ -3790,6 +4097,16 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`, []sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}}, nil, nil)
+
+	// range framing without an order by clause
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil)
 
 	// fixed frame size, 3 days
 	RunQuery(t, e, harness, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
@@ -4308,37 +4625,63 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	q := []queries.QueryTest{
 		{
-			Query:    "SELECT * FROM mytable ORDER BY i",
-			Expected: []sql.Row{{int64(1), "first row"}},
+			Query:    "SELECT i FROM mytable ORDER BY i",
+			Expected: []sql.Row{{1}, {2}},
 		},
 		{
-			Query: "SELECT * FROM mytable ORDER BY i LIMIT 2",
-			Expected: []sql.Row{
-				{int64(1), "first row"},
-				{int64(2), "second row"},
-			},
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 3) t",
+			Expected: []sql.Row{{1}, {2}},
 		},
 		{
-			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 2) t",
-			Expected: []sql.Row{{int64(1)}},
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
+			Expected: []sql.Row{{1}, {2}, {3}},
 		},
-		// TODO: this is broken: the session limit is applying inappropriately to the subquery
-		// {
-		// 	"SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 2",
-		// 	[]sql.Row{{int64(1)}},
-		// },
+		{
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
+			Expected: []sql.Row{{1}, {2}, {3}},
+		},
+		{
+			Query:    "select count(*), y from a group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "select count(*), y from (select y from a) b group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "select count(*), y from (select y from a) b group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "with b as (select y from a order by x) select * from b",
+			Expected: []sql.Row{{1}, {1}},
+		},
+		{
+			Query:    "select x, row_number() over (partition by y) from a order by x;",
+			Expected: []sql.Row{{0, 1}, {1, 2}},
+		},
+		{
+			Query:    "select y from a where x < 1 union select y from a where x > 1",
+			Expected: []sql.Row{{1}, {2}},
+		},
 	}
 
-	harness.Setup(setup.MydbData, setup.MytableData)
+	customSetup := []setup.SetupScript{{
+		"Create table a (x int primary key, y int);",
+		"Insert into a values (0,1), (1,1), (2,2), (3,2), (4,2), (5,3),(6,3);",
+	}}
+	harness.Setup(setup.MydbData, setup.MytableData, customSetup)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(1))
+	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(2))
 	require.NoError(t, err)
 
 	for _, tt := range q {
-		TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		})
 	}
 }
 
@@ -4757,7 +5100,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 
 	t.Run("mix of alter column, add and drop constraints in one statement", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t33(pk BIGINT PRIMARY KEY, v1 int, v2 int)")
-		RunQuery(t, e, harness, `alter table t33 add column v4 int after pk, 
+		RunQuery(t, e, harness, `alter table t33 add column v4 int after pk,
 			drop column v2, add constraint v1gt0 check (v1 > 0)`)
 
 		ctx := NewContext(harness)
@@ -5232,7 +5575,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Column references must be enclosed in parens", func(t *testing.T) {
-		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrInvalidColumnDefaultValue)
+		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrSyntaxError)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {
@@ -5255,9 +5598,12 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT (9))", sql.ErrInvalidDefaultValueOrder)
 	})
 
-	t.Run("TEXT literals", func(t *testing.T) {
+	t.Run("Blob types can't define defaults with literals", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)")
+		AssertErr(t, e, harness, "ALTER TABLE t34 alter column v1 set default '{}'", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "ALTER TABLE t34 alter column v1 set default ('{}')")
 	})
 
 	t.Run("Other types using NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
@@ -5370,6 +5716,25 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 }
 
+func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sql.Context) sql.PersistableSession, count *int) {
+	queries := []string{"SHOW TABLES;", "SELECT i from mytable;"}
+	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	sql.InitSystemVariables()
+	ctx := NewContext(harness)
+	ctx.Session = newSessFunc(ctx)
+
+	for _, q := range queries {
+		t.Run("test running queries to check callbacks on ValidateSession()", func(t *testing.T) {
+			RunQueryWithContext(t, e, harness, ctx, q)
+		})
+	}
+	// This asserts that ValidateSession() method was called once for every statement.
+	require.Equal(t, len(queries), *count)
+}
+
 func TestPrepared(t *testing.T, harness Harness) {
 	qtests := []queries.QueryTest{
 		{
@@ -5381,7 +5746,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a WHERE bar = :var ORDER BY foo, i",
+			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a HAVING bar = :var ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
 			Bindings: map[string]sql.Expression{
@@ -5389,14 +5754,14 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = ? ORDER BY foo, i;",
+			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? ORDER BY foo, i;",
 			Expected: []sql.Row{},
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(int64(1), sql.Int64),
 			},
 		},
 		{
-			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = :bar AND foo = :foo ORDER BY foo, i;",
+			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = :bar AND foo = :foo ORDER BY foo, i;",
 			Expected: []sql.Row{},
 			Bindings: map[string]sql.Expression{
 				"bar": expression.NewLiteral(int64(1), sql.Int64),
@@ -5616,12 +5981,18 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					sch, iter, err := engine.Query(ctx, query.Query)
-					if query.Error {
+					if query.Error || query.ErrKind != nil {
 						if err == nil {
 							_, err := sql.RowIterToRows(ctx, sch, iter)
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						} else {
 							require.Error(t, err)
+							if query.ErrKind != nil {
+								require.True(t, query.ErrKind.Is(err))
+							}
 						}
 					} else {
 						require.NoError(t, err)
@@ -5645,10 +6016,6 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 	port := getEmptyPort(t)
 	for _, script := range queries.CharsetCollationWireTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := NewContextWithClient(harness, sql.Client{
-				User:    "root",
-				Address: "localhost",
-			})
 			serverConfig := server.Config{
 				Protocol:       "tcp",
 				Address:        fmt.Sprintf("localhost:%d", port),
@@ -5658,14 +6025,6 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				RunQueryWithContext(t, engine, harness, ctx, statement)
-			}
 
 			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
 			require.NoError(t, err)
@@ -5681,10 +6040,23 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			require.NoError(t, err)
 			_, err = conn.Exec("USE mydb;")
 			require.NoError(t, err)
+
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				_, err = conn.Exec(statement)
+				require.NoError(t, err)
+			}
+
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
 					r, err := conn.Query(query.Query)
-					if assert.NoError(t, err) {
+					if query.Error {
+						require.Error(t, err)
+					} else if assert.NoError(t, err) {
 						rowIdx := -1
 						for r.Next() {
 							rowIdx++
@@ -5784,7 +6156,7 @@ func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBui
 						}
 						expectedEngineRow := make([]*string, len(engineRow))
 						for i := range engineRow {
-							sqlVal, err := sch[i].Type.SQL(nil, engineRow[i])
+							sqlVal, err := sch[i].Type.SQL(ctx, nil, engineRow[i])
 							if !assert.NoError(t, err) {
 								break
 							}

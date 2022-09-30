@@ -83,7 +83,13 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		key, err := sql.HashOf(sql.NewRow(left))
+		// convert left to right's type
+		nLeft, err := typ.Convert(left)
+		if err != nil {
+			return nil, err
+		}
+
+		key, err := sql.HashOf(sql.NewRow(nLeft))
 		if err != nil {
 			return nil, err
 		}

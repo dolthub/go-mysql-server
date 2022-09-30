@@ -5,85 +5,80 @@ import (
 	"time"
 )
 
-// Validate that the combination of fields in datetime
-// can be evaluated unambiguously to a time.Time.
-func validate(dt datetime) error {
-	if dt.year == nil && dt.day == nil && dt.month == nil && dt.dayOfYear == nil {
-		return nil
-	}
-	if dt.day == nil {
-		if dt.month != nil {
-			// TODO: ensure this behaves as expected
-			return fmt.Errorf("day is ambiguous")
-		}
-		return nil
-	}
-	if dt.dayOfYear != nil && dt.day != nil {
-		return fmt.Errorf("day is ambiguous")
-	}
-	if (dt.dayOfYear != nil || dt.day != nil) && dt.year == nil {
-		return fmt.Errorf("year is ambiguous")
+func evaluateDate(dt datetime) string {
+	var year, month, day int
+
+	if dt.year != nil {
+		year = int(*dt.year)
 	}
 
-	return nil
+	if dt.month != nil {
+		month = int(*dt.month)
+	}
+
+	if dt.day != nil {
+		day = int(*dt.day)
+	}
+
+	if dt.dayOfYear != nil {
+		// offset from Jan 1st by the specified number of days
+		dayOffsetted := time.Date(year, time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
+		month = int(dayOffsetted.Month())
+		day = dayOffsetted.Day()
+	}
+
+	return fillWithZero(year, 4) + "-" + fillWithZero(month, 2) + "-" + fillWithZero(day, 2)
 }
 
-// Evaluate the parsed datetime params to a time.Time.
-func evaluate(dt datetime) (time.Time, error) {
-	err := validate(dt)
-	if err != nil {
-		return time.Time{}, err
-	}
+func evaluateTime(dt datetime) string {
+	var hours, minutes, seconds, milliseconds, microseconds, nanoseconds int
 
-	var hour, minute, second, miliseconds, microseconds, nanoseconds int
 	if dt.hours != nil {
 		if *dt.hours < 13 && dt.am != nil && !*dt.am {
 			*dt.hours += 12
 		}
-		hour = int(*dt.hours)
+		hours = int(*dt.hours)
 	}
 	if dt.minutes != nil {
-		minute = int(*dt.minutes)
+		minutes = int(*dt.minutes)
 	}
 	if dt.seconds != nil {
-		second = int(*dt.seconds)
+		seconds = int(*dt.seconds)
 	}
-	if dt.miliseconds != nil {
-		miliseconds = int(*dt.miliseconds)
+
+	t := fillWithZero(hours, 2) + ":" + fillWithZero(minutes, 2) + ":" + fillWithZero(seconds, 2)
+
+	includeMicrosecond := false
+	if dt.milliseconds != nil {
+		milliseconds = int(*dt.milliseconds)
+		includeMicrosecond = true
 	}
 	if dt.microseconds != nil {
 		microseconds = int(*dt.microseconds)
+		includeMicrosecond = true
 	}
 	if dt.nanoseconds != nil {
 		nanoseconds = int(*dt.nanoseconds)
+		includeMicrosecond = true
 	}
+
 	// convert partial seconds to nanoseconds
-	nanosecondDuration := time.Microsecond*time.Duration(microseconds) + time.Millisecond*time.Duration(miliseconds) + time.Nanosecond*time.Duration(nanoseconds)
-
-	var (
-		year, day int
-		month     time.Month
-	)
-	if dt.year != nil {
-		year = int(*dt.year)
-	}
-	if dt.dayOfYear != nil {
-		// offset from Jan 1st by the specified number of days
-		dayOffsetted := time.Date(year, time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
-		month = dayOffsetted.Month()
-		day = dayOffsetted.Day()
-	} else if dt.day != nil {
-		month = *dt.month
-		day = int(*dt.day)
+	nanosecondDuration := time.Microsecond*time.Duration(microseconds) + time.Millisecond*time.Duration(milliseconds) + time.Nanosecond*time.Duration(nanoseconds)
+	if includeMicrosecond {
+		t = t + "." + fillWithZero(int(nanosecondDuration), 6)
 	}
 
-	// if timestamp only, add the duration to the 0 date
-	if year == 0 && day == 0 && month == 0 {
-		dur := time.Hour * time.Duration(hour)
-		dur += time.Minute * time.Duration(minute)
-		dur += time.Second*time.Duration(second) + nanosecondDuration
-		return time.Time{}.Add(dur), nil
+	return t
+}
+
+func fillWithZero(n int, length int) string {
+	r := fmt.Sprintf("%d", n)
+	if len(r) > length {
+		r = ""
+	}
+	for len(r) < length {
+		r = fmt.Sprintf("0%s", r)
 	}
 
-	return time.Date(year, month, day, hour, minute, second, int(nanosecondDuration), time.Local), nil
+	return r
 }

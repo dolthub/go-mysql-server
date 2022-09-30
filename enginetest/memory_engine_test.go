@@ -84,6 +84,11 @@ func TestQueries(t *testing.T) {
 // TestQueriesPrepared runs the canonical test queries against the gamut of thread, index and partition options
 // with prepared statement caching enabled.
 func TestQueriesPrepared(t *testing.T) {
+	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("parallelism=2", 2, testNumPartitions, true, nil))
+}
+
+// TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
+func TestQueriesPreparedSimple(t *testing.T) {
 	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
@@ -111,28 +116,46 @@ func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
+func TestJSONTableQueries(t *testing.T) {
+	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
+func TestJSONTableScripts(t *testing.T) {
+	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
+func TestBrokenJSONTableScripts(t *testing.T) {
+	t.Skip("dummy schema, too permissive, wrong errors")
+	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
+		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
 		Expected: []sql.Row{
-			{1, 2},
+			{"first row"},
+			{"second row"},
+			{"third row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	harness.Setup(setup.Mytable...)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
 	}
 
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestQueryWithEngine(t, harness, engine, test)
 }
@@ -143,22 +166,24 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
+		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
 		Expected: []sql.Row{
-			{sql.Point{X: 1, Y: 2}},
-			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Point{X: 1, Y: 2}},
-			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{"first row"},
+			{"second row"},
+			{"third row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	engine := enginetest.NewSpatialEngine(t, harness)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
+	//engine, err := harness.NewEngine(t)
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
@@ -756,6 +781,19 @@ func TestPersist(t *testing.T) {
 		return persistedSess
 	}
 	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
+}
+
+func TestValidateSession(t *testing.T) {
+	count := 0
+	incrementValidateCb := func() {
+		count++
+	}
+
+	newSess := func(ctx *sql.Context) sql.PersistableSession {
+		sess := memory.NewInMemoryPersistedSessionWithValidationCallback(ctx.Session, incrementValidateCb)
+		return sess
+	}
+	enginetest.TestValidateSession(t, enginetest.NewDefaultMemoryHarness(), newSess, &count)
 }
 
 func TestPrepared(t *testing.T) {

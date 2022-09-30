@@ -26,8 +26,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/go-mysql-server/internal/regex"
 )
 
 var (
@@ -65,7 +63,7 @@ type Type interface {
 	// SQL returns the sqltypes.Value for the given value.
 	// Implementations can optionally use |dest| to append
 	// serialized data, but should not mutate existing data.
-	SQL(dest []byte, v interface{}) (sqltypes.Value, error)
+	SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
 	// ValueType returns the Go type of the value returned by Convert().
@@ -96,10 +94,6 @@ type SpatialColumnType interface {
 	SetSRID(uint32) Type
 	// MatchSRID returns nil if column type SRID matches given value SRID otherwise returns error.
 	MatchSRID(interface{}) error
-}
-
-type LikeMatcher interface {
-	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }
 
 // SystemVariableType represents a SQL type specifically (and only) used in system variables. Assigning any non-system
@@ -399,9 +393,16 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if ct.Length == nil {
 			return nil, fmt.Errorf("VARCHAR requires a length")
 		}
-		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-		if err != nil {
-			return nil, err
+
+		var strLen = string(ct.Length.Val)
+		var length int64
+		if strings.ToLower(strLen) == "max" {
+			length = 16383
+		} else {
+			length, err = strconv.ParseInt(strLen, 10, 64)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return CreateString(sqltypes.VarChar, length, collation)
 	case "nvarchar", "national varchar", "national character varying":
@@ -621,7 +622,7 @@ func IsNumber(t Type) bool {
 
 // IsSigned checks if t is a signed type.
 func IsSigned(t Type) bool {
-	return t == Int8 || t == Int16 || t == Int32 || t == Int64
+	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
 }
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
@@ -659,6 +660,18 @@ func IsTime(t Type) bool {
 	return ok
 }
 
+// IsEnum checks if t is a enum
+func IsEnum(t Type) bool {
+	_, ok := t.(enumType)
+	return ok
+}
+
+// IsEnum checks if t is a set
+func IsSet(t Type) bool {
+	_, ok := t.(setType)
+	return ok
+}
+
 // IsTuple checks if t is a tuple type.
 // Note that TupleType instances with just 1 value are not considered
 // as a tuple, but a parenthesized value.
@@ -669,7 +682,7 @@ func IsTuple(t Type) bool {
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t Type) bool {
-	return t == Uint8 || t == Uint16 || t == Uint32 || t == Uint64
+	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
 }
 
 // NumColumns returns the number of columns in a type. This is one for all

@@ -282,7 +282,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			new := transferProjections(from, to.(*plan.ResolvedTable))
+			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			from = n.ResolvedTable
@@ -294,7 +294,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				return nil, transform.SameTree, err
 			}
 			new := *n
-			new.ResolvedTable = transferProjections(from, to.(*plan.ResolvedTable))
+			new.ResolvedTable = transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return &new, transform.NewTree, nil
 		case *plan.DeferredAsOfTable:
 			from = n.ResolvedTable
@@ -302,7 +302,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			new := transferProjections(from, to.(*plan.ResolvedTable))
+			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
 		default:
 		}
@@ -314,7 +314,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 }
 
 // transferProjections moves projections from one table scan to another
-func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
+func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.ResolvedTable {
 	var fromTable sql.Table
 	switch t := from.Table.(type) {
 	case sql.TableWrapper:
@@ -325,12 +325,15 @@ func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
 		return to
 	}
 
-	pt, ok := fromTable.(sql.ProjectedTable)
-	if !ok {
-		return to
+	var filters []sql.Expression
+	if ft, ok := fromTable.(sql.FilteredTable); ok {
+		filters = ft.Filters()
 	}
 
-	projections := pt.Projections()
+	var projections []string
+	if pt, ok := fromTable.(sql.ProjectedTable); ok {
+		projections = pt.Projections()
+	}
 
 	var toTable sql.Table
 	switch t := to.Table.(type) {
@@ -342,13 +345,15 @@ func transferProjections(from, to *plan.ResolvedTable) *plan.ResolvedTable {
 		return to
 	}
 
-	pt, ok = toTable.(sql.ProjectedTable)
-	if !ok {
-		return to
+	if _, ok := toTable.(sql.FilteredTable); ok {
+		toTable = toTable.(sql.FilteredTable).WithFilters(ctx, filters)
 	}
 
-	newTable := pt.WithProjections(projections)
-	return plan.NewResolvedTable(newTable, to.Database, to.AsOf)
+	if _, ok := toTable.(sql.ProjectedTable); ok {
+		toTable = toTable.(sql.ProjectedTable).WithProjections(projections)
+	}
+
+	return plan.NewResolvedTable(toTable, to.Database, to.AsOf)
 }
 
 // validateDropTables returns an error if the database is not droppable.

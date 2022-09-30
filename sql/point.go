@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -138,7 +137,7 @@ func (t PointType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t PointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -149,14 +148,13 @@ func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	}
 
 	buf := SerializePoint(v.(Point))
-	val := appendAndSliceString(dest, fmt.Sprintf("0x%X", buf))
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, val), nil
+	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
 func (t PointType) String() string {
-	return "POINT"
+	return "point"
 }
 
 // Type implements Type interface.

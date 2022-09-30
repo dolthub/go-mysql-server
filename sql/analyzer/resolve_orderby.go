@@ -180,7 +180,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 			child.SelectExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), transform.NewTree, nil
-	case *plan.ResolvedTable:
+	case *plan.ResolvedTable, *plan.Union:
 		return sort, transform.SameTree, nil
 	default:
 		children := child.Children()
@@ -217,70 +217,80 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			return n, transform.SameTree, nil
 		}
 
-		schema := sort.Child.Schema()
-		fields := make([]sql.SortField, len(sort.SortFields))
-		same := true
-		for i, f := range sort.SortFields {
-			if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
-				// it is safe to eval literals with no context and/or row
-				v, err := lit.Eval(nil, nil)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				v, err = sql.Int64.Convert(v)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				// column access is 1-indexed
-				idx := int(v.(int64)) - 1
-				if idx >= len(schema) || idx < 0 {
-					return nil, transform.SameTree, ErrOrderByColumnIndex.New(idx + 1)
-				}
-
-				// If there is more than one alias with this name, we can't handle it yet. This is because we rewrite
-				// field indexes based on names at various points during the analysis, and we might choose the wrong
-				// index at some later step based on name ambiguity.
-				// TODO: fix this by not rewriting field indexes based on names anymore
-				if columnAliasRepeated(schema, idx) {
-					return nil, false, sql.ErrAmbiguousColumnInOrderBy.New(schema[idx].Name)
-				}
-				uc := expression.NewUnresolvedQualifiedColumn(schema[idx].Source, schema[idx].Name)
-				same = false
-				fields[i] = sql.SortField{
-					Column:       uc,
-					Column2:      uc,
-					Order:        f.Order,
-					NullOrdering: f.NullOrdering,
-				}
-
-				a.Log("replaced order by column %d with %v", idx+1, schema[idx])
-			} else {
-				if agg, ok := f.Column.(sql.Aggregation); ok {
-					name := agg.String()
-					if nameable, ok := f.Column.(sql.Nameable); ok {
-						name = nameable.Name()
-					}
-					uc := expression.NewUnresolvedColumn(name)
-					same = false
-					fields[i] = sql.SortField{
-						Column:       uc,
-						Column2:      uc,
-						Order:        f.Order,
-						NullOrdering: f.NullOrdering,
-					}
-				} else {
-					fields[i] = f
-				}
-			}
+		fields, same, err := resolveSortFields(a, sort.SortFields, sort.Child.Schema())
+		if err != nil {
+			return n, transform.SameTree, err
 		}
-
 		if same {
 			return sort, transform.SameTree, nil
 		}
 		return plan.NewSort(fields, sort.Child), transform.NewTree, nil
 	})
+}
+
+func resolveSortFields(a *Analyzer, sfs sql.SortFields, schema sql.Schema) (sql.SortFields, transform.TreeIdentity, error) {
+	ret := make([]sql.SortField, len(sfs))
+	same := transform.SameTree
+	var err error
+	sameF := transform.SameTree
+	for i, f := range sfs {
+		ret[i], sameF, err = resolveSortField(a, f, schema)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		same = same && sameF
+	}
+	return ret, same, nil
+}
+
+func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.SortField, transform.TreeIdentity, error) {
+	if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
+		v, err := lit.Eval(nil, nil)
+		if err != nil {
+			return sql.SortField{}, transform.SameTree, err
+		}
+
+		v, err = sql.Int64.Convert(v)
+		if err != nil {
+			return sql.SortField{}, transform.SameTree, err
+		}
+
+		// column access is 1-indexed
+		idx := int(v.(int64)) - 1
+		if idx >= len(schema) || idx < 0 {
+			return sql.SortField{}, transform.SameTree, ErrOrderByColumnIndex.New(idx + 1)
+
+		}
+
+		// If there is more than one alias with this name, we can't handle it yet. This is because we rewrite
+		// field indexes based on names at various points during the analysis, and we might choose the wrong
+		// index at some later step based on name ambiguity.
+		// TODO: fix this by not rewriting field indexes based on names anymore
+		if columnAliasRepeated(schema, idx) {
+			return sql.SortField{}, transform.SameTree, sql.ErrAmbiguousColumnInOrderBy.New(schema[idx].Name)
+		}
+		uc := expression.NewUnresolvedQualifiedColumn(schema[idx].Source, schema[idx].Name)
+		return sql.SortField{
+			Column:       uc,
+			Column2:      uc,
+			Order:        f.Order,
+			NullOrdering: f.NullOrdering,
+		}, transform.NewTree, nil
+		a.Log("replaced order by column %d with %v", idx+1, schema[idx])
+	} else if agg, ok := f.Column.(sql.Aggregation); ok {
+		name := agg.String()
+		if nameable, ok := f.Column.(sql.Nameable); ok {
+			name = nameable.Name()
+		}
+		uc := expression.NewUnresolvedColumn(name)
+		return sql.SortField{
+			Column:       uc,
+			Column2:      uc,
+			Order:        f.Order,
+			NullOrdering: f.NullOrdering,
+		}, transform.NewTree, nil
+	}
+	return f, transform.SameTree, nil
 }
 
 // columnAliasRepeated returns whether the column in the schema given with the index given is an alias that is repeated

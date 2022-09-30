@@ -78,7 +78,21 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
-		case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin, *plan.Filter,
+		case plan.JoinNode:
+			if _, ok := n.Right().(*plan.JSONTable); ok {
+				outerCols, outerStars, outerUnq := gatherOuterCols(n.Right())
+				aliasCols, aliasStars := gatherTableAlias(n.Right(), parentCols, parentStars, unqualifiedStar)
+				push(outerCols, outerStars, outerUnq)
+				push(aliasCols, aliasStars, false)
+			}
+		case *plan.CrossJoin:
+			if _, ok := n.Right().(*plan.JSONTable); ok {
+				outerCols, outerStars, outerUnq := gatherOuterCols(n.Right())
+				aliasCols, aliasStars := gatherTableAlias(n.Right(), parentCols, parentStars, unqualifiedStar)
+				push(outerCols, outerStars, outerUnq)
+				push(aliasCols, aliasStars, false)
+			}
+		case *plan.IndexedJoin, *plan.Filter,
 			*plan.GroupBy, *plan.Project, *plan.TableAlias,
 			*plan.Window, *plan.Sort, *plan.Limit, *plan.RecursiveCte,
 			*plan.RecursiveTable, *plan.TopN, *plan.Offset:
@@ -199,7 +213,7 @@ func pruneTableCols(
 	return ret, transform.NewTree, nil
 }
 
-// gatherOuterCols searches a node'e expressions for column
+// gatherOuterCols searches a node's expressions for column
 // references and stars.
 func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 	ne, ok := n.(sql.Expressioner)
@@ -249,7 +263,7 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 // accessed through this node's alias name. We return the
 // aliased columns qualified with the base table name,
 // and stars if applicable.
-// TODO: we don't have any tests with the unqualified confition
+// TODO: we don't have any tests with the unqualified condition
 func gatherTableAlias(
 	n sql.Node,
 	parentCols map[tableCol]int,
@@ -260,7 +274,7 @@ func gatherTableAlias(
 	var nodeStars []string
 	switch n := n.(type) {
 	case *plan.TableAlias:
-		alias := n.Name()
+		alias := strings.ToLower(n.Name())
 		var base string
 		if rt, ok := n.Child.(*plan.ResolvedTable); ok {
 			base = rt.Name()

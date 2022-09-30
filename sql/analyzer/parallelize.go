@@ -170,9 +170,17 @@ func isParallelizable(node sql.Node) bool {
 		case *plan.ForeignKeyHandler:
 			parallelizable = false
 			return false
+		case *plan.JSONTable:
+			parallelizable = false
+			return false
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
+		case *plan.FullOuterJoin:
+			parallelizable = false
+			lastWasTable = true
+			tableSeen = true
+			return false
 		default:
 			parallelizable = false
 			return false

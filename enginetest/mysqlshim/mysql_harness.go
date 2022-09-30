@@ -125,7 +125,7 @@ func (m *MySQLHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatab
 // NewTable implements the interface Harness.
 func (m *MySQLHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
 	ctx := sql.NewEmptyContext()
-	err := db.(sql.TableCreator).CreateTable(ctx, name, schema)
+	err := db.(sql.TableCreator).CreateTable(ctx, name, schema, sql.Collation_Default)
 	if err != nil {
 		return nil, err
 	}
