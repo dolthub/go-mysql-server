@@ -8958,20 +8958,20 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrFunctionNotFound,
 	},
 	{
-		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
-		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
-		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
-		ExpectedErrStr: "Invalid default value for 'c'",
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
-		ExpectedErr: sql.ErrColumnDefaultSubquery,
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, b int DEFAULT '2', c int DEFAULT `b`)",
-		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 POINT DEFAULT POINT(1,2));",

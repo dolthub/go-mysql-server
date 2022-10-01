@@ -5593,7 +5593,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Column references must be enclosed in parens", func(t *testing.T) {
-		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrInvalidColumnDefaultValue)
+		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrSyntaxError)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {
