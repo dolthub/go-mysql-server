@@ -300,6 +300,15 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	}
 }
 
+func TestIntegrationPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Integration_testData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.IntegrationPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+	}
+}
+
 func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)

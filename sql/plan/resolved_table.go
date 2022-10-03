@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -53,8 +54,12 @@ func (t *ResolvedTable) String() string {
 	pr.WriteNode("Table(%s)", t.Table.Name())
 	table := seethroughTableWrapper(t)
 	if pt, ok := table.(sql.ProjectedTable); ok {
-		if len(pt.Projections()) > 0 {
-			pr.WriteChildren(fmt.Sprintf("columns: %v", pt.Projections()))
+		var columns []string
+		for _, c := range pt.Projections() {
+			columns = append(columns, strings.ToLower(c))
+		}
+		if len(columns) > 0 {
+			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
 		}
 	}
 	return pr.String()
@@ -66,8 +71,12 @@ func (t *ResolvedTable) DebugString() string {
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 	if pt, ok := table.(sql.ProjectedTable); ok {
-		if len(pt.Projections()) > 0 {
-			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
+		var columns []string
+		for _, c := range pt.Projections() {
+			columns = append(columns, strings.ToLower(c))
+		}
+		if len(columns) > 0 {
+			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
 		}
 	}
 	if pt, ok := table.(sql.FilteredTable); ok {
