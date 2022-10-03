@@ -160,7 +160,6 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "monthname", Fn: NewMonthName},
 	sql.FunctionN{Name: "now", Fn: NewNow},
 	sql.Function2{Name: "nullif", Fn: NewNullIf},
-	sql.FunctionN{Name: "perimeter", Fn: NewPerimeter},
 	sql.Function2{Name: "point", Fn: NewPoint},
 	sql.FunctionN{Name: "polygon", Fn: NewPolygon},
 	sql.Function2{Name: "pow", Fn: NewPower},
