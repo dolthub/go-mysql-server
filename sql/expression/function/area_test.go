@@ -83,6 +83,16 @@ func TestArea(t *testing.T) {
 		require.Equal(0.0, v)
 	})
 
+	t.Run("select area of polygon that intersects itself", func(t *testing.T) {
+		require := require.New(t)
+		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: -10, Y: 10}, {X: 10, Y: 10}, {X: 0, Y: 0}}}
+		polygon := sql.Polygon{Lines: []sql.LineString{line}}
+		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(95.0, v)
+	})
+
 	t.Run("select area of NULL", func(t *testing.T) {
 		require := require.New(t)
 		f := NewArea(expression.NewLiteral(nil, sql.Null))
