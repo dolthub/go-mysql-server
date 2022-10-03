@@ -16,8 +16,6 @@ package function
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -28,8 +26,6 @@ type Area struct {
 }
 
 var _ sql.FunctionExpression = (*Area)(nil)
-
-var ErrInvalidAreaArgument = errors.NewKind("unexpected type %T in st_area")
 
 // NewArea creates a new STX expression.
 func NewArea(arg sql.Expression) sql.Expression {
@@ -94,9 +90,11 @@ func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: Multi-Polygons are also valid
+	// Only allow polygons
 	p, ok := v.(sql.Polygon)
 	if !ok {
-		return nil, ErrInvalidAreaArgument.New(v)
+		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
 	}
 
 	var totalArea float64

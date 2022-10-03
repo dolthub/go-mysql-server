@@ -396,6 +396,27 @@ var SpatialQueryTests = []QueryTest{
 			{0.0},
 		},
 	},
+	{
+		Query: `SELECT PERIMETER(p) from polygon_table`,
+		Expected: []sql.Row{
+			{3.414213562373095},
+			{6.82842712474619},
+		},
+	},
+	{
+		Query: `SELECT ST_PERIMETER(p) from polygon_table`,
+		Expected: []sql.Row{
+			{3.414213562373095},
+			{6.82842712474619},
+		},
+	},
+	{
+		Query: `SELECT ST_LENGTH(l) from line_table`,
+		Expected: []sql.Row{
+			{2.8284271247461903},
+			{5.656854249492381},
+		},
+	},
 }
 
 var QueryTests = []QueryTest{
