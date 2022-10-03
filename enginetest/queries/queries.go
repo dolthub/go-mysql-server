@@ -383,24 +383,10 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT AREA(p) from polygon_table`,
-		Expected: []sql.Row{
-			{0.5},
-			{0.0},
-		},
-	},
-	{
 		Query: `SELECT ST_AREA(p) from polygon_table`,
 		Expected: []sql.Row{
 			{0.5},
 			{0.0},
-		},
-	},
-	{
-		Query: `SELECT PERIMETER(p) from polygon_table`,
-		Expected: []sql.Row{
-			{3.414213562373095},
-			{6.82842712474619},
 		},
 	},
 	{
