@@ -38,7 +38,7 @@ func NewArea(arg sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (a *Area) FunctionName() string {
-	return "st_srid"
+	return "st_area"
 }
 
 // Description implements sql.FunctionExpression
@@ -65,7 +65,7 @@ func (a *Area) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 
 // calculateArea takes a polygon linestring, and finds the area
 // this uses the Shoelace formula: https://en.wikipedia.org/wiki/Shoelace_formula
-// TODO: if SRID is no cartesian, the area should be geodetic
+// TODO: if SRID is not cartesian, the area should be geodetic
 func calculateArea(l sql.LineString) float64 {
 	var area float64
 	for i := 0; i < len(l.Points)-1; i++ {
