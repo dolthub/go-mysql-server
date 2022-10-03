@@ -16,73 +16,51 @@ package function
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// Area is a function that returns the Area of a Polygon
-type Area struct {
+// STLength is a function that returns the STLength of a LineString
+type STLength struct {
 	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*Area)(nil)
-
-var ErrInvalidAreaArgument = errors.NewKind("unexpected type %T in st_area")
+var _ sql.FunctionExpression = (*STLength)(nil)
 
 // NewArea creates a new STX expression.
-func NewArea(arg sql.Expression) sql.Expression {
-	return &Area{expression.UnaryExpression{Child: arg}}
+func NewSTLength(arg sql.Expression) sql.Expression {
+	return &STLength{expression.UnaryExpression{Child: arg}}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (a *Area) FunctionName() string {
+func (a *STLength) FunctionName() string {
 	return "st_srid"
 }
 
 // Description implements sql.FunctionExpression
-func (a *Area) Description() string {
+func (a *STLength) Description() string {
 	return "returns the SRID value of given geometry object. If given a second argument, returns a new geometry object with second argument as SRID value."
 }
 
 // Type implements the sql.Expression interface.
-func (a *Area) Type() sql.Type {
+func (a *STLength) Type() sql.Type {
 	return sql.Float64
 }
 
-func (a *Area) String() string {
+func (a *STLength) String() string {
 	return fmt.Sprintf("ST_AREA(%a)", a.Child)
 }
 
 // WithChildren implements the Expression interface.
-func (a *Area) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *STLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
 	return NewArea(children[0]), nil
 }
 
-// calculateArea takes a polygon linestring, and finds the area
-// this uses the Shoelace formula: https://en.wikipedia.org/wiki/Shoelace_formula
-// TODO: if SRID is no cartesian, the area should be geodetic
-func calculateArea(l sql.LineString) float64 {
-	var area float64
-	for i := 0; i < len(l.Points)-1; i++ {
-		p1 := l.Points[i]
-		p2 := l.Points[i+1]
-		area += p1.X*p2.Y - p1.Y*p2.X
-	}
-
-	if area < 0 {
-		area = -area
-	}
-
-	return area / 2
-}
-
 // Eval implements the sql.Expression interface.
-func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (a *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate argument
 	v, err := a.Child.Eval(ctx, row)
 	if err != nil {
