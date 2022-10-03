@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -25,16 +24,6 @@ import (
 func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.End()
-
-	// Because we need to pass outer scope information to SubqueryAliases now... we need a different strategy for finding them...
-	// we need to find them top down instead of bottom up, so that we have the right scope in place when we call the analyzer.
-	// transform.Inspect can be used to traverse from the top down
-	//
-	// Because of derived tables getting scope visibility, we now need to combine our logic for calculating subquery scope
-
-	if _, ok := n.(*plan.Project); ok {
-		fmt.Println()
-	}
 
 	selectorFunc := func(context transform.Context) bool {
 		// TODO: Do we need to do something here to account for SubqueryExpressions? Couldn't we mess up scope by processing
@@ -50,14 +39,14 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	}
 	ctxFunc := func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
-			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel)
+			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, false)
 		} else if expressioner, ok := context.Node.(sql.Expressioner); ok {
 			exprs := expressioner.Expressions()
 			var newExprs []sql.Expression
 			for i, expr := range exprs {
 				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if sq, ok := e.(*plan.Subquery); ok {
-						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel)
+						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, false)
 					} else {
 						return e, transform.SameTree, nil
 					}
@@ -90,42 +79,92 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	span, ctx := ctx.Span("finalize_subqueries")
 	defer span.End()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.SubqueryAlias:
-			// TODO: In MySQL 8.0.14 and higher, SubqueryAliases can access the OUTER scopes of the clause that defined them.
-			//       Note: They still do not have access to the other tables defined in the same scope as derived table,
-			//       and from testing... they don't seem to be able to access expression aliases (only tables and table aliases),
-			//       but documentation doesn't seem to indicate that limitation.
-			//       https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-			subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
-			if scope != nil && len(scope.nodes) > 1 {
-				// As of MySQL 8.0.14 MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
-				// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
-				// gives a derived table visibility to the OUTER scope where the subquery is defined.
-				subScope.nodes = scope.InnerToOuter()[1:]
-			}
+	selectorFunc := func(context transform.Context) bool {
+		// TODO: Do we need to do something here to account for SubqueryExpressions? Couldn't we mess up scope by processing
+		//       multiple levels of SubqueryExpressions otherwise? Seems like it!?!
+		if _, ok := context.Parent.(*plan.SubqueryAlias); ok {
+			// If the parent of the current node is a SubqueryAlias, return false to prevent
+			// this node from being processed. We only want to process the next level of nested SubqueryAliases
+			// so that we can calculate the scope iteratively, otherwise the scope passed to SubqueryAliases further
+			// down in the tree won't be correct.
+			return false
+		}
+		return true
+	}
 
-			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, subScope, "default-rules", sel)
-			if err != nil {
-				return nil, same, err
-			}
-
-			if len(n.Columns) > 0 {
-				schemaLen := schemaLength(n.Child)
-				if schemaLen != len(n.Columns) {
-					return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
+	ctxFunc := func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
+			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+		} else if expressioner, ok := context.Node.(sql.Expressioner); ok {
+			exprs := expressioner.Expressions()
+			var newExprs []sql.Expression
+			for i, expr := range exprs {
+				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if sq, ok := e.(*plan.Subquery); ok {
+						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, true)
+					} else {
+						return e, transform.SameTree, nil
+					}
+				})
+				if err != nil {
+					return context.Node, transform.SameTree, err
+				}
+				if identity == transform.NewTree {
+					if newExprs == nil {
+						newExprs = make([]sql.Expression, len(exprs))
+						copy(newExprs, exprs)
+					}
+					newExprs[i] = newExpr
 				}
 			}
-			if same {
-				return n, transform.SameTree, nil
+
+			if newExprs != nil {
+				newNode, err := expressioner.WithExpressions(newExprs...)
+				return newNode, transform.NewTree, err
 			}
-			newn, err := n.WithChildren(StripPassthroughNodes(child))
-			return newn, transform.NewTree, err
-		default:
-			return n, transform.SameTree, nil
 		}
-	})
+
+		return context.Node, transform.SameTree, nil
+	}
+
+	return transform.NodeWithCtx(n, selectorFunc, ctxFunc)
+
+	//return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	//	switch n := n.(type) {
+	//	case *plan.SubqueryAlias:
+	//		// TODO: In MySQL 8.0.14 and higher, SubqueryAliases can access the OUTER scopes of the clause that defined them.
+	//		//       Note: They still do not have access to the other tables defined in the same scope as derived table,
+	//		//       and from testing... they don't seem to be able to access expression aliases (only tables and table aliases),
+	//		//       but documentation doesn't seem to indicate that limitation.
+	//		//       https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
+	//		subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
+	//		if scope != nil && len(scope.nodes) > 1 {
+	//			// As of MySQL 8.0.14 MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
+	//			// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
+	//			// gives a derived table visibility to the OUTER scope where the subquery is defined.
+	//			subScope.nodes = scope.InnerToOuter()[1:]
+	//		}
+	//
+	//		child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, subScope, "default-rules", sel)
+	//		if err != nil {
+	//			return nil, same, err
+	//		}
+	//
+	//		if len(n.Columns) > 0 {
+	//			schemaLen := schemaLength(n.Child)
+	//			if schemaLen != len(n.Columns) {
+	//				return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
+	//			}
+	//		}
+	//		if same {
+	//			return n, transform.SameTree, nil
+	//		}
+	//		newn, err := n.WithChildren(StripPassthroughNodes(child))
+	//		return newn, transform.NewTree, err
+	//	default:
+	//		return n, transform.SameTree, nil
+	//	}
+	//})
 }
 
 func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -147,14 +186,6 @@ func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	})
 }
 
-func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return resolveSubqueryExpressionsHelper(ctx, a, n, scope, SelectAllBatches, NewSubqueryExprResolveSelector(sel))
-}
-
-func finalizeSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return resolveSubqueryExpressionsHelper(ctx, a, n, scope, SelectAllBatches, sel)
-}
-
 func resolveSubqueryExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, batchSel BatchSelector, ruleSel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// TODO: When we combine this one with resolveSubqueries, we won't need to have this one listed in the analyzer rules anymore
 
@@ -170,24 +201,32 @@ func resolveSubqueryExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node,
 			return e, transform.SameTree, nil
 		}
 
-		return analyzeSubqueryExpression(ctx, a, n, s, scope, ruleSel)
+		return analyzeSubqueryExpression(ctx, a, n, s, scope, ruleSel, false)
 	})
 }
 
-func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *plan.Subquery, scope *Scope, sel RuleSelector) (sql.Expression, transform.TreeIdentity, error) {
+func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *plan.Subquery, scope *Scope, sel RuleSelector, finalize bool) (sql.Expression, transform.TreeIdentity, error) {
 	// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 	// query might cause them to need to shift their field indexes.
 	subqueryCtx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
 	subScope := scope.newScope(n)
 
-	analyzed, _, err := a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, sel)
+	var analyzed sql.Node
+	var err error
+	if finalize {
+		analyzed, _, err = a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, sel)
+	} else {
+		// TODO: resolve should skip pruneColumns and optimizeJoins
+		analyzed, _, err = a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, sel)
+	}
 	if err != nil {
 		// We ignore certain errors, deferring them to later analysis passes. Specifically, if the subquery isn't
 		// resolved or a column can't be found in the scope node, wait until a later pass.
 		// TODO: we won't be able to give the right error message in all cases when we do this, although we attempt to
 		//  recover the actual error in the validation step.
-		if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
+		// TODO: Say something about finalize!
+		if !finalize && (ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err)) {
 			// keep the work we have and defer remainder of analysis of this subquery until a later pass
 			return sq.WithQuery(analyzed), transform.NewTree, nil
 		}
@@ -202,7 +241,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	return sq.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
 }
 
-func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
 	subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
 	if scope != nil && len(scope.nodes) > 0 {
 		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
@@ -215,7 +254,14 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, 
 		n.OuterScopeVisibility = true
 	}
 
-	child, same, err := a.analyzeThroughBatch(ctx, n.Child, subScope, "default-rules", sel)
+	var child sql.Node
+	var same transform.TreeIdentity
+	var err error
+	if finalize {
+		child, same, err = a.analyzeStartingAtBatch(ctx, n.Child, subScope, "default-rules", sel)
+	} else {
+		child, same, err = a.analyzeThroughBatch(ctx, n.Child, subScope, "default-rules", sel)
+	}
 	if err != nil {
 		return nil, same, err
 	}
@@ -283,11 +329,16 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 					return false
 				}
 			}
-		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
+		} else if _, ok := node.(*plan.SubqueryAlias); ok {
 			// If a subquery alias has visibility to its outer scopes, then we cannot cache its results
 			// TODO: Need more testing with CTEs. For example, CTEs that are non-deterministic MUST be
 			//       cached and have their result sets reused, otherwise query result will be incorrect.
-			cacheable = !sqa.OuterScopeVisibility
+			// Easiest approach is to disable caching for all SQAs
+			cacheable = false
+			// Next best is only disabling caching when we know there's no visibility
+			// cacheable = !sqa.OuterScopeVisibility
+			// Best would be to disable caching when we know it's not needed
+			// cachable = sqa.NeedsOuterScopeVisibility
 			return false
 		}
 		return true
