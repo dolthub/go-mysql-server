@@ -43,7 +43,7 @@ func (a *Area) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (a *Area) Description() string {
-	return "returns the SRID value of given geometry object. If given a second argument, returns a new geometry object with second argument as SRID value."
+	return "returns the area of the given polygon."
 }
 
 // Type implements the sql.Expression interface.

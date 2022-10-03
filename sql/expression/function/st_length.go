@@ -18,72 +18,94 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"math"
+	"strings"
 )
 
 // STLength is a function that returns the STLength of a LineString
 type STLength struct {
-	expression.UnaryExpression
+	expression.NaryExpression
 }
 
 var _ sql.FunctionExpression = (*STLength)(nil)
 
-// NewArea creates a new STX expression.
-func NewSTLength(arg sql.Expression) sql.Expression {
-	return &STLength{expression.UnaryExpression{Child: arg}}
+// NewSTLength creates a new STX expression.
+func NewSTLength(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 1 && len(args) != 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_LENGTH", "1 or 2", len(args))
+	}
+	return &STLength{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (a *STLength) FunctionName() string {
-	return "st_srid"
+func (s *STLength) FunctionName() string {
+	return "st_length"
 }
 
 // Description implements sql.FunctionExpression
-func (a *STLength) Description() string {
-	return "returns the SRID value of given geometry object. If given a second argument, returns a new geometry object with second argument as SRID value."
+func (s *STLength) Description() string {
+	return "returns the length of the given linestring. If given a unit argument, will return the length in those units"
 }
 
 // Type implements the sql.Expression interface.
-func (a *STLength) Type() sql.Type {
+func (s *STLength) Type() sql.Type {
 	return sql.Float64
 }
 
-func (a *STLength) String() string {
-	return fmt.Sprintf("ST_AREA(%a)", a.Child)
+func (s *STLength) String() string {
+	var args = make([]string, len(s.ChildExpressions))
+	for i, arg := range s.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_LENGTH(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (a *STLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+func (s *STLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewSTLength(children...)
+}
+
+// calculateLength sums up the line segements formed from a LineString
+func calculateLength(l sql.LineString) float64 {
+	var length float64
+	for i := 0; i < len(l.Points)-1; i++ {
+		p1 := l.Points[i]
+		p2 := l.Points[i+1]
+		length += math.Sqrt(math.Pow(p2.X-p1.X, 2) + math.Pow(p2.Y-p1.Y, 2))
 	}
-	return NewArea(children[0]), nil
+	return length
 }
 
 // Eval implements the sql.Expression interface.
-func (a *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate argument
-	v, err := a.Child.Eval(ctx, row)
+func (s *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate first argument
+	v1, err := s.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return nil if argument is nil
-	if v == nil {
+	if v1 == nil {
 		return nil, nil
 	}
 
-	p, ok := v.(sql.Polygon)
-	if !ok {
-		return nil, ErrInvalidAreaArgument.New(v)
+	// Return nil if argument is geometry typ, but not linestring
+	var l sql.LineString
+	switch v := v1.(type) {
+	case sql.LineString:
+		l = v
+	case sql.Point, sql.Polygon:
+		return nil, nil
+	default:
+		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
 	}
 
-	var totalArea float64
-	for i, l := range p.Lines {
-		area := calculateArea(l)
-		if i != 0 {
-			area = -area
-		}
-		totalArea += area
+	// TODO: if SRID is not 0, find geodetic distance
+	// If just one argument, return length
+	if len(s.ChildExpressions) == 1 {
+		return calculateLength(l), nil
 	}
-	return totalArea, nil
+
+	// TODO: support geodetic distance
+	return nil, sql.ErrUnsupportedFeature.New("st_length with non-zero SRID")
 }
