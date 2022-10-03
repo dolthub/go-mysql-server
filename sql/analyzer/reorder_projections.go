@@ -59,8 +59,12 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		var projectedAliases = make(map[string]sql.Expression)
 		for _, col := range project.Projections {
 			alias, ok := col.(*expression.Alias)
+			// If there are duplicate alias names defined in the same projection, we need to be careful about
+			// which one we select. We have moved closer to MySQL's behavior by keeping only the first seen
 			if ok {
-				projectedAliases[alias.Name()] = col
+				if _, ok := projectedAliases[alias.Name()]; !ok {
+					projectedAliases[alias.Name()] = col
+				}
 			}
 		}
 
@@ -126,7 +130,7 @@ func addIntermediateProjections(
 	// We only want to apply each projection once, even if it
 	// occurs multiple times in the tree. Lower tree levels are
 	// processed first, so only the lowest mention of each
-	// alias will be applied at that layer. High layers will
+	// alias will be applied at that layer. Higher layers will
 	// just have a normal GetField expression to reference the
 	// lower layer.
 	appliedProjections := make(map[string]bool)
@@ -188,8 +192,9 @@ func addIntermediateProjections(
 
 	// If any subqueries reference these aliases, the child of the project also needs it. A subquery expression is just
 	// like a child node in this respect -- it draws its outer scope schema from the child of the node in which it's
-	// embedded. We identify any missing subquery columns by their being deferred from a previous analyzer step.
-	var deferredColumns []*deferredColumn
+	// embedded. We identify any missing subquery columns by their being deferred or marked as an AliasReference
+	// from a previous analyzer step.
+	var deferredColumns []column
 	for _, e := range project.Projections {
 		if a, ok := e.(*expression.Alias); ok {
 			e = a.Child
@@ -199,7 +204,7 @@ func addIntermediateProjections(
 			continue
 		}
 
-		deferredColumns = append(deferredColumns, findDeferredColumns(s.Query)...)
+		deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(s.Query)...)
 	}
 
 	if len(deferredColumns) > 0 {
@@ -225,12 +230,15 @@ func addIntermediateProjections(
 	return child, same, err
 }
 
-// findDeferredColumns returns all the deferredColumn expressions in the node given
-func findDeferredColumns(n sql.Node) []*deferredColumn {
-	var cols []*deferredColumn
+// findDeferredColumnsAndAliasReferences returns all the deferredColumn and AliasReference expressions in the node given
+func findDeferredColumnsAndAliasReferences(n sql.Node) []column {
+	var cols []column
 	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		if dc, ok := e.(*deferredColumn); ok {
-			cols = append(cols, dc)
+		switch ee := e.(type) {
+		case *deferredColumn:
+			cols = append(cols, ee)
+		case *expression.AliasReference:
+			cols = append(cols, ee)
 		}
 		return true
 	})

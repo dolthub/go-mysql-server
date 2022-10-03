@@ -118,7 +118,7 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
 	for _, tt := range queries.JoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
@@ -134,9 +134,21 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 }
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.Pk_tablesData, setup.Json_table_tablesData)
+	harness.Setup(setup.MydbData, setup.Pk_tablesData)
 	for _, tt := range queries.JSONTableQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+	}
+}
+
+func TestJSONTableScripts(t *testing.T, harness Harness) {
+	for _, tt := range queries.JSONTableScriptTests {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestBrokenJSONTableScripts(t *testing.T, harness Harness) {
+	for _, tt := range queries.BrokenJSONTableScriptTests {
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -280,10 +292,19 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
-	harness.Setup(setup.SimpleSetup...)
+	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+	}
+}
+
+func TestIntegrationPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Integration_testData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.IntegrationPlanTests {
 		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
 	}
 }
@@ -475,7 +496,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 func TestColumnAliases(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, tt := range queries.ColumnAliasQueries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -4613,37 +4634,63 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	q := []queries.QueryTest{
 		{
-			Query:    "SELECT * FROM mytable ORDER BY i",
-			Expected: []sql.Row{{int64(1), "first row"}},
+			Query:    "SELECT i FROM mytable ORDER BY i",
+			Expected: []sql.Row{{1}, {2}},
 		},
 		{
-			Query: "SELECT * FROM mytable ORDER BY i LIMIT 2",
-			Expected: []sql.Row{
-				{int64(1), "first row"},
-				{int64(2), "second row"},
-			},
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 3) t",
+			Expected: []sql.Row{{1}, {2}},
 		},
 		{
-			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 2) t",
-			Expected: []sql.Row{{int64(1)}},
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
+			Expected: []sql.Row{{1}, {2}, {3}},
 		},
-		// TODO: this is broken: the session limit is applying inappropriately to the subquery
-		// {
-		// 	"SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 2",
-		// 	[]sql.Row{{int64(1)}},
-		// },
+		{
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
+			Expected: []sql.Row{{1}, {2}, {3}},
+		},
+		{
+			Query:    "select count(*), y from a group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "select count(*), y from (select y from a) b group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "select count(*), y from (select y from a) b group by y;",
+			Expected: []sql.Row{{2, 1}, {3, 2}},
+		},
+		{
+			Query:    "with b as (select y from a order by x) select * from b",
+			Expected: []sql.Row{{1}, {1}},
+		},
+		{
+			Query:    "select x, row_number() over (partition by y) from a order by x;",
+			Expected: []sql.Row{{0, 1}, {1, 2}},
+		},
+		{
+			Query:    "select y from a where x < 1 union select y from a where x > 1",
+			Expected: []sql.Row{{1}, {2}},
+		},
 	}
 
-	harness.Setup(setup.MydbData, setup.MytableData)
+	customSetup := []setup.SetupScript{{
+		"Create table a (x int primary key, y int);",
+		"Insert into a values (0,1), (1,1), (2,2), (3,2), (4,2), (5,3),(6,3);",
+	}}
+	harness.Setup(setup.MydbData, setup.MytableData, customSetup)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(1))
+	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(2))
 	require.NoError(t, err)
 
 	for _, tt := range q {
-		TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
+		})
 	}
 }
 
@@ -5537,7 +5584,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Column references must be enclosed in parens", func(t *testing.T) {
-		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrInvalidColumnDefaultValue)
+		AssertErr(t, e, harness, "Create table t0 (c0 int, c1 int default c0);", sql.ErrSyntaxError)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {
@@ -5560,9 +5607,12 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT (9))", sql.ErrInvalidDefaultValueOrder)
 	})
 
-	t.Run("TEXT literals", func(t *testing.T) {
+	t.Run("Blob types can't define defaults with literals", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)")
+		AssertErr(t, e, harness, "ALTER TABLE t34 alter column v1 set default '{}'", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "ALTER TABLE t34 alter column v1 set default ('{}')")
 	})
 
 	t.Run("Other types using NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
@@ -5675,6 +5725,25 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 }
 
+func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sql.Context) sql.PersistableSession, count *int) {
+	queries := []string{"SHOW TABLES;", "SELECT i from mytable;"}
+	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	sql.InitSystemVariables()
+	ctx := NewContext(harness)
+	ctx.Session = newSessFunc(ctx)
+
+	for _, q := range queries {
+		t.Run("test running queries to check callbacks on ValidateSession()", func(t *testing.T) {
+			RunQueryWithContext(t, e, harness, ctx, q)
+		})
+	}
+	// This asserts that ValidateSession() method was called once for every statement.
+	require.Equal(t, len(queries), *count)
+}
+
 func TestPrepared(t *testing.T, harness Harness) {
 	qtests := []queries.QueryTest{
 		{
@@ -5686,7 +5755,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a WHERE bar = :var ORDER BY foo, i",
+			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = :var) AS a HAVING bar = :var ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
 			Bindings: map[string]sql.Expression{
@@ -5694,14 +5763,14 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = ? ORDER BY foo, i;",
+			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? ORDER BY foo, i;",
 			Expected: []sql.Row{},
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(int64(1), sql.Int64),
 			},
 		},
 		{
-			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = :bar AND foo = :foo ORDER BY foo, i;",
+			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = :bar AND foo = :foo ORDER BY foo, i;",
 			Expected: []sql.Row{},
 			Bindings: map[string]sql.Expression{
 				"bar": expression.NewLiteral(int64(1), sql.Int64),

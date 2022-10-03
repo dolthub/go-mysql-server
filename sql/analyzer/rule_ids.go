@@ -6,7 +6,8 @@ type RuleId int
 
 const (
 	// once before
-	validateOffsetAndLimitId      RuleId = iota //validateOffsetAndLimit
+	applyDefaultSelectLimitId     RuleId = iota // applyDefaultSelectLimit
+	validateOffsetAndLimitId                    //validateOffsetAndLimit
 	validateCreateTableId                       // validateCreateTable
 	validateExprSemId                           // validateExprSem
 	resolveVariablesId                          // resolveVariables
@@ -63,6 +64,7 @@ const (
 	flattenAggregationExprsId      // flattenAggregationExprs
 	reorderProjectionId            // reorderProjection
 	resolveSubqueryExprsId         // resolveSubqueryExprs
+	finalizeSubqueryExprsId        // finalizeSubqueryExprs
 	replaceCrossJoinsId            // replaceCrossJoins
 	moveJoinCondsToFilterId        // moveJoinCondsToFilter
 	evalFilterId                   // evalFilter
@@ -78,6 +80,7 @@ const (
 	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
 	assignCatalogId               // assignCatalog
 	pruneColumnsId                // pruneColumns
+	hoistSelectExistsId           // hoistSelectExists
 	optimizeJoinsId               // optimizeJoins
 	pushdownFiltersId             // pushdownFilters
 	subqueryIndexesId             // subqueryIndexes

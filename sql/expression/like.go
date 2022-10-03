@@ -40,7 +40,7 @@ type Like struct {
 }
 
 type likeMatcherErrTuple struct {
-	matcher likeMatcher
+	matcher LikeMatcher
 	err     error
 }
 
@@ -82,7 +82,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	var lm likeMatcher
+	var lm LikeMatcher
 	if !l.cached {
 		// for non-cached regex every time create a new matcher
 		right, escape, rerr := l.evalRight(ctx, row)
@@ -99,22 +99,22 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		lm, err = constructLikeMatcher(collation, *right, escape)
+		lm, err = ConstructLikeMatcher(collation, *right, escape)
 	} else {
 		l.once.Do(func() {
 			right, escape, err := l.evalRight(ctx, row)
 			l.pool = &sync.Pool{
 				New: func() interface{} {
 					if err != nil || right == nil {
-						return likeMatcherErrTuple{likeMatcher{}, err}
+						return likeMatcherErrTuple{LikeMatcher{}, err}
 					}
 					leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
 					rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
 					collation, err := ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 					if err != nil {
-						return likeMatcherErrTuple{likeMatcher{}, err}
+						return likeMatcherErrTuple{LikeMatcher{}, err}
 					}
-					m, e := constructLikeMatcher(collation, *right, escape)
+					m, e := ConstructLikeMatcher(collation, *right, escape)
 					return likeMatcherErrTuple{m, e}
 				},
 			}
@@ -278,45 +278,46 @@ func patternToGoRegexWithEscape(pattern, escape string) string {
 	return buf.String()
 }
 
-// likeMatcher is a collation-supported matcher for LIKE expressions.
-type likeMatcher struct {
+// LikeMatcher is a collation-supported matcher for LIKE expressions.
+type LikeMatcher struct {
 	nodes     []likeMatcherNode
 	collation sql.CollationID
+	escape    rune
 }
 
-// constructLikeMatcher returns a new likeMatcher.
-func constructLikeMatcher(collation sql.CollationID, pattern string, escape rune) (likeMatcher, error) {
+// ConstructLikeMatcher returns a new LikeMatcher.
+func ConstructLikeMatcher(collation sql.CollationID, pattern string, escape rune) (LikeMatcher, error) {
 	charsetEncoder := collation.CharacterSet().Encoder()
 	sorter := collation.Sorter()
-	matcher := likeMatcher{nil, collation}
+	matcher := LikeMatcher{nil, collation, escape}
 	for i := 0; i < len(pattern); {
 		nextRune, advance := charsetEncoder.NextRune(pattern[i:])
 		if nextRune == utf8.RuneError {
-			return likeMatcher{}, sql.ErrCharSetInvalidString.New(collation.CharacterSet().Name(), pattern)
+			return LikeMatcher{}, sql.ErrCharSetInvalidString.New(collation.CharacterSet().Name(), pattern)
 		}
 		i += advance
 
 		switch nextRune {
 		case '_': // Matches any single character
-			matcher.nodes = append(matcher.nodes, likeMatcherRune{-1})
+			matcher.nodes = append(matcher.nodes, likeMatcherRune{'_', -1})
 		case '%': // Matches any sequence of characters, including the empty sequence
 			matcher.nodes = append(matcher.nodes, likeMatcherAny{})
 		case escape: // States that the next character should be taken literally
 			nextRune, advance = charsetEncoder.NextRune(pattern[i:])
 			if nextRune == utf8.RuneError {
-				return likeMatcher{}, sql.ErrCharSetInvalidString.New(collation.CharacterSet().Name(), pattern)
+				return LikeMatcher{}, sql.ErrCharSetInvalidString.New(collation.CharacterSet().Name(), pattern)
 			}
 			i += advance
-			matcher.nodes = append(matcher.nodes, likeMatcherRune{sorter(nextRune)})
+			matcher.nodes = append(matcher.nodes, likeMatcherRune{nextRune, sorter(nextRune)})
 		default: // A regular character that we'll match against
-			matcher.nodes = append(matcher.nodes, likeMatcherRune{sorter(nextRune)})
+			matcher.nodes = append(matcher.nodes, likeMatcherRune{nextRune, sorter(nextRune)})
 		}
 	}
 	return matcher, nil
 }
 
 // Match returns whether the given string conforms to the nodes contained in this matcher.
-func (l likeMatcher) Match(s string) bool {
+func (l LikeMatcher) Match(s string) bool {
 	if len(l.nodes) == 0 {
 		if len(s) == 0 {
 			return true
@@ -382,9 +383,34 @@ func (l likeMatcher) Match(s string) bool {
 	return false
 }
 
+// String returns the string form of this LIKE expression. If an escape character was provided, it is used instead of
+// the default.
+func (l LikeMatcher) String() string {
+	sb := strings.Builder{}
+	for _, node := range l.nodes {
+		switch node := node.(type) {
+		case likeMatcherRune:
+			if node.original == '%' {
+				sb.WriteRune(l.escape)
+				sb.WriteRune('%')
+			} else if node.original == '_' {
+				if node.sortOrder != -1 {
+					sb.WriteRune(l.escape)
+				}
+				sb.WriteRune('_')
+			} else {
+				sb.WriteRune(node.original)
+			}
+		case likeMatcherAny:
+			sb.WriteRune('%')
+		}
+	}
+	return sb.String()
+}
+
 // backtrack unwinds the stack until we can find a node that can match the next rune compared to the rune that it last
 // matched against. The returned node index is the index to use for the next match.
-func (l likeMatcher) backtrack(s string, nodeIndex int, nodeNextIndex []int) (matched bool, newNodeIndex int) {
+func (l LikeMatcher) backtrack(s string, nodeIndex int, nodeNextIndex []int) (matched bool, newNodeIndex int) {
 	charsetEncoder := l.collation.CharacterSet().Encoder()
 	// If the slice doesn't contain an entry for the node, then that node was never matched (and therefore we can't
 	// backtrack over it).
@@ -420,6 +446,7 @@ type likeMatcherNode interface {
 // likeMatcherRune matches exactly one rune. If the sort order is negative, then this matches any rune (but still only
 // a single rune).
 type likeMatcherRune struct {
+	original  rune
 	sortOrder int32
 }
 

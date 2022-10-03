@@ -20,6 +20,7 @@ var (
 	VersionedSetup    [][]SetupScript
 	SpecialSetup      [][]SetupScript
 	SimpleSetup       [][]SetupScript
+	PlanSetup         [][]SetupScript
 	OrdinalSetup      [][]SetupScript
 	SpatialSetup      [][]SetupScript
 	JsonSetup         [][]SetupScript
@@ -30,6 +31,7 @@ var (
 	NullsSetup        [][]SetupScript
 	ComplexIndexSetup [][]SetupScript
 	LoadDataSetup     [][]SetupScript
+	XySetup           [][]SetupScript
 )
 
 func init() {
@@ -65,6 +67,7 @@ func init() {
 	NullsSetup = [][]SetupScript{MydbData, Null_rangesData}
 	ComplexIndexSetup = [][]SetupScript{MydbData, Comp_index_tablesData}
 	LoadDataSetup = [][]SetupScript{MydbData, LoadtableData}
+	XySetup = [][]SetupScript{MydbData, XyData}
 	SimpleSetup = concatenateSetupSources(
 		Mytable,
 		SpecialSetup,
@@ -75,6 +78,18 @@ func init() {
 		KeylessSetup,
 		FooSetup,
 		GraphSetup,
+	)
+	PlanSetup = concatenateSetupSources(
+		Mytable,
+		SpecialSetup,
+		PksSetup,
+		OrdinalSetup,
+		JsonSetup,
+		VersionedSetup,
+		KeylessSetup,
+		FooSetup,
+		GraphSetup,
+		XySetup,
 	)
 }
 

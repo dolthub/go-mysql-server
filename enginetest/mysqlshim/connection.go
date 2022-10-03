@@ -41,6 +41,7 @@ func NewMySQLShim(user string, password string, host string, port int) (*MySQLSh
 		return nil, err
 	}
 	err = conn.Ping()
+
 	if err != nil {
 		return nil, err
 	}

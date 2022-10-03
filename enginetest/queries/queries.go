@@ -1605,7 +1605,7 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
-		Query: "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 2 ORDER BY foo, i;",
+		Query: "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = 2 ORDER BY foo, i;",
 		Expected: []sql.Row{
 			{1, 1, 2},
 			{2, 1, 2},
@@ -1617,7 +1617,7 @@ var QueryTests = []QueryTest{
 			{2, 1, 2}},
 	},
 	{
-		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
+		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = 1 ORDER BY foo, i;",
 		Expected: []sql.Row{},
 	},
 	{
@@ -3483,7 +3483,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT i AS foo FROM mytable WHERE foo NOT IN (1, 2, 5)`,
+		Query:    `SELECT i AS foo FROM mytable HAVING foo NOT IN (1, 2, 5)`,
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
@@ -8958,20 +8958,20 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrFunctionNotFound,
 	},
 	{
-		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
-		ExpectedErrStr: "column default function expressions must be enclosed in parentheses",
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
-		Query:          "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
-		ExpectedErrStr: "Invalid default value for 'c'",
+		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT (select 1))",
-		ExpectedErr: sql.ErrColumnDefaultSubquery,
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, b int DEFAULT '2', c int DEFAULT `b`)",
-		ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{
 		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 POINT DEFAULT POINT(1,2));",

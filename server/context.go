@@ -214,7 +214,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		sql.WithProcessList(s.processlist),
 		sql.WithRootSpan(span),
 		sql.WithServices(sql.Services{
-			KillConnection: s.killConnection,
+			KillConnection: s.KillConnection,
 			LoadInfile:     conn.LoadInfile,
 		}),
 	)
@@ -225,7 +225,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 // Exposed through sql.Services.KillConnection. At the time that this is
 // called, any outstanding process has been killed through ProcessList.Kill()
 // as well.
-func (s *SessionManager) killConnection(connID uint32) error {
+func (s *SessionManager) KillConnection(connID uint32) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if entry, ok := s.sessions[connID]; ok {

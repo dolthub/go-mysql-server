@@ -352,6 +352,9 @@ func convertFiltersToIndexedAccess(
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
 			// this probably fails for *plan.Union also, we just don't have tests for it
 			return false
+		case *plan.SemiJoin, *plan.AntiJoin, *plan.FullOuterJoin:
+			// avoid changing anti and semi join condition indexes
+			return false
 		}
 
 		switch c.Parent.(type) {
@@ -774,7 +777,11 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		// Extract primary key columns from index to maintain order
-		idxTbl, ok := rs.Table.(sql.IndexAddressableTable)
+		table := rs.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		idxTbl, ok := table.(sql.IndexAddressableTable)
 		if !ok {
 			return s, transform.SameTree, nil
 		}

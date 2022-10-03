@@ -50,30 +50,6 @@ type NameableNode interface {
 	sql.Node
 }
 
-// getTables returns all tables in the node given
-func getTables(node sql.Node) []NameableNode {
-	var tables []NameableNode
-	transform.Inspect(node, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.TableAlias:
-			tables = append(tables, node)
-			return false
-		case *plan.ResolvedTable:
-			tables = append(tables, node)
-			return false
-		case *plan.UnresolvedTable:
-			tables = append(tables, node)
-			return false
-		case *plan.IndexedTableAccess:
-			tables = append(tables, node)
-			return false
-		}
-		return true
-	})
-
-	return tables
-}
-
 // Returns the underlying table name for the node given, ignoring table aliases
 func getUnaliasedTableName(node sql.Node) string {
 	var tableName string
@@ -102,6 +78,7 @@ func getTable(node sql.Node) sql.Table {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			table = n.Table
+			// TODO unwinding a table wrapper here causes infinite analyzer recursion
 			return false
 		case *plan.IndexedTableAccess:
 			table = n.ResolvedTable.Table
@@ -282,40 +259,4 @@ func withTable(node sql.Node, table sql.Table) (sql.Node, transform.TreeIdentity
 			return n, transform.SameTree, nil
 		}
 	})
-}
-
-type fieldsByTable map[string][]string
-
-// add adds the table and field given if not already present
-func (f fieldsByTable) add(table, field string) {
-	if !stringContains(f[table], field) {
-		f[table] = append(f[table], field)
-	}
-}
-
-// addAll adds the tables and fields given if not already present
-func (f fieldsByTable) addAll(f2 fieldsByTable) {
-	for table, fields := range f2 {
-		for _, field := range fields {
-			f.add(table, field)
-		}
-	}
-}
-
-// getFieldsByTable returns a map of table name to set of field names in the node provided
-func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
-	colSpan, ctx := ctx.Span("getFieldsByTable")
-	defer colSpan.End()
-
-	var fieldsByTable = make(fieldsByTable)
-	transform.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
-		if gf, ok := e.(*expression.GetField); ok {
-			fieldsByTable.add(gf.Table(), gf.Name())
-		}
-		if s, ok := e.(*plan.Subquery); ok {
-			fieldsByTable.addAll(getFieldsByTable(ctx, s.Query))
-		}
-		return true
-	})
-	return fieldsByTable
 }

@@ -1513,6 +1513,23 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Insert into unique key that overlaps with primary key",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk1 int, pk2 int, col int, PRIMARY KEY(pk1, pk2), UNIQUE KEY(col, pk2));",
+			"INSERT into t (pk1, pk2, col) VALUES (1, 1, 1), (2, 1, 2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t (pk1, pk2, col) VALUES (3, 1, 1);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:       "UPDATE t SET col = col + 1",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

@@ -497,6 +497,22 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				node.Source = newSource
 			}
 			return node, identity, err
+		case *plan.AlterDefaultSet:
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				table := getResolvedTable(node)
+				sch := table.Schema()
+				index := sch.IndexOfColName(node.ColumnName)
+
+				col := sch[index]
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
 		case sql.SchemaTarget:
 			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)

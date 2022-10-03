@@ -60,9 +60,16 @@ type ScriptTestAssertion struct {
 	// query. The ExpectedWarning field must be set for warning messages to be checked.
 	ExpectedWarningMessageSubstring string
 
+	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
+	ExpectedColumns sql.Schema
+
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
 	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool
+
+	// Skip is used to completely skip a test, not execute its query at all, and record it as a skipped test
+	// in the test suite results.
+	Skip bool
 
 	// Bindings are variable mappings only used for prepared tests
 	Bindings map[string]sql.Expression
@@ -1977,6 +1984,18 @@ var ScriptTests = []ScriptTest{
 					{"v4", "int", "YES", "MUL", "NULL", ""},
 					{"v5", "int", "YES", "MUL", "NULL", ""},
 				},
+			},
+		},
+	},
+	{
+		Name: "ALTER AUTO INCREMENT TABLE ADD column",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test add column j int;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},
