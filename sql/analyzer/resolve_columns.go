@@ -653,20 +653,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	defer span.End()
 
 	n, same1, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		// We validate that no GetField column reference can be made on DUAL table.
-		// The node can be fully resolved, so we validate before Resolved check.
-		switch p := n.(type) {
-		case *plan.Project:
-			if dt, ok := p.UnaryNode.Child.(*plan.ResolvedTable); ok && plan.IsDualTable(dt.Table) {
-				for _, projection := range p.Projections {
-					switch projection.(type) {
-					case *expression.GetField:
-						return n, transform.SameTree, sql.ErrNoTablesUsed.New()
-					}
-				}
-			}
-		}
-
 		if n.Resolved() {
 			return n, transform.SameTree, nil
 		}

@@ -227,9 +227,6 @@ var ColumnAliasQueries = []ScriptTest{
 		Name: "various broken alias queries",
 		Assertions: []ScriptTestAssertion{
 			{
-				// The dual table's schema collides with this alias name
-				// https://github.com/dolthub/dolt/issues/4256
-				Skip:     true,
 				Query:    `select "foo" as dummy, (select dummy)`,
 				Expected: []sql.Row{{"foo", "foo"}},
 			},
@@ -264,9 +261,15 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
 				// this query.
+				Skip:  true,
+				Query: "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
+				// column names:  a, mod1, one, two
+				Expected: []sql.Row{{1, 2, 1, 2}},
+			},
+			{
 				Skip:     true,
-				Query:    "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
-				Expected: []sql.Row{{1}},
+				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
+				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},
