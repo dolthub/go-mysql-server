@@ -34,7 +34,6 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
 	sql.Function1{Name: "acos", Fn: NewAcos},
 	sql.Function1{Name: "ascii", Fn: NewAscii},
-	sql.Function1{Name: "area", Fn: NewArea},
 	sql.Function1{Name: "asin", Fn: NewAsin},
 	sql.Function1{Name: "atan", Fn: NewAtan},
 	sql.Function1{Name: "avg", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewAvg(e) }},
