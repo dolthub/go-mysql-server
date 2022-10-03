@@ -169,6 +169,10 @@ var ColumnAliasQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    `select "foo" as dummy, (select dummy)`,
+				Expected: []sql.Row{{"foo", "foo"}},
+			},
+			{
 				// https://github.com/dolthub/dolt/issues/4344
 				Query:    "select x as v, (select u from uv where v = y) as u from xy;",
 				Expected: []sql.Row{{0, 3}, {1, 2}, {2, 1}, {3, 0}},
@@ -226,10 +230,6 @@ var ColumnAliasQueries = []ScriptTest{
 	{
 		Name: "various broken alias queries",
 		Assertions: []ScriptTestAssertion{
-			{
-				Query:    `select "foo" as dummy, (select dummy)`,
-				Expected: []sql.Row{{"foo", "foo"}},
-			},
 			{
 				// The second query in the union subquery returns "x" instead of mytable.i
 				// https://github.com/dolthub/dolt/issues/4256
