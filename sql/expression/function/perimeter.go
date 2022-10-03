@@ -16,9 +16,10 @@ package function
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"strings"
 )
 
 // Perimeter is a function that returns the Perimeter of a Polygon
