@@ -68,7 +68,7 @@ type IndexDefinition struct {
 	Constraint sql.IndexConstraint
 	Columns    []sql.IndexColumn
 	Comment    string
-	Lengths    []uint64
+	Lengths    []int
 }
 
 func (i *IndexDefinition) String() string {

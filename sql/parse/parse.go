@@ -1678,12 +1678,19 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 				comment = string(option.Value.Val)
 			}
 		}
+
+		lengths := make([]int, len(idxDef.Columns))
+		for i, col := range idxDef.Columns {
+			lengths[i], err = strconv.Atoi(string(col.Length.Val))
+		}
+
 		idxDefs = append(idxDefs, &plan.IndexDefinition{
 			IndexName:  idxDef.Info.Name.String(),
 			Using:      sql.IndexUsing_Default, //TODO: add vitess support for USING
 			Constraint: constraint,
 			Columns:    columns,
 			Comment:    comment,
+			Lengths:    lengths,
 		})
 	}
 
