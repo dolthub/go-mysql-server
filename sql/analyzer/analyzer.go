@@ -376,7 +376,7 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 func NewSubqueryExprResolveSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId, optimizeJoinsId:
+		case pruneColumnsId, optimizeJoinsId, finalizeSubqueryExprsId, parallelizeId:
 			return false
 		}
 		return sel(id)

@@ -21,21 +21,21 @@ import (
 // how query plans have changed without a lot of manual copying and pasting.
 func TestWriteQueryPlans(t *testing.T) {
 	t.Skip()
-	writePlans(t, setup.PlanSetup, queries.PlanTests, "PlanTests")
+	writePlans(t, setup.PlanSetup, queries.PlanTests, "PlanTests", 1)
 }
 
 func TestWriteIndexQueryPlans(t *testing.T) {
 	t.Skip()
-	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests")
+	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests", 1)
 }
 
 func TestWriteIntegrationQueryPlans(t *testing.T) {
 	t.Skip()
-	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests")
+	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests", 2)
 }
 
-func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryPlanTest, name string) {
-	harness := NewDefaultMemoryHarness()
+func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryPlanTest, name string, parallelism int) {
+	harness := NewMemoryHarness("default", parallelism, testNumPartitions, true, nil)
 	harness.Setup(s...)
 	engine := mustNewEngine(t, harness)
 
