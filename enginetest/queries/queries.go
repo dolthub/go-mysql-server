@@ -382,6 +382,27 @@ var SpatialQueryTests = []QueryTest{
 			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
+	{
+		Query: `SELECT ST_AREA(p) from polygon_table`,
+		Expected: []sql.Row{
+			{0.5},
+			{0.0},
+		},
+	},
+	{
+		Query: `SELECT ST_PERIMETER(p) from polygon_table`,
+		Expected: []sql.Row{
+			{3.414213562373095},
+			{6.82842712474619},
+		},
+	},
+	{
+		Query: `SELECT ST_LENGTH(l) from line_table`,
+		Expected: []sql.Row{
+			{2.8284271247461903},
+			{5.656854249492381},
+		},
+	},
 }
 
 var QueryTests = []QueryTest{

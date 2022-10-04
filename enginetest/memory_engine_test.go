@@ -92,7 +92,7 @@ func TestQueriesPreparedSimple(t *testing.T) {
 	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+// TestSpatialQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
 func TestSpatialQueriesPrepared(t *testing.T) {
 	enginetest.TestSpatialQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
