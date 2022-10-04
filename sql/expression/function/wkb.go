@@ -302,7 +302,7 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Parse Header
-	isBig, geomType, err := ParseWKBHeader(v)
+	isBig, geomType, err := sql.ParseWKBHeader(v)
 	if err != nil {
 		return nil, err
 	}
