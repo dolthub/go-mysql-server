@@ -19,6 +19,7 @@ import (
 	"net"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -348,7 +349,9 @@ func (h *Handler) doQuery(
 
 	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
-		ctx.GetLogger().WithError(err).Warn("error running query")
+		if !strings.Contains(query, "TABLE_SCHEMA") {
+			ctx.GetLogger().WithError(err).Warn("error running query")
+		}
 		return remainder, err
 	}
 
