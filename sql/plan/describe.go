@@ -35,10 +35,10 @@ func NewDescribe(child sql.Node) *Describe {
 func (d *Describe) Schema() sql.Schema {
 	return sql.Schema{{
 		Name: "name",
-		Type: VarChar1000,
+		Type: VarChar25000,
 	}, {
 		Name: "type",
-		Type: VarChar1000,
+		Type: VarChar25000,
 	}}
 }
 
@@ -115,7 +115,7 @@ func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 
 // DescribeSchema is the schema returned by a DescribeQuery node.
 var DescribeSchema = sql.Schema{
-	{Name: "plan", Type: VarChar1000},
+	{Name: "plan", Type: VarChar25000},
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.

@@ -218,7 +218,11 @@ func replaceTableAccessWithIndexedAccess(
 
 	var toIndexedTableAccess func(node *plan.ResolvedTable, indexToApply *joinIndex) (sql.Node, transform.TreeIdentity, error)
 	toIndexedTableAccess = func(node *plan.ResolvedTable, indexToApply *joinIndex) (sql.Node, transform.TreeIdentity, error) {
-		if _, ok := node.Table.(sql.IndexAddressableTable); !ok {
+		table := node.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		if _, ok := table.(sql.IndexAddressableTable); !ok {
 			return node, transform.SameTree, nil
 		}
 

@@ -546,7 +546,7 @@ func pushdownFiltersToAboveTable(
 	filters *filterSet,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(tableNode)
-	if table == nil {
+	if table == nil || plan.IsDualTable(table) {
 		return tableNode, transform.SameTree, nil
 	}
 
@@ -777,7 +777,11 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		// Extract primary key columns from index to maintain order
-		idxTbl, ok := rs.Table.(sql.IndexAddressableTable)
+		table := rs.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		idxTbl, ok := table.(sql.IndexAddressableTable)
 		if !ok {
 			return s, transform.SameTree, nil
 		}

@@ -174,7 +174,7 @@ func pruneTableCols(
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(n)
 	t, ok := table.(sql.ProjectedTable)
-	if !ok || t.Name() == sql.DualTableName {
+	if !ok || t.Name() == plan.DualTableName {
 		return n, transform.SameTree, nil
 	}
 
