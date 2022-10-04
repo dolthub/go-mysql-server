@@ -190,6 +190,11 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
+	err = e.readOnlyCheck(parsed)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	err = e.beginTransaction(ctx, transactionDatabase)
 	if err != nil {
 		return nil, nil, err
