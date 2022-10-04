@@ -383,6 +383,16 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	}
 }
 
+func NewNestedSubqueryFinalizer(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case pruneColumnsId, optimizeJoinsId:
+			return true
+		}
+		return sel(id)
+	}
+}
+
 func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {

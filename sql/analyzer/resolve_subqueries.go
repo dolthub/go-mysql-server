@@ -69,7 +69,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			//       and from testing... they don't seem to be able to access expression aliases (only tables and table aliases),
 			//       but documentation doesn't seem to indicate that limitation.
 			//       https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", DefaultRuleSelector)
+			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", NewNestedSubqueryFinalizer(sel))
 			if err != nil {
 				return nil, same, err
 			}
