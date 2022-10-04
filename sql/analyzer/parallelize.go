@@ -50,7 +50,7 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	}
 
 	// Don't parallelize subqueries, this can blow up the execution graph quickly
-	if len(scope.Schema()) > 0 {
+	if !scope.IsEmpty() {
 		return false
 	}
 
@@ -98,14 +98,21 @@ func removeRedundantExchanges(node sql.Node) (sql.Node, transform.TreeIdentity, 
 		return node, transform.SameTree, nil
 	}
 
+	var seenIta bool
 	child, same, err := transform.Node(exchange.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
 			return exchange.Child, transform.NewTree, nil
+		} else if _, ok := node.(*plan.IndexedTableAccess); ok {
+			// peephole
+			seenIta = true
 		}
 		return node, transform.SameTree, nil
 	})
 	if err != nil {
 		return nil, transform.SameTree, err
+	}
+	if seenIta {
+		return child, transform.NewTree, nil
 	}
 	if same {
 		return node, transform.SameTree, nil

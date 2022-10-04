@@ -4814,7 +4814,7 @@ WHERE
 `,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [TDRVG.id, TDRVG.FGG57, TDRVG.SSHPJ, TDRVG.SFJ6L]\n" +
-			" └─ Filter(TDRVG.id IN (Project\n" +
+			" └─ IndexedInSubqueryFilter(TDRVG.id IN ((Project\n" +
 			"     ├─ columns: [(Limit(1)\n" +
 			"     │   └─ TopN(Limit: [1]; TDRVG.id ASC)\n" +
 			"     │       └─ Project\n" +
@@ -4837,9 +4837,9 @@ WHERE
 			"                         └─ TableAlias(nd)\n" +
 			"                             └─ IndexedTableAccess(E2I7U)\n" +
 			"                                 └─ index: [E2I7U.FGG57]\n" +
-			"    ))\n" +
-			"     └─ Exchange\n" +
-			"         └─ Table(TDRVG)\n" +
+			"    )))\n" +
+			"     └─ IndexedTableAccess(TDRVG)\n" +
+			"         └─ index: [TDRVG.id]\n" +
 			"",
 	},
 	{
@@ -7265,23 +7265,23 @@ WHERE
 			"                     ├─ SubqueryAlias(cld)\n" +
 			"                     │   └─ Project\n" +
 			"                     │       ├─ columns: [cla.FTQLQ as T4IBQ, sn.id as BDNYB, mf.M22QN as M22QN]\n" +
-			"                     │       └─ InnerJoin(sn.BRQP2 = mf.LUEVY)\n" +
-			"                     │           ├─ InnerJoin(cla.id = bs.IXUXU)\n" +
-			"                     │           │   ├─ InnerJoin(bs.id = mf.GXLUB)\n" +
-			"                     │           │   │   ├─ Exchange\n" +
-			"                     │           │   │   │   └─ TableAlias(mf)\n" +
-			"                     │           │   │   │       └─ Table(HGMQ6)\n" +
-			"                     │           │   │   └─ Exchange\n" +
-			"                     │           │   │       └─ TableAlias(bs)\n" +
-			"                     │           │   │           └─ Table(THNTS)\n" +
-			"                     │           │   └─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
-			"                     │           │       └─ TableAlias(cla)\n" +
-			"                     │           │           └─ IndexedTableAccess(YK2GW)\n" +
-			"                     │           │               ├─ index: [YK2GW.FTQLQ]\n" +
-			"                     │           │               └─ filters: [{[SQ1, SQ1]}]\n" +
-			"                     │           └─ Exchange\n" +
-			"                     │               └─ TableAlias(sn)\n" +
-			"                     │                   └─ Table(NOXN3)\n" +
+			"                     │       └─ IndexedJoin(cla.id = bs.IXUXU)\n" +
+			"                     │           ├─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                     │           │   └─ TableAlias(cla)\n" +
+			"                     │           │       └─ IndexedTableAccess(YK2GW)\n" +
+			"                     │           │           ├─ index: [YK2GW.FTQLQ]\n" +
+			"                     │           │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"                     │           └─ IndexedJoin(bs.id = mf.GXLUB)\n" +
+			"                     │               ├─ TableAlias(bs)\n" +
+			"                     │               │   └─ IndexedTableAccess(THNTS)\n" +
+			"                     │               │       └─ index: [THNTS.IXUXU]\n" +
+			"                     │               └─ IndexedJoin(sn.BRQP2 = mf.LUEVY)\n" +
+			"                     │                   ├─ TableAlias(mf)\n" +
+			"                     │                   │   └─ IndexedTableAccess(HGMQ6)\n" +
+			"                     │                   │       └─ index: [HGMQ6.GXLUB]\n" +
+			"                     │                   └─ TableAlias(sn)\n" +
+			"                     │                       └─ IndexedTableAccess(NOXN3)\n" +
+			"                     │                           └─ index: [NOXN3.BRQP2]\n" +
 			"                     └─ HashLookup(child: (P4PJZ.LWQ6O, P4PJZ.NTOFG), lookup: (cld.BDNYB, cld.M22QN))\n" +
 			"                         └─ CachedResults\n" +
 			"                             └─ SubqueryAlias(P4PJZ)\n" +
@@ -7634,23 +7634,22 @@ WHERE
 			"                     ├─ SubqueryAlias(cld)\n" +
 			"                     │   └─ Project\n" +
 			"                     │       ├─ columns: [cla.FTQLQ as T4IBQ, sn.id as BDNYB, mf.M22QN as M22QN]\n" +
-			"                     │       └─ InnerJoin(sn.BRQP2 = mf.LUEVY)\n" +
-			"                     │           ├─ InnerJoin(cla.id = bs.IXUXU)\n" +
-			"                     │           │   ├─ InnerJoin(bs.id = mf.GXLUB)\n" +
-			"                     │           │   │   ├─ Exchange\n" +
-			"                     │           │   │   │   └─ TableAlias(mf)\n" +
-			"                     │           │   │   │       └─ Table(HGMQ6)\n" +
-			"                     │           │   │   └─ Exchange\n" +
-			"                     │           │   │       └─ TableAlias(bs)\n" +
-			"                     │           │   │           └─ Table(THNTS)\n" +
-			"                     │           │   └─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
-			"                     │           │       └─ TableAlias(cla)\n" +
-			"                     │           │           └─ IndexedTableAccess(YK2GW)\n" +
-			"                     │           │               ├─ index: [YK2GW.FTQLQ]\n" +
-			"                     │           │               └─ filters: [{[SQ1, SQ1]}]\n" +
-			"                     │           └─ Exchange\n" +
-			"                     │               └─ TableAlias(sn)\n" +
-			"                     │                   └─ Table(NOXN3)\n" +
+			"                     │       └─ IndexedJoin(sn.BRQP2 = mf.LUEVY)\n" +
+			"                     │           ├─ IndexedJoin(bs.id = mf.GXLUB)\n" +
+			"                     │           │   ├─ Exchange\n" +
+			"                     │           │   │   └─ TableAlias(mf)\n" +
+			"                     │           │   │       └─ Table(HGMQ6)\n" +
+			"                     │           │   └─ IndexedJoin(cla.id = bs.IXUXU)\n" +
+			"                     │           │       ├─ TableAlias(bs)\n" +
+			"                     │           │       │   └─ IndexedTableAccess(THNTS)\n" +
+			"                     │           │       │       └─ index: [THNTS.id]\n" +
+			"                     │           │       └─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                     │           │           └─ TableAlias(cla)\n" +
+			"                     │           │               └─ IndexedTableAccess(YK2GW)\n" +
+			"                     │           │                   └─ index: [YK2GW.id]\n" +
+			"                     │           └─ TableAlias(sn)\n" +
+			"                     │               └─ IndexedTableAccess(NOXN3)\n" +
+			"                     │                   └─ index: [NOXN3.BRQP2]\n" +
 			"                     └─ HashLookup(child: (P4PJZ.LWQ6O, P4PJZ.NTOFG), lookup: (cld.BDNYB, cld.M22QN))\n" +
 			"                         └─ CachedResults\n" +
 			"                             └─ SubqueryAlias(P4PJZ)\n" +

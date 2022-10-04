@@ -69,7 +69,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			//       and from testing... they don't seem to be able to access expression aliases (only tables and table aliases),
 			//       but documentation doesn't seem to indicate that limitation.
 			//       https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", sel)
+			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, newScopeWithDepth(scope.RecursionDepth()+1), "default-rules", DefaultRuleSelector)
 			if err != nil {
 				return nil, same, err
 			}
@@ -123,7 +123,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		defer cancelFunc()
 		subScope := scope.newScope(n)
 
-		analyzed, _, err := a.analyzeThroughBatch(subqueryCtx, s.Query, subScope, "once-after-default", NewSubqueryExprResolveSelector(sel))
+		analyzed, _, err := a.analyzeThroughBatch(subqueryCtx, s.Query, subScope, "once-after-default", NewResolveSubqueryExprSelector(sel))
 		if err != nil {
 			// We ignore certain errors, deferring them to later analysis passes. Specifically, if the subquery isn't
 			// resolved or a column can't be found in the scope node, wait until a later pass.
@@ -156,7 +156,7 @@ func finalizeSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		defer cancelFunc()
 		subScope := scope.newScope(n)
 
-		analyzed, _, err := a.analyzeStartingAtBatch(subqueryCtx, s.Query, subScope, "default-rules", sel)
+		analyzed, _, err := a.analyzeStartingAtBatch(subqueryCtx, s.Query, subScope, "default-rules", NewFinalizeSubqueryExprSelector(sel))
 		if err != nil {
 			// todo(max): I'm not sure we should be hiding errors here, but this maintains pre-existing tests
 			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {

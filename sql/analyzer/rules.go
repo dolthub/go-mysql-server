@@ -92,6 +92,7 @@ var DefaultRules = []Rule{
 var OnceAfterDefault = []Rule{
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{finalizeUnionsId, finalizeUnions},
+	{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
@@ -108,7 +109,6 @@ var OnceAfterDefault = []Rule{
 	{insertTopNId, insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
-	{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
 	{applyHashLookupsId, applyHashLookups},

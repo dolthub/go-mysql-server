@@ -373,10 +373,20 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 	}
 }
 
-func NewSubqueryExprResolveSelector(sel RuleSelector) RuleSelector {
+func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
 		case pruneColumnsId, optimizeJoinsId, finalizeSubqueryExprsId, parallelizeId:
+			return false
+		}
+		return sel(id)
+	}
+}
+
+func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case resolveSubqueryExprsId:
 			return false
 		}
 		return sel(id)
