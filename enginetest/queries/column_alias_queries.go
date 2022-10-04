@@ -267,6 +267,7 @@ var ColumnAliasQueries = []ScriptTest{
 				Expected: []sql.Row{{1, 2, 1, 2}},
 			},
 			{
+				// GMS returns `ambiguous column or alias name "b"` on both cases of `group by b` and `group by 1` inside subquery, but MySQL executes.
 				Skip:     true,
 				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
 				Expected: []sql.Row{{1, 1}},

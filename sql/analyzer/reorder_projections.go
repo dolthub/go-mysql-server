@@ -207,30 +207,27 @@ func addIntermediateProjections(
 		deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(s.Query)...)
 	}
 
-	if len(deferredColumns) == 0 {
-		return child, same, err
-	}
-
-	schema := child.Schema()
-	var projections = make([]sql.Expression, 0, len(schema)+len(deferredColumns))
-
-	if rt, ok := child.(*plan.ResolvedTable); !(ok && plan.IsDualTable(rt)) {
+	if len(deferredColumns) > 0 {
+		schema := child.Schema()
+		var projections = make([]sql.Expression, 0, len(schema)+len(deferredColumns))
 		for i, col := range schema {
 			projections = append(projections, expression.NewGetFieldWithTable(
 				i, col.Type, col.Source, col.Name, col.Nullable,
 			))
 		}
-	}
 
-	// Add a projection for each missing column from the subqueries that has an alias
-	for _, dc := range deferredColumns {
-		if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
-			projections = append(projections, c)
-			same = transform.NewTree
+		// Add a projection for each missing column from the subqueries that has an alias
+		for _, dc := range deferredColumns {
+			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
+				projections = append(projections, c)
+				same = transform.NewTree
+			}
 		}
+
+		child = plan.NewProject(projections, child)
 	}
 
-	return plan.NewProject(projections, child), same, err
+	return child, same, err
 }
 
 // findDeferredColumnsAndAliasReferences returns all the deferredColumn and AliasReference expressions in the node given
