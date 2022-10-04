@@ -80,19 +80,27 @@ func (t *tableEditor) StatementBegin(ctx *sql.Context) {
 	t.initialInsert = t.table.insertPartIdx
 	t.initialAutoIncVal = t.table.autoIncVal
 	t.initialPartitions = make(map[string][]sql.Row)
+	t.table.partitionMux.RLock()
 	for partStr, rowSlice := range t.table.partitions {
 		newRowSlice := make([]sql.Row, len(rowSlice))
 		for i, row := range rowSlice {
 			newRowSlice[i] = row.Copy()
 		}
+		t.table.partitionMux.RUnlock()
+		t.table.partitionMux.Lock()
 		t.initialPartitions[partStr] = newRowSlice
+		t.table.partitionMux.Unlock()
+		t.table.partitionMux.RLock()
 	}
+	t.table.partitionMux.RUnlock()
 }
 
 func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
 	t.table.insertPartIdx = t.initialInsert
 	t.table.autoIncVal = t.initialAutoIncVal
+	t.table.partitionMux.Lock()
 	t.table.partitions = t.initialPartitions
+	t.table.partitionMux.Unlock()
 	t.ea.Clear()
 	return nil
 }
@@ -106,13 +114,19 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 	t.initialInsert = t.table.insertPartIdx
 	t.initialAutoIncVal = t.table.autoIncVal
 	t.initialPartitions = make(map[string][]sql.Row)
+	t.table.partitionMux.RLock()
 	for partStr, rowSlice := range t.table.partitions {
 		newRowSlice := make([]sql.Row, len(rowSlice))
 		for i, row := range rowSlice {
 			newRowSlice[i] = row.Copy()
 		}
+		t.table.partitionMux.RUnlock()
+		t.table.partitionMux.Lock()
 		t.initialPartitions[partStr] = newRowSlice
+		t.table.partitionMux.Unlock()
+		t.table.partitionMux.RLock()
 	}
+	t.table.partitionMux.RUnlock()
 	return nil
 }
 
@@ -404,13 +418,16 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 	}
 
 	pkColIdxes := pke.pkColumnIndexes()
+	pke.table.partitionMux.RLock()
 	for _, partition := range pke.table.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(pkColIdxes, partitionRow, value) {
+				pke.table.partitionMux.RUnlock()
 				return partitionRow, true, nil
 			}
 		}
 	}
+	pke.table.partitionMux.RUnlock()
 
 	return nil, false, nil
 }

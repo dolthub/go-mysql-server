@@ -88,7 +88,7 @@ type Table struct {
 	columns         []int
 
 	// Data storage
-	partitionMux  sync.Mutex
+	partitionMux  sync.RWMutex
 	partitions    map[string][]sql.Row
 	partitionKeys [][]byte
 
@@ -172,7 +172,7 @@ func NewPartitionedTableWithCollation(name string, schema sql.PrimaryKeySchema, 
 		schema:        schema,
 		fkColl:        fkColl,
 		collation:     collation,
-		partitionMux:  sync.Mutex{},
+		partitionMux:  sync.RWMutex{},
 		partitions:    partitions,
 		partitionKeys: keys,
 		autoIncVal:    autoIncVal,
@@ -199,9 +199,9 @@ func (t *Table) Collation() sql.CollationID {
 }
 
 func (t *Table) GetPartition(key string) []sql.Row {
-	t.partitionMux.Lock()
+	t.partitionMux.RLock()
 	rows, ok := t.partitions[string(key)]
-	t.partitionMux.Unlock()
+	t.partitionMux.RUnlock()
 	if ok {
 		return rows
 	}
@@ -213,11 +213,11 @@ func (t *Table) GetPartition(key string) []sql.Row {
 func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	var keys [][]byte
 	for _, k := range t.partitionKeys {
-		t.partitionMux.Lock()
+		t.partitionMux.RLock()
 		if rows, ok := t.partitions[string(k)]; ok && len(rows) > 0 {
 			keys = append(keys, k)
 		}
-		t.partitionMux.Unlock()
+		t.partitionMux.RUnlock()
 	}
 	return &partitionIter{keys: keys}, nil
 }
@@ -252,9 +252,9 @@ type rangePartition struct {
 
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
-	t.partitionMux.Lock()
+	t.partitionMux.RLock()
 	partLen := len(t.partitions)
-	t.partitionMux.Unlock()
+	t.partitionMux.RUnlock()
 
 	return int64(partLen), nil
 }
@@ -267,9 +267,9 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		filters = append(t.filters, r.rang)
 	}
 
-	t.partitionMux.Lock()
+	t.partitionMux.RLock()
 	rows, ok := t.partitions[string(partition.Key())]
-	t.partitionMux.Unlock()
+	t.partitionMux.RUnlock()
 	if !ok {
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
@@ -287,11 +287,11 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 
 func (t *Table) numRows(ctx *sql.Context) (uint64, error) {
 	var count uint64 = 0
-	t.partitionMux.Lock()
+	t.partitionMux.RLock()
 	for _, rows := range t.partitions {
 		count += uint64(len(rows))
 	}
-	t.partitionMux.Unlock()
+	t.partitionMux.RUnlock()
 
 	return count, nil
 }
@@ -728,7 +728,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		t.autoIncVal = 0
 
 		if newColIdx < len(t.schema.Schema) {
-			t.partitionMux.Lock()
+			t.partitionMux.RLock()
 			for _, p := range t.partitions {
 				for _, row := range p {
 					if row[newColIdx] == nil {
@@ -750,7 +750,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 					}
 				}
 			}
-			t.partitionMux.Unlock()
+			t.partitionMux.RUnlock()
 		} else {
 			t.autoIncVal = 0
 		}
@@ -773,9 +773,10 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 }
 
 func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.ColumnDefaultValue) error {
-	t.partitionMux.Lock()
+	t.partitionMux.RLock()
 	for k, p := range t.partitions {
-		newP := make([]sql.Row, len(p))
+		partLen := len(p)
+		newP := make([]sql.Row, partLen)
 		for i, row := range p {
 			var newRow sql.Row
 			newRow = append(newRow, row[:idx]...)
@@ -792,15 +793,19 @@ func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.Col
 			}
 			newP[i] = newRow
 		}
+		t.partitionMux.RUnlock()
+		t.partitionMux.Lock()
 		t.partitions[k] = newP
+		t.partitionMux.Unlock()
+		t.partitionMux.RLock()
 	}
-	t.partitionMux.Unlock()
+	t.partitionMux.RUnlock()
 	return nil
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 	droppedCol := t.dropColumnFromSchema(ctx, columnName)
-	t.partitionMux.Lock()
+	t.partitionMux.RLock()
 	for k, p := range t.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
@@ -809,9 +814,13 @@ func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 			newRow = append(newRow, row[droppedCol+1:]...)
 			newP[i] = newRow
 		}
+		t.partitionMux.RUnlock()
+		t.partitionMux.Lock()
 		t.partitions[k] = newP
+		t.partitionMux.Unlock()
+		t.partitionMux.RLock()
 	}
-	t.partitionMux.Unlock()
+	t.partitionMux.RUnlock()
 	return nil
 }
 
@@ -876,7 +885,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 
-	t.partitionMux.Lock()
+	t.partitionMux.RLock()
 	for k, p := range t.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
@@ -896,9 +905,14 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
 			newP[i] = newRow
 		}
+
+		t.partitionMux.RUnlock()
+		t.partitionMux.Lock()
 		t.partitions[k] = newP
+		t.partitionMux.Unlock()
+		t.partitionMux.RLock()
 	}
-	t.partitionMux.Unlock()
+	t.partitionMux.RUnlock()
 
 	pkNameToOrdIdx := make(map[string]int)
 	for i, ord := range t.schema.PkOrdinals {
@@ -1517,14 +1531,16 @@ func (t *Table) sortRows() {
 	}
 
 	var idx []partidx
-	t.partitionMux.Lock()
 	for _, k := range t.partitionKeys {
+		t.partitionMux.RLock()
 		p := t.partitions[string(k)]
 		for i := 0; i < len(p); i++ {
 			idx = append(idx, partidx{string(k), i})
 		}
+		t.partitionMux.RUnlock()
 	}
 
+	t.partitionMux.Lock()
 	sort.Sort(partitionssort{t.partitions, idx, less})
 	t.partitionMux.Unlock()
 }
