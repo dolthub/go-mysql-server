@@ -134,16 +134,11 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
-		Expected: []sql.Row{
-			{"first row"},
-			{"second row"},
-			{"third row"},
-		},
+		Query:    `select 1 as b, (select b order by b);`,
+		Expected: []sql.Row{{1, 1}},
 	}
 
 	fmt.Sprintf("%v", test)

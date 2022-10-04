@@ -546,7 +546,7 @@ func pushdownFiltersToAboveTable(
 	filters *filterSet,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(tableNode)
-	if table == nil {
+	if table == nil || plan.IsDualTable(table) {
 		return tableNode, transform.SameTree, nil
 	}
 
