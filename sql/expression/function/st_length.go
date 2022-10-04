@@ -30,7 +30,7 @@ type STLength struct {
 
 var _ sql.FunctionExpression = (*STLength)(nil)
 
-// NewSTLength creates a new STX expression.
+// NewSTLength creates a new STLength expression.
 func NewSTLength(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LENGTH", "1 or 2", len(args))

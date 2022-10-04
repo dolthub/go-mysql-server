@@ -15,6 +15,7 @@
 package function
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func TestSTLength(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(1.4142135623730951, v)
+		require.Equal(math.Sqrt2, v)
 	})
 
 	t.Run("select perimeter of unit square", func(t *testing.T) {
