@@ -762,12 +762,26 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		shouldIndexChildNode = false
 	case *plan.RecursiveCte, *plan.Union:
 		shouldIndexChildNode = false
+	case *plan.Having:
+		shouldIndexChildNode = false
 	}
 
 	if shouldIndexChildNode {
 		for _, child := range n.Children() {
 			indexChildNode(child)
 		}
+	}
+
+	// having node need access to all table references within its children node,
+	// so reset idx for any additional schema
+	switch n.(type) {
+	case *plan.Having:
+		transform.Inspect(n, func(node sql.Node) bool {
+			for _, child := range n.Children() {
+				indexChildNode(child)
+			}
+			return true
+		})
 	}
 
 	// For certain DDL nodes, we have to do more work
