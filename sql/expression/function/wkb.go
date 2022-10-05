@@ -15,9 +15,7 @@
 package function
 
 import (
-	"encoding/binary"
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -95,17 +93,6 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// Header contains endianness (1 byte) and geometry type (4 bytes)
-const WKBHeaderLength = 5
-
-// Type IDs
-const (
-	WKBUnknown = iota
-	WKBPointID
-	WKBLineID
-	WKBPolyID
-)
-
 // GeomFromWKB is a function that returns a geometry type from a WKB byte array
 type GeomFromWKB struct {
 	expression.NaryExpression
@@ -149,104 +136,6 @@ func (g *GeomFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 	return NewGeomFromWKB(children...)
 }
 
-// WKBToPoint parses the data portion of a byte array in WKB format to a point object
-func WKBToPoint(buf []byte, isBig bool, srid uint32, order bool) (sql.Point, error) {
-	// Must be 16 bytes (2 floats)
-	if len(buf) != 16 {
-		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromWKB")
-	}
-
-	// Read floats x and y
-	var x, y float64
-	if isBig {
-		x = math.Float64frombits(binary.BigEndian.Uint64(buf[:8]))
-		y = math.Float64frombits(binary.BigEndian.Uint64(buf[8:]))
-	} else {
-		x = math.Float64frombits(binary.LittleEndian.Uint64(buf[:8]))
-		y = math.Float64frombits(binary.LittleEndian.Uint64(buf[8:]))
-	}
-
-	// Determine if bool needs to be flipped
-	if order {
-		x, y = y, x
-	}
-
-	return sql.Point{SRID: srid, X: x, Y: y}, nil
-}
-
-// WKBToLine parses the data portion of a byte array in WKB format to a point object
-func WKBToLine(buf []byte, isBig bool, srid uint32, order bool) (sql.LineString, error) {
-	// Must be at least 4 bytes (length of linestring)
-	if len(buf) < 4 {
-		return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
-	}
-
-	// Read length of line string
-	var numPoints uint32
-	if isBig {
-		numPoints = binary.BigEndian.Uint32(buf[:4])
-	} else {
-		numPoints = binary.LittleEndian.Uint32(buf[:4])
-	}
-
-	// Extract line data
-	lineData := buf[4:]
-
-	// Check length
-	if uint32(len(lineData)) < 16*numPoints {
-		return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
-	}
-
-	// Parse points
-	points := make([]sql.Point, numPoints)
-	for i := uint32(0); i < numPoints; i++ {
-		if point, err := WKBToPoint(lineData[16*i:16*(i+1)], isBig, srid, order); err == nil {
-			points[i] = point
-		} else {
-			return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
-		}
-	}
-
-	return sql.LineString{SRID: srid, Points: points}, nil
-}
-
-// WKBToPoly parses the data portion of a byte array in WKB format to a point object
-func WKBToPoly(buf []byte, isBig bool, srid uint32, order bool) (sql.Polygon, error) {
-	// Must be at least 4 bytes (length of polygon)
-	if len(buf) < 4 {
-		return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
-	}
-
-	// Get number of lines in polygon
-	var numLines uint32
-	if isBig {
-		numLines = binary.BigEndian.Uint32(buf[:4])
-	} else {
-		numLines = binary.LittleEndian.Uint32(buf[:4])
-	}
-
-	// Extract poly data
-	polyData := buf[4:]
-
-	// Parse lines
-	s := 0
-	lines := make([]sql.LineString, numLines)
-	for i := uint32(0); i < numLines; i++ {
-		if line, err := WKBToLine(polyData[s:], isBig, srid, order); err == nil {
-			if isLinearRing(line) {
-				lines[i] = line
-				s += 4 + 16*len(line.Points) // shift parsing location over
-			} else {
-				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
-			}
-		} else {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
-		}
-	}
-
-	return sql.Polygon{SRID: srid, Lines: lines}, nil
-}
-
 // ParseAxisOrder takes in a key, value string and determines the order of the xy coords
 func ParseAxisOrder(s string) (bool, error) {
 	s = strings.ToLower(s)
@@ -261,10 +150,16 @@ func ParseAxisOrder(s string) (bool, error) {
 	}
 }
 
-// Eval implements the sql.Expression interface.
-func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
-	val, err := g.ChildExpressions[0].Eval(ctx, row)
+func ValidateSRID(srid uint32) error {
+	if srid != sql.CartesianSRID && srid != sql.GeoSpatialSRID {
+		return ErrInvalidSRID.New(srid)
+	}
+	return nil
+}
+
+// EvalGeomFromWKB takes in arguments for the ST_FROMWKB functions, and parses them to their correspoding geometry type
+func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGeomType int) (interface{}, error) {
+	val, err := exprs[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -273,23 +168,24 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Must be of type byte array
-	v, ok := val.([]byte)
+	buf, ok := val.([]byte)
 	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_GeomFromWKB")
+		return nil, sql.ErrInvalidGISData.New()
 	}
 
-	// Parse Header
-	isBig, geomType, err := sql.ParseWKBHeader(v)
+	isBig, geomType, err := sql.ParseWKBHeader(buf)
 	if err != nil {
 		return nil, err
 	}
+	buf = buf[sql.WKBHeaderSize:]
 
-	// TODO: convert to this block to helper function
-	// Determine SRID
+	if expectedGeomType != sql.WKBUnknown && int(geomType) != expectedGeomType {
+		return nil, sql.ErrInvalidGISData.New()
+	}
+
 	srid := uint32(0)
-	if len(g.ChildExpressions) >= 2 {
-		s, err := g.ChildExpressions[1].Eval(ctx, row)
+	if len(exprs) >= 2 {
+		s, err := exprs[1].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -302,16 +198,28 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		srid = s.(uint32)
 	}
-
 	if err = ValidateSRID(srid); err != nil {
 		return nil, err
 	}
 
-	// Convert this block to helper function
-	// Determine xy order
+	var geom sql.GeometryValue
+	switch geomType {
+	case sql.WKBPointID:
+		geom, err = sql.WKBToPoint(buf, isBig, srid)
+	case sql.WKBLineID:
+		geom, err = sql.WKBToLine(buf, isBig, srid)
+	case sql.WKBPolyID:
+		geom, err = sql.WKBToPoly(buf, isBig, srid)
+	case sql.WKBMultiPointID:
+		geom, err = sql.WKBToMultiPoint(buf, isBig, srid)
+	// TODO: add multi geometries here
+	default:
+		return nil, sql.ErrInvalidGISData.New()
+	}
+
 	order := false
-	if len(g.ChildExpressions) == 3 {
-		o, err := g.ChildExpressions[2].Eval(ctx, row)
+	if len(exprs) == 3 {
+		o, err := exprs[2].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -320,21 +228,19 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		order, err = ParseAxisOrder(o.(string))
 		if err != nil {
-			return nil, sql.ErrInvalidArgument.New(g.FunctionName())
+			return nil, sql.ErrInvalidArgument.New()
 		}
 	}
-
-	// Parse accordingly
-	switch geomType {
-	case WKBPointID:
-		return WKBToPoint(v[WKBHeaderLength:], isBig, srid, order)
-	case WKBLineID:
-		return WKBToLine(v[WKBHeaderLength:], isBig, srid, order)
-	case WKBPolyID:
-		return WKBToPoly(v[WKBHeaderLength:], isBig, srid, order)
-	default:
-		return nil, sql.ErrInvalidGISData.New("ST_GeomFromWKB")
+	if order {
+		geom = SwapGeometryXY(geom)
 	}
+
+	return geom, nil
+}
+
+// Eval implements the sql.Expression interface.
+func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return EvalGeomFromWKB(ctx, row, g.ChildExpressions, sql.WKBUnknown)
 }
 
 // PointFromWKB is a function that returns a point type from a WKB byte array
@@ -382,71 +288,14 @@ func (p *PointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // Eval implements the sql.Expression interface.
 func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := p.ChildExpressions[0].Eval(ctx, row)
+	point, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPointID)
 	if err != nil {
-		return nil, err
-	}
-
-	if val == nil {
-		return nil, nil
-	}
-
-	v, ok := val.([]byte)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB")
-	}
-
-	isBig, geomType, err := sql.ParseWKBHeader(v)
-	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB")
-	}
-
-	if geomType != WKBPointID {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB")
-	}
-
-	srid := sql.CartesianSRID
-	if len(p.ChildExpressions) >= 2 {
-		s, err := p.ChildExpressions[1].Eval(ctx, row)
-		if err != nil {
+		if sql.ErrInvalidGISData.Is(err) {
+			return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+		} else {
 			return nil, err
 		}
-		if s == nil {
-			return nil, nil
-		}
-		s, err = sql.Uint32.Convert(s)
-		if err != nil {
-			return nil, err
-		}
-		srid = s.(uint32)
 	}
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
-	}
-
-	point, err := sql.WKBToPoint(v[WKBHeaderLength:], isBig, srid)
-	if err != nil {
-		return nil, err
-	}
-
-	order := false
-	if len(p.ChildExpressions) == 3 {
-		o, err := p.ChildExpressions[2].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if o == nil {
-			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidArgument.New(p.FunctionName())
-		}
-	}
-	if order {
-		return SwapGeometryXY(point), nil
-	}
-
 	return point, nil
 }
 
@@ -495,73 +344,15 @@ func (l *LineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 
 // Eval implements the sql.Expression interface.
 func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
-	val, err := l.ChildExpressions[0].Eval(ctx, row)
+	line, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBLineID)
 	if err != nil {
-		return nil, err
-	}
-
-	if val == nil {
-		return nil, nil
-	}
-
-	// Must be of type byte array
-	v, ok := val.([]byte)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_LineFromWKB")
-	}
-
-	// Parse Header
-	isBig, geomType, err := ParseWKBHeader(v)
-	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_LineFromWKB")
-	}
-
-	// Not a line, throw error
-	if geomType != WKBLineID {
-		return nil, sql.ErrInvalidGISData.New("ST_LineFromWKB")
-	}
-
-	// TODO: convert to this block to helper function
-	// Determine SRID
-	srid := uint32(0)
-	if len(l.ChildExpressions) >= 2 {
-		s, err := l.ChildExpressions[1].Eval(ctx, row)
-		if err != nil {
+		if sql.ErrInvalidGISData.Is(err) {
+			return nil, sql.ErrInvalidGISData.New(l.FunctionName())
+		} else {
 			return nil, err
 		}
-		if s == nil {
-			return nil, nil
-		}
-		s, err = sql.Uint32.Convert(s)
-		if err != nil {
-			return nil, err
-		}
-		srid = s.(uint32)
 	}
-
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
-	}
-
-	// Determine xy order
-	order := false
-	if len(l.ChildExpressions) == 3 {
-		o, err := l.ChildExpressions[2].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if o == nil {
-			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidArgument.New(l.FunctionName())
-		}
-	}
-
-	// Read data
-	return WKBToLine(v[WKBHeaderLength:], isBig, srid, order)
+	return line, nil
 }
 
 // PolyFromWKB is a function that returns a polygon type from a WKB byte array
@@ -609,78 +400,13 @@ func (p *PolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 
 // Eval implements the sql.Expression interface.
 func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
-	val, err := p.ChildExpressions[0].Eval(ctx, row)
+	poly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPolyID)
 	if err != nil {
-		return nil, err
-	}
-
-	if val == nil {
-		return nil, nil
-	}
-
-	// Must be of type byte array
-	v, ok := val.([]byte)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
-	}
-
-	// Parse Header
-	isBig, geomType, err := ParseWKBHeader(v)
-	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
-	}
-
-	// Not a polygon, throw error
-	if geomType != WKBPolyID {
-		return nil, sql.ErrInvalidGISData.New("ST_PolyFromWKB")
-	}
-
-	// TODO: convert to this block to helper function
-	// Determine SRID
-	srid := uint32(0)
-	if len(p.ChildExpressions) >= 2 {
-		s, err := p.ChildExpressions[1].Eval(ctx, row)
-		if err != nil {
+		if sql.ErrInvalidGISData.Is(err) {
+			return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+		} else {
 			return nil, err
 		}
-		if s == nil {
-			return nil, nil
-		}
-		s, err = sql.Uint32.Convert(s)
-		if err != nil {
-			return nil, err
-		}
-		srid = s.(uint32)
 	}
-
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
-	}
-
-	// Determine xy order
-	order := false
-	if len(p.ChildExpressions) == 3 {
-		o, err := p.ChildExpressions[2].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if o == nil {
-			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidArgument.New(p.FunctionName())
-		}
-	}
-
-	// Read data
-	return WKBToPoly(v[WKBHeaderLength:], isBig, srid, order)
-}
-
-func ValidateSRID(srid uint32) error {
-	if srid != sql.CartesianSRID && srid != sql.GeoSpatialSRID {
-		return ErrInvalidSRID.New(srid)
-	}
-	return nil
+	return poly, nil
 }

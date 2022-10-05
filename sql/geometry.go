@@ -58,6 +58,7 @@ const (
 	EndianSize     = 1
 	TypeSize       = 4
 	EWKBHeaderSize = SRIDSize + EndianSize + TypeSize
+	WKBHeaderSize  = EndianSize + TypeSize
 
 	PointSize             = 16
 	CountSize             = 4
@@ -97,12 +98,14 @@ func ParseEWKBHeader(buf []byte) (srid uint32, bigEndian bool, typ uint32, err e
 	if len(buf) < EWKBHeaderSize {
 		return 0, false, 0, ErrInvalidGISData.New("ParseEWKBHeader")
 	}
-	srid = binary.LittleEndian.Uint32(buf[0:SRIDSize]) // First 4 bytes is SRID always in little endian
-	bigEndian = buf[SRIDSize] == 0                     // Next byte is endianness
-	if bigEndian {
-		typ = binary.BigEndian.Uint32(buf[SRIDSize+EndianSize : EWKBHeaderSize]) // Next 4 bytes is type
+	srid = binary.LittleEndian.Uint32(buf) // First 4 bytes is SRID always in little endian
+	buf = buf[SRIDSize:]                   // Shift pointer over
+	bigEndian = buf[0] == 0                // Next byte is endianness
+	buf = buf[EndianSize:]                 // Shift pointer over
+	if bigEndian {                         // Next 4 bytes is type
+		typ = binary.BigEndian.Uint32(buf)
 	} else {
-		typ = binary.LittleEndian.Uint32(buf[SRIDSize+EndianSize : EWKBHeaderSize]) // Next 4 bytes is type
+		typ = binary.LittleEndian.Uint32(buf)
 	}
 
 	return
@@ -116,13 +119,12 @@ func ParseWKBHeader(buf []byte) (bigEndian bool, typ uint32, err error) {
 		return false, 0, ErrInvalidGISData.New("ParseWKBHeader")
 	}
 
-	// First byte is byte order
-	bigEndian = buf[0] == 0
-	// Next 4 bytes is geometry type
-	if bigEndian {
-		typ = binary.BigEndian.Uint32(buf[EndianSize:])
+	bigEndian = buf[0] == 0 // First byte is byte order
+	buf = buf[EndianSize:]  // Shift pointer over
+	if bigEndian {          // Next 4 bytes is geometry type
+		typ = binary.BigEndian.Uint32(buf)
 	} else {
-		typ = binary.LittleEndian.Uint32(buf[EndianSize:])
+		typ = binary.LittleEndian.Uint32(buf)
 	}
 
 	return

@@ -66,7 +66,7 @@ func (s *SwapXY) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 // SwapGeometryXY returns the geometry with the x and y swapped
-func SwapGeometryXY(v interface{}) interface{} {
+func SwapGeometryXY(v sql.GeometryValue) sql.GeometryValue {
 	switch v := v.(type) {
 	case sql.Point:
 		return sql.Point{SRID: v.SRID, X: v.Y, Y: v.X}
@@ -103,7 +103,7 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch val.(type) {
-	case sql.Point, sql.LineString, sql.Polygon:
+	case sql.GeometryValue:
 		return SwapGeometryXY(val), nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
