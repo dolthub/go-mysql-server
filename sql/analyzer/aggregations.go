@@ -50,8 +50,6 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 				return n, transform.SameTree, nil
 			}
 
-			// TODO: flattenedWindow has the same subquery GetField index issue as we hit with flattenedGroupBy.
-			//       Need to make sure we have a test case covering this
 			return flattenedWindow(ctx, n.SelectExprs, n.Child, columns)
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs) {

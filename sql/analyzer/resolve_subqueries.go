@@ -236,8 +236,8 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 				}
 			}
 		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
-			// If a subquery alias has visibility to its outer scopes, then we cannot cache its results
-			// TODO: Need more testing with CTEs. For example, CTEs that are non-deterministic MUST be
+			// If a subquery alias has visibility to its outer scopes, then we can't cache its results
+			// TODO: Need more logic and testing with CTEs. For example, CTEs that are non-deterministic MUST be
 			//       cached and have their result sets reused, otherwise query result will be incorrect.
 			if sqa.OuterScopeVisibility {
 				cacheable = false

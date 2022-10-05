@@ -243,7 +243,6 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// Fails with an unresolved *plan.Project node error
 				// The second Project in the union subquery doens't seem to get its alias reference resolved
-				// TODO: Something with opaque nodes not being processed? the qualifyExpresions code need to run here? Or resolveColumns?
 				Skip:     true,
 				Query:    `SELECT 1 as a, (select a union select a) as b;`,
 				Expected: []sql.Row{{1, 1}},
