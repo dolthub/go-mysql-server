@@ -52,10 +52,6 @@ import (
 func TestQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.SimpleSetup...)
 	e := mustNewEngine(t, harness)
-
-	// TODO: temporary for testing
-	e.Analyzer.Debug = true
-	e.Analyzer.Verbose = true
 	defer e.Close()
 	ctx := NewContext(harness)
 	for _, tt := range queries.QueryTests {
@@ -502,8 +498,8 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 func TestDerivedTableOuterScopeVisibility(t *testing.T, harness Harness) {
 	for _, tt := range queries.DerivedTableOuterScopeVisibilityQueries {
 		e := mustNewEngine(t, harness)
-		e.Analyzer.Debug = true
-		e.Analyzer.Verbose = true
+		//e.Analyzer.Debug = true
+		//e.Analyzer.Verbose = true
 		defer e.Close()
 		TestScriptWithEngine(t, e, harness, tt)
 	}
