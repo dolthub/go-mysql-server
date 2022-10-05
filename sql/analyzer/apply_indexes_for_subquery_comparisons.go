@@ -73,8 +73,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, _ *Analyzer, left, right sql.E
 	if idx == nil {
 		return nil
 	}
-	scopeLen := len(scope.Schema())
-	keyExpr := gf.WithIndex(scopeLen)
+	keyExpr := gf.WithIndex(0)
 	// We currently only support *expresssion.Equals and *InSubquery; neither matches null.
 	nullmask := []bool{false}
 	ita, err := plan.NewIndexedAccessForResolvedTable(rt, plan.NewLookupBuilder(ctx, idx, []sql.Expression{keyExpr}, nullmask))
