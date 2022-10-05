@@ -16,7 +16,6 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // SubqueryAlias is a node that gives a subquery a name.
@@ -66,19 +65,7 @@ func (sq *SubqueryAlias) Schema() sql.Schema {
 func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
 
-	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
-	// result rows are prepended with the scope row.
-	node := sq.Child
-	if sq.OuterScopeVisibility {
-		// TODO: Is it correct to switch on this? Will GetField expressions have the correct indexes?
-		newChild, _, err := transform.Node(sq.Child, prependRowInPlan(row))
-		if err != nil {
-			return nil, err
-		}
-		node = newChild
-	}
-
-	iter, err := node.RowIter(ctx, row)
+	iter, err := sq.Child.RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
