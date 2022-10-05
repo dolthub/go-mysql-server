@@ -235,17 +235,14 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 					return false
 				}
 			}
-		} else if _, ok := node.(*plan.SubqueryAlias); ok {
+		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
 			// If a subquery alias has visibility to its outer scopes, then we cannot cache its results
 			// TODO: Need more testing with CTEs. For example, CTEs that are non-deterministic MUST be
 			//       cached and have their result sets reused, otherwise query result will be incorrect.
-			// Easiest approach is to disable caching for all SQAs
-			cacheable = false
-			// Next best is only disabling caching when we know there's no visibility
-			// cacheable = !sqa.OuterScopeVisibility
-			// Best would be to disable caching when we know it's not needed
-			// cachable = sqa.NeedsOuterScopeVisibility
-			return false
+			if sqa.OuterScopeVisibility {
+				cacheable = false
+				return false
+			}
 		}
 		return true
 	})
@@ -301,13 +298,9 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		_, isJoin := c.Parent.(plan.JoinNode)
 		_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
 		if isJoin || isIndexedJoin {
-			_, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
-			if isSubqueryAlias {
-				// SubqueryAliases are always cacheable. They
-				// cannot reference their outside scope and
-				// even when they have non-determinstic
-				// expressions they should return the same
-				// results across multiple iterations.
+			sqa, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
+			if isSubqueryAlias && sqa.OuterScopeVisibility == false {
+				// SubqueryAliases are cacheable if they don't have visibility to outer scopes.
 				return plan.NewCachedResults(c.Node), transform.NewTree, nil
 			}
 		}
