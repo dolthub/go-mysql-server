@@ -73,7 +73,7 @@ const (
 	WKBPointID
 	WKBLineID
 	WKBPolyID
-	WKBMultiPointID
+	WKBMPointID
 	WKBMultiLineID
 	WKBMultiPolyID
 	WKBGeoCollectionID
@@ -228,7 +228,7 @@ func WKBToMultiPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
 		}
 		buf = buf[EndianSize+TypeSize:]
 		// Read point data
-		points[i], err = WKBToPoint(buf, isBig, srid)
+		points[i], err = WKBToPoint(buf[:PointSize], isBig, srid)
 		if err != nil {
 			return MultiPoint{}, err
 		}
@@ -329,7 +329,7 @@ func writePointSet(buf []byte, points []Point) {
 func SerializeMultiPoint(p MultiPoint) (buf []byte) {
 	numPoints := len(p.Points)
 	buf = allocateBuffer(numPoints, 1, numPoints)
-	SerializeEWKBHeader(buf, p.SRID, WKBMultiPointID)
+	SerializeEWKBHeader(buf, p.SRID, WKBMPointID)
 	writePointSet(buf[EWKBHeaderSize:], p.Points)
 	return
 }
@@ -373,7 +373,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 			geom, err = WKBToLine(val, isBig, srid)
 		case WKBPolyID:
 			geom, err = WKBToPoly(val, isBig, srid)
-		case WKBMultiPointID:
+		case WKBMPointID:
 			geom, err = WKBToMultiPoint(val, isBig, srid)
 		case WKBMultiLineID:
 			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(val))

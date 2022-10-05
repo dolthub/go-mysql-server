@@ -208,7 +208,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		geom, err = sql.WKBToLine(buf, isBig, srid)
 	case sql.WKBPolyID:
 		geom, err = sql.WKBToPoly(buf, isBig, srid)
-	case sql.WKBMultiPointID:
+	case sql.WKBMPointID:
 		geom, err = sql.WKBToMultiPoint(buf, isBig, srid)
 	// TODO: add multi geometries here
 	default:
@@ -402,4 +402,56 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
 	return poly, err
+}
+
+// MPointFromWKB is a function that returns a linestring type from a WKB byte array
+type MPointFromWKB struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*MPointFromWKB)(nil)
+
+// NewMPointFromWKB creates a new point expression.
+func NewMPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_LINEFROMWKB", "1 or 2", len(args))
+	}
+	return &MPointFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (p *MPointFromWKB) FunctionName() string {
+	return "st_mpointfromwkb"
+}
+
+// Description implements sql.FunctionExpression
+func (p *MPointFromWKB) Description() string {
+	return "returns a new linestring from WKB format."
+}
+
+// Type implements the sql.Expression interface.
+func (p *MPointFromWKB) Type() sql.Type {
+	return sql.LineStringType{}
+}
+
+func (p *MPointFromWKB) String() string {
+	var args = make([]string, len(p.ChildExpressions))
+	for i, arg := range p.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_LINEFROMWKB(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (p *MPointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMPointFromWKB(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (p *MPointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	mPoint, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBMPointID)
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+	}
+	return mPoint, err
 }
