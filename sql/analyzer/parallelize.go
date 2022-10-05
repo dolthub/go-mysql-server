@@ -102,9 +102,11 @@ func removeRedundantExchanges(node sql.Node) (sql.Node, transform.TreeIdentity, 
 	child, same, err := transform.Node(exchange.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
 			return exchange.Child, transform.NewTree, nil
-		} else if _, ok := node.(*plan.IndexedTableAccess); ok {
+		} else if ita, ok := node.(*plan.IndexedTableAccess); ok {
 			// todo(max): more graceful top-down exchange application
-			seenIta = true
+			if !ita.IsStatic() {
+				seenIta = true
+			}
 		}
 		return node, transform.SameTree, nil
 	})
