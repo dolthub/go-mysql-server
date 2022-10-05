@@ -28,42 +28,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.End()
 
-	ctxFunc := func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
-			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, false)
-		} else if expressioner, ok := context.Node.(sql.Expressioner); ok {
-			exprs := expressioner.Expressions()
-			var newExprs []sql.Expression
-			for i, expr := range exprs {
-				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					if sq, ok := e.(*plan.Subquery); ok {
-						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, false)
-					} else {
-						return e, transform.SameTree, nil
-					}
-				})
-				if err != nil {
-					return context.Node, transform.SameTree, err
-				}
-				if identity == transform.NewTree {
-					if newExprs == nil {
-						newExprs = make([]sql.Expression, len(exprs))
-						copy(newExprs, exprs)
-					}
-					newExprs[i] = newExpr
-				}
-			}
-
-			if newExprs != nil {
-				newNode, err := expressioner.WithExpressions(newExprs...)
-				return newNode, transform.NewTree, err
-			}
-		}
-
-		return context.Node, transform.SameTree, nil
-	}
-
-	return transform.NodeWithCtx(n, nil, ctxFunc)
+	return resolveSubqueriesHelper(ctx, a, n, scope, sel, false)
 }
 
 // finalizeSubqueries runs the final analysis pass on subquery expressions and subquery aliases in the node tree to ensure
@@ -76,29 +41,20 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	span, ctx := ctx.Span("finalize_subqueries")
 	defer span.End()
 
-	selectorFunc := func(context transform.Context) bool {
-		// TODO: Do we need to do something here to account for SubqueryExpressions? Couldn't we mess up scope by processing
-		//       multiple levels of SubqueryExpressions otherwise? Seems like it!?!
-		if _, ok := context.Parent.(*plan.SubqueryAlias); ok {
-			// If the parent of the current node is a SubqueryAlias, return false to prevent
-			// this node from being processed. We only want to process the next level of nested SubqueryAliases
-			// so that we can calculate the scope iteratively, otherwise the scope passed to SubqueryAliases further
-			// down in the tree won't be correct.
-			return false
-		}
-		return true
-	}
+	return resolveSubqueriesHelper(ctx, a, n, scope, sel, true)
+}
 
-	ctxFunc := func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
+func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
-			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
 		} else if expressioner, ok := context.Node.(sql.Expressioner); ok {
 			exprs := expressioner.Expressions()
 			var newExprs []sql.Expression
 			for i, expr := range exprs {
 				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if sq, ok := e.(*plan.Subquery); ok {
-						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, true)
+						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, finalize)
 					} else {
 						return e, transform.SameTree, nil
 					}
@@ -122,11 +78,14 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 		}
 
 		return context.Node, transform.SameTree, nil
-	}
-
-	return transform.NodeWithCtx(n, selectorFunc, ctxFunc)
+	})
 }
 
+// flattenTableAliases transforms TableAlias nodes that contain a SubqueryAlias or TableAlias node as the immediate
+// child so that the top level TableAlias is removed and the nested SubqueryAlias or nested TableAlias is the new top
+// level node, making sure to capture the alias name and transfer it to the new node. The parser doesn't directly
+// create this nested structure; it occurs as the execution plan is built and altered during analysis, for
+// example with CTEs that get plugged into the execution plan as the analyzer processes it.
 func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("flatten_table_aliases")
 	defer span.End()
