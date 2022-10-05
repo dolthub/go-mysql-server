@@ -212,6 +212,9 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 	default:
 		return nil, sql.ErrInvalidGISData.New()
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	order := false
 	if len(exprs) == 3 {
