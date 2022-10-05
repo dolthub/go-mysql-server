@@ -238,25 +238,35 @@ func WKBToMultiPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
 	return MultiPoint{SRID: srid, Points: points}, nil
 }
 
-func allocateBuffer(numPoints, numCounts int) []byte {
-	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts)
+func allocateBuffer(numPoints, numCounts, numWKBHeaders int) []byte {
+	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts+numWKBHeaders*WKBHeaderSize)
 }
 
 // SerializeEWKBHeader will write EWKB header to the given buffer
 func SerializeEWKBHeader(buf []byte, srid, typ uint32) {
-	binary.LittleEndian.PutUint32(buf[:4], srid)
-	buf[4] = 1
-	binary.LittleEndian.PutUint32(buf[5:9], typ)
+	binary.LittleEndian.PutUint32(buf, srid) // always write SRID in little endian
+	buf = buf[SRIDSize:]                     // shift
+	buf[0] = 1                               // always write in little endian
+	buf = buf[EndianSize:]                   // shift
+	binary.LittleEndian.PutUint32(buf, typ)  // write geometry type
+}
+
+// SerializeWKBHeader will write WKB header to the given buffer
+func SerializeWKBHeader(buf []byte, typ uint32) {
+	buf[0] = 1                              // always write in little endian
+	buf = buf[EndianSize:]                  // shift
+	binary.LittleEndian.PutUint32(buf, typ) // write geometry type
 }
 
 func SerializePointData(buf []byte, x, y float64) {
-	binary.LittleEndian.PutUint64(buf[:PointSize/2], math.Float64bits(x))
-	binary.LittleEndian.PutUint64(buf[PointSize/2:], math.Float64bits(y))
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(x))
+	buf = buf[PointSize/2:]
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(y))
 }
 
 func SerializePoint(p Point) (buf []byte) {
-	buf = allocateBuffer(1, 0)
-	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, WKBPointID)
+	buf = allocateBuffer(1, 0, 0)
+	SerializeEWKBHeader(buf, p.SRID, WKBPointID)
 	SerializePointData(buf[EWKBHeaderSize:], p.X, p.Y)
 	return
 }
@@ -275,7 +285,7 @@ func writePointSlice(buf []byte, points []Point) {
 }
 
 func SerializeLineString(l LineString) (buf []byte) {
-	buf = allocateBuffer(len(l.Points), 1)
+	buf = allocateBuffer(len(l.Points), 1, 0)
 	SerializeEWKBHeader(buf[:EWKBHeaderSize], l.SRID, WKBLineID)
 	writePointSlice(buf[EWKBHeaderSize:], l.Points)
 	return
@@ -299,9 +309,28 @@ func countPoints(p Polygon) (cnt int) {
 }
 
 func SerializePolygon(p Polygon) (buf []byte) {
-	buf = allocateBuffer(countPoints(p), len(p.Lines)+1)
+	buf = allocateBuffer(countPoints(p), len(p.Lines)+1, 0)
 	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, WKBPolyID)
 	writeLineSlice(buf[EWKBHeaderSize:], p.Lines)
+	return
+}
+
+func writePointSet(buf []byte, points []Point) {
+	writeCount(buf, uint32(len(points)))
+	buf = buf[CountSize:]
+	for _, p := range points {
+		SerializeWKBHeader(buf, WKBPointID)
+		buf = buf[WKBHeaderSize:]
+		SerializePointData(buf, p.X, p.Y)
+		buf = buf[PointSize:]
+	}
+}
+
+func SerializeMultiPoint(p MultiPoint) (buf []byte) {
+	numPoints := len(p.Points)
+	buf = allocateBuffer(numPoints, 1, numPoints)
+	SerializeEWKBHeader(buf, p.SRID, WKBMultiPointID)
+	writePointSet(buf[EWKBHeaderSize:], p.Points)
 	return
 }
 

@@ -84,8 +84,10 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return sql.SerializeLineString(v)[sql.SRIDSize:], nil
 	case sql.Polygon:
 		return sql.SerializePolygon(v)[sql.SRIDSize:], nil
+	case sql.MultiPoint:
+		return sql.SerializeMultiPoint(v)[sql.SRIDSize:], nil
 	default:
-		return nil, sql.ErrInvalidGISData.New("ST_AsWKB")
+		return nil, sql.ErrInvalidGISData.New(a.FunctionName())
 	}
 }
 

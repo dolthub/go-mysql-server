@@ -65,6 +65,16 @@ func TestAsWKB(t *testing.T) {
 		require.Equal(res, v)
 	})
 
+	t.Run("convert multipoint", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKB(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.MultiPointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
+		require.NoError(err)
+		require.Equal(res, v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKB(expression.NewLiteral(nil, sql.Null))
