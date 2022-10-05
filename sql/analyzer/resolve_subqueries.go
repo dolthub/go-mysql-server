@@ -186,25 +186,6 @@ func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	})
 }
 
-func resolveSubqueryExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, batchSel BatchSelector, ruleSel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// TODO: When we combine this one with resolveSubqueries, we won't need to have this one listed in the analyzer rules anymore
-
-	// NOTE: This operates ONLY on the current node. Looking at all expressions in the tree to find all Subqueries.
-	// Any subqueries identified in the expression trees will have the correct scope because subqueries cannot directly
-	// contain expressions for other subqueries (only through their Query nodes can they embed more subqueries).
-
-	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		s, ok := e.(*plan.Subquery)
-		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
-		// query might cause them to need to shift their field indexes.
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-
-		return analyzeSubqueryExpression(ctx, a, n, s, scope, ruleSel, false)
-	})
-}
-
 func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *plan.Subquery, scope *Scope, sel RuleSelector, finalize bool) (sql.Expression, transform.TreeIdentity, error) {
 	// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 	// query might cause them to need to shift their field indexes.
@@ -217,8 +198,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	if finalize {
 		analyzed, _, err = a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, sel)
 	} else {
-		// TODO: resolve should skip pruneColumns and optimizeJoins
-		analyzed, _, err = a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, sel)
+		analyzed, _, err = a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, NewSubqueryExprResolveSelector(sel))
 	}
 	if err != nil {
 		// We ignore certain errors, deferring them to later analysis passes. Specifically, if the subquery isn't
@@ -248,8 +228,7 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, 
 		// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
 		// gives a derived table visibility to the OUTER scope where the subquery is defined.
 		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-		// TODO: Confirm that expression aliases are or are not available
-		// To support this, we rip off the current inner node so that the outer scope nodes are still present, but not the lateral nodes
+		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
 		subScope.nodes = scope.InnerToOuter()
 		n.OuterScopeVisibility = true
 	}
@@ -267,7 +246,7 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, n *plan.SubqueryAlias, 
 	}
 
 	if len(n.Columns) > 0 {
-		schemaLen := schemaLength(n.Child)
+		schemaLen := schemaLength(child)
 		if schemaLen != len(n.Columns) {
 			return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
 		}

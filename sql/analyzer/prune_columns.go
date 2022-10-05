@@ -320,12 +320,6 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 }
 
 func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-
-	indexedCols, err := indexColumns(ctx, a, node, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
 	return transform.NodeWithCtx(node, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case sql.SchemaTarget:
@@ -349,6 +343,11 @@ func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, sco
 		default:
 			if _, ok := n.(sql.Expressioner); !ok {
 				return n, transform.SameTree, nil
+			}
+
+			indexedCols, err := indexColumns(ctx, a, n, scope)
+			if err != nil {
+				return nil, transform.SameTree, err
 			}
 
 			if len(indexedCols) == 0 {
