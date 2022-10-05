@@ -73,29 +73,6 @@ func (s *SRID) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewSRID(children...)
 }
 
-// PointWithSRID creates a deep copy of point object with given SRID
-func PointWithSRID(p sql.Point, srid uint32) sql.Point {
-	return sql.Point{SRID: srid, X: p.X, Y: p.Y}
-}
-
-// LineWithSRID creates a deep copy of linestring object with given SRID
-func LineWithSRID(l sql.LineString, srid uint32) sql.LineString {
-	points := make([]sql.Point, len(l.Points))
-	for i, p := range l.Points {
-		points[i] = PointWithSRID(p, srid)
-	}
-	return sql.LineString{SRID: srid, Points: points}
-}
-
-// PolyWithSRID creates a deep copy of polygon object with given SRID
-func PolyWithSRID(p sql.Polygon, srid uint32) sql.Polygon {
-	lines := make([]sql.LineString, len(p.Lines))
-	for i, l := range p.Lines {
-		lines[i] = LineWithSRID(l, srid)
-	}
-	return sql.Polygon{SRID: srid, Lines: lines}
-}
-
 // Eval implements the sql.Expression interface.
 func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	g, err := s.ChildExpressions[0].Eval(ctx, row)
