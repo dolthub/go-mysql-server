@@ -130,10 +130,7 @@ func (p *prependRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return next, err
 	}
-	newRow := p.row.Append(next)
-	// TODO: Remove after debugging...
-	fmt.Printf(" prependRowIter(%-20T).Next: %s \n", p.childIter, sql.FormatRow(newRow))
-	return newRow, nil
+	return p.row.Append(next), nil
 }
 
 func (p *prependRowIter) Close(ctx *sql.Context) error {
