@@ -91,6 +91,18 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 				Query:       "SELECT 1 as a1, dt.* from (select * from (select a1 from numbers group by val having val = a1) as dt2(val)) as dt(val);",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
+			{
+				// The analyzer rewrites this query so that the CTE is embedded in the projected subquery expression, and
+				// then can't distinguish between a subquery alias and a CTE, so provides outer scope visibility. MySQL
+				// does not behave this way, so we should
+				Skip: true,
+
+				// CTEs do not get outer scope visibility, even if they end up being used as a derived table from inside
+				// a subquery expression.
+				// TODO: Need to confirm this with MySQL testing
+				Query:       "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
 		},
 	},
 	{

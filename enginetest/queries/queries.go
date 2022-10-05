@@ -8678,10 +8678,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
 	{
-		Query:       "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
-		ExpectedErr: sql.ErrTableNotFound,
-	},
-	{
 		Query: `WITH mt1 (x,y) as (select i,s FROM mytable)
 			SELECT mt1.i, mt1.s FROM mt1`,
 		ExpectedErr: sql.ErrTableColumnNotFound,
