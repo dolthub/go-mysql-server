@@ -103,20 +103,9 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 			}
 
 			newAggregates = append(newAggregates, e)
-			// To account for any outer scope schema that will be prepended to the rows visible to these nodes,
-			// we need to take the largest column index available at this scope level and use it as our base.
-			// TODO: Is this the right logic? Seems like this would break for a top-level query?
-			baseIndex := 0
-			if len(columns) > 0 {
-				for _, value := range columns {
-					if value.index > baseIndex {
-						baseIndex = value.index
-					}
-				}
-			}
 
 			return expression.NewGetField(
-				len(newAggregates)-1+baseIndex, e.Type(), e.String(), e.IsNullable(),
+				len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
 			), transform.NewTree, nil
 		})
 		if err != nil {
