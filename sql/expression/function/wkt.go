@@ -571,36 +571,36 @@ func (p *PolyFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // MultiPoint is a function that returns a MultiPoint type from a WKT string
-type MultiPointFromText struct {
+type MPointFromText struct {
 	expression.NaryExpression
 }
 
-var _ sql.FunctionExpression = (*MultiPointFromText)(nil)
+var _ sql.FunctionExpression = (*MPointFromText)(nil)
 
-// NewMultiPointFromText creates a new MultiPoint expression.
-func NewMultiPointFromText(args ...sql.Expression) (sql.Expression, error) {
+// NewMPointFromText creates a new MultiPoint expression.
+func NewMPointFromText(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_MULTIPOINTFROMTEXT", "1 or 2", len(args))
 	}
-	return &MultiPointFromText{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &MPointFromText{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *MultiPointFromText) FunctionName() string {
-	return "st_multipointfromtext"
+func (p *MPointFromText) FunctionName() string {
+	return "st_mpointfromtext"
 }
 
 // Description implements sql.FunctionExpression
-func (p *MultiPointFromText) Description() string {
+func (p *MPointFromText) Description() string {
 	return "returns a new multipoint from a WKT string."
 }
 
 // Type implements the sql.Expression interface.
-func (p *MultiPointFromText) Type() sql.Type {
+func (p *MPointFromText) Type() sql.Type {
 	return sql.MultiPointType{}
 }
 
-func (p *MultiPointFromText) String() string {
+func (p *MPointFromText) String() string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
@@ -609,12 +609,12 @@ func (p *MultiPointFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *MultiPointFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMultiPointFromText(children...)
+func (p *MPointFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMPointFromText(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (p *MultiPointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *MPointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	line, err := WKTToGeom(ctx, row, p.ChildExpressions, "multipoint")
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
