@@ -53,7 +53,7 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 	})
 }
 
-func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.Expression, node *plan.Filter, equals bool, scope *Scope, tableAliases TableAliases) sql.Node {
+func getIndexedInSubqueryFilter(ctx *sql.Context, _ *Analyzer, left, right sql.Expression, node *plan.Filter, equals bool, scope *Scope, tableAliases TableAliases) sql.Node {
 	gf, isGetField := left.(*expression.GetField)
 	subq, isSubquery := right.(*plan.Subquery)
 	rt, isResolved := node.Child.(*plan.ResolvedTable)
@@ -73,7 +73,8 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 	if idx == nil {
 		return nil
 	}
-	keyExpr := gf.WithIndex(0)
+	scopeLen := len(scope.Schema())
+	keyExpr := gf.WithIndex(scopeLen)
 	// We currently only support *expresssion.Equals and *InSubquery; neither matches null.
 	nullmask := []bool{false}
 	ita, err := plan.NewIndexedAccessForResolvedTable(rt, plan.NewLookupBuilder(ctx, idx, []sql.Expression{keyExpr}, nullmask))
