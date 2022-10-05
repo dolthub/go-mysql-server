@@ -92,6 +92,9 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 func nodeHasGetFieldReferenceBetween(n sql.Node, low, high int) bool {
 	var found bool
 	transform.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(sql.OpaqueNode); ok {
+			return false
+		}
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				if expressionHasGetFieldReferenceBetween(e, low, high) {
