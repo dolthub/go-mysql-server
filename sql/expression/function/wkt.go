@@ -137,17 +137,17 @@ type GeomFromText struct {
 
 var _ sql.FunctionExpression = (*GeomFromText)(nil)
 
-// NewGeomFromWKT creates a new point expression.
-func NewGeomFromWKT(args ...sql.Expression) (sql.Expression, error) {
+// NewGeomFromText creates a new point expression.
+func NewGeomFromText(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMWKT", "1, 2, or 3", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMTEXT", "1, 2, or 3", len(args))
 	}
 	return &GeomFromText{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
 func (g *GeomFromText) FunctionName() string {
-	return "st_geomfromwkt"
+	return "st_geomfromtext"
 }
 
 // Description implements sql.FunctionExpression
@@ -166,22 +166,22 @@ func (g *GeomFromText) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_GEOMFROMWKT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("ST_GEOMFROMTEXT(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
 func (g *GeomFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomFromWKT(children...)
+	return NewGeomFromText(children...)
 }
 
-// ParseWKTHeader should extract the type from the geometry string
+// ParseWKTHeader should extract the type and data from the geometry string
 func ParseWKTHeader(s string) (string, string, error) {
 	// Read until first open parenthesis
 	end := strings.Index(s, "(")
 
 	// Bad if no parenthesis found
 	if end == -1 {
-		return "", "", sql.ErrInvalidGISData.New("ST_GeomFromText")
+		return "", "", sql.ErrInvalidGISData.New()
 	}
 
 	// Get Geometry Type
@@ -195,7 +195,7 @@ func ParseWKTHeader(s string) (string, string, error) {
 
 	// Check that data is surrounded by parentheses
 	if data[0] != '(' || data[len(data)-1] != ')' {
-		return "", "", sql.ErrInvalidGISData.New("ST_GeomFromText")
+		return "", "", sql.ErrInvalidGISData.New()
 	}
 	// Remove parentheses, and trim
 	data = data[1 : len(data)-1]
@@ -206,61 +206,46 @@ func ParseWKTHeader(s string) (string, string, error) {
 
 // WKTToPoint expects a string like this "1.2 3.4"
 func WKTToPoint(s string, srid uint32, order bool) (sql.Point, error) {
-	// Empty string is wrong
 	if len(s) == 0 {
-		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New()
 	}
 
 	// Get everything between spaces
 	args := strings.Fields(s)
-
-	// Check length
 	if len(args) != 2 {
-		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New()
 	}
 
-	// Parse x
 	x, err := strconv.ParseFloat(args[0], 64)
 	if err != nil {
-		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New()
 	}
 
-	// Parse y
 	y, err := strconv.ParseFloat(args[1], 64)
 	if err != nil {
-		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New()
 	}
 
-	// See if we need to swap x and y
 	if order {
 		x, y = y, x
 	}
 
-	// Create point object
 	return sql.Point{SRID: srid, X: x, Y: y}, nil
 }
 
 // WKTToLine expects a string like "1.2 3.4, 5.6 7.8, ..."
 func WKTToLine(s string, srid uint32, order bool) (sql.LineString, error) {
-	// Empty string is wrong
 	if len(s) == 0 {
-		return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromText")
+		return sql.LineString{}, sql.ErrInvalidGISData.New()
 	}
 
-	// Separate by comma
 	pointStrs := strings.Split(s, ",")
-
-	// Parse each point string
 	var points = make([]sql.Point, len(pointStrs))
+	var err error
 	for i, ps := range pointStrs {
-		// Remove leading and trailing whitespace
 		ps = strings.TrimSpace(ps)
-
-		// Parse point
-		if p, err := WKTToPoint(ps, srid, order); err == nil {
-			points[i] = p
-		} else {
-			return sql.LineString{}, sql.ErrInvalidGISData.New("ST_LineFromText")
+		if points[i], err = WKTToPoint(ps, srid, order); err != nil {
+			return sql.LineString{}, sql.ErrInvalidGISData.New()
 		}
 	}
 
@@ -275,7 +260,7 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 		// Look for closing parentheses
 		end := strings.Index(s, ")")
 		if end == -1 {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Extract linestring string; does not include ")"
@@ -283,7 +268,7 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 
 		// Must start with open parenthesis
 		if len(lineStr) == 0 || lineStr[0] != '(' {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Remove leading "("
@@ -298,10 +283,10 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 			if isLinearRing(line) {
 				lines = append(lines, line)
 			} else {
-				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
+				return sql.Polygon{}, sql.ErrInvalidGISData.New()
 			}
 		} else {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Prepare next string
@@ -315,7 +300,7 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 
 		// LineStrings must be comma-separated
 		if s[0] != ',' {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Drop leading comma
@@ -325,14 +310,31 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 		s = strings.TrimSpace(s)
 	}
 
-	// Create Polygon object
 	return sql.Polygon{SRID: srid, Lines: lines}, nil
 }
 
-// Eval implements the sql.Expression interface.
-func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
-	val, err := g.ChildExpressions[0].Eval(ctx, row)
+// WKTToMultiPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
+func WKTToMultiPoint(s string, srid uint32, order bool) (sql.MultiPoint, error) {
+	if len(s) == 0 {
+		return sql.MultiPoint{}, sql.ErrInvalidGISData.New()
+	}
+
+	pointStrs := strings.Split(s, ",")
+	var points = make([]sql.Point, len(pointStrs))
+	var err error
+	for i, ps := range pointStrs {
+		ps = strings.TrimSpace(ps)
+		if points[i], err = WKTToPoint(ps, srid, order); err != nil {
+			return sql.MultiPoint{}, sql.ErrInvalidGISData.New()
+		}
+	}
+
+	return sql.MultiPoint{SRID: srid, Points: points}, nil
+}
+
+// WKTToGeom expects a string in WKT format, and converts it to a geometry type
+func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGeomType string) (sql.GeometryValue, error) {
+	val, err := exprs[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -341,22 +343,23 @@ func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	// Expect a string, throw error otherwise
 	s, ok := val.(string)
 	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_GeomFromText")
+		return nil, sql.ErrInvalidGISData.New()
 	}
 
-	// Determine type, and get data
 	geomType, data, err := ParseWKTHeader(s)
 	if err != nil {
 		return nil, err
 	}
 
-	// Determine SRID
+	if expectedGeomType != "" && geomType != expectedGeomType {
+		return nil, sql.ErrInvalidGISData.New()
+	}
+
 	srid := uint32(0)
-	if len(g.ChildExpressions) >= 2 {
-		s, err := g.ChildExpressions[1].Eval(ctx, row)
+	if len(exprs) >= 2 {
+		s, err := exprs[1].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -369,15 +372,13 @@ func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		}
 		srid = s.(uint32)
 	}
-
 	if err = ValidateSRID(srid); err != nil {
 		return nil, err
 	}
 
-	// Determine xy order
 	order := srid == sql.GeoSpatialSRID
-	if len(g.ChildExpressions) == 3 {
-		o, err := g.ChildExpressions[2].Eval(ctx, row)
+	if len(exprs) == 3 {
+		o, err := exprs[2].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -386,12 +387,10 @@ func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		}
 		order, err = ParseAxisOrder(o.(string))
 		if err != nil {
-			return nil, sql.ErrInvalidArgument.New(g.FunctionName())
+			return nil, err
 		}
 	}
 
-	// Parse accordingly
-	// TODO: define consts instead of string comparison?
 	switch geomType {
 	case "point":
 		return WKTToPoint(data, srid, order)
@@ -399,343 +398,226 @@ func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return WKTToLine(data, srid, order)
 	case "polygon":
 		return WKTToPoly(data, srid, order)
+	case "multipoint":
+		return WKTToMultiPoint(data, srid, order)
 	default:
-		return nil, sql.ErrInvalidGISData.New("ST_GeomFromText")
+		return nil, sql.ErrInvalidGISData.New()
 	}
 }
 
-// PointFromWKT is a function that returns a point type from a WKT string
-type PointFromWKT struct {
+// Eval implements the sql.Expression interface.
+func (g *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	geom, err := WKTToGeom(ctx, row, g.ChildExpressions, "")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+	}
+	return geom, err
+}
+
+// PointFromText is a function that returns a point type from a WKT string
+type PointFromText struct {
 	expression.NaryExpression
 }
 
-var _ sql.FunctionExpression = (*PointFromWKT)(nil)
+var _ sql.FunctionExpression = (*PointFromText)(nil)
 
-// NewPointFromWKT creates a new point expression.
-func NewPointFromWKT(args ...sql.Expression) (sql.Expression, error) {
+// NewPointFromText creates a new point expression.
+func NewPointFromText(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("ST_POINTFROMWKT", "1, 2, or 3", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_POINTFROMTEXT", "1, 2, or 3", len(args))
 	}
-	return &PointFromWKT{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &PointFromText{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *PointFromWKT) FunctionName() string {
-	return "st_pointfromwkt"
+func (p *PointFromText) FunctionName() string {
+	return "st_pointfromtext"
 }
 
 // Description implements sql.FunctionExpression
-func (p *PointFromWKT) Description() string {
+func (p *PointFromText) Description() string {
 	return "returns a new point from a WKT string."
 }
 
 // Type implements the sql.Expression interface.
-func (p *PointFromWKT) Type() sql.Type {
+func (p *PointFromText) Type() sql.Type {
 	return sql.PointType{}
 }
 
-func (p *PointFromWKT) String() string {
+func (p *PointFromText) String() string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_POINTFROMWKT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("ST_POINTFROMTEXT(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (p *PointFromWKT) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPointFromWKT(children...)
+func (p *PointFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewPointFromText(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (p *PointFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
-	val, err := p.ChildExpressions[0].Eval(ctx, row)
-	if err != nil {
-		return nil, err
+func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	point, err := WKTToGeom(ctx, row, p.ChildExpressions, "point")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
-
-	if val == nil {
-		return nil, nil
-	}
-
-	// Must be of type string
-	s, ok := val.(string)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
-	}
-
-	// Parse Header
-	geomType, data, err := ParseWKTHeader(s)
-	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
-	}
-
-	// Not a point, throw error
-	if geomType == "point" {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
-	}
-
-	// Determine SRID
-	srid := uint32(0)
-	if len(p.ChildExpressions) >= 2 {
-		s, err := p.ChildExpressions[1].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if s == nil {
-			return nil, nil
-		}
-		s, err = sql.Uint32.Convert(s)
-		if err != nil {
-			return nil, err
-		}
-		srid = s.(uint32)
-	}
-
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
-	}
-
-	// Determine xy order
-	order := false
-	if len(p.ChildExpressions) == 3 {
-		o, err := p.ChildExpressions[2].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if o == nil {
-			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidArgument.New(p.FunctionName())
-		}
-	}
-
-	return WKTToPoint(data, srid, order)
+	return point, err
 }
 
-// LineFromWKT is a function that returns a point type from a WKT string
-type LineFromWKT struct {
+// LineFromText is a function that returns a point type from a WKT string
+type LineFromText struct {
 	expression.NaryExpression
 }
 
-var _ sql.FunctionExpression = (*LineFromWKT)(nil)
+var _ sql.FunctionExpression = (*LineFromText)(nil)
 
-// NewLineFromWKT creates a new point expression.
-func NewLineFromWKT(args ...sql.Expression) (sql.Expression, error) {
+// NewLineFromText creates a new point expression.
+func NewLineFromText(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("ST_LINEFROMWKT", "1 or 2", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_LINEFROMTEXT", "1 or 2", len(args))
 	}
-	return &LineFromWKT{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &LineFromText{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (l *LineFromWKT) FunctionName() string {
-	return "st_linefromwkt"
+func (l *LineFromText) FunctionName() string {
+	return "st_linefromtext"
 }
 
 // Description implements sql.FunctionExpression
-func (l *LineFromWKT) Description() string {
+func (l *LineFromText) Description() string {
 	return "returns a new line from a WKT string."
 }
 
 // Type implements the sql.Expression interface.
-func (l *LineFromWKT) Type() sql.Type {
+func (l *LineFromText) Type() sql.Type {
 	return sql.LineStringType{}
 }
 
-func (l *LineFromWKT) String() string {
+func (l *LineFromText) String() string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_LINEFROMWKT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("ST_LINEFROMTEXT(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (l *LineFromWKT) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLineFromWKT(children...)
+func (l *LineFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLineFromText(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (l *LineFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
-	val, err := l.ChildExpressions[0].Eval(ctx, row)
-	if err != nil {
-		return nil, err
+func (l *LineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	line, err := WKTToGeom(ctx, row, l.ChildExpressions, "linestring")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
 	}
-
-	if val == nil {
-		return nil, nil
-	}
-
-	// Expect a string, throw error otherwise
-	s, ok := val.(string)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_LineFromText")
-	}
-
-	// Parse Header
-	geomType, data, err := ParseWKTHeader(s)
-	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_LineFromText")
-	}
-
-	// Not a line, throw error
-	if geomType != "linestring" {
-		return nil, sql.ErrInvalidGISData.New("ST_LineFromText")
-	}
-
-	// Evaluate second argument
-	srid := uint32(0)
-	if len(l.ChildExpressions) >= 2 {
-		s, err := l.ChildExpressions[1].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if s == nil {
-			return nil, nil
-		}
-		s, err = sql.Uint32.Convert(s)
-		if err != nil {
-			return nil, err
-		}
-		srid = s.(uint32)
-	}
-
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
-	}
-
-	// Determine xt order
-	order := false
-	if len(l.ChildExpressions) == 3 {
-		o, err := l.ChildExpressions[2].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if o == nil {
-			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidGISData.New("ST_LineFromText")
-		}
-	}
-
-	return WKTToLine(data, srid, order)
+	return line, err
 }
 
-// PolyFromWKT is a function that returns a polygon type from a WKT string
-type PolyFromWKT struct {
+// PolyFromText is a function that returns a polygon type from a WKT string
+type PolyFromText struct {
 	expression.NaryExpression
 }
 
-var _ sql.FunctionExpression = (*PolyFromWKT)(nil)
+var _ sql.FunctionExpression = (*PolyFromText)(nil)
 
-// NewPolyFromWKT creates a new polygon expression.
-func NewPolyFromWKT(args ...sql.Expression) (sql.Expression, error) {
+// NewPolyFromText creates a new polygon expression.
+func NewPolyFromText(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("ST_POLYFROMWKT", "1, 2, or 3", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_POLYFROMTEXT", "1, 2, or 3", len(args))
 	}
-	return &PolyFromWKT{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &PolyFromText{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *PolyFromWKT) FunctionName() string {
-	return "st_polyfromwkt"
+func (p *PolyFromText) FunctionName() string {
+	return "st_polyfromtext"
 }
 
 // Description implements sql.FunctionExpression
-func (p *PolyFromWKT) Description() string {
+func (p *PolyFromText) Description() string {
 	return "returns a new polygon from a WKT string."
 }
 
 // Type implements the sql.Expression interface.
-func (p *PolyFromWKT) Type() sql.Type {
+func (p *PolyFromText) Type() sql.Type {
 	return sql.PolygonType{}
 }
 
-func (p *PolyFromWKT) String() string {
+func (p *PolyFromText) String() string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_POLYFROMWKT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("ST_POLYFROMTEXT(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (p *PolyFromWKT) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPolyFromWKT(children...)
+func (p *PolyFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewPolyFromText(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (p *PolyFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
-	val, err := p.ChildExpressions[0].Eval(ctx, row)
-	if err != nil {
-		return nil, err
+func (p *PolyFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	poly, err := WKTToGeom(ctx, row, p.ChildExpressions, "polygon")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
+	return poly, err
+}
 
-	if val == nil {
-		return nil, nil
+// MultiPoint is a function that returns a MultiPoint type from a WKT string
+type MultiPointFromText struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*MultiPointFromText)(nil)
+
+// NewMultiPointFromText creates a new MultiPoint expression.
+func NewMultiPointFromText(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_MULTIPOINTFROMTEXT", "1 or 2", len(args))
 	}
+	return &MultiPointFromText{expression.NaryExpression{ChildExpressions: args}}, nil
+}
 
-	// Expect a string, throw error otherwise
-	s, ok := val.(string)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_PolyFromWKT")
+// FunctionName implements sql.FunctionExpression
+func (p *MultiPointFromText) FunctionName() string {
+	return "st_multipointfromtext"
+}
+
+// Description implements sql.FunctionExpression
+func (p *MultiPointFromText) Description() string {
+	return "returns a new multipoint from a WKT string."
+}
+
+// Type implements the sql.Expression interface.
+func (p *MultiPointFromText) Type() sql.Type {
+	return sql.MultiPointType{}
+}
+
+func (p *MultiPointFromText) String() string {
+	var args = make([]string, len(p.ChildExpressions))
+	for i, arg := range p.ChildExpressions {
+		args[i] = arg.String()
 	}
+	return fmt.Sprintf("ST_MULTIPOINTFROMTEXT(%s)", strings.Join(args, ","))
+}
 
-	// Parse Header
-	geomType, data, err := ParseWKTHeader(s)
-	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_PolyFromWKT")
+// WithChildren implements the Expression interface.
+func (p *MultiPointFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMultiPointFromText(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (p *MultiPointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	line, err := WKTToGeom(ctx, row, p.ChildExpressions, "multipoint")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
-
-	// Not a polygon, throw error
-	if geomType != "polygon" {
-		return nil, sql.ErrInvalidGISData.New("ST_PolyFromText")
-	}
-
-	// Determine SRID
-	srid := uint32(0)
-	if len(p.ChildExpressions) > 2 {
-		s, err := p.ChildExpressions[1].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if s == nil {
-			return nil, nil
-		}
-		s, err = sql.Uint32.Convert(s)
-		if err != nil {
-			return nil, err
-		}
-		srid = s.(uint32)
-	}
-
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
-	}
-
-	// Determine xy order
-	order := false
-	if len(p.ChildExpressions) == 3 {
-		o, err := p.ChildExpressions[2].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if o == nil {
-			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidArgument.New(p.FunctionName())
-		}
-	}
-
-	return WKTToPoly(data, srid, order)
+	return line, err
 }

@@ -144,7 +144,7 @@ func ParseAxisOrder(s string) (bool, error) {
 	case "axis-order=lat-long", "axis-order=srid-defined":
 		return false, nil
 	default:
-		return false, sql.ErrInvalidArgument.New("placeholder")
+		return false, sql.ErrInvalidArgument.New()
 	}
 }
 
@@ -241,7 +241,11 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 
 // Eval implements the sql.Expression interface.
 func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return EvalGeomFromWKB(ctx, row, g.ChildExpressions, sql.WKBUnknown)
+	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, sql.WKBUnknown)
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+	}
+	return geom, err
 }
 
 // PointFromWKB is a function that returns a point type from a WKB byte array
