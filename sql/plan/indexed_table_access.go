@@ -101,6 +101,10 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 	}, nil
 }
 
+func (i *IndexedTableAccess) IsStatic() bool {
+	return !i.lookup.IsEmpty()
+}
+
 func (i *IndexedTableAccess) Resolved() bool {
 	return i.ResolvedTable.Resolved()
 }
