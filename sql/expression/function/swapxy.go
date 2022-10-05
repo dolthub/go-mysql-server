@@ -82,6 +82,7 @@ func SwapGeometryXY(v interface{}) interface{} {
 			lines[i] = SwapGeometryXY(l).(sql.LineString)
 		}
 		return sql.Polygon{SRID: v.SRID, Lines: lines}
+	// TODO: add multi geometries here
 	default:
 		return nil
 	}

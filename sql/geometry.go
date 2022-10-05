@@ -131,7 +131,7 @@ func ParseWKBHeader(buf []byte) (bigEndian bool, typ uint32, err error) {
 // WKBToPoint parses the data portion of a byte array in WKB format to a Point object
 func WKBToPoint(buf []byte, isBig bool, srid uint32) (Point, error) {
 	// Must be 16 bytes (2 floats)
-	if len(buf) < PointSize {
+	if len(buf) != PointSize {
 		return Point{}, ErrInvalidGISData.New("WKBToPoint")
 	}
 
@@ -162,7 +162,7 @@ func WKBToLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
 	// Read points
 	var err error
 	for i := range points {
-		points[i], err = WKBToPoint(buf, isBig, srid)
+		points[i], err = WKBToPoint(buf[:PointSize], isBig, srid)
 		if err != nil {
 			return LineString{}, ErrInvalidGISData.New("WKBToLine")
 		}
