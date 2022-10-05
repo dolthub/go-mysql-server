@@ -72,6 +72,17 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 				Query:    "SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}},
 			},
+			{
+				// CTEs are eligible for outer scope visibility, as long as they are contained in a subquery expression.
+				Query:    "SELECT DISTINCT numbers.val, (WITH cte1 AS (SELECT val * 2 as val2 from numbers) SELECT count(*) from cte1 where numbers.val = cte1.val2) as count from numbers having count > 0;",
+				Expected: []sql.Row{{2, 2}, {4, 1}, {6, 3}},
+			},
+			{
+				// Recursive CTEs are eligible for outer scope visibility as well, as long as they are contained in a
+				// subquery expression.
+				Query:    "select distinct n1.val, (with recursive cte1(n) as (select (n1.val) from dual union all select n + 1 from cte1 where n < 10) select sum(n) from cte1) from numbers n1 where n1.val > 4;",
+				Expected: []sql.Row{{5, 45.0}, {6, 40.0}},
+			},
 		},
 	},
 	{
@@ -87,19 +98,25 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				// A derived table inside a derived table does NOT have visibility to outer scopes.
+				// a derived table NOT inside a subquery expression does NOT have access to any lateral scope tables.
+				Query:       "SELECT n1.val as a1 from numbers n1, (select n1.val, n2.val * -1 from numbers n2 where n1.val = n2.val) as dt;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				// A derived table inside a derived table does NOT have visibility to any outer scopes.
 				Query:       "SELECT 1 as a1, dt.* from (select * from (select a1 from numbers group by val having val = a1) as dt2(val)) as dt(val);",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				// The analyzer rewrites this query so that the CTE is embedded in the projected subquery expression, and
-				// then can't distinguish between a subquery alias and a CTE, so provides outer scope visibility. MySQL
-				// does not behave this way, so we should
+				// The analyzer rewrites this query so that the CTE is embedded in the projected subquery expression,
+				// which provides outer scope visibility for the opk table. It seems like MySQL is attaching the CTE
+				// to the top level of the query, and not directly inside the subquery expression, which would explain
+				// why MySQL does NOT give this query visibility to the 'opk' table alias. We should match MySQL's
+				// behavior, but this is a small edge case we can follow up on.
 				Skip: true,
 
-				// CTEs do not get outer scope visibility, even if they end up being used as a derived table from inside
-				// a subquery expression.
-				// TODO: Need to confirm this with MySQL testing
+				// CTEs and Recursive CTEs may receive outer scope visibility, but only when they are contained in a
+				// subquery expression. The CTE in this query should NOT have visibility to the 'opk' table alias.
 				Query:       "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
 				ExpectedErr: sql.ErrTableNotFound,
 			},
