@@ -99,7 +99,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if s == nil {
+	if v == nil {
 		return nil, nil
 	}
 

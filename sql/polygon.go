@@ -208,8 +208,12 @@ func (p Polygon) GetSRID() uint32 {
 
 // SetSRID implements GeometryValue interface.
 func (p Polygon) SetSRID(srid uint32) GeometryValue {
+	lines := make([]LineString, len(p.Lines))
+	for i, l := range p.Lines {
+		lines[i] = l.SetSRID(srid).(LineString)
+	}
 	return Polygon{
 		SRID:  srid,
-		Lines: p.Lines,
+		Lines: lines,
 	}
 }

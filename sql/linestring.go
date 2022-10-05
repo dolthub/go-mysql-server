@@ -208,8 +208,12 @@ func (l LineString) GetSRID() uint32 {
 
 // SetSRID implements GeometryValue interface.
 func (l LineString) SetSRID(srid uint32) GeometryValue {
+	points := make([]Point, len(l.Points))
+	for i, p := range l.Points {
+		points[i] = p.SetSRID(srid).(Point)
+	}
 	return LineString{
 		SRID:   srid,
-		Points: l.Points,
+		Points: points,
 	}
 }
