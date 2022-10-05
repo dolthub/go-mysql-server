@@ -305,13 +305,10 @@ func SerializePolygon(p Polygon) (buf []byte) {
 
 // Compare implements Type interface.
 func (t GeometryType) Compare(a any, b any) (int, error) {
-	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// TODO: probably define operations for types like []byte and string
-	// Expected to receive a geometry type
 	switch inner := a.(type) {
 	case Point:
 		return PointType{}.Compare(inner, b)
@@ -326,35 +323,33 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 
 // Convert implements Type interface.
 func (t GeometryType) Convert(v interface{}) (interface{}, error) {
-	// Allow null
 	if v == nil {
 		return nil, nil
 	}
-	// Handle conversions
-	switch inner := v.(type) {
+	switch val := v.(type) {
 	case []byte:
-		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(inner)
+		srid, isBig, geomType, err := ParseEWKBHeader(val)
 		if err != nil {
 			return nil, err
 		}
-		// Parse accordingly
+		val = val[EWKBHeaderSize:]
+
 		var geom interface{}
 		switch geomType {
 		case WKBPointID:
-			geom, err = WKBToPoint(inner[EWKBHeaderSize:], isBig, srid)
+			geom, err = WKBToPoint(val, isBig, srid)
 		case WKBLineID:
-			geom, err = WKBToLine(inner[EWKBHeaderSize:], isBig, srid)
+			geom, err = WKBToLine(val, isBig, srid)
 		case WKBPolyID:
-			geom, err = WKBToPoly(inner[EWKBHeaderSize:], isBig, srid)
+			geom, err = WKBToPoly(val, isBig, srid)
 		case WKBMultiPointID:
-			return nil, ErrUnsupportedGISType.New("MultiPoint", hex.EncodeToString(inner))
+			geom, err = WKBToMultiPoint(val, isBig, srid)
 		case WKBMultiLineID:
-			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(inner))
+			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(val))
 		case WKBMultiPolyID:
-			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(inner))
+			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(val))
 		case WKBGeoCollectionID:
-			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(inner))
+			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(val))
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
 		}
@@ -363,12 +358,12 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		}
 		return geom, nil
 	case string:
-		return t.Convert([]byte(inner))
-	case Point, LineString, Polygon:
-		if err := t.MatchSRID(inner); err != nil {
+		return t.Convert([]byte(val))
+	case GeometryValue:
+		if err := t.MatchSRID(val); err != nil {
 			return nil, err
 		}
-		return inner, nil
+		return val, nil
 	default:
 		return nil, ErrSpatialTypeConversion.New()
 	}

@@ -82,6 +82,12 @@ func SwapGeometryXY(v sql.GeometryValue) sql.GeometryValue {
 			lines[i] = SwapGeometryXY(l).(sql.LineString)
 		}
 		return sql.Polygon{SRID: v.SRID, Lines: lines}
+	case sql.MultiPoint:
+		points := make([]sql.Point, len(v.Points))
+		for i, p := range v.Points {
+			points[i] = SwapGeometryXY(p).(sql.Point)
+		}
+		return sql.MultiPoint{SRID: v.SRID, Points: points}
 	// TODO: add multi geometries here
 	default:
 		return nil
@@ -102,9 +108,9 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect one of the geometry types
-	switch val.(type) {
+	switch v := val.(type) {
 	case sql.GeometryValue:
-		return SwapGeometryXY(val), nil
+		return SwapGeometryXY(v), nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
 	}

@@ -99,35 +99,22 @@ func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t LineStringType) Convert(v interface{}) (interface{}, error) {
-	// Allow null
-	if v == nil {
+	switch buf := v.(type) {
+	case nil:
 		return nil, nil
-	}
-	// Handle conversions
-	switch val := v.(type) {
 	case []byte:
-		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
-		if err != nil {
-			return nil, err
+		line, err := GeometryType{}.Convert(buf)
+		if ErrInvalidGISData.Is(err) {
+			return nil, ErrInvalidGISData.New("LineStringType.Convert")
 		}
-		// Throw error if not marked as linestring
-		if geomType != WKBLineID {
-			return nil, err
-		}
-		// Parse data section
-		line, err := WKBToLine(val[EWKBHeaderSize:], isBig, srid)
-		if err != nil {
-			return nil, err
-		}
-		return line, nil
+		return line, err
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert([]byte(buf))
 	case LineString:
-		if err := t.MatchSRID(val); err != nil {
+		if err := t.MatchSRID(buf); err != nil {
 			return nil, err
 		}
-		return val, nil
+		return buf, nil
 	default:
 		return nil, ErrSpatialTypeConversion.New()
 	}

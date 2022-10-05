@@ -15,21 +15,22 @@
 package sql
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// MultiPointType represents the LINESTRING type.
+// MultiPointType represents the MULTIPOINT type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-multipoint.html
-// The type of the returned value is LineString.
+// The type of the returned value is MultiPoint.
 type MultiPointType struct {
 	SRID        uint32
 	DefinedSRID bool
 }
 
-// MultiPoint is the value type returned from LineStringType. Implements GeometryValue.
+// MultiPoint is the value type returned from MultiPointType. Implements GeometryValue.
 type MultiPoint struct {
 	SRID   uint32
 	Points []Point
@@ -38,6 +39,12 @@ type MultiPoint struct {
 var _ Type = MultiPointType{}
 var _ SpatialColumnType = MultiPointType{}
 var _ GeometryValue = MultiPoint{}
+
+var (
+	ErrNotMultiPoint = errors.NewKind("value of type %T is not a multipoint")
+
+	multiPointValueType = reflect.TypeOf(MultiPoint{})
+)
 
 // Compare implements Type interface.
 func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
@@ -49,11 +56,11 @@ func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
 	// Expect to receive a MultiPoint, throw error otherwise
 	_a, ok := a.(MultiPoint)
 	if !ok {
-		return 0, ErrNotLineString.New(a)
+		return 0, ErrNotMultiPoint.New(a)
 	}
 	_b, ok := b.(MultiPoint)
 	if !ok {
-		return 0, ErrNotLineString.New(b)
+		return 0, ErrNotMultiPoint.New(b)
 	}
 
 	// Get shorter length
@@ -91,35 +98,26 @@ func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t MultiPointType) Convert(v interface{}) (interface{}, error) {
-	// Allow null
-	if v == nil {
+	switch buf := v.(type) {
+	case nil:
 		return nil, nil
-	}
-	// Handle conversions
-	switch val := v.(type) {
 	case []byte:
-		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		multipoint, err := GeometryType{}.Convert(buf)
 		if err != nil {
 			return nil, err
 		}
-		// Throw error if not marked as MultiPointID
-		if geomType != WKBMultiPointID {
-			return nil, err
+		// TODO: is this even possible?
+		if _, ok := multipoint.(MultiPoint); !ok {
+			return nil, ErrInvalidGISData.New("MultiPointType.Convert")
 		}
-		// Parse data section
-		line, err := WKBToMultiPoint(val[EWKBHeaderSize:], isBig, srid)
-		if err != nil {
-			return nil, err
-		}
-		return line, nil
+		return multipoint, nil
 	case string:
-		return t.Convert([]byte(val))
-	case LineString:
-		if err := t.MatchSRID(val); err != nil {
+		return t.Convert([]byte(buf))
+	case MultiPoint:
+		if err := t.MatchSRID(buf); err != nil {
 			return nil, err
 		}
-		return val, nil
+		return buf, nil
 	default:
 		return nil, ErrSpatialTypeConversion.New()
 	}
@@ -169,12 +167,12 @@ func (t MultiPointType) Type() query.Type {
 
 // ValueType implements Type interface.
 func (t MultiPointType) ValueType() reflect.Type {
-	return lineStringValueType
+	return multiPointValueType
 }
 
 // Zero implements Type interface.
 func (t MultiPointType) Zero() interface{} {
-	return LineString{Points: []Point{{}, {}}}
+	return MultiPoint{Points: []Point{{}}}
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.
@@ -191,9 +189,9 @@ func (t MultiPointType) SetSRID(v uint32) Type {
 
 // MatchSRID implements SpatialColumnType interface
 func (t MultiPointType) MatchSRID(v interface{}) error {
-	val, ok := v.(LineString)
+	val, ok := v.(MultiPoint)
 	if !ok {
-		return ErrNotLineString.New(v)
+		return ErrNotMultiPoint.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil

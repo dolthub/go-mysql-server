@@ -68,19 +68,15 @@ func (a *AsWKB) WithChildren(children ...sql.Expression) (sql.Expression, error)
 
 // Eval implements the sql.Expression interface.
 func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
 	val, err := a.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	// Return nil when null
 	if val == nil {
 		return nil, nil
 	}
 
-	// Expect one of the geometry types
-	// remove the SRID
 	switch v := val.(type) {
 	case sql.Point:
 		return sql.SerializePoint(v)[sql.SRIDSize:], nil
@@ -289,14 +285,10 @@ func (p *PointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 // Eval implements the sql.Expression interface.
 func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	point, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPointID)
-	if err != nil {
-		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.ErrInvalidGISData.New(p.FunctionName())
-		} else {
-			return nil, err
-		}
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
-	return point, nil
+	return point, err
 }
 
 // LineFromWKB is a function that returns a linestring type from a WKB byte array
@@ -345,14 +337,10 @@ func (l *LineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 // Eval implements the sql.Expression interface.
 func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	line, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBLineID)
-	if err != nil {
-		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.ErrInvalidGISData.New(l.FunctionName())
-		} else {
-			return nil, err
-		}
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
 	}
-	return line, nil
+	return line, err
 }
 
 // PolyFromWKB is a function that returns a polygon type from a WKB byte array
@@ -401,12 +389,8 @@ func (p *PolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 // Eval implements the sql.Expression interface.
 func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	poly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPolyID)
-	if err != nil {
-		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.ErrInvalidGISData.New(p.FunctionName())
-		} else {
-			return nil, err
-		}
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
-	return poly, nil
+	return poly, err
 }
