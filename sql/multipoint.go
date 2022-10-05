@@ -15,8 +15,9 @@
 package sql
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"reflect"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
