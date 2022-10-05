@@ -285,10 +285,6 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 
 		scopeLen := len(scope.newScope(n).Schema())
 		cacheable := nodeIsCacheable(s.Query, scopeLen)
-		// TODO: We aren't calculating cacheability correctly with the additional outer scope visibility. For now, just
-		//       disable subquery expression caching to get tests passing, then come back and fix this.
-		cacheable = false
-
 		if cacheable {
 			return s.WithCachedResults(), transform.NewTree, nil
 		}
