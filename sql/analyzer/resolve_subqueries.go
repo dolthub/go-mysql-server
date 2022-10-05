@@ -28,18 +28,6 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.End()
 
-	selectorFunc := func(context transform.Context) bool {
-		// TODO: Do we need to do something here to account for SubqueryExpressions? Couldn't we mess up scope by processing
-		//       multiple levels of SubqueryExpressions otherwise? Seems like it!
-		if _, ok := context.Parent.(*plan.SubqueryAlias); ok {
-			// If the parent of the current node is a SubqueryAlias, return false to prevent
-			// this node from being processed. We only want to process the next level of nested SubqueryAliases
-			// so that we can calculate the scope iteratively, otherwise the scope passed to SubqueryAliases further
-			// down in the tree won't be correct.
-			return false
-		}
-		return true
-	}
 	ctxFunc := func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
 			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, false)
@@ -75,7 +63,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return context.Node, transform.SameTree, nil
 	}
 
-	return transform.NodeWithCtx(n, selectorFunc, ctxFunc)
+	return transform.NodeWithCtx(n, nil, ctxFunc)
 }
 
 // finalizeSubqueries runs the final analysis pass on subquery expressions and subquery aliases in the node tree to ensure
