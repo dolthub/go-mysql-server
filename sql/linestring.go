@@ -199,4 +199,17 @@ func (t LineStringType) MatchSRID(v interface{}) error {
 }
 
 // implementsGeometryValue implements GeometryValue interface.
-func (p LineString) implementsGeometryValue() {}
+func (l LineString) implementsGeometryValue() {}
+
+// GetSRID implements GeometryValue interface.
+func (l LineString) GetSRID() uint32 {
+	return l.SRID
+}
+
+// SetSRID implements GeometryValue interface.
+func (l LineString) SetSRID(srid uint32) GeometryValue {
+	return LineString{
+		SRID:   srid,
+		Points: l.Points,
+	}
+}

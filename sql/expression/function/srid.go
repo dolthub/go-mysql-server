@@ -98,64 +98,48 @@ func PolyWithSRID(p sql.Polygon, srid uint32) sql.Polygon {
 
 // Eval implements the sql.Expression interface.
 func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate geometry type
 	g, err := s.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	// Return nil if geometry object is nil
 	if g == nil {
 		return nil, nil
 	}
 
 	// If just one argument, return SRID
 	if len(s.ChildExpressions) == 1 {
-		// Check that it is a geometry type
 		switch g := g.(type) {
-		case sql.Point:
-			return g.SRID, nil
-		case sql.LineString:
-			return g.SRID, nil
-		case sql.Polygon:
-			return g.SRID, nil
+		case sql.GeometryValue:
+			return g.GetSRID(), nil
 		default:
 			return nil, sql.ErrIllegalGISValue.New(g)
 		}
 	}
 
-	// Evaluate second argument
-	srid, err := s.ChildExpressions[1].Eval(ctx, row)
+	v, err := s.ChildExpressions[1].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	// Return null if second argument is null
-	if srid == nil {
+	if s == nil {
 		return nil, nil
 	}
 
-	// Convert to int32
-	srid, err = sql.Uint32.Convert(srid)
+	val, err := sql.Uint32.Convert(v)
 	if err != nil {
 		return nil, err
 	}
+	srid := val.(uint32)
 
-	// Type assertion
-	_srid := srid.(uint32)
-
-	if err = ValidateSRID(_srid); err != nil {
+	if err = ValidateSRID(srid); err != nil {
 		return nil, err
 	}
 
 	// Create new geometry object with matching SRID
 	switch g := g.(type) {
-	case sql.Point:
-		return PointWithSRID(g, _srid), nil
-	case sql.LineString:
-		return LineWithSRID(g, _srid), nil
-	case sql.Polygon:
-		return PolyWithSRID(g, _srid), nil
+	case sql.GeometryValue:
+		return g.SetSRID(srid), nil
 	default:
 		return nil, sql.ErrIllegalGISValue.New(g)
 	}

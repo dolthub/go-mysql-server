@@ -34,9 +34,11 @@ type GeometryType struct {
 }
 
 // GeometryValue is the value type returned from GeometryType, which is an interface over the following types:
-// Point, Polygon, LineString.
+// Point, Polygon, LineString, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection.
 type GeometryValue interface {
 	implementsGeometryValue()
+	GetSRID() uint32
+	SetSRID(srid uint32) GeometryValue
 }
 
 var _ Type = GeometryType{}

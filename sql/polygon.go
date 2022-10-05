@@ -200,3 +200,16 @@ func (t PolygonType) MatchSRID(v interface{}) error {
 
 // implementsGeometryValue implements GeometryValue interface.
 func (p Polygon) implementsGeometryValue() {}
+
+// GetSRID implements GeometryValue interface.
+func (p Polygon) GetSRID() uint32 {
+	return p.SRID
+}
+
+// SetSRID implements GeometryValue interface.
+func (p Polygon) SetSRID(srid uint32) GeometryValue {
+	return Polygon{
+		SRID:  srid,
+		Lines: p.Lines,
+	}
+}

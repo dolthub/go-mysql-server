@@ -204,3 +204,16 @@ func (t MultiPointType) MatchSRID(v interface{}) error {
 
 // implementsGeometryValue implements GeometryValue interface.
 func (p MultiPoint) implementsGeometryValue() {}
+
+// GetSRID implements GeometryValue interface.
+func (p MultiPoint) GetSRID() uint32 {
+	return p.SRID
+}
+
+// SetSRID implements GeometryValue interface.
+func (p MultiPoint) SetSRID(srid uint32) GeometryValue {
+	return MultiPoint{
+		SRID:   srid,
+		Points: p.Points,
+	}
+}
