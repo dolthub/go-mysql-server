@@ -32,8 +32,8 @@ var _ sql.FunctionExpression = (*MultiPoint)(nil)
 
 // NewMultiPoint creates a new MultiPoint.
 func NewMultiPoint(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 2 {
-		return nil, sql.ErrInvalidArgumentNumber.New("MultiPoint", "2 or more", len(args))
+	if len(args) < 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("MultiPoint", "1 or more", len(args))
 	}
 	return &MultiPoint{expression.NaryExpression{ChildExpressions: args}}, nil
 }
