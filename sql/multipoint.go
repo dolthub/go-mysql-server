@@ -241,3 +241,16 @@ func (p MultiPoint) WriteData(buf []byte) {
 		buf = buf[PointSize:]
 	}
 }
+
+// Swap implements GeometryValue interface.
+// TODO: possible in place?
+func (p MultiPoint) Swap() GeometryValue {
+	points := make([]Point, len(p.Points))
+	for i, point := range p.Points {
+		points[i] = point.Swap().(Point)
+	}
+	return MultiPoint{
+		SRID:   p.SRID,
+		Points: points,
+	}
+}

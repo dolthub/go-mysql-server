@@ -41,6 +41,7 @@ type GeometryValue interface {
 	SetSRID(srid uint32) GeometryValue
 	Serialize() []byte
 	WriteData(buf []byte)
+	Swap() GeometryValue
 }
 
 var _ Type = GeometryType{}

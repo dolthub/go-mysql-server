@@ -95,7 +95,7 @@ func TestSwapXY(t *testing.T) {
 		require.Equal(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
 	})
 
-	t.Run("geometry linestring swap", func(t *testing.T) {
+	t.Run("geometry multipoint swap", func(t *testing.T) {
 		require := require.New(t)
 		f := NewSwapXY(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, sql.GeometryType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

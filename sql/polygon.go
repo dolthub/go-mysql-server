@@ -239,3 +239,16 @@ func (p Polygon) WriteData(buf []byte) {
 		buf = buf[CountSize+PointSize*len(l.Points):]
 	}
 }
+
+// Swap implements GeometryValue interface.
+// TODO: possible in place?
+func (p Polygon) Swap() GeometryValue {
+	lines := make([]LineString, len(p.Lines))
+	for i, l := range p.Lines {
+		lines[i] = l.Swap().(LineString)
+	}
+	return Polygon{
+		SRID:  p.SRID,
+		Lines: lines,
+	}
+}

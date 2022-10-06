@@ -68,27 +68,8 @@ func (s *SwapXY) WithChildren(children ...sql.Expression) (sql.Expression, error
 // SwapGeometryXY returns the geometry with the x and y swapped
 func SwapGeometryXY(v sql.GeometryValue) sql.GeometryValue {
 	switch v := v.(type) {
-	case sql.Point:
-		return sql.Point{SRID: v.SRID, X: v.Y, Y: v.X}
-	case sql.LineString:
-		points := make([]sql.Point, len(v.Points))
-		for i, p := range v.Points {
-			points[i] = SwapGeometryXY(p).(sql.Point)
-		}
-		return sql.LineString{SRID: v.SRID, Points: points}
-	case sql.Polygon:
-		lines := make([]sql.LineString, len(v.Lines))
-		for i, l := range v.Lines {
-			lines[i] = SwapGeometryXY(l).(sql.LineString)
-		}
-		return sql.Polygon{SRID: v.SRID, Lines: lines}
-	case sql.MultiPoint:
-		points := make([]sql.Point, len(v.Points))
-		for i, p := range v.Points {
-			points[i] = SwapGeometryXY(p).(sql.Point)
-		}
-		return sql.MultiPoint{SRID: v.SRID, Points: points}
-	// TODO: add multi geometries here
+	case sql.GeometryValue:
+		return v.Swap()
 	default:
 		return nil
 	}

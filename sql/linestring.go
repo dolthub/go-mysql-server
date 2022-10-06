@@ -235,3 +235,16 @@ func (l LineString) WriteData(buf []byte) {
 		buf = buf[PointSize:]
 	}
 }
+
+// Swap implements GeometryValue interface.
+// TODO: possible in place?
+func (l LineString) Swap() GeometryValue {
+	points := make([]Point, len(l.Points))
+	for i, p := range l.Points {
+		points[i] = p.Swap().(Point)
+	}
+	return LineString{
+		SRID:   l.SRID,
+		Points: points,
+	}
+}

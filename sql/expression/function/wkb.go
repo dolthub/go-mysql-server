@@ -227,7 +227,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		}
 	}
 	if order {
-		geom = SwapGeometryXY(geom)
+		geom = geom.Swap()
 	}
 
 	return geom, nil

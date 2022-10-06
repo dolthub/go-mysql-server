@@ -231,3 +231,13 @@ func (p Point) WriteData(buf []byte) {
 	buf = buf[PointSize/2:]
 	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.Y))
 }
+
+// Swap implements GeometryValue interface.
+// TODO: possible in place?
+func (p Point) Swap() GeometryValue {
+	return Point{
+		SRID: p.SRID,
+		X:    p.Y,
+		Y:    p.X,
+	}
+}

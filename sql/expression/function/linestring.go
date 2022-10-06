@@ -30,7 +30,7 @@ type LineString struct {
 
 var _ sql.FunctionExpression = (*LineString)(nil)
 
-// NewLineString creates a new MultiPoint.
+// NewLineString creates a new LineString.
 func NewLineString(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "2 or more", len(args))

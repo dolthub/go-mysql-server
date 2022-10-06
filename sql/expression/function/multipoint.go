@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// MultiPoint is a function that returns a point type containing values Y and Y.
+// MultiPoint is a function that returns a set of Points.
 type MultiPoint struct {
 	expression.NaryExpression
 }
