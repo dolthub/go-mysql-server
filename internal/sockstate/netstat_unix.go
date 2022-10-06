@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux || darwin
 // +build linux darwin
 
 package sockstate
@@ -37,4 +38,3 @@ func getConnFd(c *net.TCPConn) (fd uintptr, err error) {
 
 	return fd, nil
 }
-
