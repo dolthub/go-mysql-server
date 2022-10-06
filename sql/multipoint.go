@@ -126,7 +126,7 @@ func (t MultiPointType) Convert(v interface{}) (interface{}, error) {
 
 // Equals implements the Type interface.
 func (t MultiPointType) Equals(otherType Type) bool {
-	_, ok := otherType.(LineStringType)
+	_, ok := otherType.(MultiPointType)
 	return ok
 }
 
@@ -151,14 +151,14 @@ func (t MultiPointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializeLineString(v.(LineString))
+	buf := SerializeMultiPoint(v.(MultiPoint))
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
 func (t MultiPointType) String() string {
-	return "linestring"
+	return "multipoint"
 }
 
 // Type implements Type interface.
