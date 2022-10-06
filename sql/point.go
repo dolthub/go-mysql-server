@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"encoding/binary"
+	"math"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -94,7 +96,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	switch val := v.(type) {
 	case []byte:
 		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +105,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 			return nil, ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
-		point, err := WKBToPoint(val[EWKBHeaderSize:], isBig, srid)
+		point, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +149,7 @@ func (t PointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializePoint(v.(Point))
+	buf := v.(Point).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
@@ -213,4 +215,19 @@ func (p Point) SetSRID(srid uint32) GeometryValue {
 		X:    p.X,
 		Y:    p.Y,
 	}
+}
+
+// Serialize implements GeometryValue interface.
+func (p Point) Serialize() (buf []byte) {
+	buf = allocateBuffer(1, 0, 0)
+	WriteEWKBHeader(buf, p.SRID, WKBPointID)
+	p.WriteData(buf[EWKBHeaderSize:])
+	return
+}
+
+// WriteData implements GeometryValue interface.
+func (p Point) WriteData(buf []byte) {
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.X))
+	buf = buf[PointSize/2:]
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.Y))
 }

@@ -39,6 +39,8 @@ type GeometryValue interface {
 	implementsGeometryValue()
 	GetSRID() uint32
 	SetSRID(srid uint32) GeometryValue
+	Serialize() []byte
+	WriteData(buf []byte)
 }
 
 var _ Type = GeometryType{}
@@ -74,9 +76,9 @@ const (
 	WKBLineID
 	WKBPolyID
 	WKBMPointID
-	WKBMultiLineID
-	WKBMultiPolyID
-	WKBGeoCollectionID
+	WKBMLineID
+	WKBMPolyID
+	WKBGeomCollectionID
 )
 
 // isLinearRing checks if a LineString is a linear ring
@@ -94,11 +96,11 @@ func isLinearRing(line LineString) bool {
 	return true
 }
 
-// ParseEWKBHeader parses the header portion of a byte array in EWKB format to extract endianness and type
-func ParseEWKBHeader(buf []byte) (srid uint32, bigEndian bool, typ uint32, err error) {
+// DeserializeEWKBHeader parses the header portion of a byte array in EWKB format to extract endianness and type
+func DeserializeEWKBHeader(buf []byte) (srid uint32, bigEndian bool, typ uint32, err error) {
 	// Must be right length
 	if len(buf) < EWKBHeaderSize {
-		return 0, false, 0, ErrInvalidGISData.New("ParseEWKBHeader")
+		return 0, false, 0, ErrInvalidGISData.New("DeserializeEWKBHeader")
 	}
 	srid = binary.LittleEndian.Uint32(buf) // First 4 bytes is SRID always in little endian
 	buf = buf[SRIDSize:]                   // Shift pointer over
@@ -113,12 +115,12 @@ func ParseEWKBHeader(buf []byte) (srid uint32, bigEndian bool, typ uint32, err e
 	return
 }
 
-// ParseWKBHeader parses the header potion of a byte array in WKB format
+// DeserializeWKBHeader parses the header potion of a byte array in WKB format
 // There is no SRID
-func ParseWKBHeader(buf []byte) (bigEndian bool, typ uint32, err error) {
+func DeserializeWKBHeader(buf []byte) (bigEndian bool, typ uint32, err error) {
 	// Must be right length
 	if len(buf) < (EndianSize + TypeSize) {
-		return false, 0, ErrInvalidGISData.New("ParseWKBHeader")
+		return false, 0, ErrInvalidGISData.New("DeserializeWKBHeader")
 	}
 
 	bigEndian = buf[0] == 0 // First byte is byte order
@@ -132,11 +134,11 @@ func ParseWKBHeader(buf []byte) (bigEndian bool, typ uint32, err error) {
 	return
 }
 
-// WKBToPoint parses the data portion of a byte array in WKB format to a Point object
-func WKBToPoint(buf []byte, isBig bool, srid uint32) (Point, error) {
+// DeserializePoint parses the data portion of a byte array in WKB format to a Point object
+func DeserializePoint(buf []byte, isBig bool, srid uint32) (Point, error) {
 	// Must be 16 bytes (2 floats)
 	if len(buf) != PointSize {
-		return Point{}, ErrInvalidGISData.New("WKBToPoint")
+		return Point{}, ErrInvalidGISData.New("DeserializePoint")
 	}
 
 	// Read floats x and y
@@ -152,11 +154,11 @@ func WKBToPoint(buf []byte, isBig bool, srid uint32) (Point, error) {
 	return Point{SRID: srid, X: x, Y: y}, nil
 }
 
-// WKBToLine parses the data portion of a byte array in WKB format to a LineString object
-func WKBToLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
+// DeserializeLine parses the data portion of a byte array in WKB format to a LineString object
+func DeserializeLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
 	// Must be at least CountSize and two points
 	if len(buf) < (CountSize + PointSize + PointSize) {
-		return LineString{}, ErrInvalidGISData.New("WKBToLine")
+		return LineString{}, ErrInvalidGISData.New("DeserializeLine")
 	}
 
 	// Read number of points
@@ -166,9 +168,9 @@ func WKBToLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
 	// Read points
 	var err error
 	for i := range points {
-		points[i], err = WKBToPoint(buf[:PointSize], isBig, srid)
+		points[i], err = DeserializePoint(buf[:PointSize], isBig, srid)
 		if err != nil {
-			return LineString{}, ErrInvalidGISData.New("WKBToLine")
+			return LineString{}, ErrInvalidGISData.New("DeserializeLine")
 		}
 		buf = buf[PointSize:]
 	}
@@ -176,11 +178,11 @@ func WKBToLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
 	return LineString{SRID: srid, Points: points}, nil
 }
 
-// WKBToPoly parses the data portion of a byte array in WKB format to a Polygon object
-func WKBToPoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
+// DeserializePoly parses the data portion of a byte array in WKB format to a Polygon object
+func DeserializePoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
 	// Must be at least count, count, and four points
 	if len(buf) < (CountSize + CountSize + 4*PointSize) {
-		return Polygon{}, ErrInvalidGISData.New("WKBToPoly")
+		return Polygon{}, ErrInvalidGISData.New("DeserializePoly")
 	}
 
 	// Read number of lines
@@ -190,9 +192,9 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
 	// Read lines
 	var err error
 	for i := range lines {
-		lines[i], err = WKBToLine(buf, isBig, srid)
+		lines[i], err = DeserializeLine(buf, isBig, srid)
 		if err != nil {
-			return Polygon{}, ErrInvalidGISData.New("WKBToPoly")
+			return Polygon{}, ErrInvalidGISData.New("DeserializePoly")
 		}
 		buf = buf[CountSize+len(lines[i].Points)*PointSize:]
 	}
@@ -207,11 +209,11 @@ func readCount(buf []byte, isBig bool) uint32 {
 	return binary.LittleEndian.Uint32(buf)
 }
 
-// WKBToMultiPoint parses the data portion of a byte array in WKB format to a MultiPoint object
-func WKBToMultiPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
+// DeserializeMPoint parses the data portion of a byte array in WKB format to a MultiPoint object
+func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
 	// Must contain at least byte-order, type, length, and point data
 	if len(buf) < (CountSize + EndianSize + TypeSize + PointSize) {
-		return MultiPoint{}, ErrInvalidGISData.New("WKBToMultiPoint")
+		return MultiPoint{}, ErrInvalidGISData.New("DeserializeMPoint")
 	}
 
 	// Read number of points in MultiPoint
@@ -219,16 +221,16 @@ func WKBToMultiPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
 	buf = buf[CountSize:]
 	for i := range points {
 		// WKBHeaders are inside MultiGeometry Types
-		isBig, typ, err := ParseWKBHeader(buf)
+		isBig, typ, err := DeserializeWKBHeader(buf)
 		if err != nil {
 			return MultiPoint{}, err
 		}
 		if typ != WKBPointID {
-			return MultiPoint{}, ErrInvalidGISData.New("WKBToMultiPoint")
+			return MultiPoint{}, ErrInvalidGISData.New("DeserializeMPoint")
 		}
 		buf = buf[EndianSize+TypeSize:]
 		// Read point data
-		points[i], err = WKBToPoint(buf[:PointSize], isBig, srid)
+		points[i], err = DeserializePoint(buf[:PointSize], isBig, srid)
 		if err != nil {
 			return MultiPoint{}, err
 		}
@@ -242,8 +244,8 @@ func allocateBuffer(numPoints, numCounts, numWKBHeaders int) []byte {
 	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts+numWKBHeaders*WKBHeaderSize)
 }
 
-// SerializeEWKBHeader will write EWKB header to the given buffer
-func SerializeEWKBHeader(buf []byte, srid, typ uint32) {
+// WriteEWKBHeader will write EWKB header to the given buffer
+func WriteEWKBHeader(buf []byte, srid, typ uint32) {
 	binary.LittleEndian.PutUint32(buf, srid) // always write SRID in little endian
 	buf = buf[SRIDSize:]                     // shift
 	buf[0] = 1                               // always write in little endian
@@ -251,87 +253,15 @@ func SerializeEWKBHeader(buf []byte, srid, typ uint32) {
 	binary.LittleEndian.PutUint32(buf, typ)  // write geometry type
 }
 
-// SerializeWKBHeader will write WKB header to the given buffer
-func SerializeWKBHeader(buf []byte, typ uint32) {
+// WriteWKBHeader will write WKB header to the given buffer
+func WriteWKBHeader(buf []byte, typ uint32) {
 	buf[0] = 1                              // always write in little endian
 	buf = buf[EndianSize:]                  // shift
 	binary.LittleEndian.PutUint32(buf, typ) // write geometry type
 }
 
-func SerializePointData(buf []byte, x, y float64) {
-	binary.LittleEndian.PutUint64(buf, math.Float64bits(x))
-	buf = buf[PointSize/2:]
-	binary.LittleEndian.PutUint64(buf, math.Float64bits(y))
-}
-
-func SerializePoint(p Point) (buf []byte) {
-	buf = allocateBuffer(1, 0, 0)
-	SerializeEWKBHeader(buf, p.SRID, WKBPointID)
-	SerializePointData(buf[EWKBHeaderSize:], p.X, p.Y)
-	return
-}
-
 func writeCount(buf []byte, count uint32) {
 	binary.LittleEndian.PutUint32(buf, count)
-}
-
-func writePointSlice(buf []byte, points []Point) {
-	writeCount(buf, uint32(len(points)))
-	buf = buf[CountSize:]
-	for _, p := range points {
-		SerializePointData(buf, p.X, p.Y)
-		buf = buf[PointSize:]
-	}
-}
-
-func SerializeLineString(l LineString) (buf []byte) {
-	buf = allocateBuffer(len(l.Points), 1, 0)
-	SerializeEWKBHeader(buf[:EWKBHeaderSize], l.SRID, WKBLineID)
-	writePointSlice(buf[EWKBHeaderSize:], l.Points)
-	return
-}
-
-func writeLineSlice(buf []byte, lines []LineString) {
-	writeCount(buf, uint32(len(lines)))
-	buf = buf[CountSize:]
-	for _, l := range lines {
-		writePointSlice(buf, l.Points)
-		sz := CountSize + len(l.Points)*PointSize
-		buf = buf[sz:]
-	}
-}
-
-func countPoints(p Polygon) (cnt int) {
-	for _, line := range p.Lines {
-		cnt += len(line.Points)
-	}
-	return
-}
-
-func SerializePolygon(p Polygon) (buf []byte) {
-	buf = allocateBuffer(countPoints(p), len(p.Lines)+1, 0)
-	SerializeEWKBHeader(buf[:EWKBHeaderSize], p.SRID, WKBPolyID)
-	writeLineSlice(buf[EWKBHeaderSize:], p.Lines)
-	return
-}
-
-func writePointSet(buf []byte, points []Point) {
-	writeCount(buf, uint32(len(points)))
-	buf = buf[CountSize:]
-	for _, p := range points {
-		SerializeWKBHeader(buf, WKBPointID)
-		buf = buf[WKBHeaderSize:]
-		SerializePointData(buf, p.X, p.Y)
-		buf = buf[PointSize:]
-	}
-}
-
-func SerializeMultiPoint(p MultiPoint) (buf []byte) {
-	numPoints := len(p.Points)
-	buf = allocateBuffer(numPoints, 1, numPoints)
-	SerializeEWKBHeader(buf, p.SRID, WKBMPointID)
-	writePointSet(buf[EWKBHeaderSize:], p.Points)
-	return
 }
 
 // Compare implements Type interface.
@@ -359,7 +289,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 	}
 	switch val := v.(type) {
 	case []byte:
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
 			return nil, err
 		}
@@ -368,18 +298,18 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		var geom interface{}
 		switch geomType {
 		case WKBPointID:
-			geom, err = WKBToPoint(val, isBig, srid)
+			geom, err = DeserializePoint(val, isBig, srid)
 		case WKBLineID:
-			geom, err = WKBToLine(val, isBig, srid)
+			geom, err = DeserializeLine(val, isBig, srid)
 		case WKBPolyID:
-			geom, err = WKBToPoly(val, isBig, srid)
+			geom, err = DeserializePoly(val, isBig, srid)
 		case WKBMPointID:
-			geom, err = WKBToMultiPoint(val, isBig, srid)
-		case WKBMultiLineID:
+			geom, err = DeserializeMPoint(val, isBig, srid)
+		case WKBMLineID:
 			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(val))
-		case WKBMultiPolyID:
+		case WKBMPolyID:
 			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(val))
-		case WKBGeoCollectionID:
+		case WKBGeomCollectionID:
 			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(val))
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
@@ -427,15 +357,7 @@ func (t GeometryType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 		return sqltypes.Value{}, nil
 	}
 
-	var buf []byte
-	switch val := v.(type) {
-	case Point:
-		buf = SerializePoint(val)
-	case LineString:
-		buf = SerializeLineString(val)
-	case Polygon:
-		buf = SerializePolygon(val)
-	}
+	buf := v.(GeometryValue).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }

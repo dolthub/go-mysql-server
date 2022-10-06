@@ -147,7 +147,7 @@ func (t LineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializeLineString(v.(LineString))
+	buf := v.(LineString).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
@@ -215,5 +215,23 @@ func (l LineString) SetSRID(srid uint32) GeometryValue {
 	return LineString{
 		SRID:   srid,
 		Points: points,
+	}
+}
+
+// Serialize implements GeometryValue interface.
+func (l LineString) Serialize() (buf []byte) {
+	buf = allocateBuffer(len(l.Points), 1, 0)
+	WriteEWKBHeader(buf, l.SRID, WKBLineID)
+	l.WriteData(buf[EWKBHeaderSize:])
+	return
+}
+
+// WriteData implements GeometryValue interface.
+func (l LineString) WriteData(buf []byte) {
+	writeCount(buf, uint32(len(l.Points)))
+	buf = buf[CountSize:]
+	for _, p := range l.Points {
+		p.WriteData(buf)
+		buf = buf[PointSize:]
 	}
 }

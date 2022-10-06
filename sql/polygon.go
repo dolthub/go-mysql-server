@@ -147,7 +147,7 @@ func (t PolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializePolygon(v.(Polygon))
+	buf := v.(Polygon).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
@@ -215,5 +215,27 @@ func (p Polygon) SetSRID(srid uint32) GeometryValue {
 	return Polygon{
 		SRID:  srid,
 		Lines: lines,
+	}
+}
+
+// Serialize implements GeometryValue interface.
+func (p Polygon) Serialize() (buf []byte) {
+	var numPoints int
+	for _, l := range p.Lines {
+		numPoints += len(l.Points)
+	}
+	buf = allocateBuffer(numPoints, len(p.Lines)+1, 0)
+	WriteEWKBHeader(buf, p.SRID, WKBPolyID)
+	p.WriteData(buf[EWKBHeaderSize:])
+	return
+}
+
+// WriteData implements GeometryValue interface.
+func (p Polygon) WriteData(buf []byte) {
+	writeCount(buf, uint32(len(p.Lines)))
+	buf = buf[CountSize:]
+	for _, l := range p.Lines {
+		l.WriteData(buf)
+		buf = buf[CountSize+PointSize*len(l.Points):]
 	}
 }

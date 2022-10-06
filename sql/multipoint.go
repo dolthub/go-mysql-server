@@ -151,7 +151,7 @@ func (t MultiPointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializeMultiPoint(v.(MultiPoint))
+	buf := v.(MultiPoint).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
@@ -219,5 +219,25 @@ func (p MultiPoint) SetSRID(srid uint32) GeometryValue {
 	return MultiPoint{
 		SRID:   srid,
 		Points: points,
+	}
+}
+
+// Serialize implements GeometryValue interface.
+func (p MultiPoint) Serialize() (buf []byte) {
+	buf = allocateBuffer(len(p.Points), 1, len(p.Points))
+	WriteEWKBHeader(buf, p.SRID, WKBMPointID)
+	p.WriteData(buf[EWKBHeaderSize:])
+	return
+}
+
+// WriteData implements GeometryValue interface.
+func (p MultiPoint) WriteData(buf []byte) {
+	writeCount(buf, uint32(len(p.Points)))
+	buf = buf[CountSize:]
+	for _, point := range p.Points {
+		WriteWKBHeader(buf, WKBPointID)
+		buf = buf[WKBHeaderSize:]
+		point.WriteData(buf)
+		buf = buf[PointSize:]
 	}
 }

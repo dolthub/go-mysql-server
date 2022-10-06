@@ -78,14 +78,8 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	switch v := val.(type) {
-	case sql.Point:
-		return sql.SerializePoint(v)[sql.SRIDSize:], nil
-	case sql.LineString:
-		return sql.SerializeLineString(v)[sql.SRIDSize:], nil
-	case sql.Polygon:
-		return sql.SerializePolygon(v)[sql.SRIDSize:], nil
-	case sql.MultiPoint:
-		return sql.SerializeMultiPoint(v)[sql.SRIDSize:], nil
+	case sql.GeometryValue:
+		return v.Serialize()[sql.SRIDSize:], nil
 	default:
 		return nil, sql.ErrInvalidGISData.New(a.FunctionName())
 	}
@@ -171,7 +165,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		return nil, sql.ErrInvalidGISData.New()
 	}
 
-	isBig, geomType, err := sql.ParseWKBHeader(buf)
+	isBig, geomType, err := sql.DeserializeWKBHeader(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -203,13 +197,13 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 	var geom sql.GeometryValue
 	switch geomType {
 	case sql.WKBPointID:
-		geom, err = sql.WKBToPoint(buf, isBig, srid)
+		geom, err = sql.DeserializePoint(buf, isBig, srid)
 	case sql.WKBLineID:
-		geom, err = sql.WKBToLine(buf, isBig, srid)
+		geom, err = sql.DeserializeLine(buf, isBig, srid)
 	case sql.WKBPolyID:
-		geom, err = sql.WKBToPoly(buf, isBig, srid)
+		geom, err = sql.DeserializePoly(buf, isBig, srid)
 	case sql.WKBMPointID:
-		geom, err = sql.WKBToMultiPoint(buf, isBig, srid)
+		geom, err = sql.DeserializeMPoint(buf, isBig, srid)
 	// TODO: add multi geometries here
 	default:
 		return nil, sql.ErrInvalidGISData.New()
