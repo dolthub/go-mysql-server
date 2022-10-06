@@ -304,7 +304,7 @@ func main() {
 	engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 	config := server.Config{
 		Protocol: "tcp",
-		Address:  "localhost:4306",
+		Address:  "localhost:3306",
 	}
 	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
