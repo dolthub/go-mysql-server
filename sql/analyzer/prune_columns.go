@@ -353,6 +353,11 @@ func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, sco
 				return n, transform.SameTree, nil
 			}
 
+			// IndexedTableAccess contains expressions in its lookupBuilder that we don't need to fix up, so skip them
+			if _, ok := n.(*plan.IndexedTableAccess); ok {
+				return n, transform.SameTree, nil
+			}
+
 			return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				gf, ok := e.(*expression.GetField)
 				if !ok {
