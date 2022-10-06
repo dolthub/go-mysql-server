@@ -301,9 +301,10 @@ func main() {
 			createTestDatabase(),
 			information_schema.NewInformationSchemaDatabase(),
 		))
+	engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 	config := server.Config{
 		Protocol: "tcp",
-		Address:  "localhost:3306",
+		Address:  "localhost:4306",
 	}
 	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
@@ -322,15 +323,15 @@ func createTestDatabase() *memory.Database {
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
-		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
-	}))
+		{Name: "created_at", Type: sql.Datetime, Nullable: false, Source: tableName},
+	}), nil)
 
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
-	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
-	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, time.Now()))
+	_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", sql.MustJSON(`["555-555-555"]`), time.Now()))
+	_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", sql.MustJSON(`[]`), time.Now()))
+	_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", sql.MustJSON(`[]`), time.Now()))
+	_ = table.Insert(ctx, sql.NewRow("Jane Deo", "janedeo@gmail.com", sql.MustJSON(`["556-565-566", "777-777-777"]`), time.Now()))
 	return db
 }
 ```
@@ -345,7 +346,7 @@ Then, you can connect to the server with any MySQL client:
 | John Doe | john@doe.com      | ["555-555-555"]               | 2018-04-18 10:42:58 |
 | John Doe | johnalt@doe.com   | []                            | 2018-04-18 10:42:58 |
 | Jane Doe | jane@doe.com      | []                            | 2018-04-18 10:42:58 |
-| Evil Bob | evilbob@gmail.com | ["555-666-555","666-666-666"] | 2018-04-18 10:42:58 |
+| Jane Doe | janedeo@gmail.com | ["556-565-566","777-777-777"] | 2018-04-18 10:42:58 |
 +----------+-------------------+-------------------------------+---------------------+
 ```
 
