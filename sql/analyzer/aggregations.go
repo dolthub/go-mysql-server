@@ -36,13 +36,6 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 		return n, transform.SameTree, nil
 	}
 
-	// Index the columns at this level and in outer scopes so that we can calculate the correct
-	// base index for GetField expressions later to account for prepended, outer scope columns.
-	columns, err := indexColumns(ctx, a, n, scope)
-	if err != nil {
-		return n, transform.SameTree, err
-	}
-
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Window:
@@ -50,21 +43,21 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 				return n, transform.SameTree, nil
 			}
 
-			return flattenedWindow(ctx, n.SelectExprs, n.Child, columns)
+			return flattenedWindow(ctx, n.SelectExprs, n.Child)
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs) {
 				return n, transform.SameTree, nil
 			}
 
-			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child, columns)
+			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child)
 		default:
 			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node, columns map[tableCol]indexedCol) (sql.Node, transform.TreeIdentity, error) {
-	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection, columns)
+func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -82,7 +75,7 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 // new set of project expressions, and the new set of aggregations. The former always matches the size of the projection
 // expressions passed in. The latter will have the size of the number of aggregate expressions contained in the input
 // slice.
-func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.Expression, columns map[tableCol]indexedCol) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
+func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
 	allGetFields := make(map[int]sql.Expression)
@@ -142,8 +135,8 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 	return newProjection, newAggregates, transform.NewTree, nil
 }
 
-func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node, columns map[tableCol]indexedCol) (sql.Node, transform.TreeIdentity, error) {
-	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection, columns)
+func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
