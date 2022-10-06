@@ -281,7 +281,6 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Point needs to have SRID 4326
-	// TODO: might need to be == Cartesian instead for other SRIDs
 	if _p.SRID != sql.GeoSpatialSRID {
 		return nil, ErrNonGeographic.New(l.FunctionName(), _p.SRID)
 	}
