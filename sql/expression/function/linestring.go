@@ -82,7 +82,7 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		switch v := val.(type) {
 		case sql.Point:
 			points[i] = v
-		case sql.LineString, sql.Polygon: // TODO: eventually add all spatial types
+		case sql.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
