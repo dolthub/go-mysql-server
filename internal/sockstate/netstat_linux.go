@@ -278,20 +278,18 @@ func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 	return allTabs, nil
 }
 
-// GetConnInode returns the Linux inode number of a TCP connection
-func GetConnInode(c *net.TCPConn) (n uint64, err error) {
+// GetConnInode returns the inode number of an fd.
+func GetConnInode(conn *net.TCPConn) (n uint64, err error) {
+	fd, err := getConnFd(conn)
+	if err != nil {
+		return 0, err
+	}
+
 	if isWSL || isProcBlocked {
 		return 0, ErrSocketCheckNotImplemented.New()
 	}
 
-	f, err := c.File()
-	if err != nil {
-		return
-	}
-
-	defer f.Close()
-
-	socketStr := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), f.Fd())
+	socketStr := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), fd)
 	socketLnk, err := os.Readlink(socketStr)
 	if err != nil {
 		return
