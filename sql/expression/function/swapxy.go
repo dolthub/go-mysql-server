@@ -54,7 +54,7 @@ func (s *SwapXY) Type() sql.Type {
 }
 
 func (s *SwapXY) String() string {
-	return fmt.Sprintf("ST_DIMENSION(%s)", s.Child.String())
+	return fmt.Sprintf("ST_SWAPXY(%s)", s.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -112,6 +112,6 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.GeometryValue:
 		return SwapGeometryXY(v), nil
 	default:
-		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
+		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
 	}
 }
