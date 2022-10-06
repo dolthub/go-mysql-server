@@ -2312,8 +2312,8 @@ var ScriptTests = []ScriptTest{
 			{
 				// MySQL returns `Unknown column 'val' in 'having clause'` error for this query,
 				// but GMS builds GroupBy for any aggregate function.
-				SkipResultsCheck: true,
-				Query:            "select count(*) from numbers having count(*) > val;",
+				Skip:  true,
+				Query: "select count(*) from numbers having count(*) > val;",
 				//ExpectedErrStr:   "found HAVING clause with no GROUP BY", // not the exact error we want
 			},
 			{

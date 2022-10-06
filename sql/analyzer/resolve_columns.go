@@ -776,6 +776,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	// so reset idx for any additional schema
 	switch n.(type) {
 	case *plan.Having:
+
 		transform.Inspect(n, func(node sql.Node) bool {
 			for _, child := range n.Children() {
 				indexChildNode(child)
