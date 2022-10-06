@@ -94,7 +94,6 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 			}
 
 			newAggregates = append(newAggregates, e)
-
 			return expression.NewGetField(
 				len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
 			), transform.NewTree, nil
