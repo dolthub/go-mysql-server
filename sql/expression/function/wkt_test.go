@@ -56,6 +56,14 @@ func TestAsWKT(t *testing.T) {
 		require.Equal("POLYGON((0 0,1 1,1 0,0 0))", v)
 	})
 
+	t.Run("convert multipoint", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKT(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal("MULTIPOINT(1 2,3 4)", v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKT(expression.NewLiteral(nil, sql.Null))
@@ -360,6 +368,39 @@ func TestGeomFromText(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("create valid multipoint with valid srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(expression.NewLiteral("MULTIPOINT(1 2, 3 4)", sql.Blob),
+			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
+	})
+
+	t.Run("create valid multipoint with invalid srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(expression.NewLiteral("MULTIPOINT(1 2, 3 4)", sql.Blob),
+			expression.NewLiteral(1, sql.Uint32))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("create valid multipoint with srid and axis order long lat", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(expression.NewLiteral("MULTIPOINT(1 2, 3 4)", sql.Blob),
+			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
 	})
 
 	t.Run("check return type", func(t *testing.T) {

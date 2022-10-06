@@ -95,6 +95,15 @@ func PolygonToWKT(p sql.Polygon, order bool) string {
 	return strings.Join(lines, ",")
 }
 
+// MultiPointToWKT converts a sql.MultiPoint to a string
+func MultiPointToWKT(p sql.MultiPoint, order bool) string {
+	points := make([]string, len(p.Points))
+	for i, p := range p.Points {
+		points[i] = PointToWKT(p, order)
+	}
+	return strings.Join(points, ",")
+}
+
 // Eval implements the sql.Expression interface.
 func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -123,8 +132,12 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		// Mark as Polygon type
 		geomType = "POLYGON"
 		data = PolygonToWKT(v, v.SRID == sql.GeoSpatialSRID)
+	case sql.MultiPoint:
+		// Mark as MultiPoint type
+		geomType = "MULTIPOINT"
+		data = MultiPointToWKT(v, v.SRID == sql.GeoSpatialSRID)
 	default:
-		return nil, sql.ErrInvalidGISData.New("ST_AsWKT")
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
 
 	return fmt.Sprintf("%s(%s)", geomType, data), nil
