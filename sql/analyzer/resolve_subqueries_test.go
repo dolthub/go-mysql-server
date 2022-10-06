@@ -420,7 +420,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 	}
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
-	runTestCases(t, ctx, testCases, a, getRule(finalizeSubqueryExprsId))
+	runTestCases(t, ctx, testCases, a, getRule(resolveSubqueryExprsId), getRule(finalizeSubqueryExprsId))
 }
 
 func TestCacheSubqueryResults(t *testing.T) {
