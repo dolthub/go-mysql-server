@@ -212,8 +212,12 @@ func (p MultiPoint) GetSRID() uint32 {
 
 // SetSRID implements GeometryValue interface.
 func (p MultiPoint) SetSRID(srid uint32) GeometryValue {
+	points := make([]Point, len(p.Points))
+	for i, point := range p.Points {
+		points[i] = point.SetSRID(srid).(Point)
+	}
 	return MultiPoint{
 		SRID:   srid,
-		Points: p.Points,
+		Points: points,
 	}
 }
