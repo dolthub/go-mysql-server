@@ -126,9 +126,7 @@ func pullMissingColumnsUp(having *plan.Having, missingCols map[string]bool) (*pl
 		if n == nil {
 			return false
 		}
-		for _, child := range n.Children() {
-			loopSchema(child.Schema())
-		}
+		loopSchema(n.Schema())
 		return true
 	})
 
