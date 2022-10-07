@@ -157,6 +157,10 @@ var ColumnAliasQueries = []ScriptTest{
 					{"third row", float64(3)},
 				},
 			},
+			{
+				Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
 		},
 	},
 	{
@@ -250,13 +254,6 @@ var ColumnAliasQueries = []ScriptTest{
 				Skip:        true,
 				Query:       `select 1 as a, (select b), 0 as b;`,
 				ExpectedErr: sql.ErrColumnNotFound,
-			},
-			{
-				// GMS returns the error "found HAVING clause with no GROUP BY", but MySQL executes
-				// this query without any problems.
-				Skip:     true,
-				Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
-				Expected: []sql.Row{{1}, {2}, {3}},
 			},
 			{
 				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
