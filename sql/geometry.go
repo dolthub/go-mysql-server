@@ -212,7 +212,7 @@ func readCount(buf []byte, isBig bool) uint32 {
 
 // DeserializeMPoint parses the data portion of a byte array in WKB format to a MultiPoint object
 func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
-	// Must contain at least length, wkb header, and one point
+	// Must contain at count, wkb header, and one point
 	if len(buf) < (CountSize + WKBHeaderSize + PointSize) {
 		return MultiPoint{}, ErrInvalidGISData.New("DeserializeMPoint")
 	}
