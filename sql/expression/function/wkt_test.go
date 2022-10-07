@@ -64,6 +64,14 @@ func TestAsWKT(t *testing.T) {
 		require.Equal("MULTIPOINT(1 2,3 4)", v)
 	})
 
+	t.Run("convert multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKT(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal("MULTILINESTRING((0 0,1 1,1 0,0 0))", v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKT(expression.NewLiteral(nil, sql.Null))
