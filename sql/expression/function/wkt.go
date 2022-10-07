@@ -333,8 +333,8 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 	return sql.Polygon{SRID: srid, Lines: lines}, nil
 }
 
-// WKTToMultiPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
-func WKTToMultiPoint(s string, srid uint32, order bool) (sql.MultiPoint, error) {
+// WKTToMPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
+func WKTToMPoint(s string, srid uint32, order bool) (sql.MultiPoint, error) {
 	if len(s) == 0 {
 		return sql.MultiPoint{}, sql.ErrInvalidGISData.New()
 	}
@@ -350,6 +350,61 @@ func WKTToMultiPoint(s string, srid uint32, order bool) (sql.MultiPoint, error) 
 	}
 
 	return sql.MultiPoint{SRID: srid, Points: points}, nil
+}
+
+// WKTToMLine Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
+func WKTToMLine(s string, srid uint32, order bool) (sql.MultiLineString, error) {
+	var lines []sql.LineString
+	for {
+		// Look for closing parentheses
+		end := strings.Index(s, ")")
+		if end == -1 {
+			return sql.MultiLineString{}, sql.ErrInvalidGISData.New()
+		}
+
+		// Extract linestring string; does not include ")"
+		lineStr := s[:end]
+
+		// Must start with open parenthesis
+		if len(lineStr) == 0 || lineStr[0] != '(' {
+			return sql.MultiLineString{}, sql.ErrInvalidGISData.New()
+		}
+
+		// Remove leading "("
+		lineStr = lineStr[1:]
+
+		// Remove leading and trailing whitespace
+		lineStr = strings.TrimSpace(lineStr)
+
+		// Parse line
+		if line, err := WKTToLine(lineStr, srid, order); err == nil {
+			lines = append(lines, line)
+		} else {
+			return sql.MultiLineString{}, sql.ErrInvalidGISData.New()
+		}
+
+		// Prepare next string
+		s = s[end+1:]
+		s = strings.TrimSpace(s)
+
+		// Reached end
+		if len(s) == 0 {
+			break
+		}
+
+		// LineStrings must be comma-separated
+		if s[0] != ',' {
+			return sql.MultiLineString{}, sql.ErrInvalidGISData.New()
+		}
+
+		// Drop leading comma
+		s = s[1:]
+
+		// Trim leading spaces
+		s = strings.TrimSpace(s)
+	}
+
+	return sql.MultiLineString{SRID: srid, Lines: lines}, nil
 }
 
 // WKTToGeom expects a string in WKT format, and converts it to a geometry type
@@ -419,7 +474,9 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 	case "polygon":
 		return WKTToPoly(data, srid, order)
 	case "multipoint":
-		return WKTToMultiPoint(data, srid, order)
+		return WKTToMPoint(data, srid, order)
+	case "multilinestring":
+		return WKTToMLine(data, srid, order)
 	default:
 		return nil, sql.ErrInvalidGISData.New()
 	}
@@ -486,7 +543,7 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return point, err
 }
 
-// LineFromText is a function that returns a point type from a WKT string
+// LineFromText is a function that returns a LineString type from a WKT string
 type LineFromText struct {
 	expression.NaryExpression
 }
@@ -538,7 +595,7 @@ func (l *LineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return line, err
 }
 
-// PolyFromText is a function that returns a polygon type from a WKT string
+// PolyFromText is a function that returns a Polygon type from a WKT string
 type PolyFromText struct {
 	expression.NaryExpression
 }
@@ -638,6 +695,58 @@ func (p *MPointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	line, err := WKTToGeom(ctx, row, p.ChildExpressions, "multipoint")
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+	}
+	return line, err
+}
+
+// MLineFromText is a function that returns a MultiLineString type from a WKT string
+type MLineFromText struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*MLineFromText)(nil)
+
+// NewMLineFromText creates a new multilinestring expression.
+func NewMLineFromText(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_MLINEFROMTEXT", "1 or 2", len(args))
+	}
+	return &MLineFromText{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (l *MLineFromText) FunctionName() string {
+	return "st_mlinefromtext"
+}
+
+// Description implements sql.FunctionExpression
+func (l *MLineFromText) Description() string {
+	return "returns a new multi line from a WKT string."
+}
+
+// Type implements the sql.Expression interface.
+func (l *MLineFromText) Type() sql.Type {
+	return sql.MultiLineStringType{}
+}
+
+func (l *MLineFromText) String() string {
+	var args = make([]string, len(l.ChildExpressions))
+	for i, arg := range l.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_MLINEFROMTEXT(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (l *MLineFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMLineFromText(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (l *MLineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	line, err := WKTToGeom(ctx, row, l.ChildExpressions, "multilinestring")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
 	}
 	return line, err
 }

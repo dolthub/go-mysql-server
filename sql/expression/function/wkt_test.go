@@ -411,6 +411,39 @@ func TestGeomFromText(t *testing.T) {
 		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
 	})
 
+	t.Run("create valid multilinestring with valid srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(expression.NewLiteral("MULTILINESTRING((0 0, 0 1, 1 0, 0 0))", sql.Blob),
+			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("create valid multilinestring with invalid srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(expression.NewLiteral("MULTILINESTRING((0 0, 0 1, 1 0, 0 0))", sql.Blob),
+			expression.NewLiteral(1234, sql.Uint32))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("create valid multilinestring with srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(expression.NewLiteral("MULTILINESTRING((0 0, 0 1, 1 0, 0 0))", sql.Blob),
+			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+	})
+
 	t.Run("check return type", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(expression.NewLiteral("POINT(1 2)", sql.Blob))
