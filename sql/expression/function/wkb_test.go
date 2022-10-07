@@ -75,6 +75,16 @@ func TestAsWKB(t *testing.T) {
 		require.Equal(res, v)
 	})
 
+	t.Run("convert multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKB(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 2, Y: 2}}}}}, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		res, err := hex.DecodeString("01050000000100000001020000000300000000000000000000000000000000000000000000000000F03F000000000000F03F00000000000000400000000000000040")
+		require.NoError(err)
+		require.Equal(res, v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKB(expression.NewLiteral(nil, sql.Null))
