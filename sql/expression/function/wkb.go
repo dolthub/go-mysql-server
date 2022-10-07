@@ -410,7 +410,7 @@ var _ sql.FunctionExpression = (*MPointFromWKB)(nil)
 // NewMPointFromWKB creates a new point expression.
 func NewMPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("ST_LINEFROMWKB", "1 or 2", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_MPOINTFROMWKB", "1 or 2", len(args))
 	}
 	return &MPointFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
@@ -422,12 +422,12 @@ func (p *MPointFromWKB) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (p *MPointFromWKB) Description() string {
-	return "returns a new linestring from WKB format."
+	return "returns a new multipoint from WKB format."
 }
 
 // Type implements the sql.Expression interface.
 func (p *MPointFromWKB) Type() sql.Type {
-	return sql.LineStringType{}
+	return sql.MultiPointType{}
 }
 
 func (p *MPointFromWKB) String() string {
@@ -435,7 +435,7 @@ func (p *MPointFromWKB) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_LINEFROMWKB(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("ST_MULTIPOINTFROMWKB(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
