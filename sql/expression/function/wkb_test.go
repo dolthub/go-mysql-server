@@ -394,6 +394,18 @@ func TestGeomFromWKB(t *testing.T) {
 		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
 	})
 
+	t.Run("convert multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("01050000000100000001020000000300000000000000000000000000000000000000000000000000F03F000000000000F03F00000000000000400000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 2, Y: 2}}}}}, v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromWKB(expression.NewLiteral(nil, sql.Null))

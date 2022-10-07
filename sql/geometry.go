@@ -212,8 +212,8 @@ func readCount(buf []byte, isBig bool) uint32 {
 
 // DeserializeMPoint parses the data portion of a byte array in WKB format to a MultiPoint object
 func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
-	// Must contain at least byte-order, type, length, and point data
-	if len(buf) < (CountSize + EndianSize + TypeSize + PointSize) {
+	// Must contain at least length, wkb header, and one point
+	if len(buf) < (CountSize + WKBHeaderSize + PointSize) {
 		return MultiPoint{}, ErrInvalidGISData.New("DeserializeMPoint")
 	}
 
@@ -229,7 +229,7 @@ func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) 
 		if typ != WKBPointID {
 			return MultiPoint{}, ErrInvalidGISData.New("DeserializeMPoint")
 		}
-		buf = buf[EndianSize+TypeSize:]
+		buf = buf[WKBHeaderSize:]
 		// Read point data
 		points[i], err = DeserializePoint(buf[:PointSize], isBig, srid)
 		if err != nil {
@@ -239,6 +239,33 @@ func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) 
 	}
 
 	return MultiPoint{SRID: srid, Points: points}, nil
+}
+
+// DeserializeMLine parses the data portion of a byte array in WKB format to a MultiLineString object
+func DeserializeMLine(buf []byte, isBig bool, srid uint32) (MultiLineString, error) {
+	// Must contain at least length, wkb header, and two point
+	if len(buf) < (CountSize + WKBHeaderSize + PointSize + PointSize) {
+		return MultiLineString{}, ErrInvalidGISData.New("MultiLineString")
+	}
+
+	// Read number of lines
+	lines := make([]LineString, readCount(buf, isBig))
+	buf = buf[CountSize:]
+	for i := range lines {
+		// WKBHeaders are inside MultiGeometry Types
+		isBig, typ, err := DeserializeWKBHeader(buf)
+		if typ != WKBLineID {
+			return MultiLineString{}, ErrInvalidGISData.New("DeserializeLine")
+		}
+		buf = buf[WKBHeaderSize:]
+		lines[i], err = DeserializeLine(buf, isBig, srid)
+		if err != nil {
+			return MultiLineString{}, ErrInvalidGISData.New("DeserializeLine")
+		}
+		buf = buf[CountSize+len(lines[i].Points)*PointSize:]
+	}
+
+	return MultiLineString{SRID: srid, Lines: lines}, nil
 }
 
 func allocateBuffer(numPoints, numCounts, numWKBHeaders int) []byte {

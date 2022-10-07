@@ -204,6 +204,8 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		geom, err = sql.DeserializePoly(buf, isBig, srid)
 	case sql.WKBMPointID:
 		geom, err = sql.DeserializeMPoint(buf, isBig, srid)
+	case sql.WKBMLineID:
+		geom, err = sql.DeserializeMLine(buf, isBig, srid)
 	// TODO: add multi geometries here
 	default:
 		return nil, sql.ErrInvalidGISData.New()
