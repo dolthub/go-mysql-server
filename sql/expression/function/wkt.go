@@ -326,8 +326,8 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 	return sql.Polygon{SRID: srid, Lines: lines}, nil
 }
 
-// WKTToMultiPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
-func WKTToMultiPoint(s string, srid uint32, order bool) (sql.MultiPoint, error) {
+// WKTToMPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
+func WKTToMPoint(s string, srid uint32, order bool) (sql.MultiPoint, error) {
 	if len(s) == 0 {
 		return sql.MultiPoint{}, sql.ErrInvalidGISData.New()
 	}
@@ -412,7 +412,7 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 	case "polygon":
 		return WKTToPoly(data, srid, order)
 	case "multipoint":
-		return WKTToMultiPoint(data, srid, order)
+		return WKTToMPoint(data, srid, order)
 	default:
 		return nil, sql.ErrInvalidGISData.New()
 	}
