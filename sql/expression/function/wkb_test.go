@@ -173,6 +173,18 @@ func TestGeomFromWKB(t *testing.T) {
 		require.Equal(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
 	})
 
+	t.Run("convert polygon in little endian", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
+	})
+
 	t.Run("convert multipoint in little endian", func(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
@@ -185,16 +197,16 @@ func TestGeomFromWKB(t *testing.T) {
 		require.Equal(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
 	})
 
-	t.Run("convert polygon in little endian", func(t *testing.T) {
+	t.Run("convert multilinestring in little endian", func(t *testing.T) {
 		require := require.New(t)
-		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
+		res, err := hex.DecodeString("010500000002000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040010200000002000000000000000000144000000000000018400000000000001C400000000000002040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
+		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, {Points: []sql.Point{{X: 5, Y: 6}, {X: 7, Y: 8}}}}}, v)
 	})
 
 	t.Run("convert point with srid 0", func(t *testing.T) {
