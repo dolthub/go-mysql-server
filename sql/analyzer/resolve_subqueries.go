@@ -44,10 +44,10 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	return resolveSubqueriesHelper(ctx, a, n, scope, sel, true)
 }
 
-func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithCtx(n, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
+func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(node, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
-			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
+			return analyzeSubqueryAlias(ctx, a, node, sqa, scope, sel, finalize)
 		} else if expressioner, ok := context.Node.(sql.Expressioner); ok {
 			exprs := expressioner.Expressions()
 			var newExprs []sql.Expression
