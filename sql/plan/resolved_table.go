@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -38,6 +39,11 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 	return &ResolvedTable{Table: table, Database: db, AsOf: asOf}
 }
 
+// NewResolvedDualTable creates a new instance of ResolvedTable.
+func NewResolvedDualTable() *ResolvedTable {
+	return &ResolvedTable{Table: NewDualSqlTable(), Database: nil, AsOf: nil}
+}
+
 // Resolved implements the Resolvable interface.
 func (*ResolvedTable) Resolved() bool {
 	return true
@@ -48,8 +54,12 @@ func (t *ResolvedTable) String() string {
 	pr.WriteNode("Table(%s)", t.Table.Name())
 	table := seethroughTableWrapper(t)
 	if pt, ok := table.(sql.ProjectedTable); ok {
-		if len(pt.Projections()) > 0 {
-			pr.WriteChildren(fmt.Sprintf("columns: %v", pt.Projections()))
+		var columns []string
+		for _, c := range pt.Projections() {
+			columns = append(columns, strings.ToLower(c))
+		}
+		if len(columns) > 0 {
+			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
 		}
 	}
 	return pr.String()
@@ -61,8 +71,12 @@ func (t *ResolvedTable) DebugString() string {
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 	if pt, ok := table.(sql.ProjectedTable); ok {
-		if len(pt.Projections()) > 0 {
-			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
+		var columns []string
+		for _, c := range pt.Projections() {
+			columns = append(columns, strings.ToLower(c))
+		}
+		if len(columns) > 0 {
+			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
 		}
 	}
 	if pt, ok := table.(sql.FilteredTable); ok {
@@ -122,7 +136,7 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
 	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
 	// nodes are things such as indexed access, filters, limits, etc.
-	if sql.IsDualTable(t) {
+	if IsDualTable(t) {
 		return true
 	}
 

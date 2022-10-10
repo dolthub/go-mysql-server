@@ -150,20 +150,25 @@ type analyzerFnTestCase struct {
 	err      *errors.Kind
 }
 
-func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase, a *Analyzer, f Rule) {
+func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase, a *Analyzer, f ...Rule) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			context := ctx
 			if context == nil {
 				context = sql.NewEmptyContext()
 			}
-			result, _, err := f.Apply(context, a, tt.node, tt.scope, DefaultRuleSelector)
-			if tt.err != nil {
-				require.Error(t, err)
-				require.True(t, tt.err.Is(err), fmt.Sprintf("Expected error of type %T but got %T", tt.err, err))
-				return
+
+			var result = tt.node
+			var err error
+			for _, r := range f {
+				result, _, err = r.Apply(context, a, result, tt.scope, DefaultRuleSelector)
+				if tt.err != nil {
+					require.Error(t, err)
+					require.True(t, tt.err.Is(err), fmt.Sprintf("Expected error of type %T but got %T", tt.err, err))
+					return
+				}
+				require.NoError(t, err)
 			}
-			require.NoError(t, err)
 
 			expected := tt.expected
 			if expected == nil {

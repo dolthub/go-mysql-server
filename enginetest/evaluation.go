@@ -154,6 +154,10 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 				t.Skip()
 			}
 		}
+		if assertion.Skip {
+			t.Skip()
+		}
+
 		if assertion.ExpectedErr != nil {
 			t.Run(assertion.Query, func(t *testing.T) {
 				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)

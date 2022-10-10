@@ -92,7 +92,7 @@ func TestQueriesPreparedSimple(t *testing.T) {
 	enginetest.TestQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+// TestSpatialQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
 func TestSpatialQueriesPrepared(t *testing.T) {
 	enginetest.TestSpatialQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
@@ -134,16 +134,11 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
 
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC`,
-		Expected: []sql.Row{
-			{"first row"},
-			{"second row"},
-			{"third row"},
-		},
+		Query:    `select 1 as b, (select b order by b);`,
+		Expected: []sql.Row{{1, 1}},
 	}
 
 	fmt.Sprintf("%v", test)
@@ -313,6 +308,19 @@ func TestQueryPlans(t *testing.T) {
 			// The IN expression requires mergeable indexes meaning that an unmergeable index returns a different result, so we skip this test
 			harness.QueriesToSkip("SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)")
 			enginetest.TestQueryPlans(t, harness, queries.PlanTests)
+		})
+	}
+}
+
+func TestIntegrationQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 2, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestIntegrationPlans(t, harness)
 		})
 	}
 }

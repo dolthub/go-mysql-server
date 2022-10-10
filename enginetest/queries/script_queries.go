@@ -2252,6 +2252,76 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "basic test on tables dual and `dual`",
+		SetUpScript: []string{
+			"CREATE TABLE `dual` (id int)",
+			"INSERT INTO `dual` VALUES (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from `dual`;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT 3 from dual;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:       "SELECT * from dual;",
+				ExpectedErr: sql.ErrNoTablesUsed,
+			},
+		},
+	},
+	{
+		Name: "having clause without groupby clause, all rows implicitly form a single aggregate group",
+		SetUpScript: []string{
+			"create table numbers (val int);",
+			"insert into numbers values (1), (2), (3);",
+			"insert into numbers values (2), (4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select val from numbers;",
+				Expected: []sql.Row{{1}, {2}, {3}, {2}, {4}},
+			},
+			{
+				Query:    "select val as a from numbers having a = val;",
+				Expected: []sql.Row{{1}, {2}, {3}, {2}, {4}},
+			},
+			{
+				Query:    "select val as a from numbers group by val having a = val;",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select val as a from numbers as t1 group by t1.val having a = t1.val;",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select t1.val as a from numbers as t1 group by 1 having a = t1.val;",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select t1.val as a from numbers as t1 having a = t1.val;",
+				Expected: []sql.Row{{1}, {2}, {3}, {2}, {4}},
+			},
+			{
+				Query:    "select count(*) from numbers having count(*) = 5;",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				// MySQL returns `Unknown column 'val' in 'having clause'` error for this query,
+				// but GMS builds GroupBy for any aggregate function.
+				Skip:  true,
+				Query: "select count(*) from numbers having count(*) > val;",
+				//ExpectedErrStr:   "found HAVING clause with no GROUP BY", // not the exact error we want
+			},
+			{
+				Query:    "select count(*) from numbers group by val having count(*) < val;",
+				Expected: []sql.Row{{1}, {1}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

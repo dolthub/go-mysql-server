@@ -18,27 +18,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
-
-var dualTable = func() sql.Table {
-	t := memory.NewTable(sql.DualTableName, sql.DualTableSchema, nil)
-
-	ctx := sql.NewEmptyContext()
-
-	// Need to run through the proper inserting steps to add data to the dummy table.
-	inserter := t.Inserter(ctx)
-	inserter.StatementBegin(ctx)
-	_ = inserter.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
-	_ = inserter.StatementComplete(ctx)
-	_ = inserter.Close(ctx)
-	return t
-}()
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_tables")
@@ -112,7 +97,12 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 
 			rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
 			if err != nil {
-				return handleTableLookupFailure(err, name, db, a, t)
+				if sql.ErrDatabaseNotFound.Is(err) {
+					if db == "" {
+						err = sql.ErrNoDatabaseSelected.New()
+					}
+				}
+				return nil, err
 			}
 
 			a.Log("table resolved: %q as of %s", rt.Name(), asOf)
@@ -122,7 +112,12 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 
 	rt, database, err := a.Catalog.Table(ctx, db, name)
 	if err != nil {
-		return handleTableLookupFailure(err, name, db, a, t)
+		if sql.ErrDatabaseNotFound.Is(err) {
+			if db == "" {
+				err = sql.ErrNoDatabaseSelected.New()
+			}
+		}
+		return nil, err
 	}
 
 	resolvedTableNode := plan.NewResolvedTable(rt, database, nil)
@@ -236,25 +231,6 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 	})
 }
 
-func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t sql.UnresolvedTable) (sql.Node, error) {
-	if sql.ErrDatabaseNotFound.Is(err) {
-		if tableName == sql.DualTableName {
-			a.Log("table resolved: %q", t.Name())
-			return plan.NewResolvedTable(dualTable, nil, nil), nil
-		}
-		if dbName == "" {
-			return nil, sql.ErrNoDatabaseSelected.New()
-		}
-	} else if sql.ErrTableNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) || sql.ErrTableAccessDeniedForUser.Is(err) {
-		if tableName == sql.DualTableName {
-			a.Log("table resolved: %s", t.Name())
-			return plan.NewResolvedTable(dualTable, nil, nil), nil
-		}
-	}
-
-	return nil, err
-}
-
 // reresolveTables is a quick and dirty way to make prepared statement reanalysis
 // resolve the most up-to-date table roots while preserving projections folded into
 // table scans.
@@ -278,9 +254,13 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if n.AsOf != nil {
 				asof = expression.NewLiteral(n.AsOf, nil)
 			}
-			to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOf(n.Name(), db, asof), a)
-			if err != nil {
-				return nil, transform.SameTree, err
+			if plan.IsDualTable(n) {
+				to = n
+			} else {
+				to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOf(n.Name(), db, asof), a)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
 			}
 			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil

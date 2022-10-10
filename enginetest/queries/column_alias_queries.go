@@ -157,6 +157,10 @@ var ColumnAliasQueries = []ScriptTest{
 					{"third row", float64(3)},
 				},
 			},
+			{
+				Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
 		},
 	},
 	{
@@ -168,6 +172,10 @@ var ColumnAliasQueries = []ScriptTest{
 			"insert into uv values (0,3),(3,0),(2,1),(1,2);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `select "foo" as dummy, (select dummy)`,
+				Expected: []sql.Row{{"foo", "foo"}},
+			},
 			{
 				// https://github.com/dolthub/dolt/issues/4344
 				Query:    "select x as v, (select u from uv where v = y) as u from xy;",
@@ -227,13 +235,6 @@ var ColumnAliasQueries = []ScriptTest{
 		Name: "various broken alias queries",
 		Assertions: []ScriptTestAssertion{
 			{
-				// The dual table's schema collides with this alias name
-				// https://github.com/dolthub/dolt/issues/4256
-				Skip:     true,
-				Query:    `select "foo" as dummy, (select dummy)`,
-				Expected: []sql.Row{{"foo", "foo"}},
-			},
-			{
 				// The second query in the union subquery returns "x" instead of mytable.i
 				// https://github.com/dolthub/dolt/issues/4256
 				Skip:     true,
@@ -255,19 +256,18 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				// GMS returns the error "found HAVING clause with no GROUP BY", but MySQL executes
-				// this query without any problems.
-				// https://github.com/dolthub/go-mysql-server/issues/1289
-				Skip:     true,
-				Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
-				Expected: []sql.Row{{1}, {2}, {3}},
-			},
-			{
 				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
 				// this query.
+				Skip:  true,
+				Query: "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
+				// column names:  a, mod1, one, two
+				Expected: []sql.Row{{1, 2, 1, 2}},
+			},
+			{
+				// GMS returns `ambiguous column or alias name "b"` on both cases of `group by b` and `group by 1` inside subquery, but MySQL executes.
 				Skip:     true,
-				Query:    "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
-				Expected: []sql.Row{{1}},
+				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
+				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},

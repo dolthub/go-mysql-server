@@ -101,6 +101,10 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 	}, nil
 }
 
+func (i *IndexedTableAccess) IsStatic() bool {
+	return !i.lookup.IsEmpty()
+}
+
 func (i *IndexedTableAccess) Resolved() bool {
 	return i.ResolvedTable.Resolved()
 }
@@ -221,8 +225,12 @@ func (i *IndexedTableAccess) String() string {
 		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
 	}
 	if pt, ok := i.Table.(sql.ProjectedTable); ok {
+		var columns []string
+		for _, c := range pt.Projections() {
+			columns = append(columns, strings.ToLower(c))
+		}
 		if len(pt.Projections()) > 0 {
-			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
+			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
 	pr.WriteChildren(children...)
@@ -250,7 +258,11 @@ func (i *IndexedTableAccess) DebugString() string {
 	}
 	if pt, ok := i.Table.(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
-			children = append(children, fmt.Sprintf("columns: %v", pt.Projections()))
+			var columns []string
+			for _, c := range pt.Projections() {
+				columns = append(columns, strings.ToLower(c))
+			}
+			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
 	pr.WriteChildren(children...)

@@ -54,7 +54,7 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			for i, expr := range exprs {
 				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if sq, ok := e.(*plan.Subquery); ok {
-						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, finalize)
+						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, NewNestedSubqueryFinalizer(sel), finalize)
 					} else {
 						return e, transform.SameTree, nil
 					}
@@ -182,6 +182,31 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *pla
 	}
 	newn, err := sqa.WithChildren(StripPassthroughNodes(child))
 	return newn, transform.NewTree, err
+}
+
+func finalizeSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		s, ok := e.(*plan.Subquery)
+		if !ok {
+			return e, transform.SameTree, nil
+		}
+
+		subqueryCtx, cancelFunc := ctx.NewSubContext()
+		defer cancelFunc()
+		subScope := scope.newScope(n)
+
+		analyzed, _, err := a.analyzeStartingAtBatch(subqueryCtx, s.Query, subScope, "default-rules", NewFinalizeSubqueryExprSelector(sel))
+		if err != nil {
+			// todo(max): I'm not sure we should be hiding errors here, but this maintains pre-existing tests
+			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
+				// keep the work we have and defer remainder of analysis of this subquery until a later pass
+				return s.WithQuery(analyzed), transform.NewTree, nil
+			}
+			return nil, transform.SameTree, err
+		}
+
+		return s.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
+	})
 }
 
 // StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query

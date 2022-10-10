@@ -42,17 +42,17 @@ func TestMergeUnionSchemas(t *testing.T) {
 			"Matching Schemas is Unchanged",
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), false, nil, nil),
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), false, nil, nil),
 			nil,
 		},
@@ -60,13 +60,13 @@ func TestMergeUnionSchemas(t *testing.T) {
 			"Mismatched Lengths is error",
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), plan.NewProject(
 				[]sql.Expression{
 					expression.NewLiteral(int64(3), sql.Int64),
 					expression.NewLiteral(int64(6), sql.Int64),
 				},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), false, nil, nil),
 			nil,
 			errors.New("this is an error"),
@@ -75,10 +75,10 @@ func TestMergeUnionSchemas(t *testing.T) {
 			"Mismatched Types Coerced to Strings",
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
-				plan.NewResolvedTable(dualTable, nil, nil),
+				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), false, nil, nil),
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{
@@ -87,7 +87,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 				},
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable, nil, nil),
+					plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 				),
 			), plan.NewProject(
 				[]sql.Expression{
@@ -96,7 +96,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 				},
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
-					plan.NewResolvedTable(dualTable, nil, nil),
+					plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 				),
 			), false, nil, nil),
 			nil,
