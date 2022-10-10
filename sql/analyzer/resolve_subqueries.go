@@ -115,6 +115,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	subqueryCtx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
 	subScope := scope.newScope(n)
+	subScope.InSubqueryExpression = true
 
 	var analyzed sql.Node
 	var err error
@@ -144,7 +145,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 // analyzeSubqueryAlias runs analysis on the specified subquery alias, |sqa|. The |finalize| parameter indicates if this is
 // the final run of the analyzer on the query before execution, which means all rules, starting from the default-rules
 // batch are processed, otherwise only the once-before-default batch of rules is processed for all other non-final passes.
-func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, sqa *plan.SubqueryAlias, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
+func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *plan.SubqueryAlias, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
 	subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
 	if scope != nil && len(scope.nodes) > 0 {
 		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
@@ -153,7 +154,9 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, sqa *plan.SubqueryAlias
 		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
 		subScope.nodes = scope.InnerToOuter()
-		sqa.OuterScopeVisibility = true
+		if scope.InSubqueryExpression {
+			sqa.OuterScopeVisibility = true
+		}
 	}
 
 	var child sql.Node
@@ -221,7 +224,9 @@ func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
 	return cacheable
 }
 
-func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
+func nodeIsCacheable(ctx *sql.Context, n sql.Node, scope *Scope) bool {
+	lowestAllowedIdx := len(scope.Schema())
+
 	cacheable := true
 	transform.Inspect(n, func(node sql.Node) bool {
 		if er, ok := node.(sql.Expressioner); ok {
@@ -232,12 +237,17 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 				}
 			}
 		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
-			// If a subquery alias has visibility to its outer scopes, then we can't cache its results
 			// TODO: Need more logic and testing with CTEs. For example, CTEs that are non-deterministic MUST be
 			//       cached and have their result sets reused, otherwise query result will be incorrect.
+			// If a subquery has visibility to outer scopes, then we need to look at it closer to see if it is using
+			// any references to that outer scope. If not, it can be cached.
 			if sqa.OuterScopeVisibility {
-				cacheable = false
-				return false
+				subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
+				subScope.nodes = scope.InnerToOuter()
+				if !nodeIsCacheable(ctx, sqa.Child, subScope) {
+					cacheable = false
+					return false
+				}
 			}
 		}
 		return true
@@ -276,8 +286,9 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 			return e, transform.SameTree, nil
 		}
 
-		scopeLen := len(scope.newScope(n).Schema())
-		cacheable := nodeIsCacheable(s.Query, scopeLen)
+		// TODO: is n the right node to pass?
+		subScope := scope.newScope(n)
+		cacheable := nodeIsCacheable(ctx, s.Query, subScope)
 		if cacheable {
 			return s.WithCachedResults(), transform.NewTree, nil
 		}
