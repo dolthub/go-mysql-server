@@ -181,7 +181,7 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 			}
 		}
 		err = indexable.CreateIndex(ctx, indexName, p.Using, p.Constraint, p.Columns, p.Comment)
-		if rwt, ok := indexable.(sql.RewritableTable); ok {
+		if rwt, ok := indexable.(sql.RewritableTable); ok && p.Constraint == sql.IndexConstraint_Unique {
 			sch := sql.SchemaToPrimaryKeySchema(table, table.Schema())
 			inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil)
 			if err != nil {
