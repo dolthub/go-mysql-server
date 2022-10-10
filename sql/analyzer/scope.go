@@ -32,6 +32,9 @@ type Scope struct {
 	recursionDepth int
 
 	procedures *ProcedureCache
+
+	// InSubqueryExpression is true when the current scope has been created by a subquery expression.
+	InSubqueryExpression bool
 }
 
 func (s *Scope) IsEmpty() bool {
