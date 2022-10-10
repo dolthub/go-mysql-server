@@ -79,6 +79,9 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch v := val.(type) {
 	case sql.GeometryValue:
+		if v.GetSRID() == sql.GeoSpatialSRID {
+			v = v.Swap()
+		}
 		return v.Serialize()[sql.SRIDSize:], nil
 	default:
 		return nil, sql.ErrInvalidGISData.New(a.FunctionName())

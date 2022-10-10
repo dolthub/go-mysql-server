@@ -261,15 +261,17 @@ var Reserved_keywordsData = []SetupScript{{
 
 var SpatialData = []SetupScript{{
 	`create table stringtogeojson_table (i bigint primary key, s blob)`,
-	`insert into stringtogeojson_table values        (0, '{"type": "Point", "coordinates": [1,2]}'),        (1, '{"type": "Point", "coordinates": [123.45,56.789]}'),        (2, '{"type": "LineString", "coordinates": [[1,2],[3,4]]}'),        (3, '{"type": "LineString", "coordinates": [[1.23,2.345],[3.56789,4.56]]}'),        (4, '{"type": "Polygon", "coordinates": [[[1.1,2.2],[3.3,4.4],[5.5,6.6],[1.1,2.2]]]}'),        (5, '{"type": "Polygon", "coordinates": [[[0,0],[1,1],[2,2],[0,0]]]}')`,
+	`insert into stringtogeojson_table values        (0, '{"type": "Point", "coordinates": [1,2]}'),        (1, '{"type": "Point", "coordinates": [123.45,56.789]}'),        (2, '{"type": "LineString", "coordinates": [[1,2],[3,4]]}'),        (3, '{"type": "LineString", "coordinates": [[1.23,2.345],[3.56789,4.56]]}'),        (4, '{"type": "Polygon", "coordinates": [[[1.1,2.2],[3.3,4.4],[5.5,6.6],[1.1,2.2]]]}'),        (5, '{"type": "Polygon", "coordinates": [[[0,0],[1,1],[2,2],[0,0]]]}'),        (6, '{"type": "MultiPoint", "coordinates": [[1,2],[3,4]]}'),        (7, '{"type": "MultiPoint", "coordinates": [[1.23,2.345],[3.56789,4.56]]}')`,
 	`create table geometry_table (i bigint primary key, g geometry NOT NULL)`,
-	`insert into geometry_table values        (1, ST_GeomFromText('Point(1 2)')),		(2, ST_GeomFromText('Linestring(1 2,3 4)')),        (3, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),		(4, ST_SRID(ST_GeomFromText('Point(1 2)'), 4326)),        (5, ST_SRID(ST_GeomFromText('Linestring(1 2,3 4)'), 4326)),		(6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326))`,
+	`insert into geometry_table values        (1, ST_GeomFromText('Point(1 2)')),        (2, ST_SRID(ST_GeomFromText('Point(1 2)'), 4326)),		(3, ST_GeomFromText('Linestring(1 2,3 4)')),		(4, ST_SRID(ST_GeomFromText('Linestring(1 2,3 4)'), 4326)),        (5, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),        (6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),        (7, ST_GeomFromText('MultiPoint(1 2,3 4)')),		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326))`,
 	`create table point_table (i bigint primary key, p point NOT NULL);`,
 	`insert into point_table values (5, ST_GeomFromText('Point(1 2)'))`,
 	`create table line_table (i bigint primary key, l linestring NOT NULL);`,
 	`insert into line_table values    (0, ST_GeomFromText('Linestring(1 2,3 4)')),    (1, ST_GeomFromText('Linestring(1 2,3 4,5 6)'))`,
 	`create table polygon_table (i bigint primary key, p polygon NOT NULL);`,
 	`insert into polygon_table values    (0, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0))')),    (1, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))'))`,
+	`create table mpoint_table (i bigint primary key, l multipoint NOT NULL);`,
+	`insert into mpoint_table values    (0, ST_GeomFromText('MultiPoint(1 2,3 4)')),    (1, ST_GeomFromText('MultiPoint(1 2,3 4,5 6)'))`,
 }}
 
 var SpecialtableData = []SetupScript{{
