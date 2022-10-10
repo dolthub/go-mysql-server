@@ -21,12 +21,12 @@ create table geometry_table (i bigint primary key, g geometry NOT NULL)
 exec
 insert into geometry_table values
         (1, ST_GeomFromText('Point(1 2)')),
-		(2, ST_GeomFromText('Linestring(1 2,3 4)')),
-        (3, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),
-        (4, ST_GeomFromText('MultiPoint(1 2,3 4)')),
-		(5, ST_SRID(ST_GeomFromText('Point(1 2)'), 4326)),
-        (6, ST_SRID(ST_GeomFromText('Linestring(1 2,3 4)'), 4326)),
-		(7, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),
+        (2, ST_SRID(ST_GeomFromText('Point(1 2)'), 4326)),
+		(3, ST_GeomFromText('Linestring(1 2,3 4)')),
+		(4, ST_SRID(ST_GeomFromText('Linestring(1 2,3 4)'), 4326)),
+        (5, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),
+        (6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),
+        (7, ST_GeomFromText('MultiPoint(1 2,3 4)')),
 		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326))
 ----
 
