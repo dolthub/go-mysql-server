@@ -492,7 +492,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil {
 		return nil, errors.New("incorrect srid value")
 	}
-	srid := uint32(s.(int64))
+	srid := uint32(s.(int))
 	if err = ValidateSRID(srid); err != nil {
 		return nil, err
 	}
