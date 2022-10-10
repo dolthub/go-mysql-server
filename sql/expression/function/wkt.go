@@ -67,6 +67,8 @@ func (p *AsWKT) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewAsWKT(children[0]), nil
 }
 
+// TODO: these functions could be refactored to be inside the sql.GeometryValue interface
+
 // PointToWKT converts a sql.Point to a string
 func PointToWKT(p sql.Point, order bool) string {
 	x := strconv.FormatFloat(p.X, 'g', -1, 64)
