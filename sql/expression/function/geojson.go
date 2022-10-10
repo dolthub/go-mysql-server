@@ -75,6 +75,14 @@ func PolyToSlice(p sql.Polygon) [][][2]float64 {
 	return arr
 }
 
+func MPointToSlice(p sql.MultiPoint) [][2]float64 {
+	arr := make([][2]float64, len(p.Points))
+	for i, point := range p.Points {
+		arr[i] = PointToSlice(point)
+	}
+	return arr
+}
+
 func FindBBox(v interface{}) [4]float64 {
 	var res [4]float64
 	switch v := v.(type) {
@@ -93,6 +101,15 @@ func FindBBox(v interface{}) [4]float64 {
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
 		for _, l := range v.Lines {
 			tmp := FindBBox(l)
+			res[0] = math.Min(res[0], tmp[0])
+			res[1] = math.Min(res[1], tmp[1])
+			res[2] = math.Max(res[2], tmp[2])
+			res[3] = math.Max(res[3], tmp[3])
+		}
+	case sql.MultiPoint:
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		for _, p := range v.Points {
+			tmp := FindBBox(p)
 			res[0] = math.Min(res[0], tmp[0])
 			res[1] = math.Min(res[1], tmp[1])
 			res[2] = math.Max(res[2], tmp[2])
@@ -122,34 +139,39 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 	return nil
 }
 
-// GetSRID returns the SRID given a Geometry type, will return -1 otherwise
-func GetSRID(val interface{}) int {
-	switch v := val.(type) {
-	case sql.Point:
-		return int(v.SRID)
-	case sql.LineString:
-		return int(v.SRID)
-	case sql.Polygon:
-		return int(v.SRID)
-	default:
-		return -1
+// getIntArg is a helper method that evaluates the given sql.Expression to an int type, errors on float32 and float 64,
+// and returns nil
+func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{}, error) {
+	x, err := expr.Eval(ctx, row)
+	if err != nil {
+		return nil, err
 	}
+	if x == nil {
+		return nil, nil
+	}
+	switch x.(type) {
+	case float32, float64:
+		return nil, errors.New("received a float when it should be an int")
+	}
+	x, err = sql.Int64.Convert(x)
+	if err != nil {
+		return nil, err
+	}
+	return int(x.(int64)), nil
 }
 
 // Eval implements the sql.Expression interface.
 func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
+	// convert spatial type to map, then place inside sql.JSONDocument
 	val, err := g.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	// Return nil when geometry is nil
 	if val == nil {
 		return nil, nil
 	}
 
-	// Create map object to hold values
 	obj := make(map[string]interface{})
 	switch v := val.(type) {
 	case sql.Point:
@@ -161,93 +183,57 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.Polygon:
 		obj["type"] = "Polygon"
 		obj["coordinates"] = PolyToSlice(v)
+	case sql.MultiPoint:
+		obj["type"] = "MultiPoint"
+		obj["coordinates"] = MPointToSlice(v)
 	default:
 		return nil, ErrInvalidArgumentType.New(g.FunctionName())
 	}
 
-	// No precision argument, just return object
 	if len(g.ChildExpressions) == 1 {
 		return sql.JSONDocument{Val: obj}, nil
 	}
 
 	// Evaluate precision
-	p, err := g.ChildExpressions[1].Eval(ctx, row)
+	p, err := getIntArg(ctx, row, g.ChildExpressions[1])
 	if err != nil {
-		return nil, err
+		return nil, errors.New("incorrect precision value")
 	}
-	// Return null if precision is null
 	if p == nil {
 		return nil, nil
 	}
-	// Must be an int type
-	_p := 0
-	switch p := p.(type) {
-	case int8:
-		_p = int(p)
-	case int16:
-		_p = int(p)
-	case int32:
-		_p = int(p)
-	case int64:
-		_p = int(p)
-	case int:
-		_p = p
-	default:
+	pp := p.(int)
+	if pp < 0 {
 		return nil, errors.New("incorrect precision value")
 	}
-	// Must be >= 0
-	if _p < 0 {
-		return nil, errors.New("incorrect precision value")
-	}
-
-	// TODO: lose accuracy with high precisions, 17 is about the most MySQL prints anyway
-	if _p > 17 {
-		_p = 17
+	if pp > 17 {
+		pp = 17
 	}
 
 	// Round floats
-	prec := math.Pow10(_p)
+	prec := math.Pow10(pp)
 	obj["coordinates"] = RoundFloatSlices(obj["coordinates"], prec)
 
-	// No flag argument, just return object
 	if len(g.ChildExpressions) == 2 {
 		return sql.JSONDocument{Val: obj}, nil
 	}
 
 	// Evaluate flag argument
-	flag, err := g.ChildExpressions[2].Eval(ctx, row)
+	f, err := getIntArg(ctx, row, g.ChildExpressions[2])
 	if err != nil {
-		return nil, err
-	}
-	// Return null if flag is null
-	if flag == nil {
-		return nil, nil
-	}
-	// Must be an int type
-	_flag := 0
-	switch flag := flag.(type) {
-	case int8:
-		_flag = int(flag)
-	case int16:
-		_flag = int(flag)
-	case int32:
-		_flag = int(flag)
-	case int64:
-		_flag = int(flag)
-	case int:
-		_flag = flag
-	default:
 		return nil, errors.New("incorrect flag value")
 	}
-	// Only flags 0-7 are valid
-	if _flag < 0 || _flag > 7 {
-		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), _flag)
+	if f == nil {
+		return nil, nil
 	}
-
-	switch _flag {
+	flag := f.(int)
+	if flag < 0 || flag > 7 {
+		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), flag)
+	}
+	// TODO: the flags do very different things for when the SRID is GeoSpatial
+	switch flag {
 	// Flags 1,3,5 have bounding box
 	case 1, 3, 5:
-		// Calculate bounding box
 		res := FindBBox(val)
 		for i, r := range res {
 			res[i] = math.Round(r*prec) / prec
@@ -256,7 +242,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Flag 2 and 4 add CRS URN (EPSG: <srid>); only shows up if SRID != 0
 	case 2, 4:
 		// CRS obj only shows up if srid != 0
-		srid := GetSRID(val)
+		srid := val.(sql.GeometryValue).GetSRID()
 		if srid != 0 {
 			// Create CRS URN Object
 			crs := make(map[string]interface{})
@@ -265,8 +251,8 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			// Create properties
 			props := make(map[string]interface{})
 			// Flag 2 is short format CRS URN, while 4 is long format
-			sridStr := strconv.Itoa(srid)
-			if _flag == 2 {
+			sridStr := strconv.Itoa(int(srid))
+			if flag == 2 {
 				props["name"] = "EPSG:" + sridStr
 			} else {
 				props["name"] = "urn:ogc:def:crs:EPSG::" + sridStr
@@ -326,7 +312,6 @@ func (g *GeomFromGeoJSON) WithChildren(children ...sql.Expression) (sql.Expressi
 }
 
 func SliceToPoint(coords interface{}) (interface{}, error) {
-	// coords must be a slice of 2 float64
 	c, ok := coords.([]interface{})
 	if !ok {
 		return nil, errors.New("member 'coordinates' must be of type 'array'")
@@ -334,11 +319,11 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 	if len(c) < 2 {
 		return nil, errors.New("unsupported number of coordinate dimensions")
 	}
-	x, ok := c[1].(float64)
+	x, ok := c[0].(float64)
 	if !ok {
 		return nil, errors.New("coordinate must be of type number")
 	}
-	y, ok := c[0].(float64)
+	y, ok := c[1].(float64)
 	if !ok {
 		return nil, errors.New("coordinate must be of type number")
 	}
@@ -346,7 +331,6 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 }
 
 func SliceToLine(coords interface{}) (interface{}, error) {
-	// coords must be a slice of at least 2 slices of 2 float64
 	cs, ok := coords.([]interface{})
 	if !ok {
 		return nil, errors.New("member 'coordinates' must be of type 'array'")
@@ -388,35 +372,52 @@ func SliceToPoly(coords interface{}) (interface{}, error) {
 	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
 }
 
+func SliceToMPoint(coords interface{}) (interface{}, error) {
+	cs, ok := coords.([]interface{})
+	if !ok {
+		return nil, errors.New("member 'coordinates' must be of type 'array'")
+	}
+	if len(cs) < 2 {
+		return nil, errors.New("invalid GeoJSON data provided")
+	}
+	points := make([]sql.Point, len(cs))
+	for i, c := range cs {
+		p, err := SliceToPoint(c)
+		if err != nil {
+			return nil, err
+		}
+		points[i] = p.(sql.Point)
+	}
+	return sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: points}, nil
+}
+
 // Eval implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Evaluate child
 	val, err := g.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	// Return nil when geometry is nil
 	if val == nil {
 		return nil, nil
 	}
-	// Convert to string
 	val, err = sql.LongBlob.Convert(val)
 	if err != nil {
 		return nil, err
 	}
+
 	switch s := val.(type) {
 	case string:
 		val = []byte(s)
 	case []byte:
 		val = s
 	}
-	// Parse string as JSON
+
 	var obj map[string]interface{}
 	err = json.Unmarshal(val.([]byte), &obj)
 	if err != nil {
 		return nil, err
 	}
-	// Check for type and coordinates
+
 	geomType, ok := obj["type"]
 	if !ok {
 		return nil, errors.New("missing required member 'type'")
@@ -425,6 +426,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if !ok {
 		return nil, errors.New("missing required member 'coordinates'")
 	}
+
 	// Create type accordingly
 	var res interface{}
 	switch geomType {
@@ -434,54 +436,38 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		res, err = SliceToLine(coords)
 	case "Polygon":
 		res, err = SliceToPoly(coords)
+	case "MultiPoint":
+		res, err = SliceToMPoint(coords)
 	default:
 		return nil, errors.New("member 'type' is wrong")
 	}
-	// Handle error
 	if err != nil {
 		return nil, err
 	}
-	// if only 1 argument, return
 	if len(g.ChildExpressions) == 1 {
 		return res, nil
 	}
+
 	// Evaluate flag argument
-	flag, err := g.ChildExpressions[1].Eval(ctx, row)
+	f, err := getIntArg(ctx, row, g.ChildExpressions[1])
 	if err != nil {
-		return nil, err
-	}
-	if flag == nil {
-		return nil, nil
-	}
-	// Must be an int type
-	_flag := 0
-	switch flag := flag.(type) {
-	case int8:
-		_flag = int(flag)
-	case int16:
-		_flag = int(flag)
-	case int32:
-		_flag = int(flag)
-	case int64:
-		_flag = int(flag)
-	case int:
-		_flag = flag
-	default:
 		return nil, errors.New("incorrect flag value")
 	}
-	// Only flags 1-4 are valid
-	if _flag < 1 || _flag > 4 {
-		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), _flag)
+	if f == nil {
+		return nil, nil
 	}
-	// If flag is 1 and dimension of coordinates is greater than 2, throw error
-	if _flag == 1 {
-		// Swap coordinates with SRID 0
+	flag := f.(int)
+	if flag < 1 || flag > 4 {
+		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), flag)
+	}
+	// reject higher dimensions; otherwise, higher dimensions are already stripped off
+	if flag == 1 {
 		switch geomType {
 		case "Point":
 			if len(obj["coordinates"].([]interface{})) > 2 {
 				return nil, errors.New("unsupported number of coordinate dimensions")
 			}
-		case "LineString":
+		case "LineString", "MultiPoint":
 			for _, a := range obj["coordinates"].([]interface{}) {
 				if len(a.([]interface{})) > 2 {
 					return nil, errors.New("unsupported number of coordinate dimensions")
@@ -497,67 +483,19 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 			}
 		}
 	}
-	// If no SRID provided, return answer
 	if len(g.ChildExpressions) == 2 {
 		return res, nil
 	}
+
 	// Evaluate SRID
-	srid, err := g.ChildExpressions[2].Eval(ctx, row)
+	s, err := getIntArg(ctx, row, g.ChildExpressions[2])
 	if err != nil {
-		return nil, err
-	}
-	if srid == nil {
-		return nil, nil
-	}
-	// Must be an uint32 type
-	_srid := uint32(0)
-	switch srid := srid.(type) {
-	case int8:
-		_srid = uint32(srid)
-	case int16:
-		_srid = uint32(srid)
-	case int32:
-		_srid = uint32(srid)
-	case int64:
-		_srid = uint32(srid)
-	case int:
-		_srid = uint32(srid)
-	default:
 		return nil, errors.New("incorrect srid value")
 	}
-	if err = ValidateSRID(_srid); err != nil {
+	srid := uint32(s.(int64))
+	if err = ValidateSRID(srid); err != nil {
 		return nil, err
 	}
-	// If SRID is GeoSpatialSRID (4326), do nothing
-	if _srid == sql.GeoSpatialSRID {
-		return res, nil
-	}
-	// Swap coordinates with SRID 0
-	switch geomType {
-	case "Point":
-		_res := res.(sql.Point)
-		_res.SRID = _srid
-		_res.X, _res.Y = _res.Y, _res.X
-		return _res, nil
-	case "LineString":
-		_res := res.(sql.LineString)
-		_res.SRID = _srid
-		for i, p := range _res.Points {
-			_res.Points[i].SRID = _srid
-			_res.Points[i].X, _res.Points[i].Y = p.Y, p.X
-		}
-		return _res, nil
-	case "Polygon":
-		_res := res.(sql.Polygon)
-		_res.SRID = _srid
-		for i, l := range _res.Lines {
-			_res.Lines[i].SRID = _srid
-			for j, p := range l.Points {
-				_res.Lines[i].Points[j].SRID = _srid
-				_res.Lines[i].Points[j].X, _res.Lines[i].Points[j].Y = p.Y, p.X
-			}
-		}
-		return _res, nil
-	}
-	return nil, nil
+	res = res.(sql.GeometryValue).SetSRID(srid)
+	return res, nil
 }
