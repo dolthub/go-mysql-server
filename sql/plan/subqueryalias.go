@@ -24,7 +24,8 @@ type SubqueryAlias struct {
 	Columns        []string
 	name           string
 	TextDefinition string
-	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery expression
+	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
+	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
 }
 
