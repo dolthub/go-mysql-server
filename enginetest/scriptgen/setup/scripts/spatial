@@ -59,7 +59,7 @@ insert into polygon_table values
 ----
 
 exec
-create table mpoint_table (i bigint primary key, l multipoint NOT NULL);
+create table mpoint_table (i bigint primary key, p multipoint NOT NULL);
 ----
 
 exec

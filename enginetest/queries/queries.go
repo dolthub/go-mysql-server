@@ -68,6 +68,17 @@ var SpatialQueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `SHOW CREATE TABLE mpoint_table`,
+		Expected: []sql.Row{{
+			"mpoint_table",
+			"CREATE TABLE `mpoint_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` multipoint NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+		}},
+	},
+	{
 		Query: `SHOW CREATE TABLE geometry_table`,
 		Expected: []sql.Row{{
 			"geometry_table",
@@ -248,6 +259,13 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT ST_ASGEOJSON(p) from mpoint_table`,
+		Expected: []sql.Row{
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
+		},
+	},
+	{
 		Query: `SELECT ST_ASGEOJSON(ST_GEOMFROMGEOJSON(s)) from stringtogeojson_table`,
 		Expected: []sql.Row{
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
@@ -281,6 +299,13 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from mpoint_table`,
+		Expected: []sql.Row{
+			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
+		},
+	},
+	{
 		Query: `SELECT ST_DIMENSION(p) from point_table`,
 		Expected: []sql.Row{
 			{0},
@@ -298,6 +323,13 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{2},
 			{2},
+		},
+	},
+	{
+		Query: `SELECT ST_DIMENSION(p) from mpoint_table`,
+		Expected: []sql.Row{
+			{0},
+			{0},
 		},
 	},
 	{
@@ -331,6 +363,13 @@ var SpatialQueryTests = []QueryTest{
 			{"POLYGON((0 0,1 0,1 1,0 0))"},
 			{"MULTIPOINT(1 2,3 4)"},
 			{"MULTIPOINT(2 1,4 3)"},
+		},
+	},
+	{
+		Query: `SELECT ST_SWAPXY(p) from mpoint_table`,
+		Expected: []sql.Row{
+			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
