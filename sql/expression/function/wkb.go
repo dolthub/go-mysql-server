@@ -205,7 +205,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		geom, err = sql.DeserializeLine(buf, isBig, srid)
 	case sql.WKBPolyID:
 		geom, err = sql.DeserializePoly(buf, isBig, srid)
-	case sql.WKBMPointID:
+	case sql.WKBMultiPointID:
 		geom, err = sql.DeserializeMPoint(buf, isBig, srid)
 	// TODO: add multi geometries here
 	default:
@@ -446,7 +446,7 @@ func (p *MPointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression
 
 // Eval implements the sql.Expression interface.
 func (p *MPointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mPoint, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBMPointID)
+	mPoint, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBMultiPointID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}

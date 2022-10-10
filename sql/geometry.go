@@ -76,9 +76,9 @@ const (
 	WKBPointID
 	WKBLineID
 	WKBPolyID
-	WKBMPointID
-	WKBMLineID
-	WKBMPolyID
+	WKBMultiPointID
+	WKBMultiLineID
+	WKBMultiPolyID
 	WKBGeomCollectionID
 )
 
@@ -304,11 +304,11 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 			geom, err = DeserializeLine(val, isBig, srid)
 		case WKBPolyID:
 			geom, err = DeserializePoly(val, isBig, srid)
-		case WKBMPointID:
+		case WKBMultiPointID:
 			geom, err = DeserializeMPoint(val, isBig, srid)
-		case WKBMLineID:
+		case WKBMultiLineID:
 			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(val))
-		case WKBMPolyID:
+		case WKBMultiPolyID:
 			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(val))
 		case WKBGeomCollectionID:
 			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(val))
