@@ -106,6 +106,15 @@ func MultiPointToWKT(p sql.MultiPoint, order bool) string {
 	return strings.Join(points, ",")
 }
 
+// MultiLineStringToWKT converts a sql.Polygon to a string
+func MultiLineStringToWKT(l sql.MultiLineString, order bool) string {
+	lines := make([]string, len(l.Lines))
+	for i, line := range l.Lines {
+		lines[i] = "(" + LineToWKT(line, order) + ")"
+	}
+	return strings.Join(lines, ",")
+}
+
 // Eval implements the sql.Expression interface.
 func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -120,24 +129,22 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var geomType string
 	var data string
-	// Expect one of the geometry types
 	switch v := val.(type) {
 	case sql.Point:
-		// Mark as point type
 		geomType = "POINT"
 		data = PointToWKT(v, v.SRID == sql.GeoSpatialSRID)
 	case sql.LineString:
-		// Mark as linestring type
 		geomType = "LINESTRING"
 		data = LineToWKT(v, v.SRID == sql.GeoSpatialSRID)
 	case sql.Polygon:
-		// Mark as Polygon type
 		geomType = "POLYGON"
 		data = PolygonToWKT(v, v.SRID == sql.GeoSpatialSRID)
 	case sql.MultiPoint:
-		// Mark as MultiPoint type
 		geomType = "MULTIPOINT"
 		data = MultiPointToWKT(v, v.SRID == sql.GeoSpatialSRID)
+	case sql.MultiLineString:
+		geomType = "MULTILINESTRING"
+		data = MultiLineStringToWKT(v, v.SRID == sql.GeoSpatialSRID)
 	default:
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
