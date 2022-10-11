@@ -272,6 +272,8 @@ var SpatialData = []SetupScript{{
 	`insert into polygon_table values    (0, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0))')),    (1, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))'))`,
 	`create table mpoint_table (i bigint primary key, p multipoint NOT NULL);`,
 	`insert into mpoint_table values    (0, ST_GeomFromText('MultiPoint(1 2,3 4)')),    (1, ST_GeomFromText('MultiPoint(1 2,3 4,5 6)'))`,
+	`create table mline_table (i bigint primary key, l multilinestring NOT NULL);`,
+	`insert into mline_table values    (0, ST_GeomFromText('MultiLineString((1 2,3 4))')),    (1, ST_GeomFromText('MultiLineString((1 2,3 4,5 6))'))`,
 }}
 
 var SpecialtableData = []SetupScript{{

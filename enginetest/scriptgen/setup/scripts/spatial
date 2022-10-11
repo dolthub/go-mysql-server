@@ -67,3 +67,13 @@ insert into mpoint_table values
     (0, ST_GeomFromText('MultiPoint(1 2,3 4)')),
     (1, ST_GeomFromText('MultiPoint(1 2,3 4,5 6)'))
 ----
+
+exec
+create table mline_table (i bigint primary key, l multilinestring NOT NULL);
+----
+
+exec
+insert into mline_table values
+    (0, ST_GeomFromText('MultiLineString((1 2,3 4))')),
+    (1, ST_GeomFromText('MultiLineString((1 2,3 4,5 6))'))
+----

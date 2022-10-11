@@ -746,9 +746,9 @@ func (l *MLineFromText) WithChildren(children ...sql.Expression) (sql.Expression
 
 // Eval implements the sql.Expression interface.
 func (l *MLineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	line, err := WKTToGeom(ctx, row, l.ChildExpressions, "multilinestring")
+	mline, err := WKTToGeom(ctx, row, l.ChildExpressions, "multilinestring")
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
 	}
-	return line, err
+	return mline, err
 }
