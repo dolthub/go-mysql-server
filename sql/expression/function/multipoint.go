@@ -23,62 +23,57 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// LineString is a function that returns a point type containing values Y and Y.
-type LineString struct {
+// MultiPoint is a function that returns a set of Points.
+type MultiPoint struct {
 	expression.NaryExpression
 }
 
-var _ sql.FunctionExpression = (*LineString)(nil)
+var _ sql.FunctionExpression = (*MultiPoint)(nil)
 
-// NewLineString creates a new LineString.
-func NewLineString(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 2 {
-		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "2 or more", len(args))
+// NewMultiPoint creates a new MultiPoint.
+func NewMultiPoint(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("MultiPoint", "1 or more", len(args))
 	}
-	return &LineString{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &MultiPoint{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (l *LineString) FunctionName() string {
-	return "linestring"
+func (l *MultiPoint) FunctionName() string {
+	return "multipoint"
 }
 
 // Description implements sql.FunctionExpression
-func (l *LineString) Description() string {
-	return "returns a new linestring."
+func (l *MultiPoint) Description() string {
+	return "returns a new multipoint."
 }
 
 // Type implements the sql.Expression interface.
-func (l *LineString) Type() sql.Type {
-	return sql.LineStringType{}
+func (l *MultiPoint) Type() sql.Type {
+	return sql.MultiPointType{}
 }
 
-func (l *LineString) String() string {
+func (l *MultiPoint) String() string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("LINESTRING(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("MULTIPOINT(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (l *LineString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLineString(children...)
+func (l *MultiPoint) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMultiPoint(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// Allocate array of points
+func (l *MultiPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var points = make([]sql.Point, len(l.ChildExpressions))
-
-	// Go through each argument
 	for i, arg := range l.ChildExpressions {
-		// Evaluate argument
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		// Must be of type point, throw error otherwise
 		switch v := val.(type) {
 		case sql.Point:
 			points[i] = v
@@ -89,5 +84,5 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	return sql.LineString{Points: points}, nil
+	return sql.MultiPoint{Points: points}, nil
 }

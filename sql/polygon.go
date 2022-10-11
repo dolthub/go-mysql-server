@@ -99,35 +99,22 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t PolygonType) Convert(v interface{}) (interface{}, error) {
-	// Allow null
-	if v == nil {
+	switch buf := v.(type) {
+	case nil:
 		return nil, nil
-	}
-	// Handle conversions
-	switch val := v.(type) {
 	case []byte:
-		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
-		if err != nil {
-			return nil, err
+		poly, err := GeometryType{}.Convert(buf)
+		if ErrInvalidGISData.Is(err) {
+			return nil, ErrInvalidGISData.New("PolygonType.Convert")
 		}
-		// Throw error if not marked as linestring
-		if geomType != WKBPolyID {
-			return nil, err
-		}
-		// Parse data section
-		poly, err := WKBToPoly(val[EWKBHeaderSize:], isBig, srid)
-		if err != nil {
-			return nil, err
-		}
-		return poly, nil
+		return poly, err
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert([]byte(buf))
 	case Polygon:
-		if err := t.MatchSRID(val); err != nil {
+		if err := t.MatchSRID(buf); err != nil {
 			return nil, err
 		}
-		return val, nil
+		return buf, nil
 	default:
 		return nil, ErrSpatialTypeConversion.New()
 	}
@@ -160,7 +147,7 @@ func (t PolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializePolygon(v.(Polygon))
+	buf := v.(Polygon).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
@@ -213,3 +200,55 @@ func (t PolygonType) MatchSRID(v interface{}) error {
 
 // implementsGeometryValue implements GeometryValue interface.
 func (p Polygon) implementsGeometryValue() {}
+
+// GetSRID implements GeometryValue interface.
+func (p Polygon) GetSRID() uint32 {
+	return p.SRID
+}
+
+// SetSRID implements GeometryValue interface.
+func (p Polygon) SetSRID(srid uint32) GeometryValue {
+	lines := make([]LineString, len(p.Lines))
+	for i, l := range p.Lines {
+		lines[i] = l.SetSRID(srid).(LineString)
+	}
+	return Polygon{
+		SRID:  srid,
+		Lines: lines,
+	}
+}
+
+// Serialize implements GeometryValue interface.
+func (p Polygon) Serialize() (buf []byte) {
+	var numPoints int
+	for _, l := range p.Lines {
+		numPoints += len(l.Points)
+	}
+	buf = allocateBuffer(numPoints, len(p.Lines)+1, 0)
+	WriteEWKBHeader(buf, p.SRID, WKBPolyID)
+	p.WriteData(buf[EWKBHeaderSize:])
+	return
+}
+
+// WriteData implements GeometryValue interface.
+func (p Polygon) WriteData(buf []byte) {
+	writeCount(buf, uint32(len(p.Lines)))
+	buf = buf[CountSize:]
+	for _, l := range p.Lines {
+		l.WriteData(buf)
+		buf = buf[CountSize+PointSize*len(l.Points):]
+	}
+}
+
+// Swap implements GeometryValue interface.
+// TODO: possible in place?
+func (p Polygon) Swap() GeometryValue {
+	lines := make([]LineString, len(p.Lines))
+	for i, l := range p.Lines {
+		lines[i] = l.Swap().(LineString)
+	}
+	return Polygon{
+		SRID:  p.SRID,
+		Lines: lines,
+	}
+}

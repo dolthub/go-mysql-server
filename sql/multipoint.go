@@ -23,45 +23,45 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// LineStringType represents the LINESTRING type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-linestring.html
-// The type of the returned value is LineString.
-type LineStringType struct {
+// MultiPointType represents the MULTIPOINT type.
+// https://dev.mysql.com/doc/refman/8.0/en/gis-class-multipoint.html
+// The type of the returned value is MultiPoint.
+type MultiPointType struct {
 	SRID        uint32
 	DefinedSRID bool
 }
 
-// LineString is the value type returned from LineStringType. Implements GeometryValue.
-type LineString struct {
+// MultiPoint is the value type returned from MultiPointType. Implements GeometryValue.
+type MultiPoint struct {
 	SRID   uint32
 	Points []Point
 }
 
-var _ Type = LineStringType{}
-var _ SpatialColumnType = LineStringType{}
-var _ GeometryValue = LineString{}
+var _ Type = MultiPointType{}
+var _ SpatialColumnType = MultiPointType{}
+var _ GeometryValue = MultiPoint{}
 
 var (
-	ErrNotLineString = errors.NewKind("value of type %T is not a linestring")
+	ErrNotMultiPoint = errors.NewKind("value of type %T is not a multipoint")
 
-	lineStringValueType = reflect.TypeOf(LineString{})
+	multiPointValueType = reflect.TypeOf(MultiPoint{})
 )
 
 // Compare implements Type interface.
-func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
+func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// Expect to receive a LineString, throw error otherwise
-	_a, ok := a.(LineString)
+	// Expect to receive a MultiPoint, throw error otherwise
+	_a, ok := a.(MultiPoint)
 	if !ok {
-		return 0, ErrNotLineString.New(a)
+		return 0, ErrNotMultiPoint.New(a)
 	}
-	_b, ok := b.(LineString)
+	_b, ok := b.(MultiPoint)
 	if !ok {
-		return 0, ErrNotLineString.New(b)
+		return 0, ErrNotMultiPoint.New(b)
 	}
 
 	// Get shorter length
@@ -93,24 +93,28 @@ func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
 		return -1, nil
 	}
 
-	// Lines must be the same
+	// MultiPoint must be the same
 	return 0, nil
 }
 
 // Convert implements Type interface.
-func (t LineStringType) Convert(v interface{}) (interface{}, error) {
+func (t MultiPointType) Convert(v interface{}) (interface{}, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, nil
 	case []byte:
-		line, err := GeometryType{}.Convert(buf)
-		if ErrInvalidGISData.Is(err) {
-			return nil, ErrInvalidGISData.New("LineStringType.Convert")
+		multipoint, err := GeometryType{}.Convert(buf)
+		if err != nil {
+			return nil, err
 		}
-		return line, err
+		// TODO: is this even possible?
+		if _, ok := multipoint.(MultiPoint); !ok {
+			return nil, ErrInvalidGISData.New("MultiPointType.Convert")
+		}
+		return multipoint, nil
 	case string:
 		return t.Convert([]byte(buf))
-	case LineString:
+	case MultiPoint:
 		if err := t.MatchSRID(buf); err != nil {
 			return nil, err
 		}
@@ -121,23 +125,23 @@ func (t LineStringType) Convert(v interface{}) (interface{}, error) {
 }
 
 // Equals implements the Type interface.
-func (t LineStringType) Equals(otherType Type) bool {
-	_, ok := otherType.(LineStringType)
+func (t MultiPointType) Equals(otherType Type) bool {
+	_, ok := otherType.(MultiPointType)
 	return ok
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t LineStringType) MaxTextResponseByteLength() uint32 {
+func (t MultiPointType) MaxTextResponseByteLength() uint32 {
 	return GeometryMaxByteLength
 }
 
 // Promote implements the Type interface.
-func (t LineStringType) Promote() Type {
+func (t MultiPointType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t LineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t MultiPointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -147,48 +151,48 @@ func (t LineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, nil
 	}
 
-	buf := v.(LineString).Serialize()
+	buf := v.(MultiPoint).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
-func (t LineStringType) String() string {
-	return "linestring"
+func (t MultiPointType) String() string {
+	return "multipoint"
 }
 
 // Type implements Type interface.
-func (t LineStringType) Type() query.Type {
+func (t MultiPointType) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // ValueType implements Type interface.
-func (t LineStringType) ValueType() reflect.Type {
-	return lineStringValueType
+func (t MultiPointType) ValueType() reflect.Type {
+	return multiPointValueType
 }
 
 // Zero implements Type interface.
-func (t LineStringType) Zero() interface{} {
-	return LineString{Points: []Point{{}, {}}}
+func (t MultiPointType) Zero() interface{} {
+	return MultiPoint{Points: []Point{{}}}
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.
-func (t LineStringType) GetSpatialTypeSRID() (uint32, bool) {
+func (t MultiPointType) GetSpatialTypeSRID() (uint32, bool) {
 	return t.SRID, t.DefinedSRID
 }
 
 // SetSRID implements SpatialColumnType interface.
-func (t LineStringType) SetSRID(v uint32) Type {
+func (t MultiPointType) SetSRID(v uint32) Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
 }
 
 // MatchSRID implements SpatialColumnType interface
-func (t LineStringType) MatchSRID(v interface{}) error {
-	val, ok := v.(LineString)
+func (t MultiPointType) MatchSRID(v interface{}) error {
+	val, ok := v.(MultiPoint)
 	if !ok {
-		return ErrNotLineString.New(v)
+		return ErrNotMultiPoint.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil
@@ -199,52 +203,53 @@ func (t LineStringType) MatchSRID(v interface{}) error {
 }
 
 // implementsGeometryValue implements GeometryValue interface.
-func (l LineString) implementsGeometryValue() {}
+func (p MultiPoint) implementsGeometryValue() {}
 
 // GetSRID implements GeometryValue interface.
-func (l LineString) GetSRID() uint32 {
-	return l.SRID
+func (p MultiPoint) GetSRID() uint32 {
+	return p.SRID
 }
 
 // SetSRID implements GeometryValue interface.
-func (l LineString) SetSRID(srid uint32) GeometryValue {
-	points := make([]Point, len(l.Points))
-	for i, p := range l.Points {
-		points[i] = p.SetSRID(srid).(Point)
+func (p MultiPoint) SetSRID(srid uint32) GeometryValue {
+	points := make([]Point, len(p.Points))
+	for i, point := range p.Points {
+		points[i] = point.SetSRID(srid).(Point)
 	}
-	return LineString{
+	return MultiPoint{
 		SRID:   srid,
 		Points: points,
 	}
 }
 
 // Serialize implements GeometryValue interface.
-func (l LineString) Serialize() (buf []byte) {
-	buf = allocateBuffer(len(l.Points), 1, 0)
-	WriteEWKBHeader(buf, l.SRID, WKBLineID)
-	l.WriteData(buf[EWKBHeaderSize:])
+func (p MultiPoint) Serialize() (buf []byte) {
+	buf = allocateBuffer(len(p.Points), 1, len(p.Points))
+	WriteEWKBHeader(buf, p.SRID, WKBMultiPointID)
+	p.WriteData(buf[EWKBHeaderSize:])
 	return
 }
 
 // WriteData implements GeometryValue interface.
-func (l LineString) WriteData(buf []byte) {
-	writeCount(buf, uint32(len(l.Points)))
+func (p MultiPoint) WriteData(buf []byte) {
+	writeCount(buf, uint32(len(p.Points)))
 	buf = buf[CountSize:]
-	for _, p := range l.Points {
-		p.WriteData(buf)
+	for _, point := range p.Points {
+		WriteWKBHeader(buf, WKBPointID)
+		buf = buf[WKBHeaderSize:]
+		point.WriteData(buf)
 		buf = buf[PointSize:]
 	}
 }
 
 // Swap implements GeometryValue interface.
-// TODO: possible in place?
-func (l LineString) Swap() GeometryValue {
-	points := make([]Point, len(l.Points))
-	for i, p := range l.Points {
-		points[i] = p.Swap().(Point)
+func (p MultiPoint) Swap() GeometryValue {
+	points := make([]Point, len(p.Points))
+	for i, point := range p.Points {
+		points[i] = point.Swap().(Point)
 	}
-	return LineString{
-		SRID:   l.SRID,
+	return MultiPoint{
+		SRID:   p.SRID,
 		Points: points,
 	}
 }

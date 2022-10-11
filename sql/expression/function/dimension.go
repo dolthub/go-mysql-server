@@ -80,7 +80,7 @@ func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch val.(type) {
-	case sql.Point:
+	case sql.Point, sql.MultiPoint:
 		return 0, nil
 	case sql.LineString:
 		return 1, nil
