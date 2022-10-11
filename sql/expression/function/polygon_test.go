@@ -67,9 +67,9 @@ func TestPolygon(t *testing.T) {
 
 func TestNewPolygon(t *testing.T) {
 	require := require.New(t)
-	_, err := NewLineString(expression.NewLiteral(nil, sql.PointType{}),
-		expression.NewLiteral(nil, sql.PointType{}),
-		expression.NewLiteral(nil, sql.PointType{}),
+	_, err := NewPolygon(expression.NewLiteral(nil, sql.LineStringType{}),
+		expression.NewLiteral(nil, sql.LineStringType{}),
+		expression.NewLiteral(nil, sql.LineStringType{}),
 	)
 	require.NoError(err)
 }
