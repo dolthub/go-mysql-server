@@ -123,6 +123,15 @@ func FindBBox(v interface{}) [4]float64 {
 			res[2] = math.Max(res[2], tmp[2])
 			res[3] = math.Max(res[3], tmp[3])
 		}
+	case sql.MultiLineString:
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		for _, l := range v.Lines {
+			tmp := FindBBox(l)
+			res[0] = math.Min(res[0], tmp[0])
+			res[1] = math.Min(res[1], tmp[1])
+			res[2] = math.Max(res[2], tmp[2])
+			res[3] = math.Max(res[3], tmp[3])
+		}
 	}
 	return res
 }
