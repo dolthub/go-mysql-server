@@ -48,6 +48,7 @@ var showCollationProjection = plan.NewProject([]sql.Expression{
 )
 
 var fixtures = map[string]sql.Node{
+	/* fixtures start */
 	`CREATE TABLE t1(a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, g DATETIME, h CHAR(40))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
@@ -3761,6 +3762,7 @@ CREATE TABLE t2
 	`DROP DATABASE IF EXISTS test`:       plan.NewDropDatabase("test", true),
 	`KILL QUERY 1`:                       plan.NewKill(plan.KillType_Query, 1),
 	`KILL CONNECTION 1`:                  plan.NewKill(plan.KillType_Connection, 1),
+	/* fixtures end */
 }
 
 var triggerFixtures = map[string]sql.Node{
@@ -3834,6 +3836,38 @@ var triggerFixtures = map[string]sql.Node{
 		"",
 	),
 }
+
+type parseTest struct {
+	input string
+	plan sql.Node
+}
+
+// func TestOutput(t *testing.T) {
+// 	var queriesInOrder []string
+// 	for q := range fixtures {
+// 		queriesInOrder = append(queriesInOrder, q)
+// 	}
+// 	sort.Strings(queriesInOrder)
+//
+// 	file, err := ioutil.TempFile("", "fixtures")
+// 	require.NoError(t, err)
+//
+// 	prefix := `fixtures = []parseTest{\n`
+// 	tmpl := `{input: %s, plan: }`
+//
+// 	for _, query := range queriesInOrder {
+// 		expectedPlan := fixtures[query]
+// 		t.Run(query, func(t *testing.T) {
+// 			require := require.New(t)
+// 			ctx := sql.NewEmptyContext()
+// 			p, err := Parse(ctx, query)
+// 			require.NoError(err)
+// 			if !assertNodesEqualWithDiff(t, expectedPlan, p) {
+// 				t.Logf("Unexpected result for query %s", query)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestParse(t *testing.T) {
 	var queriesInOrder []string
