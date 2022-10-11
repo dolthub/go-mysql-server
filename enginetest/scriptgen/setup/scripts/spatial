@@ -27,9 +27,7 @@ insert into geometry_table values
         (5, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),
         (6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),
         (7, ST_GeomFromText('MultiPoint(1 2,3 4)')),
-		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326)),
-		(9, ST_GeomFromText('MULTILINESTRING((1 2,3 4))')),
-        (10, ST_SRID(ST_GeomFromText('MULTILINESTRING((1 2,3 4))'), 4326))
+		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326))
 ----
 
 exec
@@ -68,14 +66,4 @@ exec
 insert into mpoint_table values
     (0, ST_GeomFromText('MultiPoint(1 2,3 4)')),
     (1, ST_GeomFromText('MultiPoint(1 2,3 4,5 6)'))
-----
-
-exec
-create table mline_table (i bigint primary key, p multipoint NOT NULL);
-----
-
-exec
-insert into mline_table values
-    (0, ST_GeomFromText('MultiLineString((1 2,3 4))')),
-    (1, ST_GeomFromText('MultiLineString((1 2,3 4,5 6))'))
 ----
