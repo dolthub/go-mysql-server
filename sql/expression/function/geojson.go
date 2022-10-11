@@ -83,6 +83,14 @@ func MPointToSlice(p sql.MultiPoint) [][2]float64 {
 	return arr
 }
 
+func MLineToSlice(p sql.MultiLineString) [][][2]float64 {
+	arr := make([][][2]float64, len(p.Lines))
+	for i, l := range p.Lines {
+		arr[i] = LineToSlice(l)
+	}
+	return arr
+}
+
 func FindBBox(v interface{}) [4]float64 {
 	var res [4]float64
 	switch v := v.(type) {
@@ -186,6 +194,9 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.MultiPoint:
 		obj["type"] = "MultiPoint"
 		obj["coordinates"] = MPointToSlice(v)
+	case sql.MultiLineString:
+		obj["type"] = "MultiLineString"
+		obj["coordinates"] = MLineToSlice(v)
 	default:
 		return nil, ErrInvalidArgumentType.New(g.FunctionName())
 	}
@@ -391,6 +402,26 @@ func SliceToMPoint(coords interface{}) (interface{}, error) {
 	return sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: points}, nil
 }
 
+func SliceToMLine(coords interface{}) (interface{}, error) {
+	// coords must be a slice of slices of at least 2 slices of 2 float64
+	cs, ok := coords.([]interface{})
+	if !ok {
+		return nil, errors.New("member 'coordinates' must be of type 'array'")
+	}
+	if len(cs) == 0 {
+		return nil, errors.New("not enough lines")
+	}
+	lines := make([]sql.LineString, len(cs))
+	for i, c := range cs {
+		l, err := SliceToLine(c)
+		if err != nil {
+			return nil, err
+		}
+		lines[i] = l.(sql.LineString)
+	}
+	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
+}
+
 // Eval implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := g.ChildExpressions[0].Eval(ctx, row)
@@ -438,6 +469,8 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		res, err = SliceToPoly(coords)
 	case "MultiPoint":
 		res, err = SliceToMPoint(coords)
+	case "MultiLineString":
+		res, err = SliceToMLine(coords)
 	default:
 		return nil, errors.New("member 'type' is wrong")
 	}
