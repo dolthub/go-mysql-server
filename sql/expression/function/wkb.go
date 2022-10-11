@@ -152,7 +152,7 @@ func ValidateSRID(srid uint32) error {
 	return nil
 }
 
-// EvalGeomFromWKB takes in arguments for the ST_FROMWKB functions, and parses them to their correspoding geometry type
+// EvalGeomFromWKB takes in arguments for the ST_FROMWKB functions, and parses them to their corresponding geometry type
 func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGeomType int) (interface{}, error) {
 	val, err := exprs[0].Eval(ctx, row)
 	if err != nil {
@@ -207,6 +207,8 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		geom, err = sql.DeserializePoly(buf, isBig, srid)
 	case sql.WKBMultiPointID:
 		geom, err = sql.DeserializeMPoint(buf, isBig, srid)
+	case sql.WKBMultiLineID:
+		geom, err = sql.DeserializeMLine(buf, isBig, srid)
 	// TODO: add multi geometries here
 	default:
 		return nil, sql.ErrInvalidGISData.New()
@@ -451,4 +453,56 @@ func (p *MPointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
 	return mPoint, err
+}
+
+// MLineFromWKB is a function that returns a polygon type from a WKB byte array
+type MLineFromWKB struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*MLineFromWKB)(nil)
+
+// NewMLineFromWKB creates a new point expression.
+func NewMLineFromWKB(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_MLINEFROMWKB", "1, 2, or 3", len(args))
+	}
+	return &MLineFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (l *MLineFromWKB) FunctionName() string {
+	return "st_mlinefromwkb"
+}
+
+// Description implements sql.FunctionExpression
+func (l *MLineFromWKB) Description() string {
+	return "returns a new polygon from WKB format."
+}
+
+// Type implements the sql.Expression interface.
+func (l *MLineFromWKB) Type() sql.Type {
+	return sql.PolygonType{}
+}
+
+func (l *MLineFromWKB) String() string {
+	var args = make([]string, len(l.ChildExpressions))
+	for i, arg := range l.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_MLINEFROMWKB(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (l *MLineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMLineFromWKB(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (l *MLineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBPolyID)
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
+	}
+	return mline, err
 }
