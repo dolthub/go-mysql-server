@@ -68,6 +68,17 @@ var SpatialQueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `SHOW CREATE TABLE mpoint_table`,
+		Expected: []sql.Row{{
+			"mpoint_table",
+			"CREATE TABLE `mpoint_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` multipoint NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+		}},
+	},
+	{
 		Query: `SHOW CREATE TABLE geometry_table`,
 		Expected: []sql.Row{{
 			"geometry_table",
@@ -217,12 +228,14 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(s) from stringtogeojson_table`,
 		Expected: []sql.Row{
-			{sql.Point{SRID: 4326, X: 2, Y: 1}},
-			{sql.Point{SRID: 4326, X: 56.789, Y: 123.45}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.345, Y: 1.23}, {SRID: 4326, X: 4.56, Y: 3.56789}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2.2, Y: 1.1}, {SRID: 4326, X: 4.4, Y: 3.3}, {SRID: 4326, X: 6.6, Y: 5.5}, {SRID: 4326, X: 2.2, Y: 1.1}}}}}},
+			{sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{sql.Point{SRID: 4326, X: 123.45, Y: 56.789}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.23, Y: 2.345}, {SRID: 4326, X: 3.56789, Y: 4.56}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 5.5, Y: 6.6}, {SRID: 4326, X: 1.1, Y: 2.2}}}}}},
 			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 2}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.23, Y: 2.345}, {SRID: 4326, X: 3.56789, Y: 4.56}}}},
 		},
 	},
 	{
@@ -246,34 +259,50 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT ST_ASGEOJSON(p) from mpoint_table`,
+		Expected: []sql.Row{
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
+		},
+	},
+	{
 		Query: `SELECT ST_ASGEOJSON(ST_GEOMFROMGEOJSON(s)) from stringtogeojson_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{2, 1}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{56.789, 123.45}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{2, 1}, {4, 3}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{2.345, 1.23}, {4.56, 3.56789}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{2.2, 1.1}, {4.4, 3.3}, {6.6, 5.5}, {2.2, 1.1}}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{123.45, 56.789}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}, {5.5, 6.6}, {1.1, 2.2}}}}}},
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {1, 1}, {2, 2}, {0, 0}}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from point_table`,
 		Expected: []sql.Row{
-			{sql.Point{SRID: 4326, X: 2, Y: 1}},
+			{sql.Point{SRID: 4326, X: 1, Y: 2}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(l)) from line_table`,
 		Expected: []sql.Row{
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 6, Y: 5}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from mpoint_table`,
+		Expected: []sql.Row{
+			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
@@ -294,6 +323,13 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{2},
 			{2},
+		},
+	},
+	{
+		Query: `SELECT ST_DIMENSION(p) from mpoint_table`,
+		Expected: []sql.Row{
+			{0},
+			{0},
 		},
 	},
 	{
@@ -320,32 +356,45 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_ASWKT(g) from geometry_table ORDER BY i`,
 		Expected: []sql.Row{
 			{"POINT(1 2)"},
-			{"LINESTRING(1 2,3 4)"},
-			{"POLYGON((0 0,0 1,1 1,0 0))"},
 			{"POINT(2 1)"},
+			{"LINESTRING(1 2,3 4)"},
 			{"LINESTRING(2 1,4 3)"},
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
 			{"POLYGON((0 0,1 0,1 1,0 0))"},
+			{"MULTIPOINT(1 2,3 4)"},
+			{"MULTIPOINT(2 1,4 3)"},
 		},
 	},
 	{
-		Query: `SELECT HEX(ST_ASWKB(g)) from geometry_table`,
+		Query: `SELECT ST_SWAPXY(p) from mpoint_table`,
+		Expected: []sql.Row{
+			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
+		},
+	},
+	{
+		Query: `SELECT HEX(ST_ASWKB(g)) from geometry_table ORDER BY i`,
 		Expected: []sql.Row{
 			{"0101000000000000000000F03F0000000000000040"},
+			{"01010000000000000000000040000000000000F03F"},
 			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
+			{"0102000000020000000000000000000040000000000000F03F00000000000010400000000000000840"},
 			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
-			{"0101000000000000000000F03F0000000000000040"},
-			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
-			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+			{"0103000000010000000400000000000000000000000000000000000000000000000000F03F0000000000000000000000000000F03F000000000000F03F00000000000000000000000000000000"},
+			{"0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040"},
+			{"01040000000200000001010000000000000000000040000000000000F03F010100000000000000000010400000000000000840"},
 		},
 	},
 	{
 		Query: `SELECT ST_SRID(g) from geometry_table order by i`,
 		Expected: []sql.Row{
 			{uint64(0)},
-			{uint64(0)},
+			{uint64(4326)},
 			{uint64(0)},
 			{uint64(4326)},
+			{uint64(0)},
 			{uint64(4326)},
+			{uint64(0)},
 			{uint64(4326)},
 		},
 	},
@@ -353,33 +402,39 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
 			{sql.Point{X: 1, Y: 2}},
-			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{sql.Point{X: 1, Y: 2}},
 			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
 			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(g) from geometry_table order by i`,
 		Expected: []sql.Row{
 			{0},
-			{1},
-			{2},
 			{0},
 			{1},
+			{1},
 			{2},
+			{2},
+			{0},
+			{0},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
 		Expected: []sql.Row{
 			{sql.Point{X: 2, Y: 1}},
-			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{sql.Point{SRID: 4326, X: 2, Y: 1}},
+			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
 			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
 		},
 	},
 	{

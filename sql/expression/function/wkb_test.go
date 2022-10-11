@@ -65,6 +65,16 @@ func TestAsWKB(t *testing.T) {
 		require.Equal(res, v)
 	})
 
+	t.Run("convert multipoint", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKB(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.MultiPointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
+		require.NoError(err)
+		require.Equal(res, v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKB(expression.NewLiteral(nil, sql.Null))
@@ -151,6 +161,18 @@ func TestGeomFromWKB(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
+	})
+
+	t.Run("convert multipoint in little endian", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("convert polygon in little endian", func(t *testing.T) {
@@ -321,6 +343,45 @@ func TestGeomFromWKB(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("convert multipoint with valid srid 4326", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}, {SRID: sql.GeoSpatialSRID, X: 3, Y: 4}}}, v)
+	})
+
+	t.Run("convert multipoint with invalid srid 2222", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(2222, sql.Uint32))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("convert multipoint with srid 4326 axis long-lat", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
 	})
 
 	t.Run("convert null", func(t *testing.T) {

@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Polygon is a function that returns a polygon type containing values Y and Y.
+// Polygon is a function that returns a Polygon.
 type Polygon struct {
 	expression.NaryExpression
 }
@@ -164,7 +164,7 @@ func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			} else {
 				return nil, errors.New("Invalid GIS data provided to function polygon.")
 			}
-		case sql.Point, sql.Polygon:
+		case sql.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(p.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)

@@ -594,7 +594,7 @@ var (
 	ErrNotMatchingSRIDWithColName = errors.NewKind("The SRID of the geometry does not match the SRID of the column '%s'. %v")
 
 	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
-	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you send to the GEOMETRY field")
+	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you sent to the GEOMETRY field")
 
 	// ErrInvalidBytePrimaryKey is returned when attempting to create a primary key with a byte column
 	ErrInvalidBytePrimaryKey = errors.NewKind("invalid primary key on byte column '%s'")
