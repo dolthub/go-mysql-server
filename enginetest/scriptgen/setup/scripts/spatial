@@ -27,7 +27,9 @@ insert into geometry_table values
         (5, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),
         (6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),
         (7, ST_GeomFromText('MultiPoint(1 2,3 4)')),
-		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326))
+		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326)),
+		(9, ST_GeomFromText('MULTILINESTRING((1 2,3 4))')),
+        (10, ST_SRID(ST_GeomFromText('MULTILINESTRING((1 2,3 4))'), 4326))
 ----
 
 exec
