@@ -106,9 +106,6 @@ var OnceAfterDefault = []Rule{
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
-	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
-	// previous rules.
-	{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
 	{applyHashLookupsId, applyHashLookups},

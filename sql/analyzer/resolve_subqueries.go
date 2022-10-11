@@ -120,9 +120,9 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	var analyzed sql.Node
 	var err error
 	if finalize {
-		analyzed, _, err = a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, sel)
+		analyzed, _, err = a.analyzeStartingAtBatch(subqueryCtx, sq.Query, subScope, "default-rules", NewFinalizeSubqueryExprSelector(sel))
 	} else {
-		analyzed, _, err = a.analyzeWithSelector(subqueryCtx, sq.Query, subScope, SelectAllBatches, NewSubqueryExprResolveSelector(sel))
+		analyzed, _, err = a.analyzeThroughBatch(subqueryCtx, sq.Query, subScope, "once-after-default", NewResolveSubqueryExprSelector(sel))
 	}
 	if err != nil {
 		// We ignore certain errors during non-final passes of the analyzer, deferring them to later analysis passes.
@@ -163,7 +163,7 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *pla
 	var same transform.TreeIdentity
 	var err error
 	if finalize {
-		child, same, err = a.analyzeStartingAtBatch(ctx, sqa.Child, subScope, "default-rules", sel)
+		child, same, err = a.analyzeStartingAtBatch(ctx, sqa.Child, subScope, "default-rules", NewNestedSubqueryFinalizer(sel))
 	} else {
 		child, same, err = a.analyzeThroughBatch(ctx, sqa.Child, subScope, "default-rules", sel)
 	}
@@ -182,31 +182,6 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *pla
 	}
 	newn, err := sqa.WithChildren(StripPassthroughNodes(child))
 	return newn, transform.NewTree, err
-}
-
-func finalizeSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		s, ok := e.(*plan.Subquery)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-
-		subqueryCtx, cancelFunc := ctx.NewSubContext()
-		defer cancelFunc()
-		subScope := scope.newScope(n)
-
-		analyzed, _, err := a.analyzeStartingAtBatch(subqueryCtx, s.Query, subScope, "default-rules", NewFinalizeSubqueryExprSelector(sel))
-		if err != nil {
-			// todo(max): I'm not sure we should be hiding errors here, but this maintains pre-existing tests
-			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
-				// keep the work we have and defer remainder of analysis of this subquery until a later pass
-				return s.WithQuery(analyzed), transform.NewTree, nil
-			}
-			return nil, transform.SameTree, err
-		}
-
-		return s.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
-	})
 }
 
 // StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query
