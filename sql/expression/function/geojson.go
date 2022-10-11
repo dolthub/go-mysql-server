@@ -428,7 +428,7 @@ func SliceToMLine(coords interface{}) (interface{}, error) {
 		}
 		lines[i] = l.(sql.LineString)
 	}
-	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
+	return sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -515,7 +515,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 					return nil, errors.New("unsupported number of coordinate dimensions")
 				}
 			}
-		case "Polygon":
+		case "Polygon", "MultiLineString":
 			for _, a := range obj["coordinates"].([]interface{}) {
 				for _, b := range a.([]interface{}) {
 					if len(b.([]interface{})) > 2 {

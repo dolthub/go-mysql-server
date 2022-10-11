@@ -308,6 +308,15 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.MultiPoint{SRID: 4326, Points: []sql.Point{{4326, 1, 2}, {4326, 3, 4}}}, v)
 	})
+	t.Run("convert multilinestring from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiLineString", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{4326, []sql.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}}}}, v)
+	})
 	t.Run("reject dimensions greater than 2 with flag 1", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
