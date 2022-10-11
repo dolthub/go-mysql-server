@@ -241,6 +241,33 @@ func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) 
 	return MultiPoint{SRID: srid, Points: points}, nil
 }
 
+// DeserializeMLine parses the data portion of a byte array in WKB format to a MultiLineString object
+func DeserializeMLine(buf []byte, isBig bool, srid uint32) (MultiLineString, error) {
+	// Must contain at least length, wkb header, and two point
+	if len(buf) < (CountSize + WKBHeaderSize + PointSize + PointSize) {
+		return MultiLineString{}, ErrInvalidGISData.New("MultiLineString")
+	}
+
+	// Read number of lines
+	lines := make([]LineString, readCount(buf, isBig))
+	buf = buf[CountSize:]
+	for i := range lines {
+		// WKBHeaders are inside MultiGeometry Types
+		isBig, typ, err := DeserializeWKBHeader(buf)
+		if typ != WKBLineID {
+			return MultiLineString{}, ErrInvalidGISData.New("DeserializeLine")
+		}
+		buf = buf[WKBHeaderSize:]
+		lines[i], err = DeserializeLine(buf, isBig, srid)
+		if err != nil {
+			return MultiLineString{}, ErrInvalidGISData.New("DeserializeLine")
+		}
+		buf = buf[CountSize+len(lines[i].Points)*PointSize:]
+	}
+
+	return MultiLineString{SRID: srid, Lines: lines}, nil
+}
+
 func allocateBuffer(numPoints, numCounts, numWKBHeaders int) []byte {
 	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts+numWKBHeaders*WKBHeaderSize)
 }
