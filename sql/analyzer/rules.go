@@ -107,7 +107,7 @@ var OnceAfterDefault = []Rule{
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
-	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
+	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{applyHashLookupsId, applyHashLookups},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},
