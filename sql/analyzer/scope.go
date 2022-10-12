@@ -30,11 +30,11 @@ type Scope struct {
 	memos []sql.Node
 	// recursionDepth tracks how many times we've recursed with analysis, to avoid stack overflows from infinite recursion
 	recursionDepth int
+	// LastScopeIsSubqueryExpression is true when the last scope (i.e. the most inner of the outer scope levels) has been
+	// created by a subquery expression. This is needed in order to calculate outer scope visibility for derived tables.
+	LastScopeIsSubqueryExpression bool
 
 	procedures *ProcedureCache
-
-	// InSubqueryExpression is true when the current scope has been created by a subquery expression.
-	InSubqueryExpression bool
 }
 
 func (s *Scope) IsEmpty() bool {
