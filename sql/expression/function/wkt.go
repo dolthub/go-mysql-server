@@ -445,7 +445,7 @@ func WKTToMPoly(s string, srid uint32, order bool) (sql.MultiPolygon, error) {
 		}
 
 		// Extract polygon string; does not include first open and closing parentheses
-		polyStr := s[1:end]
+		polyStr := s[1 : end-1]
 
 		// Remove leading and trailing whitespace
 		polyStr = strings.TrimSpace(polyStr)
@@ -458,7 +458,7 @@ func WKTToMPoly(s string, srid uint32, order bool) (sql.MultiPolygon, error) {
 		}
 
 		// Prepare next string
-		s = s[end+1:]
+		s = s[end:]
 		s = strings.TrimSpace(s)
 
 		// Reached end
