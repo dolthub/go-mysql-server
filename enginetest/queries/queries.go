@@ -90,6 +90,17 @@ var SpatialQueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `SHOW CREATE TABLE mpoly_table`,
+		Expected: []sql.Row{{
+			"mpoly_table",
+			"CREATE TABLE `mpoly_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` multipolygon NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+		}},
+	},
+	{
 		Query: `SHOW CREATE TABLE geometry_table`,
 		Expected: []sql.Row{{
 			"geometry_table",
@@ -392,6 +403,8 @@ var SpatialQueryTests = []QueryTest{
 			{"MULTIPOINT(2 1,4 3)"},
 			{"MULTILINESTRING((1 2,3 4))"},
 			{"MULTILINESTRING((2 1,4 3))"},
+			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
+			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
 		},
 	},
 	{
@@ -414,11 +427,15 @@ var SpatialQueryTests = []QueryTest{
 			{"01040000000200000001010000000000000000000040000000000000F03F010100000000000000000010400000000000000840"},
 			{"010500000001000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
 			{"0105000000010000000102000000020000000000000000000040000000000000F03F00000000000010400000000000000840"},
+			{"0106000000010000000103000000010000000400000000000000000000000000000000000000000000000000F03F00000000000000400000000000000840000000000000104000000000000000000000000000000000"},
+			{"01060000000100000001030000000100000004000000000000000000000000000000000000000000000000000040000000000000F03F0000000000001040000000000000084000000000000000000000000000000000"},
 		},
 	},
 	{
 		Query: `SELECT ST_SRID(g) from geometry_table order by i`,
 		Expected: []sql.Row{
+			{uint64(0)},
+			{uint64(4326)},
 			{uint64(0)},
 			{uint64(4326)},
 			{uint64(0)},
@@ -444,6 +461,8 @@ var SpatialQueryTests = []QueryTest{
 			{sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
 			{sql.MultiLineString{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}}}}}},
 			{sql.MultiLineString{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}}}}}},
+			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
+			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
 		},
 	},
 	{
@@ -459,6 +478,8 @@ var SpatialQueryTests = []QueryTest{
 			{0},
 			{1},
 			{1},
+			{2},
+			{2},
 		},
 	},
 	{
@@ -474,6 +495,8 @@ var SpatialQueryTests = []QueryTest{
 			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
 			{sql.MultiLineString{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 2, Y: 1}, {SRID: 0, X: 4, Y: 3}}}}}},
 			{sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}}}},
+			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 2, Y: 1}, {SRID: 0, X: 4, Y: 3}, {SRID: 0, X: 0, Y: 0}}}}}}}},
+			{sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 0, Y: 0}}}}}}}},
 		},
 	},
 	{
