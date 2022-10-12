@@ -221,6 +221,8 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "st_mpointfromwkb", Fn: NewMPointFromWKB},
 	sql.FunctionN{Name: "st_multipointfromtext", Fn: NewMPointFromText},
 	sql.FunctionN{Name: "st_multipointfromwkb", Fn: NewMPointFromWKB},
+	sql.FunctionN{Name: "st_mpolyfromwkb", Fn: NewMPolyFromWKB},
+	sql.FunctionN{Name: "st_multipolygonfromwkb", Fn: NewMPolyFromWKB},
 	sql.FunctionN{Name: "st_perimeter", Fn: NewPerimeter},
 	sql.FunctionN{Name: "st_pointfromtext", Fn: NewPointFromText},
 	sql.FunctionN{Name: "st_pointfromwkb", Fn: NewPointFromWKB},
