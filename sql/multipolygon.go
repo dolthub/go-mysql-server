@@ -31,7 +31,7 @@ type MultiPolygonType struct {
 	DefinedSRID bool
 }
 
-// MultiPolygon is the value type returned from MultiLineStringType. Implements GeometryValue.
+// MultiPolygon is the value type returned from MultiPolygonType. Implements GeometryValue.
 type MultiPolygon struct {
 	SRID     uint32
 	Polygons []Polygon
@@ -48,35 +48,36 @@ var _ SpatialColumnType = MultiPolygonType{}
 var _ GeometryValue = MultiPolygon{}
 
 // Compare implements Type interface.
+// TODO: it might be better to just serialize and the compare the []byte
 func (t MultiPolygonType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// Expect to receive a MultiLineString, throw error otherwise
-	_a, ok := a.(MultiLineString)
+	// Expect to receive a MultiPolygon, throw error otherwise
+	_a, ok := a.(MultiPolygon)
 	if !ok {
-		return 0, ErrNotMultiLineString.New(a)
+		return 0, ErrNotMultiPolygon.New(a)
 	}
-	_b, ok := b.(MultiLineString)
+	_b, ok := b.(MultiPolygon)
 	if !ok {
-		return 0, ErrNotMultiLineString.New(b)
+		return 0, ErrNotMultiPolygon.New(b)
 	}
 
 	// Get shorter length
 	var n int
-	lenA := len(_a.Lines)
-	lenB := len(_b.Lines)
+	lenA := len(_a.Polygons)
+	lenB := len(_b.Polygons)
 	if lenA < lenB {
 		n = lenA
 	} else {
 		n = lenB
 	}
 
-	// Compare each line until there's a difference
+	// Compare each polygon until there's a difference
 	for i := 0; i < n; i++ {
-		diff, err := LineStringType{}.Compare(_a.Lines[i], _b.Lines[i])
+		diff, err := PolygonType{}.Compare(_a.Polygons[i], _b.Polygons[i])
 		if err != nil {
 			return 0, err
 		}
@@ -93,7 +94,7 @@ func (t MultiPolygonType) Compare(a interface{}, b interface{}) (int, error) {
 		return -1, nil
 	}
 
-	// MultiLineString must be the same
+	// MultiPolygon must be the same
 	return 0, nil
 }
 
@@ -103,14 +104,14 @@ func (t MultiPolygonType) Convert(v interface{}) (interface{}, error) {
 	case nil:
 		return nil, nil
 	case []byte:
-		mline, err := GeometryType{}.Convert(buf)
+		mpoly, err := GeometryType{}.Convert(buf)
 		if ErrInvalidGISData.Is(err) {
-			return nil, ErrInvalidGISData.New("MultiLineString.Convert")
+			return nil, ErrInvalidGISData.New("MultiPolygon.Convert")
 		}
-		return mline, err
+		return mpoly, err
 	case string:
 		return t.Convert([]byte(buf))
-	case MultiLineString:
+	case MultiPolygon:
 		if err := t.MatchSRID(buf); err != nil {
 			return nil, err
 		}
@@ -122,7 +123,7 @@ func (t MultiPolygonType) Convert(v interface{}) (interface{}, error) {
 
 // Equals implements the Type interface.
 func (t MultiPolygonType) Equals(otherType Type) bool {
-	_, ok := otherType.(MultiLineStringType)
+	_, ok := otherType.(MultiPolygonType)
 	return ok
 }
 
@@ -147,14 +148,14 @@ func (t MultiPolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, nil
 	}
 
-	buf := v.(MultiLineString).Serialize()
+	buf := v.(MultiPolygon).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
 func (t MultiPolygonType) String() string {
-	return "multilinestring"
+	return "multipolygon"
 }
 
 // Type implements Type interface.
@@ -164,12 +165,12 @@ func (t MultiPolygonType) Type() query.Type {
 
 // ValueType implements Type interface.
 func (t MultiPolygonType) ValueType() reflect.Type {
-	return multilinestringValueType
+	return multipolygonValueType
 }
 
 // Zero implements Type interface.
 func (t MultiPolygonType) Zero() interface{} {
-	return MultiLineString{Lines: []LineString{{Points: []Point{{}, {}}}}}
+	return MultiPolygon{Polygons: []Polygon{PolygonType{}.Zero().(Polygon)}}
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.
@@ -186,9 +187,9 @@ func (t MultiPolygonType) SetSRID(v uint32) Type {
 
 // MatchSRID implements SpatialColumnType interface
 func (t MultiPolygonType) MatchSRID(v interface{}) error {
-	val, ok := v.(MultiLineString)
+	val, ok := v.(MultiPolygon)
 	if !ok {
-		return ErrNotMultiLineString.New(v)
+		return ErrNotMultiPolygon.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil
@@ -220,14 +221,16 @@ func (p MultiPolygon) SetSRID(srid uint32) GeometryValue {
 
 // Serialize implements GeometryValue interface.
 func (p MultiPolygon) Serialize() (buf []byte) {
-	var numPoints int
+	var numPoints, numCounts int
+	numCounts += len(p.Polygons)
 	for _, p := range p.Polygons {
+		numCounts += len(p.Lines)
 		for _, l := range p.Lines {
 			numPoints += len(l.Points)
 		}
 	}
-	buf = allocateBuffer(numPoints, len(p.Polygons)+1, len(p.Polygons))
-	WriteEWKBHeader(buf, p.SRID, WKBMultiLineID)
+	buf = allocateBuffer(numPoints, numCounts+1, len(p.Polygons))
+	WriteEWKBHeader(buf, p.SRID, WKBMultiPolyID)
 	p.WriteData(buf[EWKBHeaderSize:])
 	return
 }
@@ -236,22 +239,26 @@ func (p MultiPolygon) Serialize() (buf []byte) {
 func (p MultiPolygon) WriteData(buf []byte) {
 	writeCount(buf, uint32(len(p.Polygons)))
 	buf = buf[CountSize:]
-	for _, l := range p.Polygons {
-		WriteWKBHeader(buf, WKBLineID)
+	for _, p := range p.Polygons {
+		WriteWKBHeader(buf, WKBPolyID)
 		buf = buf[WKBHeaderSize:]
-		l.WriteData(buf)
-		buf = buf[CountSize+PointSize*len(l.Polygon):]
+		p.WriteData(buf)
+		sz := CountSize
+		for _, l := range p.Lines {
+			sz += CountSize + len(l.Points)*PointSize
+		}
+		buf = buf[sz:]
 	}
 }
 
 // Swap implements GeometryValue interface.
 func (p MultiPolygon) Swap() GeometryValue {
-	lines := make([]Polygon, len(p.Polygons))
-	for i, l := range p.Polygons {
-		lines[i] = l.Swap().(Polygon)
+	polys := make([]Polygon, len(p.Polygons))
+	for i, p := range p.Polygons {
+		polys[i] = p.Swap().(Polygon)
 	}
 	return MultiPolygon{
 		SRID:     p.SRID,
-		Polygons: lines,
+		Polygons: polys,
 	}
 }
