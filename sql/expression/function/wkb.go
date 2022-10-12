@@ -507,3 +507,55 @@ func (l *MLineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 	return mline, err
 }
+
+// MPolyFromWKB is a function that returns a polygon type from a WKB byte array
+type MPolyFromWKB struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*MPolyFromWKB)(nil)
+
+// NewMPolyFromWKB creates a new point expression.
+func NewMPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("St_MPOLYFROMWKB", "1, 2, or 3", len(args))
+	}
+	return &MPolyFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (l *MPolyFromWKB) FunctionName() string {
+	return "st_mpolyfromwkb"
+}
+
+// Description implements sql.FunctionExpression
+func (l *MPolyFromWKB) Description() string {
+	return "returns a new multipolygon from WKB format."
+}
+
+// Type implements the sql.Expression interface.
+func (l *MPolyFromWKB) Type() sql.Type {
+	return sql.MultiPolygonType{}
+}
+
+func (l *MPolyFromWKB) String() string {
+	var args = make([]string, len(l.ChildExpressions))
+	for i, arg := range l.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_MPOLYFROMWKB(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (l *MPolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMPolyFromWKB(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (l *MPolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBPolyID)
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
+	}
+	return mline, err
+}
