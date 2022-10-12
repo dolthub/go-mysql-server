@@ -62,6 +62,15 @@ func (t *ResolvedTable) String() string {
 			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
 		}
 	}
+	if ft, ok := table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
+		}
+	}
 	return pr.String()
 }
 
@@ -79,9 +88,13 @@ func (t *ResolvedTable) DebugString() string {
 			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
 		}
 	}
-	if pt, ok := table.(sql.FilteredTable); ok {
-		if len(pt.Filters()) > 0 {
-			children = append(children, fmt.Sprintf("filters: %v", pt.Filters()))
+	if ft, ok := table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
 	pr.WriteChildren(children...)
