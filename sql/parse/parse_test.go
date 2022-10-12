@@ -49,7 +49,7 @@ var showCollationProjection = plan.NewProject([]sql.Expression{
 
 type parseTest struct {
 	input string
-	plan sql.Node
+	plan  sql.Node
 }
 
 var fixtures = []parseTest{
@@ -1473,7 +1473,7 @@ CREATE TABLE t2
 	},
 	{
 		input: `ALTER TABLE t1 DROP FOREIGN KEY fk_name`,
-		plan: plan.NewAlterDropForeignKey("", "t1", "fk_name"),
+		plan:  plan.NewAlterDropForeignKey("", "t1", "fk_name"),
 	},
 	{
 		input: `ALTER TABLE t1 DROP CONSTRAINT fk_name`,
@@ -2073,47 +2073,47 @@ CREATE TABLE t2
 	},
 	{
 		input: `SHOW TABLES`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	},
 	{
 		input: `SHOW FULL TABLES`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
 	},
 	{
 		input: `SHOW TABLES FROM foo`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
 	},
 	{
 		input: `SHOW TABLES IN foo`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
 	},
 	{
 		input: `SHOW FULL TABLES FROM foo`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
 	},
 	{
 		input: `SHOW FULL TABLES IN foo`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, nil),
 	},
 	{
 		input: `SHOW TABLES AS OF 'abc'`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
 	},
 	{
 		input: `SHOW FULL TABLES AS OF 'abc'`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase(""), true, expression.NewLiteral("abc", sql.LongText)),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), true, expression.NewLiteral("abc", sql.LongText)),
 	},
 	{
 		input: `SHOW TABLES FROM foo AS OF 'abc'`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", sql.LongText)),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", sql.LongText)),
 	},
 	{
 		input: `SHOW FULL TABLES FROM foo AS OF 'abc'`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
 	},
 	{
 		input: `SHOW FULL TABLES IN foo AS OF 'abc'`,
-		plan: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
+		plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
 	},
 	{
 		input: `SHOW TABLES FROM mydb LIKE 'foo'`,
@@ -2921,35 +2921,35 @@ CREATE TABLE t2
 	},
 	{
 		input: `SHOW INDEXES FROM foo`,
-		plan: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW INDEX FROM foo`,
-		plan: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW KEYS FROM foo`,
-		plan: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW INDEXES IN foo`,
-		plan: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW INDEX IN foo`,
-		plan: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW KEYS IN foo`,
-		plan: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW FULL PROCESSLIST`,
-		plan: plan.NewShowProcessList(),
+		plan:  plan.NewShowProcessList(),
 	},
 	{
 		input: `SHOW PROCESSLIST`,
-		plan: plan.NewShowProcessList(),
+		plan:  plan.NewShowProcessList(),
 	},
 	{
 		input: `SELECT @@allowed_max_packet`,
@@ -3004,11 +3004,11 @@ CREATE TABLE t2
 	},
 	{
 		input: "",
-		plan: plan.Nothing,
+		plan:  plan.Nothing,
 	},
 	{
 		input: "/* just a comment */",
-		plan: plan.Nothing,
+		plan:  plan.Nothing,
 	},
 	{
 		input: `/*!40101 SET NAMES utf8 */`,
@@ -3068,7 +3068,7 @@ CREATE TABLE t2
 	},
 	{
 		input: `SHOW DATABASES`,
-		plan: plan.NewShowDatabases(),
+		plan:  plan.NewShowDatabases(),
 	},
 	{
 		input: `SELECT * FROM foo WHERE i LIKE 'foo'`,
@@ -3100,11 +3100,11 @@ CREATE TABLE t2
 	},
 	{
 		input: `SHOW FIELDS FROM foo`,
-		plan: plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW FULL COLUMNS FROM foo`,
-		plan: plan.NewShowColumns(true, plan.NewUnresolvedTable("foo", "")),
+		plan:  plan.NewShowColumns(true, plan.NewUnresolvedTable("foo", "")),
 	},
 	{
 		input: `SHOW FIELDS FROM foo WHERE Field = 'bar'`,
@@ -3140,15 +3140,15 @@ CREATE TABLE t2
 	},
 	{
 		input: `SHOW TABLE STATUS FROM foo`,
-		plan: plan.NewShowTableStatus(sql.UnresolvedDatabase("foo")),
+		plan:  plan.NewShowTableStatus(sql.UnresolvedDatabase("foo")),
 	},
 	{
 		input: `SHOW TABLE STATUS IN foo`,
-		plan: plan.NewShowTableStatus(sql.UnresolvedDatabase("foo")),
+		plan:  plan.NewShowTableStatus(sql.UnresolvedDatabase("foo")),
 	},
 	{
 		input: `SHOW TABLE STATUS`,
-		plan: plan.NewShowTableStatus(sql.UnresolvedDatabase("")),
+		plan:  plan.NewShowTableStatus(sql.UnresolvedDatabase("")),
 	},
 	{
 		input: `SHOW TABLE STATUS WHERE Name = 'foo'`,
@@ -3162,7 +3162,7 @@ CREATE TABLE t2
 	},
 	{
 		input: `USE foo`,
-		plan: plan.NewUse(sql.UnresolvedDatabase("foo")),
+		plan:  plan.NewUse(sql.UnresolvedDatabase("foo")),
 	},
 	{
 		input: `DESCRIBE foo.bar`,
@@ -3187,15 +3187,15 @@ CREATE TABLE t2
 	},
 	{
 		input: `SHOW VARIABLES`,
-		plan: plan.NewShowVariables(nil),
+		plan:  plan.NewShowVariables(nil),
 	},
 	{
 		input: `SHOW GLOBAL VARIABLES`,
-		plan: plan.NewShowVariables(nil),
+		plan:  plan.NewShowVariables(nil),
 	},
 	{
 		input: `SHOW SESSION VARIABLES`,
-		plan: plan.NewShowVariables(nil),
+		plan:  plan.NewShowVariables(nil),
 	},
 	{
 		input: `SHOW VARIABLES LIKE 'gtid_mode'`,
@@ -3215,7 +3215,7 @@ CREATE TABLE t2
 	},
 	{
 		input: `UNLOCK TABLES`,
-		plan: plan.NewUnlockTables(),
+		plan:  plan.NewUnlockTables(),
 	},
 	{
 		input: `LOCK TABLES foo READ`,
@@ -3277,47 +3277,47 @@ CREATE TABLE t2
 	},
 	{
 		input: `SHOW CREATE DATABASE foo`,
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	},
 	{
 		input: `SHOW CREATE SCHEMA foo`,
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	},
 	{
 		input: `SHOW CREATE DATABASE IF NOT EXISTS foo`,
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	},
 	{
 		input: `SHOW CREATE SCHEMA IF NOT EXISTS foo`,
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	},
 	{
 		input: `SHOW WARNINGS`,
-		plan: plan.ShowWarnings(sql.NewEmptyContext().Warnings()),
+		plan:  plan.ShowWarnings(sql.NewEmptyContext().Warnings()),
 	},
 	{
 		input: `SHOW WARNINGS LIMIT 10`,
-		plan: plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
+		plan:  plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
 	},
 	{
 		input: `SHOW WARNINGS LIMIT 5,10`,
-		plan: plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+		plan:  plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 	},
 	{
 		input: "SHOW CREATE DATABASE `foo`",
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	},
 	{
 		input: "SHOW CREATE SCHEMA `foo`",
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	},
 	{
 		input: "SHOW CREATE DATABASE IF NOT EXISTS `foo`",
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	},
 	{
 		input: "SHOW CREATE SCHEMA IF NOT EXISTS `foo`",
-		plan: plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
+		plan:  plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	},
 	{
 		input: "SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' ELSE 'baz' END",
@@ -3399,7 +3399,7 @@ CREATE TABLE t2
 	},
 	{
 		input: "SHOW COLLATION",
-		plan: showCollationProjection,
+		plan:  showCollationProjection,
 	},
 	{
 		input: "SHOW COLLATION LIKE 'foo'",
@@ -3424,75 +3424,75 @@ CREATE TABLE t2
 	},
 	{
 		input: "BEGIN",
-		plan: plan.NewStartTransaction("", sql.ReadWrite),
+		plan:  plan.NewStartTransaction("", sql.ReadWrite),
 	},
 	{
 		input: "START TRANSACTION",
-		plan: plan.NewStartTransaction("", sql.ReadWrite),
+		plan:  plan.NewStartTransaction("", sql.ReadWrite),
 	},
 	{
 		input: "COMMIT",
-		plan: plan.NewCommit(""),
+		plan:  plan.NewCommit(""),
 	},
 	{
 		input: `ROLLBACK`,
-		plan: plan.NewRollback(""),
+		plan:  plan.NewRollback(""),
 	},
 	{
 		input: "SAVEPOINT abc",
-		plan: plan.NewCreateSavepoint("", "abc"),
+		plan:  plan.NewCreateSavepoint("", "abc"),
 	},
 	{
 		input: "ROLLBACK TO SAVEPOINT abc",
-		plan: plan.NewRollbackSavepoint("", "abc"),
+		plan:  plan.NewRollbackSavepoint("", "abc"),
 	},
 	{
 		input: "RELEASE SAVEPOINT abc",
-		plan: plan.NewReleaseSavepoint("", "abc"),
+		plan:  plan.NewReleaseSavepoint("", "abc"),
 	},
 	{
 		input: "SHOW CREATE TABLE `mytable`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), false),
 	},
 	{
 		input: "SHOW CREATE TABLE mytable",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), false),
 	},
 	{
 		input: "SHOW CREATE TABLE mydb.`mytable`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), false),
 	},
 	{
 		input: "SHOW CREATE TABLE `mydb`.mytable",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), false),
 	},
 	{
 		input: "SHOW CREATE TABLE `mydb`.`mytable`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), false),
 	},
 	{
 		input: "SHOW CREATE TABLE `my.table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", ""), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", ""), false),
 	},
 	{
 		input: "SHOW CREATE TABLE `my.db`.`my.table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", "my.db"), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", "my.db"), false),
 	},
 	{
 		input: "SHOW CREATE TABLE `my``table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", ""), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", ""), false),
 	},
 	{
 		input: "SHOW CREATE TABLE `my``db`.`my``table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", "my`db"), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", "my`db"), false),
 	},
 	{
 		input: "SHOW CREATE TABLE ````",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), false),
 	},
 	{
 		input: "SHOW CREATE TABLE `.`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), false),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), false),
 	},
 	{
 		input: "SHOW CREATE TABLE mytable as of 'version'",
@@ -3502,47 +3502,47 @@ CREATE TABLE t2
 	},
 	{
 		input: "SHOW CREATE VIEW `mytable`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
 	},
 	{
 		input: "SHOW CREATE VIEW mytable",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
 	},
 	{
 		input: "SHOW CREATE VIEW mydb.`mytable`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
 	},
 	{
 		input: "SHOW CREATE VIEW `mydb`.mytable",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
 	},
 	{
 		input: "SHOW CREATE VIEW `mydb`.`mytable`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
 	},
 	{
 		input: "SHOW CREATE VIEW `my.table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", ""), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", ""), true),
 	},
 	{
 		input: "SHOW CREATE VIEW `my.db`.`my.table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", "my.db"), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", "my.db"), true),
 	},
 	{
 		input: "SHOW CREATE VIEW `my``table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", ""), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", ""), true),
 	},
 	{
 		input: "SHOW CREATE VIEW `my``db`.`my``table`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", "my`db"), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", "my`db"), true),
 	},
 	{
 		input: "SHOW CREATE VIEW ````",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), true),
 	},
 	{
 		input: "SHOW CREATE VIEW `.`",
-		plan: plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), true),
+		plan:  plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), true),
 	},
 	{
 		input: `SELECT '2018-05-01' + INTERVAL 1 DAY`,
@@ -4825,27 +4825,27 @@ CREATE TABLE t2
 	},
 	{
 		input: `CREATE DATABASE test`,
-		plan: plan.NewCreateDatabase("test", false),
+		plan:  plan.NewCreateDatabase("test", false),
 	},
 	{
 		input: `CREATE DATABASE IF NOT EXISTS test`,
-		plan: plan.NewCreateDatabase("test", true),
+		plan:  plan.NewCreateDatabase("test", true),
 	},
 	{
 		input: `DROP DATABASE test`,
-		plan: plan.NewDropDatabase("test", false),
+		plan:  plan.NewDropDatabase("test", false),
 	},
 	{
 		input: `DROP DATABASE IF EXISTS test`,
-		plan: plan.NewDropDatabase("test", true),
+		plan:  plan.NewDropDatabase("test", true),
 	},
 	{
 		input: `KILL QUERY 1`,
-		plan: plan.NewKill(plan.KillType_Query, 1),
+		plan:  plan.NewKill(plan.KillType_Query, 1),
 	},
 	{
 		input: `KILL CONNECTION 1`,
-		plan: plan.NewKill(plan.KillType_Connection, 1),
+		plan:  plan.NewKill(plan.KillType_Connection, 1),
 		/* fixtures end */
 	},
 }
