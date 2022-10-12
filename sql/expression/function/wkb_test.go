@@ -85,6 +85,18 @@ func TestAsWKB(t *testing.T) {
 		require.Equal(res, v)
 	})
 
+	t.Run("convert multipolygon", func(t *testing.T) {
+		require := require.New(t)
+		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
+		poly := sql.Polygon{Lines: []sql.LineString{line}}
+		f := NewAsWKB(expression.NewLiteral(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, sql.MultiPolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		res, err := hex.DecodeString("0106000000010000000103000000010000000400000000000000000000000000000000000000000000000000F03F0000000000000000000000000000F03F000000000000F03F00000000000000000000000000000000")
+		require.NoError(err)
+		require.Equal(res, v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKB(expression.NewLiteral(nil, sql.Null))
@@ -207,6 +219,20 @@ func TestGeomFromWKB(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, {Points: []sql.Point{{X: 5, Y: 6}, {X: 7, Y: 8}}}}}, v)
+	})
+
+	t.Run("convert multipolygon in little endian", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0106000000010000000103000000010000000400000000000000000000000000000000000000000000000000F03F0000000000000000000000000000F03F000000000000F03F00000000000000000000000000000000")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
+		poly := sql.Polygon{Lines: []sql.LineString{line}}
+		require.Equal(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, v)
 	})
 
 	t.Run("convert point with srid 0", func(t *testing.T) {
