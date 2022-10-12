@@ -420,7 +420,56 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 	}
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
-	runTestCases(t, ctx, testCases, a, getRule(resolveSubqueryExprsId), getRule(finalizeSubqueryExprsId))
+	runTestCases(t, ctx, testCases, a, getRule(resolveSubqueriesId))
+}
+
+func TestFinalizeSubqueryExpressions(t *testing.T) {
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "x", Type: sql.Int64, Source: "mytable"},
+	}), nil)
+	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable2"},
+		{Name: "y", Type: sql.Int64, Source: "mytable2"},
+	}), nil)
+
+	db := memory.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
+
+	// Unlike most analyzer functions, resolving subqueries needs a fully functioning analyzer
+	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db)))
+
+	testCases := []analyzerFnTestCase{
+		{
+			name: "table column not found in outer scope",
+			node: plan.NewProject(
+				[]sql.Expression{
+					uc("i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								&deferredColumn{uqc("mytable", "z")},
+							},
+							plan.NewFilter(
+								gt(
+									gf(1, "mytable", "x"),
+									gf(0, "mytable", "i"),
+								),
+								plan.NewResolvedTable(table2, db, nil),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table, db, nil),
+			),
+			// FinalizeSubqueries will throw any errors instead of deferring resolution
+			err: sql.ErrTableColumnNotFound,
+		},
+	}
+
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	runTestCases(t, ctx, testCases, a, getRule(finalizeSubqueriesId))
 }
 
 func TestCacheSubqueryResults(t *testing.T) {
