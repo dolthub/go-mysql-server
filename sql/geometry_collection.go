@@ -232,39 +232,48 @@ func (t GeomCollType) MatchSRID(v interface{}) error {
 }
 
 // implementsGeometryValue implements GeometryValue interface.
-func (p GeomColl) implementsGeometryValue() {}
+func (g GeomColl) implementsGeometryValue() {}
 
 // GetSRID implements GeometryValue interface.
-func (p GeomColl) GetSRID() uint32 {
-	return p.SRID
+func (g GeomColl) GetSRID() uint32 {
+	return g.SRID
 }
 
 // SetSRID implements GeometryValue interface.
-func (p GeomColl) SetSRID(srid uint32) GeometryValue {
+func (g GeomColl) SetSRID(srid uint32) GeometryValue {
 	return GeomColl{
 		SRID: srid,
 	}
 }
 
 // Serialize implements GeometryValue interface.
-func (p GeomColl) Serialize() (buf []byte) {
+func (g GeomColl) Serialize() (buf []byte) {
 	buf = allocateBuffer(1, 0, 0)
-	WriteEWKBHeader(buf, p.SRID, WKBGeomCollID)
-	p.WriteData(buf[EWKBHeaderSize:])
+	WriteEWKBHeader(buf, g.SRID, WKBGeomCollID)
+	g.WriteData(buf[EWKBHeaderSize:])
 	return
 }
 
 // WriteData implements GeometryValue interface.
-func (p GeomColl) WriteData(buf []byte) {
-	// write header
-	// write data according to type
+func (g GeomColl) WriteData(buf []byte) {
+	writeCount(buf, uint32(len(g.Geoms)))
+	buf = buf[CountSize:]
+	for _, point := range g.Geoms {
+		WriteWKBHeader(buf, WKBGeomCollID)
+		buf = buf[WKBHeaderSize:]
+		point.WriteData(buf)
+		buf = buf[PointSize:]
+	}
 }
 
 // Swap implements GeometryValue interface.
-func (p GeomColl) Swap() GeometryValue {
-	// TODO: iterate over geoms
+func (g GeomColl) Swap() GeometryValue {
+	geoms := make([]GeometryValue, len(g.Geoms))
+	for i, g := range g.Geoms {
+		geoms[i] = g.Swap()
+	}
 	return GeomColl{
-		SRID:  p.SRID,
-		Geoms: p.Geoms,
+		SRID:  g.SRID,
+		Geoms: geoms,
 	}
 }
