@@ -280,6 +280,9 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 		err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
 	}
+	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
+		return sql.RowsToRowIter(), err
+	}
 
 	_, ok, err := vd.GetView(ctx, c.name)
 	if err != nil {
@@ -287,10 +290,6 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 	if ok {
 		return nil, sql.ErrTableAlreadyExists.New(c.name)
-	}
-
-	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
-		return sql.RowsToRowIter(), err
 	}
 
 	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
