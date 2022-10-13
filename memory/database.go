@@ -283,7 +283,12 @@ func (d *BaseDatabase) DropStoredProcedure(ctx *sql.Context, name string) error 
 }
 
 func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement string) error {
-	_, ok := d.views[name]
+	_, ok := d.tables[name]
+	if ok {
+		return sql.ErrTableAlreadyExists.New(name)
+	}
+
+	_, ok = d.views[name]
 	if ok {
 		return sql.ErrExistingView.New(name)
 	}

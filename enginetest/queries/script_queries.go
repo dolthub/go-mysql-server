@@ -2322,6 +2322,18 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "can't create view with same name as existing table",
+		SetUpScript: []string{
+			"create table t (i int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create view t as select 1 from dual",
+				ExpectedErr: sql.ErrTableAlreadyExists,
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
