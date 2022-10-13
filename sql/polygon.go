@@ -236,8 +236,9 @@ func (p Polygon) WriteData(buf []byte) int {
 	buf = buf[CountSize:]
 	count := CountSize
 	for _, l := range p.Lines {
-		count += l.WriteData(buf)
-		buf = buf[CountSize+PointSize*len(l.Points):]
+		c := l.WriteData(buf)
+		buf = buf[c:]
+		count += c
 	}
 	return count
 }
