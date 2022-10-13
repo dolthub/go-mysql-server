@@ -54,7 +54,7 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			for i, expr := range exprs {
 				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if sq, ok := e.(*plan.Subquery); ok {
-						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, NewNestedSubqueryFinalizer(sel), finalize)
+						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, finalize)
 					} else {
 						return e, transform.SameTree, nil
 					}
@@ -115,7 +115,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	subqueryCtx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
 	subScope := scope.newScope(n)
-	subScope.LastScopeIsSubqueryExpression = true
+	subScope.CurrentNodeIsSubqueryExpression = true
 
 	var analyzed sql.Node
 	var err error
@@ -272,12 +272,12 @@ func isDeterminstic(n sql.Node) bool {
 	return res
 }
 
-// cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
+// cacheSubqueryResults determines whether it's safe to cache the results for subqueries (expressions and aliases), and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
-func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// No need to inspect for trigger blocks as the Analyzer is recursively invoked on trigger blocks.
-	if n, ok := n.(*plan.TriggerBeginEndBlock); ok {
+	if n, ok := node.(*plan.TriggerBeginEndBlock); ok {
 		return n, transform.SameTree, nil
 	}
 	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {

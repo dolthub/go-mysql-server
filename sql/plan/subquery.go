@@ -242,7 +242,9 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 			return &newRecursiveCte, transform.NewTree, err
 		case *SubqueryAlias:
 			// For SubqueryAliases (i.e. DerivedTables), since they may have visibility to outer scopes, we need to
-			// transform their inner nodes to prepend the outer scope row data
+			// transform their inner nodes to prepend the outer scope row data. Ideally, we would only do this when
+			// the subquery alias references those outer fields. That will also require updating subquery expression
+			// scope handling to also make the same optimization.
 			newSubqueryAlias := *n
 			newChildNode, _, err := transform.Node(n.Child, prependRowInPlan(row))
 			newSubqueryAlias.Child = newChildNode

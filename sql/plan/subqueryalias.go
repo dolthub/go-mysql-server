@@ -27,6 +27,7 @@ type SubqueryAlias struct {
 	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
+	CanCacheResults      bool
 }
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
@@ -96,6 +97,11 @@ func (sq SubqueryAlias) WithName(name string) *SubqueryAlias {
 	return &sq
 }
 
+func (sq SubqueryAlias) WithCachedResults() *SubqueryAlias {
+	sq.CanCacheResults = true
+	return &sq
+}
+
 // Opaque implements the OpaqueNode interface.
 func (sq *SubqueryAlias) Opaque() bool {
 	return true
@@ -110,7 +116,7 @@ func (sq SubqueryAlias) String() string {
 
 func (sq SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("SubqueryAlias(%s)", sq.name)
+	_ = pr.WriteNode("SubqueryAlias(%s), outerScopeVisibility = %t, cacheable = %t", sq.name, sq.OuterScopeVisibility, sq.CanCacheResults)
 	_ = pr.WriteChildren(sql.DebugString(sq.Child))
 	return pr.String()
 }
