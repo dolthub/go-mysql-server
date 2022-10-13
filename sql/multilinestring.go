@@ -169,7 +169,7 @@ func (t MultiLineStringType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t MultiLineStringType) Zero() interface{} {
-	return MultiLineString{Lines: []LineString{{Points: []Point{{}, {}}}}}
+	return MultiLineString{Lines: []LineString{LineStringType{}.Zero().(LineString)}}
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.
