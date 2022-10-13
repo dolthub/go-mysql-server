@@ -211,6 +211,8 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		geom, _, err = sql.DeserializeMLine(buf, isBig, srid)
 	case sql.WKBMultiPolyID:
 		geom, _, err = sql.DeserializeMPoly(buf, isBig, srid)
+	case sql.WKBGeomCollID:
+		geom, _, err = sql.DeserializeGeomColl(buf, isBig, srid)
 	default:
 		return nil, sql.ErrInvalidGISData.New()
 	}

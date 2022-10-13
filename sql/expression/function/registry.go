@@ -82,6 +82,8 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "format", Fn: NewFormat},
 	sql.Function1{Name: "from_base64", Fn: NewFromBase64},
 	sql.Function1{Name: "from_unixtime", Fn: NewFromUnixtime},
+	sql.FunctionN{Name: "geomcollection", Fn: NewGeomColl},
+	sql.FunctionN{Name: "geometrycollection", Fn: NewGeomColl},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
 	sql.Function0{Name: "group_concat", Fn: aggregation.NewEmptyGroupConcat},
 	sql.Function1{Name: "hex", Fn: NewHex},
