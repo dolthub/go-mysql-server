@@ -246,6 +246,7 @@ func (c *CreateTable) Resolved() bool {
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
+	var vd sql.ViewDatabase
 	if c.temporary == IsTempTable {
 		maybePrivDb := c.db
 		if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
@@ -255,6 +256,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
+		vd = maybePrivDb.(sql.ViewDatabase)
 
 		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
@@ -270,6 +272,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
 		}
+		vd = maybePrivDb.(sql.ViewDatabase)
 
 		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
@@ -277,9 +280,16 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 		err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
 	}
-
 	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
 		return sql.RowsToRowIter(), err
+	}
+
+	_, ok, err := vd.GetView(ctx, c.name)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return nil, sql.ErrTableAlreadyExists.New(c.name)
 	}
 
 	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
