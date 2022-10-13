@@ -706,7 +706,7 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `select /*+ JOIN_ORDER( i, k, j ) */  * from one_pk i join one_pk k on i.pk = k.pk join (select pk, rand() r from one_pk) j on i.pk = j.pk`,
+		Query: `select /*+ JOIN_ORDER( i, k, j ) */  * from one_pk i join one_pk k on i.pk = k.pk join (select pk, 42.42 r from one_pk) j on i.pk = j.pk`,
 		ExpectedPlan: "IndexedJoin(i.pk = j.pk)\n" +
 			" ├─ IndexedJoin(i.pk = k.pk)\n" +
 			" │   ├─ TableAlias(i)\n" +
@@ -720,9 +720,27 @@ inner join pq on true
 			"     └─ CachedResults\n" +
 			"         └─ SubqueryAlias(j)\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [one_pk.pk, RAND() as r]\n" +
+			"                 ├─ columns: [one_pk.pk, 42.42 as r]\n" +
 			"                 └─ Table(one_pk)\n" +
 			"                     └─ columns: [pk]\n" +
+			"",
+	},
+	{
+		Query: `select /*+ JOIN_ORDER( i, k, j ) */  * from one_pk i join one_pk k on i.pk = k.pk join (select pk, rand() r from one_pk) j on i.pk = j.pk`,
+		ExpectedPlan: "IndexedJoin(i.pk = j.pk)\n" +
+			" ├─ IndexedJoin(i.pk = k.pk)\n" +
+			" │   ├─ TableAlias(i)\n" +
+			" │   │   └─ Table(one_pk)\n" +
+			" │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" │   └─ TableAlias(k)\n" +
+			" │       └─ IndexedTableAccess(one_pk)\n" +
+			" │           ├─ index: [one_pk.pk]\n" +
+			" │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" └─ SubqueryAlias(j)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [one_pk.pk, RAND() as r]\n" +
+			"         └─ Table(one_pk)\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
