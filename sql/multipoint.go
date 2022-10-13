@@ -231,7 +231,7 @@ func (p MultiPoint) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p MultiPoint) WriteData(buf []byte) {
+func (p MultiPoint) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(p.Points)))
 	buf = buf[CountSize:]
 	for _, point := range p.Points {
@@ -240,6 +240,7 @@ func (p MultiPoint) WriteData(buf []byte) {
 		point.WriteData(buf)
 		buf = buf[PointSize:]
 	}
+	return CountSize + (WKBHeaderSize+PointSize)*len(p.Points)
 }
 
 // Swap implements GeometryValue interface.

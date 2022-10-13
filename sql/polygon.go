@@ -231,13 +231,15 @@ func (p Polygon) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p Polygon) WriteData(buf []byte) {
+func (p Polygon) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(p.Lines)))
 	buf = buf[CountSize:]
+	count := CountSize
 	for _, l := range p.Lines {
-		l.WriteData(buf)
+		count += l.WriteData(buf)
 		buf = buf[CountSize+PointSize*len(l.Points):]
 	}
+	return count
 }
 
 // Swap implements GeometryValue interface.

@@ -39,7 +39,7 @@ type GeometryValue interface {
 	GetSRID() uint32
 	SetSRID(srid uint32) GeometryValue
 	Serialize() []byte
-	WriteData(buf []byte)
+	WriteData(buf []byte) int
 	Swap() GeometryValue
 }
 

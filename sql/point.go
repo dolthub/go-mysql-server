@@ -226,10 +226,11 @@ func (p Point) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p Point) WriteData(buf []byte) {
+func (p Point) WriteData(buf []byte) int {
 	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.X))
 	buf = buf[PointSize/2:]
 	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.Y))
+	return PointSize
 }
 
 // Swap implements GeometryValue interface.

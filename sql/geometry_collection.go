@@ -255,15 +255,18 @@ func (g GeomColl) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (g GeomColl) WriteData(buf []byte) {
+func (g GeomColl) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(g.Geoms)))
 	buf = buf[CountSize:]
-	for _, point := range g.Geoms {
+	count := CountSize
+	for _, g := range g.Geoms {
 		WriteWKBHeader(buf, WKBGeomCollID)
 		buf = buf[WKBHeaderSize:]
-		point.WriteData(buf)
-		buf = buf[PointSize:]
+		c := g.WriteData(buf)
+		buf = buf[c:]
+		count += WKBHeaderSize + c
 	}
+	return count
 }
 
 // Swap implements GeometryValue interface.
