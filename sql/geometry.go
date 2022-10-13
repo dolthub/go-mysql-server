@@ -79,7 +79,7 @@ const (
 	WKBMultiPointID
 	WKBMultiLineID
 	WKBMultiPolyID
-	WKBGeomCollectionID
+	WKBGeomCollID
 )
 
 // isLinearRing checks if a LineString is a linear ring
@@ -299,6 +299,52 @@ func DeserializeMPoly(buf []byte, isBig bool, srid uint32) (MultiPolygon, error)
 	return MultiPolygon{SRID: srid, Polygons: polys}, nil
 }
 
+// DeserializeGeomColl parses the data portion of a byte array in WKB format to a GeometryCollection object
+func DeserializeGeomColl(buf []byte, isBig bool, srid uint32) (GeomColl, error) {
+	// Must be at least CountSize
+	if len(buf) < CountSize {
+		return GeomColl{}, ErrInvalidGISData.New("DeserializeLine")
+	}
+
+	// Read number of geometry objects
+	geoms := make([]GeometryValue, readCount(buf, isBig))
+	buf = buf[CountSize:]
+
+	// Read geometries
+	for i := range geoms {
+		isBig, typ, err := DeserializeWKBHeader(buf)
+		if err != nil {
+			return GeomColl{}, ErrInvalidGISData.New("GeometryType.Convert")
+		}
+		buf = buf[WKBHeaderSize:]
+		switch typ {
+		case WKBPointID:
+			geoms[i], err = DeserializePoint(buf, isBig, srid)
+		case WKBLineID:
+			geoms[i], err = DeserializeLine(buf, isBig, srid)
+		case WKBPolyID:
+			geoms[i], err = DeserializePoly(buf, isBig, srid)
+		case WKBMultiPointID:
+			geoms[i], err = DeserializeMPoint(buf, isBig, srid)
+		case WKBMultiLineID:
+			geoms[i], err = DeserializeMLine(buf, isBig, srid)
+		case WKBMultiPolyID:
+			geoms[i], err = DeserializeMPoly(buf, isBig, srid)
+		case WKBGeomCollID:
+			geoms[i], err = DeserializeGeomColl(buf, isBig, srid)
+		default:
+			return GeomColl{}, ErrInvalidGISData.New("GeometryType.Convert")
+		}
+		if err != nil {
+			return GeomColl{}, ErrInvalidGISData.New("GeometryType.Convert")
+		}
+		// TODO: uhhh????
+		buf = buf[PointSize:]
+	}
+
+	return GeomColl{SRID: srid, Geoms: geoms}, nil
+}
+
 func allocateBuffer(numPoints, numCounts, numWKBHeaders int) []byte {
 	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts+numWKBHeaders*WKBHeaderSize)
 }
@@ -342,6 +388,8 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return MultiLineStringType{}.Compare(inner, b)
 	case MultiPolygon:
 		return MultiPolygonType{}.Compare(inner, b)
+	case GeomColl:
+		return GeomCollType{}.Compare(inner, b)
 	default:
 		return 0, ErrNotGeometry.New(a)
 	}
@@ -374,7 +422,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 			geom, err = DeserializeMLine(val, isBig, srid)
 		case WKBMultiPolyID:
 			geom, err = DeserializeMPoly(val, isBig, srid)
-		case WKBGeomCollectionID:
+		case WKBGeomCollID:
 			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(val))
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
