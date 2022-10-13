@@ -246,9 +246,61 @@ func (g GeomColl) SetSRID(srid uint32) GeometryValue {
 	}
 }
 
+// CalculateSize is a helper method to determine how much space to allocate for geometry collections
+// TODO: recursion could be better; possible to expand to fit all types
+func (g GeomColl) CalculateSize() (numPoints int, numCounts int, numHeaders int) {
+	for _, geom := range g.Geoms {
+		switch g := geom.(type) {
+		case Point:
+			numPoints += 1
+			numHeaders += 1
+		case LineString:
+			numPoints += len(g.Points)
+			numCounts += 1
+			numHeaders += 1
+		case Polygon:
+			for _, l := range g.Lines {
+				numPoints += len(l.Points)
+				numCounts += 1
+			}
+			numCounts += 1
+			numHeaders += 1
+		case MultiPoint:
+			numPoints += len(g.Points)
+			numCounts += 1
+			numHeaders += len(g.Points)
+		case MultiLineString:
+			for _, l := range g.Lines {
+				numPoints += len(l.Points)
+				numCounts += 1
+			}
+			numCounts += 1
+			numHeaders += len(g.Lines)
+		case MultiPolygon:
+			for _, p := range g.Polygons {
+				for _, l := range p.Lines {
+					numPoints += len(l.Points)
+					numCounts += 1
+				}
+				numCounts += 1
+			}
+			numCounts += 1
+			numHeaders += len(g.Polygons)
+		case GeomColl:
+			p, c, h := g.CalculateSize()
+			numPoints += p
+			numCounts += c + 1
+			numHeaders += h + 1
+		}
+	}
+	return
+}
+
 // Serialize implements GeometryValue interface.
+// TODO: actually count all points to allocate
 func (g GeomColl) Serialize() (buf []byte) {
-	buf = allocateBuffer(1, 0, 0)
+	numPoints, numCounts, numHeaders := g.CalculateSize()
+	buf = allocateBuffer(numPoints, numCounts+1, numHeaders)
 	WriteEWKBHeader(buf, g.SRID, WKBGeomCollID)
 	g.WriteData(buf[EWKBHeaderSize:])
 	return
@@ -259,10 +311,27 @@ func (g GeomColl) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(g.Geoms)))
 	buf = buf[CountSize:]
 	count := CountSize
-	for _, g := range g.Geoms {
-		WriteWKBHeader(buf, WKBGeomCollID)
+	for _, geom := range g.Geoms {
+		var typ uint32
+		switch geom.(type) {
+		case Point:
+			typ = WKBPointID
+		case LineString:
+			typ = WKBLineID
+		case Polygon:
+			typ = WKBPolyID
+		case MultiPoint:
+			typ = WKBMultiPointID
+		case MultiLineString:
+			typ = WKBMultiLineID
+		case MultiPolygon:
+			typ = WKBMultiPolyID
+		case GeomColl:
+			typ = WKBGeomCollID
+		}
+		WriteWKBHeader(buf, typ)
 		buf = buf[WKBHeaderSize:]
-		c := g.WriteData(buf)
+		c := geom.WriteData(buf)
 		buf = buf[c:]
 		count += WKBHeaderSize + c
 	}
