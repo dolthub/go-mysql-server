@@ -233,6 +233,15 @@ func (i *IndexedTableAccess) String() string {
 			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
+	if ft, ok := i.Table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
+		}
+	}
 	pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -263,6 +272,15 @@ func (i *IndexedTableAccess) DebugString() string {
 				columns = append(columns, strings.ToLower(c))
 			}
 			children = append(children, fmt.Sprintf("columns: %v", columns))
+		}
+	}
+	if ft, ok := i.Table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
 	pr.WriteChildren(children...)
