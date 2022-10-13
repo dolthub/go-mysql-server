@@ -153,7 +153,7 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *pla
 		// gives a derived table visibility to the OUTER scope where the subquery is defined.
 		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
-		if scope.LastScopeIsSubqueryExpression {
+		if scope.CurrentNodeIsSubqueryExpression {
 			sqa.OuterScopeVisibility = true
 			subScope.nodes = append(subScope.nodes, scope.InnerToOuter()...)
 		}
@@ -246,9 +246,9 @@ func nodeIsCacheable(ctx *sql.Context, n sql.Node, scope *Scope) bool {
 				subScope.nodes = scope.InnerToOuter()
 				if !nodeIsCacheable(ctx, sqa.Child, subScope) {
 					cacheable = false
-					return false
 				}
 			}
+			return false
 		}
 		return true
 	})
