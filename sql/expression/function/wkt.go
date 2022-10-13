@@ -124,6 +124,15 @@ func MultiPolygonToWKT(p sql.MultiPolygon, order bool) string {
 	return strings.Join(polys, ",")
 }
 
+// MultiPolygonToWKT converts a sql.Polygon to a string
+func GeomCollToWKT(p sql.MultiPolygon, order bool) string {
+	polys := make([]string, len(p.Polygons))
+	for i, poly := range p.Polygons {
+		polys[i] = "(" + PolygonToWKT(poly, order) + ")"
+	}
+	return strings.Join(polys, ",")
+}
+
 // Eval implements the sql.Expression interface.
 func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
