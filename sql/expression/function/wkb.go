@@ -200,17 +200,17 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 	var geom sql.GeometryValue
 	switch geomType {
 	case sql.WKBPointID:
-		geom, err = sql.DeserializePoint(buf, isBig, srid)
+		geom, _, err = sql.DeserializePoint(buf, isBig, srid)
 	case sql.WKBLineID:
-		geom, err = sql.DeserializeLine(buf, isBig, srid)
+		geom, _, err = sql.DeserializeLine(buf, isBig, srid)
 	case sql.WKBPolyID:
-		geom, err = sql.DeserializePoly(buf, isBig, srid)
+		geom, _, err = sql.DeserializePoly(buf, isBig, srid)
 	case sql.WKBMultiPointID:
-		geom, err = sql.DeserializeMPoint(buf, isBig, srid)
+		geom, _, err = sql.DeserializeMPoint(buf, isBig, srid)
 	case sql.WKBMultiLineID:
-		geom, err = sql.DeserializeMLine(buf, isBig, srid)
+		geom, _, err = sql.DeserializeMLine(buf, isBig, srid)
 	case sql.WKBMultiPolyID:
-		geom, err = sql.DeserializeMPoly(buf, isBig, srid)
+		geom, _, err = sql.DeserializeMPoly(buf, isBig, srid)
 	default:
 		return nil, sql.ErrInvalidGISData.New()
 	}

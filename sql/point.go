@@ -105,7 +105,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 			return nil, ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
-		point, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
+		point, _, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
 			return nil, err
 		}

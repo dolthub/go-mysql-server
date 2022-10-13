@@ -131,16 +131,16 @@ func (t GeomCollType) Convert(v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Throw error if not marked as point
+		// Throw error if not marked as geometry collection
 		if geomType != WKBGeomCollID {
 			return nil, ErrInvalidGISData.New("GeomCollType.Convert")
 		}
 		// Parse data section
-		point, err := DeserializeGeomColl(val[EWKBHeaderSize:], isBig, srid)
+		geom, _, err := DeserializeGeomColl(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
 			return nil, err
 		}
-		return point, nil
+		return geom, nil
 	case string:
 		return t.Convert([]byte(val))
 	case GeomColl:
