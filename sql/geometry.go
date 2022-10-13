@@ -241,6 +241,33 @@ func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) 
 	return MultiPoint{SRID: srid, Points: points}, nil
 }
 
+// DeserializeMLine parses the data portion of a byte array in WKB format to a MultiLineString object
+func DeserializeMLine(buf []byte, isBig bool, srid uint32) (MultiLineString, error) {
+	// Must contain at least length, wkb header, and two point
+	if len(buf) < (CountSize + WKBHeaderSize + PointSize + PointSize) {
+		return MultiLineString{}, ErrInvalidGISData.New("MultiLineString")
+	}
+
+	// Read number of lines
+	lines := make([]LineString, readCount(buf, isBig))
+	buf = buf[CountSize:]
+	for i := range lines {
+		// WKBHeaders are inside MultiGeometry Types
+		isBig, typ, err := DeserializeWKBHeader(buf)
+		if typ != WKBLineID {
+			return MultiLineString{}, ErrInvalidGISData.New("DeserializeLine")
+		}
+		buf = buf[WKBHeaderSize:]
+		lines[i], err = DeserializeLine(buf, isBig, srid)
+		if err != nil {
+			return MultiLineString{}, ErrInvalidGISData.New("DeserializeLine")
+		}
+		buf = buf[CountSize+len(lines[i].Points)*PointSize:]
+	}
+
+	return MultiLineString{SRID: srid, Lines: lines}, nil
+}
+
 func allocateBuffer(numPoints, numCounts, numWKBHeaders int) []byte {
 	return make([]byte, EWKBHeaderSize+PointSize*numPoints+CountSize*numCounts+numWKBHeaders*WKBHeaderSize)
 }
@@ -278,6 +305,10 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return LineStringType{}.Compare(inner, b)
 	case Polygon:
 		return PolygonType{}.Compare(inner, b)
+	case MultiPoint:
+		return MultiPointType{}.Compare(inner, b)
+	case MultiLineString:
+		return MultiLineStringType{}.Compare(inner, b)
 	default:
 		return 0, ErrNotGeometry.New(a)
 	}
@@ -307,7 +338,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		case WKBMultiPointID:
 			geom, err = DeserializeMPoint(val, isBig, srid)
 		case WKBMultiLineID:
-			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(val))
+			geom, err = DeserializeMLine(val, isBig, srid)
 		case WKBMultiPolyID:
 			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(val))
 		case WKBGeomCollectionID:
@@ -404,12 +435,8 @@ func (t GeometryType) MatchSRID(v interface{}) error {
 	// if matched with SRID value of row value
 	var srid uint32
 	switch val := v.(type) {
-	case Point:
-		srid = val.SRID
-	case LineString:
-		srid = val.SRID
-	case Polygon:
-		srid = val.SRID
+	case GeometryValue:
+		srid = val.GetSRID()
 	default:
 		return ErrNotGeometry.New(v)
 	}

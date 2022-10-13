@@ -56,6 +56,14 @@ func TestSwapXY(t *testing.T) {
 		require.Equal(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 0}, {X: 3, Y: 2}}}, v)
 	})
 
+	t.Run("multilinestring swap", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
+	})
+
 	t.Run("swap wrong type", func(t *testing.T) {
 		require := require.New(t)
 		f := NewSwapXY(expression.NewLiteral(123, sql.Int64))
