@@ -241,7 +241,7 @@ func (p MultiPolygon) WriteData(buf []byte) int {
 	buf = buf[CountSize:]
 	count := CountSize
 	for _, p := range p.Polygons {
-		WriteWKBHeader(buf, WKBMultiPolyID)
+		WriteWKBHeader(buf, WKBPolyID)
 		buf = buf[WKBHeaderSize:]
 		c := p.WriteData(buf)
 		buf = buf[c:]

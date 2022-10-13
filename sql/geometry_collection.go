@@ -268,14 +268,14 @@ func (g GeomColl) CalculateSize() (numPoints int, numCounts int, numHeaders int)
 		case MultiPoint:
 			numPoints += len(g.Points)
 			numCounts += 1
-			numHeaders += len(g.Points)
+			numHeaders += len(g.Points) + 1
 		case MultiLineString:
 			for _, l := range g.Lines {
 				numPoints += len(l.Points)
 				numCounts += 1
 			}
 			numCounts += 1
-			numHeaders += len(g.Lines)
+			numHeaders += len(g.Lines) + 1
 		case MultiPolygon:
 			for _, p := range g.Polygons {
 				for _, l := range p.Lines {
@@ -285,7 +285,7 @@ func (g GeomColl) CalculateSize() (numPoints int, numCounts int, numHeaders int)
 				numCounts += 1
 			}
 			numCounts += 1
-			numHeaders += len(g.Polygons)
+			numHeaders += len(g.Polygons) + 1
 		case GeomColl:
 			p, c, h := g.CalculateSize()
 			numPoints += p
