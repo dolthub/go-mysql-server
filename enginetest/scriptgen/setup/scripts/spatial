@@ -11,7 +11,8 @@ insert into stringtogeojson_table values
         (4, '{"type": "Polygon", "coordinates": [[[1.1,2.2],[3.3,4.4],[5.5,6.6],[1.1,2.2]]]}'),
         (5, '{"type": "Polygon", "coordinates": [[[0,0],[1,1],[2,2],[0,0]]]}'),
         (6, '{"type": "MultiPoint", "coordinates": [[1,2],[3,4]]}'),
-        (7, '{"type": "MultiPoint", "coordinates": [[1.23,2.345],[3.56789,4.56]]}')
+        (7, '{"type": "MultiPoint", "coordinates": [[1.23,2.345],[3.56789,4.56]]}'),
+        (8, '{"type": "MultiLineString", "coordinates": [[[1.1,2.2],[3.3,4.4]],[[5.5,6.6],[7.7,8.8]]]}')
 ----
 
 exec
@@ -27,7 +28,9 @@ insert into geometry_table values
         (5, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),
         (6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),
         (7, ST_GeomFromText('MultiPoint(1 2,3 4)')),
-		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326))
+		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326)),
+		(9, ST_GeomFromText('MULTILINESTRING((1 2,3 4))')),
+        (10, ST_SRID(ST_GeomFromText('MULTILINESTRING((1 2,3 4))'), 4326))
 ----
 
 exec
@@ -66,4 +69,14 @@ exec
 insert into mpoint_table values
     (0, ST_GeomFromText('MultiPoint(1 2,3 4)')),
     (1, ST_GeomFromText('MultiPoint(1 2,3 4,5 6)'))
+----
+
+exec
+create table mline_table (i bigint primary key, l multilinestring NOT NULL);
+----
+
+exec
+insert into mline_table values
+    (0, ST_GeomFromText('MultiLineString((1 2,3 4))')),
+    (1, ST_GeomFromText('MultiLineString((1 2,3 4,5 6))'))
 ----

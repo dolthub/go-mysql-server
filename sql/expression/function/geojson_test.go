@@ -42,15 +42,6 @@ func TestAsGeoJSON(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "LineString"}}, v)
 	})
-	t.Run("convert linestring to geojson", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewAsGeoJSON(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.MultiPointType{}))
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "MultiPoint"}}, v)
-	})
 	t.Run("convert polygon to geojson", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(expression.NewLiteral(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}, sql.PolygonType{}))
@@ -59,6 +50,24 @@ func TestAsGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {1, 0}, {1, 1}, {0, 0}}}, "type": "Polygon"}}, v)
+	})
+	t.Run("convert multipoint to geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.MultiPointType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "MultiPoint"}}, v)
+	})
+	t.Run("convert multilinestring to geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}}, sql.MultiLineStringType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString"}}, v)
 	})
 	t.Run("convert point with floats to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -144,6 +153,19 @@ func TestAsGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{100, 2}, {1, 200}}, "type": "MultiPoint", "bbox": [4]float64{1, 2, 100, 200}}}, v)
+	})
+	t.Run("convert multilinestring with bounding box", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}}, sql.MultiLineStringType{}),
+			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString", "bbox": [4]float64{1, 2, 3, 4}}}, v)
 	})
 	t.Run("convert point with srid 0 and flag 2", func(t *testing.T) {
 		require := require.New(t)
@@ -285,6 +307,15 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.MultiPoint{SRID: 4326, Points: []sql.Point{{4326, 1, 2}, {4326, 3, 4}}}, v)
+	})
+	t.Run("convert multilinestring from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiLineString", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{4326, []sql.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}}}}, v)
 	})
 	t.Run("reject dimensions greater than 2 with flag 1", func(t *testing.T) {
 		require := require.New(t)

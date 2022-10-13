@@ -305,6 +305,10 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return LineStringType{}.Compare(inner, b)
 	case Polygon:
 		return PolygonType{}.Compare(inner, b)
+	case MultiPoint:
+		return MultiPointType{}.Compare(inner, b)
+	case MultiLineString:
+		return MultiLineStringType{}.Compare(inner, b)
 	default:
 		return 0, ErrNotGeometry.New(a)
 	}
@@ -334,7 +338,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		case WKBMultiPointID:
 			geom, err = DeserializeMPoint(val, isBig, srid)
 		case WKBMultiLineID:
-			return nil, ErrUnsupportedGISType.New("MultiLineString", hex.EncodeToString(val))
+			geom, err = DeserializeMLine(val, isBig, srid)
 		case WKBMultiPolyID:
 			return nil, ErrUnsupportedGISType.New("MultiPolygon", hex.EncodeToString(val))
 		case WKBGeomCollectionID:
@@ -431,12 +435,8 @@ func (t GeometryType) MatchSRID(v interface{}) error {
 	// if matched with SRID value of row value
 	var srid uint32
 	switch val := v.(type) {
-	case Point:
-		srid = val.SRID
-	case LineString:
-		srid = val.SRID
-	case Polygon:
-		srid = val.SRID
+	case GeometryValue:
+		srid = val.GetSRID()
 	default:
 		return ErrNotGeometry.New(v)
 	}
