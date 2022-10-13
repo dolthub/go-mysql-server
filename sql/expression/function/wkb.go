@@ -503,7 +503,7 @@ func (l *MLineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // Eval implements the sql.Expression interface.
 func (l *MLineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBPolyID)
+	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBMultiLineID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
 	}
@@ -517,47 +517,99 @@ type MPolyFromWKB struct {
 
 var _ sql.FunctionExpression = (*MPolyFromWKB)(nil)
 
-// NewMPolyFromWKB creates a new point expression.
+// NewMPolyFromWKB creates a new multipolygon expression.
 func NewMPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("St_MPOLYFROMWKB", "1, 2, or 3", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_MPOLYFROMWKB", "1, 2, or 3", len(args))
 	}
 	return &MPolyFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (l *MPolyFromWKB) FunctionName() string {
+func (p *MPolyFromWKB) FunctionName() string {
 	return "st_mpolyfromwkb"
 }
 
 // Description implements sql.FunctionExpression
-func (l *MPolyFromWKB) Description() string {
+func (p *MPolyFromWKB) Description() string {
 	return "returns a new multipolygon from WKB format."
 }
 
 // Type implements the sql.Expression interface.
-func (l *MPolyFromWKB) Type() sql.Type {
+func (p *MPolyFromWKB) Type() sql.Type {
 	return sql.MultiPolygonType{}
 }
 
-func (l *MPolyFromWKB) String() string {
-	var args = make([]string, len(l.ChildExpressions))
-	for i, arg := range l.ChildExpressions {
+func (p *MPolyFromWKB) String() string {
+	var args = make([]string, len(p.ChildExpressions))
+	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("ST_MPOLYFROMWKB(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (l *MPolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *MPolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewMPolyFromWKB(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (l *MPolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBPolyID)
+func (p *MPolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	mpoly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPolyID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
-	return mline, err
+	return mpoly, err
+}
+
+// GeomCollFromWKB is a function that returns a polygon type from a WKB byte array
+type GeomCollFromWKB struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*GeomCollFromWKB)(nil)
+
+// NewGeomCollFromWKB creates a new geometrycollection expression.
+func NewGeomCollFromWKB(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMCOLLFROMWKB", "1, 2, or 3", len(args))
+	}
+	return &MPolyFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (g *GeomCollFromWKB) FunctionName() string {
+	return "st_geomcollfromwkb"
+}
+
+// Description implements sql.FunctionExpression
+func (g *GeomCollFromWKB) Description() string {
+	return "returns a new geometrycollection from WKB format."
+}
+
+// Type implements the sql.Expression interface.
+func (g *GeomCollFromWKB) Type() sql.Type {
+	return sql.GeomCollType{}
+}
+
+func (g *GeomCollFromWKB) String() string {
+	var args = make([]string, len(g.ChildExpressions))
+	for i, arg := range g.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_GEOMCOLLFROMWKB(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (g *GeomCollFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomCollFromWKB(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (g *GeomCollFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, sql.WKBGeomCollID)
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+	}
+	return geom, err
 }

@@ -107,20 +107,6 @@ func TestAsWKB(t *testing.T) {
 		require.Equal(res, v)
 	})
 
-	t.Run("convert geometrycollection in geometrycollection", func(t *testing.T) {
-		require := require.New(t)
-		gColl := sql.GeomColl{}
-		g := sql.GeomColl{Geoms: []sql.GeometryValue{
-			gColl,
-		}}
-		f := NewAsWKB(expression.NewLiteral(g, sql.GeomCollType{}))
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		res, err := hex.DecodeString("010700000001000000010700000000000000")
-		require.NoError(err)
-		require.Equal(res, v)
-	})
-
 	t.Run("convert geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		point := sql.Point{X: 1, Y: 2}
@@ -283,6 +269,46 @@ func TestGeomFromWKB(t *testing.T) {
 		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
 		poly := sql.Polygon{Lines: []sql.LineString{line}}
 		require.Equal(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, v)
+	})
+
+	t.Run("convert empty geometry collection in little endian", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("010700000000000000")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.GeomColl{Geoms: []sql.GeometryValue{}}, v)
+	})
+
+	t.Run("convert empty geometry collection in little endian", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0107000000070000000101000000000000000000F03F0000000000000040010200000002000000000000000000F03F0000000000000040000000000000084000000000000010400103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000000000000000000000104000000020000000101000000000000000000F03F00000000000000400101000000000000000000F03F0000000000000040010500000002000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040010200000002000000000000000000F03F0000000000000040000000000000084000000000000010400106000000020000000103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000000000000000000000103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000010700000000000000")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		point := sql.Point{X: 1, Y: 2}
+		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		mpoint := sql.MultiPoint{Points: []sql.Point{point, point}}
+		mline := sql.MultiLineString{Lines: []sql.LineString{line, line}}
+		mpoly := sql.MultiPolygon{Polygons: []sql.Polygon{poly, poly}}
+		gColl := sql.GeomColl{Geoms: []sql.GeometryValue{}}
+		g := sql.GeomColl{Geoms: []sql.GeometryValue{
+			point,
+			line,
+			poly,
+			mpoint,
+			mline,
+			mpoly,
+			gColl,
+		}}
+		require.Equal(g, v)
 	})
 
 	t.Run("convert point with srid 0", func(t *testing.T) {

@@ -328,7 +328,7 @@ func DeserializeGeomColl(buf []byte, isBig bool, srid uint32) (GeomColl, int, er
 
 		switch typ {
 		case WKBPointID:
-			geoms[i], c, err = DeserializePoint(buf, isBig, srid)
+			geoms[i], c, err = DeserializePoint(buf[:PointSize], isBig, srid)
 		case WKBLineID:
 			geoms[i], c, err = DeserializeLine(buf, isBig, srid)
 		case WKBPolyID:
