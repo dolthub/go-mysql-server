@@ -205,6 +205,8 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_aswkt", Fn: NewAsWKT},
 	sql.Function1{Name: "st_astext", Fn: NewAsWKT},
 	sql.Function1{Name: "st_dimension", Fn: NewDimension},
+	sql.FunctionN{Name: "st_geomcollfromwkb", Fn: NewGeomCollFromWKB},
+	sql.FunctionN{Name: "st_geometrycollectionfromwkb", Fn: NewGeomCollFromWKB},
 	sql.FunctionN{Name: "st_geomfromgeojson", Fn: NewGeomFromGeoJSON},
 	sql.FunctionN{Name: "st_geometryfromtext", Fn: NewGeomFromText},
 	sql.FunctionN{Name: "st_geomfromtext", Fn: NewGeomFromText},
