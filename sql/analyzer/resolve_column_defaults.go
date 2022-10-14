@@ -504,11 +504,6 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 			col := sch[index]
 
 			eWrapper := expression.WrapExpression(node.Default)
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-			})
-
-			// TODO: this is the same thing, but I get unresolved error?
 			newExpr, same, err := resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			if err != nil {
 				return node, transform.SameTree, err
@@ -518,7 +513,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 			}
 
 			exprs := node.Expressions()
-			exprs[index] = newExpr
+			exprs[len(exprs)-1] = newExpr
 
 			newNode, err := node.WithExpressions(exprs...)
 			if err != nil {
