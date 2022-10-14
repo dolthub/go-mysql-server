@@ -336,25 +336,17 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	newNode, sameA, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := c.Node.(type) {
 		case plan.JoinNode, *plan.IndexedJoin:
-			foundCachedResults := false
-			transform.Inspect(nn, func(node sql.Node) bool {
-				if _, ok := node.(*plan.CachedResults); ok {
-					foundCachedResults = true
-					return false
+			return transform.NodeWithCtx(nn, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
+				n := context.Node
+				if context.Parent != nil {
+					if _, ok := context.Parent.(*plan.CachedResults); ok {
+						return n, transform.SameTree, nil
+					}
 				}
-				return true
-			})
 
-			if foundCachedResults {
-				return nn, transform.SameTree, nil
-			}
-
-			return transform.Node(nn, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 				switch nn := n.(type) {
 				case *plan.SubqueryAlias:
 					if nn.CanCacheResults {
-						// TODO: Inserting these CachedResults causes MemCache leaks do copies of the node that
-						//       are made when WithChildren is called when the child subqueryalias is processed again.
 						return plan.NewCachedResults(nn), transform.NewTree, nil
 					}
 				}
