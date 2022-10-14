@@ -99,13 +99,46 @@ func MPolyToSlice(p sql.MultiPolygon) [][][][2]float64 {
 	return arr
 }
 
+func GeomCollToSlice(g sql.GeomColl) interface{} {
+	arr := make([]interface{}, len(g.Geoms))
+	for i, geom := range g.Geoms {
+		obj := make(map[string]interface{})
+		switch v := geom.(type) {
+		case sql.Point:
+			obj["type"] = "Point"
+			obj["coordinates"] = PointToSlice(v)
+		case sql.LineString:
+			obj["type"] = "LineString"
+			obj["coordinates"] = LineToSlice(v)
+		case sql.Polygon:
+			obj["type"] = "Polygon"
+			obj["coordinates"] = PolyToSlice(v)
+		case sql.MultiPoint:
+			obj["type"] = "MultiPoint"
+			obj["coordinates"] = MPointToSlice(v)
+		case sql.MultiLineString:
+			obj["type"] = "MultiLineString"
+			obj["coordinates"] = MLineToSlice(v)
+		case sql.MultiPolygon:
+			obj["type"] = "MultiPolygon"
+			obj["coordinates"] = MPolyToSlice(v)
+		case sql.GeomColl:
+			obj["type"] = "GeometryCollection"
+			obj["geometries"] = GeomCollToSlice(v)
+		}
+		arr[i] = obj
+	}
+
+	return arr
+}
+
 func FindBBox(v interface{}) [4]float64 {
 	var res [4]float64
 	switch v := v.(type) {
 	case sql.Point:
 		res = [4]float64{v.X, v.Y, v.X, v.Y}
 	case sql.LineString:
-		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, p := range v.Points {
 			tmp := FindBBox(p)
 			res[0] = math.Min(res[0], tmp[0])
@@ -114,7 +147,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[3] = math.Max(res[3], tmp[3])
 		}
 	case sql.Polygon:
-		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, l := range v.Lines {
 			tmp := FindBBox(l)
 			res[0] = math.Min(res[0], tmp[0])
@@ -123,7 +156,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[3] = math.Max(res[3], tmp[3])
 		}
 	case sql.MultiPoint:
-		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, p := range v.Points {
 			tmp := FindBBox(p)
 			res[0] = math.Min(res[0], tmp[0])
@@ -132,7 +165,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[3] = math.Max(res[3], tmp[3])
 		}
 	case sql.MultiLineString:
-		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, l := range v.Lines {
 			tmp := FindBBox(l)
 			res[0] = math.Min(res[0], tmp[0])
@@ -141,9 +174,18 @@ func FindBBox(v interface{}) [4]float64 {
 			res[3] = math.Max(res[3], tmp[3])
 		}
 	case sql.MultiPolygon:
-		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, p := range v.Polygons {
 			tmp := FindBBox(p)
+			res[0] = math.Min(res[0], tmp[0])
+			res[1] = math.Min(res[1], tmp[1])
+			res[2] = math.Max(res[2], tmp[2])
+			res[3] = math.Max(res[3], tmp[3])
+		}
+	case sql.GeomColl:
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
+		for _, geom := range v.Geoms {
+			tmp := FindBBox(geom)
 			res[0] = math.Min(res[0], tmp[0])
 			res[1] = math.Min(res[1], tmp[1])
 			res[2] = math.Max(res[2], tmp[2])
@@ -233,6 +275,9 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.MultiPolygon:
 		obj["type"] = "MultiPolygon"
 		obj["coordinates"] = MPolyToSlice(v)
+	case sql.GeomColl:
+		obj["type"] = "GeometryCollection"
+		obj["geometries"] = GeomCollToSlice(v)
 	default:
 		return nil, ErrInvalidArgumentType.New(g.FunctionName())
 	}
@@ -281,9 +326,20 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch flag {
 	// Flags 1,3,5 have bounding box
 	case 1, 3, 5:
+		// Don't find bounding box for empty geometries
+		if g, ok := val.(sql.GeomColl); ok {
+			if len(g.Geoms) == 0 {
+				break
+			}
+		}
 		res := FindBBox(val)
 		for i, r := range res {
 			res[i] = math.Round(r*prec) / prec
+			if math.IsInf(res[i], 1) {
+				res[i] = math.MaxFloat64
+			} else if math.IsInf(res[i], -1) {
+				res[i] = -math.MaxFloat64
+			}
 		}
 		obj["bbox"] = res
 	// Flag 2 and 4 add CRS URN (EPSG: <srid>); only shows up if SRID != 0
@@ -478,6 +534,75 @@ func SliceToMPoly(coords interface{}) (interface{}, error) {
 	return sql.MultiPolygon{SRID: sql.GeoSpatialSRID, Polygons: polys}, nil
 }
 
+func SliceToGeomColl(geometries interface{}) (interface{}, error) {
+	// geomObjs should be a slice of geojsons
+	geomObjs, ok := geometries.([]map[string]interface{})
+	if !ok {
+		return nil, errors.New("member 'coordinates' must be of type 'array'")
+	}
+
+	geoms := make([]sql.GeometryValue, len(geomObjs))
+	for i, obj := range geomObjs {
+		geomType, ok := obj["type"]
+		if !ok {
+			return nil, errors.New("missing required member 'type'")
+		}
+		var res interface{}
+		var err error
+		switch geomType {
+		case "Point":
+			coords, ok := obj["coordinates"]
+			if !ok {
+				return nil, errors.New("missing required member 'coordinates'")
+			}
+			res, err = SliceToPoint(coords)
+		case "LineString":
+			coords, ok := obj["coordinates"]
+			if !ok {
+				return nil, errors.New("missing required member 'coordinates'")
+			}
+			res, err = SliceToLine(coords)
+		case "Polygon":
+			coords, ok := obj["coordinates"]
+			if !ok {
+				return nil, errors.New("missing required member 'coordinates'")
+			}
+			res, err = SliceToPoly(coords)
+		case "MultiPoint":
+			coords, ok := obj["coordinates"]
+			if !ok {
+				return nil, errors.New("missing required member 'coordinates'")
+			}
+			res, err = SliceToMPoint(coords)
+		case "MultiLineString":
+			coords, ok := obj["coordinates"]
+			if !ok {
+				return nil, errors.New("missing required member 'coordinates'")
+			}
+			res, err = SliceToMLine(coords)
+		case "MultiPolygon":
+			coords, ok := obj["coordinates"]
+			if !ok {
+				return nil, errors.New("missing required member 'coordinates'")
+			}
+			res, err = SliceToMPoly(coords)
+		case "GeometryCollection":
+			geoms, ok := obj["geometries"]
+			if !ok {
+				return nil, errors.New("missing required member 'geometries'")
+			}
+			res, err = SliceToGeomColl(geoms)
+		default:
+			return nil, errors.New("member 'type' is wrong")
+		}
+		if err != nil {
+			return nil, err
+		}
+		geoms[i] = res.(sql.GeometryValue)
+	}
+	return sql.GeomColl{SRID: sql.GeoSpatialSRID, Geoms: geoms}, nil
+}
+
 // Eval implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := g.ChildExpressions[0].Eval(ctx, row)
@@ -509,26 +634,52 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if !ok {
 		return nil, errors.New("missing required member 'type'")
 	}
-	coords, ok := obj["coordinates"]
-	if !ok {
-		return nil, errors.New("missing required member 'coordinates'")
-	}
 
 	// Create type accordingly
 	var res interface{}
 	switch geomType {
 	case "Point":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, errors.New("missing required member 'coordinates'")
+		}
 		res, err = SliceToPoint(coords)
 	case "LineString":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, errors.New("missing required member 'coordinates'")
+		}
 		res, err = SliceToLine(coords)
 	case "Polygon":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, errors.New("missing required member 'coordinates'")
+		}
 		res, err = SliceToPoly(coords)
 	case "MultiPoint":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, errors.New("missing required member 'coordinates'")
+		}
 		res, err = SliceToMPoint(coords)
 	case "MultiLineString":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, errors.New("missing required member 'coordinates'")
+		}
 		res, err = SliceToMLine(coords)
 	case "MultiPolygon":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, errors.New("missing required member 'coordinates'")
+		}
 		res, err = SliceToMPoly(coords)
+	case "GeometryCollection":
+		geoms, ok := obj["geometries"]
+		if !ok {
+			return nil, errors.New("missing required member 'geometries'")
+		}
+		res, err = SliceToGeomColl(geoms)
 	default:
 		return nil, errors.New("member 'type' is wrong")
 	}
