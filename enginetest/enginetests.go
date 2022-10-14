@@ -5613,6 +5613,9 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)")
 		AssertErr(t, e, harness, "ALTER TABLE t34 alter column v1 set default '{}'", sql.ErrInvalidTextBlobColumnDefault)
 		RunQuery(t, e, harness, "ALTER TABLE t34 alter column v1 set default ('{}')")
+		RunQuery(t, e, harness, "CREATE TABLE t35(i int default 100, j JSON)")
+		AssertErr(t, e, harness, "ALTER TABLE t35 alter column j set default '[]'", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "ALTER TABLE t35 alter column j set default ('[]')")
 	})
 
 	t.Run("Other types using NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
