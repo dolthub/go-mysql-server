@@ -37,10 +37,10 @@ var OnceBeforeDefault = []Rule{
 	{reresolveTablesId, reresolveTables},
 	{setTargetSchemasId, setTargetSchemas},
 	{loadCheckConstraintsId, loadChecks},
-	{resolveAlterColumnId, resolveAlterColumn},
+	{resolveAlterColumnId, resolveAlterColumn}, //
 	{validateDropTablesId, validateDropTables},
 	{resolveCreateLikeId, resolveCreateLike},
-	{parseColumnDefaultsId, parseColumnDefaults},
+	{parseColumnDefaultsId, parseColumnDefaults}, // sus
 	{resolveDropConstraintId, resolveDropConstraint},
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
@@ -72,7 +72,7 @@ var DefaultRules = []Rule{
 	{qualifyColumnsId, qualifyColumns},
 	{pruneTablesId, pruneTables},
 	{resolveColumnsId, resolveColumns},
-	{resolveColumnDefaultsId, resolveColumnDefaults},
+	{resolveColumnDefaultsId, resolveColumnDefaults}, //
 	{validateCheckConstraintId, validateCheckConstraints},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables},
 	{expandStarsId, expandStars},
