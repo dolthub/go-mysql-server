@@ -333,15 +333,33 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
 // node on top of those nodes.
 func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	n, sameA, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		_, isJoin := c.Parent.(plan.JoinNode)
-		_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
-		if isJoin || isIndexedJoin {
-			sqa, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
-			if isSubqueryAlias && sqa.OuterScopeVisibility == false {
-				// SubqueryAliases are cacheable if they don't have visibility to outer scopes.
-				return plan.NewCachedResults(c.Node), transform.NewTree, nil
+	newNode, sameA, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		switch nn := c.Node.(type) {
+		case plan.JoinNode, *plan.IndexedJoin:
+			foundCachedResults := false
+			transform.Inspect(nn, func(node sql.Node) bool {
+				if _, ok := node.(*plan.CachedResults); ok {
+					foundCachedResults = true
+					return false
+				}
+				return true
+			})
+
+			if foundCachedResults {
+				return nn, transform.SameTree, nil
 			}
+
+			return transform.Node(nn, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+				switch nn := n.(type) {
+				case *plan.SubqueryAlias:
+					if nn.CanCacheResults {
+						// TODO: Inserting these CachedResults causes MemCache leaks do copies of the node that
+						//       are made when WithChildren is called when the child subqueryalias is processed again.
+						return plan.NewCachedResults(nn), transform.NewTree, nil
+					}
+				}
+				return n, transform.SameTree, nil
+			})
 		}
 		return c.Node, transform.SameTree, nil
 	})
@@ -366,7 +384,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			}
 			return true
 		}
-		n, sameD, err = transform.NodeWithCtx(n, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		newNode, sameD, err = transform.NodeWithCtx(newNode, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			cr, isCR := c.Node.(*plan.CachedResults)
 			if isCR {
 				return cr.UnaryNode.Child, transform.NewTree, nil
@@ -374,7 +392,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			return c.Node, transform.SameTree, nil
 		})
 	}
-	return n, sameA && sameD, err
+	return newNode, sameA && sameD, err
 }
 
 func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
