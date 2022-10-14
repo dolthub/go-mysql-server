@@ -4849,9 +4849,8 @@ WHERE
 			"                 └─ Project\n" +
 			"                     ├─ columns: [S5KBM.SSHPJ as SSHPJ, S5KBM.SFJ6L as SFJ6L]\n" +
 			"                     └─ IndexedJoin(nd.FGG57 = S5KBM.FGG57)\n" +
-			"                         ├─ Exchange\n" +
-			"                         │   └─ TableAlias(S5KBM)\n" +
-			"                         │       └─ Table(TDRVG)\n" +
+			"                         ├─ TableAlias(S5KBM)\n" +
+			"                         │   └─ Table(TDRVG)\n" +
 			"                         └─ TableAlias(nd)\n" +
 			"                             └─ IndexedTableAccess(E2I7U)\n" +
 			"                                 └─ index: [E2I7U.FGG57]\n" +
@@ -6959,9 +6958,8 @@ ON aac.id = MJR3D.M22QN`,
 			" │           └─ Project\n" +
 			" │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
 			" │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			" │                   └─ Exchange\n" +
-			" │                       └─ Table(NOXN3)\n" +
-			" │                           └─ columns: [id]\n" +
+			" │                   └─ Table(NOXN3)\n" +
+			" │                       └─ columns: [id]\n" +
 			" │  ) WHEN (NOT(MJR3D.TDEIU IS NULL)) THEN (Project\n" +
 			" │   ├─ columns: [ei.M6T2N]\n" +
 			" │   └─ Filter(ei.id = MJR3D.TDEIU)\n" +
@@ -6969,9 +6967,8 @@ ON aac.id = MJR3D.M22QN`,
 			" │           └─ Project\n" +
 			" │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
 			" │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			" │                   └─ Exchange\n" +
-			" │                       └─ Table(NOXN3)\n" +
-			" │                           └─ columns: [id]\n" +
+			" │                   └─ Table(NOXN3)\n" +
+			" │                       └─ columns: [id]\n" +
 			" │  ) END as M6T2N, MJR3D.GE5EL as GE5EL, MJR3D.F7A4Q as F7A4Q, MJR3D.CC4AX as CC4AX, MJR3D.SL76B as SL76B, aac.BTXC5 as YEBDJ, MJR3D.PSMU6]\n" +
 			" └─ InnerJoin(aac.id = MJR3D.M22QN)\n" +
 			"     ├─ InnerJoin((mf.LUEVY = sn.BRQP2) AND (mf.M22QN = MJR3D.M22QN))\n" +
@@ -7280,103 +7277,100 @@ WHERE
 			"             ├─ columns: [cld.T4IBQ as T4IBQ, P4PJZ.M6T2N as M6T2N, P4PJZ.BTXC5 as BTXC5, P4PJZ.TUV25 as TUV25]\n" +
 			"             └─ Filter(NOT(P4PJZ.M6T2N IS NULL))\n" +
 			"                 └─ LeftJoin((P4PJZ.LWQ6O = cld.BDNYB) AND (P4PJZ.NTOFG = cld.M22QN))\n" +
-			"                     ├─ SubqueryAlias(cld)\n" +
-			"                     │   └─ Project\n" +
-			"                     │       ├─ columns: [cla.FTQLQ as T4IBQ, sn.id as BDNYB, mf.M22QN as M22QN]\n" +
-			"                     │       └─ IndexedJoin(cla.id = bs.IXUXU)\n" +
-			"                     │           ├─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
-			"                     │           │   └─ TableAlias(cla)\n" +
-			"                     │           │       └─ IndexedTableAccess(YK2GW)\n" +
-			"                     │           │           ├─ index: [YK2GW.FTQLQ]\n" +
-			"                     │           │           └─ filters: [{[SQ1, SQ1]}]\n" +
-			"                     │           └─ IndexedJoin(bs.id = mf.GXLUB)\n" +
-			"                     │               ├─ TableAlias(bs)\n" +
-			"                     │               │   └─ IndexedTableAccess(THNTS)\n" +
-			"                     │               │       └─ index: [THNTS.IXUXU]\n" +
-			"                     │               └─ IndexedJoin(sn.BRQP2 = mf.LUEVY)\n" +
-			"                     │                   ├─ TableAlias(mf)\n" +
-			"                     │                   │   └─ IndexedTableAccess(HGMQ6)\n" +
-			"                     │                   │       └─ index: [HGMQ6.GXLUB]\n" +
-			"                     │                   └─ TableAlias(sn)\n" +
-			"                     │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                     │                           └─ index: [NOXN3.BRQP2]\n" +
-			"                     └─ HashLookup(child: (P4PJZ.LWQ6O, P4PJZ.NTOFG), lookup: (cld.BDNYB, cld.M22QN))\n" +
-			"                         └─ CachedResults\n" +
-			"                             └─ SubqueryAlias(P4PJZ)\n" +
-			"                                 └─ Project\n" +
-			"                                     ├─ columns: [CASE  WHEN (NOT(MJR3D.QNI57 IS NULL)) THEN (Project\n" +
-			"                                     │   ├─ columns: [ei.M6T2N]\n" +
-			"                                     │   └─ Filter(ei.id = MJR3D.QNI57)\n" +
-			"                                     │       └─ SubqueryAlias(ei)\n" +
-			"                                     │           └─ Project\n" +
-			"                                     │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
-			"                                     │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                                     │                   └─ Exchange\n" +
-			"                                     │                       └─ Table(NOXN3)\n" +
-			"                                     │                           └─ columns: [id]\n" +
-			"                                     │  ) WHEN (NOT(MJR3D.TDEIU IS NULL)) THEN (Project\n" +
-			"                                     │   ├─ columns: [ei.M6T2N]\n" +
-			"                                     │   └─ Filter(ei.id = MJR3D.TDEIU)\n" +
-			"                                     │       └─ SubqueryAlias(ei)\n" +
-			"                                     │           └─ Project\n" +
-			"                                     │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
-			"                                     │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                                     │                   └─ Exchange\n" +
-			"                                     │                       └─ Table(NOXN3)\n" +
-			"                                     │                           └─ columns: [id]\n" +
-			"                                     │  ) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, MJR3D.TUV25 as TUV25]\n" +
-			"                                     └─ LeftJoin((((((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id = MJR3D.QNI57)) AND MJR3D.BJUF2 IS NULL) OR (((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id IN (Project\n" +
-			"                                         ├─ columns: [JTEHG.id]\n" +
-			"                                         └─ Filter(JTEHG.BRQP2 = MJR3D.BJUF2)\n" +
-			"                                             └─ TableAlias(JTEHG)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
-			"                                        ))) AND (NOT(MJR3D.BJUF2 IS NULL)))) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
-			"                                         ├─ columns: [XMAFZ.id]\n" +
-			"                                         └─ Filter(XMAFZ.BRQP2 = MJR3D.FJDP5)\n" +
-			"                                             └─ TableAlias(XMAFZ)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
-			"                                        ))) AND MJR3D.BJUF2 IS NULL)) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
-			"                                         ├─ columns: [XMAFZ.id]\n" +
-			"                                         └─ Filter(XMAFZ.BRQP2 = MJR3D.BJUF2)\n" +
-			"                                             └─ TableAlias(XMAFZ)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
-			"                                        ))) AND (NOT(MJR3D.BJUF2 IS NULL))))\n" +
-			"                                         ├─ InnerJoin(aac.id = MJR3D.M22QN)\n" +
-			"                                         │   ├─ SubqueryAlias(MJR3D)\n" +
-			"                                         │   │   └─ Distinct\n" +
-			"                                         │   │       └─ Project\n" +
-			"                                         │   │           ├─ columns: [ism.FV24E as FJDP5, CPMFE.id as BJUF2, ism.M22QN as M22QN, G3YXS.TUV25 as TUV25, G3YXS.ESFVY as ESFVY, YQIF4.id as QNI57, YVHJZ.id as TDEIU]\n" +
-			"                                         │   │           └─ Filter((NOT(YQIF4.id IS NULL)) OR (NOT(YVHJZ.id IS NULL)))\n" +
-			"                                         │   │               └─ LeftJoin((YVHJZ.BRQP2 = ism.UJ6XY) AND (YVHJZ.FFTBJ = ism.FV24E))\n" +
-			"                                         │   │                   ├─ LeftJoin((YQIF4.BRQP2 = ism.FV24E) AND (YQIF4.FFTBJ = ism.UJ6XY))\n" +
-			"                                         │   │                   │   ├─ LeftJoin((CPMFE.ZH72S = NHMXW.NOHHR) AND (NOT((CPMFE.id = ism.FV24E))))\n" +
-			"                                         │   │                   │   │   ├─ LeftJoin(NHMXW.id = ism.PRUV2)\n" +
-			"                                         │   │                   │   │   │   ├─ InnerJoin(G3YXS.id = ism.NZ4MQ)\n" +
-			"                                         │   │                   │   │   │   │   ├─ Exchange\n" +
-			"                                         │   │                   │   │   │   │   │   └─ TableAlias(ism)\n" +
-			"                                         │   │                   │   │   │   │   │       └─ Table(HDDVB)\n" +
-			"                                         │   │                   │   │   │   │   └─ Exchange\n" +
-			"                                         │   │                   │   │   │   │       └─ Filter(NOT(G3YXS.TUV25 IS NULL))\n" +
-			"                                         │   │                   │   │   │   │           └─ TableAlias(G3YXS)\n" +
-			"                                         │   │                   │   │   │   │               └─ Table(YYBCX)\n" +
-			"                                         │   │                   │   │   │   └─ Exchange\n" +
-			"                                         │   │                   │   │   │       └─ TableAlias(NHMXW)\n" +
-			"                                         │   │                   │   │   │           └─ Table(WGSDC)\n" +
-			"                                         │   │                   │   │   └─ Exchange\n" +
-			"                                         │   │                   │   │       └─ TableAlias(CPMFE)\n" +
-			"                                         │   │                   │   │           └─ Table(E2I7U)\n" +
-			"                                         │   │                   │   └─ Exchange\n" +
-			"                                         │   │                   │       └─ TableAlias(YQIF4)\n" +
-			"                                         │   │                   │           └─ Table(NOXN3)\n" +
-			"                                         │   │                   └─ Exchange\n" +
-			"                                         │   │                       └─ TableAlias(YVHJZ)\n" +
-			"                                         │   │                           └─ Table(NOXN3)\n" +
-			"                                         │   └─ Exchange\n" +
-			"                                         │       └─ TableAlias(aac)\n" +
-			"                                         │           └─ Table(TPXBU)\n" +
-			"                                         └─ Exchange\n" +
-			"                                             └─ TableAlias(sn)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
+			"                     ├─ CachedResults\n" +
+			"                     │   └─ SubqueryAlias(cld)\n" +
+			"                     │       └─ Project\n" +
+			"                     │           ├─ columns: [cla.FTQLQ as T4IBQ, sn.id as BDNYB, mf.M22QN as M22QN]\n" +
+			"                     │           └─ IndexedJoin(cla.id = bs.IXUXU)\n" +
+			"                     │               ├─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                     │               │   └─ TableAlias(cla)\n" +
+			"                     │               │       └─ IndexedTableAccess(YK2GW)\n" +
+			"                     │               │           ├─ index: [YK2GW.FTQLQ]\n" +
+			"                     │               │           └─ filters: [{[SQ1, SQ1]}]\n" +
+			"                     │               └─ IndexedJoin(bs.id = mf.GXLUB)\n" +
+			"                     │                   ├─ TableAlias(bs)\n" +
+			"                     │                   │   └─ IndexedTableAccess(THNTS)\n" +
+			"                     │                   │       └─ index: [THNTS.IXUXU]\n" +
+			"                     │                   └─ IndexedJoin(sn.BRQP2 = mf.LUEVY)\n" +
+			"                     │                       ├─ TableAlias(mf)\n" +
+			"                     │                       │   └─ IndexedTableAccess(HGMQ6)\n" +
+			"                     │                       │       └─ index: [HGMQ6.GXLUB]\n" +
+			"                     │                       └─ TableAlias(sn)\n" +
+			"                     │                           └─ IndexedTableAccess(NOXN3)\n" +
+			"                     │                               └─ index: [NOXN3.BRQP2]\n" +
+			"                     └─ SubqueryAlias(P4PJZ)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [CASE  WHEN (NOT(MJR3D.QNI57 IS NULL)) THEN (Project\n" +
+			"                             │   ├─ columns: [ei.M6T2N]\n" +
+			"                             │   └─ Filter(ei.id = MJR3D.QNI57)\n" +
+			"                             │       └─ SubqueryAlias(ei)\n" +
+			"                             │           └─ Project\n" +
+			"                             │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
+			"                             │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
+			"                             │                   └─ Table(NOXN3)\n" +
+			"                             │                       └─ columns: [id]\n" +
+			"                             │  ) WHEN (NOT(MJR3D.TDEIU IS NULL)) THEN (Project\n" +
+			"                             │   ├─ columns: [ei.M6T2N]\n" +
+			"                             │   └─ Filter(ei.id = MJR3D.TDEIU)\n" +
+			"                             │       └─ SubqueryAlias(ei)\n" +
+			"                             │           └─ Project\n" +
+			"                             │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
+			"                             │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
+			"                             │                   └─ Table(NOXN3)\n" +
+			"                             │                       └─ columns: [id]\n" +
+			"                             │  ) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, MJR3D.TUV25 as TUV25]\n" +
+			"                             └─ LeftJoin((((((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id = MJR3D.QNI57)) AND MJR3D.BJUF2 IS NULL) OR (((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id IN (Project\n" +
+			"                                 ├─ columns: [JTEHG.id]\n" +
+			"                                 └─ Filter(JTEHG.BRQP2 = MJR3D.BJUF2)\n" +
+			"                                     └─ TableAlias(JTEHG)\n" +
+			"                                         └─ Table(NOXN3)\n" +
+			"                                ))) AND (NOT(MJR3D.BJUF2 IS NULL)))) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
+			"                                 ├─ columns: [XMAFZ.id]\n" +
+			"                                 └─ Filter(XMAFZ.BRQP2 = MJR3D.FJDP5)\n" +
+			"                                     └─ TableAlias(XMAFZ)\n" +
+			"                                         └─ Table(NOXN3)\n" +
+			"                                ))) AND MJR3D.BJUF2 IS NULL)) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
+			"                                 ├─ columns: [XMAFZ.id]\n" +
+			"                                 └─ Filter(XMAFZ.BRQP2 = MJR3D.BJUF2)\n" +
+			"                                     └─ TableAlias(XMAFZ)\n" +
+			"                                         └─ Table(NOXN3)\n" +
+			"                                ))) AND (NOT(MJR3D.BJUF2 IS NULL))))\n" +
+			"                                 ├─ InnerJoin(aac.id = MJR3D.M22QN)\n" +
+			"                                 │   ├─ SubqueryAlias(MJR3D)\n" +
+			"                                 │   │   └─ Distinct\n" +
+			"                                 │   │       └─ Project\n" +
+			"                                 │   │           ├─ columns: [ism.FV24E as FJDP5, CPMFE.id as BJUF2, ism.M22QN as M22QN, G3YXS.TUV25 as TUV25, G3YXS.ESFVY as ESFVY, YQIF4.id as QNI57, YVHJZ.id as TDEIU]\n" +
+			"                                 │   │           └─ Filter((NOT(YQIF4.id IS NULL)) OR (NOT(YVHJZ.id IS NULL)))\n" +
+			"                                 │   │               └─ LeftJoin((YVHJZ.BRQP2 = ism.UJ6XY) AND (YVHJZ.FFTBJ = ism.FV24E))\n" +
+			"                                 │   │                   ├─ LeftJoin((YQIF4.BRQP2 = ism.FV24E) AND (YQIF4.FFTBJ = ism.UJ6XY))\n" +
+			"                                 │   │                   │   ├─ LeftJoin((CPMFE.ZH72S = NHMXW.NOHHR) AND (NOT((CPMFE.id = ism.FV24E))))\n" +
+			"                                 │   │                   │   │   ├─ LeftJoin(NHMXW.id = ism.PRUV2)\n" +
+			"                                 │   │                   │   │   │   ├─ InnerJoin(G3YXS.id = ism.NZ4MQ)\n" +
+			"                                 │   │                   │   │   │   │   ├─ Exchange\n" +
+			"                                 │   │                   │   │   │   │   │   └─ TableAlias(ism)\n" +
+			"                                 │   │                   │   │   │   │   │       └─ Table(HDDVB)\n" +
+			"                                 │   │                   │   │   │   │   └─ Exchange\n" +
+			"                                 │   │                   │   │   │   │       └─ Filter(NOT(G3YXS.TUV25 IS NULL))\n" +
+			"                                 │   │                   │   │   │   │           └─ TableAlias(G3YXS)\n" +
+			"                                 │   │                   │   │   │   │               └─ Table(YYBCX)\n" +
+			"                                 │   │                   │   │   │   └─ Exchange\n" +
+			"                                 │   │                   │   │   │       └─ TableAlias(NHMXW)\n" +
+			"                                 │   │                   │   │   │           └─ Table(WGSDC)\n" +
+			"                                 │   │                   │   │   └─ Exchange\n" +
+			"                                 │   │                   │   │       └─ TableAlias(CPMFE)\n" +
+			"                                 │   │                   │   │           └─ Table(E2I7U)\n" +
+			"                                 │   │                   │   └─ Exchange\n" +
+			"                                 │   │                   │       └─ TableAlias(YQIF4)\n" +
+			"                                 │   │                   │           └─ Table(NOXN3)\n" +
+			"                                 │   │                   └─ Exchange\n" +
+			"                                 │   │                       └─ TableAlias(YVHJZ)\n" +
+			"                                 │   │                           └─ Table(NOXN3)\n" +
+			"                                 │   └─ Exchange\n" +
+			"                                 │       └─ TableAlias(aac)\n" +
+			"                                 │           └─ Table(TPXBU)\n" +
+			"                                 └─ Exchange\n" +
+			"                                     └─ TableAlias(sn)\n" +
+			"                                         └─ Table(NOXN3)\n" +
 			"    ))))\n" +
 			"     └─ SubqueryAlias(fs)\n" +
 			"         └─ Project\n" +
@@ -7395,9 +7389,8 @@ WHERE
 			"                 │                   │           └─ Project\n" +
 			"                 │                   │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
 			"                 │                   │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                 │                   │                   └─ Exchange\n" +
-			"                 │                   │                       └─ Table(NOXN3)\n" +
-			"                 │                   │                           └─ columns: [id]\n" +
+			"                 │                   │                   └─ Table(NOXN3)\n" +
+			"                 │                   │                       └─ columns: [id]\n" +
 			"                 │                   │  ) WHEN (NOT(MJR3D.TDEIU IS NULL)) THEN (Project\n" +
 			"                 │                   │   ├─ columns: [ei.M6T2N]\n" +
 			"                 │                   │   └─ Filter(ei.id = MJR3D.TDEIU)\n" +
@@ -7405,9 +7398,8 @@ WHERE
 			"                 │                   │           └─ Project\n" +
 			"                 │                   │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
 			"                 │                   │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                 │                   │                   └─ Exchange\n" +
-			"                 │                   │                       └─ Table(NOXN3)\n" +
-			"                 │                   │                           └─ columns: [id]\n" +
+			"                 │                   │                   └─ Table(NOXN3)\n" +
+			"                 │                   │                       └─ columns: [id]\n" +
 			"                 │                   │  ) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, MJR3D.TUV25 as TUV25]\n" +
 			"                 │                   └─ LeftJoin((((((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id = MJR3D.QNI57)) AND MJR3D.BJUF2 IS NULL) OR (((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id IN (Project\n" +
 			"                 │                       ├─ columns: [JTEHG.id]\n" +
@@ -7649,102 +7641,99 @@ WHERE
 			"             ├─ columns: [cld.T4IBQ as T4IBQ, P4PJZ.M6T2N as M6T2N, P4PJZ.BTXC5 as BTXC5, P4PJZ.TUV25 as TUV25]\n" +
 			"             └─ Filter(NOT(P4PJZ.M6T2N IS NULL))\n" +
 			"                 └─ LeftJoin((P4PJZ.LWQ6O = cld.BDNYB) AND (P4PJZ.NTOFG = cld.M22QN))\n" +
-			"                     ├─ SubqueryAlias(cld)\n" +
-			"                     │   └─ Project\n" +
-			"                     │       ├─ columns: [cla.FTQLQ as T4IBQ, sn.id as BDNYB, mf.M22QN as M22QN]\n" +
-			"                     │       └─ IndexedJoin(sn.BRQP2 = mf.LUEVY)\n" +
-			"                     │           ├─ IndexedJoin(bs.id = mf.GXLUB)\n" +
-			"                     │           │   ├─ Exchange\n" +
-			"                     │           │   │   └─ TableAlias(mf)\n" +
-			"                     │           │   │       └─ Table(HGMQ6)\n" +
-			"                     │           │   └─ IndexedJoin(cla.id = bs.IXUXU)\n" +
-			"                     │           │       ├─ TableAlias(bs)\n" +
-			"                     │           │       │   └─ IndexedTableAccess(THNTS)\n" +
-			"                     │           │       │       └─ index: [THNTS.id]\n" +
-			"                     │           │       └─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
-			"                     │           │           └─ TableAlias(cla)\n" +
-			"                     │           │               └─ IndexedTableAccess(YK2GW)\n" +
-			"                     │           │                   └─ index: [YK2GW.id]\n" +
-			"                     │           └─ TableAlias(sn)\n" +
-			"                     │               └─ IndexedTableAccess(NOXN3)\n" +
-			"                     │                   └─ index: [NOXN3.BRQP2]\n" +
-			"                     └─ HashLookup(child: (P4PJZ.LWQ6O, P4PJZ.NTOFG), lookup: (cld.BDNYB, cld.M22QN))\n" +
-			"                         └─ CachedResults\n" +
-			"                             └─ SubqueryAlias(P4PJZ)\n" +
-			"                                 └─ Project\n" +
-			"                                     ├─ columns: [CASE  WHEN (NOT(MJR3D.QNI57 IS NULL)) THEN (Project\n" +
-			"                                     │   ├─ columns: [ei.M6T2N]\n" +
-			"                                     │   └─ Filter(ei.id = MJR3D.QNI57)\n" +
-			"                                     │       └─ SubqueryAlias(ei)\n" +
-			"                                     │           └─ Project\n" +
-			"                                     │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
-			"                                     │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                                     │                   └─ Exchange\n" +
-			"                                     │                       └─ Table(NOXN3)\n" +
-			"                                     │                           └─ columns: [id]\n" +
-			"                                     │  ) WHEN (NOT(MJR3D.TDEIU IS NULL)) THEN (Project\n" +
-			"                                     │   ├─ columns: [ei.M6T2N]\n" +
-			"                                     │   └─ Filter(ei.id = MJR3D.TDEIU)\n" +
-			"                                     │       └─ SubqueryAlias(ei)\n" +
-			"                                     │           └─ Project\n" +
-			"                                     │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
-			"                                     │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                                     │                   └─ Exchange\n" +
-			"                                     │                       └─ Table(NOXN3)\n" +
-			"                                     │                           └─ columns: [id]\n" +
-			"                                     │  ) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, MJR3D.TUV25 as TUV25]\n" +
-			"                                     └─ LeftJoin((((((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id = MJR3D.QNI57)) AND MJR3D.BJUF2 IS NULL) OR (((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id IN (Project\n" +
-			"                                         ├─ columns: [JTEHG.id]\n" +
-			"                                         └─ Filter(JTEHG.BRQP2 = MJR3D.BJUF2)\n" +
-			"                                             └─ TableAlias(JTEHG)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
-			"                                        ))) AND (NOT(MJR3D.BJUF2 IS NULL)))) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
-			"                                         ├─ columns: [XMAFZ.id]\n" +
-			"                                         └─ Filter(XMAFZ.BRQP2 = MJR3D.FJDP5)\n" +
-			"                                             └─ TableAlias(XMAFZ)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
-			"                                        ))) AND MJR3D.BJUF2 IS NULL)) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
-			"                                         ├─ columns: [XMAFZ.id]\n" +
-			"                                         └─ Filter(XMAFZ.BRQP2 = MJR3D.BJUF2)\n" +
-			"                                             └─ TableAlias(XMAFZ)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
-			"                                        ))) AND (NOT(MJR3D.BJUF2 IS NULL))))\n" +
-			"                                         ├─ InnerJoin(aac.id = MJR3D.M22QN)\n" +
-			"                                         │   ├─ SubqueryAlias(MJR3D)\n" +
-			"                                         │   │   └─ Distinct\n" +
-			"                                         │   │       └─ Project\n" +
-			"                                         │   │           ├─ columns: [ism.FV24E as FJDP5, CPMFE.id as BJUF2, ism.M22QN as M22QN, G3YXS.TUV25 as TUV25, G3YXS.ESFVY as ESFVY, YQIF4.id as QNI57, YVHJZ.id as TDEIU]\n" +
-			"                                         │   │           └─ Filter((NOT(YQIF4.id IS NULL)) OR (NOT(YVHJZ.id IS NULL)))\n" +
-			"                                         │   │               └─ LeftJoin((YVHJZ.BRQP2 = ism.UJ6XY) AND (YVHJZ.FFTBJ = ism.FV24E))\n" +
-			"                                         │   │                   ├─ LeftJoin((YQIF4.BRQP2 = ism.FV24E) AND (YQIF4.FFTBJ = ism.UJ6XY))\n" +
-			"                                         │   │                   │   ├─ LeftJoin((CPMFE.ZH72S = NHMXW.NOHHR) AND (NOT((CPMFE.id = ism.FV24E))))\n" +
-			"                                         │   │                   │   │   ├─ LeftJoin(NHMXW.id = ism.PRUV2)\n" +
-			"                                         │   │                   │   │   │   ├─ InnerJoin(G3YXS.id = ism.NZ4MQ)\n" +
-			"                                         │   │                   │   │   │   │   ├─ Exchange\n" +
-			"                                         │   │                   │   │   │   │   │   └─ TableAlias(ism)\n" +
-			"                                         │   │                   │   │   │   │   │       └─ Table(HDDVB)\n" +
-			"                                         │   │                   │   │   │   │   └─ Exchange\n" +
-			"                                         │   │                   │   │   │   │       └─ Filter(NOT(G3YXS.TUV25 IS NULL))\n" +
-			"                                         │   │                   │   │   │   │           └─ TableAlias(G3YXS)\n" +
-			"                                         │   │                   │   │   │   │               └─ Table(YYBCX)\n" +
-			"                                         │   │                   │   │   │   └─ Exchange\n" +
-			"                                         │   │                   │   │   │       └─ TableAlias(NHMXW)\n" +
-			"                                         │   │                   │   │   │           └─ Table(WGSDC)\n" +
-			"                                         │   │                   │   │   └─ Exchange\n" +
-			"                                         │   │                   │   │       └─ TableAlias(CPMFE)\n" +
-			"                                         │   │                   │   │           └─ Table(E2I7U)\n" +
-			"                                         │   │                   │   └─ Exchange\n" +
-			"                                         │   │                   │       └─ TableAlias(YQIF4)\n" +
-			"                                         │   │                   │           └─ Table(NOXN3)\n" +
-			"                                         │   │                   └─ Exchange\n" +
-			"                                         │   │                       └─ TableAlias(YVHJZ)\n" +
-			"                                         │   │                           └─ Table(NOXN3)\n" +
-			"                                         │   └─ Exchange\n" +
-			"                                         │       └─ TableAlias(aac)\n" +
-			"                                         │           └─ Table(TPXBU)\n" +
-			"                                         └─ Exchange\n" +
-			"                                             └─ TableAlias(sn)\n" +
-			"                                                 └─ Table(NOXN3)\n" +
+			"                     ├─ CachedResults\n" +
+			"                     │   └─ SubqueryAlias(cld)\n" +
+			"                     │       └─ Project\n" +
+			"                     │           ├─ columns: [cla.FTQLQ as T4IBQ, sn.id as BDNYB, mf.M22QN as M22QN]\n" +
+			"                     │           └─ IndexedJoin(sn.BRQP2 = mf.LUEVY)\n" +
+			"                     │               ├─ IndexedJoin(bs.id = mf.GXLUB)\n" +
+			"                     │               │   ├─ Exchange\n" +
+			"                     │               │   │   └─ TableAlias(mf)\n" +
+			"                     │               │   │       └─ Table(HGMQ6)\n" +
+			"                     │               │   └─ IndexedJoin(cla.id = bs.IXUXU)\n" +
+			"                     │               │       ├─ TableAlias(bs)\n" +
+			"                     │               │       │   └─ IndexedTableAccess(THNTS)\n" +
+			"                     │               │       │       └─ index: [THNTS.id]\n" +
+			"                     │               │       └─ Filter(cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                     │               │           └─ TableAlias(cla)\n" +
+			"                     │               │               └─ IndexedTableAccess(YK2GW)\n" +
+			"                     │               │                   └─ index: [YK2GW.id]\n" +
+			"                     │               └─ TableAlias(sn)\n" +
+			"                     │                   └─ IndexedTableAccess(NOXN3)\n" +
+			"                     │                       └─ index: [NOXN3.BRQP2]\n" +
+			"                     └─ SubqueryAlias(P4PJZ)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [CASE  WHEN (NOT(MJR3D.QNI57 IS NULL)) THEN (Project\n" +
+			"                             │   ├─ columns: [ei.M6T2N]\n" +
+			"                             │   └─ Filter(ei.id = MJR3D.QNI57)\n" +
+			"                             │       └─ SubqueryAlias(ei)\n" +
+			"                             │           └─ Project\n" +
+			"                             │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
+			"                             │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
+			"                             │                   └─ Table(NOXN3)\n" +
+			"                             │                       └─ columns: [id]\n" +
+			"                             │  ) WHEN (NOT(MJR3D.TDEIU IS NULL)) THEN (Project\n" +
+			"                             │   ├─ columns: [ei.M6T2N]\n" +
+			"                             │   └─ Filter(ei.id = MJR3D.TDEIU)\n" +
+			"                             │       └─ SubqueryAlias(ei)\n" +
+			"                             │           └─ Project\n" +
+			"                             │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
+			"                             │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
+			"                             │                   └─ Table(NOXN3)\n" +
+			"                             │                       └─ columns: [id]\n" +
+			"                             │  ) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, MJR3D.TUV25 as TUV25]\n" +
+			"                             └─ LeftJoin((((((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id = MJR3D.QNI57)) AND MJR3D.BJUF2 IS NULL) OR (((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id IN (Project\n" +
+			"                                 ├─ columns: [JTEHG.id]\n" +
+			"                                 └─ Filter(JTEHG.BRQP2 = MJR3D.BJUF2)\n" +
+			"                                     └─ TableAlias(JTEHG)\n" +
+			"                                         └─ Table(NOXN3)\n" +
+			"                                ))) AND (NOT(MJR3D.BJUF2 IS NULL)))) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
+			"                                 ├─ columns: [XMAFZ.id]\n" +
+			"                                 └─ Filter(XMAFZ.BRQP2 = MJR3D.FJDP5)\n" +
+			"                                     └─ TableAlias(XMAFZ)\n" +
+			"                                         └─ Table(NOXN3)\n" +
+			"                                ))) AND MJR3D.BJUF2 IS NULL)) OR (((NOT(MJR3D.TDEIU IS NULL)) AND (sn.id IN (Project\n" +
+			"                                 ├─ columns: [XMAFZ.id]\n" +
+			"                                 └─ Filter(XMAFZ.BRQP2 = MJR3D.BJUF2)\n" +
+			"                                     └─ TableAlias(XMAFZ)\n" +
+			"                                         └─ Table(NOXN3)\n" +
+			"                                ))) AND (NOT(MJR3D.BJUF2 IS NULL))))\n" +
+			"                                 ├─ InnerJoin(aac.id = MJR3D.M22QN)\n" +
+			"                                 │   ├─ SubqueryAlias(MJR3D)\n" +
+			"                                 │   │   └─ Distinct\n" +
+			"                                 │   │       └─ Project\n" +
+			"                                 │   │           ├─ columns: [ism.FV24E as FJDP5, CPMFE.id as BJUF2, ism.M22QN as M22QN, G3YXS.TUV25 as TUV25, G3YXS.ESFVY as ESFVY, YQIF4.id as QNI57, YVHJZ.id as TDEIU]\n" +
+			"                                 │   │           └─ Filter((NOT(YQIF4.id IS NULL)) OR (NOT(YVHJZ.id IS NULL)))\n" +
+			"                                 │   │               └─ LeftJoin((YVHJZ.BRQP2 = ism.UJ6XY) AND (YVHJZ.FFTBJ = ism.FV24E))\n" +
+			"                                 │   │                   ├─ LeftJoin((YQIF4.BRQP2 = ism.FV24E) AND (YQIF4.FFTBJ = ism.UJ6XY))\n" +
+			"                                 │   │                   │   ├─ LeftJoin((CPMFE.ZH72S = NHMXW.NOHHR) AND (NOT((CPMFE.id = ism.FV24E))))\n" +
+			"                                 │   │                   │   │   ├─ LeftJoin(NHMXW.id = ism.PRUV2)\n" +
+			"                                 │   │                   │   │   │   ├─ InnerJoin(G3YXS.id = ism.NZ4MQ)\n" +
+			"                                 │   │                   │   │   │   │   ├─ Exchange\n" +
+			"                                 │   │                   │   │   │   │   │   └─ TableAlias(ism)\n" +
+			"                                 │   │                   │   │   │   │   │       └─ Table(HDDVB)\n" +
+			"                                 │   │                   │   │   │   │   └─ Exchange\n" +
+			"                                 │   │                   │   │   │   │       └─ Filter(NOT(G3YXS.TUV25 IS NULL))\n" +
+			"                                 │   │                   │   │   │   │           └─ TableAlias(G3YXS)\n" +
+			"                                 │   │                   │   │   │   │               └─ Table(YYBCX)\n" +
+			"                                 │   │                   │   │   │   └─ Exchange\n" +
+			"                                 │   │                   │   │   │       └─ TableAlias(NHMXW)\n" +
+			"                                 │   │                   │   │   │           └─ Table(WGSDC)\n" +
+			"                                 │   │                   │   │   └─ Exchange\n" +
+			"                                 │   │                   │   │       └─ TableAlias(CPMFE)\n" +
+			"                                 │   │                   │   │           └─ Table(E2I7U)\n" +
+			"                                 │   │                   │   └─ Exchange\n" +
+			"                                 │   │                   │       └─ TableAlias(YQIF4)\n" +
+			"                                 │   │                   │           └─ Table(NOXN3)\n" +
+			"                                 │   │                   └─ Exchange\n" +
+			"                                 │   │                       └─ TableAlias(YVHJZ)\n" +
+			"                                 │   │                           └─ Table(NOXN3)\n" +
+			"                                 │   └─ Exchange\n" +
+			"                                 │       └─ TableAlias(aac)\n" +
+			"                                 │           └─ Table(TPXBU)\n" +
+			"                                 └─ Exchange\n" +
+			"                                     └─ TableAlias(sn)\n" +
+			"                                         └─ Table(NOXN3)\n" +
 			"    ))))\n" +
 			"     └─ SubqueryAlias(fs)\n" +
 			"         └─ Project\n" +
@@ -7763,9 +7752,8 @@ WHERE
 			"                 │                   │           └─ Project\n" +
 			"                 │                   │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
 			"                 │                   │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                 │                   │                   └─ Exchange\n" +
-			"                 │                   │                       └─ Table(NOXN3)\n" +
-			"                 │                   │                           └─ columns: [id]\n" +
+			"                 │                   │                   └─ Table(NOXN3)\n" +
+			"                 │                   │                       └─ columns: [id]\n" +
 			"                 │                   │  ) WHEN (NOT(MJR3D.TDEIU IS NULL)) THEN (Project\n" +
 			"                 │                   │   ├─ columns: [ei.M6T2N]\n" +
 			"                 │                   │   └─ Filter(ei.id = MJR3D.TDEIU)\n" +
@@ -7773,9 +7761,8 @@ WHERE
 			"                 │                   │           └─ Project\n" +
 			"                 │                   │               ├─ columns: [NOXN3.id, (row_number() over ( order by NOXN3.id ASC) - 1) as M6T2N]\n" +
 			"                 │                   │               └─ Window(NOXN3.id, row_number() over ( order by NOXN3.id ASC))\n" +
-			"                 │                   │                   └─ Exchange\n" +
-			"                 │                   │                       └─ Table(NOXN3)\n" +
-			"                 │                   │                           └─ columns: [id]\n" +
+			"                 │                   │                   └─ Table(NOXN3)\n" +
+			"                 │                   │                       └─ columns: [id]\n" +
 			"                 │                   │  ) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, MJR3D.TUV25 as TUV25]\n" +
 			"                 │                   └─ LeftJoin((((((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id = MJR3D.QNI57)) AND MJR3D.BJUF2 IS NULL) OR (((NOT(MJR3D.QNI57 IS NULL)) AND (sn.id IN (Project\n" +
 			"                 │                       ├─ columns: [JTEHG.id]\n" +
