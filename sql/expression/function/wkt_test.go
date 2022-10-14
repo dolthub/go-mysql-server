@@ -557,7 +557,7 @@ func TestGeomFromText(t *testing.T) {
 		mpoint := sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{point, point}}
 		mline := sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{line, line}}
 		mpoly := sql.MultiPolygon{SRID: sql.GeoSpatialSRID, Polygons: []sql.Polygon{poly, poly}}
-		gColl := sql.GeomColl{SRID: sql.GeoSpatialSRID}
+		gColl := sql.GeomColl{SRID: sql.GeoSpatialSRID, Geoms: []sql.GeometryValue{}}
 		g := sql.GeomColl{SRID: sql.GeoSpatialSRID, Geoms: []sql.GeometryValue{
 			point,
 			line,
