@@ -934,3 +934,107 @@ func (l *MLineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 	return mline, err
 }
+
+// MPolyFromText is a function that returns a MultiPolygon type from a WKT string
+type MPolyFromText struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*MPolyFromText)(nil)
+
+// NewMPolyFromText creates a new multilinestring expression.
+func NewMPolyFromText(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_MPOLYFROMTEXT", "1 or 2", len(args))
+	}
+	return &MPolyFromText{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (p *MPolyFromText) FunctionName() string {
+	return "st_mpolyfromtext"
+}
+
+// Description implements sql.FunctionExpression
+func (p *MPolyFromText) Description() string {
+	return "returns a new multipolygon from a WKT string."
+}
+
+// Type implements the sql.Expression interface.
+func (p *MPolyFromText) Type() sql.Type {
+	return sql.MultiPolygonType{}
+}
+
+func (p *MPolyFromText) String() string {
+	var args = make([]string, len(p.ChildExpressions))
+	for i, arg := range p.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_MPOLYFROMTEXT(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (p *MPolyFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewMPolyFromText(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (p *MPolyFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	mpoly, err := WKTToGeom(ctx, row, p.ChildExpressions, "multipolygon")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+	}
+	return mpoly, err
+}
+
+// GeomCollFromText is a function that returns a MultiPolygon type from a WKT string
+type GeomCollFromText struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*GeomCollFromText)(nil)
+
+// NewGeomCollFromText creates a new multilinestring expression.
+func NewGeomCollFromText(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_GeomCollFromText", "1 or 2", len(args))
+	}
+	return &MPolyFromText{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (p *GeomCollFromText) FunctionName() string {
+	return "st_geomcollfromtext"
+}
+
+// Description implements sql.FunctionExpression
+func (p *GeomCollFromText) Description() string {
+	return "returns a new geometry collection from a WKT string."
+}
+
+// Type implements the sql.Expression interface.
+func (p *GeomCollFromText) Type() sql.Type {
+	return sql.GeomCollType{}
+}
+
+func (p *GeomCollFromText) String() string {
+	var args = make([]string, len(p.ChildExpressions))
+	for i, arg := range p.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_GEOMCOLLFROMTEXT(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (p *GeomCollFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomFromText(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (p *GeomCollFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	geom, err := WKTToGeom(ctx, row, p.ChildExpressions, "geometrycollection")
+	if sql.ErrInvalidGISData.Is(err) {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+	}
+	return geom, err
+}
