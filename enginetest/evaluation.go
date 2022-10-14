@@ -272,12 +272,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 
 	checkResults(t, require, expected, expectedCols, sch, rows, q)
 
-	// TODO: This memory leak is coming from the fact that CachedResult.WithChildren
-	//       is called, which creates a new instance of CachedResult and the
-	//       CachedResultIterator still has a reference to the old CachedResult node
-	//       and after the copy is created, the CachedResultIterator passes up the
-	//       cache and dispose function, so it never gets called.
-	//require.Equal(0, ctx.Memory.NumCaches())
+	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, harness, e)
 }
 
@@ -323,12 +318,7 @@ func TestPreparedQueryWithContext(
 
 	checkResults(t, require, expected, expectedCols, sch, rows, q)
 
-	// TODO: This memory leak is coming from the fact that CachedResult.WithChildren
-	//       is called, which creates a new instance of CachedResult and the
-	//       CachedResultIterator still has a reference to the old CachedResult node
-	//       and after the copy is created, the CachedResultIterator passes up the
-	//       cache and dispose function, so it never gets called.
-	//require.Equal(0, ctx.Memory.NumCaches())
+	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, h, e)
 }
 

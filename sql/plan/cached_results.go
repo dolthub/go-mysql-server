@@ -78,9 +78,13 @@ func (n *CachedResults) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
-	nn := *n
-	nn.UnaryNode.Child = children[0]
-	return &nn, nil
+	// TODO: WithChildren should really return a COPY of this CachedResult
+	//       instance, but that currently screws up cache processing and
+	//       causes mem cache leaks due to how Subquery.Eval transforms the
+	//       tree to add prependNodes (and causes a nodes of CachedResults)
+	//       to be copied.
+	n.UnaryNode.Child = children[0]
+	return n, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
