@@ -33,7 +33,9 @@ insert into geometry_table values
 		(9, ST_GeomFromText('MULTILINESTRING((1 2,3 4))')),
         (10, ST_SRID(ST_GeomFromText('MULTILINESTRING((1 2,3 4))'), 4326)),
         (11, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))')),
-        (12, ST_SRID(ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))'), 4326))
+        (12, ST_SRID(ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))'), 4326)),
+        (13, ST_GeomFromText('GeometryCollection(GeometryCollection())')),
+        (14, ST_SRID(ST_GeomFromText('GeometryCollection(GeometryCollection())'), 4326))
 ----
 
 exec
@@ -92,4 +94,13 @@ exec
 insert into mpoly_table values
     (0, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))')),
     (1, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)),((1 1,2 3,4 5,1 1)))'))
+----
+
+exec
+create table geom_coll_table (i bigint primary key, g geometrycollection NOT NULL);
+----
+
+exec
+insert into geom_coll_table values
+    (0, ST_GeomFromText('GeometryCollection(GeometryCollection())'))
 ----
