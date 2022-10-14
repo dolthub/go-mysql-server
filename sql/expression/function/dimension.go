@@ -80,11 +80,11 @@ func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch val.(type) {
-	case sql.Point:
+	case sql.Point, sql.MultiPoint:
 		return 0, nil
-	case sql.LineString:
+	case sql.LineString, sql.MultiLineString:
 		return 1, nil
-	case sql.Polygon:
+	case sql.Polygon, sql.MultiPolygon:
 		return 2, nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")

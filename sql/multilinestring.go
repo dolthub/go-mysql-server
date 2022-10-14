@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,45 +23,45 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// PolygonType represents the POLYGON type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-polygon.html
-// The type of the returned value is Polygon.
-type PolygonType struct {
+// MultiLineStringType represents the MUTILINESTRING type.
+// https://dev.mysql.com/doc/refman/8.0/en/gis-class-multilinestring.html
+// The type of the returned value is MultiLineString.
+type MultiLineStringType struct {
 	SRID        uint32
 	DefinedSRID bool
 }
 
-// Polygon is the value type returned from PolygonType. Implements GeometryValue.
-type Polygon struct {
+// MultiLineString is the value type returned from MultiLineStringType. Implements GeometryValue.
+type MultiLineString struct {
 	SRID  uint32
 	Lines []LineString
 }
 
-var _ Type = PolygonType{}
-var _ SpatialColumnType = PolygonType{}
-var _ GeometryValue = Polygon{}
-
 var (
-	ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
+	ErrNotMultiLineString = errors.NewKind("value of type %T is not a multilinestring")
 
-	polygonValueType = reflect.TypeOf(Polygon{})
+	multilinestringValueType = reflect.TypeOf(MultiLineString{})
 )
 
+var _ Type = MultiLineStringType{}
+var _ SpatialColumnType = MultiLineStringType{}
+var _ GeometryValue = MultiLineString{}
+
 // Compare implements Type interface.
-func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
+func (t MultiLineStringType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// Expect to receive a Polygon, throw error otherwise
-	_a, ok := a.(Polygon)
+	// Expect to receive a MultiLineString, throw error otherwise
+	_a, ok := a.(MultiLineString)
 	if !ok {
-		return 0, ErrNotPolygon.New(a)
+		return 0, ErrNotMultiLineString.New(a)
 	}
-	_b, ok := b.(Polygon)
+	_b, ok := b.(MultiLineString)
 	if !ok {
-		return 0, ErrNotPolygon.New(b)
+		return 0, ErrNotMultiLineString.New(b)
 	}
 
 	// Get shorter length
@@ -93,24 +93,24 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 		return -1, nil
 	}
 
-	// Polygons must be the same
+	// MultiLineString must be the same
 	return 0, nil
 }
 
 // Convert implements Type interface.
-func (t PolygonType) Convert(v interface{}) (interface{}, error) {
+func (t MultiLineStringType) Convert(v interface{}) (interface{}, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, nil
 	case []byte:
-		poly, err := GeometryType{}.Convert(buf)
+		mline, err := GeometryType{}.Convert(buf)
 		if ErrInvalidGISData.Is(err) {
-			return nil, ErrInvalidGISData.New("PolygonType.Convert")
+			return nil, ErrInvalidGISData.New("MultiLineString.Convert")
 		}
-		return poly, err
+		return mline, err
 	case string:
 		return t.Convert([]byte(buf))
-	case Polygon:
+	case MultiLineString:
 		if err := t.MatchSRID(buf); err != nil {
 			return nil, err
 		}
@@ -121,23 +121,23 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 }
 
 // Equals implements the Type interface.
-func (t PolygonType) Equals(otherType Type) bool {
-	_, ok := otherType.(PolygonType)
+func (t MultiLineStringType) Equals(otherType Type) bool {
+	_, ok := otherType.(MultiLineStringType)
 	return ok
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t PolygonType) MaxTextResponseByteLength() uint32 {
+func (t MultiLineStringType) MaxTextResponseByteLength() uint32 {
 	return GeometryMaxByteLength
 }
 
 // Promote implements the Type interface.
-func (t PolygonType) Promote() Type {
+func (t MultiLineStringType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t MultiLineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -147,48 +147,48 @@ func (t PolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 		return sqltypes.Value{}, nil
 	}
 
-	buf := v.(Polygon).Serialize()
+	buf := v.(MultiLineString).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
 // String implements Type interface.
-func (t PolygonType) String() string {
-	return "polygon"
+func (t MultiLineStringType) String() string {
+	return "multilinestring"
 }
 
 // Type implements Type interface.
-func (t PolygonType) Type() query.Type {
+func (t MultiLineStringType) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // ValueType implements Type interface.
-func (t PolygonType) ValueType() reflect.Type {
-	return polygonValueType
+func (t MultiLineStringType) ValueType() reflect.Type {
+	return multilinestringValueType
 }
 
 // Zero implements Type interface.
-func (t PolygonType) Zero() interface{} {
-	return Polygon{Lines: []LineString{{Points: []Point{{}, {}, {}, {}}}}}
+func (t MultiLineStringType) Zero() interface{} {
+	return MultiLineString{Lines: []LineString{LineStringType{}.Zero().(LineString)}}
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.
-func (t PolygonType) GetSpatialTypeSRID() (uint32, bool) {
+func (t MultiLineStringType) GetSpatialTypeSRID() (uint32, bool) {
 	return t.SRID, t.DefinedSRID
 }
 
 // SetSRID implements SpatialColumnType interface.
-func (t PolygonType) SetSRID(v uint32) Type {
+func (t MultiLineStringType) SetSRID(v uint32) Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
 }
 
 // MatchSRID implements SpatialColumnType interface
-func (t PolygonType) MatchSRID(v interface{}) error {
-	val, ok := v.(Polygon)
+func (t MultiLineStringType) MatchSRID(v interface{}) error {
+	val, ok := v.(MultiLineString)
 	if !ok {
-		return ErrNotPolygon.New(v)
+		return ErrNotMultiLineString.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil
@@ -199,55 +199,56 @@ func (t PolygonType) MatchSRID(v interface{}) error {
 }
 
 // implementsGeometryValue implements GeometryValue interface.
-func (p Polygon) implementsGeometryValue() {}
+func (p MultiLineString) implementsGeometryValue() {}
 
 // GetSRID implements GeometryValue interface.
-func (p Polygon) GetSRID() uint32 {
+func (p MultiLineString) GetSRID() uint32 {
 	return p.SRID
 }
 
 // SetSRID implements GeometryValue interface.
-func (p Polygon) SetSRID(srid uint32) GeometryValue {
+func (p MultiLineString) SetSRID(srid uint32) GeometryValue {
 	lines := make([]LineString, len(p.Lines))
 	for i, l := range p.Lines {
 		lines[i] = l.SetSRID(srid).(LineString)
 	}
-	return Polygon{
+	return MultiLineString{
 		SRID:  srid,
 		Lines: lines,
 	}
 }
 
 // Serialize implements GeometryValue interface.
-func (p Polygon) Serialize() (buf []byte) {
+func (p MultiLineString) Serialize() (buf []byte) {
 	var numPoints int
 	for _, l := range p.Lines {
 		numPoints += len(l.Points)
 	}
-	buf = allocateBuffer(numPoints, len(p.Lines)+1, 0)
-	WriteEWKBHeader(buf, p.SRID, WKBPolyID)
+	buf = allocateBuffer(numPoints, len(p.Lines)+1, len(p.Lines))
+	WriteEWKBHeader(buf, p.SRID, WKBMultiLineID)
 	p.WriteData(buf[EWKBHeaderSize:])
 	return
 }
 
 // WriteData implements GeometryValue interface.
-func (p Polygon) WriteData(buf []byte) {
+func (p MultiLineString) WriteData(buf []byte) {
 	writeCount(buf, uint32(len(p.Lines)))
 	buf = buf[CountSize:]
 	for _, l := range p.Lines {
+		WriteWKBHeader(buf, WKBLineID)
+		buf = buf[WKBHeaderSize:]
 		l.WriteData(buf)
 		buf = buf[CountSize+PointSize*len(l.Points):]
 	}
 }
 
 // Swap implements GeometryValue interface.
-// TODO: possible in place?
-func (p Polygon) Swap() GeometryValue {
+func (p MultiLineString) Swap() GeometryValue {
 	lines := make([]LineString, len(p.Lines))
 	for i, l := range p.Lines {
 		lines[i] = l.Swap().(LineString)
 	}
-	return Polygon{
+	return MultiLineString{
 		SRID:  p.SRID,
 		Lines: lines,
 	}

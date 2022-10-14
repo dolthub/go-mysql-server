@@ -477,12 +477,15 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "linestring":
 		return LineStringType{}, nil
 	case "multilinestring":
+		return MultiLineStringType{}, nil
 	case "point":
 		return PointType{}, nil
 	case "multipoint":
+		return MultiPointType{}, nil
 	case "polygon":
 		return PolygonType{}, nil
 	case "multipolygon":
+		return MultiPolygonType{}, nil
 	default:
 		return nil, fmt.Errorf("unknown type: %v", ct.Type)
 	}
