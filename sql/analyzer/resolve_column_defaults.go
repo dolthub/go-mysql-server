@@ -512,10 +512,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				return node, transform.SameTree, nil
 			}
 
-			exprs := node.Expressions()
-			exprs[len(exprs)-1] = newExpr
-
-			newNode, err := node.WithExpressions(exprs...)
+			newNode, err := node.WithDefault(newExpr)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
