@@ -536,13 +536,17 @@ func SliceToMPoly(coords interface{}) (interface{}, error) {
 
 func SliceToGeomColl(geometries interface{}) (interface{}, error) {
 	// geomObjs should be a slice of geojsons
-	geomObjs, ok := geometries.([]map[string]interface{})
+	geomObjs, ok := geometries.([]interface{})
 	if !ok {
-		return nil, errors.New("member 'coordinates' must be of type 'array'")
+		return nil, errors.New("member 'geometries' must be of type '[]interface{}'")
 	}
 
 	geoms := make([]sql.GeometryValue, len(geomObjs))
-	for i, obj := range geomObjs {
+	for i, o := range geomObjs {
+		obj, ok := o.(map[string]interface{})
+		if !ok {
+			return nil, errors.New("member 'geometries' must be of type 'map[string]interface{}'")
+		}
 		geomType, ok := obj["type"]
 		if !ok {
 			return nil, errors.New("missing required member 'type'")
@@ -587,11 +591,11 @@ func SliceToGeomColl(geometries interface{}) (interface{}, error) {
 			}
 			res, err = SliceToMPoly(coords)
 		case "GeometryCollection":
-			geoms, ok := obj["geometries"]
+			gs, ok := obj["geometries"]
 			if !ok {
 				return nil, errors.New("missing required member 'geometries'")
 			}
-			res, err = SliceToGeomColl(geoms)
+			res, err = SliceToGeomColl(gs)
 		default:
 			return nil, errors.New("member 'type' is wrong")
 		}
