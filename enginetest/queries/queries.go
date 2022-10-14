@@ -399,6 +399,12 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT ST_DIMENSION(g) from geom_coll_table`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
 		Query: `SELECT ST_SWAPXY(p) from point_table`,
 		Expected: []sql.Row{
 			{sql.Point{X: 2, Y: 1}},
