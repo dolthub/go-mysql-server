@@ -91,6 +91,14 @@ func MLineToSlice(p sql.MultiLineString) [][][2]float64 {
 	return arr
 }
 
+func MPolyToSlice(p sql.MultiPolygon) [][][][2]float64 {
+	arr := make([][][][2]float64, len(p.Polygons))
+	for i, p := range p.Polygons {
+		arr[i] = PolyToSlice(p)
+	}
+	return arr
+}
+
 func FindBBox(v interface{}) [4]float64 {
 	var res [4]float64
 	switch v := v.(type) {
@@ -132,7 +140,17 @@ func FindBBox(v interface{}) [4]float64 {
 			res[2] = math.Max(res[2], tmp[2])
 			res[3] = math.Max(res[3], tmp[3])
 		}
+	case sql.MultiPolygon:
+		res = [4]float64{math.MaxFloat64, math.MaxFloat64, math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64}
+		for _, p := range v.Polygons {
+			tmp := FindBBox(p)
+			res[0] = math.Min(res[0], tmp[0])
+			res[1] = math.Min(res[1], tmp[1])
+			res[2] = math.Max(res[2], tmp[2])
+			res[3] = math.Max(res[3], tmp[3])
+		}
 	}
+
 	return res
 }
 
@@ -150,6 +168,12 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 		res := make([][][2]float64, len(v))
 		for i, c := range v {
 			res[i] = RoundFloatSlices(c, p).([][2]float64)
+		}
+		return res
+	case [][][][2]float64:
+		res := make([][][][2]float64, len(v))
+		for i, c := range v {
+			res[i] = RoundFloatSlices(c, p).([][][2]float64)
 		}
 		return res
 	}
@@ -206,6 +230,9 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.MultiLineString:
 		obj["type"] = "MultiLineString"
 		obj["coordinates"] = MLineToSlice(v)
+	case sql.MultiPolygon:
+		obj["type"] = "MultiPolygon"
+		obj["coordinates"] = MPolyToSlice(v)
 	default:
 		return nil, ErrInvalidArgumentType.New(g.FunctionName())
 	}
@@ -298,7 +325,7 @@ var _ sql.FunctionExpression = (*GeomFromGeoJSON)(nil)
 // NewGeomFromGeoJSON creates a new point expression.
 func NewGeomFromGeoJSON(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("ST_ASGEOJSON", "1, 2, or 3", len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMGEOJSON", "1, 2, or 3", len(args))
 	}
 	return &GeomFromGeoJSON{expression.NaryExpression{ChildExpressions: args}}, nil
 }
@@ -315,7 +342,7 @@ func (g *GeomFromGeoJSON) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Type() sql.Type {
-	return sql.PointType{}
+	return sql.GeometryType{}
 }
 
 func (g *GeomFromGeoJSON) String() string {
@@ -323,7 +350,7 @@ func (g *GeomFromGeoJSON) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_GEOMFROMWKT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("ST_GEOMFROMGEOJSON(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -431,6 +458,26 @@ func SliceToMLine(coords interface{}) (interface{}, error) {
 	return sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
 }
 
+func SliceToMPoly(coords interface{}) (interface{}, error) {
+	// coords must be a slice of slices of slices at least 4 slices of 2 float64
+	cs, ok := coords.([]interface{})
+	if !ok {
+		return nil, errors.New("member 'coordinates' must be of type 'array'")
+	}
+	if len(cs) == 0 {
+		return nil, errors.New("not enough polygons")
+	}
+	polys := make([]sql.Polygon, len(cs))
+	for i, c := range cs {
+		p, err := SliceToPoly(c)
+		if err != nil {
+			return nil, err
+		}
+		polys[i] = p.(sql.Polygon)
+	}
+	return sql.MultiPolygon{SRID: sql.GeoSpatialSRID, Polygons: polys}, nil
+}
+
 // Eval implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := g.ChildExpressions[0].Eval(ctx, row)
@@ -480,6 +527,8 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		res, err = SliceToMPoint(coords)
 	case "MultiLineString":
 		res, err = SliceToMLine(coords)
+	case "MultiPolygon":
+		res, err = SliceToMPoly(coords)
 	default:
 		return nil, errors.New("member 'type' is wrong")
 	}
@@ -520,6 +569,16 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 				for _, b := range a.([]interface{}) {
 					if len(b.([]interface{})) > 2 {
 						return nil, errors.New("unsupported number of coordinate dimensions")
+					}
+				}
+			}
+		case "MultiPolygon":
+			for _, a := range obj["coordinates"].([]interface{}) {
+				for _, b := range a.([]interface{}) {
+					for _, c := range b.([]interface{}) {
+						if len(c.([]interface{})) > 2 {
+							return nil, errors.New("unsupported number of coordinate dimensions")
+						}
 					}
 				}
 			}
