@@ -2000,6 +2000,24 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter json column default; from scorewarrior: https://github.com/dolthub/dolt/issues/4543",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int default 999, j json);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test alter column j set default ('[]');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "show create table test",
+				Expected: []sql.Row{
+					{"test", "CREATE TABLE `test` (\n  `i` int DEFAULT '999',\n  `j` json DEFAULT ('[]')\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
@@ -2319,6 +2337,30 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "select count(*) from numbers group by val having count(*) < val;",
 				Expected: []sql.Row{{1}, {1}},
+			},
+		},
+	},
+	{
+		Name: "can't create view with same name as existing table",
+		SetUpScript: []string{
+			"create table t (i int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create view t as select 1 from dual",
+				ExpectedErr: sql.ErrTableAlreadyExists,
+			},
+		},
+	},
+	{
+		Name: "can't create table with same name as existing view",
+		SetUpScript: []string{
+			"create view t as select 1 from dual",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table t (i int);",
+				ExpectedErr: sql.ErrTableAlreadyExists,
 			},
 		},
 	},

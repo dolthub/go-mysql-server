@@ -152,6 +152,12 @@ func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) 
 	return &na, nil
 }
 
+func (d AlterDefaultSet) WithDefault(expr sql.Expression) (sql.Node, error) {
+	newDefault := expr.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+	d.Default = newDefault
+	return &d, nil
+}
+
 // NewAlterDefaultDrop returns a *AlterDefaultDrop node.
 func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName string) *AlterDefaultDrop {
 	return &AlterDefaultDrop{
