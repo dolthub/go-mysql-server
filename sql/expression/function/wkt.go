@@ -478,7 +478,7 @@ func WKTToMPoly(s string, srid uint32, order bool) (sql.MultiPolygon, error) {
 func WKTToGeomColl(s string, srid uint32, order bool) (sql.GeomColl, error) {
 	// empty geometry collections
 	if len(s) == 0 {
-		return sql.GeomColl{SRID: srid}, nil
+		return sql.GeomColl{SRID: srid, Geoms: []sql.GeometryValue{}}, nil
 	}
 
 	var geoms []sql.GeometryValue
