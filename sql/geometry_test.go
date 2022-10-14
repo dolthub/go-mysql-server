@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -86,33 +85,6 @@ func TestSpatialTypeMatchSRID(t *testing.T) {
 				require.Error(t, err)
 				require.True(t, test.expected.Is(err), "Expected error of type %s but got %s", test.expected, err)
 			}
-		})
-	}
-}
-
-func TestUnsupportedSpatialTypeByteArrayConversion(t *testing.T) {
-	type unsupportedSpatialTypeTest struct {
-		typeName string
-		hexValue string
-	}
-
-	unsupportedSpatialTypeTests := []unsupportedSpatialTypeTest{
-		{
-			typeName: "MultiPolygon",
-			hexValue: "0000000001060000000100000001030000000200000005000000000000000000000000000000000000000000000000000000000000000000084000000000000008400000000000000840000000000000084000000000000000000000000000000000000000000000000005000000000000000000F03F000000000000F03F000000000000F03F0000000000000040000000000000004000000000000000400000000000000040000000000000F03F000000000000F03F000000000000F03F",
-		},
-	}
-
-	for _, test := range unsupportedSpatialTypeTests {
-		t.Run(test.typeName, func(t *testing.T) {
-			data, err := hex.DecodeString(test.hexValue)
-			require.NoError(t, err)
-
-			convert, err := GeometryType{}.Convert(data)
-			require.Nil(t, convert)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), "unsupported geospatial type: "+test.typeName)
-			require.Contains(t, err.Error(), "from value: 0x0")
 		})
 	}
 }

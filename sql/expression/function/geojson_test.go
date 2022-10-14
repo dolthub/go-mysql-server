@@ -69,6 +69,17 @@ func TestAsGeoJSON(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString"}}, v)
 	})
+	t.Run("convert multipolygon to geojson", func(t *testing.T) {
+		require := require.New(t)
+		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 2}, {X: 3, Y: 4}, {X: 0, Y: 0}}}
+		poly := sql.Polygon{Lines: []sql.LineString{line}}
+		f, err := NewAsGeoJSON(expression.NewLiteral(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, sql.MultiPolygonType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon"}}, v)
+	})
 	t.Run("convert point with floats to geojson", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(expression.NewLiteral(sql.Point{X: 123.45, Y: 5.6789}, sql.PointType{}))
@@ -166,6 +177,21 @@ func TestAsGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString", "bbox": [4]float64{1, 2, 3, 4}}}, v)
+	})
+	t.Run("convert multipolygon with bounding box", func(t *testing.T) {
+		require := require.New(t)
+		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 2}, {X: 3, Y: 4}, {X: 0, Y: 0}}}
+		poly := sql.Polygon{Lines: []sql.LineString{line}}
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, sql.MultiPolygonType{}),
+			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon", "bbox": [4]float64{0, 0, 3, 4}}}, v)
 	})
 	t.Run("convert point with srid 0 and flag 2", func(t *testing.T) {
 		require := require.New(t)
