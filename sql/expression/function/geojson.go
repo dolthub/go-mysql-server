@@ -304,7 +304,9 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Round floats
 	prec := math.Pow10(pp)
-	obj["coordinates"] = RoundFloatSlices(obj["coordinates"], prec)
+	if _, ok := obj["coordinates"]; ok {
+		obj["coordinates"] = RoundFloatSlices(obj["coordinates"], prec)
+	}
 
 	if len(g.ChildExpressions) == 2 {
 		return sql.JSONDocument{Val: obj}, nil
