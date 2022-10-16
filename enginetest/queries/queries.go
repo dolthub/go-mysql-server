@@ -263,6 +263,7 @@ var SpatialQueryTests = []QueryTest{
 				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 0, Y: 0}}}}},
 				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.1, Y: 1.1}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 1.1, Y: 1.1}}}}},
 			}}},
+			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
 		},
 	},
 	{
@@ -312,6 +313,7 @@ var SpatialQueryTests = []QueryTest{
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}}, {{5.5, 6.6}, {7.7, 8.8}}}}}},
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPolygon", "coordinates": [][][][2]float64{{{{0, 0}, {1.1, 2.2}, {3.3, 4.4}, {0, 0}}}, {{{1.1, 1.1}, {1.1, 2.2}, {3.3, 4.4}, {1.1, 1.1}}}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{}}}}}},
 		},
 	},
 	{
@@ -355,6 +357,12 @@ var SpatialQueryTests = []QueryTest{
 			{sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{
 				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 0, Y: 0}}}}},
 				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 3}, {SRID: 4326, X: 4, Y: 5}, {SRID: 4326, X: 1, Y: 1}}}}}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(g)) from geom_coll_table`,
+		Expected: []sql.Row{
+			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
 		},
 	},
 	{
