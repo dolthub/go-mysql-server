@@ -428,46 +428,12 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt q
 
 		assert.Equal(t, tt.ExpectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
 	})
-
 }
 
 func TestOrderByGroupBy(t *testing.T, harness Harness) {
-	require := require.New(t)
-
-	harness.Setup([]setup.SetupScript{{
-		"create database mydb",
-		"use mydb",
-		"create table members (id bigint primary key, team text)",
-		"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple')",
-	}})
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-
-	sch, iter, err := e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2")
-	require.NoError(err)
-
-	ctx := NewContext(harness)
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err)
-
-	expected := []sql.Row{
-		{"purple", int64(1)},
-		{"red", int64(2)},
-		{"orange", int64(3)},
+	for _, tt := range queries.OrderByGroupByScriptTests {
+		TestScript(t, harness, tt)
 	}
-
-	require.Equal(expected, rows)
-
-	sch, iter, err = e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2")
-	require.NoError(err)
-
-	rows, err = sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err)
-
-	require.Equal(expected, rows)
-
-	_, _, err = e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist")
-	require.Error(err)
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {
