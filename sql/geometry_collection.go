@@ -187,7 +187,7 @@ func (t GeomCollType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 
 // String implements Type interface.
 func (t GeomCollType) String() string {
-	return "geometry_collection"
+	return "geometrycollection"
 }
 
 // Type implements Type interface.
