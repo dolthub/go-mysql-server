@@ -33,6 +33,10 @@ type Project struct {
 	Projections []sql.Expression
 }
 
+var _ sql.Expressioner = (*Project)(nil)
+var _ sql.Node = (*Project)(nil)
+var _ sql.Projector = (*Project)(nil)
+
 // NewProject creates a new projection.
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
@@ -103,6 +107,16 @@ func (p *Project) DebugString() string {
 // Expressions implements the Expressioner interface.
 func (p *Project) Expressions() []sql.Expression {
 	return p.Projections
+}
+
+// ProjectedExprs implements sql.Projector
+func (p *Project) ProjectedExprs() []sql.Expression {
+	return p.Projections
+}
+
+// WithProjectedExprs implements sql.Projector
+func (p *Project) WithProjectedExprs(exprs ...sql.Expression) (sql.Node, error) {
+	return p.WithExpressions(exprs...)
 }
 
 // WithChildren implements the Node interface.
