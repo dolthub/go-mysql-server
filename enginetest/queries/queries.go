@@ -591,6 +591,30 @@ var SpatialQueryTests = []QueryTest{
 			{5.656854249492381},
 		},
 	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = point(1,2)`,
+		Expected: []sql.Row{
+			{"POINT(1 2)"},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = st_srid(point(1,2),4326)`,
+		Expected: []sql.Row{
+			{"POINT(2 1)"},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = unhex(hex(point(1,2)))`,
+		Expected: []sql.Row{
+			{"POINT(1 2)"},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = st_geomfromtext('MultiPolygon(((0 0,1 2,3 4,0 0)))')`,
+		Expected: []sql.Row{
+			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
+		},
+	},
 }
 
 var QueryTests = []QueryTest{
