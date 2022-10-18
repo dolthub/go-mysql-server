@@ -93,15 +93,15 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	// query might cause them to need to shift their field indexes.
 	subqueryCtx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
-	subScope := scope.newScope(n)
-	subScope.CurrentNodeIsSubqueryExpression = true
 
 	var analyzed sql.Node
 	var err error
 	if finalize {
-		analyzed, _, err = a.analyzeStartingAtBatch(subqueryCtx, sq.Query, subScope, "default-rules", NewFinalizeSubqueryExprSelector(sel))
+		analyzed, _, err = a.analyzeStartingAtBatch(subqueryCtx, sq.Query,
+			scope.newScopeFromSubqueryExpression(n), "default-rules", NewFinalizeSubqueryExprSelector(sel))
 	} else {
-		analyzed, _, err = a.analyzeThroughBatch(subqueryCtx, sq.Query, subScope, "once-after-default", NewResolveSubqueryExprSelector(sel))
+		analyzed, _, err = a.analyzeThroughBatch(subqueryCtx, sq.Query,
+			scope.newScopeFromSubqueryExpression(n), "once-after-default", NewResolveSubqueryExprSelector(sel))
 	}
 	if err != nil {
 		// We ignore certain errors during non-final passes of the analyzer, deferring them to later analysis passes.
@@ -125,18 +125,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 // the final run of the analyzer on the query before execution, which means all rules, starting from the default-rules
 // batch are processed, otherwise only the once-before-default batch of rules is processed for all other non-final passes.
 func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *plan.SubqueryAlias, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
-	subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
-	if scope != nil && len(scope.nodes) > 0 {
-		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
-		// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
-		// gives a derived table visibility to the OUTER scope where the subquery is defined.
-		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
-		if scope.CurrentNodeIsSubqueryExpression {
-			sqa.OuterScopeVisibility = true
-			subScope.nodes = append(subScope.nodes, scope.InnerToOuter()...)
-		}
-	}
+	subScope := scope.newScopeFromSubqueryAlias(sqa)
 
 	var child sql.Node
 	var same transform.TreeIdentity
@@ -262,12 +251,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
-			if scope != nil && len(scope.nodes) > 0 {
-				if scope.CurrentNodeIsSubqueryExpression {
-					subScope.nodes = append(subScope.nodes, scope.InnerToOuter()...)
-				}
-			}
+			subScope := scope.newScopeFromSubqueryAlias(sqa)
 			if nodeIsCacheable(ctx, sqa.Child, subScope) {
 				return sqa.WithCachedResults(), transform.NewTree, nil
 			}
@@ -275,8 +259,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 		} else {
 			return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if sq, ok := e.(*plan.Subquery); ok {
-					subScope := scope.newScope(n)
-					subScope.CurrentNodeIsSubqueryExpression = true
+					subScope := scope.newScopeFromSubqueryExpression(n)
 					if nodeIsCacheable(ctx, sq.Query, subScope) {
 						return sq.WithCachedResults(), transform.NewTree, nil
 					}
