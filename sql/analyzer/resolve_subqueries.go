@@ -260,8 +260,8 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 		return n, transform.SameTree, nil
 	}
 
-	return transform.NodeWithCtx(node, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
 			if scope != nil && len(scope.nodes) > 0 {
 				if scope.CurrentNodeIsSubqueryExpression {
@@ -271,40 +271,19 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 			if nodeIsCacheable(ctx, sqa.Child, subScope) {
 				return sqa.WithCachedResults(), transform.NewTree, nil
 			}
-			return context.Node, transform.SameTree, nil
-		} else if expressioner, ok := context.Node.(sql.Expressioner); ok {
-			exprs := expressioner.Expressions()
-			var newExprs []sql.Expression
-			for i, expr := range exprs {
-				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					if sq, ok := e.(*plan.Subquery); ok {
-						subScope := scope.newScope(context.Node)
-						subScope.CurrentNodeIsSubqueryExpression = true
-						if nodeIsCacheable(ctx, sq.Query, subScope) {
-							return sq.WithCachedResults(), transform.NewTree, nil
-						}
+			return n, transform.SameTree, nil
+		} else {
+			return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if sq, ok := e.(*plan.Subquery); ok {
+					subScope := scope.newScope(n)
+					subScope.CurrentNodeIsSubqueryExpression = true
+					if nodeIsCacheable(ctx, sq.Query, subScope) {
+						return sq.WithCachedResults(), transform.NewTree, nil
 					}
-					return e, transform.SameTree, nil
-				})
-				if err != nil {
-					return context.Node, transform.SameTree, err
 				}
-				if identity == transform.NewTree {
-					if newExprs == nil {
-						newExprs = make([]sql.Expression, len(exprs))
-						copy(newExprs, exprs)
-					}
-					newExprs[i] = newExpr
-				}
-			}
-
-			if newExprs != nil {
-				newNode, err := expressioner.WithExpressions(newExprs...)
-				return newNode, transform.NewTree, err
-			}
+				return e, transform.SameTree, nil
+			})
 		}
-
-		return context.Node, transform.SameTree, nil
 	})
 }
 
