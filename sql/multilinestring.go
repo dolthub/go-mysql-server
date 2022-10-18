@@ -231,15 +231,18 @@ func (p MultiLineString) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p MultiLineString) WriteData(buf []byte) {
+func (p MultiLineString) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(p.Lines)))
 	buf = buf[CountSize:]
+	count := CountSize
 	for _, l := range p.Lines {
 		WriteWKBHeader(buf, WKBLineID)
 		buf = buf[WKBHeaderSize:]
-		l.WriteData(buf)
-		buf = buf[CountSize+PointSize*len(l.Points):]
+		c := l.WriteData(buf)
+		buf = buf[c:]
+		count += WKBHeaderSize + c
 	}
+	return count
 }
 
 // Swap implements GeometryValue interface.

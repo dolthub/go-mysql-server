@@ -84,6 +84,46 @@ func TestAsWKT(t *testing.T) {
 		require.Equal("MULTIPOLYGON(((0 0,0 0,0 0,0 0)),((1 1,1 1,1 1,1 1)))", v)
 	})
 
+	t.Run("convert empty geometry collections", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKT(expression.NewLiteral(sql.GeomColl{}, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal("GEOMETRYCOLLECTION()", v)
+	})
+
+	t.Run("convert geometry collections", func(t *testing.T) {
+		require := require.New(t)
+		point := sql.Point{X: 1, Y: 2}
+		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		mpoint := sql.MultiPoint{Points: []sql.Point{point, point}}
+		mline := sql.MultiLineString{Lines: []sql.LineString{line, line}}
+		mpoly := sql.MultiPolygon{Polygons: []sql.Polygon{poly, poly}}
+		gColl := sql.GeomColl{}
+		g := sql.GeomColl{Geoms: []sql.GeometryValue{
+			point,
+			line,
+			poly,
+			mpoint,
+			mline,
+			mpoly,
+			gColl,
+		}}
+		f := NewAsWKT(expression.NewLiteral(g, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal("GEOMETRYCOLLECTION("+
+			"POINT(1 2),"+
+			"LINESTRING(1 2,3 4),"+
+			"POLYGON((0 0,1 1,1 0,0 0)),"+
+			"MULTIPOINT(1 2,1 2),"+
+			"MULTILINESTRING((1 2,3 4),(1 2,3 4)),"+
+			"MULTIPOLYGON(((0 0,1 1,1 0,0 0)),((0 0,1 1,1 0,0 0))),"+
+			"GEOMETRYCOLLECTION()"+
+			")", v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKT(expression.NewLiteral(nil, sql.Null))
@@ -456,7 +496,7 @@ func TestGeomFromText(t *testing.T) {
 		require.Equal(sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
-	t.Run("create valid multilinestring with valid srid", func(t *testing.T) {
+	t.Run("create valid multipolygon with valid srid", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(expression.NewLiteral("MULTIPOLYGON(((0 0,0 0,0 0,0 0)),((1 1,1 1,1 1,1 1)))", sql.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
@@ -471,7 +511,7 @@ func TestGeomFromText(t *testing.T) {
 		require.Equal(sql.MultiPolygon{SRID: sql.GeoSpatialSRID, Polygons: []sql.Polygon{poly1, poly2}}, v)
 	})
 
-	t.Run("create valid multilinestring with invalid srid", func(t *testing.T) {
+	t.Run("create valid multipolygon with invalid srid", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(expression.NewLiteral("MULTIPOLYGON(((0 0,0 0,0 0,0 0)),((1 1,1 1,1 1,1 1)))", sql.Blob),
 			expression.NewLiteral(1234, sql.Uint32))
@@ -481,7 +521,7 @@ func TestGeomFromText(t *testing.T) {
 		require.Error(err)
 	})
 
-	t.Run("create valid multilinestring with srid", func(t *testing.T) {
+	t.Run("create valid multipolygon with srid", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(expression.NewLiteral("MULTIPOLYGON(((0 0,1 2,3 4,0 0)),((1 1,2 3,4 5,1 1)))", sql.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
@@ -495,6 +535,41 @@ func TestGeomFromText(t *testing.T) {
 		line2 := sql.LineString{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 1, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 3, Y: 2}, {SRID: sql.GeoSpatialSRID, X: 5, Y: 4}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 1}}}
 		poly2 := sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{line2}}
 		require.Equal(sql.MultiPolygon{SRID: sql.GeoSpatialSRID, Polygons: []sql.Polygon{poly1, poly2}}, v)
+	})
+
+	t.Run("create valid geometry collection with srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(
+			expression.NewLiteral("GEOMETRYCOLLECTION("+
+				"POINT(1 2),"+
+				"LINESTRING(1 2,3 4),"+
+				"POLYGON((0 0,1 1,1 0,0 0)),"+
+				"MULTIPOINT(1 2,1 2),"+
+				"MULTILINESTRING((1 2,3 4),(1 2,3 4)),"+
+				"MULTIPOLYGON(((0 0,1 1,1 0,0 0)),((0 0,1 1,1 0,0 0))),"+
+				"GEOMETRYCOLLECTION()"+
+				")", sql.Blob),
+			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
+
+		point := sql.Point{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}
+		line := sql.LineString{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}
+		poly := sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}
+		mpoint := sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{point, point}}
+		mline := sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{line, line}}
+		mpoly := sql.MultiPolygon{SRID: sql.GeoSpatialSRID, Polygons: []sql.Polygon{poly, poly}}
+		gColl := sql.GeomColl{SRID: sql.GeoSpatialSRID, Geoms: []sql.GeometryValue{}}
+		g := sql.GeomColl{SRID: sql.GeoSpatialSRID, Geoms: []sql.GeometryValue{
+			point,
+			line,
+			poly,
+			mpoint,
+			mline,
+			mpoly,
+			gColl,
+		}}
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(g, v)
 	})
 
 	t.Run("check return type", func(t *testing.T) {

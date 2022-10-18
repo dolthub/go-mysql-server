@@ -227,13 +227,14 @@ func (l LineString) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (l LineString) WriteData(buf []byte) {
+func (l LineString) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(l.Points)))
 	buf = buf[CountSize:]
 	for _, p := range l.Points {
 		p.WriteData(buf)
 		buf = buf[PointSize:]
 	}
+	return CountSize + PointSize*len(l.Points)
 }
 
 // Swap implements GeometryValue interface.

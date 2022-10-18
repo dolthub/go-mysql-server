@@ -236,19 +236,18 @@ func (p MultiPolygon) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p MultiPolygon) WriteData(buf []byte) {
+func (p MultiPolygon) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(p.Polygons)))
 	buf = buf[CountSize:]
+	count := CountSize
 	for _, p := range p.Polygons {
 		WriteWKBHeader(buf, WKBPolyID)
 		buf = buf[WKBHeaderSize:]
-		p.WriteData(buf)
-		sz := CountSize
-		for _, l := range p.Lines {
-			sz += CountSize + len(l.Points)*PointSize
-		}
-		buf = buf[sz:]
+		c := p.WriteData(buf)
+		buf = buf[c:]
+		count += WKBHeaderSize + c
 	}
+	return count
 }
 
 // Swap implements GeometryValue interface.

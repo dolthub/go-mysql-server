@@ -105,7 +105,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 			return nil, ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
-		point, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
+		point, _, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
 			return nil, err
 		}
@@ -226,10 +226,11 @@ func (p Point) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p Point) WriteData(buf []byte) {
+func (p Point) WriteData(buf []byte) int {
 	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.X))
 	buf = buf[PointSize/2:]
 	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.Y))
+	return PointSize
 }
 
 // Swap implements GeometryValue interface.
