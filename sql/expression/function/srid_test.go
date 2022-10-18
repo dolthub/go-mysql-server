@@ -256,6 +256,33 @@ func TestSRID(t *testing.T) {
 		require.Equal(sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{poly2}}, v)
 	})
 
+	t.Run("change srid of geometry with inner geometry collection", func(t *testing.T) {
+		require := require.New(t)
+		point := sql.Point{X: 1, Y: 2}
+		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		g := sql.GeomColl{Geoms: []sql.GeometryValue{
+			point,
+			line,
+			poly,
+		}}
+		f, err := NewSRID(expression.NewLiteral(g, sql.GeometryType{}),
+			expression.NewLiteral(4326, sql.Int32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		point2 := sql.Point{SRID: 4326, X: 1, Y: 2}
+		line2 := sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}
+		poly2 := sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 0, Y: 0}}}}}
+		g2 := sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{
+			point2,
+			line2,
+			poly2,
+		}}
+		require.Equal(g2, v)
+	})
+
 	t.Run("return type with one argument", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))

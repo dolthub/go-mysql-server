@@ -187,7 +187,7 @@ func (t GeomCollType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 
 // String implements Type interface.
 func (t GeomCollType) String() string {
-	return "geometry_collection"
+	return "geometrycollection"
 }
 
 // Type implements Type interface.
@@ -202,7 +202,7 @@ func (t GeomCollType) Zero() interface{} {
 
 // ValueType implements Type interface.
 func (t GeomCollType) ValueType() reflect.Type {
-	return pointValueType
+	return geomcollValueType
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.
@@ -241,8 +241,13 @@ func (g GeomColl) GetSRID() uint32 {
 
 // SetSRID implements GeometryValue interface.
 func (g GeomColl) SetSRID(srid uint32) GeometryValue {
+	geoms := make([]GeometryValue, len(g.Geoms))
+	for i, geom := range g.Geoms {
+		geoms[i] = geom.SetSRID(srid)
+	}
 	return GeomColl{
-		SRID: srid,
+		SRID:  srid,
+		Geoms: geoms,
 	}
 }
 

@@ -80,6 +80,43 @@ func TestAsGeoJSON(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon"}}, v)
 	})
+	t.Run("convert empty geometrycollection to geojson", func(t *testing.T) {
+		require := require.New(t)
+		g := sql.GeomColl{}
+		f, err := NewAsGeoJSON(expression.NewLiteral(g, sql.GeomCollType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}}, v)
+	})
+	t.Run("convert geometrycollection to geojson", func(t *testing.T) {
+		require := require.New(t)
+		point := sql.Point{X: 1, Y: 2}
+		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		mpoint := sql.MultiPoint{Points: []sql.Point{point, point}}
+		mline := sql.MultiLineString{Lines: []sql.LineString{line, line}}
+		mpoly := sql.MultiPolygon{Polygons: []sql.Polygon{poly, poly}}
+		gColl := sql.GeomColl{}
+		g := sql.GeomColl{Geoms: []sql.GeometryValue{point, line, poly, mpoint, mline, mpoly, gColl}}
+		f, err := NewAsGeoJSON(expression.NewLiteral(g, sql.GeomCollType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		pointjson := map[string]interface{}{"coordinates": [2]float64{1, 2}, "type": "Point"}
+		linejson := map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "LineString"}
+		polyjson := map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, "type": "Polygon"}
+		mpointjson := map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {1, 2}}, "type": "MultiPoint"}
+		mlinejson := map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}, {{1, 2}, {3, 4}}}, "type": "MultiLineString"}
+		mpolyjson := map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, {{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}, "type": "MultiPolygon"}
+		mgeomjson := map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}
+
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{pointjson, linejson, polyjson, mpointjson, mlinejson, mpolyjson, mgeomjson}, "type": "GeometryCollection"}}, v)
+	})
 	t.Run("convert point with floats to geojson", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(expression.NewLiteral(sql.Point{X: 123.45, Y: 5.6789}, sql.PointType{}))
@@ -192,6 +229,50 @@ func TestAsGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon", "bbox": [4]float64{0, 0, 3, 4}}}, v)
+	})
+	t.Run("convert empty geometrycollection to geojson with bounding box", func(t *testing.T) {
+		require := require.New(t)
+		g := sql.GeomColl{}
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(g, sql.GeomCollType{}),
+			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}}, v)
+	})
+	t.Run("convert geometrycollection to geojson with bounding box", func(t *testing.T) {
+		require := require.New(t)
+		point := sql.Point{X: 1, Y: 2}
+		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		mpoint := sql.MultiPoint{Points: []sql.Point{point, point}}
+		mline := sql.MultiLineString{Lines: []sql.LineString{line, line}}
+		mpoly := sql.MultiPolygon{Polygons: []sql.Polygon{poly, poly}}
+		gColl := sql.GeomColl{}
+		g := sql.GeomColl{Geoms: []sql.GeometryValue{point, line, poly, mpoint, mline, mpoly, gColl}}
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(g, sql.GeomCollType{}),
+			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(1, sql.Int64))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		pointjson := map[string]interface{}{"coordinates": [2]float64{1, 2}, "type": "Point"}
+		linejson := map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "LineString"}
+		polyjson := map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, "type": "Polygon"}
+		mpointjson := map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {1, 2}}, "type": "MultiPoint"}
+		mlinejson := map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}, {{1, 2}, {3, 4}}}, "type": "MultiLineString"}
+		mpolyjson := map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, {{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}, "type": "MultiPolygon"}
+		mgeomjson := map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}
+
+		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"bbox": [4]float64{0, 0, 3, 4}, "geometries": []interface{}{pointjson, linejson, polyjson, mpointjson, mlinejson, mpolyjson, mgeomjson}, "type": "GeometryCollection"}}, v)
 	})
 	t.Run("convert point with srid 0 and flag 2", func(t *testing.T) {
 		require := require.New(t)
@@ -342,6 +423,52 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{4326, []sql.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}}}}, v)
+	})
+	t.Run("convert mutlipolygon from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiPolygon", "coordinates":[[[[0,0],[1,1],[0,1],[0,0]]]]}`, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}}}, v)
+	})
+	t.Run("convert empty geometrycollection from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"GeometryCollection", "geometries":[]}`, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}, v)
+	})
+	t.Run("convert geometrycollection to geojson", func(t *testing.T) {
+		require := require.New(t)
+
+		s := `{"type":"GeometryCollection", "geometries":[` +
+			`{"type":"Point", "coordinates":[1,2]},` +
+			`{"type":"LineString", "coordinates":[[1,2],[3,4]]},` +
+			`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[1,0],[0,0]]]},` +
+			`{"type":"MultiPoint", "coordinates":[[1,2],[1,2]]},` +
+			`{"type":"MultiLineString", "coordinates":[[[1,2],[3,4]],[[1,2],[3,4]]]},` +
+			`{"type":"MultiPolygon", "coordinates":[[[[0,0],[1,1],[1,0],[0,0]]],[[[0,0],[1,1],[1,0],[0,0]]]]},` +
+			`{"type":"GeometryCollection", "geometries":[]}` +
+			`]}`
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(s, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		point := sql.Point{SRID: 4326, X: 1, Y: 2}
+		line := sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}
+		poly := sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 0, Y: 0}}}}}
+		mpoint := sql.MultiPoint{SRID: 4326, Points: []sql.Point{point, point}}
+		mline := sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{line, line}}
+		mpoly := sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{poly, poly}}
+		gColl := sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}
+		g := sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{point, line, poly, mpoint, mline, mpoly, gColl}}
+		require.Equal(g, v)
 	})
 	t.Run("reject dimensions greater than 2 with flag 1", func(t *testing.T) {
 		require := require.New(t)
