@@ -45,39 +45,18 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 }
 
 func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithCtx(node, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := context.Node.(*plan.SubqueryAlias); ok {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			return analyzeSubqueryAlias(ctx, a, node, sqa, scope, sel, finalize)
-		} else if expressioner, ok := context.Node.(sql.Expressioner); ok {
-			exprs := expressioner.Expressions()
-			var newExprs []sql.Expression
-			for i, expr := range exprs {
-				newExpr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					if sq, ok := e.(*plan.Subquery); ok {
-						return analyzeSubqueryExpression(ctx, a, context.Node, sq, scope, sel, finalize)
-					} else {
-						return e, transform.SameTree, nil
-					}
-				})
-				if err != nil {
-					return context.Node, transform.SameTree, err
+		} else {
+			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if sq, ok := e.(*plan.Subquery); ok {
+					return analyzeSubqueryExpression(ctx, a, n, sq, scope, sel, finalize)
+				} else {
+					return e, transform.SameTree, nil
 				}
-				if identity == transform.NewTree {
-					if newExprs == nil {
-						newExprs = make([]sql.Expression, len(exprs))
-						copy(newExprs, exprs)
-					}
-					newExprs[i] = newExpr
-				}
-			}
-
-			if newExprs != nil {
-				newNode, err := expressioner.WithExpressions(newExprs...)
-				return newNode, transform.NewTree, err
-			}
+			})
 		}
-
-		return context.Node, transform.SameTree, nil
 	})
 }
 
