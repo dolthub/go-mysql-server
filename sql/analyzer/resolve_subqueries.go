@@ -183,7 +183,13 @@ func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
 				return false
 			}
 		}
-		if nd, ok := e.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
+		if sq, ok := e.(*plan.Subquery); ok {
+			// even if the subquery is not itself cacheable, it may be cacheable within the larger scope we are processing
+			if !nodeIsCacheable(sq.Query, lowestAllowedIdx) {
+				cacheable = false
+				return false
+			}
+		} else if nd, ok := e.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
 			cacheable = false
 			return false
 		}
@@ -192,9 +198,7 @@ func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
 	return cacheable
 }
 
-func nodeIsCacheable(ctx *sql.Context, n sql.Node, scope *Scope) bool {
-	lowestAllowedIdx := len(scope.Schema())
-
+func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 	cacheable := true
 	transform.Inspect(n, func(node sql.Node) bool {
 		if er, ok := node.(sql.Expressioner); ok {
@@ -208,11 +212,9 @@ func nodeIsCacheable(ctx *sql.Context, n sql.Node, scope *Scope) bool {
 			// TODO: Need more logic and testing with CTEs. For example, CTEs that are non-deterministic MUST be
 			//       cached and have their result sets reused, otherwise query result will be incorrect.
 			// If a subquery has visibility to outer scopes, then we need to check if it has
-			// references to that outer scope. If not, it can be cached.
+			// references to that outer scope. If not, it can be always be cached.
 			if sqa.OuterScopeVisibility {
-				subScope := newScopeWithDepth(scope.RecursionDepth() + 1)
-				subScope.nodes = scope.InnerToOuter()
-				if !nodeIsCacheable(ctx, sqa.Child, subScope) {
+				if !nodeIsCacheable(sqa.Child, lowestAllowedIdx) {
 					cacheable = false
 				}
 			}
@@ -252,7 +254,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			subScope := scope.newScopeFromSubqueryAlias(sqa)
-			if nodeIsCacheable(ctx, sqa.Child, subScope) {
+			if nodeIsCacheable(sqa.Child, len(subScope.Schema())) {
 				return sqa.WithCachedResults(), transform.NewTree, nil
 			}
 			return n, transform.SameTree, nil
@@ -260,7 +262,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 			return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if sq, ok := e.(*plan.Subquery); ok {
 					subScope := scope.newScopeFromSubqueryExpression(n)
-					if nodeIsCacheable(ctx, sq.Query, subScope) {
+					if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
 						return sq.WithCachedResults(), transform.NewTree, nil
 					}
 				}
