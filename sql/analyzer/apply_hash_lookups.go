@@ -39,10 +39,18 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			if j.JoinType() == plan.JoinTypeRight {
 				if _, ok := j.Left().(*plan.HashLookup); ok {
 					return j.WithMultipassMode(), transform.NewTree, nil
+				} else if child, ok := j.Left().(*plan.StripRowNode); ok {
+					if _, ok := child.Child.(*plan.HashLookup); ok {
+						return j.WithMultipassMode(), transform.NewTree, nil
+					}
 				}
 			} else {
 				if _, ok := j.Right().(*plan.HashLookup); ok {
 					return j.WithMultipassMode(), transform.NewTree, nil
+				} else if child, ok := j.Right().(*plan.StripRowNode); ok {
+					if _, ok := child.Child.(*plan.HashLookup); ok {
+						return j.WithMultipassMode(), transform.NewTree, nil
+					}
 				}
 			}
 			return c.Node, transform.SameTree, nil
@@ -76,45 +84,8 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 		if cond == nil {
 			return c.Node, transform.SameTree, nil
 		}
-		// Support expressions of the form (GetField = GetField AND GetField = GetField AND ...)
-		// where every equal comparison has one operand coming from primary and one operand
-		// coming from secondary. Accumulate the field accesses into a tuple expression for
-		// the primary row and another tuple expression for the child row. For the child row
-		// expression, rewrite the GetField indexes to work against the non-prefixed rows that
-		// are actually returned from the child.
-		var primaryGetFields, secondaryGetFields []sql.Expression
-		validCondition := true
-		sql.Inspect(cond, func(e sql.Expression) bool {
-			if e == nil {
-				return true
-			}
-			switch e := e.(type) {
-			case *expression.Equals:
-				if pgf := primaryGetter(e.Left()); pgf != nil {
-					if sgf := secondaryGetter(e.Right()); sgf != nil {
-						primaryGetFields = append(primaryGetFields, pgf)
-						secondaryGetFields = append(secondaryGetFields, sgf)
-					} else {
-						validCondition = false
-					}
-				} else if pgf := primaryGetter(e.Right()); pgf != nil {
-					if sgf := secondaryGetter(e.Left()); sgf != nil {
-						primaryGetFields = append(primaryGetFields, pgf)
-						secondaryGetFields = append(secondaryGetFields, sgf)
-					} else {
-						validCondition = false
-					}
-				} else {
-					validCondition = false
-				}
-				return false
-			case *expression.And:
-			default:
-				validCondition = false
-				return false
-			}
-			return validCondition
-		})
+
+		validCondition, primaryGetFields, secondaryGetFields := foo(cond, primaryGetter, secondaryGetter)
 		if validCondition {
 			primaryTuple := expression.NewTuple(primaryGetFields...)
 			secondaryTuple := expression.NewTuple(secondaryGetFields...)
@@ -122,6 +93,54 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 		}
 		return c.Node, transform.SameTree, nil
 	})
+}
+
+// TODO: add godocs and rename
+func foo(
+	cond sql.Expression,
+	primaryGetter func(sql.Expression) sql.Expression,
+	secondaryGetter func(sql.Expression) sql.Expression) (bool, []sql.Expression, []sql.Expression) {
+	// Support expressions of the form (GetField = GetField AND GetField = GetField AND ...)
+	// where every equal comparison has one operand coming from primary and one operand
+	//coming from secondary. Accumulate the field accesses into a tuple expression for
+	//the primary row and another tuple expression for the child row. For the child row
+	//expression, rewrite the GetField indexes to work against the non-prefixed rows that
+	//are actually returned from the child.
+	var primaryGetFields, secondaryGetFields []sql.Expression
+	validCondition := true
+	sql.Inspect(cond, func(e sql.Expression) bool {
+		if e == nil {
+			return true
+		}
+		switch e := e.(type) {
+		case *expression.Equals:
+			if pgf := primaryGetter(e.Left()); pgf != nil {
+				if sgf := secondaryGetter(e.Right()); sgf != nil {
+					primaryGetFields = append(primaryGetFields, pgf)
+					secondaryGetFields = append(secondaryGetFields, sgf)
+				} else {
+					validCondition = false
+				}
+			} else if pgf := primaryGetter(e.Right()); pgf != nil {
+				if sgf := secondaryGetter(e.Left()); sgf != nil {
+					primaryGetFields = append(primaryGetFields, pgf)
+					secondaryGetFields = append(secondaryGetFields, sgf)
+				} else {
+					validCondition = false
+				}
+			} else {
+				validCondition = false
+			}
+			return false
+		case *expression.And:
+		default:
+			validCondition = false
+			return false
+		}
+		return validCondition
+	})
+
+	return validCondition, primaryGetFields, secondaryGetFields
 }
 
 func getFieldIndexRange(low, high, offset int) func(sql.Expression) sql.Expression {
