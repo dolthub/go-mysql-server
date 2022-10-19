@@ -48,54 +48,8 @@ var _ SpatialColumnType = MultiPolygonType{}
 var _ GeometryValue = MultiPolygon{}
 
 // Compare implements Type interface.
-// TODO: it might be better to just serialize and the compare the []byte
 func (t MultiPolygonType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a MultiPolygon, throw error otherwise
-	_a, ok := a.(MultiPolygon)
-	if !ok {
-		return 0, ErrNotMultiPolygon.New(a)
-	}
-	_b, ok := b.(MultiPolygon)
-	if !ok {
-		return 0, ErrNotMultiPolygon.New(b)
-	}
-
-	// Get shorter length
-	var n int
-	lenA := len(_a.Polygons)
-	lenB := len(_b.Polygons)
-	if lenA < lenB {
-		n = lenA
-	} else {
-		n = lenB
-	}
-
-	// Compare each polygon until there's a difference
-	for i := 0; i < n; i++ {
-		diff, err := PolygonType{}.Compare(_a.Polygons[i], _b.Polygons[i])
-		if err != nil {
-			return 0, err
-		}
-		if diff != 0 {
-			return diff, nil
-		}
-	}
-
-	// Determine based off length
-	if lenA > lenB {
-		return 1, nil
-	}
-	if lenA < lenB {
-		return -1, nil
-	}
-
-	// MultiPolygon must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.

@@ -48,73 +48,7 @@ var (
 
 // Compare implements Type interface.
 func (t GeomCollType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a GeomColl, throw error otherwise
-	_a, ok := a.(GeomColl)
-	if !ok {
-		return 0, ErrNotGeomColl.New(a)
-	}
-	_b, ok := b.(GeomColl)
-	if !ok {
-		return 0, ErrNotGeomColl.New(b)
-	}
-
-	// Get shorter length
-	var n int
-	lenA := len(_a.Geoms)
-	lenB := len(_b.Geoms)
-	if lenA < lenB {
-		n = lenA
-	} else {
-		n = lenB
-	}
-
-	// Compare each point until there's a difference
-	for i := 0; i < n; i++ {
-		ga := _a.Geoms[i]
-		gb := _b.Geoms[i]
-		var diff int
-		var err error
-		switch ga.(type) {
-		case Point:
-			diff, err = PointType{}.Compare(ga, gb)
-		case LineString:
-			diff, err = LineStringType{}.Compare(ga, gb)
-		case Polygon:
-			diff, err = PolygonType{}.Compare(ga, gb)
-		case MultiPoint:
-			diff, err = MultiPointType{}.Compare(ga, gb)
-		case MultiLineString:
-			diff, err = MultiLineStringType{}.Compare(ga, gb)
-		case MultiPolygon:
-			diff, err = MultiPolygonType{}.Compare(ga, gb)
-		case GeomColl:
-			diff, err = GeomCollType{}.Compare(ga, gb)
-		default:
-			panic("impossible")
-		}
-		if err != nil {
-			return 0, err
-		}
-		if diff != 0 {
-			return diff, nil
-		}
-	}
-
-	// Determine based off length
-	if lenA > lenB {
-		return 1, nil
-	}
-	if lenA < lenB {
-		return -1, nil
-	}
-
-	// GeomColls must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.
