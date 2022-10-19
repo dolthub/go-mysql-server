@@ -316,6 +316,9 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	scopeNodes := make([]sql.Node, 0, 1+len(scope.InnerToOuter()))
 	scopeNodes = append(scopeNodes, n)
 	scopeNodes = append(scopeNodes, scope.InnerToOuter()...)
+	if in, ok := n.(*plan.InsertInto); ok {
+		scopeNodes = append(scopeNodes, in.Source)
+	}
 	currentScopeLevel := len(scopeNodes)
 
 	// Examine all columns, from the innermost scope (this node) outward.
