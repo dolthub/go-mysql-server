@@ -132,8 +132,13 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 
 	commitTransaction := ((tx != nil) && !ctx.GetIgnoreAutoCommit()) && autocommit
 	if commitTransaction {
+		ts, ok := ctx.Session.(sql.TransactionSession)
+		if !ok {
+			return nil
+		}
+
 		ctx.GetLogger().Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
+		if err := ts.CommitTransaction(ctx, tx); err != nil {
 			return err
 		}
 

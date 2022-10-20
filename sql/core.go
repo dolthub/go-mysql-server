@@ -798,6 +798,7 @@ type Transaction interface {
 
 // TransactionDatabase is a Database that can BEGIN, ROLLBACK and COMMIT transactions, as well as create SAVEPOINTS and
 // restore to them.
+// Deprecated. Use TransactionSession instead.
 type TransactionDatabase interface {
 	Database
 

@@ -84,8 +84,6 @@ type Session interface {
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
-	// CommitTransaction commits the current transaction for this session for the current database
-	CommitTransaction(ctx *Context, dbName string, transaction Transaction) error
 	// ID returns the unique ID of the connection.
 	ID() uint32
 	// Warn stores the warning in the session.
@@ -141,6 +139,13 @@ type Session interface {
 	GetCollation() CollationID
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context, dbName string) error
+	// SetTransactionDatabase is called when a transaction begins, and is set to the name of the database in scope for
+	// that transaction. GetTransactionDatabase can be called by integrators to retrieve this database later, when it's
+	// time to commit via TransactionSession.CommitTransaction. This supports implementations that can only support a
+	// single database being modified per transaction.
+	SetTransactionDatabase(dbName string)
+	// GetTransactionDatabase returns the name of the database considered in scope when the current transaction began.
+	GetTransactionDatabase() string
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -156,7 +161,29 @@ type PersistableSession interface {
 	GetPersistedValue(k string) (interface{}, error)
 }
 
-// BaseSession is the basic session type.
+// TransactionSession can BEGIN, ROLLBACK and COMMIT transactions, as well as create SAVEPOINTS and restore to them.
+// Transactions can span multiple databases, and integrators must do their own error handling to prevent this if they
+// cannot support multiple databases in a single transaction. Such integrators can use Session.GetTransactionDatabase
+// to determine the database that was considered in scope when a transaction began.
+type TransactionSession interface {
+	Session
+	// StartTransaction starts a new transaction and returns it
+	StartTransaction(ctx *Context, tCharacteristic TransactionCharacteristic) (Transaction, error)
+	// CommitTransaction commits the transaction given
+	CommitTransaction(ctx *Context, tx Transaction) error
+	// Rollback restores the database to the state recorded in the transaction given
+	Rollback(ctx *Context, transaction Transaction) error
+	// CreateSavepoint records a savepoint for the transaction given with the name given. If the name is already in use
+	// for this transaction, the new savepoint replaces the old one.
+	CreateSavepoint(ctx *Context, transaction Transaction, name string) error
+	// RollbackToSavepoint restores the database to the state named by the savepoint
+	RollbackToSavepoint(ctx *Context, transaction Transaction, name string) error
+	// ReleaseSavepoint removes the savepoint named from the transaction given
+	ReleaseSavepoint(ctx *Context, transaction Transaction, name string) error
+}
+
+// BaseSession is the basic session implementation. Integrators should typically embed this type into their custom
+// session implementations to get base functionality.
 type BaseSession struct {
 	id     uint32
 	addr   string
@@ -170,6 +197,7 @@ type BaseSession struct {
 	// |mu| protects the following state
 	logger           *logrus.Entry
 	currentDB        string
+	transactionDb    string
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
 	idxReg           *IndexRegistry
@@ -214,10 +242,16 @@ func (s *BaseSession) GetIgnoreAutoCommit() bool {
 
 var _ Session = (*BaseSession)(nil)
 
-// CommitTransaction commits the current transaction for the current database.
-func (s *BaseSession) CommitTransaction(*Context, string, Transaction) error {
-	// no-op on BaseSession
-	return nil
+func (s *BaseSession) SetTransactionDatabase(dbName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.transactionDb = dbName
+}
+
+func (s *BaseSession) GetTransactionDatabase() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.transactionDb
 }
 
 // Address returns the server address.
