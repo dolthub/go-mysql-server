@@ -495,6 +495,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	if newSch.HasAutoIncrement() {
 		autoTbl = rwt.(sql.AutoIncrementTable)
 	}
+	idx := newSch.IndexOf(i.a.column.Name, i.a.column.Source)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -510,11 +511,11 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		}
 
 		if autoTbl != nil {
-			val, err := autoTbl.GetNextAutoIncrementValue(ctx, newRow[len(newRow)-1])
+			val, err := autoTbl.GetNextAutoIncrementValue(ctx, newRow[idx])
 			if err != nil {
 				return false, err
 			}
-			newRow[len(newRow)-1] = val
+			newRow[idx] = val
 		}
 
 		err = inserter.Insert(ctx, newRow)
