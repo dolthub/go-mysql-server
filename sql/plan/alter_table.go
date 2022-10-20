@@ -491,6 +491,11 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
 
+	var autoTbl sql.AutoIncrementTable
+	if newSch.HasAutoIncrement() {
+		autoTbl = rwt.(sql.AutoIncrementTable)
+	}
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -502,6 +507,14 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
 			return false, err
+		}
+
+		if autoTbl != nil {
+			val, err := autoTbl.GetNextAutoIncrementValue(ctx, newRow[len(newRow)-1])
+			if err != nil {
+				return false, err
+			}
+			newRow[len(newRow)-1] = val
 		}
 
 		err = inserter.Insert(ctx, newRow)
