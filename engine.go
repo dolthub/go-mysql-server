@@ -480,9 +480,9 @@ func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) 
 			if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 				database = privilegedDatabase.Unwrap()
 			}
-			tdb, ok := database.(sql.TransactionDatabase)
+			ts, ok := ctx.Session.(sql.TransactionSession)
 			if ok {
-				tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)
+				tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
 				if err != nil {
 					return err
 				}
