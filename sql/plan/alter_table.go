@@ -919,6 +919,7 @@ func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 type RenameColumn struct {
 	ddlNode
 	Table         sql.Node
+	TableName     string
 	ColumnName    string
 	NewColumnName string
 	Checks        sql.CheckConstraints
@@ -933,6 +934,7 @@ func NewRenameColumn(database sql.Database, table *UnresolvedTable, columnName s
 	return &RenameColumn{
 		ddlNode:       ddlNode{db: database},
 		Table:         table,
+		TableName:     table.name,
 		ColumnName:    columnName,
 		NewColumnName: newColumnName,
 	}
@@ -1012,38 +1014,20 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
-	idx := r.targetSchema.IndexOf(r.ColumnName, tbl.Name())
-	if idx < 0 {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), r.ColumnName)
-	}
+	i := r.targetSchema.IndexOf(r.ColumnName, r.TableName)
+	newColumn := r.targetSchema[i].Copy()
+	newColumn.Name = r.NewColumnName
 
-	nc := *r.targetSchema[idx]
-	nc.Name = r.NewColumnName
-	col := &nc
-
-	if err := updateDefaultsOnColumnRename(ctx, alterable, r.targetSchema, strings.ToLower(r.ColumnName), r.NewColumnName); err != nil {
-		return nil, err
-	}
-
-	// Update the foreign key columns as well
-	if fkTable, ok := alterable.(sql.ForeignKeyTable); ok {
-		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
-		if err != nil {
-			return nil, err
-		}
-		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if len(parentFks) > 0 || len(fks) > 0 {
-			err = handleFkColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
+	return &modifyColumnIter{
+		m: &ModifyColumn{
+			ddlNode:      r.ddlNode,
+			Table:        r.Table,
+			columnName:   r.ColumnName,
+			column:       newColumn,
+			targetSchema: r.targetSchema,
+		},
+		alterable: alterable,
+	}, nil
 }
 
 func (r *RenameColumn) Children() []sql.Node {
