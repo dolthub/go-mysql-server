@@ -122,7 +122,6 @@ var _ sql.StatisticsTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
-var _ sql.RewritableTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
@@ -983,25 +982,6 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 	}
 
 	return handled
-}
-
-// ShouldRewriteTable implements sql.RewritableTable interface.
-func (t *Table) ShouldRewriteTable(
-	ctx *sql.Context,
-	oldSchema sql.PrimaryKeySchema,
-	newSchema sql.PrimaryKeySchema,
-	oldColumn *sql.Column,
-	newColumn *sql.Column,
-) bool {
-	return false
-}
-
-func (t *Table) RewriteInserter(
-	ctx *sql.Context,
-	oldSchema, newSchema sql.PrimaryKeySchema,
-	oldColumn, newColumn *sql.Column,
-) (sql.RowInserter, error) {
-	return t.newTableEditor(), nil
 }
 
 // FilteredTable functionality in the Table type was disabled for a long period of time, and has developed major
