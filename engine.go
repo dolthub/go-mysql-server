@@ -184,7 +184,7 @@ func (e *Engine) QueryNodeWithBindings(
 	// currently selected
 	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
 
-	// This validates that we have valid working set and branch regardless of autocommit status
+	// Give the integrator a chance to reject the session before proceeding
 	err = ctx.Session.ValidateSession(ctx, transactionDatabase)
 	if err != nil {
 		return nil, nil, err
@@ -465,7 +465,6 @@ func init() {
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) error {
-	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
@@ -489,6 +488,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) 
 				}
 
 				ctx.SetTransaction(tx)
+				ctx.SetTransactionDatabase(transactionDatabase)
 			}
 		}
 	}

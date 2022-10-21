@@ -26,14 +26,12 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	transactionDatabase := GetTransactionDatabase(ctx, n)
-
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if hasShowWarningsNode(n) {
 		return n, transform.SameTree, nil
 	}
 
-	return plan.NewTransactionCommittingNode(n, transactionDatabase), transform.NewTree, nil
+	return plan.NewTransactionCommittingNode(n), transform.NewTree, nil
 }
 
 func hasShowWarningsNode(n sql.Node) bool {
