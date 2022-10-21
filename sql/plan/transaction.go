@@ -158,7 +158,7 @@ type Rollback struct {
 var _ sql.Node = (*Rollback)(nil)
 
 // NewRollback creates a new Rollback node.
-func NewRollback(db sql.UnresolvedDatabase) *Rollback {
+func NewRollback() *Rollback {
 	return &Rollback{}
 }
 
@@ -301,7 +301,7 @@ type ReleaseSavepoint struct {
 var _ sql.Node = (*ReleaseSavepoint)(nil)
 
 // NewReleaseSavepoint creates a new ReleaseSavepoint node.
-func NewReleaseSavepoint(db sql.UnresolvedDatabase, name string) *ReleaseSavepoint {
+func NewReleaseSavepoint(name string) *ReleaseSavepoint {
 	return &ReleaseSavepoint{
 		name: name,
 	}
