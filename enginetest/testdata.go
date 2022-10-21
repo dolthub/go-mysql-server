@@ -47,25 +47,28 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 	if privilegedDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
 		db = privilegedDatabase.Unwrap()
 	}
-	if tdb, ok := db.(sql.TransactionDatabase); ok {
-		tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)
+
+	ts, transactionsSupported := ctx.Session.(sql.TransactionSession)
+
+	if transactionsSupported {
+		tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
 		require.NoError(t, err)
 		ctx.SetTransaction(tx)
 	}
 
 	fn()
 
-	if tdb, ok := db.(sql.TransactionDatabase); ok {
+	if transactionsSupported {
 		tx := ctx.GetTransaction()
 		if tx != nil {
-			err := tdb.CommitTransaction(ctx, tx)
+			err := ts.CommitTransaction(ctx, tx)
 			require.NoError(t, err)
 			ctx.SetTransaction(nil)
 		}
 	}
 }
 
-// createSubsetTestData creates test tables and data. Passing a non-nil slice for includedTables will restrict the
+// CreateSubsetTestData creates test tables and data. Passing a non-nil slice for includedTables will restrict the
 // table creation to just those tables named.
 func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
 	dbs := harness.NewDatabases("mydb", "foo")
