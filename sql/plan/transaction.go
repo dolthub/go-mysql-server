@@ -20,9 +20,32 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// transactionNode implements all the no-op methods of sql.Node
+type transactionNode struct {}
+
+func (transactionNode) Children() []sql.Node {
+	return nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (transactionNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
+// Resolved implements the sql.Node interface.
+func (transactionNode) Resolved() bool {
+	return true
+}
+
+// Schema implements the sql.Node interface.
+func (transactionNode) Schema() sql.Schema {
+	return nil
+}
+
 // StartTransaction explicitly starts a transaction. Transactions also start before any statement execution that
 // doesn't have a transaction. Starting a transaction implicitly commits any in-progress one.
 type StartTransaction struct {
+	transactionNode
 	transChar sql.TransactionCharacteristic
 }
 
@@ -45,6 +68,7 @@ func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 	currentTx := ctx.GetTransaction()
 	// A START TRANSACTION statement commits any pending work before beginning a new tx
 	// TODO: this work is wasted in the case that START TRANSACTION is the first statement after COMMIT
+	//  an isDirty method on the transaction would allow us to avoid this
 	if currentTx != nil {
 		err := ts.CommitTransaction(ctx, currentTx)
 		if err != nil {
@@ -68,10 +92,6 @@ func (s *StartTransaction) String() string {
 	return "Start Transaction"
 }
 
-func (s *StartTransaction) Children() []sql.Node {
-	return nil
-}
-
 // WithChildren implements the Node interface.
 func (s *StartTransaction) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
@@ -81,24 +101,11 @@ func (s *StartTransaction) WithChildren(children ...sql.Node) (sql.Node, error) 
 	return s, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *StartTransaction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// Commit commits the changes performed in a transaction. For sessions that don't implement sql.TransactionSession,
+// this operation is a no-op.
+type Commit struct {
+	transactionNode
 }
-
-// Resolved implements the sql.Node interface.
-func (s *StartTransaction) Resolved() bool {
-	return true
-}
-
-// Schema implements the sql.Node interface.
-func (s *StartTransaction) Schema() sql.Schema {
-	return nil
-}
-
-// Commit commits the changes performed in a transaction. This is provided just for compatibility with SQL clients and
-// is a no-op.
-type Commit struct {}
 
 var _ sql.Node = (*Commit)(nil)
 
@@ -142,25 +149,11 @@ func (c *Commit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return c, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *Commit) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// Resolved implements the sql.Node interface.
-func (c *Commit) Resolved() bool {
-	return true
-}
-
-// Children implements the sql.Node interface.
-func (*Commit) Children() []sql.Node { return nil }
-
-// Schema implements the sql.Node interface.
-func (*Commit) Schema() sql.Schema { return nil }
-
 // Rollback undoes the changes performed in the current transaction. For compatibility, sessions that don't implement
 // sql.TransactionSession treat this as a no-op.
-type Rollback struct {}
+type Rollback struct {
+	transactionNode
+}
 
 var _ sql.Node = (*Rollback)(nil)
 
@@ -204,24 +197,10 @@ func (r *Rollback) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	return r, nil
 }
-
-// CheckPrivileges implements the interface sql.Node.
-func (r *Rollback) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// Resolved implements the sql.Node interface.
-func (r *Rollback) Resolved() bool {
-	return true
-}
-
-// Children implements the sql.Node interface.
-func (*Rollback) Children() []sql.Node { return nil }
-
-// Schema implements the sql.Node interface.
-func (*Rollback) Schema() sql.Schema { return nil }
-
+// CreateSavepoint creates a savepoint with the given name. For sessions that don't implement sql.TransactionSession,
+// this is a no-op.
 type CreateSavepoint struct {
+	transactionNode
 	name string
 }
 
@@ -264,23 +243,10 @@ func (c *CreateSavepoint) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return c, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *CreateSavepoint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// Resolved implements the sql.Node interface.
-func (c *CreateSavepoint) Resolved() bool {
-	return true
-}
-
-// Children implements the sql.Node interface.
-func (*CreateSavepoint) Children() []sql.Node { return nil }
-
-// Schema implements the sql.Node interface.
-func (*CreateSavepoint) Schema() sql.Schema { return nil }
-
+// RollbackSavepoint rolls back the current transaction to the given savepoint. For sessions that don't implement
+// sql.TransactionSession, this is a no-op.
 type RollbackSavepoint struct {
+	transactionNode
 	name string
 }
 
@@ -325,23 +291,10 @@ func (r *RollbackSavepoint) WithChildren(children ...sql.Node) (sql.Node, error)
 	return r, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (r *RollbackSavepoint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// Resolved implements the sql.Node interface.
-func (r *RollbackSavepoint) Resolved() bool {
-	return true
-}
-
-// Children implements the sql.Node interface.
-func (*RollbackSavepoint) Children() []sql.Node { return nil }
-
-// Schema implements the sql.Node interface.
-func (*RollbackSavepoint) Schema() sql.Schema { return nil }
-
+// ReleaseSavepoint releases the given savepoint. For sessions that don't implement sql.TransactionSession, this is a
+// no-op.
 type ReleaseSavepoint struct {
+	transactionNode
 	name string
 }
 
@@ -385,19 +338,3 @@ func (r *ReleaseSavepoint) WithChildren(children ...sql.Node) (sql.Node, error) 
 
 	return r, nil
 }
-
-// CheckPrivileges implements the interface sql.Node.
-func (r *ReleaseSavepoint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// Resolved implements the sql.Node interface.
-func (r *ReleaseSavepoint) Resolved() bool {
-	return true
-}
-
-// Children implements the sql.Node interface.
-func (*ReleaseSavepoint) Children() []sql.Node { return nil }
-
-// Schema implements the sql.Node interface.
-func (*ReleaseSavepoint) Schema() sql.Schema { return nil }
