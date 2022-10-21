@@ -493,7 +493,11 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 
 	var autoTbl sql.AutoIncrementTable
 	if newSch.HasAutoIncrement() {
-		autoTbl = rwt.(sql.AutoIncrementTable)
+		t, ok := rwt.(sql.AutoIncrementTable)
+		if !ok {
+			return false, ErrAutoIncrementNotSupported.New()
+		}
+		autoTbl = t
 	}
 	idx := newSch.IndexOf(i.a.column.Name, i.a.column.Source)
 
