@@ -491,15 +491,20 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
 
-	var autoTbl sql.AutoIncrementTable
-	if newSch.HasAutoIncrement() {
+	var val uint64
+	autoIncColIdx := -1
+	if newSch.HasAutoIncrement() && !i.a.targetSch.HasAutoIncrement() {
 		t, ok := rwt.(sql.AutoIncrementTable)
 		if !ok {
 			return false, ErrAutoIncrementNotSupported.New()
 		}
-		autoTbl = t
+
+		autoIncColIdx = newSch.IndexOf(i.a.column.Name, i.a.column.Source)
+		val, err = t.GetNextAutoIncrementValue(ctx, 0)
+		if err != nil {
+			return false, err
+		}
 	}
-	idx := newSch.IndexOf(i.a.column.Name, i.a.column.Source)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -514,12 +519,13 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 			return false, err
 		}
 
-		if autoTbl != nil {
-			val, err := autoTbl.GetNextAutoIncrementValue(ctx, newRow[idx])
+		if autoIncColIdx != -1 {
+			v, err := i.a.column.Type.Convert(val)
 			if err != nil {
 				return false, err
 			}
-			newRow[idx] = val
+			newRow[autoIncColIdx] = v
+			val++
 		}
 
 		err = inserter.Insert(ctx, newRow)
