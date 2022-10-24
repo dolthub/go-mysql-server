@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -532,13 +533,54 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
+		case *plan.ResolvedTable:
+			ct, ok := node.Table.(*information_schema.ColumnsTable)
+			if !ok {
+				return node, transform.SameTree, nil
+			}
+
+			allColumns, err := ct.AllColumns(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, allColumns[colIndex], eWrapper)
+			})
+
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			if !same {
+				node.Table, err = ct.WithColumnDefaults(allDefaults)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+			}
+
+			return node, transform.NewTree, err
 		default:
 			return node, transform.SameTree, nil
 		}
 	})
 }
 
-// lookupColumnForTargetSchema looks at the target schema for the specifeid SchemaTarget node and returns
+func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
+	defs := make([]sql.Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
+}
+
+// lookupColumnForTargetSchema looks at the target schema for the specified SchemaTarget node and returns
 // the column based on the specified index. For most node types, this is simply indexing into the target
 // schema but a few types require special handling.
 func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex int) (*sql.Column, error) {

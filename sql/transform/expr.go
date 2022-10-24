@@ -66,6 +66,35 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 	return e, sameC && sameN, nil
 }
 
+// Exprs applies a transformation function to the given set of expressions and returns the result.
+func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, error) {
+	var (
+		newExprs []sql.Expression
+	)
+
+	for i := 0; i < len(e); i++ {
+		c := e[i]
+		c, same, err := Expr(c, f)
+		if err != nil {
+			return nil, SameTree, err
+		}
+		if !same {
+			if newExprs == nil {
+				newExprs = make([]sql.Expression, len(e))
+				copy(newExprs, e)
+			}
+			newExprs[i] = c
+		}
+	}
+
+	if len(newExprs) == 0 {
+		return e, SameTree, nil
+	}
+
+	return newExprs, NewTree, nil
+}
+
+
 // InspectExpr traverses the given expression tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
 func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {

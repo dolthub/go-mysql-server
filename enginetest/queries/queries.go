@@ -8571,12 +8571,12 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='t'",
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='t' order by 1,2",
 				Expected: []sql.Row{
-					{"t", "pk", nil, "NO"},
 					{"t", "fname", "", "NO"},
-					{"t", "lname", "ln", "NO"},
 					{"t", "h", nil, "YES"},
+					{"t", "lname", "ln", "NO"},
+					{"t", "pk", nil, "NO"},
 				},
 			},
 		},

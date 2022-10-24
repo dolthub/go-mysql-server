@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -44,9 +45,9 @@ var typeToNumericPrecision = map[query.Type]int{
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
 type ColumnsTable struct {
-	// allColsWithDefaultValue is a list of all columns with a non nil default value. The default values should be
-	// completely resolved.
-	allColsWithDefaultValue []*sql.Column
+	// allColsWithDefaultValue is the full schema of all tables in all databases. We need this during analysis in order
+	// to resolve the default values of some columns, so we pre-compute it.
+	allColsWithDefaultValue sql.Schema
 
 	Catalog sql.Catalog
 	name    string
@@ -79,6 +80,13 @@ func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
 	return c
 }
 
+// WithAllColumns passes in a set of all columns.
+func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Table {
+	nc := *c
+	nc.allColsWithDefaultValue = cols
+	return &nc
+}
+
 // Partitions implements the sql.Table interface.
 func (c *ColumnsTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(c.Name())}}, nil
@@ -94,16 +102,77 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
 	}
 
-	colToDefaults := make(map[string]*sql.ColumnDefaultValue)
-	for _, col := range c.allColsWithDefaultValue {
-		colToDefaults[col.Name] = col.Default
+	return columnsRowIter(context, c.Catalog)
+}
+
+// AllColumns returns all columns in the catalog, renamed to reflect their database and table names
+func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
+	if len(c.allColsWithDefaultValue) > 0 {
+		return c.allColsWithDefaultValue, nil
 	}
 
-	return columnsRowIter(context, c.Catalog, colToDefaults)
+	if c.Catalog == nil {
+		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
+	}
+
+	var allColumns sql.Schema
+
+	for _, db := range c.Catalog.AllDatabases(ctx) {
+		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+			tableSch := t.Schema()
+			for i := range tableSch {
+				newCol := tableSch[i].Copy()
+				newCol.DatabaseSource = db.Name()
+				allColumns = append(allColumns, newCol)
+			}
+			return true, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	c.allColsWithDefaultValue = allColumns
+	return c.allColsWithDefaultValue, nil
+}
+
+func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
+	defs := make([]sql.Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
+}
+
+func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.Table, error) {
+	if c.allColsWithDefaultValue == nil {
+		return nil, fmt.Errorf("WithColumnDefaults called with nil columns for table %s", c.Name())
+	}
+
+	if len(columnDefaults) != len(c.allColsWithDefaultValue) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(columnDefaults), len(c.allColsWithDefaultValue))
+	}
+
+	c.allColsWithDefaultValue = schemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	return &c, nil
+}
+
+func schemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
+	sc := schema.Copy()
+	for i, d := range defaults {
+		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			sc[i].Default = unwrappedColDefVal
+		} else {
+			sc[i].Default = nil
+		}
+	}
+	return sc
 }
 
 // columnsRowIter implements the custom sql.RowIter for the information_schema.columns table.
-func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {
+func columnsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, db := range cat.AllDatabases(ctx) {
 		// Get all Tables
