@@ -80,7 +80,7 @@ var DefaultRules = []Rule{
 	{mergeUnionSchemasId, mergeUnionSchemas},
 	{flattenAggregationExprsId, flattenAggregationExpressions},
 	{reorderProjectionId, reorderProjection},
-	{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{evalFilterId, simplifyFilters},
@@ -92,7 +92,6 @@ var DefaultRules = []Rule{
 var OnceAfterDefault = []Rule{
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{finalizeUnionsId, finalizeUnions},
-	{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
@@ -107,10 +106,8 @@ var OnceAfterDefault = []Rule{
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
-	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
-	// previous rules.
 	{cacheSubqueryResultsId, cacheSubqueryResults},
-	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
+	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{applyHashLookupsId, applyHashLookups},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},

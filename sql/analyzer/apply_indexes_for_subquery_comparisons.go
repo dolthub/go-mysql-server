@@ -53,7 +53,7 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 	})
 }
 
-func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.Expression, node *plan.Filter, equals bool, scope *Scope, tableAliases TableAliases) sql.Node {
+func getIndexedInSubqueryFilter(ctx *sql.Context, _ *Analyzer, left, right sql.Expression, node *plan.Filter, equals bool, scope *Scope, tableAliases TableAliases) sql.Node {
 	gf, isGetField := left.(*expression.GetField)
 	subq, isSubquery := right.(*plan.Subquery)
 	rt, isResolved := node.Child.(*plan.ResolvedTable)

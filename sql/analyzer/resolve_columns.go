@@ -697,7 +697,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
+func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
 	var idx int
 

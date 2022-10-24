@@ -85,7 +85,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			return nil, transform.SameTree, err
 		}
 
-		child, _, err = resolveSubqueryExpressions(ctx, a, child, scope, sel)
+		child, _, err = resolveSubqueries(ctx, a, child, scope, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
