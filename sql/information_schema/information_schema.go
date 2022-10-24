@@ -1433,7 +1433,7 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase() Database {
-	return &informationSchemaDatabase{
+	isDb := &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
 			FilesTableName: &informationSchemaTable{
@@ -1449,9 +1449,6 @@ func NewInformationSchemaDatabase() Database {
 				name:    TablesTableName,
 				schema:  tablesSchema,
 				rowIter: tablesRowIter,
-			},
-			ColumnsTableName: &ColumnsTable{
-				name: ColumnsTableName,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:    SchemataTableName,
@@ -1840,6 +1837,14 @@ func NewInformationSchemaDatabase() Database {
 			},
 		},
 	}
+
+	// The columns table is unlike other info schema tables in that it needs to pass through other parts of the analyzer
+	// in order to fill in column defaults etc., so it needs to be wrapped in a resolved table.
+	isDb.tables[ColumnsTableName] = plan.NewResolvedTable(&ColumnsTable{
+		name: ColumnsTableName,
+	}, isDb, nil)
+
+	return isDb
 }
 
 func viewRowIter(ctx *Context, catalog Catalog) (RowIter, error) {

@@ -74,6 +74,11 @@ func (c *ColumnsTable) Name() string {
 	return c.name
 }
 
+func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
+	c.Catalog = cat
+	return c
+}
+
 // Partitions implements the sql.Table interface.
 func (c *ColumnsTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(c.Name())}}, nil

@@ -17,7 +17,6 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -171,7 +170,7 @@ func filterPushdownAboveTablesChildSelector(c transform.Context) bool {
 		// Don't bother pushing filters down above tables if the direct child node is a table. At best this
 		// just splits the predicates into multiple filter nodes, and at worst it breaks other parts of the
 		// analyzer that don't expect this structure in the tree.
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 			return false
 		}
 	}
@@ -210,7 +209,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				filters.markFiltersHandled(handled...)
 				return node, len(handled) == 0, nil
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -242,7 +241,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 					return nil, transform.SameTree, err
 				}
 				return n, transform.NewTree, nil
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -475,7 +474,7 @@ func pushdownFiltersToTable(
 	tableAliases TableAliases,
 ) (sql.Node, transform.TreeIdentity, error) {
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		// only subset of nodes can be sql.FilteredTables
 	default:
 		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
@@ -572,7 +571,7 @@ func pushdownFiltersToAboveTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		node, _, err := withTable(tableNode, table)
 		if err != nil {
 			return nil, transform.SameTree, err

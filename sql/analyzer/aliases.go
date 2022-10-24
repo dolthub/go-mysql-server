@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -71,9 +69,6 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
 				analysisErr = passAliases.add(at, t.(NameableNode))
-			case *information_schema.ColumnsTable:
-				analysisErr = passAliases.add(at, t)
-				return false
 			case *plan.IndexedTableAccess:
 				analysisErr = passAliases.add(at, t)
 			case *plan.RecursiveCte:
@@ -108,9 +103,6 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable:
 			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
-			return false
-		case *information_schema.ColumnsTable:
-			analysisErr = passAliases.add(node, node)
 			return false
 		case *plan.IndexedTableAccess:
 			rt := getResolvedTable(node.ResolvedTable)
