@@ -138,3 +138,8 @@ func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	}
 	return key, nil
 }
+
+func (n *HashLookup) Dispose() {
+	cr := n.Child.(*CachedResults)
+	cr.Dispose()
+}

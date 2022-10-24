@@ -407,6 +407,11 @@ func (i *joinIter) Dispose() {
 		i.dispose()
 		i.dispose = nil
 	}
+
+	if d, ok := i.secondaryProvider.(sql.Disposable); ok {
+		d.Dispose()
+		i.secondaryProvider = nil
+	}
 }
 
 func (i *joinIter) loadPrimary(ctx *sql.Context) error {
