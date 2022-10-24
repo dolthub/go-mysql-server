@@ -36,13 +36,12 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 		switch j := c.Node.(type) {
 		case plan.JoinNode, *plan.IndexedJoin:
-			newSchemaPrefix := append(sql.Schema{}, c.SchemaPrefix...) // TODO: Simplify
-			leftChild, leftIdentity, err := applyHashLookupToJoinChild(true, c.Node, j.(sql.BinaryNode).Left(), newSchemaPrefix, scope)
+			leftChild, leftIdentity, err := applyHashLookupToJoinChild(true, c.Node, j.(sql.BinaryNode).Left(), c.SchemaPrefix, scope)
 			if err != nil {
 				return c.Node, transform.SameTree, err
 			}
 
-			newSchemaPrefix = append(sql.Schema{}, c.SchemaPrefix...)
+			newSchemaPrefix := append(sql.Schema{}, c.SchemaPrefix...)
 			newSchemaPrefix = append(newSchemaPrefix, leftChild.Schema()...)
 			rightChild, rightIdentity, err := applyHashLookupToJoinChild(false, c.Node, j.(sql.BinaryNode).Right(), newSchemaPrefix, scope)
 			if err != nil {
