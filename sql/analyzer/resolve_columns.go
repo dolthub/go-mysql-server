@@ -316,13 +316,15 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	scopeNodes := make([]sql.Node, 0, 1+len(scope.InnerToOuter()))
 	scopeNodes = append(scopeNodes, n)
 	scopeNodes = append(scopeNodes, scope.InnerToOuter()...)
-	if in, ok := n.(*plan.InsertInto); ok {
-		scopeNodes = append(scopeNodes, in.Source)
-	}
 	currentScopeLevel := len(scopeNodes)
 
 	// Examine all columns, from the innermost scope (this node) outward.
-	getColumnsInNodes(n.Children(), symbols, currentScopeLevel-1)
+	children := n.Children()
+	if in, ok := n.(*plan.InsertInto); ok {
+		children = append(children, in.Source)
+	}
+
+	getColumnsInNodes(children, symbols, currentScopeLevel-1)
 	for _, currentScopeNode := range scopeNodes {
 		getColumnsInNodes([]sql.Node{currentScopeNode}, symbols, currentScopeLevel-1)
 		currentScopeLevel--
