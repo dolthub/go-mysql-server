@@ -52,63 +52,24 @@ type ColumnsTable struct {
 	name    string
 }
 
-var _ sql.Node = (*ColumnsTable)(nil)
-var _ sql.Nameable = (*ColumnsTable)(nil)
 var _ sql.Table = (*ColumnsTable)(nil)
 
-// Resolved implements the sql.Node interface.
-func (c *ColumnsTable) Resolved() bool {
-	for _, col := range c.allColsWithDefaultValue {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
-}
-
-// String implements the sql.Node interface.
+// String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
 	return fmt.Sprintf("ColumnsTable(%s)", c.name)
 }
 
-// Schema implements the sql.Node interface.
+// Schema implements the sql.Table interface.
 func (c *ColumnsTable) Schema() sql.Schema {
 	return columnsSchema
 }
 
-// Collation implements the sql.Node interface.
+// Collation implements the sql.Table interface.
 func (c *ColumnsTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
-// RowIter implements the sql.Node interface.
-func (c *ColumnsTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	partitions, err := c.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.NewTableRowIter(ctx, c, partitions), nil
-}
-
-// WithChildren implements the sql.Node interface.
-func (c *ColumnsTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return c, nil
-}
-
-// Children implements the sql.Node interface.
-func (c *ColumnsTable) Children() []sql.Node {
-	return nil
-}
-
-// CheckPrivileges implements the sql.Node interface.
-func (c *ColumnsTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// Copied from the resolved table implementation
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("information_schema", c.name, "", sql.PrivilegeType_Select))
-}
-
-// Name implements the sql.Nameable interface.
+// Name implements the sql.Table interface.
 func (c *ColumnsTable) Name() string {
 	return c.name
 }
@@ -134,13 +95,6 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 	}
 
 	return columnsRowIter(context, c.Catalog, colToDefaults)
-}
-
-// WithAllColumns passes in a set of all columns.
-func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Node {
-	nc := *c
-	nc.allColsWithDefaultValue = cols
-	return &nc
 }
 
 // columnsRowIter implements the custom sql.RowIter for the information_schema.columns table.
