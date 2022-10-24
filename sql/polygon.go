@@ -49,52 +49,7 @@ var (
 
 // Compare implements Type interface.
 func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a Polygon, throw error otherwise
-	_a, ok := a.(Polygon)
-	if !ok {
-		return 0, ErrNotPolygon.New(a)
-	}
-	_b, ok := b.(Polygon)
-	if !ok {
-		return 0, ErrNotPolygon.New(b)
-	}
-
-	// Get shorter length
-	var n int
-	lenA := len(_a.Lines)
-	lenB := len(_b.Lines)
-	if lenA < lenB {
-		n = lenA
-	} else {
-		n = lenB
-	}
-
-	// Compare each line until there's a difference
-	for i := 0; i < n; i++ {
-		diff, err := LineStringType{}.Compare(_a.Lines[i], _b.Lines[i])
-		if err != nil {
-			return 0, err
-		}
-		if diff != 0 {
-			return diff, nil
-		}
-	}
-
-	// Determine based off length
-	if lenA > lenB {
-		return 1, nil
-	}
-	if lenA < lenB {
-		return -1, nil
-	}
-
-	// Polygons must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.
@@ -231,13 +186,16 @@ func (p Polygon) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p Polygon) WriteData(buf []byte) {
+func (p Polygon) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(p.Lines)))
 	buf = buf[CountSize:]
+	count := CountSize
 	for _, l := range p.Lines {
-		l.WriteData(buf)
-		buf = buf[CountSize+PointSize*len(l.Points):]
+		c := l.WriteData(buf)
+		buf = buf[c:]
+		count += c
 	}
+	return count
 }
 
 // Swap implements GeometryValue interface.

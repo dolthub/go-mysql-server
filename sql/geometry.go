@@ -15,8 +15,8 @@
 package sql
 
 import (
+	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"math"
 	"reflect"
 
@@ -40,7 +40,7 @@ type GeometryValue interface {
 	GetSRID() uint32
 	SetSRID(srid uint32) GeometryValue
 	Serialize() []byte
-	WriteData(buf []byte)
+	WriteData(buf []byte) int
 	Swap() GeometryValue
 }
 
@@ -79,7 +79,7 @@ const (
 	WKBMultiPointID
 	WKBMultiLineID
 	WKBMultiPolyID
-	WKBGeomCollectionID
+	WKBGeomCollID
 )
 
 // isLinearRing checks if a LineString is a linear ring
@@ -136,10 +136,10 @@ func DeserializeWKBHeader(buf []byte) (bigEndian bool, typ uint32, err error) {
 }
 
 // DeserializePoint parses the data portion of a byte array in WKB format to a Point object
-func DeserializePoint(buf []byte, isBig bool, srid uint32) (Point, error) {
+func DeserializePoint(buf []byte, isBig bool, srid uint32) (Point, int, error) {
 	// Must be 16 bytes (2 floats)
 	if len(buf) != PointSize {
-		return Point{}, ErrInvalidGISData.New("DeserializePoint")
+		return Point{}, 0, ErrInvalidGISData.New("DeserializePoint")
 	}
 
 	// Read floats x and y
@@ -152,14 +152,14 @@ func DeserializePoint(buf []byte, isBig bool, srid uint32) (Point, error) {
 		y = math.Float64frombits(binary.LittleEndian.Uint64(buf[8:]))
 	}
 
-	return Point{SRID: srid, X: x, Y: y}, nil
+	return Point{SRID: srid, X: x, Y: y}, PointSize, nil
 }
 
 // DeserializeLine parses the data portion of a byte array in WKB format to a LineString object
-func DeserializeLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
+func DeserializeLine(buf []byte, isBig bool, srid uint32) (LineString, int, error) {
 	// Must be at least CountSize and two points
 	if len(buf) < (CountSize + PointSize + PointSize) {
-		return LineString{}, ErrInvalidGISData.New("DeserializeLine")
+		return LineString{}, 0, ErrInvalidGISData.New("DeserializeLine")
 	}
 
 	// Read number of points
@@ -169,38 +169,41 @@ func DeserializeLine(buf []byte, isBig bool, srid uint32) (LineString, error) {
 	// Read points
 	var err error
 	for i := range points {
-		points[i], err = DeserializePoint(buf[:PointSize], isBig, srid)
+		points[i], _, err = DeserializePoint(buf[:PointSize], isBig, srid)
 		if err != nil {
-			return LineString{}, ErrInvalidGISData.New("DeserializeLine")
+			return LineString{}, 0, ErrInvalidGISData.New("DeserializeLine")
 		}
 		buf = buf[PointSize:]
 	}
 
-	return LineString{SRID: srid, Points: points}, nil
+	return LineString{SRID: srid, Points: points}, CountSize + PointSize*len(points), nil
 }
 
 // DeserializePoly parses the data portion of a byte array in WKB format to a Polygon object
-func DeserializePoly(buf []byte, isBig bool, srid uint32) (Polygon, error) {
+func DeserializePoly(buf []byte, isBig bool, srid uint32) (Polygon, int, error) {
 	// Must be at least count, count, and four points
 	if len(buf) < (CountSize + CountSize + 4*PointSize) {
-		return Polygon{}, ErrInvalidGISData.New("DeserializePoly")
+		return Polygon{}, 0, ErrInvalidGISData.New("DeserializePoly")
 	}
 
 	// Read number of lines
 	lines := make([]LineString, readCount(buf, isBig))
 	buf = buf[CountSize:]
+	count := CountSize
 
 	// Read lines
 	var err error
+	var c int
 	for i := range lines {
-		lines[i], err = DeserializeLine(buf, isBig, srid)
+		lines[i], c, err = DeserializeLine(buf, isBig, srid)
 		if err != nil {
-			return Polygon{}, ErrInvalidGISData.New("DeserializePoly")
+			return Polygon{}, 0, ErrInvalidGISData.New("DeserializePoly")
 		}
-		buf = buf[CountSize+len(lines[i].Points)*PointSize:]
+		buf = buf[c:]
+		count += c
 	}
 
-	return Polygon{SRID: srid, Lines: lines}, nil
+	return Polygon{SRID: srid, Lines: lines}, count, nil
 }
 
 func readCount(buf []byte, isBig bool) uint32 {
@@ -211,10 +214,10 @@ func readCount(buf []byte, isBig bool) uint32 {
 }
 
 // DeserializeMPoint parses the data portion of a byte array in WKB format to a MultiPoint object
-func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) {
+func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, int, error) {
 	// Must contain at count, wkb header, and one point
 	if len(buf) < (CountSize + WKBHeaderSize + PointSize) {
-		return MultiPoint{}, ErrInvalidGISData.New("DeserializeMPoint")
+		return MultiPoint{}, 0, ErrInvalidGISData.New("DeserializeMPoint")
 	}
 
 	// Read number of points in MultiPoint
@@ -224,79 +227,133 @@ func DeserializeMPoint(buf []byte, isBig bool, srid uint32) (MultiPoint, error) 
 		// WKBHeaders are inside MultiGeometry Types
 		isBig, typ, err := DeserializeWKBHeader(buf)
 		if err != nil {
-			return MultiPoint{}, err
+			return MultiPoint{}, 0, err
 		}
 		if typ != WKBPointID {
-			return MultiPoint{}, ErrInvalidGISData.New("DeserializeMPoint")
+			return MultiPoint{}, 0, ErrInvalidGISData.New("DeserializeMPoint")
 		}
 		buf = buf[WKBHeaderSize:]
 		// Read point data
-		points[i], err = DeserializePoint(buf[:PointSize], isBig, srid)
+		points[i], _, err = DeserializePoint(buf[:PointSize], isBig, srid)
 		if err != nil {
-			return MultiPoint{}, err
+			return MultiPoint{}, 0, err
 		}
 		buf = buf[PointSize:]
 	}
 
-	return MultiPoint{SRID: srid, Points: points}, nil
+	return MultiPoint{SRID: srid, Points: points}, CountSize + (WKBHeaderSize+PointSize)*len(points), nil
 }
 
 // DeserializeMLine parses the data portion of a byte array in WKB format to a MultiLineString object
-func DeserializeMLine(buf []byte, isBig bool, srid uint32) (MultiLineString, error) {
+func DeserializeMLine(buf []byte, isBig bool, srid uint32) (MultiLineString, int, error) {
 	// Must contain at least length, wkb header, length, and two points
 	if len(buf) < (CountSize + WKBHeaderSize + CountSize + 2*PointSize) {
-		return MultiLineString{}, ErrInvalidGISData.New("MultiLineString")
+		return MultiLineString{}, 0, ErrInvalidGISData.New("MultiLineString")
 	}
 
 	// Read number of lines
 	lines := make([]LineString, readCount(buf, isBig))
 	buf = buf[CountSize:]
+	count := CountSize
+	var c int
 	for i := range lines {
-		// WKBHeaders are inside MultiGeometry Types
 		isBig, typ, err := DeserializeWKBHeader(buf)
 		if typ != WKBLineID {
-			return MultiLineString{}, ErrInvalidGISData.New("DeserializeMLine")
+			return MultiLineString{}, 0, ErrInvalidGISData.New("DeserializeMLine")
 		}
 		buf = buf[WKBHeaderSize:]
-		lines[i], err = DeserializeLine(buf, isBig, srid)
+
+		lines[i], c, err = DeserializeLine(buf, isBig, srid)
 		if err != nil {
-			return MultiLineString{}, ErrInvalidGISData.New("DeserializeMLine")
+			return MultiLineString{}, 0, ErrInvalidGISData.New("DeserializeMLine")
 		}
-		buf = buf[CountSize+len(lines[i].Points)*PointSize:]
+
+		buf = buf[c:]
+		count += WKBHeaderSize + c
 	}
 
-	return MultiLineString{SRID: srid, Lines: lines}, nil
+	return MultiLineString{SRID: srid, Lines: lines}, count, nil
 }
 
 // DeserializeMPoly parses the data portion of a byte array in WKB format to a MultiPolygon object
-func DeserializeMPoly(buf []byte, isBig bool, srid uint32) (MultiPolygon, error) {
+func DeserializeMPoly(buf []byte, isBig bool, srid uint32) (MultiPolygon, int, error) {
 	// Must contain at least num polys, wkb header, num lines, num lines, and four points
 	if len(buf) < (CountSize + WKBHeaderSize + 2*CountSize + 4*PointSize) {
-		return MultiPolygon{}, ErrInvalidGISData.New("MultiPolygon")
+		return MultiPolygon{}, 0, ErrInvalidGISData.New("MultiPolygon")
 	}
 
 	// Read number of polygons
 	polys := make([]Polygon, readCount(buf, isBig))
 	buf = buf[CountSize:]
+	count := CountSize
+	var c int
 	for i := range polys {
-		// WKBHeaders are inside MultiGeometry Types
 		isBig, typ, err := DeserializeWKBHeader(buf)
 		if typ != WKBPolyID {
-			return MultiPolygon{}, ErrInvalidGISData.New("DeserializeMPoly")
+			return MultiPolygon{}, 0, ErrInvalidGISData.New("DeserializeMPoly")
 		}
+
 		buf = buf[WKBHeaderSize:]
-		polys[i], err = DeserializePoly(buf, isBig, srid)
+		polys[i], c, err = DeserializePoly(buf, isBig, srid)
 		if err != nil {
-			return MultiPolygon{}, ErrInvalidGISData.New("DeserializeMPoly")
+			return MultiPolygon{}, 0, ErrInvalidGISData.New("DeserializeMPoly")
 		}
-		sz := CountSize
-		for _, l := range polys[i].Lines {
-			sz += CountSize + len(l.Points)*PointSize
-		}
-		buf = buf[sz:]
+
+		buf = buf[c:]
+		count += WKBHeaderSize + c
 	}
 
-	return MultiPolygon{SRID: srid, Polygons: polys}, nil
+	return MultiPolygon{SRID: srid, Polygons: polys}, count, nil
+}
+
+// DeserializeGeomColl parses the data portion of a byte array in WKB format to a GeometryCollection object
+func DeserializeGeomColl(buf []byte, isBig bool, srid uint32) (GeomColl, int, error) {
+	// Must be at least CountSize
+	if len(buf) < CountSize {
+		return GeomColl{}, 0, ErrInvalidGISData.New("DeserializeLine")
+	}
+
+	// Read number of geometry objects
+	geoms := make([]GeometryValue, readCount(buf, isBig))
+	buf = buf[CountSize:]
+	count := CountSize
+
+	// Read geometries
+	var c int
+	for i := range geoms {
+		isBig, typ, err := DeserializeWKBHeader(buf)
+		if err != nil {
+			return GeomColl{}, 0, ErrInvalidGISData.New("GeometryType.Convert")
+		}
+		buf = buf[WKBHeaderSize:]
+
+		switch typ {
+		case WKBPointID:
+			geoms[i], c, err = DeserializePoint(buf[:PointSize], isBig, srid)
+		case WKBLineID:
+			geoms[i], c, err = DeserializeLine(buf, isBig, srid)
+		case WKBPolyID:
+			geoms[i], c, err = DeserializePoly(buf, isBig, srid)
+		case WKBMultiPointID:
+			geoms[i], c, err = DeserializeMPoint(buf, isBig, srid)
+		case WKBMultiLineID:
+			geoms[i], c, err = DeserializeMLine(buf, isBig, srid)
+		case WKBMultiPolyID:
+			geoms[i], c, err = DeserializeMPoly(buf, isBig, srid)
+		case WKBGeomCollID:
+			geoms[i], c, err = DeserializeGeomColl(buf, isBig, srid)
+		default:
+			return GeomColl{}, 0, ErrInvalidGISData.New("GeometryType.Convert")
+		}
+		if err != nil {
+			return GeomColl{}, 0, ErrInvalidGISData.New("GeometryType.Convert")
+		}
+
+		buf = buf[c:]
+		count += WKBHeaderSize + c
+	}
+
+	return GeomColl{SRID: srid, Geoms: geoms}, count, nil
 }
 
 func allocateBuffer(numPoints, numCounts, numWKBHeaders int) []byte {
@@ -329,22 +386,17 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return res, nil
 	}
 
-	switch inner := a.(type) {
-	case Point:
-		return PointType{}.Compare(inner, b)
-	case LineString:
-		return LineStringType{}.Compare(inner, b)
-	case Polygon:
-		return PolygonType{}.Compare(inner, b)
-	case MultiPoint:
-		return MultiPointType{}.Compare(inner, b)
-	case MultiLineString:
-		return MultiLineStringType{}.Compare(inner, b)
-	case MultiPolygon:
-		return MultiPolygonType{}.Compare(inner, b)
-	default:
+	aa, ok := a.(GeometryValue)
+	if !ok {
 		return 0, ErrNotGeometry.New(a)
 	}
+
+	bb, ok := b.(GeometryValue)
+	if !ok {
+		return 0, ErrNotGeometry.New(b)
+	}
+
+	return bytes.Compare(aa.Serialize(), bb.Serialize()), nil
 }
 
 // Convert implements Type interface.
@@ -363,19 +415,19 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		var geom interface{}
 		switch geomType {
 		case WKBPointID:
-			geom, err = DeserializePoint(val, isBig, srid)
+			geom, _, err = DeserializePoint(val, isBig, srid)
 		case WKBLineID:
-			geom, err = DeserializeLine(val, isBig, srid)
+			geom, _, err = DeserializeLine(val, isBig, srid)
 		case WKBPolyID:
-			geom, err = DeserializePoly(val, isBig, srid)
+			geom, _, err = DeserializePoly(val, isBig, srid)
 		case WKBMultiPointID:
-			geom, err = DeserializeMPoint(val, isBig, srid)
+			geom, _, err = DeserializeMPoint(val, isBig, srid)
 		case WKBMultiLineID:
-			geom, err = DeserializeMLine(val, isBig, srid)
+			geom, _, err = DeserializeMLine(val, isBig, srid)
 		case WKBMultiPolyID:
-			geom, err = DeserializeMPoly(val, isBig, srid)
-		case WKBGeomCollectionID:
-			return nil, ErrUnsupportedGISType.New("GeometryCollection", hex.EncodeToString(val))
+			geom, _, err = DeserializeMPoly(val, isBig, srid)
+		case WKBGeomCollID:
+			geom, _, err = DeserializeGeomColl(val, isBig, srid)
 		default:
 			return nil, ErrInvalidGISData.New("GeometryType.Convert")
 		}

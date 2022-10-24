@@ -2000,6 +2000,24 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter json column default; from scorewarrior: https://github.com/dolthub/dolt/issues/4543",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int default 999, j json);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test alter column j set default ('[]');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "show create table test",
+				Expected: []sql.Row{
+					{"test", "CREATE TABLE `test` (\n  `i` int DEFAULT '999',\n  `j` json DEFAULT ('[]')\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",

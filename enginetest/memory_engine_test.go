@@ -744,6 +744,11 @@ func TestAddDropPks(t *testing.T) {
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestAddAutoIncrementColumn(t *testing.T) {
+	t.Skip("in memory tables don't implement sql.RewritableTable yet")
+	enginetest.TestAddAutoIncrementColumn(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestNullRanges(t *testing.T) {
 	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness())
 }
