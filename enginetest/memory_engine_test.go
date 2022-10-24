@@ -185,54 +185,23 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "non-existent procedure in trigger body",
+			Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
 			SetUpScript: []string{
-				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+				"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
+				"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+					Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+					Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
 				},
 				{
-					Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
-SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
-INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
-					ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
-				},
-				{
-					Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:    "CALL add_entry(4, 'aaa');",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
-				},
-				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
-				},
-				{
-					Query:    "SELECT * FROM t1;",
-					Expected: []sql.Row{{1, 8, "aaa"}},
-				},
-				{
-					Query:          "CALL add_entry(54, 'bbb');",
-					ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
+					Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
+					Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
 				},
 			},
 		},
@@ -244,8 +213,8 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		if err != nil {
 			panic(err)
 		}
-		// engine.Analyzer.Debug = true
-		// engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

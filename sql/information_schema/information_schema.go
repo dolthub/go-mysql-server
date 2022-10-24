@@ -1460,6 +1460,9 @@ func NewInformationSchemaDatabase() Database {
 				schema:  collationsSchema,
 				rowIter: collationsRowIter,
 			},
+			ColumnsTableName: &ColumnsTable{
+				name: ColumnsTableName,
+			},
 			CharacterSetsTableName: &informationSchemaTable{
 				name:    CharacterSetsTableName,
 				schema:  characterSetSchema,
@@ -1840,9 +1843,6 @@ func NewInformationSchemaDatabase() Database {
 
 	// The columns table is unlike other info schema tables in that it needs to pass through other parts of the analyzer
 	// in order to fill in column defaults etc., so it needs to be wrapped in a resolved table.
-	isDb.tables[ColumnsTableName] = plan.NewResolvedTable(&ColumnsTable{
-		name: ColumnsTableName,
-	}, isDb, nil)
 
 	return isDb
 }
