@@ -49,52 +49,7 @@ var (
 
 // Compare implements Type interface.
 func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a MultiPoint, throw error otherwise
-	_a, ok := a.(MultiPoint)
-	if !ok {
-		return 0, ErrNotMultiPoint.New(a)
-	}
-	_b, ok := b.(MultiPoint)
-	if !ok {
-		return 0, ErrNotMultiPoint.New(b)
-	}
-
-	// Get shorter length
-	var n int
-	lenA := len(_a.Points)
-	lenB := len(_b.Points)
-	if lenA < lenB {
-		n = lenA
-	} else {
-		n = lenB
-	}
-
-	// Compare each point until there's a difference
-	for i := 0; i < n; i++ {
-		diff, err := PointType{}.Compare(_a.Points[i], _b.Points[i])
-		if err != nil {
-			return 0, err
-		}
-		if diff != 0 {
-			return diff, nil
-		}
-	}
-
-	// Determine based off length
-	if lenA > lenB {
-		return 1, nil
-	}
-	if lenA < lenB {
-		return -1, nil
-	}
-
-	// MultiPoint must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.

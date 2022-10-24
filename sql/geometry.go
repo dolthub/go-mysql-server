@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"bytes"
 	"encoding/binary"
 	"math"
 	"reflect"
@@ -385,24 +386,17 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return res, nil
 	}
 
-	switch inner := a.(type) {
-	case Point:
-		return PointType{}.Compare(inner, b)
-	case LineString:
-		return LineStringType{}.Compare(inner, b)
-	case Polygon:
-		return PolygonType{}.Compare(inner, b)
-	case MultiPoint:
-		return MultiPointType{}.Compare(inner, b)
-	case MultiLineString:
-		return MultiLineStringType{}.Compare(inner, b)
-	case MultiPolygon:
-		return MultiPolygonType{}.Compare(inner, b)
-	case GeomColl:
-		return GeomCollType{}.Compare(inner, b)
-	default:
+	aa, ok := a.(GeometryValue)
+	if !ok {
 		return 0, ErrNotGeometry.New(a)
 	}
+
+	bb, ok := b.(GeometryValue)
+	if !ok {
+		return 0, ErrNotGeometry.New(b)
+	}
+
+	return bytes.Compare(aa.Serialize(), bb.Serialize()), nil
 }
 
 // Convert implements Type interface.

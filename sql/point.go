@@ -51,39 +51,7 @@ var (
 
 // Compare implements Type interface.
 func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a Point, throw error otherwise
-	_a, ok := a.(Point)
-	if !ok {
-		return 0, ErrNotPoint.New(a)
-	}
-	_b, ok := b.(Point)
-	if !ok {
-		return 0, ErrNotPoint.New(b)
-	}
-
-	// Compare X values
-	if _a.X > _b.X {
-		return 1, nil
-	}
-	if _a.X < _b.X {
-		return -1, nil
-	}
-
-	// Compare Y values
-	if _a.Y > _b.Y {
-		return 1, nil
-	}
-	if _a.Y < _b.Y {
-		return -1, nil
-	}
-
-	// Points must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.

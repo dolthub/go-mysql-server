@@ -388,6 +388,8 @@ func ConvertToString(v interface{}, t StringType) (string, error) {
 		if err != nil {
 			return "", err
 		}
+	case GeometryValue:
+		return string(s.Serialize()), nil
 	default:
 		return "", ErrConvertToSQL.New(t)
 	}
