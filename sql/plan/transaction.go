@@ -21,7 +21,7 @@ import (
 )
 
 // transactionNode implements all the no-op methods of sql.Node
-type transactionNode struct {}
+type transactionNode struct{}
 
 func (transactionNode) Children() []sql.Node {
 	return nil
@@ -197,6 +197,7 @@ func (r *Rollback) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	return r, nil
 }
+
 // CreateSavepoint creates a savepoint with the given name. For sessions that don't implement sql.TransactionSession,
 // this is a no-op.
 type CreateSavepoint struct {
