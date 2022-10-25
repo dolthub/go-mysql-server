@@ -69,6 +69,7 @@ var DefaultRules = []Rule{
 	{pushdownSortId, pushdownSort},
 	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
+	//{resolveInsertRowsId, resolveInsertRows},
 	{qualifyColumnsId, qualifyColumns},
 	{pruneTablesId, pruneTables},
 	{resolveColumnsId, resolveColumns},

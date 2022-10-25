@@ -237,7 +237,7 @@ func dedupStrings(in []string) []string {
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
 	// on the full scope; otherwise transform looks at sub-nodes and calculates a partial view of what is available.
-	symbols := getAvailableNamesByScope(n, scope)
+	symbols := getAvailableNamesByScope(ctx, n, a, scope)
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
@@ -310,7 +310,7 @@ func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) 
 // getAvailableNamesByScope searches the node |n|, the current query being analyzed, as well as any nodes from outer
 // scope levels contained in |scope| in order to calculate the available columns, tables, and aliases available to
 // the current scope.
-func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
+func getAvailableNamesByScope(ctx *sql.Context, n sql.Node, a *Analyzer, scope *Scope) availableNames {
 	symbols := make(availableNames)
 
 	scopeNodes := make([]sql.Node, 0, 1+len(scope.InnerToOuter()))
@@ -321,7 +321,10 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	// Examine all columns, from the innermost scope (this node) outward.
 	children := n.Children()
 	if in, ok := n.(*plan.InsertInto); ok {
-		children = append(children, in.Source)
+		childs := in.Source.Children()
+		if len(childs) != 0 {
+			children = append(children, childs[0])
+		}
 	}
 
 	getColumnsInNodes(children, symbols, currentScopeLevel-1)
@@ -835,6 +838,10 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
+	case *plan.InsertInto:
+		for _, child := range node.Source.Children() {
+			indexSchema(child.Schema())
+		}
 	}
 
 	return columns, nil

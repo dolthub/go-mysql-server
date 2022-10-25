@@ -193,8 +193,7 @@ func TestSingleScript(t *testing.T) {
 		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				//Query:    "insert into t1 (select * from t2) on duplicate key update i = t2.j;",
-				Query:    "insert into t1 (select * from t2) on duplicate key update t1.i = 0;",
+				Query:    "insert into t1 (select * from t2) on duplicate key update i = t2.j;",
 				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
 			},
 		},
