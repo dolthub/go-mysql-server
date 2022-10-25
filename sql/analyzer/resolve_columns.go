@@ -602,17 +602,14 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		var jtSame transform.TreeIdentity
 		var jtErr error
 		switch j := n.(type) {
-		case *plan.CrossJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.NaturalJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.InnerJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+		case *plan.JoinNode:
+			switch {
+			case j.Op.IsNatural() || j.Op.IsInner():
+				if jt, ok := j.Right().(*plan.JSONTable); ok {
+					jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+				}
+			default:
+				return n, transform.SameTree, nil
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -640,7 +637,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			return nil, transform.SameTree, err
 		}
 
-		return transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		ret, _, err := transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, transform.SameTree, nil
@@ -648,6 +645,10 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 
 			return resolveColumnExpression(a, newN, uc, columns)
 		})
+		if err != nil {
+			return nil, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, nil
 	})
 }
 
@@ -702,7 +703,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
+func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
 	var idx int
 

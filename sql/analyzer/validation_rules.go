@@ -412,6 +412,10 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			for _, e := range er.Expressions() {
 				nc := sql.NumColumns(e.Type())
 				if nc != 1 {
+					if _, ok := er.(*plan.HashLookup); ok {
+						// hash lookup expressions are tuples with >= 1 columns
+						return true
+					}
 					err = sql.ErrInvalidOperandColumns.New(1, nc)
 					return false
 				}
@@ -494,9 +498,12 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 			// these nodes are not reflected in the schema
 			// calculations here. This needs to be rationalized
 			// across the analyzer.
-			switch n.(type) {
-			case *plan.IndexedJoin, *plan.IndexedInSubqueryFilter:
+			switch n := n.(type) {
+			case *plan.IndexedInSubqueryFilter:
 				return false
+			case *plan.JoinNode:
+				return !n.Op.IsLookup()
+			default:
 			}
 			if es, ok := n.(sql.Expressioner); ok {
 				childSchemaLen := len(schemas(n.Children()))

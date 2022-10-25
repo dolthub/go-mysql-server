@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
+
 	"github.com/dolthub/go-mysql-server/optgen/cmd/support"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
@@ -41,6 +43,7 @@ func main() {
 	case "frame":
 	case "frameFactory":
 	case "framer":
+	case "memo":
 
 	default:
 		flag.Usage()
@@ -82,6 +85,8 @@ func main() {
 		err = generateFramesFactory(nil, writer)
 	case "framer":
 		err = generateFramers(nil, writer)
+	case "memo":
+		err = generateMemo(analyzer.ExprDefs, writer)
 	}
 
 	if err != nil {
@@ -129,6 +134,11 @@ func generateFramesFactory(defines support.GenDefs, w io.Writer) error {
 
 func generateFramers(defines support.GenDefs, w io.Writer) error {
 	var gen support.FramerGen
+	return generate(defines, w, gen.Generate)
+}
+
+func generateMemo(defines support.GenDefs, w io.Writer) error {
+	var gen support.MemoGen
 	return generate(defines, w, gen.Generate)
 }
 

@@ -40,7 +40,7 @@ type Index interface {
 	// ColumnExpressionTypes returns each expression and its associated Type.
 	// Each expression string should exactly match the string returned from
 	// Index.Expressions().
-	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
+	ColumnExpressionTypes() []ColumnExpressionType
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
 	CanSupport(...Range) bool

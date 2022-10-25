@@ -451,7 +451,7 @@ func (i dummyIdx) IndexType() string { return "BTREE" }
 func (i dummyIdx) NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error) {
 	panic("not implemented")
 }
-func (i dummyIdx) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {
+func (i dummyIdx) ColumnExpressionTypes() []ColumnExpressionType {
 	panic("not implemented")
 }
 

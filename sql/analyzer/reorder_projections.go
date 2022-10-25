@@ -85,7 +85,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			return nil, transform.SameTree, err
 		}
 
-		child, _, err = resolveSubqueryExpressions(ctx, a, child, scope, sel)
+		child, _, err = resolveSubqueries(ctx, a, child, scope, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -251,8 +251,8 @@ func findDeferredColumnsAndAliasReferences(n sql.Node) []column {
 func hasNaturalJoin(node sql.Node) bool {
 	var found bool
 	transform.Inspect(node, func(node sql.Node) bool {
-		if _, ok := node.(*plan.NaturalJoin); ok {
-			found = true
+		if j, ok := node.(*plan.JoinNode); ok {
+			found = j.Op.IsNatural()
 			return false
 		}
 		return true

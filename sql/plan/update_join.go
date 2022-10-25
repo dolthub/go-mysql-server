@@ -84,7 +84,7 @@ func (u *UpdateJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	return u.Child.CheckPrivileges(ctx, opChecker)
 }
 
-// updateJoinIter wraps the child UpdateSource iter and returns join row in such a way that updates per table row are
+// updateJoinIter wraps the child UpdateSource projectIter and returns join row in such a way that updates per table row are
 // done once.
 type updateJoinIter struct {
 	updateSourceIter sql.RowIter
@@ -157,24 +157,26 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
+func isRightOrLeftJoin(node sql.Node) bool {
+	jn, ok := node.(*JoinNode)
+	if !ok {
+		return false
+	}
+	return jn.JoinType().IsLeftOuter()
+}
+
 // shouldUpdateDirectionalJoin determines whether a table row should be updated in the context of a large right/left join row.
 // A table row should only be updated if 1) It fits the join conditions (the intersection of the join) 2) It fits only
 // the left or right side of the join (given the direction). A row of all nils that does not pass condition 1 must not
 // be part of the update operation. This is follows the logic as established in the joinIter.
 func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, tableRow sql.Row) (bool, error) {
-	jn := u.joinNode.(JoinNode)
-	var cond sql.Expression
-	switch n := jn.(type) {
-	case *RightJoin:
-		cond = n.Filter
-	case *LeftJoin:
-		cond = n.Filter
-	default:
-		return true, fmt.Errorf("error: should only consider left or right join.")
+	jn := u.joinNode.(*JoinNode)
+	if !jn.JoinType().IsLeftOuter() {
+		return true, fmt.Errorf("expected left join")
 	}
 
 	// If the overall row fits the join condition it is fine (i.e. middle of the venn diagram).
-	val, err := cond.Eval(ctx, joinRow)
+	val, err := jn.JoinCond().Eval(ctx, joinRow)
 	if err != nil {
 		return true, err
 	}

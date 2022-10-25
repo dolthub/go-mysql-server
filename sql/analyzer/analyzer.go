@@ -376,18 +376,34 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId, optimizeJoinsId, finalizeSubqueryExprsId, parallelizeId:
+		case pruneColumnsId,
+			optimizeJoinsId,
+			setJoinScopeLenId,
+			applyHashLookupsId,
+			finalizeSubqueryExprsId,
+			parallelizeId,
+			pushdownFiltersId:
 			return false
 		}
 		return sel(id)
 	}
 }
 
-func NewNestedSubqueryFinalizer(sel RuleSelector) RuleSelector {
+func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId, optimizeJoinsId:
+		case pruneColumnsId, optimizeJoinsId, setJoinScopeLenId, applyHashLookupsId, pushdownFiltersId:
 			return true
+		}
+		return sel(id)
+	}
+}
+
+func NewResolveSubquerySel(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case pruneColumnsId, optimizeJoinsId, pushdownFiltersId:
+			return false
 		}
 		return sel(id)
 	}
