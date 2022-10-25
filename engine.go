@@ -358,18 +358,6 @@ func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, bindings m
 		return nil, err
 	}
 
-	// When a statement is prepared, the QueryProcess node's dispose function is bound to the PID for the context
-	// that analyzed the statement; we need to update that dispose function to bind to the PID for the context that
-	// is actually executing the statement, otherwise ProcessList metadata won't get properly cleaned up.
-	if _, ok := analyzed.(*plan.QueryProcess); ok {
-		analyzed = plan.NewQueryProcess(analyzed.Children()[0], func() {
-			ctx.ProcessList.Done(ctx.Pid())
-			if span := ctx.RootSpan(); span != nil {
-				span.End()
-			}
-		})
-	}
-
 	if len(bindings) > 0 {
 		analyzed, err = plan.ApplyBindings(analyzed, bindings)
 		if err != nil {
