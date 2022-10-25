@@ -76,6 +76,7 @@ var DefaultRules = []Rule{
 	{validateCheckConstraintId, validateCheckConstraints},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables},
 	{expandStarsId, expandStars},
+	{transposeRightJoinsId, transposeRightJoins},
 	{resolveHavingId, resolveHaving},
 	{mergeUnionSchemasId, mergeUnionSchemas},
 	{flattenAggregationExprsId, flattenAggregationExpressions},
@@ -90,16 +91,19 @@ var DefaultRules = []Rule{
 // OnceAfterDefault contains the rules to be applied just once after the
 // DefaultRules.
 var OnceAfterDefault = []Rule{
+	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{assignCatalogId, assignCatalog},
-	{pruneColumnsId, pruneColumns},
-	{hoistSelectExistsId, hoistSelectExists},
+	// pushdownFilters currently has to happen after constructing join plan.
+	// TODO better way to represent filters, so that we can use them during
+	// join planning
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
+	{pruneColumnsId, pruneColumns},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{replaceSortPkId, replacePkSort},

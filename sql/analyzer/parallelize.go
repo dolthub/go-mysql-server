@@ -186,16 +186,16 @@ func isParallelizable(node sql.Node) bool {
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
-		case *plan.FullOuterJoin:
-			parallelizable = false
-			lastWasTable = true
-			tableSeen = true
-			return false
+		case *plan.JoinNode:
+			if node.Op.IsFullOuter() {
+				parallelizable = false
+				lastWasTable = true
+				tableSeen = true
+				return false
+			}
 		default:
 			parallelizable = false
-			return false
 		}
-
 		return true
 	})
 

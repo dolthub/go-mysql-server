@@ -290,8 +290,9 @@ func TestTrackProcess(t *testing.T) {
 	proc, ok := result.(*plan.QueryProcess)
 	require.True(ok)
 
-	join, ok := proc.Child().(*plan.InnerJoin)
+	join, ok := proc.Child().(*plan.JoinNode)
 	require.True(ok)
+	require.Equal(join.JoinType(), plan.JoinTypeInner)
 
 	lhs, ok := join.Left().(*plan.ResolvedTable)
 	require.True(ok)

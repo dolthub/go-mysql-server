@@ -251,8 +251,8 @@ func findDeferredColumnsAndAliasReferences(n sql.Node) []column {
 func hasNaturalJoin(node sql.Node) bool {
 	var found bool
 	transform.Inspect(node, func(node sql.Node) bool {
-		if _, ok := node.(*plan.NaturalJoin); ok {
-			found = true
+		if j, ok := node.(*plan.JoinNode); ok {
+			found = j.Op.IsNatural()
 			return false
 		}
 		return true

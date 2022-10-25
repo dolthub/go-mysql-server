@@ -134,7 +134,7 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-
+	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
 		Query:    `select 1 as b, (select b order by b);`,
@@ -319,7 +319,7 @@ func TestIntegrationQueryPlans(t *testing.T) {
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 2, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestIntegrationPlans(t, harness)
 		})
 	}

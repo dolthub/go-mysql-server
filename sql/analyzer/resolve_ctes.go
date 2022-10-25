@@ -201,10 +201,7 @@ func schemaLength(node sql.Node) int {
 		case *plan.Window:
 			schemaLen = len(node.SelectExprs)
 			return false
-		case *plan.CrossJoin:
-			schemaLen = schemaLength(node.Left()) + schemaLength(node.Right())
-			return false
-		case plan.JoinNode:
+		case *plan.JoinNode:
 			schemaLen = schemaLength(node.Left()) + schemaLength(node.Right())
 			return false
 		default:
