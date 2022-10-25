@@ -412,7 +412,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		var updaterMap map[string]sql.RowUpdater
 		transform.Inspect(r.Child(), func(node sql.Node) bool {
 			switch node.(type) {
-			case JoinNode, *CrossJoin, *Project, *IndexedJoin:
+			case *JoinNode, *Project:
 				schema = node.Schema()
 				return false
 			case *UpdateJoin:

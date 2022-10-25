@@ -13,15 +13,20 @@ func _() {
 	_ = x[JoinTypeInner-2]
 	_ = x[JoinTypeSemi-3]
 	_ = x[JoinTypeAnti-4]
-	_ = x[JoinTypeLeft-5]
+	_ = x[JoinTypeLeftOuter-5]
 	_ = x[JoinTypeFullOuter-6]
 	_ = x[JoinTypeGroupBy-7]
-	_ = x[JoinTypeRight-8]
+	_ = x[JoinTypeRightOuter-8]
+	_ = x[JoinTypeLookup-9]
+	_ = x[JoinTypeLeftOuterLookup-10]
+	_ = x[JoinTypeHash-11]
+	_ = x[JoinTypeLeftOuterHash-12]
+	_ = x[JoinTypeNatural-13]
 }
 
-const _JoinType_name = "UnknownJoinCrossJoinInnerJoinSemiJoinAntiJoinLeftJoinFullOuterJoinGroupByJoinRightJoin"
+const _JoinType_name = "UnknownJoinCrossJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinNaturalJoin"
 
-var _JoinType_index = [...]uint8{0, 11, 20, 29, 37, 45, 53, 66, 77, 86}
+var _JoinType_index = [...]uint8{0, 11, 20, 29, 37, 45, 58, 71, 82, 91, 101, 120, 128, 145, 156}
 
 func (i JoinType) String() string {
 	if i >= JoinType(len(_JoinType_index)-1) {

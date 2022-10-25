@@ -30,24 +30,28 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	var replacements = make(map[tableCol]tableCol)
 
-	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := node.(type) {
-		case *plan.NaturalJoin:
-			newn, err := resolveNaturalJoin(n, replacements)
-			if err != nil {
-				return nil, transform.SameTree, err
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *plan.JoinNode:
+			if n.Op.IsNatural() {
+				newn, err := resolveNaturalJoin(n, replacements)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return newn, transform.NewTree, nil
 			}
-			return newn, transform.NewTree, nil
-		case sql.Expressioner:
-			return replaceExpressionsForNaturalJoin(ctx, node, replacements)
 		default:
+		}
+		e, ok := n.(sql.Expressioner)
+		if !ok {
 			return n, transform.SameTree, nil
 		}
+		return replaceExpressionsForNaturalJoin(ctx, e.(sql.Node), replacements)
 	})
 }
 
 func resolveNaturalJoin(
-	n *plan.NaturalJoin,
+	n *plan.JoinNode,
 	replacements map[tableCol]tableCol,
 ) (sql.Node, error) {
 	// Both sides of the natural join need to be resolved in order to resolve

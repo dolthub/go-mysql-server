@@ -3698,7 +3698,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo LEFT JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewLeftJoin(
+				plan.NewLeftOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
@@ -3712,7 +3712,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo LEFT OUTER JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewLeftJoin(
+				plan.NewLeftOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
@@ -3726,7 +3726,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo RIGHT JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewRightJoin(
+				plan.NewRightOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
@@ -3740,7 +3740,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo RIGHT OUTER JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewRightJoin(
+				plan.NewRightOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(

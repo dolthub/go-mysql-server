@@ -101,7 +101,7 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode NameableNode,
 			}
 			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				ret := plan.NewIndexedTableAccess(n, iat.IndexedAccess(index), plan.NewLookupBuilder(ctx, index, keyExpr, nullmask))
+				ret := plan.NewIndexedTableAccess(n, iat.IndexedAccess(index), plan.NewLookupBuilder(index, keyExpr, nullmask))
 				return ret, transform.NewTree, nil
 			}
 		}
@@ -188,7 +188,7 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 	idxExpressions := idx.Expressions()
 	normalizedJoinExprStrs := make([]string, len(joinExprs))
 	for i := range joinExprs {
-		normalizedJoinExprStrs[i] = normalizeExpression(ctx, tableAliases, joinExprs[i].colExpr).String()
+		normalizedJoinExprStrs[i] = normalizeExpression(tableAliases, joinExprs[i].colExpr).String()
 	}
 	if ok, prefixCount := exprsAreIndexSubset(normalizedJoinExprStrs, idxExpressions); !ok || prefixCount != len(normalizedJoinExprStrs) {
 		return nil, nil, nil
@@ -262,7 +262,7 @@ func getSubqueryIndexes(
 		if indexCols != nil {
 			table := indexCols[0].comparandCol.Table()
 			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table,
-				normalizeExpressions(ctx, tableAliases, extractComparands(indexCols)...)...)
+				normalizeExpressions(tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
 				result[table] = idx
 			}

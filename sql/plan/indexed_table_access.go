@@ -354,7 +354,7 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 
 type lookupBuilderKey []interface{}
 
-// LookupBuilder abstracts secondary table access for an IndexedJoin.
+// LookupBuilder abstracts secondary table access for an LookupJoin.
 // A row from the primary table is first evaluated on the secondary index's
 // expressions (columns) to produce a lookupBuilderKey. Consider the
 // query below, assuming B has an index `xy (x,y)`:
@@ -405,8 +405,8 @@ type LookupBuilder struct {
 	cets          []sql.ColumnExpressionType
 }
 
-func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
-	cets := index.ColumnExpressionTypes(ctx)
+func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
+	cets := index.ColumnExpressionTypes()
 	var nullSafe = true
 	for i := range matchesNullMask {
 		if matchesNullMask[i] {

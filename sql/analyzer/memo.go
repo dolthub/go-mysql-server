@@ -1,0 +1,563 @@
+// Copyright 2022 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package analyzer
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/dolthub/go-mysql-server/optgen/cmd/support"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+)
+
+//go:generate optgen -out memo.og.go -pkg analyzer memo memo.go
+
+type GroupId uint16
+type TableId uint16
+
+// Memo collects a forest of query plans structured by logical and
+// physical equivalency. Logically equivalent plans, represented by
+// an exprGroup, produce the same rows (possibly unordered) and schema.
+// Physical plans are stored in a linked list within an expression group.
+type Memo struct {
+	cnt  uint16
+	root *exprGroup
+
+	orderHint *joinOrderDeps
+	c         *coster
+	ctx       *sql.Context
+	scope     *Scope
+	scopeLen  int
+
+	tableProps *tableProps
+}
+
+func NewMemo(ctx *sql.Context, s *Scope) *Memo {
+	return &Memo{
+		ctx:        ctx,
+		c:          &coster{ctx: ctx},
+		scope:      s,
+		scopeLen:   len(s.Schema()),
+		tableProps: newTableProps(),
+	}
+}
+
+// memoize creates a new logical expression group to encapsulate the
+// action of a SQL clause.
+// TODO: this is supposed to deduplicate logically equivalent table scans
+// and scalar expressions, replacing references with a pointer. Currently
+// a hacky format to quickly support memoizing join trees.
+func (m *Memo) memoize(rel relExpr) *exprGroup {
+	m.cnt++
+	id := GroupId(m.cnt)
+	grp := newExprGroup(m, id, rel)
+
+	if s, ok := rel.(sourceRel); ok {
+		m.tableProps.addTable(s.name(), id)
+	}
+	return grp
+}
+
+// optimizeRoot finds the implementation for the root expression
+// that ahs the lowest cost.
+func (m *Memo) optimizeRoot() error {
+	return m.optimizeMemoGroup(m.root)
+}
+
+// optimizeMemoGroup recursively builds the lowest cost plan for memo
+// group expressions. We optimize expressions groups independently, walking
+// the linked list of execution plans for a particular group only after
+// optimizing all subgroups. All plans within a group by definition share
+// the same subgroup dependencies. After finding the best implementation
+// for a particular group, we fix the best plan for that group and recurse
+// into its parents.
+// TODO: we should not have to cost every plan, sometimes there is a provably
+// best case implementation
+func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
+	if grp.done {
+		return nil
+	}
+	n := grp.first
+	for n != nil {
+		var cost float64
+		for _, g := range n.children() {
+			err := m.optimizeMemoGroup(g)
+			if err != nil {
+				return err
+			}
+			cost += g.cost
+		}
+		relCost, err := m.c.costRel(n)
+		if err != nil {
+			return err
+		}
+		cost += relCost
+		m.updateBest(grp, n, cost)
+		n = n.next()
+	}
+	grp.done = true
+	return nil
+}
+
+// updateBest is given a logical expression group, a physical implementation
+// in the same group, and the estimated cost for the operator. We update best
+// plans for an expression group cognizant of join ordering; we pick either
+// the best hinted plan or the best overall plan if the hint corresponds to
+// no valid plan.
+func (m *Memo) updateBest(grp *exprGroup, n relExpr, cost float64) {
+	if m.orderHint != nil {
+		if m.orderHint.obeysOrder(n) {
+			if !grp.hintSatisfied {
+				grp.best = n
+				grp.cost = cost
+				grp.hintSatisfied = true
+				return
+			}
+			grp.updateBest(n, cost)
+		} else if grp.best == nil || !grp.hintSatisfied {
+			grp.updateBest(n, cost)
+		}
+		return
+	}
+	grp.updateBest(n, cost)
+}
+
+func (m *Memo) bestRootPlan() (sql.Node, error) {
+	b := NewExecBuilder()
+	return buildBestJoinPlan(b, m.root, nil)
+}
+
+// buildBestJoinPlan converts group's lowest cost implementation into a
+// tree node with a recursive DFS.
+func buildBestJoinPlan(b *ExecBuilder, grp *exprGroup, input sql.Schema) (sql.Node, error) {
+	if !grp.done {
+		panic("expected expression group plans to be fixed")
+	}
+	n := grp.best
+	var err error
+	children := make([]sql.Node, len(n.children()))
+	for i, g := range n.children() {
+		children[i], err = buildBestJoinPlan(b, g, input)
+		if err != nil {
+			return nil, err
+		}
+		input = append(input, g.relProps.OutputCols()...)
+	}
+	return b.buildRel(n, input, children...)
+}
+
+func (m *Memo) WithJoinOrder(hint JoinOrderHint) {
+	// order maps groupId ->
+	order := make(map[GroupId]uint64)
+	for i, t := range hint.tables {
+		id, ok := m.tableProps.getId(t)
+		if !ok {
+			return
+		}
+		order[id] = uint64(i)
+	}
+	m.orderHint = newJoinOrderDeps(order)
+	m.orderHint.build(m.root)
+	if !m.orderHint.isValid() {
+		// bad hint, fallback to default costing
+		m.orderHint = nil
+	}
+}
+
+func (m *Memo) String() string {
+	exprs := make([]string, m.cnt)
+	groups := make([]*exprGroup, 0)
+	if m.root != nil {
+		r := m.root.first
+		for r != nil {
+			groups = append(groups, r.group())
+			groups = append(groups, r.children()...)
+			r = r.next()
+		}
+	}
+	for len(groups) > 0 {
+		newGroups := make([]*exprGroup, 0)
+		for _, g := range groups {
+			if exprs[int(g.id)-1] != "" {
+				continue
+			}
+			exprs[int(g.id)-1] = g.String()
+			newGroups = append(newGroups, g.children()...)
+		}
+		groups = newGroups
+	}
+	b := strings.Builder{}
+	b.WriteString("memo:\n")
+	beg := "├──"
+	for i, g := range exprs {
+		if i == len(exprs)-1 {
+			beg = "└──"
+		}
+		b.WriteString(fmt.Sprintf("%s G%d: %s\n", beg, i+1, g))
+	}
+	return b.String()
+}
+
+// relProps are relational attributes shared by all plans in an expression
+// group (see: exprGroup).
+type relProps struct {
+	grp *exprGroup
+
+	outputCols   sql.Schema
+	outputTables sql.FastIntSet
+}
+
+func newRelProps(rel relExpr) *relProps {
+	var tables sql.FastIntSet
+	var cols sql.Schema
+	switch n := rel.(type) {
+	case sourceRel:
+		cols = append(cols, n.outputCols()...)
+		tables = sql.NewFastIntSet(int(n.tableId()))
+	case *antiJoin:
+		tables = n.left.relProps.OutputTables()
+	case *semiJoin:
+		tables = n.left.relProps.OutputTables()
+	case joinRel:
+		tables = n.joinPrivate().left.relProps.OutputTables().Union(n.joinPrivate().right.relProps.OutputTables())
+	}
+
+	return &relProps{
+		grp:          rel.group(),
+		outputCols:   cols,
+		outputTables: tables,
+	}
+}
+
+// OutputCols returns the output schema of a node
+func (p *relProps) OutputCols() sql.Schema {
+	if !p.grp.done {
+		panic("expression group not fixed")
+	}
+	if p.outputCols == nil {
+		for _, c := range p.grp.best.children() {
+			p.outputCols = append(p.outputCols, c.relProps.OutputCols()...)
+		}
+	}
+	return p.outputCols
+}
+
+// OutputTables returns tables in the output schema of this node.
+func (p *relProps) OutputTables() sql.FastIntSet {
+	return p.outputTables
+}
+
+type tableProps struct {
+	grpToName map[GroupId]string
+	nameToGrp map[string]GroupId
+}
+
+func newTableProps() *tableProps {
+	return &tableProps{
+		grpToName: make(map[GroupId]string),
+		nameToGrp: make(map[string]GroupId),
+	}
+}
+
+func (p *tableProps) addTable(n string, id GroupId) {
+	p.grpToName[id] = n
+	p.nameToGrp[n] = id
+}
+
+func (p *tableProps) getTable(id GroupId) (string, bool) {
+	n, ok := p.grpToName[id]
+	return n, ok
+}
+
+func (p *tableProps) getId(n string) (GroupId, bool) {
+	id, ok := p.nameToGrp[n]
+	return id, ok
+}
+
+// exprGroup is a linked list of plans that return the same result set
+// defined by row count and schema.
+type exprGroup struct {
+	id            GroupId
+	m             *Memo
+	first         relExpr
+	last          relExpr
+	best          relExpr
+	cost          float64
+	done          bool
+	hintSatisfied bool
+
+	relProps *relProps
+}
+
+func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
+	// bit of circularity: |grp| references |ref|, |rel| references |grp|,
+	// and |relProps| references |rel| and |grp| info.
+	grp := &exprGroup{
+		m:     m,
+		id:    id,
+		first: rel,
+		last:  rel,
+	}
+	rel.setGroup(grp)
+	grp.relProps = newRelProps(rel)
+	return grp
+}
+
+// prepend adds a new plan to an expression group at the beginning of
+// the list, to avoid recursive exploration steps (like adding indexed joins).
+func (e *exprGroup) prepend(rel relExpr) {
+	first := e.first
+	e.first = rel
+	rel.setNext(first)
+}
+
+func (e *exprGroup) children() []*exprGroup {
+	n := e.first
+	children := make([]*exprGroup, 0)
+	for n != nil {
+		children = append(children, n.children()...)
+		n = n.next()
+	}
+	return children
+}
+
+func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
+	if e.best == nil || grpCost < e.cost {
+		e.best = n
+		e.cost = grpCost
+	}
+}
+
+func (e *exprGroup) String() string {
+	b := strings.Builder{}
+	n := e.first
+	sep := ""
+	for n != nil {
+		b.WriteString(sep)
+		b.WriteString(fmt.Sprintf("(%s)", formatRelExpr(n)))
+		sep = " "
+		n = n.next()
+	}
+	return b.String()
+}
+
+// relExpr wraps a sql.Node for use as a exprGroup linked list node.
+// TODO: we need relExprs for every sql.Node and sql.Expression
+type relExpr interface {
+	group() *exprGroup
+	next() relExpr
+	setNext(relExpr)
+	children() []*exprGroup
+	setGroup(g *exprGroup)
+	//constructTree(input sql.Schema, children ...sql.Node) (sql.Node, error)
+}
+
+type relBase struct {
+	// g is this relation's expresion group
+	g *exprGroup
+	// n is the next relExpr in the exprGroup linked list
+	n relExpr
+	// c is this relation's cost while costing and plan reify are separate
+	c float64
+}
+
+// relKEy is a quick identifier for avoiding duplicate work on the same
+// relExpr.
+// TODO: the key should be a formalized hash of 1) the operator type, and 2)
+// hashes of the relExpr and scalarExpr children.
+func relKey(r relExpr) uint64 {
+	key := int(r.group().id)
+	i := 1<<16 - 1
+	for _, c := range r.children() {
+		key += i * int(c.id)
+		i *= 1<<16 - 1
+	}
+	return uint64(key)
+}
+
+func (r *relBase) group() *exprGroup {
+	return r.g
+}
+
+func (r *relBase) setGroup(g *exprGroup) {
+	r.g = g
+}
+
+func (r *relBase) next() relExpr {
+	return r.n
+}
+
+func (r *relBase) setNext(rel relExpr) {
+	r.n = rel
+}
+
+func (r *relBase) cost(rel relExpr) float64 {
+	return r.c
+}
+
+func (r *relBase) setCost(c float64) {
+	r.c = c
+}
+
+func tableIdForSource(id GroupId) TableId {
+	return TableId(id - 1)
+}
+
+// sourceRel represents a data source, like a tableScan, subqueryAlias,
+// or list of values.
+type sourceRel interface {
+	// outputCols retuns the output schema of this data source.
+	// TODO: this is more useful as a relExpr property, but we need
+	// this to fix up expression indexes currently
+	outputCols() sql.Schema
+	name() string
+	tableId() TableId
+}
+
+// joinRel represents a plan.JoinNode or plan.CrossJoin. See plan.JoinType
+// for the full list.
+type joinRel interface {
+	relExpr
+	joinPrivate() *joinBase
+	group() *exprGroup
+}
+
+var _ joinRel = (*antiJoin)(nil)
+var _ joinRel = (*concatJoin)(nil)
+var _ joinRel = (*crossJoin)(nil)
+var _ joinRel = (*leftJoin)(nil)
+var _ joinRel = (*fullOuterJoin)(nil)
+var _ joinRel = (*hashJoin)(nil)
+var _ joinRel = (*innerJoin)(nil)
+var _ joinRel = (*lookupJoin)(nil)
+var _ joinRel = (*semiJoin)(nil)
+
+type joinBase struct {
+	*relBase
+
+	op     plan.JoinType
+	filter []sql.Expression
+	left   *exprGroup
+	right  *exprGroup
+}
+
+func (r *joinBase) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+func (r *joinBase) joinPrivate() *joinBase {
+	return r
+}
+
+// copy creates a joinBase with the same underlying join expression.
+// note: it is important to copy the base node to avoid cyclical
+// relExpr references in the exprGroup linked list.
+func (r *joinBase) copy() *joinBase {
+	return &joinBase{
+		relBase: &relBase{
+			g: r.g,
+			n: r.n,
+			c: r.c,
+		},
+		op:     r.op,
+		filter: r.filter,
+		left:   r.left,
+		right:  r.right,
+	}
+}
+
+type lookup struct {
+	source   string
+	index    sql.Index
+	keyExprs []sql.Expression
+	nullmask []bool
+
+	parent *joinBase
+}
+
+var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
+	{
+		Name:   "crossJoin",
+		IsJoin: true,
+	},
+	{
+		Name:   "innerJoin",
+		IsJoin: true,
+	},
+	{
+		Name:   "leftJoin",
+		IsJoin: true,
+	},
+	{
+		Name:   "semiJoin",
+		IsJoin: true,
+	},
+	{
+		Name:   "antiJoin",
+		IsJoin: true,
+	},
+	{
+		Name:   "lookupJoin",
+		IsJoin: true,
+		JoinAttrs: [][2]string{
+			{"lookup", "*lookup"},
+		},
+	},
+	{
+		Name:   "concatJoin",
+		IsJoin: true,
+		JoinAttrs: [][2]string{
+			{"concat", "[]*lookup"},
+		},
+	},
+	{
+		Name:   "hashJoin",
+		IsJoin: true,
+		JoinAttrs: [][2]string{
+			{"innerAttrs", "[]sql.Expression"},
+			{"outerAttrs", "[]sql.Expression"},
+		},
+	},
+	{
+		Name:   "fullOuterJoin",
+		IsJoin: true,
+	},
+	{
+		Name:       "tableScan",
+		SourceType: "*plan.ResolvedTable",
+	},
+	{
+		Name:       "values",
+		SourceType: "*plan.ValueDerivedTable",
+	},
+	{
+		Name:       "tableAlias",
+		SourceType: "*plan.TableAlias",
+	},
+	{
+		Name:       "recursiveTable",
+		SourceType: "*plan.RecursiveTable",
+	},
+	{
+		Name:       "recursiveCte",
+		SourceType: "*plan.RecursiveCte",
+	},
+	{
+		Name:       "subqueryAlias",
+		SourceType: "*plan.SubqueryAlias",
+	},
+}
