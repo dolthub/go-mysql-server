@@ -24,6 +24,31 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: "select * from (select a,v from ab join uv on a=u) av join (select x,q from xy join pq on x = p) xq on av.v = xq.x",
+		ExpectedPlan: "HashJoin(av.v = xq.x)\n" +
+			" ├─ SubqueryAlias(av)\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [ab.a, uv.v]\n" +
+			" │       └─ LookupJoin(ab.a = uv.u)\n" +
+			" │           ├─ Table(ab)\n" +
+			" │           │   └─ columns: [a]\n" +
+			" │           └─ IndexedTableAccess(uv)\n" +
+			" │               ├─ index: [uv.u]\n" +
+			" │               └─ columns: [u v]\n" +
+			" └─ HashLookup(child: (xq.x), lookup: (av.v))\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias(xq)\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [xy.x, pq.q]\n" +
+			"                 └─ LookupJoin(xy.x = pq.p)\n" +
+			"                     ├─ Table(xy)\n" +
+			"                     │   └─ columns: [x]\n" +
+			"                     └─ IndexedTableAccess(pq)\n" +
+			"                         ├─ index: [pq.p]\n" +
+			"                         └─ columns: [p q]\n" +
+			"",
+	},
+	{
 		Query: `select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;`,
 		ExpectedPlan: "InnerJoin(t1.i = t3.i2)\n" +
 			" ├─ Project\n" +
