@@ -44,6 +44,9 @@ func (uc usedColumns) has(table, col string) bool {
 // pruneColumns removes unneeded columns from Project and GroupBy nodes. It also rewrites field indexes as necessary,
 // even if no columns were pruned. This is especially important for subqueries -- this function handles fixing field
 // indexes when the outer scope schema changes as a result of other analyzer functions.
+// TODO: as a result of reordering this rule to facilitate join planning, pruneColumns will not be called
+// in a scope with a join node.
+// TODO: this should be deprecated in favor of pruneTables (which will be renamed pruneColumns)
 func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
@@ -98,8 +101,10 @@ func pruneColumnsIsSafe(n sql.Node) bool {
 	// they are used implicitly in the recursive execution
 	// if not explicitly in the outer scope.
 	transform.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(*plan.RecursiveCte); ok {
+		switch n.(type) {
+		case *plan.RecursiveCte, *plan.Update, *plan.JoinNode:
 			isSafe = false
+		default:
 		}
 		return isSafe
 	})
@@ -117,8 +122,11 @@ func columnsUsedByNode(n sql.Node) usedColumns {
 }
 
 func canPruneChild(c transform.Context) bool {
-	_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
-	return !isIndexedJoin
+	j, ok := c.Parent.(*plan.JoinNode)
+	if !ok {
+		return true
+	}
+	return j.Op.IsPhysical()
 }
 
 func pruneSubqueryColumns(

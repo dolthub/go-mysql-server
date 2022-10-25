@@ -72,6 +72,10 @@ func (sri *stripRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return r[sri.numCols:], nil
 }
 
+func (sri *stripRowIter) Close(ctx *sql.Context) error {
+	return sri.RowIter.Close(ctx)
+}
+
 func NewStripRowNode(child sql.Node, numCols int) sql.Node {
 	return &StripRowNode{UnaryNode: UnaryNode{child}, numCols: numCols}
 }

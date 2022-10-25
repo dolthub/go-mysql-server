@@ -46,6 +46,22 @@ type HashLookup struct {
 	lookup           map[interface{}][]sql.Row
 }
 
+var _ sql.Expressioner = (*HashLookup)(nil)
+
+func (n *HashLookup) Expressions() []sql.Expression {
+	return []sql.Expression{n.childProjection, n.lookupProjection}
+}
+
+func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), 2)
+	}
+	ret := *n
+	ret.childProjection = exprs[0]
+	ret.lookupProjection = exprs[1]
+	return &ret, nil
+}
+
 func (n *HashLookup) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup(child: %v, lookup: %v)", n.childProjection, n.lookupProjection)
@@ -84,7 +100,8 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 		// Instead of building the mapping inline here with a special
 		// RowIter, we currently make use of CachedResults and require
 		// *CachedResults to be our direct child.
-		if res := n.UnaryNode.Child.(*CachedResults).getCachedResults(); res != nil {
+		cr := n.UnaryNode.Child.(*CachedResults)
+		if res := cr.getCachedResults(); res != nil {
 			n.lookup = make(map[interface{}][]sql.Row)
 			for _, row := range res {
 				// TODO: Maybe do not put nil stuff in here.
@@ -97,6 +114,7 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 			// TODO: After the row cache is consumed and
 			// hashed, it would be nice to dispose it. It
 			// will never be used again.
+			cr.Dispose()
 		}
 	}
 	if n.lookup != nil {
@@ -115,6 +133,10 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 // as the join condition is still evaluated after the matching rows are returned.
 func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row) (interface{}, error) {
 	key, err := e.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	key, err = n.lookupProjection.Type().Convert(key)
 	if err != nil {
 		return nil, err
 	}

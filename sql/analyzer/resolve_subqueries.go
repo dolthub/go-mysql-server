@@ -131,7 +131,7 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *pla
 	var same transform.TreeIdentity
 	var err error
 	if finalize {
-		child, same, err = a.analyzeStartingAtBatch(ctx, sqa.Child, subScope, "default-rules", NewNestedSubqueryFinalizer(sel))
+		child, same, err = a.analyzeStartingAtBatch(ctx, sqa.Child, subScope, "default-rules", NewFinalizeNestedSubquerySel(sel))
 	} else {
 		child, same, err = a.analyzeThroughBatch(ctx, sqa.Child, subScope, "default-rules", sel)
 	}
@@ -278,7 +278,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	newNode, sameA, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := c.Node.(type) {
-		case plan.JoinNode, *plan.IndexedJoin:
+		case *plan.JoinNode:
 			return transform.NodeWithCtx(nn, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
 				n := context.Node
 				if context.Parent != nil {
@@ -305,19 +305,21 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	// If the most primary table in the top level join is a CachedResults, remove it.
 	// We only want to do this if we're at the top of the tree.
 	// TODO: Not a perfect indicator of whether we're at the top of the tree...
+	// TODO(max): this should use an in-order top-down search
 	sameD := transform.SameTree
 	if scope.IsEmpty() {
 		selector := func(c transform.Context) bool {
-			if _, isIndexedJoin := c.Parent.(*plan.IndexedJoin); isIndexedJoin {
-				return c.ChildNum == 0
-			} else if j, isJoin := c.Parent.(plan.JoinNode); isJoin {
-				if j.JoinType() == plan.JoinTypeRight {
-					return c.ChildNum == 1
-				} else {
-					return c.ChildNum == 0
-				}
+			j, ok := c.Parent.(*plan.JoinNode)
+			if !ok {
+				return true
 			}
-			return true
+			switch {
+			case j.Op.IsRightOuter():
+				// TODO i'm not sure if this is possible, should be transposed
+				return c.ChildNum == 1
+			default:
+				return c.ChildNum == 0
+			}
 		}
 		newNode, sameD, err = transform.NodeWithCtx(newNode, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			cr, isCR := c.Node.(*plan.CachedResults)
@@ -330,13 +332,15 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	return newNode, sameA && sameD, err
 }
 
+// TODO(max): join iterators should inline remove parentRow + scope,
+// deprecate this rule.
 func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	scopeLen := len(scope.Schema())
 	if scopeLen == 0 {
 		return n, transform.SameTree, nil
 	}
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if j, ok := n.(plan.JoinNode); ok {
+		if j, ok := n.(*plan.JoinNode); ok {
 			nj := j.WithScopeLen(scopeLen)
 			if _, ok := nj.Left().(*plan.StripRowNode); !ok {
 				nj, err := nj.WithChildren(

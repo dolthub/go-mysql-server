@@ -132,7 +132,20 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT (SELECT count(*) FROM (SELECT U0.`id` FROM `dcim_rack` U0 INNER JOIN `dcim_rackgroup` U1 ON (U0.`group_id` = U1.`id`) WHERE (U1.`lft` >= `dcim_rackgroup`.`lft` AND U1.`lft` <= `dcim_rackgroup`.`rght` AND U1.`tree_id` = `dcim_rackgroup`.`tree_id`)) _count) AS `rack_count` FROM `dcim_rackgroup` WHERE `dcim_rackgroup`.`id` IN ('rackgroup1', 'rackgroup2')",
+				Query: `
+SELECT (
+  SELECT count(*) FROM (
+    SELECT U0.id
+    FROM dcim_rack U0
+    INNER JOIN dcim_rackgroup U1 ON (U0.group_id = U1.id)
+    WHERE 
+      U1.lft >= dcim_rackgroup.lft AND
+      U1.lft <= dcim_rackgroup.rght AND
+      U1.tree_id = dcim_rackgroup.tree_id
+  ) _count
+) AS rack_count
+FROM dcim_rackgroup
+WHERE dcim_rackgroup.id IN ('rackgroup1', 'rackgroup2')`,
 				Expected: []sql.Row{{4}, {1}},
 			},
 			{

@@ -41,9 +41,9 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 		case *plan.Filter:
 			var replacement sql.Node
 			if eq, isEqual := node.Expression.(*expression.Equals); isEqual {
-				replacement = getIndexedInSubqueryFilter(ctx, a, eq.Left(), eq.Right(), node, true, scope, aliases)
+				replacement = getIndexedInSubqueryFilter(ctx, eq.Left(), eq.Right(), node, true, scope, aliases)
 			} else if is, isInSubquery := node.Expression.(*plan.InSubquery); isInSubquery {
-				replacement = getIndexedInSubqueryFilter(ctx, a, is.Left, is.Right, node, false, scope, aliases)
+				replacement = getIndexedInSubqueryFilter(ctx, is.Left, is.Right, node, false, scope, aliases)
 			}
 			if replacement != nil {
 				return replacement, transform.NewTree, nil
@@ -53,7 +53,14 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 	})
 }
 
-func getIndexedInSubqueryFilter(ctx *sql.Context, _ *Analyzer, left, right sql.Expression, node *plan.Filter, equals bool, scope *Scope, tableAliases TableAliases) sql.Node {
+func getIndexedInSubqueryFilter(
+	ctx *sql.Context,
+	left, right sql.Expression,
+	node *plan.Filter,
+	equals bool,
+	scope *Scope,
+	tableAliases TableAliases,
+) sql.Node {
 	gf, isGetField := left.(*expression.GetField)
 	subq, isSubquery := right.(*plan.Subquery)
 	rt, isResolved := node.Child.(*plan.ResolvedTable)
@@ -69,14 +76,14 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, _ *Analyzer, left, right sql.E
 		return nil
 	}
 	defer indexes.releaseUsedIndexes()
-	idx := indexes.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rt.Name(), normalizeExpressions(ctx, tableAliases, gf)...)
+	idx := indexes.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rt.Name(), normalizeExpressions(tableAliases, gf)...)
 	if idx == nil {
 		return nil
 	}
 	keyExpr := gf.WithIndex(0)
 	// We currently only support *expresssion.Equals and *InSubquery; neither matches null.
 	nullmask := []bool{false}
-	ita, err := plan.NewIndexedAccessForResolvedTable(rt, plan.NewLookupBuilder(ctx, idx, []sql.Expression{keyExpr}, nullmask))
+	ita, err := plan.NewIndexedAccessForResolvedTable(rt, plan.NewLookupBuilder(idx, []sql.Expression{keyExpr}, nullmask))
 	if err != nil {
 		return nil
 	}

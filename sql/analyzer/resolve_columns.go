@@ -597,17 +597,14 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		var jtSame transform.TreeIdentity
 		var jtErr error
 		switch j := n.(type) {
-		case *plan.CrossJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.NaturalJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.InnerJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+		case *plan.JoinNode:
+			switch {
+			case j.Op.IsNatural() || j.Op.IsInner():
+				if jt, ok := j.Right().(*plan.JSONTable); ok {
+					jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+				}
+			default:
+				return n, transform.SameTree, nil
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -635,7 +632,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			return nil, transform.SameTree, err
 		}
 
-		return transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		ret, _, err := transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, transform.SameTree, nil
@@ -643,6 +640,10 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 
 			return resolveColumnExpression(a, newN, uc, columns)
 		})
+		if err != nil {
+			return nil, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, nil
 	})
 }
 

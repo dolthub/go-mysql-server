@@ -24,6 +24,7 @@ import (
 // applyHashLookups adds HashLookup nodes directly above any CachedResults node that is a direct child of a join node, or
 // a direct child of a StripRowNode that is a direct child of a join node. The added HashLookup node allows fast lookups
 // to any row in the cached results.
+// TODO(max): this should be deprecated and added to memo for costing
 func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithPrefixSchema(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if c.SchemaPrefix == nil {
@@ -33,60 +34,28 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			// our schema actually is.
 			return c.Node, transform.SameTree, nil
 		}
-
-		switch j := c.Node.(type) {
-		case plan.JoinNode, *plan.IndexedJoin:
-			leftChild, leftIdentity, err := applyHashLookupToJoinChild(true, c.Node, j.(sql.BinaryNode).Left(), c.SchemaPrefix, scope)
-			if err != nil {
-				return c.Node, transform.SameTree, err
-			}
-
-			newSchemaPrefix := append(sql.Schema{}, c.SchemaPrefix...)
-			newSchemaPrefix = append(newSchemaPrefix, leftChild.Schema()...)
-			rightChild, rightIdentity, err := applyHashLookupToJoinChild(false, c.Node, j.(sql.BinaryNode).Right(), newSchemaPrefix, scope)
-			if err != nil {
-				return c.Node, transform.SameTree, err
-			}
-
-			// Handle returned Join node now that we have taken care of left and right children
-			if !leftIdentity || !rightIdentity {
-				newNode, err := c.Node.WithChildren(leftChild, rightChild)
-				if err != nil {
-					return c.Node, transform.SameTree, err
-				}
-
-				newJoinNode, isJoinNode := newNode.(plan.JoinNode)
-				if isJoinNode {
-					// JoinNodes implement a number of join modes, some of which put all results from the
-					// primary or secondary table in memory. This hash lookup implementation is expecting
-					// multipass mode, so we apply that here if we have a JoinNode whose secondary child
-					// is a HashLookup.
-					if newJoinNode.JoinType() == plan.JoinTypeRight {
-						if _, ok := newJoinNode.Left().(*plan.HashLookup); ok {
-							return newJoinNode.WithMultipassMode(), transform.NewTree, nil
-						} else if child, ok := newJoinNode.Left().(*plan.StripRowNode); ok {
-							if _, ok := child.Child.(*plan.HashLookup); ok {
-								return newJoinNode.WithMultipassMode(), transform.NewTree, nil
-							}
-						}
-					} else {
-						if _, ok := newJoinNode.Right().(*plan.HashLookup); ok {
-							return newJoinNode.WithMultipassMode(), transform.NewTree, nil
-						} else if child, ok := newJoinNode.Right().(*plan.StripRowNode); ok {
-							if _, ok := child.Child.(*plan.HashLookup); ok {
-								return newJoinNode.WithMultipassMode(), transform.NewTree, nil
-							}
-						}
-					}
-				}
-
-				return newNode, transform.NewTree, nil
-			} else {
-				return c.Node, transform.SameTree, nil
-			}
-		default:
+		j, ok := c.Node.(*plan.JoinNode)
+		if !ok {
 			return c.Node, transform.SameTree, nil
 		}
+
+		newSchemaPrefix := append(sql.Schema{}, c.SchemaPrefix...)
+		newSchemaPrefix = append(newSchemaPrefix, j.Left().Schema()...)
+		rightChild, rightSame, err := applyHashLookupToJoinChild(j, j.Right(), newSchemaPrefix, scope)
+		if err != nil {
+			return c.Node, transform.SameTree, err
+		}
+
+		if rightSame {
+			return c.Node, transform.SameTree, nil
+		}
+
+		newNode, err := c.Node.WithChildren(j.Left(), rightChild)
+		if err != nil {
+			return c.Node, transform.SameTree, err
+		}
+
+		return newNode, transform.NewTree, nil
 	})
 }
 
@@ -141,41 +110,8 @@ func validateJoinConditionForHashLookup(
 	return validCondition, primaryGetFields, secondaryGetFields
 }
 
-// extractIndexLookupExpressions examines one side of the specified join node and if an index lookup can be performed,
-// returns the join condition and the primary getter and secondary getter expressions for use with index lookup.
-func extractIndexLookupExpressions(isLeftChildOfJoin bool, joinNode sql.Node, schemaPrefix sql.Schema, scope *Scope) (sql.Expression, func(sql.Expression) sql.Expression, func(sql.Expression) sql.Expression) {
-	isRightChildOfJoin := !isLeftChildOfJoin
-
-	pj, _ := joinNode.(plan.JoinNode)
-	pij, _ := joinNode.(*plan.IndexedJoin)
-
-	var cond sql.Expression
-	var primaryGetter, secondaryGetter func(sql.Expression) sql.Expression
-
-	switch {
-	case pij != nil && isRightChildOfJoin:
-		cond = pij.Cond
-		primaryIndex := len(schemaPrefix) + len(scope.Schema())
-		primaryGetter = getFieldIndexRange(0, primaryIndex, 0)
-		secondaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
-	case pj != nil && pj.JoinType() != plan.JoinTypeRight && isRightChildOfJoin:
-		cond = pj.JoinCond()
-		primaryIndex := len(schemaPrefix) + len(scope.Schema())
-		primaryGetter = getFieldIndexRange(0, primaryIndex, 0)
-		secondaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
-	case pj != nil && pj.JoinType() == plan.JoinTypeRight && isLeftChildOfJoin:
-		// The columns from the primary row are on the right.
-		cond = pj.JoinCond()
-		primaryIndex := len(schemaPrefix) + len(scope.Schema())
-		primaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
-		secondaryGetter = getFieldIndexRange(0, primaryIndex, 0)
-	}
-
-	return cond, primaryGetter, secondaryGetter
-}
-
 // applyHashLookupToJoinChild adds a HashLookup node above a CachedResults node for one side of a join.
-func applyHashLookupToJoinChild(isLeftSide bool, joinNode sql.Node, joinChild sql.Node, schemaPrefix sql.Schema, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func applyHashLookupToJoinChild(j *plan.JoinNode, joinChild sql.Node, schemaPrefix sql.Schema, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	originalChild := joinChild
 
 	// Skip over a StripRowNode to look one level deeper for a CachedResults node, but keep the StripRowNode around to return
@@ -184,11 +120,11 @@ func applyHashLookupToJoinChild(isLeftSide bool, joinNode sql.Node, joinChild sq
 		joinChild = stripRowNode.Child
 	}
 
-	var joinCond sql.Expression
-	var primaryGetter, secondaryGetter func(sql.Expression) sql.Expression
-
 	if cr, isCachedResults := joinChild.(*plan.CachedResults); isCachedResults {
-		joinCond, primaryGetter, secondaryGetter = extractIndexLookupExpressions(isLeftSide, joinNode, schemaPrefix, scope)
+		joinCond := j.Filter
+		primaryIndex := len(schemaPrefix) + len(scope.Schema())
+		primaryGetter := getFieldIndexRange(0, primaryIndex, 0)
+		secondaryGetter := getFieldIndexRange(primaryIndex, -1, primaryIndex)
 		if joinCond != nil {
 			validCondition, primaryGetFields, secondaryGetFields := validateJoinConditionForHashLookup(joinCond, primaryGetter, secondaryGetter)
 			if validCondition {

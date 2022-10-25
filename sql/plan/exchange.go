@@ -381,8 +381,8 @@ func sendAllRows2(ctx *sql.Context, iter sql.RowIter2, rows chan<- sql.Row2, f *
 // iterPartitionRows is the parallel worker for an Exchange node. It
 // is meant to be run as a goroutine in an errgroup.Group. It will
 // values read off of |partitions|. For each value it reads, it will
-// call |getRowIter| to get a row iter, and will then call |Next| on
-// that row iter, passing every row it gets into |rows|. If it
+// call |getRowIter| to get a row projectIter, and will then call |Next| on
+// that row projectIter, passing every row it gets into |rows|. If it
 // receives an error at any point, it returns it. |iterPartitionRows|
 // stops iterating and returns |nil| when |partitions| is closed.
 func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partitions <-chan sql.Partition, rows chan<- sql.Row) (rerr error) {
