@@ -251,14 +251,15 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 				}
 
 				numericPrecision, numericScale := getColumnPrecisionAndScale(col)
+				columnDefault := getColumnDefault(ctx, col.Default)
 
 				rows = append(rows, sql.Row{
 					"def",            // table_catalog
 					db.Name(),        // table_schema
 					t.Name(),         // table_name
-					col.Name,           // column_name
+					col.Name,         // column_name
 					ordinalPos,       // ordinal_position
-					col.Default.String(),        // column_default
+					columnDefault,    // column_default
 					nullable,         // is_nullable
 					dataType,         // data_type
 					charMaxLen,       // character_maximum_length
@@ -270,9 +271,9 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 					collName,         // collation_name
 					colType,          // column_type
 					columnKey,        // column_key
-					col.Extra,          // extra
+					col.Extra,        // extra
 					"select",         // privileges
-					col.Comment,        // column_comment
+					col.Comment,      // column_comment
 					"",               // generation_expression
 					srsId,            // srs_id
 				})
@@ -319,6 +320,45 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 		}
 	}
 	return sql.RowsToRowIter(rows...), nil
+}
+
+// getColumnDefault returns the column default value for given sql.ColumnDefaultValue
+func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
+	if cd == nil {
+		return nil
+	}
+
+	defStr := cd.String()
+	if defStr == "NULL" {
+		return nil
+	}
+
+	if !cd.IsLiteral() {
+		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
+			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
+		}
+		return fmt.Sprint(defStr)
+	}
+
+	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		return fmt.Sprint(defStr)
+	}
+
+	if sql.IsEnum(cd.Type()) || sql.IsSet(cd.Type()) {
+		return strings.Trim(defStr, "'")
+	}
+
+	v, err := cd.Eval(ctx, nil)
+	if err != nil {
+		return ""
+	}
+
+	switch l := v.(type) {
+	case time.Time:
+		v = l.Format("2006-01-02 15:04:05")
+	}
+
+	return fmt.Sprint(v)
 }
 
 func (c *ColumnsTable) schemaForTable(t sql.Table, db sql.Database) sql.Schema {
