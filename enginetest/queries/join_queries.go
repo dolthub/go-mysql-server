@@ -505,6 +505,15 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 			{3, 1, 3, 3, 3, 3},
 		},
 	},
+	{
+		Query: `select * from (select a,v from ab join uv on a=u) av join (select x,q from xy join pq on x = p) xq on av.v = xq.x`,
+		Expected: []sql.Row{
+			{0, 1, 1, 1},
+			{1, 1, 1, 1},
+			{2, 2, 2, 2},
+			{3, 2, 2, 2},
+		},
+	},
 }
 
 var SkippedJoinQueryTests = []QueryTest{

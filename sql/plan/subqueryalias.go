@@ -67,7 +67,11 @@ func (sq *SubqueryAlias) Schema() sql.Schema {
 func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
 
+	if !sq.OuterScopeVisibility {
+		row = nil
+	}
 	iter, err := sq.Child.RowIter(ctx, row)
+
 	if err != nil {
 		span.End()
 		return nil, err
