@@ -52,6 +52,8 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 			newn, _ := p.WithChildren(resolvedTables...)
 			return newn, transform.NewTree, nil
+		case *plan.InsertInto:
+			p.Source.Resolved()
 		case *plan.UnresolvedTable:
 			r, err := resolveTable(ctx, p, a)
 			if sql.ErrTableNotFound.Is(err) && ignore {
