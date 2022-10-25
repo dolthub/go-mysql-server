@@ -80,6 +80,7 @@ const (
 	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
 	assignCatalogId               // assignCatalog
 	pruneColumnsId                // pruneColumns
+	stripTableNameInDefaultsId		// stripTableNamesFromColumnDefaults
 	hoistSelectExistsId           // hoistSelectExists
 	optimizeJoinsId               // optimizeJoins
 	pushdownFiltersId             // pushdownFilters

@@ -569,6 +569,78 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 	})
 }
 
+func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("stripTableNamesFromColumnDefaults")
+	defer span.End()
+
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		colIndex := 0
+
+		switch node := n.(type) {
+		case *plan.AlterDefaultSet:
+			eWrapper := expression.WrapExpression(node.Default)
+			newExpr, same, err := stripTableNamesOnDefaultWrapper(eWrapper)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			if same {
+				return node, transform.SameTree, nil
+			}
+
+			newNode, err := node.WithDefault(newExpr)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
+		case sql.SchemaTarget:
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				return stripTableNamesOnDefaultWrapper(eWrapper)
+			})
+		case *plan.ResolvedTable:
+			ct, ok := node.Table.(*information_schema.ColumnsTable)
+			if !ok {
+				return node, transform.SameTree, nil
+			}
+
+			allColumns, err := ct.AllColumns(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				colIndex++
+				return stripTableNamesOnDefaultWrapper(eWrapper)
+			})
+
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			if !same {
+				node.Table, err = ct.WithColumnDefaults(allDefaults)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return node, transform.NewTree, err
+			}
+
+			return node, transform.SameTree, err
+		default:
+			return node, transform.SameTree, nil
+		}
+	})
+}
+
 func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
 	defs := make([]sql.Expression, len(schema))
 	for i, col := range schema {
@@ -767,19 +839,6 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 	}
 
 	var err error
-	newDefault.Expression, _, err = transform.Expr(newDefault.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if expr, ok := e.(*expression.GetField); ok {
-			// Default values can only reference their host table, so we can remove the table name, removing
-			// the necessity to update default values on table renames.
-			return expr.WithTable(""), transform.NewTree, nil
-		}
-		return e, transform.SameTree, nil
-	})
-
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
 	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
 		switch expr := e.(type) {
 		case sql.FunctionExpression:
@@ -849,4 +908,37 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 	}
 
 	return expression.WrapExpression(newDefault), transform.NewTree, nil
+}
+
+// stripTableNamesOnDefaultWrapper removes the table field from any GetField expressions in the wrapped expression
+// passed. Default values can only reference their host table, and since we serialize the GetField expression for
+// storage, it's important that we remove the table name before passing it off for storage. Otherwise we end up with
+// serialized defaults like `tableName.field + 1` instead of just `field + 1`.
+func stripTableNamesOnDefaultWrapper(e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return e, transform.SameTree, nil
+	}
+
+	if newDefault == nil {
+		return e, transform.SameTree, nil
+	}
+
+	newExpr, same, err := transform.Expr(newDefault.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if expr, ok := e.(*expression.GetField); ok {
+			return expr.WithTable(""), transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	if same {
+		return e, transform.SameTree, nil
+	}
+
+	nd := *newDefault
+	nd.Expression = newExpr
+	return expression.WrapExpression(&nd), transform.NewTree, nil
 }

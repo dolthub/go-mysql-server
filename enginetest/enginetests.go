@@ -5586,10 +5586,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Table referenced with column", func(t *testing.T) {
+		e.Analyzer.Debug = true
+		e.Analyzer.Verbose = true
+
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t28 (pk) VALUES (1), (2)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28 order by 1", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
 
 		ctx := NewContext(harness)
 		t28, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
