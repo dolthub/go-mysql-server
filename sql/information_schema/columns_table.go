@@ -49,7 +49,7 @@ type ColumnsTable struct {
 	// to resolve the default values of some columns, so we pre-compute it.
 	allColsWithDefaultValue sql.Schema
 
-	Catalog sql.Catalog
+	catalog sql.Catalog
 	name    string
 }
 
@@ -76,7 +76,7 @@ func (c *ColumnsTable) Name() string {
 }
 
 func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
-	c.Catalog = cat
+	c.catalog = cat
 	return c
 }
 
@@ -98,11 +98,11 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
 
-	if c.Catalog == nil {
+	if c.catalog == nil {
 		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
 	}
 
-	return columnsRowIter(context, c.Catalog)
+	return c.columnsRowIter(context)
 }
 
 // AllColumns returns all columns in the catalog, renamed to reflect their database and table names
@@ -111,13 +111,13 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 		return c.allColsWithDefaultValue, nil
 	}
 
-	if c.Catalog == nil {
+	if c.catalog == nil {
 		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
 	}
 
 	var allColumns sql.Schema
 
-	for _, db := range c.Catalog.AllDatabases(ctx) {
+	for _, db := range c.catalog.AllDatabases(ctx) {
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
 			tableSch := t.Schema()
 			for i := range tableSch {
@@ -135,14 +135,6 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 
 	c.allColsWithDefaultValue = allColumns
 	return c.allColsWithDefaultValue, nil
-}
-
-func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
-	defs := make([]sql.Expression, len(schema))
-	for i, col := range schema {
-		defs[i] = expression.WrapExpression(col.Default)
-	}
-	return defs
 }
 
 func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.Table, error) {
@@ -172,9 +164,9 @@ func schemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema
 }
 
 // columnsRowIter implements the custom sql.RowIter for the information_schema.columns table.
-func columnsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, error) {
+func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 	var rows []sql.Row
-	for _, db := range cat.AllDatabases(ctx) {
+	for _, db := range c.catalog.AllDatabases(ctx) {
 		// Get all Tables
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
 			var columnKeyMap = make(map[string]string)
@@ -210,67 +202,63 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, error) {
 				}
 			}
 
-			for i, c := range t.Schema() {
+			for i, col := range c.schemaForTable(t, db) {
 				var (
 					charName   interface{}
 					collName   interface{}
-					colDefault interface{}
 					charMaxLen interface{}
 					columnKey  string
 					nullable   = "NO"
 					ordinalPos = uint32(i + 1)
-					colType    = c.Type.String()
+					colType    = col.Type.String()
 					dataType   = colType
 					srsId      interface{}
 				)
 
-				if c.Nullable {
+				if col.Nullable {
 					nullable = "YES"
 				}
 
-				if sql.IsText(c.Type) {
+				if sql.IsText(col.Type) {
 					charName = sql.Collation_Default.CharacterSet().String()
 					collName = sql.Collation_Default.String()
-					if st, ok := c.Type.(sql.StringType); ok {
+					if st, ok := col.Type.(sql.StringType); ok {
 						charMaxLen = st.MaxCharacterLength()
 					}
 					dataType = strings.TrimSuffix(dataType, fmt.Sprintf("(%v)", charMaxLen))
 				}
 
-				if c.Type == sql.Boolean {
+				if col.Type == sql.Boolean {
 					colType = colType + "(1)"
 				}
 
-				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
-				colDefault = getColumnDefaultValue(ctx, columnNameToDefault[fullColumnName])
-
 				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
-				if c.PrimaryKey {
+				if col.PrimaryKey {
 					columnKey = "PRI"
-				} else if val, ok := columnKeyMap[c.Name]; ok {
+				} else if val, ok := columnKeyMap[col.Name]; ok {
 					columnKey = val
 					// A UNIQUE index may be displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table
-					if !c.Nullable && !hasPK && columnKey == "UNI" {
+					if !col.Nullable && !hasPK && columnKey == "UNI" {
 						columnKey = "PRI"
 						hasPK = true
 					}
 				}
 
-				if s, ok := c.Type.(sql.SpatialColumnType); ok {
+				if s, ok := col.Type.(sql.SpatialColumnType); ok {
 					if srid, d := s.GetSpatialTypeSRID(); d {
 						srsId = srid
 					}
 				}
 
-				numericPrecision, numericScale := getColumnPrecisionAndScale(c)
+				numericPrecision, numericScale := getColumnPrecisionAndScale(col)
 
 				rows = append(rows, sql.Row{
 					"def",            // table_catalog
 					db.Name(),        // table_schema
 					t.Name(),         // table_name
-					c.Name,           // column_name
+					col.Name,           // column_name
 					ordinalPos,       // ordinal_position
-					colDefault,       // column_default
+					col.Default.String(),        // column_default
 					nullable,         // is_nullable
 					dataType,         // data_type
 					charMaxLen,       // character_maximum_length
@@ -282,9 +270,9 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, error) {
 					collName,         // collation_name
 					colType,          // column_type
 					columnKey,        // column_key
-					c.Extra,          // extra
+					col.Extra,          // extra
 					"select",         // privileges
-					c.Comment,        // column_comment
+					col.Comment,        // column_comment
 					"",               // generation_expression
 					srsId,            // srs_id
 				})
@@ -331,6 +319,27 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog) (sql.RowIter, error) {
 		}
 	}
 	return sql.RowsToRowIter(rows...), nil
+}
+
+func (c *ColumnsTable) schemaForTable(t sql.Table, db sql.Database) sql.Schema {
+	start, end := -1, -1
+	tableName := strings.ToLower(t.Name())
+
+	for i, col := range c.allColsWithDefaultValue {
+		dbName := strings.ToLower(db.Name())
+		if start < 0 && strings.ToLower(col.Source) == tableName && strings.ToLower(col.DatabaseSource) == dbName {
+			start = i
+		} else if start >= 0 && (strings.ToLower(col.Source) != tableName || strings.ToLower(col.DatabaseSource) != dbName){
+			 end = i
+			 break
+		}
+	}
+
+	if end < 0 {
+		end = len(c.allColsWithDefaultValue)
+	}
+
+	return c.allColsWithDefaultValue[start:end]
 }
 
 // getColumnDefaultValue returns the column default value for given sql.ColumnDefaultValue

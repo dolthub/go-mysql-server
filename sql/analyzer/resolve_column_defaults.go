@@ -443,10 +443,6 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
 	//  returned by Expressions() for these nodes
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if n.Resolved() {
-			return n, transform.SameTree, nil
-		}
-
 		// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
 		// we need to count the column indexes in the very hacky way outlined above.
 		colIndex := 0
@@ -550,8 +546,9 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 					return e, transform.SameTree, nil
 				}
 
+				colIdx := colIndex
 				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, allColumns[colIndex], eWrapper)
+				return resolveColumnDefaultsOnWrapper(ctx, allColumns[colIdx], eWrapper)
 			})
 
 			if err != nil {
