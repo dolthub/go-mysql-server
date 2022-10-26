@@ -256,7 +256,7 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 				rows = append(rows, sql.Row{
 					"def",            // table_catalog
 					db.Name(),        // table_schema
-					tableName,             // table_name
+					tableName,        // table_name
 					col.Name,         // column_name
 					ordinalPos,       // ordinal_position
 					columnDefault,    // column_default
