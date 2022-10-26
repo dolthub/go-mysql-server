@@ -390,7 +390,7 @@ func (i *mockIndex) Expressions() []string {
 	return exprs
 }
 
-func (*mockIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
+func (*mockIndex) ColumnExpressionTypes() []sql.ColumnExpressionType {
 	panic("unimplemented")
 }
 

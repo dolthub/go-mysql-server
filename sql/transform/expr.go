@@ -179,10 +179,18 @@ func ExpressionToColumn(e sql.Expression) *sql.Column {
 		table = t.Table()
 	}
 
-	return &sql.Column{
-		Name:     name,
-		Type:     e.Type(),
-		Nullable: e.IsNullable(),
-		Source:   table,
+	// TODO: Is this still necessary?
+	if e.Resolved() {
+		return &sql.Column{
+			Name:     name,
+			Source:   table,
+			Type:     e.Type(),
+			Nullable: e.IsNullable(),
+		}
+	} else {
+		return &sql.Column{
+			Name:   name,
+			Source: table,
+		}
 	}
 }

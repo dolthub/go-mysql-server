@@ -83,8 +83,8 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	var nonJoinFilters []sql.Expression
 	var topJoin sql.Node
 	node, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		join, ok := n.(*plan.InnerJoin)
-		if !ok {
+		join, ok := n.(*plan.JoinNode)
+		if !ok || !join.JoinType().IsInner() || join.JoinType().IsDegenerate() {
 			return n, transform.SameTree, nil
 		}
 
@@ -92,7 +92,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		rightSources := nodeSources(join.Right())
 		filtersMoved := 0
 		var condFilters []sql.Expression
-		for _, e := range splitConjunction(join.Filter) {
+		for _, e := range splitConjunction(join.JoinCond()) {
 			sources := expressionSources(e)
 
 			belongsToLeftTable := containsSources(leftSources, sources)

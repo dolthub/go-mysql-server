@@ -131,7 +131,11 @@ func (m mapCache) Put(u uint64, i interface{}) error {
 }
 
 func (m mapCache) Get(u uint64) (interface{}, error) {
-	return m.cache[u], nil
+	v, ok := m.cache[u]
+	if !ok {
+		return nil, ErrKeyNotFound.New(u)
+	}
+	return v, nil
 }
 
 func (m mapCache) Size() int {

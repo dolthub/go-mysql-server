@@ -500,6 +500,12 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 	}
 }
 
+func TestDerivedTableOuterScopeVisibility(t *testing.T, harness Harness) {
+	for _, tt := range queries.DerivedTableOuterScopeVisibilityQueries {
+		TestScript(t, harness, tt)
+	}
+}
+
 func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",

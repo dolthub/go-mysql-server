@@ -72,14 +72,16 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 	}
 	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
-		case *IndexedJoin:
+		case *JoinNode:
 			// *plan.IndexedJoin cannot implement sql.Expressioner
 			// because the column indexes get mis-ordered by FixFieldIndexesForExpressions.
-			cond, same, err := transform.Expr(n.Cond, fixBindingsTransform)
-			if err != nil {
-				return nil, transform.SameTree, err
+			if n.Op.IsLookup() {
+				cond, same, err := transform.Expr(n.Filter, fixBindingsTransform)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return NewJoin(n.left, n.right, n.Op, cond).WithScopeLen(n.ScopeLen), same, nil
 			}
-			return NewIndexedJoin(n.left, n.right, n.joinType, cond, n.scopeLen), same, nil
 		case *InsertInto:
 			// Manually apply bindings to [Source] because only [Destination]
 			// is a proper child.

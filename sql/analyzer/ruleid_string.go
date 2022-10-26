@@ -37,6 +37,7 @@ func _() {
 	_ = x[checkUniqueTableNamesId-26]
 	_ = x[resolveTableFunctionsId-27]
 	_ = x[resolveDeclarationsId-28]
+<<<<<<< HEAD
 	_ = x[resolveColumnDefaultsId-29]
 	_ = x[validateColumnDefaultsId-30]
 	_ = x[validateCreateTriggerId-31]
@@ -60,6 +61,31 @@ func _() {
 	_ = x[validateCheckConstraintId-49]
 	_ = x[resolveBarewordSetVariablesId-50]
 	_ = x[expandStarsId-51]
+=======
+	_ = x[validateCreateTriggerId-29]
+	_ = x[validateCreateProcedureId-30]
+	_ = x[loadInfoSchemaId-31]
+	_ = x[validateReadOnlyDatabaseId-32]
+	_ = x[validateReadOnlyTransactionId-33]
+	_ = x[validateDatabaseSetId-34]
+	_ = x[validatePrivilegesId-35]
+	_ = x[reresolveTablesId-36]
+	_ = x[validateJoinComplexityId-37]
+	_ = x[resolveNaturalJoinsId-38]
+	_ = x[resolveOrderbyLiteralsId-39]
+	_ = x[resolveFunctionsId-40]
+	_ = x[flattenTableAliasesId-41]
+	_ = x[pushdownSortId-42]
+	_ = x[pushdownGroupbyAliasesId-43]
+	_ = x[pushdownSubqueryAliasFiltersId-44]
+	_ = x[qualifyColumnsId-45]
+	_ = x[resolveColumnsId-46]
+	_ = x[resolveColumnDefaultsId-47]
+	_ = x[validateCheckConstraintId-48]
+	_ = x[resolveBarewordSetVariablesId-49]
+	_ = x[expandStarsId-50]
+	_ = x[transposeRightJoinsId-51]
+>>>>>>> main
 	_ = x[resolveHavingId-52]
 	_ = x[mergeUnionSchemasId-53]
 	_ = x[flattenAggregationExprsId-54]
@@ -79,6 +105,7 @@ func _() {
 	_ = x[removeUnnecessaryConvertsId-68]
 	_ = x[assignCatalogId-69]
 	_ = x[pruneColumnsId-70]
+<<<<<<< HEAD
 	_ = x[stripTableNameInDefaultsId-71]
 	_ = x[hoistSelectExistsId-72]
 	_ = x[optimizeJoinsId-73]
@@ -124,6 +151,52 @@ func _() {
 const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateCreateTablevalidateExprSemresolveVariablesresolveNamedWindowsresolveSetVariablesresolveViewsliftCtesresolveCtesliftRecursiveCtesresolveDatabasesresolveTablesloadStoredProceduresvalidateDropTablessetTargetSchemasresolveCreateLikeparseColumnDefaultsresolveDropConstraintvalidateDropConstraintloadCheckConstraintsresolveCreateSelectresolveSubqueriessetViewTargetSchemaresolveUnionsresolveDescribeQuerycheckUniqueTableNamesresolveTableFunctionsresolveDeclarationsresolveColumnDefaultsvalidateColumnDefaultsvalidateCreateTriggervalidateCreateProcedureloadInfoSchemavalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesreresolveTablesvalidateJoinComplexityresolveNaturalJoinsresolveOrderbyLiteralsresolveFunctionsflattenTableAliasespushdownSortpushdownGroupbyAliasespushdownSubqueryAliasFiltersqualifyColumnsresolveColumnsvalidateCheckConstraintresolveBarewordSetVariablesexpandStarsresolveHavingmergeUnionSchemasflattenAggregationExprsreorderProjectionresolveSubqueryExprsfinalizeSubqueryExprsreplaceCrossJoinsmoveJoinCondsToFilterevalFilteroptimizeDistinctfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateresolveAlterColumnresolveGeneratorsremoveUnnecessaryConvertsassignCatalogpruneColumnsstripTableNamesFromColumnDefaultshoistSelectExistsoptimizeJoinspushdownFilterssubqueryIndexesinSubqueryIndexespruneTablessetJoinScopeLeneraseProjectionreplaceSortPkinsertTopNcacheSubqueryResultscacheSubqueryAliasesInJoinsapplyHashLookupsapplyHashInresolveInsertRowsresolvePreparedInsertapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyRowUpdateAccumulatorsrollback triggersapplyFKsvalidateResolvedvalidateOrderByvalidateGroupByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateCaseResultTypesvalidateIntervalUsagevalidateExplodeUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsaddAutocommitNodetrackProcessparallelizeclearWarnings"
 
 var _RuleId_index = [...]uint16{0, 23, 45, 64, 79, 95, 114, 133, 145, 153, 164, 181, 197, 210, 230, 248, 264, 281, 300, 321, 343, 363, 382, 399, 418, 431, 451, 472, 493, 512, 533, 555, 576, 599, 613, 637, 664, 683, 701, 716, 738, 757, 779, 795, 814, 826, 848, 876, 890, 904, 927, 954, 965, 978, 995, 1018, 1035, 1055, 1076, 1093, 1114, 1124, 1140, 1158, 1172, 1184, 1199, 1217, 1234, 1259, 1272, 1284, 1317, 1334, 1347, 1362, 1377, 1394, 1405, 1420, 1435, 1448, 1458, 1478, 1505, 1521, 1532, 1549, 1570, 1583, 1598, 1612, 1636, 1662, 1679, 1687, 1703, 1718, 1733, 1753, 1774, 1790, 1813, 1834, 1854, 1877, 1902, 1922, 1939, 1951, 1962, 1975}
+=======
+	_ = x[hoistSelectExistsId-71]
+	_ = x[optimizeJoinsId-72]
+	_ = x[pushdownFiltersId-73]
+	_ = x[subqueryIndexesId-74]
+	_ = x[inSubqueryIndexesId-75]
+	_ = x[pruneTablesId-76]
+	_ = x[setJoinScopeLenId-77]
+	_ = x[eraseProjectionId-78]
+	_ = x[replaceSortPkId-79]
+	_ = x[insertTopNId-80]
+	_ = x[cacheSubqueryResultsId-81]
+	_ = x[cacheSubqueryAliasesInJoinsId-82]
+	_ = x[applyHashLookupsId-83]
+	_ = x[applyHashInId-84]
+	_ = x[resolveInsertRowsId-85]
+	_ = x[resolvePreparedInsertId-86]
+	_ = x[applyTriggersId-87]
+	_ = x[applyProceduresId-88]
+	_ = x[assignRoutinesId-89]
+	_ = x[modifyUpdateExprsForJoinId-90]
+	_ = x[applyRowUpdateAccumulatorsId-91]
+	_ = x[wrapWithRollbackId-92]
+	_ = x[applyFKsId-93]
+	_ = x[validateResolvedId-94]
+	_ = x[validateOrderById-95]
+	_ = x[validateGroupById-96]
+	_ = x[validateSchemaSourceId-97]
+	_ = x[validateIndexCreationId-98]
+	_ = x[validateOperandsId-99]
+	_ = x[validateCaseResultTypesId-100]
+	_ = x[validateIntervalUsageId-101]
+	_ = x[validateExplodeUsageId-102]
+	_ = x[validateSubqueryColumnsId-103]
+	_ = x[validateUnionSchemasMatchId-104]
+	_ = x[validateAggregationsId-105]
+	_ = x[AutocommitId-106]
+	_ = x[TrackProcessId-107]
+	_ = x[parallelizeId-108]
+	_ = x[clearWarningsId-109]
+}
+
+const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateCreateTablevalidateExprSemresolveVariablesresolveNamedWindowsresolveSetVariablesresolveViewsliftCtesresolveCtesliftRecursiveCtesresolveDatabasesresolveTablesloadStoredProceduresvalidateDropTablessetTargetSchemasresolveCreateLikeparseColumnDefaultsresolveDropConstraintvalidateDropConstraintloadCheckConstraintsresolveCreateSelectresolveSubqueriessetViewTargetSchemaresolveUnionsresolveDescribeQuerycheckUniqueTableNamesresolveTableFunctionsresolveDeclarationsvalidateCreateTriggervalidateCreateProcedureloadInfoSchemavalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesreresolveTablesvalidateJoinComplexityresolveNaturalJoinsresolveOrderbyLiteralsresolveFunctionsflattenTableAliasespushdownSortpushdownGroupbyAliasespushdownSubqueryAliasFiltersqualifyColumnsresolveColumnsresolveColumnDefaultsvalidateCheckConstraintresolveBarewordSetVariablesexpandStarstransposeRightJoinsresolveHavingmergeUnionSchemasflattenAggregationExprsreorderProjectionresolveSubqueryExprsfinalizeSubqueryExprsreplaceCrossJoinsmoveJoinCondsToFilterevalFilteroptimizeDistinctfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateresolveAlterColumnresolveGeneratorsremoveUnnecessaryConvertsassignCatalogpruneColumnshoistSelectExistsoptimizeJoinspushdownFilterssubqueryIndexesinSubqueryIndexespruneTablessetJoinScopeLeneraseProjectionreplaceSortPkinsertTopNcacheSubqueryResultscacheSubqueryAliasesInJoinsapplyHashLookupsapplyHashInresolveInsertRowsresolvePreparedInsertapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyRowUpdateAccumulatorsrollback triggersapplyFKsvalidateResolvedvalidateOrderByvalidateGroupByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateCaseResultTypesvalidateIntervalUsagevalidateExplodeUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsaddAutocommitNodetrackProcessparallelizeclearWarnings"
+
+var _RuleId_index = [...]uint16{0, 23, 45, 64, 79, 95, 114, 133, 145, 153, 164, 181, 197, 210, 230, 248, 264, 281, 300, 321, 343, 363, 382, 399, 418, 431, 451, 472, 493, 512, 533, 556, 570, 594, 621, 640, 658, 673, 695, 714, 736, 752, 771, 783, 805, 833, 847, 861, 882, 905, 932, 943, 962, 975, 992, 1015, 1032, 1052, 1073, 1090, 1111, 1121, 1137, 1155, 1169, 1181, 1196, 1214, 1231, 1256, 1269, 1281, 1298, 1311, 1326, 1341, 1358, 1369, 1384, 1399, 1412, 1422, 1442, 1469, 1485, 1496, 1513, 1534, 1547, 1562, 1576, 1600, 1626, 1643, 1651, 1667, 1682, 1697, 1717, 1738, 1754, 1777, 1798, 1818, 1841, 1866, 1886, 1903, 1915, 1926, 1939}
+>>>>>>> main
 
 func (i RuleId) String() string {
 	if i < 0 || i >= RuleId(len(_RuleId_index)-1) {

@@ -156,7 +156,7 @@ func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
-func (idx *Index) ColumnExpressionTypes(*sql.Context) []sql.ColumnExpressionType {
+func (idx *Index) ColumnExpressionTypes() []sql.ColumnExpressionType {
 	cets := make([]sql.ColumnExpressionType, len(idx.Exprs))
 	for i, expr := range idx.Exprs {
 		cets[i] = sql.ColumnExpressionType{
