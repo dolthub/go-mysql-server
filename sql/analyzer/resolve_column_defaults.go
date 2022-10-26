@@ -812,9 +812,9 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 		}
 
 		return nn, transform.SameTree, err
+	default:
+		return parseDefaultsForNode(ctx, nn)
 	}
-
-	return n, transform.SameTree, nil
 }
 
 // parseDefaultsForNode walks over the expressions contained in the specified node and transforms all
