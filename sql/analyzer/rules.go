@@ -123,7 +123,6 @@ var OnceAfterDefault = []Rule{
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
 	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
-	{fakeBlobIndexesId, fakeBlobIndex},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.
