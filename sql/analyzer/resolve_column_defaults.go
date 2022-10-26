@@ -925,8 +925,16 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 		return nil
 	}
 
-	if (sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
-		return sql.ErrInvalidTextBlobColumnDefault.New()
+	// Some column types can only have a NULL for a literal default, must be an expression otherwise
+	isLiteralRestrictedType := sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)
+	if isLiteralRestrictedType && newDefault.IsLiteral() {
+		lit, err := newDefault.Expression.Eval(ctx, nil)
+		if err != nil {
+			return err
+		}
+		if lit != nil {
+			return sql.ErrInvalidTextBlobColumnDefault.New()
+		}
 	}
 
 	var err error
