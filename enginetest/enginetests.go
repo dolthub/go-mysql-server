@@ -5586,9 +5586,6 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Table referenced with column", func(t *testing.T) {
-		e.Analyzer.Debug = true
-		e.Analyzer.Verbose = true
-
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t28 (pk) VALUES (1), (2)")
@@ -5658,6 +5655,9 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
 			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", ""},
 		}, nil, nil)
+
+		e.Analyzer.Debug = true
+		e.Analyzer.Verbose = true
 
 		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
 			"only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")

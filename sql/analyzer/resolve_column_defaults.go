@@ -529,40 +529,40 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
-		case *plan.ResolvedTable:
-			ct, ok := node.Table.(*information_schema.ColumnsTable)
-			if !ok {
-				return node, transform.SameTree, nil
-			}
-
-			allColumns, err := ct.AllColumns(ctx)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				colIdx := colIndex
-				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, allColumns[colIdx], eWrapper)
-			})
-
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			if !same {
-				node.Table, err = ct.WithColumnDefaults(allDefaults)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-			}
-
-			return node, transform.NewTree, err
+		// case *plan.ResolvedTable:
+		// 	ct, ok := node.Table.(*information_schema.ColumnsTable)
+		// 	if !ok {
+		// 		return node, transform.SameTree, nil
+		// 	}
+		//
+		// 	allColumns, err := ct.AllColumns(ctx)
+		// 	if err != nil {
+		// 		return nil, transform.SameTree, err
+		// 	}
+		//
+		// 	allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		// 		eWrapper, ok := e.(*expression.Wrapper)
+		// 		if !ok {
+		// 			return e, transform.SameTree, nil
+		// 		}
+		//
+		// 		colIdx := colIndex
+		// 		colIndex++
+		// 		return resolveColumnDefaultsOnWrapper(ctx, allColumns[colIdx], eWrapper)
+		// 	})
+		//
+		// 	if err != nil {
+		// 		return nil, transform.SameTree, err
+		// 	}
+		//
+		// 	if !same {
+		// 		node.Table, err = ct.WithColumnDefaults(allDefaults)
+		// 		if err != nil {
+		// 			return nil, transform.SameTree, err
+		// 		}
+		// 	}
+		//
+		// 	return node, transform.NewTree, err
 		default:
 			return node, transform.SameTree, nil
 		}
@@ -830,9 +830,14 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		return e, transform.SameTree, nil
 	}
 
-	if newDefault.Resolved() {
+	if newDefault == nil {
 		return e, transform.SameTree, nil
 	}
+
+	// TODO: this is tripping on a bunch of MySQL tables we have defined, like users, which have a default column
+	//  value of empty string
+	// TODO: this is mostly validation logic and shouldn't even be running on things like insert, only schema alter
+	//  operations
 
 	if (sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
 		return nil, transform.SameTree, sql.ErrInvalidTextBlobColumnDefault.New()
@@ -840,14 +845,21 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 
 	var err error
 	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
-		switch expr := e.(type) {
-		case sql.FunctionExpression:
-			funcName := expr.FunctionName()
+		switch e.(type) {
+		case sql.FunctionExpression, *expression.UnresolvedFunction:
+			var funcName string
+			switch expr := e.(type) {
+			case sql.FunctionExpression:
+				funcName = expr.FunctionName()
+			case *expression.UnresolvedFunction:
+				funcName = expr.Name()
+			}
+
 			if _, isValid := validColumnDefaultFuncs[funcName]; !isValid {
 				err = sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)
 				return false
 			}
-			if newDefault.IsParenthesized() == false {
+			if !newDefault.IsParenthesized() {
 				if funcName == "now" || funcName == "current_timestamp" {
 					// now and current_timestamps are the only functions that don't have to be enclosed in
 					// parens when used as a column default value, but ONLY when they are used with a
