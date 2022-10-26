@@ -50,7 +50,7 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	}
 
 	// Don't parallelize subqueries, this can blow up the execution graph quickly
-	if len(scope.Schema()) > 0 {
+	if !scope.IsEmpty() {
 		return false
 	}
 
@@ -98,14 +98,24 @@ func removeRedundantExchanges(node sql.Node) (sql.Node, transform.TreeIdentity, 
 		return node, transform.SameTree, nil
 	}
 
+	var seenIta bool
 	child, same, err := transform.Node(exchange.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
 			return exchange.Child, transform.NewTree, nil
+		} else if ita, ok := node.(*plan.IndexedTableAccess); ok {
+			if !ita.IsStatic() {
+				// do not parallelize lookup join
+				// todo(max): more graceful top-down exchange application
+				seenIta = true
+			}
 		}
 		return node, transform.SameTree, nil
 	})
 	if err != nil {
 		return nil, transform.SameTree, err
+	}
+	if seenIta {
+		return child, transform.NewTree, nil
 	}
 	if same {
 		return node, transform.SameTree, nil
@@ -176,16 +186,16 @@ func isParallelizable(node sql.Node) bool {
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
-		case *plan.FullOuterJoin:
-			parallelizable = false
-			lastWasTable = true
-			tableSeen = true
-			return false
+		case *plan.JoinNode:
+			if node.Op.IsFullOuter() {
+				parallelizable = false
+				lastWasTable = true
+				tableSeen = true
+				return false
+			}
 		default:
 			parallelizable = false
-			return false
 		}
-
 		return true
 	})
 

@@ -36,10 +36,10 @@ type IndexBuilder struct {
 
 // NewIndexBuilder returns a new IndexBuilder. Used internally to construct a range that will later be passed to
 // integrators through the Index function NewLookup.
-func NewIndexBuilder(ctx *Context, idx Index) *IndexBuilder {
+func NewIndexBuilder(idx Index) *IndexBuilder {
 	colExprTypes := make(map[string]Type)
 	ranges := make(map[string][]RangeColumnExpr)
-	for _, cet := range idx.ColumnExpressionTypes(ctx) {
+	for _, cet := range idx.ColumnExpressionTypes() {
 		colExprTypes[cet.Expression] = cet.Type
 		ranges[cet.Expression] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
 	}
@@ -198,7 +198,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	}
 	// An invalid builder that did not error got into a state where no columns will ever match, so we return an empty range
 	if b.isInvalid {
-		cets := b.idx.ColumnExpressionTypes(ctx)
+		cets := b.idx.ColumnExpressionTypes()
 		emptyRange := make(Range, len(cets))
 		for i, cet := range cets {
 			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
@@ -248,7 +248,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		}
 	}
 	if len(ranges) == 0 {
-		cets := b.idx.ColumnExpressionTypes(ctx)
+		cets := b.idx.ColumnExpressionTypes()
 		emptyRange := make(Range, len(cets))
 		for i, cet := range cets {
 			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)

@@ -470,7 +470,7 @@ func FindForeignKeyColMapping(
 	var appendTypes []sql.Type
 	indexTypeMap := make(map[string]sql.Type)
 	indexColMap := make(map[string]int)
-	for i, indexCol := range index.ColumnExpressionTypes(ctx) {
+	for i, indexCol := range index.ColumnExpressionTypes() {
 		indexColName := strings.ToLower(indexCol.Expression)
 		indexTypeMap[indexColName] = indexCol.Type
 		indexColMap[indexColName] = i

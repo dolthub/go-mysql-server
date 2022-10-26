@@ -93,6 +93,15 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			}
 		}
 	}
+	names, err := cv.database.GetTableNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range names {
+		if strings.ToLower(n) == strings.ToLower(cv.Name) {
+			return nil, sql.ErrTableAlreadyExists.New(n)
+		}
+	}
 
 	creator, ok := cv.database.(sql.ViewDatabase)
 	if ok {

@@ -59,6 +59,7 @@ const (
 	validateCheckConstraintId      // validateCheckConstraint
 	resolveBarewordSetVariablesId  // resolveBarewordSetVariables
 	expandStarsId                  // expandStars
+	transposeRightJoinsId          // transposeRightJoins
 	resolveHavingId                // resolveHaving
 	mergeUnionSchemasId            // mergeUnionSchemas
 	flattenAggregationExprsId      // flattenAggregationExprs
@@ -103,7 +104,6 @@ const (
 	applyRowUpdateAccumulatorsId  // applyRowUpdateAccumulators
 	wrapWithRollbackId            // rollback triggers
 	applyFKsId                    // applyFKs
-	fakeBlobIndexesId             // add sorts when accessing indexes on blobs
 
 	// validate
 	validateResolvedId          // validateResolved

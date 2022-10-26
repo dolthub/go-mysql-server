@@ -500,6 +500,12 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 	}
 }
 
+func TestDerivedTableOuterScopeVisibility(t *testing.T, harness Harness) {
+	for _, tt := range queries.DerivedTableOuterScopeVisibilityQueries {
+		TestScript(t, harness, tt)
+	}
+}
+
 func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	harness.Setup([]setup.SetupScript{{
 		"create database mydb",
@@ -4996,6 +5002,87 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			{1, 1},
 		}, nil, nil)
 	})
+
+}
+
+func TestAddAutoIncrementColumn(t *testing.T, harness Harness) {
+	harness.Setup([]setup.SetupScript{{
+		"create database mydb",
+		"use mydb",
+	}})
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+
+	t.Run("Add primary key column with auto increment", func(t *testing.T) {
+		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "CREATE TABLE t1 (i int, j int);")
+		RunQuery(t, e, harness, "insert into t1 values (1,1), (2,2), (3,3)")
+		AssertErr(
+			t, e, harness,
+			"alter table t1 add column pk int primary key;",
+			sql.ErrPrimaryKeyViolation,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"alter table t1 add column pk int primary key auto_increment;",
+			[]sql.Row{{sql.NewOkResult(0)}},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"select pk from t1;",
+			[]sql.Row{
+				{1},
+				{2},
+				{3},
+			},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"show create table t1;",
+			[]sql.Row{
+				{"t1", "CREATE TABLE `t1` (\n  `i` int,\n  `j` int,\n  `pk` int NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+			},
+			nil, nil,
+		)
+	})
+
+	t.Run("Add primary key column with auto increment first", func(t *testing.T) {
+		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "CREATE TABLE t2 (i int, j int);")
+		RunQuery(t, e, harness, "insert into t2 values (1,1), (2,2), (3,3)")
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"alter table t2 add column pk int primary key auto_increment first;",
+			[]sql.Row{{sql.NewOkResult(0)}},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"select pk from t2;",
+			[]sql.Row{
+				{1},
+				{2},
+				{3},
+			},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"show create table t2;",
+			[]sql.Row{
+				{"t2", "CREATE TABLE `t2` (\n  `pk` int NOT NULL AUTO_INCREMENT,\n  `i` int,\n  `j` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+			},
+			nil, nil,
+		)
+	})
 }
 
 func TestNullRanges(t *testing.T, harness Harness) {
@@ -5613,6 +5700,9 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)")
 		AssertErr(t, e, harness, "ALTER TABLE t34 alter column v1 set default '{}'", sql.ErrInvalidTextBlobColumnDefault)
 		RunQuery(t, e, harness, "ALTER TABLE t34 alter column v1 set default ('{}')")
+		RunQuery(t, e, harness, "CREATE TABLE t35(i int default 100, j JSON)")
+		AssertErr(t, e, harness, "ALTER TABLE t35 alter column j set default '[]'", sql.ErrInvalidTextBlobColumnDefault)
+		RunQuery(t, e, harness, "ALTER TABLE t35 alter column j set default ('[]')")
 	})
 
 	t.Run("Other types using NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {

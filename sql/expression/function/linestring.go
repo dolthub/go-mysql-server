@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ type LineString struct {
 
 var _ sql.FunctionExpression = (*LineString)(nil)
 
-// NewLineString creates a new point expression.
+// NewLineString creates a new LineString.
 func NewLineString(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "2 or more", len(args))
@@ -82,7 +82,7 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		switch v := val.(type) {
 		case sql.Point:
 			points[i] = v
-		case sql.LineString, sql.Polygon: // TODO: eventually add all spatial types
+		case sql.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)

@@ -48,6 +48,58 @@ func TestSwapXY(t *testing.T) {
 		require.Equal(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
 	})
 
+	t.Run("multipoint swap", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, sql.MultiPointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 0}, {X: 3, Y: 2}}}, v)
+	})
+
+	t.Run("multilinestring swap", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("multipolygon swap", func(t *testing.T) {
+		require := require.New(t)
+		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 2}, {X: 3, Y: 4}, {X: 0, Y: 0}}}
+		poly := sql.Polygon{Lines: []sql.LineString{line}}
+		f := NewSwapXY(expression.NewLiteral(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, sql.MultiPolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		line2 := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 3}, {X: 0, Y: 0}}}
+		poly2 := sql.Polygon{Lines: []sql.LineString{line2}}
+		require.Equal(sql.MultiPolygon{Polygons: []sql.Polygon{poly2}}, v)
+	})
+
+	t.Run("geometry collection swap", func(t *testing.T) {
+		require := require.New(t)
+		point := sql.Point{X: 1, Y: 2}
+		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		g := sql.GeomColl{Geoms: []sql.GeometryValue{
+			point,
+			line,
+			poly,
+		}}
+		f := NewSwapXY(expression.NewLiteral(g, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		point2 := sql.Point{X: 2, Y: 1}
+		line2 := sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}
+		poly2 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}
+		g2 := sql.GeomColl{Geoms: []sql.GeometryValue{
+			point2,
+			line2,
+			poly2,
+		}}
+		require.Equal(g2, v)
+	})
+
 	t.Run("swap wrong type", func(t *testing.T) {
 		require := require.New(t)
 		f := NewSwapXY(expression.NewLiteral(123, sql.Int64))
@@ -85,6 +137,14 @@ func TestSwapXY(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("geometry multipoint swap", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 0}, {X: 3, Y: 2}}}, v)
 	})
 
 	t.Run("check return type", func(t *testing.T) {

@@ -101,6 +101,10 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 	}, nil
 }
 
+func (i *IndexedTableAccess) IsStatic() bool {
+	return !i.lookup.IsEmpty()
+}
+
 func (i *IndexedTableAccess) Resolved() bool {
 	return i.ResolvedTable.Resolved()
 }
@@ -229,6 +233,15 @@ func (i *IndexedTableAccess) String() string {
 			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
+	if ft, ok := i.Table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
+		}
+	}
 	pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -259,6 +272,15 @@ func (i *IndexedTableAccess) DebugString() string {
 				columns = append(columns, strings.ToLower(c))
 			}
 			children = append(children, fmt.Sprintf("columns: %v", columns))
+		}
+	}
+	if ft, ok := i.Table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
 	pr.WriteChildren(children...)
@@ -332,7 +354,7 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 
 type lookupBuilderKey []interface{}
 
-// LookupBuilder abstracts secondary table access for an IndexedJoin.
+// LookupBuilder abstracts secondary table access for an LookupJoin.
 // A row from the primary table is first evaluated on the secondary index's
 // expressions (columns) to produce a lookupBuilderKey. Consider the
 // query below, assuming B has an index `xy (x,y)`:
@@ -383,8 +405,8 @@ type LookupBuilder struct {
 	cets          []sql.ColumnExpressionType
 }
 
-func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
-	cets := index.ColumnExpressionTypes(ctx)
+func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
+	cets := index.ColumnExpressionTypes()
 	var nullSafe = true
 	for i := range matchesNullMask {
 		if matchesNullMask[i] {

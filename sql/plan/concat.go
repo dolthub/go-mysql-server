@@ -31,6 +31,7 @@ type Concat struct {
 var _ sql.Node = (*Concat)(nil)
 
 // NewConcat creates a new Concat node with the given children.
+// See concatJoin memo expression for more details.
 func NewConcat(left, right sql.Node) *Concat {
 	return &Concat{
 		BinaryNode: BinaryNode{left: left, right: right},

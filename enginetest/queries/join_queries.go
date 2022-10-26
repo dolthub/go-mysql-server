@@ -77,18 +77,6 @@ where exists (select * from xy where a = x);`,
 		}},
 	{
 		Query: `
-select * from ab
-inner join uv on a = u
-full join pq on a = p order by 1,2,3,4,5,6;`,
-		Expected: []sql.Row{
-			{0, 2, 0, 1, 0, 0},
-			{1, 2, 1, 1, 1, 1},
-			{2, 2, 2, 2, 2, 2},
-			{3, 1, 3, 2, 3, 3},
-		},
-	},
-	{
-		Query: `
 select * from
 (
   select * from ab
@@ -211,46 +199,46 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		},
 	},
 	{
-		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i = c.i + 1;",
+		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
-			{1, "first row", 2, "second row", 1, "first row"},
-			{2, "second row", 2, "second row", 1, "first row"},
-			{3, "third row", 2, "second row", 1, "first row"},
-			{1, "first row", 3, "third row", 2, "second row"},
-			{2, "second row", 3, "third row", 2, "second row"},
-			{3, "third row", 3, "third row", 2, "second row"},
 			{nil, nil, nil, nil, 3, "third row"},
-		},
-	},
-	{
-		Query: "select * from mytable a CROSS JOIN mytable b LEFT JOIN mytable c ON b.i = c.i + 1;",
-		Expected: []sql.Row{
-			{3, "third row", 1, "first row", nil, nil},
-			{2, "second row", 1, "first row", nil, nil},
-			{1, "first row", 1, "first row", nil, nil},
-			{3, "third row", 2, "second row", 1, "first row"},
-			{2, "second row", 2, "second row", 1, "first row"},
 			{1, "first row", 2, "second row", 1, "first row"},
-			{3, "third row", 3, "third row", 2, "second row"},
-			{2, "second row", 3, "third row", 2, "second row"},
 			{1, "first row", 3, "third row", 2, "second row"},
+			{2, "second row", 2, "second row", 1, "first row"},
+			{2, "second row", 3, "third row", 2, "second row"},
+			{3, "third row", 2, "second row", 1, "first row"},
+			{3, "third row", 3, "third row", 2, "second row"},
 		},
 	},
 	{
-		Query: "select * from mytable a CROSS JOIN mytable b LEFT JOIN mytable c ON b.i+1 = c.i;",
+		Query: "select * from mytable a CROSS JOIN mytable b LEFT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
-			{3, "third row", 1, "first row", 2, "second row"},
-			{2, "second row", 1, "first row", 2, "second row"},
-			{1, "first row", 1, "first row", 2, "second row"},
-			{3, "third row", 2, "second row", 3, "third row"},
-			{2, "second row", 2, "second row", 3, "third row"},
-			{1, "first row", 2, "second row", 3, "third row"},
-			{3, "third row", 3, "third row", nil, nil},
-			{2, "second row", 3, "third row", nil, nil},
-			{1, "first row", 3, "third row", nil, nil},
+			{1, "first row", 1, "first row", nil, nil},
+			{1, "first row", 2, "second row", 1, "first row"},
+			{1, "first row", 3, "third row", 2, "second row"},
+			{2, "second row", 1, "first row", nil, nil},
+			{2, "second row", 2, "second row", 1, "first row"},
+			{2, "second row", 3, "third row", 2, "second row"},
+			{3, "third row", 1, "first row", nil, nil},
+			{3, "third row", 2, "second row", 1, "first row"},
+			{3, "third row", 3, "third row", 2, "second row"},
+		},
+	},
+	{
+		Query: "select a.i, b.i, c.i from mytable a CROSS JOIN mytable b LEFT JOIN mytable c ON b.i+1 = c.i order by 1,2,3;",
+		Expected: []sql.Row{
+			{1, 1, 2},
+			{1, 2, 3},
+			{1, 3, nil},
+			{2, 1, 2},
+			{2, 2, 3},
+			{2, 3, nil},
+			{3, 1, 2},
+			{3, 2, 3},
+			{3, 3, nil},
 		}},
 	{
-		Query: "select * from mytable a LEFT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i = c.i + 1;",
+		Query: "select * from mytable a LEFT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
 			{1, "first row", 1, "first row", nil, nil},
 			{2, "second row", 2, "second row", 1, "first row"},
@@ -258,19 +246,19 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		},
 	},
 	{
-		Query: "select * from mytable a LEFT JOIN  mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i = c.i + 1;",
+		Query: "select * from mytable a LEFT JOIN  mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
+			{nil, nil, nil, nil, 3, "third row"},
 			{2, "second row", 2, "second row", 1, "first row"},
 			{3, "third row", 3, "third row", 2, "second row"},
-			{nil, nil, nil, nil, 3, "third row"},
 		},
 	},
 	{
-		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i = c.i + 1;",
+		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
+			{nil, nil, nil, nil, 3, "third row"},
 			{2, "second row", 2, "second row", 1, "first row"},
 			{3, "third row", 3, "third row", 2, "second row"},
-			{nil, nil, nil, nil, 3, "third row"},
 		},
 	},
 	{
@@ -289,21 +277,21 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 			{3, "third row", 3, "third row", nil, nil},
 		}},
 	{
-		Query: "select * from mytable a LEFT JOIN  mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i+1 = c.i;",
+		Query: "select * from mytable a LEFT JOIN  mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i+1 = c.i order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
 			{nil, nil, nil, nil, 1, "first row"},
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 		}},
 	{
-		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i+1= c.i;",
+		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i+1= c.i order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
 			{nil, nil, nil, nil, 1, "first row"},
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 		}},
 	{
-		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i+1 = c.i;",
+		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i+1 = c.i order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
@@ -311,14 +299,14 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		},
 	},
 	{
-		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i+1 = c.i;",
+		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i+1 = c.i order by 1,2,3,4,5,6;",
 		Expected: []sql.Row{
 			{nil, nil, nil, nil, 1, "first row"},
 			{1, "first row", 1, "first row", 2, "second row"},
-			{2, "second row", 1, "first row", 2, "second row"},
-			{3, "third row", 1, "first row", 2, "second row"},
 			{1, "first row", 2, "second row", 3, "third row"},
+			{2, "second row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
+			{3, "third row", 1, "first row", 2, "second row"},
 			{3, "third row", 2, "second row", 3, "third row"},
 		},
 	},
@@ -482,6 +470,48 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 			{3, "third row", 6, 6, 0, float64(6)},
 			{2, "second row", 6, 6, 0, float64(6)},
 			{1, "first row", 6, 6, 0, float64(6)},
+		},
+	},
+	{
+		Query: "select * from ab full join pq on a = p order by 1,2,3,4;",
+		Expected: []sql.Row{
+			{0, 2, 0, 0},
+			{1, 2, 1, 1},
+			{2, 2, 2, 2},
+			{3, 1, 3, 3},
+		},
+	},
+	{
+		Query: `
+	select * from ab
+	inner join uv on a = u
+	full join pq on a = p order by 1,2,3,4,5,6;`,
+		Expected: []sql.Row{
+			{0, 2, 0, 1, 0, 0},
+			{1, 2, 1, 1, 1, 1},
+			{2, 2, 2, 2, 2, 2},
+			{3, 1, 3, 2, 3, 3},
+		},
+	},
+	{
+		Query: `
+	select * from ab
+	full join pq on a = p
+	left join xy on a = x order by 1,2,3,4,5,6;`,
+		Expected: []sql.Row{
+			{0, 2, 0, 0, 0, 2},
+			{1, 2, 1, 1, 1, 0},
+			{2, 2, 2, 2, 2, 1},
+			{3, 1, 3, 3, 3, 3},
+		},
+	},
+	{
+		Query: `select * from (select a,v from ab join uv on a=u) av join (select x,q from xy join pq on x = p) xq on av.v = xq.x`,
+		Expected: []sql.Row{
+			{0, 1, 1, 1},
+			{1, 1, 1, 1},
+			{2, 2, 2, 2},
+			{3, 2, 2, 2},
 		},
 	},
 }

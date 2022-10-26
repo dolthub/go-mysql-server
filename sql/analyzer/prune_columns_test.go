@@ -41,239 +41,239 @@ func TestPruneColumns(t *testing.T) {
 	}), nil), nil, nil)
 
 	testCases := []analyzerFnTestCase{
-		{
-			name: "natural join",
-			node: plan.NewProject(
-				[]sql.Expression{
-					gf(0, "t1", "foo"),
-					gf(1, "", "some_alias"),
-				},
-				plan.NewProject(
-					[]sql.Expression{
-						gf(0, "t1", "foo"),
-						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
-					},
-					plan.NewFilter(
-						eq(gf(0, "t1", "foo"), gf(4, "t2", "baz")),
-						plan.NewProject(
-							[]sql.Expression{
-								gf(0, "t1", "foo"),
-								gf(1, "t1", "bar"),
-								gf(2, "t1", "bax"),
-								gf(4, "t2", "baz"),
-								gf(5, "t2", "bux"),
-							},
-							plan.NewCrossJoin(t1, t2),
-						),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					gf(0, "t1", "foo"),
-					gf(1, "", "some_alias"),
-				},
-				plan.NewProject(
-					[]sql.Expression{
-						gf(0, "t1", "foo"),
-						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
-					},
-					plan.NewFilter(
-						eq(gf(0, "t1", "foo"), gf(2, "t2", "baz")),
-						plan.NewProject(
-							[]sql.Expression{
-								gf(0, "t1", "foo"),
-								gf(1, "t1", "bar"),
-								gf(4, "t2", "baz"),
-							},
-							plan.NewCrossJoin(t1, t2),
-						),
-					),
-				),
-			),
-		},
-		{
-			name: "subquery",
-			node: plan.NewProject(
-				[]sql.Expression{
-					gf(0, "t", "foo"),
-					gf(1, "", "some_alias"),
-				},
-				plan.NewProject(
-					[]sql.Expression{
-						gf(0, "t", "foo"),
-						expression.NewAlias("some_alias", gf(1, "t", "bar")),
-					},
-					plan.NewFilter(
-						eq(gf(0, "t", "foo"), gf(4, "t", "baz")),
-						plan.NewSubqueryAlias("t", "",
-							plan.NewProject(
-								[]sql.Expression{
-									gf(0, "t1", "foo"),
-									gf(1, "t1", "bar"),
-									gf(2, "t1", "bax"),
-									gf(4, "t2", "baz"),
-									gf(5, "t2", "bux"),
-								},
-								plan.NewCrossJoin(t1, t2),
-							),
-						),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					gf(0, "t", "foo"),
-					gf(1, "", "some_alias"),
-				},
-				plan.NewProject(
-					[]sql.Expression{
-						gf(0, "t", "foo"),
-						expression.NewAlias("some_alias", gf(1, "t", "bar")),
-					},
-					plan.NewFilter(
-						eq(gf(0, "t", "foo"), gf(2, "t", "baz")),
-						plan.NewSubqueryAlias("t", "",
-							plan.NewProject(
-								[]sql.Expression{
-									gf(0, "t1", "foo"),
-									gf(1, "t1", "bar"),
-									gf(4, "t2", "baz"),
-								},
-								plan.NewCrossJoin(t1, t2),
-							),
-						),
-					),
-				),
-			),
-		},
-		{
-			name: "group by",
-			node: plan.NewGroupBy(
-				[]sql.Expression{
-					gf(0, "t1", "foo"),
-					gf(1, "", "some_alias"),
-				},
-				[]sql.Expression{
-					gf(0, "t1", "foo"),
-					gf(5, "t2", "bux"),
-					gf(1, "", "some_alias"),
-				},
-				plan.NewProject(
-					[]sql.Expression{
-						gf(0, "t1", "foo"),
-						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
-						gf(5, "t2", "bux"),
-					},
-					plan.NewFilter(
-						eq(gf(0, "t1", "foo"), gf(4, "t2", "baz")),
-						plan.NewProject(
-							[]sql.Expression{
-								gf(0, "t1", "foo"),
-								gf(1, "t1", "bar"),
-								gf(2, "t1", "bax"),
-								gf(4, "t2", "baz"),
-								gf(5, "t2", "bux"),
-							},
-							plan.NewCrossJoin(t1, t2),
-						),
-					),
-				),
-			),
-			expected: plan.NewGroupBy(
-				[]sql.Expression{
-					gf(0, "t1", "foo"),
-					gf(1, "", "some_alias"),
-				},
-				[]sql.Expression{
-					gf(0, "t1", "foo"),
-					gf(2, "t2", "bux"),
-					gf(1, "", "some_alias"),
-				},
-				plan.NewProject(
-					[]sql.Expression{
-						gf(0, "t1", "foo"),
-						expression.NewAlias("some_alias", gf(1, "t1", "bar")),
-						gf(3, "t2", "bux"),
-					},
-					plan.NewFilter(
-						eq(gf(0, "t1", "foo"), gf(2, "t2", "baz")),
-						plan.NewProject(
-							[]sql.Expression{
-								gf(0, "t1", "foo"),
-								gf(1, "t1", "bar"),
-								gf(4, "t2", "baz"),
-								gf(5, "t2", "bux"),
-							},
-							plan.NewCrossJoin(t1, t2),
-						),
-					),
-				),
-			),
-		},
-		{
-			name: "used inside subquery and not outside",
-			node: plan.NewProject(
-				[]sql.Expression{
-					gf(0, "sq", "foo"),
-				},
-				plan.NewSubqueryAlias("sq", "",
-					plan.NewProject(
-						[]sql.Expression{gf(0, "t1", "foo")},
-						plan.NewInnerJoin(
-							plan.NewProject(
-								[]sql.Expression{
-									gf(0, "t1", "foo"),
-									gf(1, "t1", "bar"),
-									gf(2, "t1", "bax"),
-								},
-								t1,
-							),
-							plan.NewProject(
-								[]sql.Expression{
-									gf(0, "t2", "foo"),
-									gf(1, "t2", "baz"),
-									gf(2, "t2", "bux"),
-								},
-								t2,
-							),
-							expression.NewEquals(
-								gf(0, "t1", "foo"),
-								gf(3, "t2", "foo"),
-							),
-						),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					gf(0, "sq", "foo"),
-				},
-				plan.NewSubqueryAlias("sq", "",
-					plan.NewProject(
-						[]sql.Expression{gf(0, "t1", "foo")},
-						plan.NewInnerJoin(
-							plan.NewProject(
-								[]sql.Expression{
-									gf(0, "t1", "foo"),
-								},
-								t1,
-							),
-							plan.NewProject(
-								[]sql.Expression{
-									gf(0, "t2", "foo"),
-								},
-								t2,
-							),
-							expression.NewEquals(
-								gf(0, "t1", "foo"),
-								gf(1, "t2", "foo"),
-							),
-						),
-					),
-				),
-			),
-		},
+		//{
+		//	name: "natural join",
+		//	node: plan.NewProject(
+		//		[]sql.Expression{
+		//			gf(0, "t1", "foo"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		plan.NewProject(
+		//			[]sql.Expression{
+		//				gf(0, "t1", "foo"),
+		//				expression.NewAlias("some_alias", gf(1, "t1", "bar")),
+		//			},
+		//			plan.NewFilter(
+		//				eq(gf(0, "t1", "foo"), gf(4, "t2", "baz")),
+		//				plan.NewProject(
+		//					[]sql.Expression{
+		//						gf(0, "t1", "foo"),
+		//						gf(1, "t1", "bar"),
+		//						gf(2, "t1", "bax"),
+		//						gf(4, "t2", "baz"),
+		//						gf(5, "t2", "bux"),
+		//					},
+		//					plan.NewCrossJoin(t1, t2),
+		//				),
+		//			),
+		//		),
+		//	),
+		//	expected: plan.NewProject(
+		//		[]sql.Expression{
+		//			gf(0, "t1", "foo"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		plan.NewProject(
+		//			[]sql.Expression{
+		//				gf(0, "t1", "foo"),
+		//				expression.NewAlias("some_alias", gf(1, "t1", "bar")),
+		//			},
+		//			plan.NewFilter(
+		//				eq(gf(0, "t1", "foo"), gf(2, "t2", "baz")),
+		//				plan.NewProject(
+		//					[]sql.Expression{
+		//						gf(0, "t1", "foo"),
+		//						gf(1, "t1", "bar"),
+		//						gf(4, "t2", "baz"),
+		//					},
+		//					plan.NewCrossJoin(t1, t2),
+		//				),
+		//			),
+		//		),
+		//	),
+		//},
+		//{
+		//	name: "subquery",
+		//	node: plan.NewProject(
+		//		[]sql.Expression{
+		//			gf(0, "t", "foo"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		plan.NewProject(
+		//			[]sql.Expression{
+		//				gf(0, "t", "foo"),
+		//				expression.NewAlias("some_alias", gf(1, "t", "bar")),
+		//			},
+		//			plan.NewFilter(
+		//				eq(gf(0, "t", "foo"), gf(4, "t", "baz")),
+		//				plan.NewSubqueryAlias("t", "",
+		//					plan.NewProject(
+		//						[]sql.Expression{
+		//							gf(0, "t1", "foo"),
+		//							gf(1, "t1", "bar"),
+		//							gf(2, "t1", "bax"),
+		//							gf(4, "t2", "baz"),
+		//							gf(5, "t2", "bux"),
+		//						},
+		//						plan.NewCrossJoin(t1, t2),
+		//					),
+		//				),
+		//			),
+		//		),
+		//	),
+		//	expected: plan.NewProject(
+		//		[]sql.Expression{
+		//			gf(0, "t", "foo"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		plan.NewProject(
+		//			[]sql.Expression{
+		//				gf(0, "t", "foo"),
+		//				expression.NewAlias("some_alias", gf(1, "t", "bar")),
+		//			},
+		//			plan.NewFilter(
+		//				eq(gf(0, "t", "foo"), gf(2, "t", "baz")),
+		//				plan.NewSubqueryAlias("t", "",
+		//					plan.NewProject(
+		//						[]sql.Expression{
+		//							gf(0, "t1", "foo"),
+		//							gf(1, "t1", "bar"),
+		//							gf(4, "t2", "baz"),
+		//						},
+		//						plan.NewCrossJoin(t1, t2),
+		//					),
+		//				),
+		//			),
+		//		),
+		//	),
+		//},
+		//{
+		//	name: "group by",
+		//	node: plan.NewGroupBy(
+		//		[]sql.Expression{
+		//			gf(0, "t1", "foo"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		[]sql.Expression{
+		//			gf(0, "t1", "foo"),
+		//			gf(5, "t2", "bux"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		plan.NewProject(
+		//			[]sql.Expression{
+		//				gf(0, "t1", "foo"),
+		//				expression.NewAlias("some_alias", gf(1, "t1", "bar")),
+		//				gf(5, "t2", "bux"),
+		//			},
+		//			plan.NewFilter(
+		//				eq(gf(0, "t1", "foo"), gf(4, "t2", "baz")),
+		//				plan.NewProject(
+		//					[]sql.Expression{
+		//						gf(0, "t1", "foo"),
+		//						gf(1, "t1", "bar"),
+		//						gf(2, "t1", "bax"),
+		//						gf(4, "t2", "baz"),
+		//						gf(5, "t2", "bux"),
+		//					},
+		//					plan.NewCrossJoin(t1, t2),
+		//				),
+		//			),
+		//		),
+		//	),
+		//	expected: plan.NewGroupBy(
+		//		[]sql.Expression{
+		//			gf(0, "t1", "foo"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		[]sql.Expression{
+		//			gf(0, "t1", "foo"),
+		//			gf(2, "t2", "bux"),
+		//			gf(1, "", "some_alias"),
+		//		},
+		//		plan.NewProject(
+		//			[]sql.Expression{
+		//				gf(0, "t1", "foo"),
+		//				expression.NewAlias("some_alias", gf(1, "t1", "bar")),
+		//				gf(3, "t2", "bux"),
+		//			},
+		//			plan.NewFilter(
+		//				eq(gf(0, "t1", "foo"), gf(2, "t2", "baz")),
+		//				plan.NewProject(
+		//					[]sql.Expression{
+		//						gf(0, "t1", "foo"),
+		//						gf(1, "t1", "bar"),
+		//						gf(4, "t2", "baz"),
+		//						gf(5, "t2", "bux"),
+		//					},
+		//					plan.NewCrossJoin(t1, t2),
+		//				),
+		//			),
+		//		),
+		//	),
+		//},
+		//{
+		//	name: "used inside subquery and not outside",
+		//	node: plan.NewProject(
+		//		[]sql.Expression{
+		//			gf(0, "sq", "foo"),
+		//		},
+		//		plan.NewSubqueryAlias("sq", "",
+		//			plan.NewProject(
+		//				[]sql.Expression{gf(0, "t1", "foo")},
+		//				plan.NewInnerJoin(
+		//					plan.NewProject(
+		//						[]sql.Expression{
+		//							gf(0, "t1", "foo"),
+		//							gf(1, "t1", "bar"),
+		//							gf(2, "t1", "bax"),
+		//						},
+		//						t1,
+		//					),
+		//					plan.NewProject(
+		//						[]sql.Expression{
+		//							gf(0, "t2", "foo"),
+		//							gf(1, "t2", "baz"),
+		//							gf(2, "t2", "bux"),
+		//						},
+		//						t2,
+		//					),
+		//					expression.NewEquals(
+		//						gf(0, "t1", "foo"),
+		//						gf(3, "t2", "foo"),
+		//					),
+		//				),
+		//			),
+		//		),
+		//	),
+		//	expected: plan.NewProject(
+		//		[]sql.Expression{
+		//			gf(0, "sq", "foo"),
+		//		},
+		//		plan.NewSubqueryAlias("sq", "",
+		//			plan.NewProject(
+		//				[]sql.Expression{gf(0, "t1", "foo")},
+		//				plan.NewInnerJoin(
+		//					plan.NewProject(
+		//						[]sql.Expression{
+		//							gf(0, "t1", "foo"),
+		//						},
+		//						t1,
+		//					),
+		//					plan.NewProject(
+		//						[]sql.Expression{
+		//							gf(0, "t2", "foo"),
+		//						},
+		//						t2,
+		//					),
+		//					expression.NewEquals(
+		//						gf(0, "t1", "foo"),
+		//						gf(1, "t2", "foo"),
+		//					),
+		//				),
+		//			),
+		//		),
+		//	),
+		//},
 		{
 			name: "Unqualified columns in subquery",
 			node: plan.NewProject(

@@ -76,11 +76,12 @@ var DefaultRules = []Rule{
 	{validateCheckConstraintId, validateCheckConstraints},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables},
 	{expandStarsId, expandStars},
+	{transposeRightJoinsId, transposeRightJoins},
 	{resolveHavingId, resolveHaving},
 	{mergeUnionSchemasId, mergeUnionSchemas},
 	{flattenAggregationExprsId, flattenAggregationExpressions},
 	{reorderProjectionId, reorderProjection},
-	{resolveSubqueryExprsId, resolveSubqueryExpressions},
+	{resolveSubqueriesId, resolveSubqueries},
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{evalFilterId, simplifyFilters},
@@ -90,27 +91,27 @@ var DefaultRules = []Rule{
 // OnceAfterDefault contains the rules to be applied just once after the
 // DefaultRules.
 var OnceAfterDefault = []Rule{
+	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{assignCatalogId, assignCatalog},
-	{pruneColumnsId, pruneColumns},
-	{hoistSelectExistsId, hoistSelectExists},
+	// pushdownFilters currently has to happen after constructing join plan.
+	// TODO better way to represent filters, so that we can use them during
+	// join planning
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
+	{pruneColumnsId, pruneColumns},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{replaceSortPkId, replacePkSort},
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
-	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
-	// previous rules.
-	{finalizeSubqueryExprsId, finalizeSubqueryExpressions},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
-	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAlisesInJoins},
+	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{applyHashLookupsId, applyHashLookups},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},

@@ -61,7 +61,7 @@ const (
 	MultiStmtModeOn  MultiStmtMode = 1
 )
 
-// Handler is a connection handler for a SQLe engine.
+// Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {
 	e                 *sqle.Engine
 	sm                *SessionManager
@@ -69,6 +69,8 @@ type Handler struct {
 	disableMultiStmts bool
 	sel               ServerEventListener
 }
+
+var _ mysql.Handler = (*Handler)(nil)
 
 // NewHandler creates a new Handler given a SQLe engine.
 func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, listener ServerEventListener) *Handler {

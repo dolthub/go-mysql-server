@@ -412,7 +412,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
 						),
 					),
-					plan.NewLeftJoin(
+					plan.NewLeftOuterJoin(
 						plan.NewResolvedTable(table, nil, nil),
 						plan.NewResolvedTable(table2, nil, nil),
 						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
@@ -427,7 +427,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 					expression.NewIsNull(
 						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
 					),
-					plan.NewLeftJoin(
+					plan.NewLeftOuterJoin(
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
@@ -436,51 +436,6 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 							plan.NewResolvedTable(table, nil, nil),
 						),
 						plan.NewResolvedTable(table2, nil, nil),
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-					),
-				),
-			),
-		},
-		{
-			name: "pushdown filter to right join",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
-				},
-				plan.NewFilter(
-					expression.NewAnd(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
-						),
-						expression.NewIsNull(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-						),
-					),
-					plan.NewRightJoin(
-						plan.NewResolvedTable(table, nil, nil),
-						plan.NewResolvedTable(table2, nil, nil),
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
-				},
-				plan.NewFilter(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-						expression.NewLiteral(3.14, sql.Float64),
-					),
-					plan.NewRightJoin(
-						plan.NewResolvedTable(table, nil, nil),
-						plan.NewFilter(
-							expression.NewIsNull(
-								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
-							),
-							plan.NewResolvedTable(table2, nil, nil),
-						),
 						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
 					),
 				),
@@ -641,7 +596,7 @@ func TestPushdownIndex(t *testing.T) {
 				},
 				mustStaticIta(
 					plan.NewResolvedTable(table, nil, nil),
-					mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+					mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 				),
 			),
 		},
@@ -676,7 +631,7 @@ func TestPushdownIndex(t *testing.T) {
 					),
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
 				),
 			),
@@ -724,7 +679,7 @@ func TestPushdownIndex(t *testing.T) {
 					),
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
 				),
 			),
@@ -759,11 +714,11 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewCrossJoin(
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
 					mustStaticIta(
 						plan.NewResolvedTable(table2, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 					),
 				),
 			),
@@ -799,11 +754,11 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewCrossJoin(
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
 					mustStaticIta(
 						plan.NewResolvedTable(table2, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 					),
 				),
 			),
@@ -817,11 +772,11 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewCrossJoin(
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
 					mustStaticIta(
 						plan.NewResolvedTable(table2, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 					),
 				),
 			),
@@ -862,7 +817,7 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewCrossJoin(
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
-						mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+						mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 					),
 					plan.NewFilter(
 						expression.NewEquals(
@@ -871,7 +826,7 @@ func TestPushdownIndex(t *testing.T) {
 						),
 						mustStaticIta(
 							plan.NewResolvedTable(table2, nil, nil),
-							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
+							mustIndexLookup(sql.NewIndexBuilder(idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 						),
 					),
 				),
@@ -905,7 +860,7 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewTableAlias("t1",
 						mustStaticIta(
 							plan.NewResolvedTable(table, nil, nil),
-							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+							mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 						),
 					),
 				),
@@ -951,7 +906,7 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewTableAlias("t1",
 						mustStaticIta(
 							plan.NewResolvedTable(table, nil, nil),
-							mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+							mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 						),
 					),
 				),
@@ -997,7 +952,7 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewTableAlias("t1",
 							mustStaticIta(
 								plan.NewResolvedTable(table, nil, nil),
-								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+								mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 							),
 						),
 					),
@@ -1009,7 +964,7 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewTableAlias("t2",
 							mustStaticIta(
 								plan.NewResolvedTable(table2, nil, nil),
-								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
+								mustIndexLookup(sql.NewIndexBuilder(idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 							),
 						),
 					),
@@ -1074,7 +1029,7 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewTableAlias("t1",
 							mustStaticIta(
 								plan.NewResolvedTable(table, nil, nil),
-								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
+								mustIndexLookup(sql.NewIndexBuilder(idxTable1F).Equals(ctx, "mytable.f", 3.14).Build(ctx)),
 							),
 						),
 					),
@@ -1092,7 +1047,7 @@ func TestPushdownIndex(t *testing.T) {
 						plan.NewTableAlias("t2",
 							mustStaticIta(
 								plan.NewResolvedTable(table2, nil, nil),
-								mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
+								mustIndexLookup(sql.NewIndexBuilder(idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
 							),
 						),
 					),
@@ -1122,55 +1077,43 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewIndexedJoin(
-						plan.NewTableAlias("t1",
-							plan.NewResolvedTable(table, nil, nil),
-						),
-						plan.NewTableAlias("t2",
-							plan.NewResolvedTable(table2, nil, nil),
-						),
-						plan.JoinTypeInner,
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-						0,
-					),
+					plan.NewLookupJoin(plan.NewTableAlias("t1",
+						plan.NewResolvedTable(table, nil, nil),
+					), plan.NewTableAlias("t2",
+						plan.NewResolvedTable(table2, nil, nil),
+					), eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2"))),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
 				},
-				plan.NewIndexedJoin(
-					plan.NewFilter(
+				plan.NewLookupJoin(plan.NewFilter(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+						expression.NewLiteral(100, sql.Int32),
+					),
+					plan.NewTableAlias("t1",
+						mustStaticIta(
+							plan.NewResolvedTable(table, nil, nil),
+							mustIndexLookup(sql.NewIndexBuilder(idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
+						),
+					),
+				), plan.NewFilter(
+					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-							expression.NewLiteral(100, sql.Int32),
+							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
 						),
-						plan.NewTableAlias("t1",
-							mustStaticIta(
-								plan.NewResolvedTable(table, nil, nil),
-								mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
-							),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", sql.Text),
 						),
 					),
-					plan.NewFilter(
-						and(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
-							),
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
-							),
-						),
-						plan.NewTableAlias("t2",
-							plan.NewResolvedTable(table2, nil, nil),
-						),
+					plan.NewTableAlias("t2",
+						plan.NewResolvedTable(table2, nil, nil),
 					),
-					plan.JoinTypeInner,
-					eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-					0,
-				),
+				), eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2"))),
 			),
 		},
 		{
@@ -1196,61 +1139,49 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewIndexedJoin(
-						plan.NewTableAlias("t1",
-							plan.NewResolvedTable(table, nil, nil),
+					plan.NewLookupJoin(plan.NewTableAlias("t1",
+						plan.NewResolvedTable(table, nil, nil),
+					), plan.NewTableAlias("t2",
+						mustNewIta(
+							plan.NewResolvedTable(table2, nil, nil),
+							plan.NewLookupBuilder(idxTable2I2, []sql.Expression{gf(0, "t1", "i")}, []bool{false}),
 						),
-						plan.NewTableAlias("t2",
-							mustNewIta(
-								plan.NewResolvedTable(table2, nil, nil),
-								plan.NewLookupBuilder(ctx, idxTable2I2, []sql.Expression{gf(0, "t1", "i")}, []bool{false}),
-							),
-						),
-						plan.JoinTypeInner,
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-						0,
-					),
+					), eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2"))),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
 				},
-				plan.NewIndexedJoin(
-					plan.NewFilter(
+				plan.NewLookupJoin(plan.NewFilter(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+						expression.NewLiteral(100, sql.Int32),
+					),
+					plan.NewTableAlias("t1",
+						mustStaticIta(
+							plan.NewResolvedTable(table, nil, nil),
+							mustIndexLookup(sql.NewIndexBuilder(idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
+						),
+					),
+				), plan.NewFilter(
+					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-							expression.NewLiteral(100, sql.Int32),
+							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, sql.Int32),
 						),
-						plan.NewTableAlias("t1",
-							mustStaticIta(
-								plan.NewResolvedTable(table, nil, nil),
-								mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
-							),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", sql.Text),
 						),
 					),
-					plan.NewFilter(
-						and(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
-							),
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
-							),
-						),
-						plan.NewTableAlias("t2",
-							mustNewIta(
-								plan.NewResolvedTable(table2, nil, nil),
-								plan.NewLookupBuilder(ctx, idxTable2I2, []sql.Expression{gf(0, "t1", "i")}, []bool{false}),
-							),
+					plan.NewTableAlias("t2",
+						mustNewIta(
+							plan.NewResolvedTable(table2, nil, nil),
+							plan.NewLookupBuilder(idxTable2I2, []sql.Expression{gf(0, "t1", "i")}, []bool{false}),
 						),
 					),
-					plan.JoinTypeInner,
-					eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-					0,
-				),
+				), eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2"))),
 			),
 		},
 		{
@@ -1276,17 +1207,11 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 					),
-					plan.NewIndexedJoin(
-						plan.NewTableAlias("t1",
-							plan.NewResolvedTable(table, nil, nil),
-						),
-						plan.NewTableAlias("t2",
-							plan.NewResolvedTable(table2, nil, nil),
-						),
-						plan.JoinTypeLeft,
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-						0,
-					),
+					plan.NewLeftOuterLookupJoin(plan.NewTableAlias("t1",
+						plan.NewResolvedTable(table, nil, nil),
+					), plan.NewTableAlias("t2",
+						plan.NewResolvedTable(table2, nil, nil),
+					), eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2"))),
 				),
 			),
 			expected: plan.NewProject(
@@ -1304,100 +1229,20 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral("goodbye", sql.Text),
 						),
 					),
-					plan.NewIndexedJoin(
-						plan.NewFilter(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-								expression.NewLiteral(100, sql.Int32),
-							),
-							plan.NewTableAlias("t1",
-								mustStaticIta(
-									plan.NewResolvedTable(table, nil, nil),
-									mustIndexLookup(sql.NewIndexBuilder(ctx, idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
-								),
-							),
-						),
-						plan.NewTableAlias("t2",
-							plan.NewResolvedTable(table2, nil, nil),
-						),
-						plan.JoinTypeLeft,
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-						0,
-					),
-				),
-			),
-		},
-		{
-			name: "two aliased tables, right indexed join",
-			node: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-				},
-				plan.NewFilter(
-					and(
+					plan.NewLeftOuterLookupJoin(plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
-						),
-						and(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-								expression.NewLiteral(100, sql.Int32),
-							),
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
-							),
-						),
-					),
-					plan.NewIndexedJoin(
-						plan.NewTableAlias("t2",
-							plan.NewResolvedTable(table2, nil, nil),
+							expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+							expression.NewLiteral(100, sql.Int32),
 						),
 						plan.NewTableAlias("t1",
-							plan.NewResolvedTable(table, nil, nil),
-						),
-						plan.JoinTypeRight,
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-						0,
-					),
-				),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(3, sql.Int32, "t1", "i", true),
-				},
-				plan.NewFilter(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(3, sql.Int32, "t1", "i", true),
-						expression.NewLiteral(100, sql.Int32),
-					),
-					plan.NewIndexedJoin(
-						plan.NewFilter(
-							and(
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-									expression.NewLiteral(21, sql.Int32),
-								),
-								expression.NewEquals(
-									expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-									expression.NewLiteral("goodbye", sql.Text),
-								),
-							),
-							plan.NewTableAlias("t2",
-								mustStaticIta(
-									plan.NewResolvedTable(table2, nil, nil),
-									mustIndexLookup(sql.NewIndexBuilder(ctx, idxTable2I2).Equals(ctx, "mytable2.i2", 21).Build(ctx)),
-								),
+							mustStaticIta(
+								plan.NewResolvedTable(table, nil, nil),
+								mustIndexLookup(sql.NewIndexBuilder(idxtable1I).Equals(ctx, "mytable.i", 100).Build(ctx)),
 							),
 						),
-						plan.NewTableAlias("t1",
-							plan.NewResolvedTable(table, nil, nil),
-						),
-						plan.JoinTypeRight,
-						eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2")),
-						0,
-					),
+					), plan.NewTableAlias("t2",
+						plan.NewResolvedTable(table2, nil, nil),
+					), eq(gf(0, "mytable", "i"), gf(3, "mytable2", "i2"))),
 				),
 			),
 		},

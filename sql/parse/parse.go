@@ -2706,9 +2706,9 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 	case sqlparser.JoinStr:
 		return plan.NewInnerJoin(left, right, cond), nil
 	case sqlparser.LeftJoinStr:
-		return plan.NewLeftJoin(left, right, cond), nil
+		return plan.NewLeftOuterJoin(left, right, cond), nil
 	case sqlparser.RightJoinStr:
-		return plan.NewRightJoin(left, right, cond), nil
+		return plan.NewRightOuterJoin(left, right, cond), nil
 	case sqlparser.FullOuterJoinStr:
 		return plan.NewFullOuterJoin(left, right, cond), nil
 	default:

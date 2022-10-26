@@ -65,6 +65,34 @@ func (p *Dimension) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewDimension(children[0]), nil
 }
 
+func FindDimension(g sql.GeometryValue) interface{} {
+	switch v := g.(type) {
+	case sql.Point, sql.MultiPoint:
+		return 0
+	case sql.LineString, sql.MultiLineString:
+		return 1
+	case sql.Polygon, sql.MultiPolygon:
+		return 2
+	case sql.GeomColl:
+		if len(v.Geoms) == 0 {
+			return nil
+		}
+		maxDim := 0
+		for _, geom := range v.Geoms {
+			dim := FindDimension(geom)
+			if dim == nil {
+				return nil
+			}
+			if dim.(int) > maxDim {
+				maxDim = dim.(int)
+			}
+		}
+		return maxDim
+	default:
+		return nil
+	}
+}
+
 // Eval implements the sql.Expression interface.
 func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -79,13 +107,9 @@ func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect one of the geometry types
-	switch val.(type) {
-	case sql.Point:
-		return 0, nil
-	case sql.LineString:
-		return 1, nil
-	case sql.Polygon:
-		return 2, nil
+	switch v := val.(type) {
+	case sql.GeometryValue:
+		return FindDimension(v), nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
 	}
