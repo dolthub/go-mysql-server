@@ -910,11 +910,6 @@ func resolveColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapp
 		return nil, transform.SameTree, err
 	}
 
-	// validate type of default expression
-	if err = newDefault.CheckType(ctx); err != nil {
-		return nil, transform.SameTree, err
-	}
-
 	return expression.WrapExpression(newDefault), transform.NewTree, nil
 }
 
@@ -982,7 +977,16 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 		}
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	// validate type of default expression
+	if err = newDefault.CheckType(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
