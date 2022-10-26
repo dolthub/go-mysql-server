@@ -69,6 +69,18 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Query:    "SELECT t1.username, COUNT(t1.id) AS ct FROM ((SELECT t2.id, t2.content, t3.username FROM tweet AS t2 INNER JOIN users AS t3 ON (t2.user_id = t3.id) WHERE (t3.username = 'u3')) UNION (SELECT t4.id, t4.content, `t5`.`username` FROM `tweet` AS t4 INNER JOIN users AS t5 ON (t4.user_id = t5.id) WHERE (t5.username IN ('u2', 'u4')))) AS t1 GROUP BY `t1`.`username` ORDER BY COUNT(t1.id) DESC;",
 				Expected: []sql.Row{{"u2", 2}, {"u3", 1}, {"u4", 1}},
 			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(tweet.id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
 		},
 	},
 }
