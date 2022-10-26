@@ -479,6 +479,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		reresolveTablesId,
 		setTargetSchemasId,
 		parseColumnDefaultsId,
+		assignCatalogId,
 		resolveColumnDefaultsId,
 		resolveTableFunctionsId,
 		validatePrivilegesId,
