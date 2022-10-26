@@ -35,6 +35,8 @@ const (
 	checkUniqueTableNamesId                     // checkUniqueTableNames
 	resolveTableFunctionsId                     // resolveTableFunctions
 	resolveDeclarationsId                       // resolveDeclarations
+	resolveColumnDefaultsId                     // resolveColumnDefaults
+	validateColumnDefaultsId                    // validateColumnDefaults
 	validateCreateTriggerId                     // validateCreateTrigger
 	validateCreateProcedureId                   // validateCreateProcedure
 	loadInfoSchemaId                            // loadInfoSchema
@@ -55,7 +57,6 @@ const (
 	pushdownSubqueryAliasFiltersId // pushdownSubqueryAliasFilters
 	qualifyColumnsId               // qualifyColumns
 	resolveColumnsId               // resolveColumns
-	resolveColumnDefaultsId        // resolveColumnDefaults
 	validateCheckConstraintId      // validateCheckConstraint
 	resolveBarewordSetVariablesId  // resolveBarewordSetVariables
 	expandStarsId                  // expandStars

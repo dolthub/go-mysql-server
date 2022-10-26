@@ -436,15 +436,68 @@ var validColumnDefaultFuncs = map[string]struct{}{
 	"yearweek":                           {},
 }
 
+func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validateColumnDefaults")
+	defer span.End()
+
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch node := n.(type) {
+		case *plan.AlterDefaultSet:
+			table := getResolvedTable(node)
+			sch := table.Schema()
+			index := sch.IndexOfColName(node.ColumnName)
+			col := sch[index]
+
+			eWrapper := expression.WrapExpression(node.Default)
+			err := validateColumnDefault(ctx, col, eWrapper)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			return node, transform.SameTree, nil
+		case sql.SchemaTarget:
+			switch node.(type) {
+			case *plan.AlterPK, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultDrop, *plan.CreateTable, *plan.DropColumn:
+				// DDL nodes must validate any new column defaults, continue to logic below
+			default:
+				// other node types are not altering the schema and therefore don't need validation of column defaults
+				return n, transform.SameTree, nil
+			}
+
+			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
+			// we need to count the column indexes in the very hacky way outlined above.
+			colIndex := 0
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				colIndex++
+
+				err = validateColumnDefault(ctx, col, eWrapper)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				return e, transform.SameTree, nil
+			})
+		default:
+			return node, transform.SameTree, nil
+		}
+	})
+}
+
 func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolveColumnDefaults")
 	defer span.End()
 
-	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
-	//  returned by Expressions() for these nodes
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
-		// we need to count the column indexes in the very hacky way outlined above.
+		// we need to count the column indexes as we transform expressions
 		colIndex := 0
 
 		switch node := n.(type) {
@@ -463,7 +516,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 
 				col := sch[colIndex]
 				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+				return resolveColumnDefault(ctx, col, eWrapper)
 			})
 		case *plan.InsertInto:
 			// node.Source needs to be explicitly handled here because it's not a
@@ -487,7 +540,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				}
 				col := sch[schemaIndex]
 				colIndex++
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+				return resolveColumnDefault(ctx, col, eWrapper)
 			})
 
 			if identity == transform.NewTree {
@@ -501,7 +554,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 			col := sch[index]
 
 			eWrapper := expression.WrapExpression(node.Default)
-			newExpr, same, err := resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			newExpr, same, err := resolveColumnDefault(ctx, col, eWrapper)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
@@ -527,7 +580,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				}
 				colIndex++
 
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+				return resolveColumnDefault(ctx, col, eWrapper)
 			})
 		// case *plan.ResolvedTable:
 		// 	ct, ok := node.Table.(*information_schema.ColumnsTable)
@@ -569,17 +622,19 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 	})
 }
 
+// stripTableNamesFromColumnDefaults removes the table name from any GetField expressions in column default expressions.
+// Default values can only reference their host table, and since we serialize the GetField expression for storage, it's
+// important that we remove the table name before passing it off for storage. Otherwise we end up with serialized
+// defaults like `tableName.field + 1` instead of just `field + 1`.
 func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("stripTableNamesFromColumnDefaults")
 	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		colIndex := 0
-
 		switch node := n.(type) {
 		case *plan.AlterDefaultSet:
 			eWrapper := expression.WrapExpression(node.Default)
-			newExpr, same, err := stripTableNamesOnDefaultWrapper(eWrapper)
+			newExpr, same, err := stripTableNamesFromDefault(eWrapper)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
@@ -599,7 +654,7 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 					return e, transform.SameTree, nil
 				}
 
-				return stripTableNamesOnDefaultWrapper(eWrapper)
+				return stripTableNamesFromDefault(eWrapper)
 			})
 		case *plan.ResolvedTable:
 			ct, ok := node.Table.(*information_schema.ColumnsTable)
@@ -618,8 +673,7 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 					return e, transform.SameTree, nil
 				}
 
-				colIndex++
-				return stripTableNamesOnDefaultWrapper(eWrapper)
+				return stripTableNamesFromDefault(eWrapper)
 			})
 
 			if err != nil {
@@ -737,7 +791,7 @@ func transformColumnDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node,
 		}
 		switch node.(type) {
 		case *plan.Values, *plan.InsertDestination, sql.SchemaTarget:
-			return parseColumnDefaultsForWrapper(ctx, eWrapper)
+			return parseColumnDefault(ctx, eWrapper)
 		default:
 			return e, transform.SameTree, nil
 		}
@@ -803,7 +857,8 @@ func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 	return nil
 }
 
-func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+// parseColumnDefault transforms an UnresolvedColumnDefault expression into a ColumnDefaultValue expression
+func parseColumnDefault(ctx *sql.Context, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
 		return e, transform.SameTree, nil
@@ -824,7 +879,7 @@ func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql
 	return expression.WrapExpression(newDefault), transform.NewTree, nil
 }
 
-func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+func resolveColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
 		return e, transform.SameTree, nil
@@ -834,13 +889,49 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		return e, transform.SameTree, nil
 	}
 
-	// TODO: this is tripping on a bunch of MySQL tables we have defined, like users, which have a default column
-	//  value of empty string
-	// TODO: this is mostly validation logic and shouldn't even be running on things like insert, only schema alter
-	//  operations
+	// TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
+	isLiteral := newDefault.IsLiteral()
+	if unaryMinusExpr, ok := newDefault.Expression.(*expression.UnaryMinus); ok {
+		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
+			switch val := literalExpr.Value().(type) {
+			case float32:
+				newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
+				isLiteral = true
+			case float64:
+				newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
+				isLiteral = true
+			}
+		}
+	}
+
+	var err error
+	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, newDefault.IsParenthesized(), col.Nullable)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	// validate type of default expression
+	if err = newDefault.CheckType(ctx); err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return expression.WrapExpression(newDefault), transform.NewTree, nil
+}
+
+// validateColumnDefault validates that the column default expression is valid for the column type and returns an error
+// if not
+func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) error {
+	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return nil
+	}
+
+	if newDefault == nil {
+		return nil
+	}
 
 	if (sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)) && newDefault.IsLiteral() && newDefault.Type() != sql.Null {
-		return nil, transform.SameTree, sql.ErrInvalidTextBlobColumnDefault.New()
+		return sql.ErrInvalidTextBlobColumnDefault.New()
 	}
 
 	var err error
@@ -890,43 +981,11 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 			return true
 		}
 	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
 
-	//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
-	isLiteral := newDefault.IsLiteral()
-	if unaryMinusExpr, ok := newDefault.Expression.(*expression.UnaryMinus); ok {
-		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
-			switch val := literalExpr.Value().(type) {
-			case float32:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
-				isLiteral = true
-			case float64:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
-				isLiteral = true
-			}
-		}
-	}
-
-	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, newDefault.IsParenthesized(), col.Nullable)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	// validate type of default expression
-	if err = newDefault.CheckType(ctx); err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return expression.WrapExpression(newDefault), transform.NewTree, nil
+	return err
 }
 
-// stripTableNamesOnDefaultWrapper removes the table field from any GetField expressions in the wrapped expression
-// passed. Default values can only reference their host table, and since we serialize the GetField expression for
-// storage, it's important that we remove the table name before passing it off for storage. Otherwise we end up with
-// serialized defaults like `tableName.field + 1` instead of just `field + 1`.
-func stripTableNamesOnDefaultWrapper(e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
 		return e, transform.SameTree, nil

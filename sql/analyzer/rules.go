@@ -56,6 +56,7 @@ var OnceBeforeDefault = []Rule{
 	{loadInfoSchemaId, loadInfoSchema},
 	{assignCatalogId, assignCatalog},
 	{resolveColumnDefaultsId, resolveColumnDefaults},
+	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
