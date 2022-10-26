@@ -158,6 +158,7 @@ func aliasedExpressionsInNode(n sql.Node) map[string]string {
 		exprs = n.ProjectedExprs()
 	case sql.Expressioner:
 		exprs = n.Expressions()
+	default:
 	}
 
 	aliasesFromExpressionToName := make(map[string]string)
