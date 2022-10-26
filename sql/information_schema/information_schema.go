@@ -1460,9 +1460,6 @@ func NewInformationSchemaDatabase() Database {
 				schema:  collationsSchema,
 				rowIter: collationsRowIter,
 			},
-			ColumnsTableName: &ColumnsTable{
-				name: ColumnsTableName,
-			},
 			CharacterSetsTableName: &informationSchemaTable{
 				name:    CharacterSetsTableName,
 				schema:  characterSetSchema,
@@ -1840,10 +1837,6 @@ func NewInformationSchemaDatabase() Database {
 			},
 		},
 	}
-
-	// The columns table is unlike other info schema tables in that it needs to pass through other parts of the analyzer
-	// in order to fill in column defaults etc., so it needs to be wrapped in a resolved table.
-
 	return isDb
 }
 
@@ -1910,10 +1903,12 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 // Name implements the sql.Database interface.
 func (db *informationSchemaDatabase) Name() string { return db.name }
 
-// Tables implements the sql.Database interface.
-func (db *informationSchemaDatabase) Tables() map[string]Table { return db.tables }
-
 func (db *informationSchemaDatabase) GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error) {
+	// The columns table has dynamic information that can't be cached across queries
+	if strings.ToLower(tblName) == ColumnsTableName {
+		return &ColumnsTable{}, true, nil
+	}
+
 	tbl, ok := GetTableInsensitive(tblName, db.tables)
 	return tbl, ok, nil
 }

@@ -582,40 +582,40 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 
 				return resolveColumnDefault(ctx, col, eWrapper)
 			})
-		// case *plan.ResolvedTable:
-		// 	ct, ok := node.Table.(*information_schema.ColumnsTable)
-		// 	if !ok {
-		// 		return node, transform.SameTree, nil
-		// 	}
-		//
-		// 	allColumns, err := ct.AllColumns(ctx)
-		// 	if err != nil {
-		// 		return nil, transform.SameTree, err
-		// 	}
-		//
-		// 	allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		// 		eWrapper, ok := e.(*expression.Wrapper)
-		// 		if !ok {
-		// 			return e, transform.SameTree, nil
-		// 		}
-		//
-		// 		colIdx := colIndex
-		// 		colIndex++
-		// 		return resolveColumnDefaultsOnWrapper(ctx, allColumns[colIdx], eWrapper)
-		// 	})
-		//
-		// 	if err != nil {
-		// 		return nil, transform.SameTree, err
-		// 	}
-		//
-		// 	if !same {
-		// 		node.Table, err = ct.WithColumnDefaults(allDefaults)
-		// 		if err != nil {
-		// 			return nil, transform.SameTree, err
-		// 		}
-		// 	}
-		//
-		// 	return node, transform.NewTree, err
+		case *plan.ResolvedTable:
+			ct, ok := node.Table.(*information_schema.ColumnsTable)
+			if !ok {
+				return node, transform.SameTree, nil
+			}
+
+			allColumns, err := ct.AllColumns(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				colIdx := colIndex
+				colIndex++
+				return resolveColumnDefault(ctx, allColumns[colIdx], eWrapper)
+			})
+
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			if !same {
+				node.Table, err = ct.WithColumnDefaults(allDefaults)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+			}
+
+			return node, transform.NewTree, err
 		default:
 			return node, transform.SameTree, nil
 		}
@@ -744,7 +744,6 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 	span, ctx := ctx.Span("parse_column_defaults")
 	defer span.End()
 
-	nodeChanged := false
 	switch nn := n.(type) {
 	case *plan.InsertInto:
 		if !nn.Destination.Resolved() {
@@ -763,27 +762,64 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 		}
 
 		// InsertInto.Source needs special handling, since it is not modeled as a Child
-		newNode, _, err := transformColumnDefaultsForNode(ctx, nn.Source)
+		newNode, _, err := parseDefaultsForNode(ctx, nn.Source)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
 		nn.Source = newNode
-		n = nn
-		nodeChanged = true
+		return parseDefaultsForNode(ctx, nn)
+	case *plan.ResolvedTable:
+		ct, ok := nn.Table.(*information_schema.ColumnsTable)
+		if !ok {
+			return nn, transform.SameTree, nil
+		}
+
+		allColumns, err := ct.AllColumns(ctx)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			eWrapper, ok := e.(*expression.Wrapper)
+			if !ok {
+				return e, transform.SameTree, nil
+			}
+
+			newWr, parseSame, err := parseColumnDefault(ctx, eWrapper)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			newWr, stripSame, err := stripTableNamesFromDefault(newWr.(*expression.Wrapper))
+			if err != nil {
+				return nil, false, err
+			}
+
+			return newWr, parseSame && stripSame, nil
+		})
+
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		if !same {
+			nn.Table, err = ct.WithColumnDefaults(allDefaults)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return nn, transform.NewTree, err
+		}
+
+		return nn, transform.SameTree, err
 	}
 
-	node, identity, err := transformColumnDefaultsForNode(ctx, n)
-	if nodeChanged {
-		identity = transform.NewTree
-	}
-
-	return node, identity, err
+	return n, transform.SameTree, nil
 }
 
-// transformColumnDefaultsForNode walks over the expressions contained in the specified node and transforms all
+// parseDefaultsForNode walks over the expressions contained in the specified node and transforms all
 // UnresolvedColumnDefaultValues into ColumnDefaultValues.
-func transformColumnDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func parseDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeExprsWithNode(input, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {

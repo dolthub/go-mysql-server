@@ -50,14 +50,13 @@ type ColumnsTable struct {
 	allColsWithDefaultValue sql.Schema
 
 	catalog sql.Catalog
-	name    string
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
 
 // String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
-	return fmt.Sprintf("ColumnsTable(%s)", c.name)
+	return fmt.Sprintf(ColumnsTableName)
 }
 
 // Schema implements the sql.Table interface.
@@ -72,7 +71,7 @@ func (c *ColumnsTable) Collation() sql.CollationID {
 
 // Name implements the sql.Table interface.
 func (c *ColumnsTable) Name() string {
-	return c.name
+	return ColumnsTableName
 }
 
 func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
@@ -251,12 +250,13 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 				}
 
 				numericPrecision, numericScale := getColumnPrecisionAndScale(col)
-				columnDefault := getColumnDefault(ctx, col.Default)
+				tableName := t.Name()
 
+				columnDefault := getColumnDefault(ctx, col.Default)
 				rows = append(rows, sql.Row{
 					"def",            // table_catalog
 					db.Name(),        // table_schema
-					t.Name(),         // table_name
+					tableName,             // table_name
 					col.Name,         // column_name
 					ordinalPos,       // ordinal_position
 					columnDefault,    // column_default
@@ -375,48 +375,15 @@ func (c *ColumnsTable) schemaForTable(t sql.Table, db sql.Database) sql.Schema {
 		}
 	}
 
+	if start < 0 {
+		return nil
+	}
+
 	if end < 0 {
 		end = len(c.allColsWithDefaultValue)
 	}
 
 	return c.allColsWithDefaultValue[start:end]
-}
-
-// getColumnDefaultValue returns the column default value for given sql.ColumnDefaultValue
-func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
-	if cd == nil {
-		return nil
-	}
-	defStr := cd.String()
-	if defStr == "NULL" {
-		return nil
-	}
-
-	if !cd.IsLiteral() {
-		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
-			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
-		}
-		return fmt.Sprint(defStr)
-	}
-
-	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
-		return fmt.Sprint(defStr)
-	}
-
-	if sql.IsEnum(cd.Type()) || sql.IsSet(cd.Type()) {
-		return strings.Trim(defStr, "'")
-	}
-
-	v, err := cd.Eval(ctx, nil)
-	if err != nil {
-		return nil
-	}
-	switch l := v.(type) {
-	case time.Time:
-		v = l.Format("2006-01-02 15:04:05")
-	}
-
-	return fmt.Sprint(v)
 }
 
 // getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
