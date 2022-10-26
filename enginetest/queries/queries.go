@@ -263,6 +263,7 @@ var SpatialQueryTests = []QueryTest{
 				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 0, Y: 0}}}}},
 				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.1, Y: 1.1}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 1.1, Y: 1.1}}}}},
 			}}},
+			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
 		},
 	},
 	{
@@ -312,6 +313,7 @@ var SpatialQueryTests = []QueryTest{
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}}, {{5.5, 6.6}, {7.7, 8.8}}}}}},
 			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPolygon", "coordinates": [][][][2]float64{{{{0, 0}, {1.1, 2.2}, {3.3, 4.4}, {0, 0}}}, {{{1.1, 1.1}, {1.1, 2.2}, {3.3, 4.4}, {1.1, 1.1}}}}}}},
+			{sql.JSONDocument{Val: map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{}}}}}},
 		},
 	},
 	{
@@ -358,6 +360,12 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(g)) from geom_coll_table`,
+		Expected: []sql.Row{
+			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
+		},
+	},
+	{
 		Query: `SELECT ST_DIMENSION(p) from point_table`,
 		Expected: []sql.Row{
 			{0},
@@ -399,6 +407,12 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT ST_DIMENSION(g) from geom_coll_table`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
 		Query: `SELECT ST_SWAPXY(p) from point_table`,
 		Expected: []sql.Row{
 			{sql.Point{X: 2, Y: 1}},
@@ -433,6 +447,8 @@ var SpatialQueryTests = []QueryTest{
 			{"MULTILINESTRING((2 1,4 3))"},
 			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
 			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
 		},
 	},
 	{
@@ -474,11 +490,15 @@ var SpatialQueryTests = []QueryTest{
 			{"0105000000010000000102000000020000000000000000000040000000000000F03F00000000000010400000000000000840"},
 			{"0106000000010000000103000000010000000400000000000000000000000000000000000000000000000000F03F00000000000000400000000000000840000000000000104000000000000000000000000000000000"},
 			{"01060000000100000001030000000100000004000000000000000000000000000000000000000000000000000040000000000000F03F0000000000001040000000000000084000000000000000000000000000000000"},
+			{"010700000001000000010700000000000000"},
+			{"010700000001000000010700000000000000"},
 		},
 	},
 	{
 		Query: `SELECT ST_SRID(g) from geometry_table order by i`,
 		Expected: []sql.Row{
+			{uint64(0)},
+			{uint64(4326)},
 			{uint64(0)},
 			{uint64(4326)},
 			{uint64(0)},
@@ -508,6 +528,8 @@ var SpatialQueryTests = []QueryTest{
 			{sql.MultiLineString{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}}}}}},
 			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
 			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
+			{sql.GeomColl{Geoms: []sql.GeometryValue{sql.GeomColl{Geoms: []sql.GeometryValue{}}}}},
+			{sql.GeomColl{Geoms: []sql.GeometryValue{sql.GeomColl{Geoms: []sql.GeometryValue{}}}}},
 		},
 	},
 	{
@@ -525,6 +547,8 @@ var SpatialQueryTests = []QueryTest{
 			{1},
 			{2},
 			{2},
+			{nil},
+			{nil},
 		},
 	},
 	{
@@ -542,6 +566,8 @@ var SpatialQueryTests = []QueryTest{
 			{sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}}}},
 			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 2, Y: 1}, {SRID: 0, X: 4, Y: 3}, {SRID: 0, X: 0, Y: 0}}}}}}}},
 			{sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 0, Y: 0}}}}}}}},
+			{sql.GeomColl{Geoms: []sql.GeometryValue{sql.GeomColl{Geoms: []sql.GeometryValue{}}}}},
+			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
 		},
 	},
 	{
@@ -563,6 +589,55 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{2.8284271247461903},
 			{5.656854249492381},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = point(1,2)`,
+		Expected: []sql.Row{
+			{"POINT(1 2)"},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = st_srid(point(1,2),4326)`,
+		Expected: []sql.Row{
+			{"POINT(2 1)"},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = unhex(hex(point(1,2)))`,
+		Expected: []sql.Row{
+			{"POINT(1 2)"},
+		},
+	},
+	{
+		Query: `SELECT unhex(hex(point(1,2))) < unhex(hex(point(3,4)))`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table where g = st_geomfromtext('MultiPolygon(((0 0,1 2,3 4,0 0)))')`,
+		Expected: []sql.Row{
+			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{"POINT(1 2)"},
+			{"LINESTRING(1 2,3 4)"},
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"MULTIPOINT(1 2,3 4)"},
+			{"MULTILINESTRING((1 2,3 4))"},
+			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+			{"POINT(2 1)"},
+			{"LINESTRING(2 1,4 3)"},
+			{"POLYGON((0 0,1 0,1 1,0 0))"},
+			{"MULTIPOINT(2 1,4 3)"},
+			{"MULTILINESTRING((2 1,4 3))"},
+			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
 		},
 	},
 }
@@ -6123,12 +6198,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-		},
-	},
-	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NULL AND pk < 2 ORDER BY 1",
 		Expected: []sql.Row{
 			{0, nil, nil},
@@ -6145,19 +6214,6 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
 		Expected: []sql.Row{
 			{2, 2, nil},
 			{3, 3, nil},
@@ -6185,6 +6241,25 @@ var QueryTests = []QueryTest{
 			{2, 2},
 			{3, nil},
 			{5, nil},
+		},
+	},
+	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{2, 2, nil},
+		},
+	},
+	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{2, 2, nil},
+			{3, 3, nil},
+		},
+	},
+	{
+		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
+		Expected: []sql.Row{
+			{2, int64(2), nil},
 		},
 	},
 	{
@@ -7324,6 +7399,33 @@ var KeylessQueries = []QueryTest{
 
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
+	{
+		// natural join filter columns do not hide duplicated columns
+		Query: "select t2.* from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		// natural join join filter columns aliased
+		Query: "select t1.*, t2.*, i from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+		Expected: []sql.Row{
+			{1, "first row", 1, "first row", 1},
+			{2, "second row", 2, "second row", 2},
+			{3, "third row", 3, "third row", 3},
+		},
+	},
+	{
+		// natural join w/ inner join
+		Query: "select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+		Expected: []sql.Row{
+			{1, "first row", "third", 1},
+			{2, "second row", "second", 2},
+			{3, "third row", "first", 3},
+		},
+	},
 	{
 		// mysql is case-sensitive with CTE name
 		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select j from MYTABLE",
@@ -8861,10 +8963,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
 	{
-		Query:       "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
-		ExpectedErr: sql.ErrTableNotFound,
-	},
-	{
 		Query: `WITH mt1 (x,y) as (select i,s FROM mytable)
 			SELECT mt1.i, mt1.s FROM mt1`,
 		ExpectedErr: sql.ErrTableColumnNotFound,
@@ -9079,61 +9177,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
 		ExpectedErr: sql.ErrConvertingToTime,
-	},
-	{
-		Query: `SELECT t1.*
-					  FROM
-						mytable as t1,
-						mytable as t2,
-						mytable as t3,
-						mytable as t4,
-						mytable as t5,
-						mytable as t6,
-						mytable as t7,
-						mytable as t8,
-						mytable as t9,
-						mytable as t10,
-						mytable as t11,
-						mytable as t12,
-						mytable as t13,
-						mytable as t14,
-						mytable as t15
-					  WHERE
-						t1.i = t2.i and
-						t2.i = t3.i and
-						t3.i = t4.i and
-						t4.i = t5.i and
-						t5.i = t6.i and
-						t6.i = t7.i and
-						t7.i = t8.i and
-						t8.i = t9.i and
-						t9.i = t10.i and
-						t10.i = t11.i and
-						t11.i = t12.i and
-						t12.i = t13.i and
-						t13.i = t14.i and
-						t14.i = t15.i`,
-		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
-	},
-	{
-		Query: `SELECT t1.*
-					  FROM
-						mytable as t1
-						LEFT JOIN mytable as t2 ON t1.i = t2.i
-						LEFT JOIN mytable as t3 ON t2.i = t3.i
-						LEFT JOIN mytable as t4 ON t3.i = t4.i
-						LEFT JOIN mytable as t5 ON t4.i = t5.i
-						LEFT JOIN mytable as t6 ON t5.i = t6.i
-						LEFT JOIN mytable as t7 ON t6.i = t7.i
-						LEFT JOIN mytable as t8 ON t7.i = t8.i
-						LEFT JOIN mytable as t9 ON t8.i = t9.i
-						LEFT JOIN mytable as t10 ON t9.i = t10.i
-						LEFT JOIN mytable as t11 ON t10.i = t11.i
-						LEFT JOIN mytable as t12 ON t11.i = t12.i
-						LEFT JOIN mytable as t13 ON t12.i = t13.i
-						LEFT JOIN mytable as t14 ON t13.i = t14.i
-						LEFT JOIN mytable as t15 ON t14.i = t15.i`,
-		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
 	},
 	// this query was panicing, but should be allowed and should return error when this query is called
 	{

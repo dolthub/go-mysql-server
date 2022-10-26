@@ -24,7 +24,7 @@ import (
 // comparisonSatisfiesJoinCondition checks a) whether a comparison is a valid join predicate,
 // and b) whether the Left/Right children of a comparison expression covers the dependency trees
 // of a plan.CrossJoin's children.
-func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoin) bool {
+func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.JoinNode) bool {
 	lCols := j.Left().Schema()
 	rCols := j.Right().Schema()
 
@@ -56,7 +56,7 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 // expressionCoversJoin checks whether a subexpressions's comparison predicate
 // satisfies the join condition. The input conjunctions have already been split,
 // so we do not care which predicate satisfies the expression.
-func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
+func expressionCoversJoin(c sql.Expression, j *plan.JoinNode) (found bool) {
 	return transform.InspectExpr(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
@@ -86,8 +86,8 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		predicates := splitConjunction(f.Expression)
 		movedPredicates := make(map[int]struct{})
 		newF, _, err := transform.Node(f, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-			cj, ok := n.(*plan.CrossJoin)
-			if !ok {
+			cj, ok := n.(*plan.JoinNode)
+			if !ok || !cj.Op.IsCross() {
 				return n, transform.SameTree, nil
 			}
 

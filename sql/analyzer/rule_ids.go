@@ -59,6 +59,7 @@ const (
 	validateCheckConstraintId      // validateCheckConstraint
 	resolveBarewordSetVariablesId  // resolveBarewordSetVariables
 	expandStarsId                  // expandStars
+	transposeRightJoinsId          // transposeRightJoins
 	resolveHavingId                // resolveHaving
 	mergeUnionSchemasId            // mergeUnionSchemas
 	flattenAggregationExprsId      // flattenAggregationExprs

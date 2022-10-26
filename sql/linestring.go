@@ -49,52 +49,7 @@ var (
 
 // Compare implements Type interface.
 func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a LineString, throw error otherwise
-	_a, ok := a.(LineString)
-	if !ok {
-		return 0, ErrNotLineString.New(a)
-	}
-	_b, ok := b.(LineString)
-	if !ok {
-		return 0, ErrNotLineString.New(b)
-	}
-
-	// Get shorter length
-	var n int
-	lenA := len(_a.Points)
-	lenB := len(_b.Points)
-	if lenA < lenB {
-		n = lenA
-	} else {
-		n = lenB
-	}
-
-	// Compare each point until there's a difference
-	for i := 0; i < n; i++ {
-		diff, err := PointType{}.Compare(_a.Points[i], _b.Points[i])
-		if err != nil {
-			return 0, err
-		}
-		if diff != 0 {
-			return diff, nil
-		}
-	}
-
-	// Determine based off length
-	if lenA > lenB {
-		return 1, nil
-	}
-	if lenA < lenB {
-		return -1, nil
-	}
-
-	// Lines must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.
@@ -227,13 +182,14 @@ func (l LineString) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (l LineString) WriteData(buf []byte) {
+func (l LineString) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(l.Points)))
 	buf = buf[CountSize:]
 	for _, p := range l.Points {
 		p.WriteData(buf)
 		buf = buf[PointSize:]
 	}
+	return CountSize + PointSize*len(l.Points)
 }
 
 // Swap implements GeometryValue interface.

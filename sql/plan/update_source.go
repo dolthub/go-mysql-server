@@ -17,6 +17,8 @@ package plan
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -135,6 +137,21 @@ func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
 	}
 
 	return table.Schema(), nil
+}
+
+func nodeHasJoin(node sql.Node) bool {
+	hasJoinNode := false
+	transform.Inspect(node, func(node sql.Node) bool {
+		switch node.(type) {
+		case *JoinNode:
+			hasJoinNode = true
+			return false
+		default:
+			return true
+		}
+	})
+
+	return hasJoinNode
 }
 
 func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

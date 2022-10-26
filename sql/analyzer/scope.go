@@ -30,6 +30,9 @@ type Scope struct {
 	memos []sql.Node
 	// recursionDepth tracks how many times we've recursed with analysis, to avoid stack overflows from infinite recursion
 	recursionDepth int
+	// currentNodeIsFromSubqueryExpression is true when the last scope (i.e. the most inner of the outer scope levels) has been
+	// created by a subquery expression. This is needed in order to calculate outer scope visibility for derived tables.
+	currentNodeIsFromSubqueryExpression bool
 
 	procedures *ProcedureCache
 }
@@ -54,6 +57,34 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 		recursionDepth: s.recursionDepth + 1,
 		procedures:     s.procedures,
 	}
+}
+
+// newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
+// node.
+func (s *Scope) newScopeFromSubqueryExpression(node sql.Node) *Scope {
+	subScope := s.newScope(node)
+	subScope.currentNodeIsFromSubqueryExpression = true
+	return subScope
+}
+
+// newScopeFromSubqueryAlias returns a new subscope created from the specified SubqueryAlias. Subquery aliases, or
+// derived tables, generally do NOT have any visibility to outer scopes, but when they are nested inside a subquery
+// expression, they may reference tables from the scopes outside the subquery expression's scope.
+func (s *Scope) newScopeFromSubqueryAlias(sqa *plan.SubqueryAlias) *Scope {
+	subScope := newScopeWithDepth(s.RecursionDepth() + 1)
+	if s != nil && len(s.nodes) > 0 {
+		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
+		// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
+		// gives a derived table visibility to the OUTER scope where the subquery is defined.
+		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
+		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
+		if s.currentNodeIsFromSubqueryExpression {
+			sqa.OuterScopeVisibility = true
+			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+		}
+	}
+
+	return subScope
 }
 
 // newScopeWithDepth returns a new scope object with the recursion depth given

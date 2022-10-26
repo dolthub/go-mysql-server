@@ -86,6 +86,7 @@ func FormatRow(row Row) string {
 }
 
 // RowIter is an iterator that produces rows.
+// TODO: most row iters need to be Disposable for CachedResult safety
 type RowIter interface {
 	// Next retrieves the next row. It will return io.EOF if it's the last row.
 	// After retrieving the last row, Close will be automatically closed.

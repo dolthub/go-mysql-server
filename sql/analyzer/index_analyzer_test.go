@@ -152,6 +152,6 @@ func (i *dummyIdx) IndexType() string { return "BTREE" }
 func (i *dummyIdx) NewLookup(*sql.Context, ...sql.Range) (sql.IndexLookup, error) {
 	panic("not implemented")
 }
-func (i *dummyIdx) ColumnExpressionTypes(*sql.Context) []sql.ColumnExpressionType {
+func (i *dummyIdx) ColumnExpressionTypes() []sql.ColumnExpressionType {
 	panic("not implemented")
 }

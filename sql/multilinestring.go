@@ -49,52 +49,7 @@ var _ GeometryValue = MultiLineString{}
 
 // Compare implements Type interface.
 func (t MultiLineStringType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a MultiLineString, throw error otherwise
-	_a, ok := a.(MultiLineString)
-	if !ok {
-		return 0, ErrNotMultiLineString.New(a)
-	}
-	_b, ok := b.(MultiLineString)
-	if !ok {
-		return 0, ErrNotMultiLineString.New(b)
-	}
-
-	// Get shorter length
-	var n int
-	lenA := len(_a.Lines)
-	lenB := len(_b.Lines)
-	if lenA < lenB {
-		n = lenA
-	} else {
-		n = lenB
-	}
-
-	// Compare each line until there's a difference
-	for i := 0; i < n; i++ {
-		diff, err := LineStringType{}.Compare(_a.Lines[i], _b.Lines[i])
-		if err != nil {
-			return 0, err
-		}
-		if diff != 0 {
-			return diff, nil
-		}
-	}
-
-	// Determine based off length
-	if lenA > lenB {
-		return 1, nil
-	}
-	if lenA < lenB {
-		return -1, nil
-	}
-
-	// MultiLineString must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.
@@ -231,15 +186,18 @@ func (p MultiLineString) Serialize() (buf []byte) {
 }
 
 // WriteData implements GeometryValue interface.
-func (p MultiLineString) WriteData(buf []byte) {
+func (p MultiLineString) WriteData(buf []byte) int {
 	writeCount(buf, uint32(len(p.Lines)))
 	buf = buf[CountSize:]
+	count := CountSize
 	for _, l := range p.Lines {
 		WriteWKBHeader(buf, WKBLineID)
 		buf = buf[WKBHeaderSize:]
-		l.WriteData(buf)
-		buf = buf[CountSize+PointSize*len(l.Points):]
+		c := l.WriteData(buf)
+		buf = buf[c:]
+		count += WKBHeaderSize + c
 	}
+	return count
 }
 
 // Swap implements GeometryValue interface.
