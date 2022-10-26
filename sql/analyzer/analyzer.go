@@ -452,7 +452,10 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
 		validateAggregationsId,
-		validateExplodeUsageId:
+		validateExplodeUsageId,
+
+		// OnceAfterAll
+		TrackProcessId:
 		return false
 	default:
 		return true
@@ -494,9 +497,12 @@ func postPrepareRuleSelector(id RuleId) bool {
 		// OnceAfterDefault
 		subqueryIndexesId,
 		inSubqueryIndexesId,
-		resolvePreparedInsertId:
+		resolvePreparedInsertId,
+
 		// DefaultValidationRules
+
 		// OnceAfterAll
+		TrackProcessId:
 		return true
 	}
 	return false
