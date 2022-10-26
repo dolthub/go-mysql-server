@@ -75,9 +75,10 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			return n, transform.SameTree, nil
 		}
 
-		// If all the missing expressions are aliased to another name, swap in the alias name and don't move the sort node
+		// If all the missing expressions are aliased, swap in the alias name and don't move the sort node
 		expressionToAliasName := aliasedExpressionsInNode(sort.Child)
 		if allMissingColsAreAliasedExpressions(expressionToAliasName, missingCols) {
+			a.Log("swapping in alias names for missing columns: %s", strings.Join(missingCols, ", "))
 			return replaceOrderByExpressionsWithAliasReferences(sort, expressionToAliasName, missingCols)
 		}
 
