@@ -479,6 +479,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		reresolveTablesId,
 		setTargetSchemasId,
 		parseColumnDefaultsId,
+		resolveColumnDefaultsId,
 		resolveTableFunctionsId,
 		validatePrivilegesId,
 
@@ -490,7 +491,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
 		resolveColumnsId,
-		resolveColumnDefaultsId,
 		expandStarsId,
 		flattenAggregationExprsId,
 

@@ -45,6 +45,7 @@ const (
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePrivilegesId                        // validatePrivileges
 	reresolveTablesId                           // reresolveTables
+	setInsertColumnsId													// setInsertColumns
 	validateJoinComplexityId                    // validateJoinComplexity
 
 	// default

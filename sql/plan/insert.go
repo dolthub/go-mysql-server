@@ -705,11 +705,10 @@ func (ii InsertInto) String() string {
 
 func (ii InsertInto) DebugString() string {
 	pr := sql.NewTreePrinter()
-	var columnNames []string
 	if ii.IsReplace {
-		_ = pr.WriteNode("Replace(%s)", strings.Join(columnNames, ", "))
+		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
 	} else {
-		_ = pr.WriteNode("Insert(%s)", strings.Join(columnNames, ", "))
+		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
 	_ = pr.WriteChildren(sql.DebugString(ii.Destination), sql.DebugString(ii.Source))
 	return pr.String()

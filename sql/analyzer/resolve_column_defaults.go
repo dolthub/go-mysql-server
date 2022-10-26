@@ -842,15 +842,6 @@ func parseDefaultsForNode(ctx *sql.Context, input sql.Node) (sql.Node, transform
 func fillInColumnDefaults(_ *sql.Context, insertInto *plan.InsertInto) error {
 	schema := insertInto.Destination.Schema()
 
-	// If no column names were specified in the query, go ahead and fill
-	// them all in now that the destination is resolved.
-	if len(insertInto.ColumnNames) == 0 {
-		insertInto.ColumnNames = make([]string, len(schema))
-		for i, col := range schema {
-			insertInto.ColumnNames[i] = col.Name
-		}
-	}
-
 	// If the source values are not specified, fill in column default placeholders
 	if values, ok := insertInto.Source.(*plan.Values); ok {
 		for i, tuple := range values.ExpressionTuples {
