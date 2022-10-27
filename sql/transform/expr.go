@@ -218,4 +218,3 @@ func WrappedColumnDefaults(schema sql.Schema) []sql.Expression {
 	}
 	return defs
 }
-
