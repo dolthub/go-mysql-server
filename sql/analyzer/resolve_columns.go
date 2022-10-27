@@ -852,13 +852,13 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		indexChildNode(node.(sql.BinaryNode).Left())
 	case *plan.InsertInto:
 		// should index columns in InsertInto.Source
-		for _, child := range node.Source.Children() {
-			idx = 0
-			if gb, ok := child.(*plan.GroupBy); ok && !gb.Resolved() {
-				continue
+		transform.Inspect(node, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok {
+				idx = 0
+				indexSchema(resTbl.Schema())
 			}
-			indexSchema(child.Schema())
-		}
+			return true
+		})
 	}
 
 	return columns, nil
