@@ -17,7 +17,9 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -76,6 +78,34 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, sel R
 	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// Special handling for information_schema.columns: we need to resolve any functions for all column defaults in any
+		// table, because by not doing so we would get different textual output than we do in e.g. `show create table` or
+		// other places where column defaults are fully resolved by the analyzer. Because column defaults can only contain
+		// functions, columns from the same table, and literals, we don't need to resolve them further than this to get an
+		// accurate and consistent text representation.
+		rt, ok := n.(*plan.ResolvedTable)
+		if ok {
+			ct, ok := rt.Table.(*information_schema.ColumnsTable)
+			if ok {
+				cols, err := ct.AllColumns(ctx)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(cols), resolveFunctionsInExpr(ctx, a))
+
+				if !same {
+					rt.Table, err = ct.WithColumnDefaults(allDefaults)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					return rt, transform.NewTree, err
+				}
+
+				return rt, transform.SameTree, nil
+			}
+		}
+
 		if n.Resolved() {
 			return n, transform.SameTree, nil
 		}
