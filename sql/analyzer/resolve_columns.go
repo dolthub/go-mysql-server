@@ -854,6 +854,9 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		// should index columns in InsertInto.Source
 		for _, child := range node.Source.Children() {
 			idx = 0
+			if gb, ok := child.(*plan.GroupBy); ok && !gb.Resolved() {
+				continue
+			}
 			indexSchema(child.Schema())
 		}
 	}
