@@ -27,7 +27,7 @@ const (
 	resolveDropConstraintId                     // resolveDropConstraint
 	validateDropConstraintId                    // validateDropConstraint
 	loadCheckConstraintsId                      // loadCheckConstraints
-	assignCatalogId               							// assignCatalog
+	assignCatalogId                             // assignCatalog
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
 	setViewTargetSchemaId                       // setViewTargetSchema
@@ -46,7 +46,7 @@ const (
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePrivilegesId                        // validatePrivileges
 	reresolveTablesId                           // reresolveTables
-	setInsertColumnsId													// setInsertColumns
+	setInsertColumnsId                          // setInsertColumns
 	validateJoinComplexityId                    // validateJoinComplexity
 
 	// default
@@ -83,7 +83,7 @@ const (
 	resolveGeneratorsId           // resolveGenerators
 	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
 	pruneColumnsId                // pruneColumns
-	stripTableNameInDefaultsId		// stripTableNamesFromColumnDefaults
+	stripTableNameInDefaultsId    // stripTableNamesFromColumnDefaults
 	hoistSelectExistsId           // hoistSelectExists
 	optimizeJoinsId               // optimizeJoins
 	pushdownFiltersId             // pushdownFilters

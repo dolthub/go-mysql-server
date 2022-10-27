@@ -94,7 +94,6 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 	return newExprs, NewTree, nil
 }
 
-
 // InspectExpr traverses the given expression tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
 func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {

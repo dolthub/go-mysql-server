@@ -20,11 +20,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var typeToNumericPrecision = map[query.Type]int{
@@ -369,9 +369,9 @@ func (c *ColumnsTable) schemaForTable(t sql.Table, db sql.Database) sql.Schema {
 		dbName := strings.ToLower(db.Name())
 		if start < 0 && strings.ToLower(col.Source) == tableName && strings.ToLower(col.DatabaseSource) == dbName {
 			start = i
-		} else if start >= 0 && (strings.ToLower(col.Source) != tableName || strings.ToLower(col.DatabaseSource) != dbName){
-			 end = i
-			 break
+		} else if start >= 0 && (strings.ToLower(col.Source) != tableName || strings.ToLower(col.DatabaseSource) != dbName) {
+			end = i
+			break
 		}
 	}
 
