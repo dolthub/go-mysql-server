@@ -618,7 +618,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 				return nil, transform.SameTree, err
 			}
 
-			allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			allDefaults, same, err := transform.Exprs(sql.WrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
@@ -692,7 +692,7 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 				return nil, transform.SameTree, err
 			}
 
-			allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			allDefaults, same, err := transform.Exprs(sql.WrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil
@@ -718,14 +718,6 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 			return node, transform.SameTree, nil
 		}
 	})
-}
-
-func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
-	defs := make([]sql.Expression, len(schema))
-	for i, col := range schema {
-		defs[i] = expression.WrapExpression(col.Default)
-	}
-	return defs
 }
 
 // lookupColumnForTargetSchema looks at the target schema for the specified SchemaTarget node and returns
@@ -806,7 +798,7 @@ func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ 
 				return nil, transform.SameTree, err
 			}
 
-			allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			allDefaults, same, err := transform.Exprs(sql.WrappedColumnDefaults(allColumns), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, transform.SameTree, nil

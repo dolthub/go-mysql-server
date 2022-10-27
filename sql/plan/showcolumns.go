@@ -91,7 +91,7 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 		return nil
 	}
 
-	return wrappedColumnDefaults(s.targetSchema)
+	return sql.WrappedColumnDefaults(s.targetSchema)
 }
 
 func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -100,7 +100,7 @@ func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 	}
 
 	ss := *s
-	ss.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
+	ss.targetSchema = sql.SchemaWithDefaults(s.targetSchema, exprs)
 	return &ss, nil
 }
 

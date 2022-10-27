@@ -172,7 +172,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
-	
+
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
 

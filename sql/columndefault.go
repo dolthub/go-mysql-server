@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -239,3 +241,28 @@ func (u UnresolvedColumnDefault) WithChildren(children ...Expression) (Expressio
 	}
 	return u, nil
 }
+
+// SchemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
+// wrapped with expression.Wrapper.
+func SchemaWithDefaults(schema Schema, defaults []Expression) Schema {
+	sc := schema.Copy()
+	for i, d := range defaults {
+		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*ColumnDefaultValue)
+		if ok {
+			sc[i].Default = unwrappedColDefVal
+		} else {
+			sc[i].Default = nil
+		}
+	}
+	return sc
+}
+
+// WrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
+func WrappedColumnDefaults(schema Schema) []Expression {
+	defs := make([]Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
+}
+

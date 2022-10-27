@@ -107,7 +107,7 @@ func (sc ShowCreateTable) WithPrimaryKeySchema(schema sql.PrimaryKeySchema) (sql
 }
 
 func (sc *ShowCreateTable) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(sc.targetSchema)
+	return sql.WrappedColumnDefaults(sc.targetSchema)
 }
 
 func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -115,7 +115,7 @@ func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(exprs), len(sc.targetSchema))
 	}
 
-	sc.targetSchema = schemaWithDefaults(sc.targetSchema, exprs)
+	sc.targetSchema = sql.SchemaWithDefaults(sc.targetSchema, exprs)
 	return &sc, nil
 }
 
