@@ -59,20 +59,14 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 			return r, transform.NewTree, err
 		case *plan.InsertInto:
-			children := p.Source.Children()
-			if len(children) > 0 {
-				u := children[0]
-				r, err := resolveTable(ctx, u.(*plan.UnresolvedTable), a)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				newSrc, err := p.Source.WithChildren(r)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				return p.WithSource(newSrc), transform.NewTree, nil
+			newSrc, same, err := resolveTables(ctx, a, p.Source, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
 			}
-			return p, transform.SameTree, nil
+			if same {
+				return p, transform.SameTree, nil
+			}
+			return p.WithSource(newSrc), transform.NewTree, nil
 		default:
 			return p, transform.SameTree, nil
 		}
