@@ -851,6 +851,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
 	case *plan.InsertInto:
+		// should index columns in InsertInto.Source
 		for _, child := range node.Source.Children() {
 			idx = 0
 			indexSchema(child.Schema())
