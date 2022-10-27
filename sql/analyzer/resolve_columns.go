@@ -848,6 +848,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		indexChildNode(node.(sql.BinaryNode).Left())
 	case *plan.InsertInto:
 		for _, child := range node.Source.Children() {
+			idx = 0
 			indexSchema(child.Schema())
 		}
 	}
