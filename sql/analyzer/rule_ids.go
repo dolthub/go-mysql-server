@@ -27,6 +27,7 @@ const (
 	resolveDropConstraintId                     // resolveDropConstraint
 	validateDropConstraintId                    // validateDropConstraint
 	loadCheckConstraintsId                      // loadCheckConstraints
+	assignCatalogId               							// assignCatalog
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
 	setViewTargetSchemaId                       // setViewTargetSchema
@@ -81,7 +82,6 @@ const (
 	resolveAlterColumnId          // resolveAlterColumn
 	resolveGeneratorsId           // resolveGenerators
 	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
-	assignCatalogId               // assignCatalog
 	pruneColumnsId                // pruneColumns
 	stripTableNameInDefaultsId		// stripTableNamesFromColumnDefaults
 	hoistSelectExistsId           // hoistSelectExists

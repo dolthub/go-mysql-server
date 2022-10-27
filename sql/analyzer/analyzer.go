@@ -498,6 +498,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		// OnceAfterDefault
 		subqueryIndexesId,
 		inSubqueryIndexesId,
+		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules
