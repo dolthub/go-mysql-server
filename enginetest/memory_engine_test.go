@@ -188,13 +188,25 @@ func TestSingleScript(t *testing.T) {
 	var script = queries.ScriptTest{
 		Name: "blah",
 		SetUpScript: []string{
-			"create table t1 (i int primary key)",
-			"create table t2 (j int primary key)",
+			`create table a (i int primary key)`,
+			`insert into a values (1)`,
+			`create table b (j int primary key)`,
+			`insert into b values (1), (2), (3)`,
 		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query:    "insert into t1 (select * from t2) on duplicate key update i = t2.j;",
-				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+				Query: `insert into a with cte as (select * from b) select * from cte on duplicate key update a.i = b.j + 100`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{101},
+					{2},
+					{3},
+				},
 			},
 		},
 	}
