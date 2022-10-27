@@ -328,10 +328,11 @@ func getAvailableNamesByScope(ctx *sql.Context, n sql.Node, a *Analyzer, scope *
 
 	// Examine all columns, from the innermost scope (this node) outward.
 	children := n.Children()
+
+	// make tables in InsertInto.Source visible when resolving columns
 	if in, ok := n.(*plan.InsertInto); ok {
-		childs := in.Source.Children()
-		if len(childs) != 0 {
-			children = append(children, childs[0])
+		for _, child := range in.Source.Children() {
+			children = append(children, child)
 		}
 	}
 
