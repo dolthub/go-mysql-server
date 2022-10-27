@@ -185,38 +185,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	var script = queries.ScriptTest{
-		Name: "blah",
-		SetUpScript: []string{
-			`create table a (i int primary key)`,
-			`insert into a values (1)`,
-			`create table b (j int primary key)`,
-			`insert into b values (1), (2), (3)`,
-		},
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query: `insert into a with cte as (select * from b) select * from cte on duplicate key update a.i = b.j + 100`,
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
-				},
-			},
-			{
-				Query: "select * from a",
-				Expected: []sql.Row{
-					{101},
-					{2},
-					{3},
-				},
-			},
-		},
-	}
-
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	engine, err := harness.NewEngine(t)
-	if err != nil {
-		panic(err)
-	}
-	enginetest.TestScriptWithEngine(t, engine, harness, script)
 	t.Skip()
 
 	var scripts = []queries.ScriptTest{
