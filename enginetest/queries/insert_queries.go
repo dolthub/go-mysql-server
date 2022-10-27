@@ -1452,6 +1452,33 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Insert on duplicate key references table in subquery with join",
+		SetUpScript: []string{
+			`create table a (i int primary key, j int)`,
+			`insert into a values (1,1)`,
+			`create table b (x int primary key)`,
+			`insert into b values (1), (2), (3)`,
+			`create table c (y int primary key)`,
+			`insert into c values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into a (select * from b join c where b.x = c.y) on duplicate key update a.j = b.x + c.y + 100`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{1, 102},
+					{2, 2},
+					{3, 3},
+				},
+			},
+		},
+	},
+	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key);",
