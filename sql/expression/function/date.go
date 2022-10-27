@@ -72,7 +72,7 @@ func (d *DateAdd) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (d *DateAdd) Type() sql.Type {
-	sqlType := getType(d.Date, d.Interval)
+	sqlType := dateOffsetType(d.Date, d.Interval)
 	return sqlType
 }
 
@@ -162,7 +162,7 @@ func (d *DateSub) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (d *DateSub) Type() sql.Type {
-	sqlType := getType(d.Date, d.Interval)
+	sqlType := dateOffsetType(d.Date, d.Interval)
 	return sqlType
 }
 
@@ -499,7 +499,10 @@ func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Determines the return type of a DateAdd/DateSub expression
 // Logic is based on https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-add
-func getType(input sql.Expression, interval *expression.Interval) sql.Type {
+func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Type {
+	if input == nil {
+		return sql.Null
+	}
 	inputType := input.Type()
 
 	// result is null if expression is null
@@ -518,8 +521,15 @@ func getType(input sql.Expression, interval *expression.Interval) sql.Type {
 	}
 
 	// determine what kind of interval we're dealing with
-	isYmdInterval := strings.Contains(interval.Unit, "YEAR") || strings.Contains(interval.Unit, "MONTH") || strings.Contains(interval.Unit, "DAY")
-	isHmsInterval := strings.Contains(interval.Unit, "HOUR") || strings.Contains(interval.Unit, "MINUTE") || strings.Contains(interval.Unit, "SECOND")
+	isYmdInterval := strings.Contains(interval.Unit, "YEAR") ||
+		strings.Contains(interval.Unit, "QUARTER") ||
+		strings.Contains(interval.Unit, "MONTH") ||
+		strings.Contains(interval.Unit, "WEEK") ||
+		strings.Contains(interval.Unit, "DAY")
+
+	isHmsInterval := strings.Contains(interval.Unit, "HOUR") ||
+		strings.Contains(interval.Unit, "MINUTE") ||
+		strings.Contains(interval.Unit, "SECOND")
 	isMixedInterval := isYmdInterval && isHmsInterval
 
 	// handle input of Date type
