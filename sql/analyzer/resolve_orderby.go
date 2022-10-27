@@ -100,6 +100,29 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	})
 }
 
+// findFirstProjectorNode returns the first sql.Projector node found, starting the search from the specified node.
+// If the specified node is a sql.Projector, it will be returned, otherwise its children will be searched for the first
+// Projector until one is found. If no Projector is found, nil is returned.
+func findFirstProjectorNode(node sql.Node) sql.Projector {
+	children := make([]sql.Node, 0, 1)
+	children = append(children, node)
+
+	for {
+		if len(children) == 0 {
+			return nil
+		}
+
+		currentChild := children[0]
+		children = children[1:]
+
+		if projector, ok := currentChild.(sql.Projector); ok {
+			return projector
+		}
+
+		children = append(children, currentChild.Children()...)
+	}
+}
+
 // reorderSort replaces the sort node by adding necessary missing columns to the child node and then reordering the
 // sort with its child:
 // sort(project(a)) becomes project(sort(project(a)))

@@ -81,6 +81,22 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(tweet.id), user_id;",
 				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
 			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id LIMIT 1;",
+				Expected: []sql.Row{{1, 2}},
+			},
 		},
 	},
 }
