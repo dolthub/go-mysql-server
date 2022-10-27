@@ -104,8 +104,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 // If the specified node is a sql.Projector, it will be returned, otherwise its children will be searched for the first
 // Projector until one is found. If no Projector is found, nil is returned.
 func findFirstProjectorNode(node sql.Node) sql.Projector {
-	children := make([]sql.Node, 0, 1)
-	children = append(children, node)
+	children := []sql.Node{node}
 
 	for {
 		if len(children) == 0 {

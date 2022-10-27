@@ -115,8 +115,9 @@ func (p *Project) ProjectedExprs() []sql.Expression {
 }
 
 // WithProjectedExprs implements sql.Projector
-func (p *Project) WithProjectedExprs(exprs ...sql.Expression) (sql.Node, error) {
-	return p.WithExpressions(exprs...)
+func (p *Project) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
+	node, err := p.WithExpressions(exprs...)
+	return node.(sql.Projector), err
 }
 
 // WithChildren implements the Node interface.

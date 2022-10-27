@@ -104,8 +104,10 @@ func (w *Window) ProjectedExprs() []sql.Expression {
 }
 
 // WithProjectedExprs implements sql.Projector
-func (w *Window) WithProjectedExprs(exprs ...sql.Expression) (sql.Node, error) {
-	return w.WithExpressions(exprs...)
+func (w *Window) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
+	node, err := w.WithExpressions(exprs...)
+
+	return node.(sql.Projector), err
 }
 
 // WithExpressions implements sql.Expressioner

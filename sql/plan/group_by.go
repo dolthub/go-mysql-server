@@ -200,7 +200,7 @@ func (g *GroupBy) ProjectedExprs() []sql.Expression {
 }
 
 // WithProjectedExprs implements the sql.Projector interface
-func (g *GroupBy) WithProjectedExprs(exprs ...sql.Expression) (sql.Node, error) {
+func (g *GroupBy) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
 	expected := len(g.SelectedExprs)
 	if len(exprs) != expected {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
