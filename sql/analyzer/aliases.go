@@ -149,18 +149,34 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	return aliases, analysisErr
 }
 
-// aliasesDefinedInNode returns the expression aliases that are defined in the node given
+// aliasedExpressionsInNode returns a map of the aliased expressions defined in the first Projector node found (starting
+// the search from the specified node), mapped from the expression string to the alias name.
+func aliasedExpressionsInNode(n sql.Node) map[string]string {
+	projector := findFirstProjectorNode(n)
+	if projector == nil {
+		return nil
+	}
+	aliasesFromExpressionToName := make(map[string]string)
+	for _, e := range projector.ProjectedExprs() {
+		alias, ok := e.(*expression.Alias)
+		if ok {
+			aliasesFromExpressionToName[strings.ToLower(alias.Child.String())] = alias.Name()
+		}
+	}
+
+	return aliasesFromExpressionToName
+}
+
+// aliasesDefinedInNode returns the expression aliases that are defined in the first Projector node found, starting
+// the search from the specified node.
 func aliasesDefinedInNode(n sql.Node) []string {
-	var exprs []sql.Expression
-	switch n := n.(type) {
-	case *plan.GroupBy:
-		exprs = n.SelectedExprs
-	case sql.Expressioner:
-		exprs = n.Expressions()
+	projector := findFirstProjectorNode(n)
+	if projector == nil {
+		return nil
 	}
 
 	var aliases []string
-	for _, e := range exprs {
+	for _, e := range projector.ProjectedExprs() {
 		alias, ok := e.(*expression.Alias)
 		if ok {
 			aliases = append(aliases, strings.ToLower(alias.Name()))

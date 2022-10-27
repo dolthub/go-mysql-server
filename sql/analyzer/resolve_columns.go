@@ -89,6 +89,14 @@ func (tc tableCol) Name() string {
 	return tc.col
 }
 
+func (tc tableCol) String() string {
+	if tc.table != "" {
+		return fmt.Sprintf("%s.%s", tc.table, tc.col)
+	} else {
+		return tc.col
+	}
+}
+
 type indexedCol struct {
 	*sql.Column
 	index int
