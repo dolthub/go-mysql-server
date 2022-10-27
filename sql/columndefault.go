@@ -265,4 +265,3 @@ func WrappedColumnDefaults(schema Schema) []Expression {
 	}
 	return defs
 }
-
