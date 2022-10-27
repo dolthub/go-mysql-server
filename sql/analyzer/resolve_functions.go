@@ -92,7 +92,7 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope, sel R
 					return nil, transform.SameTree, err
 				}
 
-				allDefaults, same, err := transform.Exprs(wrappedColumnDefaults(cols), resolveFunctionsInExpr(ctx, a))
+				allDefaults, same, err := transform.Exprs(transform.WrappedColumnDefaults(cols), resolveFunctionsInExpr(ctx, a))
 
 				if !same {
 					rt.Table, err = ct.WithColumnDefaults(allDefaults)
