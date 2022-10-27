@@ -6773,9 +6773,9 @@ ORDER BY CKELE.M6T2N ASC`,
 			"             │   └─ HashLookup(child: (E52AP.BDNYB), lookup: (OXXEI.BDNYB))\n" +
 			"             │       └─ CachedResults\n" +
 			"             │           └─ SubqueryAlias(E52AP)\n" +
-			"             │               └─ Project\n" +
-			"             │                   ├─ columns: [nd.TW55N as KUXQY, sn.id as BDNYB, nma.DZLIM as YHVEZ, CASE  WHEN (nd.TCE7A < 0.9) THEN 1 ELSE 0 END as YAZ4X]\n" +
-			"             │                   └─ Sort(sn.id ASC)\n" +
+			"             │               └─ Sort(BDNYB ASC)\n" +
+			"             │                   └─ Project\n" +
+			"             │                       ├─ columns: [nd.TW55N as KUXQY, sn.id as BDNYB, nma.DZLIM as YHVEZ, CASE  WHEN (nd.TCE7A < 0.9) THEN 1 ELSE 0 END as YAZ4X]\n" +
 			"             │                       └─ Filter(NOT((nma.DZLIM = 'Q5I4E')))\n" +
 			"             │                           └─ LeftOuterHashJoin(nd.HPCMS = nma.id)\n" +
 			"             │                               ├─ LeftOuterHashJoin(sn.BRQP2 = nd.id)\n" +
@@ -6913,9 +6913,9 @@ ORDER BY CKELE.M6T2N ASC`,
 			"             │   └─ HashLookup(child: (E52AP.BDNYB), lookup: (OXXEI.BDNYB))\n" +
 			"             │       └─ CachedResults\n" +
 			"             │           └─ SubqueryAlias(E52AP)\n" +
-			"             │               └─ Project\n" +
-			"             │                   ├─ columns: [nd.TW55N as KUXQY, sn.id as BDNYB, nma.DZLIM as YHVEZ, CASE  WHEN (nd.TCE7A < 0.9) THEN 1 ELSE 0 END as YAZ4X]\n" +
-			"             │                   └─ Sort(sn.id ASC)\n" +
+			"             │               └─ Sort(BDNYB ASC)\n" +
+			"             │                   └─ Project\n" +
+			"             │                       ├─ columns: [nd.TW55N as KUXQY, sn.id as BDNYB, nma.DZLIM as YHVEZ, CASE  WHEN (nd.TCE7A < 0.9) THEN 1 ELSE 0 END as YAZ4X]\n" +
 			"             │                       └─ Filter(NOT((nma.DZLIM = 'Q5I4E')))\n" +
 			"             │                           └─ LeftOuterHashJoin(nd.HPCMS = nma.id)\n" +
 			"             │                               ├─ LeftOuterHashJoin(sn.BRQP2 = nd.id)\n" +

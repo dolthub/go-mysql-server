@@ -288,6 +288,14 @@ type OpaqueNode interface {
 	Opaque() bool
 }
 
+// Projector is a node that projects expressions for parent nodes to consume (i.e. GroupBy, Window, Project).
+type Projector interface {
+	// ProjectedExprs returns the list of expressions projected by this node.
+	ProjectedExprs() []Expression
+	// WithProjectedExprs returns a new Projector instance with the specified expressions set as its projected expressions.
+	WithProjectedExprs(...Expression) (Projector, error)
+}
+
 // Expressioner is a node that contains expressions.
 type Expressioner interface {
 	// Expressions returns the list of expressions contained by the node.
