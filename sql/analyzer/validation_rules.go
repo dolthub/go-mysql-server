@@ -408,6 +408,11 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 		if n == nil {
 			return false
 		}
+
+		if plan.IsDDLNode(n) {
+			return false
+		}
+
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				nc := sql.NumColumns(e.Type())
