@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // AlterDefaultSet represents the ALTER COLUMN SET DEFAULT statement.
@@ -118,7 +119,7 @@ func (d *AlterDefaultSet) Resolved() bool {
 }
 
 func (d *AlterDefaultSet) Expressions() []sql.Expression {
-	return append(sql.WrappedColumnDefaults(d.targetSchema), expression.WrapExpressions(d.Default)...)
+	return append(transform.WrappedColumnDefaults(d.targetSchema), expression.WrapExpressions(d.Default)...)
 }
 
 func (d AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -126,7 +127,7 @@ func (d AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, err
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), 1+len(d.targetSchema))
 	}
 
-	d.targetSchema = sql.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
@@ -223,7 +224,7 @@ func (d *AlterDefaultDrop) TargetSchema() sql.Schema {
 }
 
 func (d *AlterDefaultDrop) Expressions() []sql.Expression {
-	return sql.WrappedColumnDefaults(d.targetSchema)
+	return transform.WrappedColumnDefaults(d.targetSchema)
 }
 
 func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -231,7 +232,7 @@ func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
 
-	d.targetSchema = sql.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
 	return &d, nil
 }
 

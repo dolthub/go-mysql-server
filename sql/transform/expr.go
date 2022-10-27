@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Expr applies a transformation function to the given expression
@@ -193,3 +194,28 @@ func ExpressionToColumn(e sql.Expression) *sql.Column {
 		}
 	}
 }
+
+// SchemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
+// wrapped with expression.Wrapper.
+func SchemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
+	sc := schema.Copy()
+	for i, d := range defaults {
+		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			sc[i].Default = unwrappedColDefVal
+		} else {
+			sc[i].Default = nil
+		}
+	}
+	return sc
+}
+
+// WrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
+func WrappedColumnDefaults(schema sql.Schema) []sql.Expression {
+	defs := make([]sql.Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
+}
+

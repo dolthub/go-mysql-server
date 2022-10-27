@@ -19,6 +19,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -107,7 +108,7 @@ func (sc ShowCreateTable) WithPrimaryKeySchema(schema sql.PrimaryKeySchema) (sql
 }
 
 func (sc *ShowCreateTable) Expressions() []sql.Expression {
-	return sql.WrappedColumnDefaults(sc.targetSchema)
+	return transform.WrappedColumnDefaults(sc.targetSchema)
 }
 
 func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -115,7 +116,7 @@ func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(exprs), len(sc.targetSchema))
 	}
 
-	sc.targetSchema = sql.SchemaWithDefaults(sc.targetSchema, exprs)
+	sc.targetSchema = transform.SchemaWithDefaults(sc.targetSchema, exprs)
 	return &sc, nil
 }
 

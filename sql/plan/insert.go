@@ -134,7 +134,7 @@ func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
 }
 
 func (id *InsertDestination) Expressions() []sql.Expression {
-	return sql.WrappedColumnDefaults(id.Sch)
+	return transform.WrappedColumnDefaults(id.Sch)
 }
 
 func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -142,7 +142,7 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
 	}
 
-	id.Sch = sql.SchemaWithDefaults(id.Sch, exprs)
+	id.Sch = transform.SchemaWithDefaults(id.Sch, exprs)
 	return &id, nil
 }
 

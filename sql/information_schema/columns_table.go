@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -144,7 +145,7 @@ func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.T
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(columnDefaults), len(c.allColsWithDefaultValue))
 	}
 
-	c.allColsWithDefaultValue = sql.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	c.allColsWithDefaultValue = transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
 	return &c, nil
 }
 

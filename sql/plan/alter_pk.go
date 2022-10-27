@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -96,7 +97,7 @@ func (a *AlterPK) TargetSchema() sql.Schema {
 }
 
 func (a *AlterPK) Expressions() []sql.Expression {
-	return sql.WrappedColumnDefaults(a.targetSchema)
+	return transform.WrappedColumnDefaults(a.targetSchema)
 }
 
 func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -104,7 +105,7 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), len(a.targetSchema))
 	}
 
-	a.targetSchema = sql.SchemaWithDefaults(a.targetSchema, exprs[:len(a.targetSchema)])
+	a.targetSchema = transform.SchemaWithDefaults(a.targetSchema, exprs[:len(a.targetSchema)])
 	return &a, nil
 }
 

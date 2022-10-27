@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -91,7 +92,7 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 		return nil
 	}
 
-	return sql.WrappedColumnDefaults(s.targetSchema)
+	return transform.WrappedColumnDefaults(s.targetSchema)
 }
 
 func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -100,7 +101,7 @@ func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 	}
 
 	ss := *s
-	ss.targetSchema = sql.SchemaWithDefaults(s.targetSchema, exprs)
+	ss.targetSchema = transform.SchemaWithDefaults(s.targetSchema, exprs)
 	return &ss, nil
 }
 
