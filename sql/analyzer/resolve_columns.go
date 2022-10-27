@@ -245,7 +245,7 @@ func dedupStrings(in []string) []string {
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
 	// on the full scope; otherwise transform looks at sub-nodes and calculates a partial view of what is available.
-	symbols := getAvailableNamesByScope(ctx, n, a, scope)
+	symbols := getAvailableNamesByScope(n, scope)
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
@@ -318,7 +318,7 @@ func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) 
 // getAvailableNamesByScope searches the node |n|, the current query being analyzed, as well as any nodes from outer
 // scope levels contained in |scope| in order to calculate the available columns, tables, and aliases available to
 // the current scope.
-func getAvailableNamesByScope(ctx *sql.Context, n sql.Node, a *Analyzer, scope *Scope) availableNames {
+func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	symbols := make(availableNames)
 
 	scopeNodes := make([]sql.Node, 0, 1+len(scope.InnerToOuter()))
