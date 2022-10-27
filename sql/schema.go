@@ -132,6 +132,8 @@ func IsKeyless(s Schema) bool {
 type PrimaryKeySchema struct {
 	Schema
 	PkOrdinals []int
+	// TODO: add a data structure to hold the prefix lengths... or just modify the one above
+	TagToPrefixLength map[uint64]uint64
 }
 
 // NewPrimaryKeySchema constructs a new PrimaryKeySchema. PK ordinals
