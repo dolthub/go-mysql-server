@@ -172,20 +172,13 @@ func TestSingleQueryPrepared(t *testing.T) {
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
-	//engine, err := harness.NewEngine(t)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//engine.Analyzer.Debug = true
-	//engine.Analyzer.Verbose = true
-
+	
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{

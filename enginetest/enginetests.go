@@ -203,8 +203,8 @@ func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
 		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: sql.Int64}, {Name: "square", Type: sql.Int64}}, nil)
 }
 
-// Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
-// debugging.
+// RunQueryTests runs the query tests given after setting up the engine. Useful for testing out a smaller subset of
+// queries during debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	for _, tt := range queries {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
@@ -5661,9 +5661,6 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
 			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", ""},
 		}, nil, nil)
-
-		e.Analyzer.Debug = true
-		e.Analyzer.Verbose = true
 
 		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
 			"only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
