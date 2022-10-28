@@ -19,7 +19,11 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	// Get the correct schema of the CREATE TABLE based on the select query
 	inputSpec := ct.TableSpec()
-	selectSchema := analyzedSelect.Schema()
+
+	// We don't want to carry any information about keys, constraints, defaults, etc. from a `create table as select`
+	// statement. When the underlying select node is a table, we must remove all such info from its schema. The only
+	// exception is NOT NULL constraints, which we leave alone.
+	selectSchema := stripSchema(analyzedSelect.Schema())
 	mergedSchema := mergeSchemas(inputSpec.Schema.Schema, selectSchema)
 	newSch := make(sql.Schema, len(mergedSchema))
 
@@ -46,6 +50,20 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	}
 
 	return plan.NewTableCopier(ct.Database(), StripPassthroughNodes(analyzedCreate), StripPassthroughNodes(analyzedSelect), plan.CopierProps{}), transform.NewTree, nil
+}
+
+// stripSchema removes all non-type information from a schema, such as the key info, default value, etc.
+func stripSchema(schema sql.Schema) sql.Schema {
+	sch := make(sql.Schema, len(schema))
+	for i := range schema {
+		sch[i] = schema[i].Copy()
+		sch[i].Default = nil
+		sch[i].AutoIncrement = false
+		sch[i].PrimaryKey = false
+		sch[i].Source = ""
+		sch[i].Comment = ""
+	}
+	return sch
 }
 
 // mergeSchemas takes in the table spec of the CREATE TABLE and merges it with the schema used by the

@@ -256,7 +256,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
-		vd = maybePrivDb.(sql.ViewDatabase)
+		vd, _ = maybePrivDb.(sql.ViewDatabase)
 
 		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
@@ -272,7 +272,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
 		}
-		vd = maybePrivDb.(sql.ViewDatabase)
+		vd, _ = maybePrivDb.(sql.ViewDatabase)
 
 		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
@@ -284,12 +284,15 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return sql.RowsToRowIter(), err
 	}
 
-	_, ok, err := vd.GetView(ctx, c.name)
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		return nil, sql.ErrTableAlreadyExists.New(c.name)
+	if vd != nil {
+		_, ok, err := vd.GetView(ctx, c.name)
+		if err != nil {
+			return nil, err
+		}
+
+		if ok {
+			return nil, sql.ErrTableAlreadyExists.New(c.name)
+		}
 	}
 
 	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
@@ -459,13 +462,9 @@ func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	} else if len(children) == 1 {
 		child := children[0]
 
-		// TODO: this probably isn't quite right. Depending on analyzer internals, this could mean that "create table t1
-		//  as select * from t2" gets handled the same as "create table t1 like t2", and they have different semantics
-		//  (the latter copies all schema elements from other table, not just column names)
-		switch child.(type) {
-		case *ResolvedTable:
+		if c.like != nil {
 			c.like = child
-		default:
+		} else {
 			c.selectNode = child
 		}
 
