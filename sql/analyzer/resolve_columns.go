@@ -239,6 +239,12 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
+// findOnDupUpdateLeftExprs gathers all the left expressions for statements in InsertInto.OnDupExprs
+// the
+func findOnDupUpdateLeftExprs() map[sql.Expression]bool {
+	return nil
+}
+
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
