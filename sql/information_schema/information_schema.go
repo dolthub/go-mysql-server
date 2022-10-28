@@ -1433,7 +1433,7 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase() Database {
-	return &informationSchemaDatabase{
+	isDb := &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
 			FilesTableName: &informationSchemaTable{
@@ -1449,9 +1449,6 @@ func NewInformationSchemaDatabase() Database {
 				name:    TablesTableName,
 				schema:  tablesSchema,
 				rowIter: tablesRowIter,
-			},
-			ColumnsTableName: &ColumnsTable{
-				name: ColumnsTableName,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:    SchemataTableName,
@@ -1840,6 +1837,7 @@ func NewInformationSchemaDatabase() Database {
 			},
 		},
 	}
+	return isDb
 }
 
 func viewRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
@@ -1905,10 +1903,12 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 // Name implements the sql.Database interface.
 func (db *informationSchemaDatabase) Name() string { return db.name }
 
-// Tables implements the sql.Database interface.
-func (db *informationSchemaDatabase) Tables() map[string]Table { return db.tables }
-
 func (db *informationSchemaDatabase) GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error) {
+	// The columns table has dynamic information that can't be cached across queries
+	if strings.ToLower(tblName) == ColumnsTableName {
+		return &ColumnsTable{}, true, nil
+	}
+
 	tbl, ok := GetTableInsensitive(tblName, db.tables)
 	return tbl, ok, nil
 }

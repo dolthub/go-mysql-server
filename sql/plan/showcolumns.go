@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ShowColumns shows the columns details of a table.
@@ -91,7 +92,7 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 		return nil
 	}
 
-	return wrappedColumnDefaults(s.targetSchema)
+	return transform.WrappedColumnDefaults(s.targetSchema)
 }
 
 func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -100,7 +101,7 @@ func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 	}
 
 	ss := *s
-	ss.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
+	ss.targetSchema = transform.SchemaWithDefaults(s.targetSchema, exprs)
 	return &ss, nil
 }
 

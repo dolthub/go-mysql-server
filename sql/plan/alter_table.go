@@ -322,7 +322,7 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 }
 
 func (a *AddColumn) Expressions() []sql.Expression {
-	return append(wrappedColumnDefaults(a.targetSch), expression.WrapExpressions(a.column.Default)...)
+	return append(transform.WrappedColumnDefaults(a.targetSch), expression.WrapExpressions(a.column.Default)...)
 }
 
 func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -330,7 +330,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1+len(a.targetSch))
 	}
 
-	a.targetSch = schemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
+	a.targetSch = transform.SchemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 
@@ -928,7 +928,7 @@ func (d *DropColumn) TargetSchema() sql.Schema {
 }
 
 func (d *DropColumn) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(d.targetSchema)
+	return transform.WrappedColumnDefaults(d.targetSchema)
 }
 
 func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -936,7 +936,7 @@ func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
 
-	d.targetSchema = schemaWithDefaults(d.targetSchema, exprs)
+	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs)
 	return &d, nil
 }
 
@@ -1013,7 +1013,7 @@ func (r *RenameColumn) Schema() sql.Schema {
 }
 
 func (r *RenameColumn) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(r.targetSchema)
+	return transform.WrappedColumnDefaults(r.targetSchema)
 }
 
 func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -1021,7 +1021,7 @@ func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), len(r.targetSchema))
 	}
 
-	r.targetSchema = schemaWithDefaults(r.targetSchema, exprs)
+	r.targetSchema = transform.SchemaWithDefaults(r.targetSchema, exprs)
 	return &r, nil
 }
 
@@ -1540,7 +1540,7 @@ func (m *ModifyColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 }
 
 func (m *ModifyColumn) Expressions() []sql.Expression {
-	return append(wrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
+	return append(transform.WrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
 }
 
 func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -1548,7 +1548,7 @@ func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1+len(m.targetSchema))
 	}
 
-	m.targetSchema = schemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+	m.targetSchema = transform.SchemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {

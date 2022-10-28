@@ -479,6 +479,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 		reresolveTablesId,
 		setTargetSchemasId,
 		parseColumnDefaultsId,
+		assignCatalogId,
+		resolveColumnDefaultsId,
 		resolveTableFunctionsId,
 		validatePrivilegesId,
 
@@ -490,13 +492,13 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
 		resolveColumnsId,
-		resolveColumnDefaultsId,
 		expandStarsId,
 		flattenAggregationExprsId,
 
 		// OnceAfterDefault
 		subqueryIndexesId,
 		inSubqueryIndexesId,
+		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules

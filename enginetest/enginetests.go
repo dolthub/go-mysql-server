@@ -203,8 +203,8 @@ func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
 		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: sql.Int64}, {Name: "square", Type: sql.Int64}}, nil)
 }
 
-// Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
-// debugging.
+// RunQueryTests runs the query tests given after setting up the engine. Useful for testing out a smaller subset of
+// queries during debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	for _, tt := range queries {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
@@ -5561,7 +5561,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t28 (pk) VALUES (1), (2)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28 order by 1", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
 
 		ctx := NewContext(harness)
 		t28, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")

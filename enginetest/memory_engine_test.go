@@ -172,13 +172,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
-	//engine, err := harness.NewEngine(t)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//engine.Analyzer.Debug = true
-	//engine.Analyzer.Verbose = true
 
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
@@ -189,16 +182,19 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "non-existent procedure in trigger body",
+			Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
 			SetUpScript: []string{
-				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+				"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
+				"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT id, (SELECT max(id) from t0) FROM t0;",
-					Expected: []sql.Row{{1, 2}, {2, 2}},
+					Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+					Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
+				},
+				{
+					Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
+					Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
 				},
 			},
 		},
