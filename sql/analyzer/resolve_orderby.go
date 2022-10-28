@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -55,7 +56,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		}
 
 		var colsFromChild []string
-		var missingCols []string
+		var missingCols []tableCol
 		for _, f := range sort.SortFields {
 			ns := findExprNameables(f.Column)
 
@@ -66,7 +67,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 				} else {
 					col := tableColFromNameable(n)
 					if !tableColsContains(schemaCols, col) {
-						missingCols = append(missingCols, strings.ToLower(col.String()))
+						missingCols = append(missingCols, col)
 					}
 				}
 			}
@@ -81,23 +82,37 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		// If all the missing expressions are aliased, swap in the alias name and don't move the sort node
 		expressionToAliasName := aliasedExpressionsInNode(sort.Child)
 		if allMissingColsAreAliasedExpressions(expressionToAliasName, missingCols) {
-			a.Log("swapping in alias names for missing columns: %s", strings.Join(missingCols, ", "))
+			a.Log("swapping in alias names for missing columns: %s", tableColsToString(missingCols))
 			return replaceOrderByExpressionsWithAliasReferences(sort, expressionToAliasName, missingCols)
 		}
 
 		// If there are no columns required by the order by available, then move the order by below its child.
 		if len(colsFromChild) == 0 {
-			a.Log("pushing down sort, missing columns: %s", strings.Join(missingCols, ", "))
+			a.Log("pushing down sort, missing columns: %s", tableColsToString(missingCols))
 			return pushSortDown(sort)
 		}
 
-		a.Log("fixing sort dependencies, missing columns: %s", strings.Join(missingCols, ", "))
+		a.Log("fixing sort dependencies, missing columns: %s", tableColsToString(missingCols))
 
 		// If there are some columns required by the order by on the child but some are missing
 		// we have to do some more complex logic and split the projection in two.
 		n, err := reorderSort(sort, missingCols)
 		return n, transform.NewTree, err
 	})
+}
+
+// tableColsToString converts each of the specified |tableCols| into a string and returns them, joined with commas,
+// as a single string.
+func tableColsToString(tableCols []tableCol) string {
+	var s string
+	for _, tableCol := range tableCols {
+		if s == "" {
+			s = tableCol.String()
+		} else {
+			s = fmt.Sprintf("%s, %s", s, tableCol.String())
+		}
+	}
+	return s
 }
 
 // findFirstProjectorNode returns the first sql.Projector node found, starting the search from the specified node.
@@ -126,7 +141,7 @@ func findFirstProjectorNode(node sql.Node) sql.Projector {
 // sort with its child:
 // sort(project(a)) becomes project(sort(project(a)))
 // sort(groupBy(a)) becomes project(sort(groupby(a)))
-func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
+func reorderSort(sort *plan.Sort, missingCols []tableCol) (sql.Node, error) {
 	var expressions []sql.Expression
 	switch child := sort.Child.(type) {
 	case *plan.Project:
@@ -141,7 +156,7 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 
 	var newExpressions = append([]sql.Expression{}, expressions...)
 	for _, col := range missingCols {
-		newExpressions = append(newExpressions, expression.NewUnresolvedColumn(col))
+		newExpressions = append(newExpressions, expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name()))
 	}
 
 	for i, e := range expressions {
@@ -236,11 +251,11 @@ func pushSortDown(sort *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	}
 }
 
-// allMissingColsAreAliasedExpressions returns true if all the missing expression strings in |missingCols| are defined
+// allMissingColsAreAliasedExpressions returns true if all the missing tableCols in |missingCols| are defined
 // as aliases in the map of aliased expressions to their alias name in |expressionToAliasName|.
-func allMissingColsAreAliasedExpressions(expressionToAliasName map[string]string, missingCols []string) bool {
+func allMissingColsAreAliasedExpressions(expressionToAliasName map[string]string, missingCols []tableCol) bool {
 	for _, missingCol := range missingCols {
-		if _, ok := expressionToAliasName[missingCol]; !ok {
+		if _, ok := expressionToAliasName[missingCol.String()]; !ok {
 			return false
 		}
 	}
@@ -249,22 +264,25 @@ func allMissingColsAreAliasedExpressions(expressionToAliasName map[string]string
 }
 
 // replaceOrderByExpressionsWithAliasReferences transforms the specified |sort| node, by replacing the specified
-// expression strings in |missingCols| with their aliased names from |expressionToAliasName|.
-func replaceOrderByExpressionsWithAliasReferences(sort *plan.Sort, expressionToAliasName map[string]string, missingCols []string) (sql.Node, transform.TreeIdentity, error) {
+// tableCols from |missingCols| with their aliased names from |expressionToAliasName|.
+func replaceOrderByExpressionsWithAliasReferences(sort *plan.Sort, expressionToAliasName map[string]string, missingCols []tableCol) (sql.Node, transform.TreeIdentity, error) {
 	var newSortFields []sql.Expression
 	var replacedCols []string
 	for i, sortField := range sort.SortFields {
 		exprString := strings.ToLower(sortField.Column.String())
 
 		// if exprString is one of our missing columns and there's an alias we can reference, swap it in
-		if stringContains(missingCols, exprString) {
-			if aliasName, ok := expressionToAliasName[exprString]; ok {
-				if newSortFields == nil {
-					newSortFields = make([]sql.Expression, len(sort.SortFields))
-					copy(newSortFields, sort.SortFields.ToExpressions())
+		for _, missingCol := range missingCols {
+			if missingCol.String() == exprString {
+				if aliasName, ok := expressionToAliasName[exprString]; ok {
+					if newSortFields == nil {
+						newSortFields = make([]sql.Expression, len(sort.SortFields))
+						copy(newSortFields, sort.SortFields.ToExpressions())
+					}
+					newSortFields[i] = expression.NewAliasReference(aliasName)
+					replacedCols = append(replacedCols, exprString)
 				}
-				newSortFields[i] = expression.NewAliasReference(aliasName)
-				replacedCols = append(replacedCols, exprString)
+				break
 			}
 		}
 	}

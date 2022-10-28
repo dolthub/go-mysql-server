@@ -26,6 +26,10 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    "select team as f from members order by id, f",
+				Expected: []sql.Row{{"red"}, {"red"}, {"orange"}, {"orange"}, {"orange"}, {"purple"}},
+			},
+			{
 				Query: "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
 				Expected: []sql.Row{
 					{"purple", int64(1)},
