@@ -459,11 +459,14 @@ func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	} else if len(children) == 1 {
 		child := children[0]
 
+		// TODO: this probably isn't quite right. Depending on analyzer internals, this could mean that "create table t1
+		//  as select * from t2" gets handled the same as "create table t1 like t2", and they have different semantics
+		//  (the latter copies all schema elements from other table, not just column names)
 		switch child.(type) {
-		case *Project, *Limit:
-			c.selectNode = child
-		default:
+		case *ResolvedTable:
 			c.like = child
+		default:
+			c.selectNode = child
 		}
 
 		return &c, nil
@@ -497,6 +500,13 @@ func (c *CreateTable) DebugString() string {
 		ifNotExists = "if not exists "
 	}
 	p := sql.NewTreePrinter()
+
+	if c.selectNode != nil {
+		p.WriteNode("Create table %s%s as", ifNotExists, c.name)
+		p.WriteChildren(sql.DebugString(c.selectNode))
+		return p.String()
+	}
+
 	p.WriteNode("Create table %s%s", ifNotExists, c.name)
 
 	var children []string
