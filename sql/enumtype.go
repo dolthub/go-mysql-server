@@ -283,7 +283,7 @@ func (t enumType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t enumType) Zero() interface{} {
 	/// If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
-	return t.indexToVal[0]
+	return uint16(0)
 }
 
 // At implements EnumType interface.
