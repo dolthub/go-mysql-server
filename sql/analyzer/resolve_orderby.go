@@ -111,7 +111,6 @@ func tableColsToString(tableCols []tableCol) string {
 		} else {
 			s = fmt.Sprintf("%s, %s", s, tableCol.String())
 		}
-		tableCol.String()
 	}
 	return s
 }
