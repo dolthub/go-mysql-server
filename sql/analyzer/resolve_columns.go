@@ -19,13 +19,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -374,14 +372,14 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	for scopeLevel, n := range scopeNodes {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess, *plan.JSONTable:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *plan.IndexedTableAccess, *plan.JSONTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				symbols.indexTable(name, name, scopeLevel)
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
 				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias,
-					*plan.RecursiveTable, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
+					*plan.RecursiveTable, *plan.IndexedTableAccess:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					symbols.indexTable(alias, name, scopeLevel)
@@ -572,7 +570,7 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, scopeLevel int) {
 
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *information_schema.ColumnsTable, *plan.JSONTable:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.JSONTable:
 			for _, col := range n.Schema() {
 				names.indexColumn(col.Source, col.Name, scopeLevel)
 			}
@@ -592,12 +590,6 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, scopeLevel int) {
 }
 
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
-
-const (
-	sessionTable  = "@@" + sqlparser.SessionStr
-	sessionPrefix = sqlparser.SessionStr + "."
-	globalPrefix  = sqlparser.GlobalStr + "."
-)
 
 // resolveJSONTables is a helper function that resolves JSONTables in join as they have special visibility into the left side of the join
 // This function should return a *plan.JSONTable when there's no error
