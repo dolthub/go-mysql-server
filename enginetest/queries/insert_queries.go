@@ -1452,6 +1452,52 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Insert on duplicate key references table in aliased subquery",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`insert into a values (1)`,
+			`create table b (j int primary key)`,
+			`insert into b values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `insert into a (select * from b as t) on duplicate key update a.i = b.j + 100`,
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: `insert into a (select * from b as t) on duplicate key update a.i = t.j + 100`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{101},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert on duplicate key update errors",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`create table b (i int primary key)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `insert into a (select * from b) on duplicate key update i = i`,
+				ExpectedErr: sql.ErrAmbiguousColumnName,
+			},
+			{
+				Query:       `insert into a (select * from b) on duplicate key update b.i = a.i`,
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+		},
+	},
+	{
 		Name: "Insert on duplicate key references table in subquery with join",
 		SetUpScript: []string{
 			`create table a (i int primary key, j int)`,

@@ -260,7 +260,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		onDupUpdateSymbols = getAvailableNamesByScope(inNoSrc, scope)
 		for _, e := range in.OnDupExprs {
 			if sf, ok := e.(*expression.SetField); ok {
-				onDupUpdateLeftExprs[sf] = true
+				onDupUpdateLeftExprs[sf.Left] = true
 			}
 		}
 	}
@@ -353,8 +353,16 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 
 	// find all ResolvedTables in InsertInto.Source visible when resolving columns iff there are on duplicate key updates
 	if in, ok := n.(*plan.InsertInto); ok && in.Source != nil && len(in.OnDupExprs) > 0 {
-		transform.Inspect(in.Source, func(node sql.Node) bool {
-			if resTbl, ok := node.(*plan.ResolvedTable); ok {
+		aliasedTables := make(map[sql.Node]bool)
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				children = append(children, tblAlias)
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
 				children = append(children, resTbl)
 			}
 			return true
@@ -868,8 +876,17 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		indexChildNode(node.(sql.BinaryNode).Left())
 	case *plan.InsertInto:
 		// should index columns in InsertInto.Source
+		aliasedTables := make(map[sql.Node]bool)
 		transform.Inspect(node.Source, func(n sql.Node) bool {
-			if resTbl, ok := n.(*plan.ResolvedTable); ok {
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				idx = 0
+				indexSchema(tblAlias.Schema())
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
 				idx = 0
 				indexSchema(resTbl.Schema())
 			}
