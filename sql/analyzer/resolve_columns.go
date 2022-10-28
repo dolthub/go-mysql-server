@@ -247,6 +247,26 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	// on the full scope; otherwise transform looks at sub-nodes and calculates a partial view of what is available.
 	symbols := getAvailableNamesByScope(n, scope)
 
+	var onDupUpdateSymbols availableNames
+	onDupUpdateLeftExprs := make(map[sql.Expression]bool)
+	if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 {
+		inNoSrc := plan.NewInsertInto(
+			in.Database(),
+			in.Destination,
+			nil,
+			in.IsReplace,
+			in.ColumnNames,
+			in.OnDupExprs,
+			in.Ignore,
+		)
+		onDupUpdateSymbols = getAvailableNamesByScope(inNoSrc, scope)
+		for _, e := range in.OnDupExprs {
+			if sf, ok := e.(*expression.SetField); ok {
+				onDupUpdateLeftExprs[sf] = true
+			}
+		}
+	}
+
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
@@ -271,7 +291,11 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		}
 
 		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			return qualifyExpression(e, n, symbols)
+			evalSymbols := symbols
+			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
+				evalSymbols = onDupUpdateSymbols
+			}
+			return qualifyExpression(e, n, evalSymbols)
 		})
 		if err != nil {
 			return n, transform.SameTree, err
@@ -329,8 +353,8 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	// Examine all columns, from the innermost scope (this node) outward.
 	children := n.Children()
 
-	// find all ResolvedTables in InsertInto.Source visible when resolving columns
-	if in, ok := n.(*plan.InsertInto); ok {
+	// find all ResolvedTables in InsertInto.Source visible when resolving columns iff there are on duplicate key updates
+	if in, ok := n.(*plan.InsertInto); ok && in.Source != nil && len(in.OnDupExprs) > 0 {
 		transform.Inspect(in.Source, func(node sql.Node) bool {
 			if resTbl, ok := node.(*plan.ResolvedTable); ok {
 				children = append(children, resTbl)
@@ -852,7 +876,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		indexChildNode(node.(sql.BinaryNode).Left())
 	case *plan.InsertInto:
 		// should index columns in InsertInto.Source
-		transform.Inspect(node, func(n sql.Node) bool {
+		transform.Inspect(node.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok {
 				idx = 0
 				indexSchema(resTbl.Schema())
