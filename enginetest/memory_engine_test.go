@@ -193,7 +193,7 @@ func TestSingleScript(t *testing.T) {
 					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
 				},
 				{
-					Query:    "select * from t2 order by a;",
+					Query: "select * from t2 order by a;",
 					Expected: []sql.Row{
 						{"a", 1},
 						{"b", 2},

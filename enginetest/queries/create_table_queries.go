@@ -154,7 +154,7 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 as select * from mytable`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         `select * from t1 order by i`,
-		ExpectedSelect:      []sql.Row{{1, "first row"}, {2, "second row"},{3, "third row"}},
+		ExpectedSelect:      []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 as select * from mytable`,
@@ -166,26 +166,26 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 as select s, i from mytable`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         `select * from t1 order by i`,
-		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2},{"third row", 3}},
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 as select distinct s, i from mytable`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         `select * from t1 order by i`,
-		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2},{"third row", 3}},
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 as select s, i from mytable order by s`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         `select * from t1 order by i`,
-		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2},{"third row", 3}},
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
 	},
 	// TODO: the second column should be named `sum(i)` but is `SUM(mytable.i)`
 	{
 		WriteQuery:          `CREATE TABLE t1 as select s, sum(i) from mytable group by s`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         `select * from t1 order by s`, // other column is named `SUM(mytable.i)`
-		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2},{"third row", 3}},
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 as select s, sum(i) from mytable group by s having sum(i) > 2`,
@@ -203,6 +203,6 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 as select concat("new", s), i from mytable`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         `select * from t1 order by i`,
-		ExpectedSelect:      []sql.Row{{"newfirst row", 1}, {"newsecond row", 2},{"newthird row", 3}},
+		ExpectedSelect:      []sql.Row{{"newfirst row", 1}, {"newsecond row", 2}, {"newthird row", 3}},
 	},
 }
