@@ -1715,6 +1715,18 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	qualifier := c.Table.Qualifier.String()
 
 	schema, collation, err := TableSpecToSchema(ctx, c.TableSpec, false)
+
+	// TODO: probably do this somewhere else
+	schema.ColNameToLength = make(map[string]uint64)
+	for _, idx := range idxDefs {
+		// TODO: other indexes
+		if idx.IndexName != "PRIMARY" {
+			break
+		}
+		for _, col := range idx.Columns {
+			schema.ColNameToLength[col.Name] = uint64(col.Length)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}

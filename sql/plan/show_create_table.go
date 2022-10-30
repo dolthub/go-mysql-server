@@ -295,6 +295,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	if len(primaryKeyCols) > 0 {
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
+		tmp := fmt.Sprintf("idk: %v", pkSchema.ColNameToLength)
+		colStmts = append(colStmts, tmp)
 	}
 
 	for _, index := range i.indexes {
