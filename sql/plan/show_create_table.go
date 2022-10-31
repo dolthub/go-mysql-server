@@ -293,10 +293,15 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	if len(primaryKeyCols) > 0 {
-		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
+		for i, col := range primaryKeyCols {
+			colStr := quoteIdentifier(col)
+			if length, ok := pkSchema.ColNameToLength[col]; ok {
+				colStr += fmt.Sprintf("(%v)", length)
+			}
+			primaryKeyCols[i] = colStr
+		}
+		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
 		colStmts = append(colStmts, primaryKey)
-		tmp := fmt.Sprintf("idk: %v", pkSchema.ColNameToLength)
-		colStmts = append(colStmts, tmp)
 	}
 
 	for _, index := range i.indexes {

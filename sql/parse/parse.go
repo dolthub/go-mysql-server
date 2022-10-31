@@ -1679,10 +1679,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 
-		lengths := make([]int, len(idxDef.Columns))
-		for i, col := range idxDef.Columns {
-			lengths[i], err = strconv.Atoi(string(col.Length.Val))
-		}
+		// TODO: this shouldn't be necessary
+		//lengths := make([]uint64, len(columns))
+		//for i, col := range columns {
+		//	lengths[i] = uint64(col.Length)
+		//}
 
 		idxDefs = append(idxDefs, &plan.IndexDefinition{
 			IndexName:  idxDef.Info.Name.String(),
@@ -1690,7 +1691,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			Constraint: constraint,
 			Columns:    columns,
 			Comment:    comment,
-			Lengths:    lengths,
 		})
 	}
 
@@ -1717,14 +1717,16 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	schema, collation, err := TableSpecToSchema(ctx, c.TableSpec, false)
 
 	// TODO: probably do this somewhere else
-	schema.ColNameToLength = make(map[string]uint64)
+	schema.ColNameToLength = map[string]uint64{}
 	for _, idx := range idxDefs {
 		// TODO: other indexes
 		if idx.IndexName != "PRIMARY" {
 			break
 		}
 		for _, col := range idx.Columns {
-			schema.ColNameToLength[col.Name] = uint64(col.Length)
+			if col.Length != 0 {
+				schema.ColNameToLength[col.Name] = uint64(col.Length)
+			}
 		}
 	}
 	if err != nil {
