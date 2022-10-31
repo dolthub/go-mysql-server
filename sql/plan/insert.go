@@ -569,7 +569,7 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 	}
 
-	sqlerr, _, _ := sql.CastSQLError(err)
+	sqlerr := sql.CastSQLError(err)
 
 	// Add a warning instead
 	ctx.Session.Warn(&sql.Warning{
@@ -585,7 +585,7 @@ func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 	// Check that this error is a part of the list of Ignorable Errors and create the relevant warning
 	for _, ie := range IgnorableErrors {
 		if ie.Is(err) {
-			sqlerr, _, _ := sql.CastSQLError(err)
+			sqlerr := sql.CastSQLError(err)
 
 			// Add a warning instead
 			ctx.Session.Warn(&sql.Warning{

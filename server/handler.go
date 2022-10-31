@@ -112,6 +112,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 		analyzed, err = h.e.PrepareQuery(ctx, query)
 	}
 	if err != nil {
+		err := sql.CastSQLError(err)
 		return nil, err
 	}
 
@@ -613,18 +614,15 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 
 	remainder, err := h.doQuery(c, query, mode, bindings, callback)
-	err, _, ok := sql.CastSQLError(err)
-
-	var retErr error
-	if !ok {
-		retErr = err
+	if err != nil {
+		err = sql.CastSQLError(err)
 	}
 
 	if h.sel != nil {
-		h.sel.QueryCompleted(retErr == nil, time.Since(start))
+		h.sel.QueryCompleted(err == nil, time.Since(start))
 	}
 
-	return remainder, retErr
+	return remainder, err
 }
 
 // Periodically polls the connection socket to determine if it is has been closed by the client, returning an error

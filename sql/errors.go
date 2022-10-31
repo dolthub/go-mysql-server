@@ -653,12 +653,16 @@ var (
 	ErrNoTablesUsed = errors.NewKind("No tables used")
 )
 
-func CastSQLError(err error) (*mysql.SQLError, error, bool) {
+// CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
+// specified error object. Using this method enables Vitess to return an error code, instead of just "unknown error".
+// Many tools (e.g. ORMs, SQL workbenches) rely on this error metadata to work correctly. If the specified error is nil,
+// nil will be returned. If the error is already of type *mysql.SQLError, the error will be returned as is.
+func CastSQLError(err error) *mysql.SQLError {
 	if err == nil {
-		return nil, nil, true
+		return nil
 	}
 	if mysqlErr, ok := err.(*mysql.SQLError); ok {
-		return mysqlErr, nil, false
+		return mysqlErr
 	}
 
 	var code int
@@ -725,7 +729,20 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 	}
 
 	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
-	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1)), err, false // return the original error as well
+	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1))
+}
+
+// UnwrapError removes any wrapping errors (e.g. WrappedInsertError) around the specified error and
+// returns the first non-wrapped error type.
+func UnwrapError(err error) error {
+	switch wrappedError := err.(type) {
+	case WrappedInsertError:
+		return UnwrapError(wrappedError.Cause)
+	case WrappedTypeConversionError:
+		return UnwrapError(wrappedError.Err)
+	default:
+		return err
+	}
 }
 
 type UniqueKeyError struct {
