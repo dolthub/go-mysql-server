@@ -182,19 +182,23 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+			Name: "create table as select distinct",
 			SetUpScript: []string{
-				"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
-				"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+				"CREATE TABLE t1 (a int, b varchar(10));",
+				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-					Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
+					Query:    "create table t2 as select distinct b, a from t1;",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
 				},
 				{
-					Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
-					Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
+					Query: "select * from t2 order by a;",
+					Expected: []sql.Row{
+						{"a", 1},
+						{"b", 2},
+						{"c", 3},
+					},
 				},
 			},
 		},
