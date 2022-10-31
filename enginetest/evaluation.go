@@ -623,6 +623,7 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Co
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
+		err = sql.UnwrapError(err)
 		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 	// If there are multiple error strings then we only match against the first

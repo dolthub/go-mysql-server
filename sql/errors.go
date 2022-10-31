@@ -653,7 +653,7 @@ var (
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
 // specified error object. Using this method enables Vitess to return an error code, instead of just "unknown error".
 // Many tools (e.g. ORMs, SQL workbenches) rely on this error metadata to work correctly. If the specified error is nil,
-// nil will be returned. If the error is already of type *mysql.SQLError, the error will be returend as is.
+// nil will be returned. If the error is already of type *mysql.SQLError, the error will be returned as is.
 func CastSQLError(err error) *mysql.SQLError {
 	if err == nil {
 		return nil
@@ -727,6 +727,19 @@ func CastSQLError(err error) *mysql.SQLError {
 
 	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
 	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1))
+}
+
+// UnwrapError removes any wrapping errors (e.g. WrappedInsertError) around the specified error and
+// returns the first non-wrapped error type.
+func UnwrapError(err error) error {
+	switch wrappedError := err.(type) {
+	case WrappedInsertError:
+		return UnwrapError(wrappedError.Cause)
+	case WrappedTypeConversionError:
+		return UnwrapError(wrappedError.Err)
+	default:
+		return err
+	}
 }
 
 type UniqueKeyError struct {
