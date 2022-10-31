@@ -1534,7 +1534,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `insert into a (select t.i from b as t, b where t.i = b.i) on duplicate key update i = t.i;`,
+				Query: `insert into a (select t.i from b as t, b where t.i = b.i) on duplicate key update i = b.i;`,
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 2}},
 				},
