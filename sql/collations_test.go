@@ -30,8 +30,8 @@ func TestParseCollation(t *testing.T) {
 		expectedCollation CollationID
 		expectedErr       bool
 	}{
-		{"", "", false, Collation_Default, false},
-		{"", "", true, Collation_Default.CharacterSet().BinaryCollation(), false},
+		{"", "", false, Collation_Unspecified, false},
+		{"", "", true, Collation_Unspecified, false},
 		{CharacterSet_big5.String(), "", false, CharacterSet_big5.DefaultCollation(), false},
 		{CharacterSet_eucjpms.String(), "", true, CharacterSet_eucjpms.BinaryCollation(), false},
 		{"", Collation_big5_chinese_ci.String(), false, Collation_big5_chinese_ci, false},

@@ -40,6 +40,7 @@ const (
 var (
 	ErrConvertingToEnum  = errors.NewKind("value %v is not valid for this Enum")
 	ErrUnmarshallingEnum = errors.NewKind("value %v is not a marshalled value for this Enum")
+	ErrTemporaryEnum     = errors.NewKind("attempted to use temporary enum")
 
 	enumValueType = reflect.TypeOf(uint16(0))
 )
@@ -246,7 +247,7 @@ func (t enumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 	value, _ := t.At(int(convertedValue.(uint16)))
 
 	resultCharset := ctx.GetCharacterSetResults()
-	if resultCharset == CharacterSet_Invalid || resultCharset == CharacterSet_binary {
+	if resultCharset == CharacterSet_Unspecified || resultCharset == CharacterSet_binary {
 		resultCharset = t.collation.CharacterSet()
 	}
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
@@ -337,6 +338,6 @@ func (t enumType) Values() []string {
 }
 
 // WithNewCollation implements TypeWithCollation interface.
-func (t enumType) WithNewCollation(collation CollationID) Type {
-	return MustCreateEnumType(t.Values(), collation)
+func (t enumType) WithNewCollation(collation CollationID) (Type, error) {
+	return CreateEnumType(t.indexToVal, collation)
 }

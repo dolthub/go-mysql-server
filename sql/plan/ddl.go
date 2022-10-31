@@ -143,10 +143,6 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		s.Source = name
 	}
 
-	collation := tableSpec.Collation
-	if collation == sql.Collation_Invalid {
-		collation = sql.Collation_Default
-	}
 	return &CreateTable{
 		ddlNode:      ddlNode{db},
 		name:         name,
@@ -154,7 +150,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		fkDefs:       tableSpec.FkDefs,
 		chDefs:       tableSpec.ChDefs,
 		idxDefs:      tableSpec.IdxDefs,
-		collation:    collation,
+		collation:    tableSpec.Collation,
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
@@ -247,6 +243,21 @@ func (c *CreateTable) Resolved() bool {
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
 	var vd sql.ViewDatabase
+
+	// If it's set to Invalid, then no collation has been explicitly defined
+	if c.collation == sql.Collation_Unspecified {
+		c.collation = GetDatabaseCollation(ctx, c.db)
+		// Need to set each type's collation to the correct type as well
+		for _, col := range c.CreateSchema.Schema {
+			if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+				col.Type, err = collatedType.WithNewCollation(c.collation)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
 	if c.temporary == IsTempTable {
 		maybePrivDb := c.db
 		if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
@@ -256,7 +267,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
-		vd = maybePrivDb.(sql.ViewDatabase)
+		vd, _ = maybePrivDb.(sql.ViewDatabase)
 
 		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
@@ -272,7 +283,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
 		}
-		vd = maybePrivDb.(sql.ViewDatabase)
+		vd, _ = maybePrivDb.(sql.ViewDatabase)
 
 		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
@@ -284,12 +295,15 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return sql.RowsToRowIter(), err
 	}
 
-	_, ok, err := vd.GetView(ctx, c.name)
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		return nil, sql.ErrTableAlreadyExists.New(c.name)
+	if vd != nil {
+		_, ok, err := vd.GetView(ctx, c.name)
+		if err != nil {
+			return nil, err
+		}
+
+		if ok {
+			return nil, sql.ErrTableAlreadyExists.New(c.name)
+		}
 	}
 
 	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
@@ -459,11 +473,10 @@ func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	} else if len(children) == 1 {
 		child := children[0]
 
-		switch child.(type) {
-		case *Project, *Limit:
-			c.selectNode = child
-		default:
+		if c.like != nil {
 			c.like = child
+		} else {
+			c.selectNode = child
 		}
 
 		return &c, nil
@@ -497,6 +510,13 @@ func (c *CreateTable) DebugString() string {
 		ifNotExists = "if not exists "
 	}
 	p := sql.NewTreePrinter()
+
+	if c.selectNode != nil {
+		p.WriteNode("Create table %s%s as", ifNotExists, c.name)
+		p.WriteChildren(sql.DebugString(c.selectNode))
+		return p.String()
+	}
+
 	p.WriteNode("Create table %s%s", ifNotExists, c.name)
 
 	var children []string

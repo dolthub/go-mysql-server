@@ -125,7 +125,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lm.collation == sql.Collation_Invalid {
+	if lm.collation == sql.Collation_Unspecified {
 		return false, nil
 	}
 

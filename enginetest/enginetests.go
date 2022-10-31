@@ -6026,6 +6026,10 @@ func TestPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestDatabaseCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
+	testCharsetCollationWire(t, h, sessionBuilder, false, queries.DatabaseCollationWireTests)
+}
+
 func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.CharsetCollationEngineTests {
@@ -6072,14 +6076,20 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 }
 
 func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
+	testCharsetCollationWire(t, h, sessionBuilder, true, queries.CharsetCollationWireTests)
+}
+
+func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder, useDefaultData bool, tests []queries.CharsetCollationWireTest) {
 	harness, ok := h.(ClientHarness)
 	if !ok {
-		t.Skip("Cannot run TestCharsetCollationWire as the harness must implement ClientHarness")
+		t.Skip(fmt.Sprintf("Cannot run %s as the harness must implement ClientHarness", t.Name()))
 	}
-	harness.Setup(setup.MydbData)
+	if useDefaultData {
+		harness.Setup(setup.MydbData)
+	}
 
 	port := getEmptyPort(t)
-	for _, script := range queries.CharsetCollationWireTests {
+	for _, script := range tests {
 		t.Run(script.Name, func(t *testing.T) {
 			serverConfig := server.Config{
 				Protocol:       "tcp",
@@ -6103,8 +6113,10 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 
 			conn, err := dbr.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/", port), nil)
 			require.NoError(t, err)
-			_, err = conn.Exec("USE mydb;")
-			require.NoError(t, err)
+			if useDefaultData {
+				_, err = conn.Exec("USE mydb;")
+				require.NoError(t, err)
+			}
 
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
