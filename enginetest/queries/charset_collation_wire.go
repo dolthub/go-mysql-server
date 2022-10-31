@@ -941,3 +941,368 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 	},
 }
+
+// DatabaseCollationWireTests are used to validate that CREATE DATABASE and ALTER DATABASE correctly handle having their
+// character set and collations modified.
+var DatabaseCollationWireTests = []CharsetCollationWireTest{
+	{
+		Name: "CREATE DATABASE default collation",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "CREATE DATABASE set character set only",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db CHARACTER SET utf8mb3;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb3", "utf8mb3_general_ci"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "CREATE DATABASE set collation only",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db_a COLLATE latin1_general_ci;",
+			"CREATE DATABASE test_db_b COLLATE latin1_general_cs;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db_a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_general_ci"},
+				},
+			},
+			{
+				Query:    "USE test_db_b;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_general_cs"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db_a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DROP DATABASE test_db_b;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "CREATE DATABASE set character set and collation",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db CHARACTER SET utf8mb3 COLLATE utf8mb3_bin;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb3", "utf8mb3_bin"},
+				},
+			},
+			{
+				Query: "CREATE DATABASE invalid_db CHARACTER SET utf8mb4 COLLATE ascii_bin;",
+				Error: true,
+			},
+			{
+				Query:    "DROP DATABASE test_db;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "ALTER DATABASE requires character set or collation",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "ALTER DATABASE test_db;",
+				Error: true,
+			},
+			{
+				Query:    "DROP DATABASE test_db;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "ALTER DATABASE set character set only",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "ALTER DATABASE test_db CHARACTER SET utf8mb3;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb3", "utf8mb3_general_ci"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "ALTER DATABASE set collation only",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db_a COLLATE latin1_general_ci;",
+			"CREATE DATABASE test_db_b COLLATE latin1_general_cs;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db_a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_general_ci"},
+				},
+			},
+			{
+				Query:    "USE test_db_b;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_general_cs"},
+				},
+			},
+			{
+				Query:    "ALTER DATABASE test_db_a COLLATE utf8mb3_bin;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "ALTER DATABASE test_db_b COLLATE utf8mb3_general_ci;",
+				Expected: []sql.Row{},
+			},
+			{ // Still on test_db_b
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb3", "utf8mb3_general_ci"},
+				},
+			},
+			{
+				Query:    "USE test_db_a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb3", "utf8mb3_bin"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db_a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DROP DATABASE test_db_b;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "ALTER DATABASE set character set and collation",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db CHARACTER SET utf8mb3 COLLATE utf8mb3_bin;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"utf8mb3", "utf8mb3_bin"},
+				},
+			},
+			{
+				Query:    "ALTER DATABASE test_db CHARACTER SET ascii COLLATE ascii_bin;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT @@character_set_database, @@collation_database;",
+				Expected: []sql.Row{
+					{"ascii", "ascii_bin"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "Tables inherit database collation",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db COLLATE utf8mb3_bin;",
+			"CREATE TABLE test_db.other (pk VARCHAR(20) PRIMARY KEY) COLLATE utf8mb3_unicode_ci;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "CREATE TABLE test_a (pk VARCHAR(20) PRIMARY KEY);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(0)},
+				},
+			},
+			{ // LIKE should inherit the table's collation, NOT the database's collation
+				Query: "CREATE TABLE test_b LIKE other;",
+				Expected: []sql.Row{
+					{sql.NewOkResult(0)},
+				},
+			},
+			{ // AS SELECT should inherit the database's collation, but the column retains the original collation
+				Query: "CREATE TABLE test_c AS SELECT * FROM other;",
+				Expected: []sql.Row{
+					{sql.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test_a;",
+				Expected: []sql.Row{
+					{"test_a", "CREATE TABLE `test_a` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test_b;",
+				Expected: []sql.Row{
+					{"test_b", "CREATE TABLE `test_b` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci"},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test_c;",
+				Expected: []sql.Row{
+					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
+				},
+			},
+			{
+				Query:    "ALTER DATABASE test_db COLLATE utf8mb3_general_ci;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "CREATE TABLE test_d (pk VARCHAR(20) PRIMARY KEY);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test_d;",
+				Expected: []sql.Row{
+					{"test_d", "CREATE TABLE `test_d` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "INFORMATION_SCHEMA shows character set and collation",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db_a COLLATE latin1_general_ci;",
+			"CREATE DATABASE test_db_b COLLATE latin1_general_cs;",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "USE test_db_a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'test_db_a';",
+				Expected: []sql.Row{
+					{"latin1", "latin1_general_ci"},
+				},
+			},
+			{
+				Query: "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'test_db_b';",
+				Expected: []sql.Row{
+					{"latin1", "latin1_general_cs"},
+				},
+			},
+			{
+				Query:    "ALTER DATABASE test_db_a COLLATE utf8mb3_general_ci;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'test_db_a';",
+				Expected: []sql.Row{
+					{"utf8mb3", "utf8mb3_general_ci"},
+				},
+			},
+			{
+				Query:    "DROP DATABASE test_db_a;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DROP DATABASE test_db_b;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+}

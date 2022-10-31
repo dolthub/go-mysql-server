@@ -37,7 +37,8 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	}
 
 	newSpec := inputSpec.WithSchema(sql.NewPrimaryKeySchema(newSch, pkOrdinals...))
-	newSpec.Collation = sql.Collation_Default // CREATE ... SELECT will always inherit the default collation for the table
+	// CREATE ... SELECT will always inherit the database collation for the table
+	newSpec.Collation = plan.GetDatabaseCollation(ctx, ct.Database())
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
 	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)

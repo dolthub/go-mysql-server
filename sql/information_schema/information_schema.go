@@ -874,11 +874,12 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 	var rows []Row
 	for _, db := range dbs {
+		collation := plan.GetDatabaseCollation(ctx, db)
 		rows = append(rows, Row{
 			"def",
 			db.Name(),
-			Collation_Default.CharacterSet().String(),
-			Collation_Default.String(),
+			collation.CharacterSet().String(),
+			collation.String(),
 			nil,
 		})
 	}

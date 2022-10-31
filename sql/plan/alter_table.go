@@ -225,12 +225,18 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	// an invalid collation, then one has not been assigned at this point, so we assign it the table's collation. This
 	// does not create a reference to the table's collation, which may change at any point, and therefore will have no
 	// relation to this column after assignment.
-	if collatedType, ok := a.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-		a.column.Type = collatedType.WithNewCollation(alterable.Collation())
+	if collatedType, ok := a.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+		a.column.Type, err = collatedType.WithNewCollation(alterable.Collation())
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, col := range a.targetSch {
-		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-			col.Type = collatedType.WithNewCollation(alterable.Collation())
+		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+			col.Type, err = collatedType.WithNewCollation(alterable.Collation())
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -1173,12 +1179,18 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	// an invalid collation, then one has not been assigned at this point, so we assign it the table's collation. This
 	// does not create a reference to the table's collation, which may change at any point, and therefore will have no
 	// relation to this column after assignment.
-	if collatedType, ok := m.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-		m.column.Type = collatedType.WithNewCollation(alterable.Collation())
+	if collatedType, ok := m.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+		m.column.Type, err = collatedType.WithNewCollation(alterable.Collation())
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, col := range m.targetSchema {
-		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-			col.Type = collatedType.WithNewCollation(alterable.Collation())
+		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+			col.Type, err = collatedType.WithNewCollation(alterable.Collation())
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

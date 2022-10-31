@@ -326,7 +326,7 @@ func (s *BaseSession) GetCharacterSet() CharacterSetID {
 	defer s.mu.RUnlock()
 	val, _ := s.systemVars[characterSetConnectionSysVarName]
 	if val == nil {
-		return CharacterSet_Invalid
+		return CharacterSet_Unspecified
 	}
 	charSet, err := ParseCharacterSet(val.(string))
 	if err != nil {
@@ -341,7 +341,7 @@ func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
 	defer s.mu.RUnlock()
 	val, _ := s.systemVars[characterSetResultsSysVarName]
 	if val == nil {
-		return CharacterSet_Invalid
+		return CharacterSet_Unspecified
 	}
 	charSet, err := ParseCharacterSet(val.(string))
 	if err != nil {
@@ -356,7 +356,7 @@ func (s *BaseSession) GetCollation() CollationID {
 	defer s.mu.Unlock()
 	val, _ := s.systemVars[collationConnectionSysVarName]
 	if val == nil {
-		return Collation_Invalid
+		return Collation_Unspecified
 	}
 	valStr := val.(string)
 	collation, err := ParseCollation(nil, &valStr, false)

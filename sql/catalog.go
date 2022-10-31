@@ -25,7 +25,7 @@ type Catalog interface {
 	Database(ctx *Context, db string) (Database, error)
 
 	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
-	CreateDatabase(ctx *Context, dbName string) error
+	CreateDatabase(ctx *Context, dbName string, collation CollationID) error
 
 	// RemoveDatabase removes the  database named, or returns an error if the operation isn't supported or fails.
 	RemoveDatabase(ctx *Context, dbName string) error

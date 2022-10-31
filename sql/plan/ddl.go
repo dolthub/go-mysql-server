@@ -143,10 +143,6 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		s.Source = name
 	}
 
-	collation := tableSpec.Collation
-	if collation == sql.Collation_Invalid {
-		collation = sql.Collation_Default
-	}
 	return &CreateTable{
 		ddlNode:      ddlNode{db},
 		name:         name,
@@ -154,7 +150,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		fkDefs:       tableSpec.FkDefs,
 		chDefs:       tableSpec.ChDefs,
 		idxDefs:      tableSpec.IdxDefs,
-		collation:    collation,
+		collation:    tableSpec.Collation,
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
@@ -247,6 +243,21 @@ func (c *CreateTable) Resolved() bool {
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
 	var vd sql.ViewDatabase
+
+	// If it's set to Invalid, then no collation has been explicitly defined
+	if c.collation == sql.Collation_Unspecified {
+		c.collation = GetDatabaseCollation(ctx, c.db)
+		// Need to set each type's collation to the correct type as well
+		for _, col := range c.CreateSchema.Schema {
+			if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+				col.Type, err = collatedType.WithNewCollation(c.collation)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
 	if c.temporary == IsTempTable {
 		maybePrivDb := c.db
 		if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {

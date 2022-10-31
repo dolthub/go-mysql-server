@@ -791,6 +791,10 @@ func TestCharsetCollationWire(t *testing.T) {
 	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
+func TestDatabaseCollationWire(t *testing.T) {
+	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+}
+
 func TestTypesOverWire(t *testing.T) {
 	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
