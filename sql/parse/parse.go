@@ -1058,16 +1058,57 @@ func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlte
 func convertDBDDL(ctx *sql.Context, c *sqlparser.DBDDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
-		if len(c.CharsetCollate) > 0 {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Warning",
-				Code:    mysql.ERNotSupportedYet,
-				Message: fmt.Sprintf("Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"),
-			})
+		var charsetStr *string
+		var collationStr *string
+		for _, cc := range c.CharsetCollate {
+			ccType := strings.ToLower(cc.Type)
+			if ccType == "character set" {
+				val := cc.Value
+				charsetStr = &val
+			} else if ccType == "collate" {
+				val := cc.Value
+				collationStr = &val
+			} else {
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Warning",
+					Code:    mysql.ERNotSupportedYet,
+					Message: fmt.Sprintf("Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"),
+				})
+			}
 		}
-		return plan.NewCreateDatabase(c.DBName, c.IfNotExists), nil
+		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation), nil
 	case sqlparser.DropStr:
 		return plan.NewDropDatabase(c.DBName, c.IfExists), nil
+	case sqlparser.AlterStr:
+		if len(c.CharsetCollate) == 0 {
+			if len(c.DBName) > 0 {
+				return nil, sql.ErrSyntaxError.New(fmt.Sprintf("alter database %s", c.DBName))
+			} else {
+				return nil, sql.ErrSyntaxError.New("alter database")
+			}
+		}
+
+		var charsetStr *string
+		var collationStr *string
+		for _, cc := range c.CharsetCollate {
+			ccType := strings.ToLower(cc.Type)
+			if ccType == "character set" {
+				val := cc.Value
+				charsetStr = &val
+			} else if ccType == "collate" {
+				val := cc.Value
+				collationStr = &val
+			}
+		}
+		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAlterDatabase(c.DBName, collation), nil
 	default:
 		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
@@ -2020,10 +2061,8 @@ func getPkOrdinals(ts *sqlparser.TableSpec) []int {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
-	tableCollation := sql.Collation_Default
-	if forceInvalidCollation {
-		tableCollation = sql.Collation_Invalid
-	} else {
+	tableCollation := sql.Collation_Unspecified
+	if !forceInvalidCollation {
 		if len(tableSpec.Options) > 0 {
 			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
 			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)
@@ -2031,19 +2070,19 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceIn
 				var err error
 				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
 				}
 			} else if len(charsetSubmatches) == 5 {
 				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
 				}
 				tableCollation = charset.DefaultCollation()
 			} else if len(collationSubmatches) == 5 {
 				var err error
 				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
 				}
 			}
 		}
@@ -2053,15 +2092,17 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceIn
 	for _, cd := range tableSpec.Columns {
 		// Use the table's collation if no character or collation was specified for the table
 		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
-			cd.Type.Collate = tableCollation.Name()
+			if tableCollation != sql.Collation_Unspecified {
+				cd.Type.Collate = tableCollation.Name()
+			}
 		}
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
 		if err != nil {
-			return sql.PrimaryKeySchema{}, sql.Collation_Invalid, err
+			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
 		}
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
-			return sql.PrimaryKeySchema{}, sql.Collation_Invalid, ErrPrimaryKeyOnNullField.New()
+			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ErrPrimaryKeyOnNullField.New()
 		}
 
 		schema = append(schema, column)

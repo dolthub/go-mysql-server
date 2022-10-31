@@ -244,7 +244,30 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 			return nil, transform.SameTree, err
 		}
 		a.Log("resolved column %s to session system variable", col)
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), transform.NewTree, nil
+		// "character_set_database" and "collation_database" are special system variables, in that they're set whenever
+		// the current database is changed. Rather than attempting to synchronize the session variables of all
+		// outstanding contexts whenever a database's collation is updated, we just pull the values from the database
+		// directly. MySQL also plans to make these system variables immutable (from the user's perspective). This isn't
+		// exactly the same as MySQL's behavior, but this is the intent of their behavior, which is also way easier to
+		// implement.
+		switch strings.ToLower(varName) {
+		case "character_set_database":
+			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
+			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
+				charsetStr := plan.GetDatabaseCollation(ctx, db).CharacterSet().String()
+				return expression.NewNamedLiteral(name, charsetStr, sql.Text), transform.NewTree, nil
+			}
+			return expression.NewNamedLiteral(name, sql.Collation_Default.CharacterSet().String(), sql.Text), transform.NewTree, nil
+		case "collation_database":
+			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
+			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
+				collationStr := plan.GetDatabaseCollation(ctx, db).String()
+				return expression.NewNamedLiteral(name, collationStr, sql.Text), transform.NewTree, nil
+			}
+			return expression.NewNamedLiteral(name, sql.Collation_Default.String(), sql.Text), transform.NewTree, nil
+		default:
+			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), transform.NewTree, nil
+		}
 	case sqlparser.SetScope_User:
 		t, _, err := ctx.GetUserVariable(ctx, varName)
 		if err != nil {

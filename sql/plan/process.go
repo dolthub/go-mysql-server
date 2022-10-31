@@ -521,7 +521,7 @@ func IsDDLNode(node sql.Node) bool {
 	switch node.(type) {
 	case *CreateTable, *DropTable, *Truncate,
 		*AddColumn, *ModifyColumn, *DropColumn,
-		*CreateDB, *DropDB,
+		*CreateDB, *DropDB, *AlterDB,
 		*RenameTable, *RenameColumn,
 		*CreateView, *DropView,
 		*CreateIndex, *AlterIndex, *DropIndex,

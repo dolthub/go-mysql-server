@@ -352,8 +352,12 @@ const (
 	Collation_utf8_vietnamese_ci       = Collation_utf8mb3_vietnamese_ci
 	Collation_utf8_general_mysql500_ci = Collation_utf8mb3_general_mysql500_ci
 
-	Collation_Default             = Collation_utf8mb4_0900_bin
-	Collation_Invalid CollationID = 0 // This represents a NULL collation.
+	Collation_Default = Collation_utf8mb4_0900_bin
+	// Collation_Unspecified is used when a collation has not been specified, either explicitly or implicitly. This is
+	// usually used as an intermediate collation to be later replaced by an analyzer pass or a plan, although it is
+	// valid to use it directly. When used, behaves identically to the default collation, although it will NOT match
+	// the default collation.
+	Collation_Unspecified CollationID = 0
 )
 
 // collationArray contains the details of every collation, indexed by their ID. This allows for collations to be
@@ -361,7 +365,7 @@ const (
 // properties (index lookups are significantly faster than map lookups). Not all IDs are used, which is why there are
 // gaps in the array.
 var collationArray = [310]Collation{
-	/*000*/ {Collation_Invalid, "invalid", CharacterSet_Invalid, true, true, 1, "NO PAD", func(r rune) int32 { return 0 }},
+	/*000*/ {Collation_Unspecified, "", CharacterSet_Unspecified, true, true, 0, "", nil},
 	/*001*/ {Collation_big5_chinese_ci, "big5_chinese_ci", CharacterSet_big5, true, true, 1, "PAD SPACE", nil},
 	/*002*/ {Collation_latin2_czech_cs, "latin2_czech_cs", CharacterSet_latin2, false, true, 4, "PAD SPACE", nil},
 	/*003*/ {Collation_dec8_swedish_ci, "dec8_swedish_ci", CharacterSet_dec8, true, true, 1, "PAD SPACE", nil},
@@ -675,11 +679,18 @@ var collationArray = [310]Collation{
 
 func init() {
 	for _, collation := range collationArray {
-		if collation.ID == 0 {
+		if len(collation.Name) == 0 {
 			continue
 		}
 		collationStringToID[collation.Name] = collation.ID
 	}
+
+	defaultCollation := collationArray[Collation_Default]
+	collationArray[0].Name = defaultCollation.Name
+	collationArray[0].SortLength = defaultCollation.SortLength
+	collationArray[0].PadAttribute = defaultCollation.PadAttribute
+	collationArray[0].Sorter = defaultCollation.Sorter
+
 	collationStringToID["utf8_general_ci"] = Collation_utf8mb3_general_ci
 	collationStringToID["utf8_tolower_ci"] = Collation_utf8mb3_tolower_ci
 	collationStringToID["utf8_bin"] = Collation_utf8mb3_bin
@@ -715,10 +726,7 @@ func init() {
 func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribute bool) (CollationID, error) {
 	if characterSetStr == nil || len(*characterSetStr) == 0 {
 		if collationStr == nil || len(*collationStr) == 0 {
-			if binaryAttribute {
-				return Collation_Default.CharacterSet().BinaryCollation(), nil
-			}
-			return Collation_Default, nil
+			return Collation_Unspecified, nil
 		}
 		if collation, ok := collationStringToID[*collationStr]; ok {
 			if binaryAttribute {
@@ -726,15 +734,11 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 			}
 			return collation, nil
 		}
-		// It is valid to parse the invalid collation, as some analyzer steps may temporarily use the invalid collation
-		if *collationStr == Collation_Invalid.Name() {
-			return Collation_Invalid, nil
-		}
-		return Collation_Invalid, ErrCollationUnknown.New(*collationStr)
+		return Collation_Unspecified, ErrCollationUnknown.New(*collationStr)
 	} else {
 		characterSet, err := ParseCharacterSet(*characterSetStr)
 		if err != nil {
-			return Collation_Invalid, err
+			return Collation_Unspecified, err
 		}
 		if collationStr == nil || len(*collationStr) == 0 {
 			if binaryAttribute {
@@ -744,10 +748,10 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 		}
 		collation, exists := collationStringToID[*collationStr]
 		if !exists {
-			return Collation_Invalid, ErrCollationUnknown.New(*collationStr)
+			return Collation_Unspecified, ErrCollationUnknown.New(*collationStr)
 		}
 		if !collation.WorksWithCharacterSet(characterSet) {
-			return Collation_Invalid, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)
+			return Collation_Unspecified, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)
 		}
 		return collation, nil
 	}
@@ -890,5 +894,5 @@ func (ci *CollationsIterator) Next() (Collation, bool) {
 // TypeWithCollation is implemented on all types that may return a collation.
 type TypeWithCollation interface {
 	Collation() CollationID
-	WithNewCollation(collation CollationID) Type
+	WithNewCollation(collation CollationID) (Type, error)
 }
