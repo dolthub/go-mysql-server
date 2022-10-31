@@ -5954,6 +5954,20 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query:    "Select RELEASE_ALL_LOCKS()",
 			Expected: []sql.Row{{0}},
 		},
+		{
+			Query:    "SELECT DATE_ADD(TIMESTAMP(:var), INTERVAL 1 DAY);",
+			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Bindings: map[string]sql.Expression{
+				"var": expression.NewLiteral("2022-10-26 13:14:15", sql.Text),
+			},
+		},
+		{
+			Query:    "SELECT DATE_ADD(:var, INTERVAL 1 DAY);",
+			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Bindings: map[string]sql.Expression{
+				"var": expression.NewLiteral("2022-10-26 13:14:15", sql.Datetime),
+			},
+		},
 	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
