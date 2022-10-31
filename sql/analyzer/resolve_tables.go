@@ -54,6 +54,15 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				return p, transform.SameTree, nil
 			}
 			return r, transform.NewTree, err
+		case *plan.InsertInto:
+			newSrc, same, err := resolveTables(ctx, a, p.Source, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return p, transform.SameTree, nil
+			}
+			return p.WithSource(newSrc), transform.NewTree, nil
 		default:
 			return p, transform.SameTree, nil
 		}

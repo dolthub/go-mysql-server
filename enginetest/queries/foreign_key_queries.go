@@ -1725,4 +1725,16 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "May use different collations as long as the character sets are equivalent",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk char(32) COLLATE utf8mb4_0900_ai_ci PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE t2 (pk char(32) COLLATE utf8mb4_0900_bin PRIMARY KEY, CONSTRAINT fk_1 FOREIGN KEY (pk) REFERENCES t1 (pk));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
 }

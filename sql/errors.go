@@ -79,6 +79,9 @@ var (
 	// ErrRenameTableNotSupported is thrown when the database doesn't support renaming tables
 	ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
 
+	// ErrDatabaseCollationsNotSupported is thrown when a database does not allow updating its collation
+	ErrDatabaseCollationsNotSupported = errors.NewKind("database %s does not support collation operations")
+
 	// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
 	ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
 

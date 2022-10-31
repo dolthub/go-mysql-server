@@ -239,11 +239,39 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
+// findOnDupUpdateLeftExprs gathers all the left expressions for statements in InsertInto.OnDupExprs
+// the
+func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[sql.Expression]bool {
+	onDupUpdateLeftExprs := map[sql.Expression]bool{}
+	for _, e := range onDupExprs {
+		if sf, ok := e.(*expression.SetField); ok {
+			onDupUpdateLeftExprs[sf.Left] = true
+		}
+	}
+	return onDupUpdateLeftExprs
+}
+
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
 	// on the full scope; otherwise transform looks at sub-nodes and calculates a partial view of what is available.
 	symbols := getAvailableNamesByScope(n, scope)
+
+	var onDupUpdateSymbols availableNames
+	var onDupUpdateLeftExprs map[sql.Expression]bool
+	if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 {
+		inNoSrc := plan.NewInsertInto(
+			in.Database(),
+			in.Destination,
+			nil,
+			in.IsReplace,
+			in.ColumnNames,
+			in.OnDupExprs,
+			in.Ignore,
+		)
+		onDupUpdateSymbols = getAvailableNamesByScope(inNoSrc, scope)
+		onDupUpdateLeftExprs = findOnDupUpdateLeftExprs(in.OnDupExprs)
+	}
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
@@ -269,7 +297,11 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		}
 
 		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			return qualifyExpression(e, n, symbols)
+			evalSymbols := symbols
+			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
+				evalSymbols = onDupUpdateSymbols
+			}
+			return qualifyExpression(e, n, evalSymbols)
 		})
 		if err != nil {
 			return n, transform.SameTree, err
@@ -325,7 +357,27 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	currentScopeLevel := len(scopeNodes)
 
 	// Examine all columns, from the innermost scope (this node) outward.
-	getColumnsInNodes(n.Children(), symbols, currentScopeLevel-1)
+	children := n.Children()
+
+	// find all ResolvedTables in InsertInto.Source visible when resolving columns iff there are on duplicate key updates
+	if in, ok := n.(*plan.InsertInto); ok && in.Source != nil && len(in.OnDupExprs) > 0 {
+		aliasedTables := make(map[sql.Node]bool)
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				children = append(children, tblAlias)
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				children = append(children, resTbl)
+			}
+			return true
+		})
+	}
+
+	getColumnsInNodes(children, symbols, currentScopeLevel-1)
 	for _, currentScopeNode := range scopeNodes {
 		getColumnsInNodes([]sql.Node{currentScopeNode}, symbols, currentScopeLevel-1)
 		currentScopeLevel--
@@ -830,6 +882,25 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
+	case *plan.InsertInto:
+		// should index columns in InsertInto.Source
+		aliasedTables := make(map[sql.Node]bool)
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			// need to reset idx for each table found, as this function assumes only 1 table
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				idx = 0
+				indexSchema(tblAlias.Schema())
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				idx = 0
+				indexSchema(resTbl.Schema())
+			}
+			return true
+		})
 	}
 
 	return columns, nil

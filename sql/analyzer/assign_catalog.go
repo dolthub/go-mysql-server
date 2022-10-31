@@ -70,6 +70,10 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, transform.NewTree, nil
+		case *plan.AlterDB:
+			nc := *node
+			nc.Catalog = a.Catalog
+			return &nc, transform.NewTree, nil
 		case *plan.DropDB:
 			nc := *node
 			nc.Catalog = a.Catalog

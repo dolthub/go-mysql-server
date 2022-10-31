@@ -714,6 +714,13 @@ type MutableDatabaseProvider interface {
 	DropDatabase(ctx *Context, name string) error
 }
 
+type CollatedDatabaseProvider interface {
+	MutableDatabaseProvider
+
+	// CreateCollatedDatabase creates a collated database and adds it to the provider's collection.
+	CreateCollatedDatabase(ctx *Context, name string, collation CollationID) error
+}
+
 // ExternalStoredProcedureProvider provides access to built-in stored procedures. These procedures are implemented
 // as functions, instead of as SQL statements. The returned stored procedures cannot be modified or deleted.
 type ExternalStoredProcedureProvider interface {
@@ -776,6 +783,17 @@ type VersionedDatabase interface {
 	// GetTableNamesAsOf returns the table names of every table in the database as of the revision given. Implementors
 	// must choose which types of expressions to accept as revision names.
 	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
+}
+
+// CollatedDatabase is a Database that may store and update its collation.
+type CollatedDatabase interface {
+	Database
+
+	// GetCollation returns this database's collation.
+	GetCollation(ctx *Context) CollationID
+
+	// SetCollation updates this database's collation.
+	SetCollation(ctx *Context, collation CollationID) error
 }
 
 // UnresolvedTable is a Table that is either unresolved or deferred for until an asOf resolution

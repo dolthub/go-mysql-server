@@ -1200,7 +1200,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1277,7 +1277,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 					Name:     "bar",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1290,7 +1290,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 					Name:     "baz",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1303,7 +1303,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase("mydb"),
 				plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
 					Name:     "col1",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "changed",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -4825,11 +4825,11 @@ CREATE TABLE t2
 		},
 		{
 			input: `CREATE DATABASE test`,
-			plan:  plan.NewCreateDatabase("test", false),
+			plan:  plan.NewCreateDatabase("test", false, sql.Collation_Unspecified),
 		},
 		{
 			input: `CREATE DATABASE IF NOT EXISTS test`,
-			plan:  plan.NewCreateDatabase("test", true),
+			plan:  plan.NewCreateDatabase("test", true, sql.Collation_Unspecified),
 		},
 		{
 			input: `DROP DATABASE test`,
@@ -4855,6 +4855,14 @@ CREATE TABLE t2
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, tt.input)
 			require.NoError(err)
+			if createTable, ok := p.(*plan.CreateTable); ok {
+				for _, col := range createTable.CreateSchema.Schema {
+					if collatedType, ok := col.Type.(sql.TypeWithCollation); ok {
+						col.Type, err = collatedType.WithNewCollation(sql.Collation_Default)
+						require.NoError(err)
+					}
+				}
+			}
 			if !assertNodesEqualWithDiff(t, tt.plan, p) {
 				t.Logf("Unexpected result for query %s", tt.input)
 			}
@@ -5280,12 +5288,24 @@ func TestParseColumnTypeString(t *testing.T) {
 		t.Run("parse "+test.columnType, func(t *testing.T) {
 			res, err := ParseColumnTypeString(ctx, test.columnType)
 			require.NoError(t, err)
+			if collatedType, ok := res.(sql.TypeWithCollation); ok {
+				if collatedType.Collation() == sql.Collation_Unspecified {
+					res, err = collatedType.WithNewCollation(sql.Collation_Default)
+					require.NoError(t, err)
+				}
+			}
 			require.Equal(t, test.expectedSqlType, res)
 		})
 		t.Run("round trip "+test.columnType, func(t *testing.T) {
 			str := test.expectedSqlType.String()
 			typ, err := ParseColumnTypeString(ctx, str)
 			require.NoError(t, err)
+			if collatedType, ok := typ.(sql.TypeWithCollation); ok {
+				if collatedType.Collation() == sql.Collation_Unspecified {
+					typ, err = collatedType.WithNewCollation(sql.Collation_Default)
+					require.NoError(t, err)
+				}
+			}
 			require.Equal(t, test.expectedSqlType, typ)
 			require.Equal(t, typ.String(), str)
 		})

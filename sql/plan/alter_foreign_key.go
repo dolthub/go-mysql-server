@@ -585,7 +585,7 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 			case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
 				type1String := type1.(sql.StringType)
 				type2String := type2.(sql.StringType)
-				if type1String.Collation() != type2String.Collation() {
+				if type1String.Collation().CharacterSet() != type2String.Collation().CharacterSet() {
 					return false
 				}
 			default:
