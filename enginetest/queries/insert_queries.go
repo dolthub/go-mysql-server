@@ -1525,6 +1525,31 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Insert on duplicate key references table in subquery with alias",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`insert into a values (1)`,
+			`create table b (i int primary key)`,
+			`insert into b values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into a (select t.i from b as t, b where t.i = b.i) on duplicate key update i = t.i;`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key);",

@@ -886,6 +886,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		// should index columns in InsertInto.Source
 		aliasedTables := make(map[sql.Node]bool)
 		transform.Inspect(node.Source, func(n sql.Node) bool {
+			// need to reset idx for each table found, as this function assumes only 1 table
 			if tblAlias, ok := n.(*plan.TableAlias); ok {
 				idx = 0
 				indexSchema(tblAlias.Schema())
