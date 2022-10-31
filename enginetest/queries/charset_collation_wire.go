@@ -1237,7 +1237,7 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "SHOW CREATE TABLE test_c;",
 				Expected: []sql.Row{
-					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
+					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
 				},
 			},
 			{
