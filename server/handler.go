@@ -614,7 +614,9 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 
 	remainder, err := h.doQuery(c, query, mode, bindings, callback)
-	err = sql.CastSQLError(err)
+	if err != nil {
+		err = sql.CastSQLError(err)
+	}
 
 	if h.sel != nil {
 		h.sel.QueryCompleted(err == nil, time.Since(start))
