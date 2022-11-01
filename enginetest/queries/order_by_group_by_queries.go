@@ -49,6 +49,18 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Query:       "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
+			{
+				Query:    "SELECT DISTINCT BINARY t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t1.id > 0 ORDER BY BINARY t1.id",
+				Expected: []sql.Row{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
+			},
+			{
+				Query:    "SELECT DISTINCT BINARY t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t1.id > 0 ORDER BY t1.id",
+				Expected: []sql.Row{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
+			},
+			{
+				Query:    "SELECT DISTINCT t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t2.id > 0 ORDER BY t1.id",
+				Expected: []sql.Row{{3}, {4}, {5}, {6}, {7}, {8}},
+			},
 		},
 	},
 	{
@@ -100,23 +112,6 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id LIMIT 1;",
 				Expected: []sql.Row{{1, 2}},
-			},
-			// TODO: Split these test assertions out to a different test case?
-			{
-				// TODO: This failure mode depends on the alias having the same name as the column
-				// Previously failing with: table "t1" does not have column "user_id"
-				Query:    "SELECT DISTINCT BINARY t1.user_id as user_id FROM tweet AS t1 JOIN users AS u2 ON t1.user_id = u2.id WHERE t1.user_id > 0 ORDER BY BINARY t1.user_id",
-				Expected: []sql.Row{{[]uint8{0x31}}, {[]uint8{0x32}}, {[]uint8{0x33}}},
-			},
-			{
-				// Previously failing with: table "t1" does not have column "user_id"
-				Query:    "SELECT DISTINCT BINARY t1.user_id as user_id FROM tweet AS t1 JOIN users AS u2 ON t1.user_id = u2.id WHERE t1.user_id > 0 ORDER BY t1.user_id",
-				Expected: []sql.Row{{[]uint8{0x31}}, {[]uint8{0x32}}, {[]uint8{0x33}}},
-			},
-			{
-				// Previously failing with: table "t1" does not have column "user_id"
-				Query:    "SELECT DISTINCT t1.user_id as user_id FROM tweet AS t1 JOIN users AS u2 ON t1.user_id = u2.id WHERE t1.user_id > 0 ORDER BY t1.user_id",
-				Expected: []sql.Row{{1}, {2}, {3}},
 			},
 		},
 	},
