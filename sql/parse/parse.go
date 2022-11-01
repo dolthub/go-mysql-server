@@ -1490,18 +1490,16 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error) {
 	out := make([]sql.IndexColumn, len(cols))
-	var length int64
-	var err error
 	for i, col := range cols {
-		if col.Length != nil {
-			if col.Length.Type == sqlparser.IntVal {
-				length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				if length < 1 {
-					return nil, sql.ErrInvalidIndexPrefix.New(length)
-				}
+		var length int64
+		var err error
+		if col.Length != nil && col.Length.Type == sqlparser.IntVal {
+			length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if length < 1 {
+				return nil, sql.ErrInvalidIndexPrefix.New(length)
 			}
 		}
 		out[i] = sql.IndexColumn{
@@ -1679,12 +1677,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 
-		// TODO: this shouldn't be necessary
-		//lengths := make([]uint64, len(columns))
-		//for i, col := range columns {
-		//	lengths[i] = uint64(col.Length)
-		//}
-
 		idxDefs = append(idxDefs, &plan.IndexDefinition{
 			IndexName:  idxDef.Info.Name.String(),
 			Using:      sql.IndexUsing_Default, //TODO: add vitess support for USING
@@ -1715,22 +1707,33 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	qualifier := c.Table.Qualifier.String()
 
 	schema, collation, err := TableSpecToSchema(ctx, c.TableSpec, false)
-
-	// TODO: probably do this somewhere else
-	schema.ColNameToLength = map[string]uint64{}
-	for _, idx := range idxDefs {
-		// TODO: other indexes
-		if idx.IndexName != "PRIMARY" {
-			break
-		}
-		for _, col := range idx.Columns {
-			if col.Length != 0 {
-				schema.ColNameToLength[col.Name] = uint64(col.Length)
-			}
-		}
-	}
 	if err != nil {
 		return nil, err
+	}
+
+	// TODO: probably do this somewhere else
+	// TODO: could just check if all prefix lengths are 0 instead
+	// TODO: other indexes
+	var hasTextPk bool
+	for _, col := range schema.Schema {
+		_, isString := col.Type.(sql.StringType)
+		if col.PrimaryKey && isString {
+			hasTextPk = true
+			break
+		}
+	}
+	if hasTextPk {
+		schema.PkPrefixLengths = make([]uint16, len(schema.PkOrdinals))
+		var pkIdxDef *plan.IndexDefinition
+		for _, idx := range idxDefs {
+			if idx.IndexName == "PRIMARY" {
+				pkIdxDef = idx
+				break
+			}
+		}
+		for i, col := range pkIdxDef.Columns {
+			schema.PkPrefixLengths[i] = uint16(col.Length)
+		}
 	}
 
 	tableSpec := &plan.TableSpec{

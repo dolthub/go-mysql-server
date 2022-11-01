@@ -295,8 +295,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	if len(primaryKeyCols) > 0 {
 		for i, col := range primaryKeyCols {
 			colStr := quoteIdentifier(col)
-			if length, ok := pkSchema.ColNameToLength[col]; ok {
-				colStr += fmt.Sprintf("(%v)", length)
+			if pkSchema.PkPrefixLengths[i] != 0 {
+				colStr += fmt.Sprintf("(%v)", pkSchema.PkPrefixLengths[i])
 			}
 			primaryKeyCols[i] = colStr
 		}

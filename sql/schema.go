@@ -131,7 +131,8 @@ func IsKeyless(s Schema) bool {
 // PrimaryKeySchema defines table metadata for columns and primary key ordering
 type PrimaryKeySchema struct {
 	Schema
-	PkOrdinals []int
+	PkOrdinals      []int
+	PkPrefixLengths []uint16
 	// TODO: add a data structure to hold the prefix lengths... or just modify the one above
 	ColNameToLength map[string]uint64
 }
