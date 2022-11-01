@@ -1757,8 +1757,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	// TODO: other indexes
 	var hasTextPk bool
 	for _, col := range schema.Schema {
-		_, isString := col.Type.(sql.StringType)
-		if col.PrimaryKey && isString {
+		// TODO: maybe just check if it's blob
+		if col.PrimaryKey && sql.IsTextBlob(col.Type) {
 			hasTextPk = true
 			break
 		}

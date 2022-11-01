@@ -133,8 +133,6 @@ type PrimaryKeySchema struct {
 	Schema
 	PkOrdinals      []int
 	PkPrefixLengths []uint16
-	// TODO: add a data structure to hold the prefix lengths... or just modify the one above
-	ColNameToLength map[string]uint64
 }
 
 // NewPrimaryKeySchema constructs a new PrimaryKeySchema. PK ordinals
