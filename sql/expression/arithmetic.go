@@ -42,14 +42,11 @@ type Arithmetic struct {
 	Op string
 
 	DivScale int32
-
-	lval interface{}
-	rval interface{}
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
 func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
-	a := &Arithmetic{BinaryExpression{Left: left, Right: right}, op, 0, nil, nil}
+	a := &Arithmetic{BinaryExpression{Left: left, Right: right}, op, 0}
 	divs := countDivs(a)
 	setDivs(a, 0, divs)
 	return a
@@ -164,6 +161,11 @@ func (a *Arithmetic) IsNullable() bool {
 
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
+	return a.getType(nil, nil)
+}
+
+// Type returns the greatest type for given operation.
+func (a *Arithmetic) getType(lval, rval interface{}) sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := a.Right.Type()
 	if sql.IsDeferredType(rTyp) {
@@ -191,7 +193,7 @@ func (a *Arithmetic) Type() sql.Type {
 			return sql.Int64
 		}
 
-		return a.getArithmeticTypeFromExpr(lTyp, rTyp)
+		return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
 
 	case sqlparser.DivStr:
 		if isInterval(a.Left) || isInterval(a.Right) {
@@ -201,7 +203,7 @@ func (a *Arithmetic) Type() sql.Type {
 		if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
 			return sql.Int64
 		}
-		return a.floatOrDecimal(lTyp, rTyp)
+		return a.floatOrDecimal(lTyp, rTyp, lval, rval)
 
 	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
 		return sql.Uint64
@@ -213,10 +215,10 @@ func (a *Arithmetic) Type() sql.Type {
 		return sql.Int64
 	}
 
-	return a.getArithmeticTypeFromExpr(lTyp, rTyp)
+	return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
 }
 
-func (a *Arithmetic) floatOrDecimal(lType, rType sql.Type) sql.Type {
+func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{}) sql.Type {
 	var resType sql.Type
 	sql.Inspect(a, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
@@ -238,44 +240,44 @@ func (a *Arithmetic) floatOrDecimal(lType, rType sql.Type) sql.Type {
 		return sql.Float64
 	}
 
-	if a.lval != nil && a.rval != nil {
-		lp, ls := getPrecisionAndScale(a.lval)
-		rp, rs := getPrecisionAndScale(a.rval)
+	if lval != nil && rval != nil {
+		lp, ls := getPrecisionAndScale(lval)
+		rp, rs := getPrecisionAndScale(rval)
 		maxp := uint8(math.Max(float64(lp), float64(rp)))
 		maxs := uint8(math.Max(float64(ls), float64(rs)))
 		r, err := sql.CreateDecimalType(maxp+maxs, maxs)
 		if err == nil {
 			return r
 		}
-	} else if a.rval != nil {
-		p, s := getPrecisionAndScale(a.rval)
+	} else if rval != nil {
+		p, s := getPrecisionAndScale(rval)
 		r, err := sql.CreateDecimalType(uint8(p), uint8(s))
 		if err == nil {
 			return r
 		}
-	} else if a.lval != nil {
-		p, s := getPrecisionAndScale(a.lval)
+	} else if lval != nil {
+		p, s := getPrecisionAndScale(lval)
 		r, err := sql.CreateDecimalType(uint8(p), uint8(s))
 		if err == nil {
 			return r
 		}
 	}
 
-	if sql.IsDecimal(lType) && sql.IsDecimal(rType) {
-		lp := lType.(sql.DecimalType).Precision()
-		ls := lType.(sql.DecimalType).Scale()
-		rp := rType.(sql.DecimalType).Precision()
-		rs := lType.(sql.DecimalType).Scale()
+	if sql.IsDecimal(lTyp) && sql.IsDecimal(rTyp) {
+		lp := lTyp.(sql.DecimalType).Precision()
+		ls := lTyp.(sql.DecimalType).Scale()
+		rp := rTyp.(sql.DecimalType).Precision()
+		rs := lTyp.(sql.DecimalType).Scale()
 		maxp := uint8(math.Max(float64(lp), float64(rp)))
 		maxs := uint8(math.Max(float64(ls), float64(rs)))
 		r, err := sql.CreateDecimalType(maxp+maxs, maxs)
 		if err == nil {
 			return r
 		}
-	} else if sql.IsDecimal(lType) {
-		return lType
-	} else if sql.IsDecimal(rType) {
-		return rType
+	} else if sql.IsDecimal(lTyp) {
+		return lTyp
+	} else if sql.IsDecimal(rTyp) {
+		return rTyp
 	}
 
 	return defType
@@ -309,7 +311,7 @@ func getPrecisionAndScale(val interface{}) (int, int) {
 // For any non-DECIMAL column type, it will use default sql.Float64 type.
 // For DECIMAL column type, or any Literal values, the return type will the DECIMAL type with
 // the highest precision and scale calculated out of all Literals and DECIMAL column type definition.
-func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type) sql.Type {
+func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type, lval, rval interface{}) sql.Type {
 	var resType sql.Type
 	var precision uint8
 	var scale uint8
@@ -360,7 +362,7 @@ func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type) sql.Type {
 			resType = r
 		}
 	} else if resType == nil {
-		return a.floatOrDecimal(lTyp, rTyp)
+		return a.floatOrDecimal(lTyp, rTyp, lval, rval)
 	}
 
 	return resType
@@ -400,9 +402,6 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if lval == nil || rval == nil {
 		return nil, nil
 	}
-
-	a.lval = lval
-	a.rval = rval
 
 	lval, rval, err = a.convertLeftRight(lval, rval)
 	if err != nil {
@@ -472,7 +471,7 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 	var err error
 
 	// type needs to be found in better way...
-	typ := a.Type()
+	typ := a.getType(left, right)
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
