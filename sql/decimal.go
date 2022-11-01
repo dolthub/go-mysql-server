@@ -15,9 +15,11 @@
 package sql
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -214,12 +216,21 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 		return t.ConvertToNullDecimal(new(big.Float).SetRat(value))
 	case decimal.Decimal:
 		res = value
+	case []uint8:
+		var err error
+		val, err := strconv.ParseUint(hex.EncodeToString(value), 16, 64)
+		if err != nil {
+			return decimal.NullDecimal{}, err
+		}
+		res = decimal.NewFromBigInt(new(big.Int).SetUint64(val), 0)
 	case decimal.NullDecimal:
 		// This is the equivalent of passing in a nil
 		if !value.Valid {
 			return decimal.NullDecimal{}, nil
 		}
 		res = value.Decimal
+	case JSONDocument:
+		return t.ConvertToNullDecimal(value.Val)
 	default:
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}

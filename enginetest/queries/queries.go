@@ -1832,12 +1832,12 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT "1" + '1'`,
 		Expected: []sql.Row{
-			{2.0},
+			{"2"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: `"1" + '1'`,
-				Type: sql.Float64,
+				Type: sql.MustCreateDecimalType(5, 0),
 			},
 		},
 	},
@@ -4309,7 +4309,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
-		Expected: []sql.Row{{233.0}},
+		Expected: []sql.Row{{"233"}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
@@ -4504,9 +4504,63 @@ var QueryTests = []QueryTest{
 		Expected: nil,
 	},
 	{
-		Query: `SELECT round(15728640/1024/1024)`,
+		Query: `SELECT 2/4`,
 		Expected: []sql.Row{
-			{int64(15)},
+			{"0.5000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1024`,
+		Expected: []sql.Row{
+			{"15.00000000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1030`,
+		Expected: []sql.Row{
+			{"14.91262136"},
+		},
+	},
+	{
+		Query: `SELECT 2/4/5/5`,
+		Expected: []sql.Row{
+			{"0.020000000000"},
+		},
+	},
+	{
+		Query: `SELECT 4/3/1`,
+		Expected: []sql.Row{
+			{"1.33333333"},
+		},
+	},
+	{
+		Query: `select 5/4/3/(2/1+3/1)`,
+		Expected: []sql.Row{
+			{"0.083333333333"},
+		},
+	},
+	{
+		Query: `select (2/1+3/1)/5/4/3`,
+		Expected: []sql.Row{
+			{"0.0833333333333333"},
+		},
+	},
+	{
+		Query: `SELECT FLOOR(15728640/1024/1030)`,
+		Expected: []sql.Row{
+			{"14"},
+		},
+	},
+	{
+		Query: `SELECT ROUND(15728640/1024/1030)`,
+		Expected: []sql.Row{
+			{"15"},
+		},
+	},
+	{
+		Query: `SELECT ROUND(15.00, 1)`,
+		Expected: []sql.Row{
+			{"15.0"},
 		},
 	},
 	{
@@ -6374,7 +6428,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
-		Expected: []sql.Row{{float64(7)}},
+		Expected: []sql.Row{{"7.0"}},
 	},
 	{
 		Query:    "SELECT (CASE WHEN i THEN i ELSE 0 END) as cases_i from mytable",
