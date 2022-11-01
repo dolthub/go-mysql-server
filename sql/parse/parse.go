@@ -1692,6 +1692,15 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	// TODO: probably need to check for tiny, medium, and long
+	// gather all columns names that are blob type
+	blobCols := map[string]bool{}
+	for _, col := range c.TableSpec.Columns {
+		if col.Type.Type == "blob" {
+			blobCols[col.Name.String()] = true
+		}
+	}
+
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
 		constraint := sql.IndexConstraint_None
@@ -1712,9 +1721,16 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 
 		// TODO: helper method
+		var hasBlob bool
 		prefixLengths := make([]uint16, len(columns))
 		for i, col := range columns {
+			if blobCols[col.Name] {
+				hasBlob = true
+			}
 			prefixLengths[i] = uint16(col.Length)
+		}
+		if !hasBlob {
+			prefixLengths = nil
 		}
 
 		var comment string
