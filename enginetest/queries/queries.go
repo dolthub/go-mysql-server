@@ -4546,6 +4546,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `select cast(X'20' as decimal)`,
+		Expected: []sql.Row{
+			{"32"},
+		},
+	},
+	{
 		Query: `SELECT FLOOR(15728640/1024/1030)`,
 		Expected: []sql.Row{
 			{"14"},
