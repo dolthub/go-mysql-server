@@ -179,30 +179,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-	script := queries.ScriptTest{
-		Name: "DELETE ME",
-		SetUpScript: []string{
-			`create table b_tbl (b blob, index(b(123)))`,
-		},
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query: "show create table b_tbl",
-				Expected: []sql.Row{
-					{"b_tbl", "CREATE TABLE `b_tbl` (\n  `b` blob NOT NULL,\n  PRIMARY KEY (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	}
-
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	engine, err := harness.NewEngine(t)
-	if err != nil {
-		panic(err)
-	}
-
-	enginetest.TestScriptWithEngine(t, engine, harness, script)
-
-	t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{
