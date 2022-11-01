@@ -183,17 +183,20 @@ func TestParse(t *testing.T) {
 				plan.IfNotExistsAbsent,
 				plan.IsTempTableAbsent,
 				&plan.TableSpec{
-					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
-						Name:       "a",
-						Type:       sql.Int32,
-						Nullable:   false,
-						PrimaryKey: true,
-					}, {
-						Name:       "b",
-						Type:       sql.Text,
-						Nullable:   false,
-						PrimaryKey: true,
-					}}),
+					Schema: sql.NewPrimaryKeySchemaWithPrefixLengths(
+						sql.Schema{{
+							Name:       "a",
+							Type:       sql.Int32,
+							Nullable:   false,
+							PrimaryKey: true,
+						}, {
+							Name:       "b",
+							Type:       sql.Text,
+							Nullable:   false,
+							PrimaryKey: true,
+						}},
+						[]int{},
+						[]uint16{0, 0}),
 					IdxDefs: []*plan.IndexDefinition{
 						{
 							IndexName: "PRIMARY",
@@ -215,17 +218,20 @@ func TestParse(t *testing.T) {
 				plan.IfNotExistsAbsent,
 				plan.IsTempTableAbsent,
 				&plan.TableSpec{
-					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
-						Name:       "a",
-						Type:       sql.Int32,
-						Nullable:   false,
-						PrimaryKey: true,
-					}, {
-						Name:       "b",
-						Type:       sql.Text,
-						Nullable:   false,
-						PrimaryKey: true,
-					}}, 1, 0),
+					Schema: sql.NewPrimaryKeySchemaWithPrefixLengths(
+						sql.Schema{{
+							Name:       "a",
+							Type:       sql.Int32,
+							Nullable:   false,
+							PrimaryKey: true,
+						}, {
+							Name:       "b",
+							Type:       sql.Text,
+							Nullable:   false,
+							PrimaryKey: true,
+						}},
+						[]int{1, 0},
+						[]uint16{0, 0}),
 					IdxDefs: []*plan.IndexDefinition{
 						{
 							IndexName: "PRIMARY",
@@ -285,17 +291,20 @@ func TestParse(t *testing.T) {
 				plan.IfNotExists,
 				plan.IsTempTableAbsent,
 				&plan.TableSpec{
-					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
-						Name:       "a",
-						Type:       sql.Int32,
-						Nullable:   false,
-						PrimaryKey: true,
-					}, {
-						Name:       "b",
-						Type:       sql.Text,
-						Nullable:   false,
-						PrimaryKey: true,
-					}}),
+					Schema: sql.NewPrimaryKeySchemaWithPrefixLengths(
+						sql.Schema{{
+							Name:       "a",
+							Type:       sql.Int32,
+							Nullable:   false,
+							PrimaryKey: true,
+						}, {
+							Name:       "b",
+							Type:       sql.Text,
+							Nullable:   false,
+							PrimaryKey: true,
+						}},
+						[]int{},
+						[]uint16{0, 0}),
 					IdxDefs: []*plan.IndexDefinition{
 						{
 							IndexName:  "PRIMARY",

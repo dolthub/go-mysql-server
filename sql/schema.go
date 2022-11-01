@@ -149,6 +149,20 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds}
 }
 
+// NewPrimaryKeySchemaWithPrefixLengths constructs a new PrimaryKeySchema with
+// primary key lengths initialized.
+func NewPrimaryKeySchemaWithPrefixLengths(s Schema, pkOrds []int, pkPrefixLengths []uint16) PrimaryKeySchema {
+	if len(pkOrds) == 0 {
+		pkOrds = make([]int, 0)
+		for i, c := range s {
+			if c.PrimaryKey {
+				pkOrds = append(pkOrds, i)
+			}
+		}
+	}
+	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds, PkPrefixLengths: pkPrefixLengths}
+}
+
 // SchemaToPrimaryKeySchema adapts the schema given to a PrimaryKey schema using the primary keys of the table given, if
 // present. The resulting PrimaryKeySchema may have an empty key set if the table has no primary keys. Matching for
 // ordinals is performed by column name.
