@@ -34,6 +34,7 @@ type Index struct {
 	Name       string
 	Unique     bool
 	CommentStr string
+	PrefixLens []uint16
 }
 
 var _ sql.Index = (*Index)(nil)
@@ -67,8 +68,7 @@ func (idx *Index) Comment() string {
 }
 
 func (idx *Index) PrefixLengths() []uint16 {
-	// TODO: implement it
-	return nil
+	return idx.PrefixLens
 }
 
 func (idx *Index) IndexType() string {
