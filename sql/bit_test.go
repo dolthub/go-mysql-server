@@ -155,3 +155,8 @@ func TestBitString(t *testing.T) {
 		})
 	}
 }
+
+func TestBitZero(t *testing.T) {
+	_, ok := MustCreateBitType(1).Zero().(uint64)
+	require.True(t, ok)
+}

@@ -217,3 +217,8 @@ func TestTimeConvertToTimeDuration(t *testing.T) {
 func TestTimeString(t *testing.T) {
 	require.Equal(t, "time(6)", Time.String())
 }
+
+func TestTimeZero(t *testing.T) {
+	_, ok := Time.Zero().(Timespan)
+	require.True(t, ok)
+}

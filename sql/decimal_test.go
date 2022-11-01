@@ -317,3 +317,34 @@ func TestDecimalString(t *testing.T) {
 		})
 	}
 }
+
+func TestDecimalZero(t *testing.T) {
+	tests := []struct {
+		precision uint8
+		scale     uint8
+	}{
+		{0, 0},
+		{1, 0},
+		{5, 0},
+		{10, 0},
+		{65, 0},
+		{1, 1},
+		{5, 1},
+		{10, 1},
+		{65, 1},
+		{5, 5},
+		{10, 5},
+		{65, 5},
+		{10, 10},
+		{65, 10},
+		{65, 30},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v zero", test.precision, test.scale), func(t *testing.T) {
+			dt := MustCreateDecimalType(test.precision, test.scale)
+			_, ok := dt.Zero().(decimal.Decimal)
+			assert.True(t, ok)
+		})
+	}
+}

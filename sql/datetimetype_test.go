@@ -330,3 +330,12 @@ func TestDatetimeString(t *testing.T) {
 		})
 	}
 }
+
+func TestDatetimeZero(t *testing.T) {
+	_, ok := MustCreateDatetimeType(sqltypes.Date).Zero().(time.Time)
+	require.True(t, ok)
+	_, ok = MustCreateDatetimeType(sqltypes.Datetime).Zero().(time.Time)
+	require.True(t, ok)
+	_, ok = MustCreateDatetimeType(sqltypes.Timestamp).Zero().(time.Time)
+	require.True(t, ok)
+}
