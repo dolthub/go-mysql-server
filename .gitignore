@@ -3,6 +3,9 @@
 *.a
 *.so
 
+# Compiled binaries
+_example/_example
+
 # Folders
 _obj
 _test

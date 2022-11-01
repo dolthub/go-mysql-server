@@ -43,6 +43,7 @@ func main() {
 			createTestDatabase(),
 			information_schema.NewInformationSchemaDatabase(),
 		))
+	engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 
 	config := server.Config{
 		Protocol: "tcp",
@@ -74,9 +75,9 @@ func createTestDatabase() *memory.Database {
 	creationTime := time.Unix(1524044473, 0).UTC()
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
-	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, creationTime))
-	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, creationTime))
-	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, creationTime))
-	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, creationTime))
+	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", sql.JSONDocument{Val: []string{"555-555-555"}}, creationTime))
+	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", sql.JSONDocument{Val: []string{}}, creationTime))
+	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", sql.JSONDocument{Val: []string{}}, creationTime))
+	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", sql.JSONDocument{Val: []string{"555-666-555", "666-666-666"}}, creationTime))
 	return db
 }
