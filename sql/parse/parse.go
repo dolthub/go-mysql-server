@@ -1711,6 +1711,12 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			return nil, err
 		}
 
+		// TODO: helper method
+		prefixLengths := make([]uint16, len(columns))
+		for i, col := range columns {
+			prefixLengths[i] = uint16(col.Length)
+		}
+
 		var comment string
 		for _, option := range idxDef.Options {
 			if strings.ToLower(option.Name) == strings.ToLower(sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD)) {
@@ -1719,11 +1725,12 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 
 		idxDefs = append(idxDefs, &plan.IndexDefinition{
-			IndexName:  idxDef.Info.Name.String(),
-			Using:      sql.IndexUsing_Default, //TODO: add vitess support for USING
-			Constraint: constraint,
-			Columns:    columns,
-			Comment:    comment,
+			IndexName:     idxDef.Info.Name.String(),
+			Using:         sql.IndexUsing_Default, //TODO: add vitess support for USING
+			Constraint:    constraint,
+			Columns:       columns,
+			Comment:       comment,
+			PrefixLengths: prefixLengths,
 		})
 	}
 
@@ -1752,9 +1759,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return nil, err
 	}
 
-	// TODO: probably do this somewhere else
-	// TODO: could just check if all prefix lengths are 0 instead
-	// TODO: other indexes
+	// TODO: consider putting other index prefix lengths into PrimaryKeySchema
 	var hasTextPk bool
 	for _, col := range schema.Schema {
 		// TODO: maybe just check if it's blob
@@ -1765,15 +1770,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 	if hasTextPk && len(idxDefs) > 0 {
 		schema.PkPrefixLengths = make([]uint16, len(schema.PkOrdinals))
-		var pkIdxDef *plan.IndexDefinition
 		for _, idx := range idxDefs {
 			if idx.IndexName == "PRIMARY" {
-				pkIdxDef = idx
+				schema.PkPrefixLengths = idx.PrefixLengths
 				break
 			}
-		}
-		for i, col := range pkIdxDef.Columns {
-			schema.PkPrefixLengths[i] = uint16(col.Length)
 		}
 	}
 
@@ -2085,6 +2086,7 @@ func getPkOrdinals(ts *sqlparser.TableSpec) []int {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
+	// TODO: This should probably use NewPrimaryKeySchemaWithPrefixLengths
 	tableCollation := sql.Collation_Unspecified
 	if !forceInvalidCollation {
 		if len(tableSpec.Options) > 0 {
