@@ -1763,7 +1763,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			break
 		}
 	}
-	if hasTextPk {
+	if hasTextPk && len(idxDefs) > 0 {
 		schema.PkPrefixLengths = make([]uint16, len(schema.PkOrdinals))
 		var pkIdxDef *plan.IndexDefinition
 		for _, idx := range idxDefs {
