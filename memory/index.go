@@ -66,7 +66,7 @@ func (idx *Index) Comment() string {
 	return idx.CommentStr
 }
 
-func (idx *Index) PrefixLengths() []uint64 {
+func (idx *Index) PrefixLengths() []uint16 {
 	// TODO: implement it
 	return nil
 }

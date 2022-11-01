@@ -325,6 +325,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			unique = "UNIQUE "
 		}
 
+		index.PrefixLengths()
+
 		key := fmt.Sprintf("  %sKEY %s (%s)", unique, quoteIdentifier(index.ID()), strings.Join(indexCols, ","))
 		if index.Comment() != "" {
 			key = fmt.Sprintf("%s COMMENT '%s'", key, index.Comment())
