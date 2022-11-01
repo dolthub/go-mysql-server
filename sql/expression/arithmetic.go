@@ -247,13 +247,13 @@ func (a *Arithmetic) floatOrDecimal(lType, rType sql.Type) sql.Type {
 		if err == nil {
 			return r
 		}
-	} else if a.lval == nil {
+	} else if a.rval != nil {
 		p, s := getPrecisionAndScale(a.rval)
 		r, err := sql.CreateDecimalType(uint8(p), uint8(s))
 		if err == nil {
 			return r
 		}
-	} else if a.rval == nil {
+	} else if a.lval != nil {
 		p, s := getPrecisionAndScale(a.lval)
 		r, err := sql.CreateDecimalType(uint8(p), uint8(s))
 		if err == nil {

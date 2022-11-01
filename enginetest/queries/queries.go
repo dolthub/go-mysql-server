@@ -1837,7 +1837,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: `"1" + '1'`,
-				Type: sql.MustCreateDecimalType(5, 0),
+				Type: sql.MustCreateDecimalType(65, 0),
 			},
 		},
 	},
@@ -9113,11 +9113,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'abc' is not a valid value for 'double'`,
+		ExpectedErrStr: `number has no digits`,
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'double'`,
+		ExpectedErrStr: `value map[a:abc] is not a valid Decimal`,
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,

@@ -31,7 +31,7 @@ var ProcedureLogicTests = []ScriptTest{
 				Query: "CALL testabc(2, 3)",
 				Expected: []sql.Row{
 					{
-						float64(6),
+						"6",
 					},
 				},
 			},
@@ -39,7 +39,7 @@ var ProcedureLogicTests = []ScriptTest{
 				Query: "CALL testabc(9, 9.5)",
 				Expected: []sql.Row{
 					{
-						float64(85.5),
+						"85.5",
 					},
 				},
 			},
