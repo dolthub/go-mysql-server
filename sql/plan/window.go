@@ -31,8 +31,9 @@ type Window struct {
 	UnaryNode
 }
 
-var _ sql.Node = (*Window)(nil)
 var _ sql.Expressioner = (*Window)(nil)
+var _ sql.Node = (*Window)(nil)
+var _ sql.Projector = (*Window)(nil)
 
 func NewWindow(selectExprs []sql.Expression, node sql.Node) *Window {
 	return &Window{
@@ -95,6 +96,18 @@ func (w *Window) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 // Expressions implements sql.Expressioner
 func (w *Window) Expressions() []sql.Expression {
 	return w.SelectExprs
+}
+
+// ProjectedExprs implements sql.Projector
+func (w *Window) ProjectedExprs() []sql.Expression {
+	return w.SelectExprs
+}
+
+// WithProjectedExprs implements sql.Projector
+func (w *Window) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
+	node, err := w.WithExpressions(exprs...)
+
+	return node.(sql.Projector), err
 }
 
 // WithExpressions implements sql.Expressioner

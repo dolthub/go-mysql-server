@@ -86,14 +86,18 @@ const (
 
 	CharacterSet_utf8 = CharacterSet_utf8mb3
 
-	CharacterSet_Invalid CharacterSetID = 0 // This represents a NULL character set.
+	// CharacterSet_Unspecified is used when a character set has not been specified, either explicitly or implicitly.
+	// This is usually used as an intermediate character set to be later replaced by an analyzer pass or a plan,
+	// although it is valid to use it directly. When used, behaves identically to the character set belonging to the
+	// default collation, although it will NOT match the aforementioned character set.
+	CharacterSet_Unspecified CharacterSetID = 0
 )
 
 // characterSetArray contains the details of every character set, indexed by their ID. This allows for character sets to
 // be efficiently passed around (since only an uint16 is needed), while still being able to quickly access all of their
 // properties (index lookups are significantly faster than map lookups).
 var characterSetArray = [42]CharacterSet{
-	/*00*/ {CharacterSet_Invalid, "invalid", Collation_Invalid, Collation_Invalid, "Invalid Character Set", 1, &encodings.RangeMap{}},
+	/*00*/ {CharacterSet_Unspecified, "", Collation_Unspecified, Collation_Unspecified, "", 0, nil},
 	/*01*/ {CharacterSet_armscii8, "armscii8", Collation_armscii8_general_ci, Collation_armscii8_bin, "ARMSCII-8 Armenian", 1, nil},
 	/*02*/ {CharacterSet_ascii, "ascii", Collation_ascii_general_ci, Collation_ascii_bin, "US ASCII", 1, encodings.Ascii},
 	/*03*/ {CharacterSet_big5, "big5", Collation_big5_chinese_ci, Collation_big5_bin, "Big5 Traditional Chinese", 2, nil},
@@ -135,6 +139,15 @@ var characterSetArray = [42]CharacterSet{
 	/*39*/ {CharacterSet_utf32, "utf32", Collation_utf32_general_ci, Collation_utf32_bin, "UTF-32 Unicode", 4, encodings.Utf32},
 	/*40*/ {CharacterSet_utf8mb3, "utf8mb3", Collation_utf8mb3_general_ci, Collation_utf8mb3_bin, "UTF-8 Unicode", 3, encodings.Utf8mb3},
 	/*41*/ {CharacterSet_utf8mb4, "utf8mb4", Collation_utf8mb4_0900_ai_ci, Collation_utf8mb4_bin, "UTF-8 Unicode", 4, encodings.Utf8mb4},
+}
+
+// init is used to set the unspecified character set's details to match those of the default collation's character set.
+func init() {
+	defaultCharacterSet := characterSetArray[Collation_Default.CharacterSet()]
+	characterSetArray[0].Name = defaultCharacterSet.Name
+	characterSetArray[0].Description = defaultCharacterSet.Description
+	characterSetArray[0].MaxLength = defaultCharacterSet.MaxLength
+	characterSetArray[0].Encoder = defaultCharacterSet.Encoder
 }
 
 // characterSetStringToID maps a character set's name to its ID.
@@ -194,11 +207,12 @@ func ParseCharacterSet(str string) (CharacterSetID, error) {
 	if cs, ok := characterSetStringToID[str]; ok {
 		return cs, nil
 	}
-	// It is valid to parse the invalid charset, as some analyzer steps may temporarily use the invalid charset
-	if str == CharacterSet_Invalid.Name() || str == "" {
-		return CharacterSet_Invalid, nil
+	// It is valid recognize an empty string as the invalid charset, as some analyzer steps may temporarily use the
+	// invalid charset
+	if str == "" {
+		return CharacterSet_Unspecified, nil
 	}
-	return CharacterSet_Invalid, ErrCharSetUnknown.New(str)
+	return CharacterSet_Unspecified, ErrCharSetUnknown.New(str)
 }
 
 // Name returns the name of this CharacterSet.

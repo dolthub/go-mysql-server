@@ -107,3 +107,8 @@ func TestYearConvert(t *testing.T) {
 func TestYearString(t *testing.T) {
 	require.Equal(t, "year", Year.String())
 }
+
+func TestYearZero(t *testing.T) {
+	_, ok := Year.Zero().(int16)
+	require.True(t, ok)
+}

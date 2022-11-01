@@ -172,13 +172,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
-	//engine, err := harness.NewEngine(t)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//engine.Analyzer.Debug = true
-	//engine.Analyzer.Verbose = true
 
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
@@ -189,16 +182,23 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "non-existent procedure in trigger body",
+			Name: "create table as select distinct",
 			SetUpScript: []string{
-				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+				"CREATE TABLE t1 (a int, b varchar(10));",
+				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT id, (SELECT max(id) from t0) FROM t0;",
-					Expected: []sql.Row{{1, 2}, {2, 2}},
+					Query:    "create table t2 as select distinct b, a from t1;",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+				},
+				{
+					Query: "select * from t2 order by a;",
+					Expected: []sql.Row{
+						{"a", 1},
+						{"b", 2},
+						{"c", 3},
+					},
 				},
 			},
 		},
@@ -793,6 +793,10 @@ func TestCharsetCollationEngine(t *testing.T) {
 
 func TestCharsetCollationWire(t *testing.T) {
 	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+}
+
+func TestDatabaseCollationWire(t *testing.T) {
+	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
 func TestTypesOverWire(t *testing.T) {

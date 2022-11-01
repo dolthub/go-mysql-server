@@ -108,6 +108,7 @@ var _ sql.StoredProcedureDatabase = PrivilegedDatabase{}
 var _ sql.TableCopierDatabase = PrivilegedDatabase{}
 var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
+var _ sql.CollatedDatabase = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
 func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database) sql.Database {
@@ -322,6 +323,22 @@ func (pdb PrivilegedDatabase) GetAllTemporaryTables(ctx *sql.Context) ([]sql.Tab
 	}
 	// All current temp table checks skip if not implemented, same is iterating over an empty slice
 	return nil, nil
+}
+
+// GetCollation implements the interface sql.CollatedDatabase.
+func (pdb PrivilegedDatabase) GetCollation(ctx *sql.Context) sql.CollationID {
+	if db, ok := pdb.db.(sql.CollatedDatabase); ok {
+		return db.GetCollation(ctx)
+	}
+	return sql.Collation_Default
+}
+
+// SetCollation implements the interface sql.CollatedDatabase.
+func (pdb PrivilegedDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID) error {
+	if db, ok := pdb.db.(sql.CollatedDatabase); ok {
+		return db.SetCollation(ctx, collation)
+	}
+	return sql.ErrDatabaseCollationsNotSupported.New(pdb.db.Name())
 }
 
 // Unwrap returns the wrapped sql.Database.

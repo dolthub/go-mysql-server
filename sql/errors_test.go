@@ -25,8 +25,8 @@ func TestSQLErrorCast(t *testing.T) {
 	for _, test := range tests {
 		var nilErr *mysql.SQLError = nil
 		t.Run(fmt.Sprintf("%v %v", test.err, test.code), func(t *testing.T) {
-			err, _, ok := CastSQLError(test.err)
-			if !ok {
+			err := CastSQLError(test.err)
+			if err != nil {
 				require.Error(t, err)
 				assert.Equal(t, err.Number(), test.code)
 			} else {

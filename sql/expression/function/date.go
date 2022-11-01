@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -70,7 +71,10 @@ func (d *DateAdd) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (d *DateAdd) Type() sql.Type { return sql.Date }
+func (d *DateAdd) Type() sql.Type {
+	sqlType := dateOffsetType(d.Date, d.Interval)
+	return sqlType
+}
 
 // WithChildren implements the Expression interface.
 func (d *DateAdd) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -157,7 +161,10 @@ func (d *DateSub) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (d *DateSub) Type() sql.Type { return sql.Date }
+func (d *DateSub) Type() sql.Type {
+	sqlType := dateOffsetType(d.Date, d.Interval)
+	return sqlType
+}
 
 // WithChildren implements the Expression interface.
 func (d *DateSub) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -488,4 +495,76 @@ func (c CurrDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // WithChildren implements sql.Expression
 func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, children)
+}
+
+// Determines the return type of a DateAdd/DateSub expression
+// Logic is based on https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-add
+func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Type {
+	if input == nil {
+		return sql.Null
+	}
+	inputType := input.Type()
+
+	// result is null if expression is null
+	if inputType == sql.Null {
+		return sql.Null
+	}
+
+	// set type flags
+	isInputDate := inputType == sql.Date
+	isInputTime := inputType == sql.Time
+	isInputDatetime := inputType == sql.Datetime || inputType == sql.Timestamp
+
+	// result is Datetime if expression is Datetime or Timestamp
+	if isInputDatetime {
+		return sql.Datetime
+	}
+
+	// determine what kind of interval we're dealing with
+	isYmdInterval := strings.Contains(interval.Unit, "YEAR") ||
+		strings.Contains(interval.Unit, "QUARTER") ||
+		strings.Contains(interval.Unit, "MONTH") ||
+		strings.Contains(interval.Unit, "WEEK") ||
+		strings.Contains(interval.Unit, "DAY")
+
+	isHmsInterval := strings.Contains(interval.Unit, "HOUR") ||
+		strings.Contains(interval.Unit, "MINUTE") ||
+		strings.Contains(interval.Unit, "SECOND")
+	isMixedInterval := isYmdInterval && isHmsInterval
+
+	// handle input of Date type
+	if isInputDate {
+		if isHmsInterval || isMixedInterval {
+			// if interval contains time components, result is Datetime
+			return sql.Datetime
+		} else {
+			// otherwise result is Date
+			return sql.Date
+		}
+	}
+
+	// handle input of Time type
+	if isInputTime {
+		if isYmdInterval || isMixedInterval {
+			// if interval contains date components, result is Datetime
+			return sql.Datetime
+		} else {
+			// otherwise result is Time
+			return sql.Time
+		}
+	}
+
+	// handle dynamic input type
+	if sql.IsDeferredType(inputType) {
+		if isYmdInterval && !isHmsInterval {
+			// if interval contains only date components, result is Date
+			return sql.Date
+		} else {
+			// otherwise result is Datetime
+			return sql.Datetime
+		}
+	}
+
+	// default type is VARCHAR
+	return sql.Text
 }

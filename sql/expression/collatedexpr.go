@@ -61,7 +61,10 @@ func (ce *CollatedExpression) IsNullable() bool {
 func (ce *CollatedExpression) Type() sql.Type {
 	typ := ce.expr.Type()
 	if collatedType, ok := typ.(sql.TypeWithCollation); ok {
-		return collatedType.WithNewCollation(ce.collation)
+		newType, err := collatedType.WithNewCollation(ce.collation)
+		if err == nil {
+			return newType
+		}
 	}
 	// If this isn't a collated type then this should fail, as we can't apply a collation to an expression that does not
 	// have a charset. We also can't check in the constructor, as expressions such as unresolved columns will not have
@@ -122,7 +125,7 @@ func (ce *CollatedExpression) Child() sql.Expression {
 // determined by the rules of coercibility as defined by MySQL
 // (https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html). In short, the lower the value of the
 // returned integer, the more explicit the defined collation. A value of 0 indicates that an explicit COLLATE was given.
-// Returns sql.Collation_Invalid if the expression in invalid in some way.
+// Returns sql.Collation_Unspecified if the expression in invalid in some way.
 //
 // TODO: This function's implementation is extremely basic, and is sure to return an incorrect result in some cases. A
 // more accurate implementation would have each expression return its own collation and coercion values.
@@ -153,7 +156,7 @@ func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 				var childrenWithCoercibility []sql.CollationID
 				for _, child := range funcExpr.Children() {
 					childCollation, childCoercibility := GetCollationViaCoercion(child)
-					if childCollation == sql.Collation_Invalid {
+					if childCollation == sql.Collation_Unspecified {
 						continue
 					}
 					if childCoercibility < coercibility {
@@ -176,7 +179,7 @@ func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 					//TODO: If one character set is Unicode and the other is non-Unicode, we shouldn't error but should
 					// instead use the Unicode character set
 					if childCollation.CharacterSet() != charset {
-						return sql.Collation_Invalid, 6
+						return sql.Collation_Unspecified, 6
 					}
 					if !strings.HasSuffix(collation.Name(), "_bin") && strings.HasSuffix(childCollation.Name(), "_bin") {
 						collation = childCollation
@@ -215,7 +218,7 @@ func ResolveCoercibility(leftCollation sql.CollationID, leftCoercibility int, ri
 			} else if leftCharset.MaxLength() > 1 && rightCharset.MaxLength() == 1 { // Left Unicode, Right non-Unicode
 				return leftCollation, nil
 			} else {
-				return sql.Collation_Invalid, sql.ErrCollationIllegalMix.New(leftCollation.Name(), rightCollation.Name())
+				return sql.Collation_Unspecified, sql.ErrCollationIllegalMix.New(leftCollation.Name(), rightCollation.Name())
 			}
 		} else { // Character sets are equal
 			// If the right collation is not _bin, then we default to the left collation (regardless of whether it is

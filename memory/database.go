@@ -40,6 +40,7 @@ var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
 var _ sql.StoredProcedureDatabase = (*Database)(nil)
 var _ sql.ViewDatabase = (*Database)(nil)
+var _ sql.CollatedDatabase = (*Database)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
@@ -49,6 +50,7 @@ type BaseDatabase struct {
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
 	primaryKeyIndexes bool
+	collation         sql.CollationID
 }
 
 var _ MemoryDatabase = (*Database)(nil)
@@ -279,6 +281,17 @@ func (d *BaseDatabase) DropStoredProcedure(ctx *sql.Context, name string) error 
 	if !found {
 		return sql.ErrStoredProcedureDoesNotExist.New(name)
 	}
+	return nil
+}
+
+// GetCollation implements sql.CollatedDatabase.
+func (d *BaseDatabase) GetCollation(ctx *sql.Context) sql.CollationID {
+	return d.collation
+}
+
+// SetCollation implements sql.CollatedDatabase.
+func (d *BaseDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID) error {
+	d.collation = collation
 	return nil
 }
 

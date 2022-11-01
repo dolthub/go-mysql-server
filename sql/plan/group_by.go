@@ -39,6 +39,10 @@ type GroupBy struct {
 	GroupByExprs  []sql.Expression
 }
 
+var _ sql.Expressioner = (*GroupBy)(nil)
+var _ sql.Node = (*GroupBy)(nil)
+var _ sql.Projector = (*GroupBy)(nil)
+
 // NewGroupBy creates a new GroupBy node. Like Project, GroupBy is a top-level node, and contains all the fields that
 // will appear in the output of the query. Some of these fields may be aggregate functions, some may be columns or
 // other expressions. Unlike a project, the GroupBy also has a list of group-by expressions, which usually also appear
@@ -188,6 +192,24 @@ func (g *GroupBy) Expressions() []sql.Expression {
 	exprs = append(exprs, g.SelectedExprs...)
 	exprs = append(exprs, g.GroupByExprs...)
 	return exprs
+}
+
+// ProjectedExprs implements the sql.Projector interface
+func (g *GroupBy) ProjectedExprs() []sql.Expression {
+	return g.SelectedExprs
+}
+
+// WithProjectedExprs implements the sql.Projector interface
+func (g *GroupBy) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
+	expected := len(g.SelectedExprs)
+	if len(exprs) != expected {
+		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
+	}
+
+	projections := make([]sql.Expression, len(g.SelectedExprs))
+	copy(projections, exprs)
+
+	return NewGroupBy(projections, g.GroupByExprs, g.Child), nil
 }
 
 type groupByIter struct {

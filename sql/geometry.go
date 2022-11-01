@@ -496,7 +496,9 @@ func (t GeometryType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t GeometryType) Zero() interface{} {
-	// TODO: it doesn't make sense for geometry to have a zero type
+	// MySQL throws an error for INSERT IGNORE, UPDATE IGNORE, etc. if the geometry type cannot be parsed:
+	// ERROR 1416 (22003): Cannot get geometry object from data you send to the GEOMETRY field
+	// So, we don't implement a zero type for this function.
 	return nil
 }
 

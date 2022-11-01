@@ -141,7 +141,8 @@ func (t jsonType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t jsonType) Zero() interface{} {
-	// JSON Null
+	// MySQL throws an error for INSERT IGNORE, UPDATE IGNORE, etc. when bad json is encountered:
+	// ERROR 3140 (22032): Invalid JSON text: "Invalid value." at position 0 in value for column 'table.column'.
 	return nil
 }
 

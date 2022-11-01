@@ -38,10 +38,20 @@ func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
-func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string) error {
-	mut, ok := c.provider.(sql.MutableDatabaseProvider)
-	if ok {
-		return mut.CreateDatabase(ctx, dbName)
+func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.CollationID) error {
+	if collatedDb, ok := c.provider.(sql.CollatedDatabaseProvider); ok {
+		return collatedDb.CreateCollatedDatabase(ctx, dbName, collation)
+	} else if mut, ok := c.provider.(sql.MutableDatabaseProvider); ok {
+		err := mut.CreateDatabase(ctx, dbName)
+		if err != nil {
+			return err
+		}
+		if db, err := c.Database(ctx, dbName); err == nil {
+			if collatedDb, ok := db.(sql.CollatedDatabase); ok {
+				return collatedDb.SetCollation(ctx, collation)
+			}
+		}
+		return nil
 	} else {
 		return sql.ErrImmutableDatabaseProvider.New()
 	}
