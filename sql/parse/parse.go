@@ -1785,9 +1785,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 	if hasTextPk && len(idxDefs) > 0 {
-		schema.PkPrefixLengths = make([]uint16, len(schema.PkOrdinals))
 		for _, idx := range idxDefs {
-			if idx.IndexName == "PRIMARY" {
+			if idx.IndexName == "PRIMARY" && idx.PrefixLengths != nil {
 				schema.PkPrefixLengths = idx.PrefixLengths
 				break
 			}
