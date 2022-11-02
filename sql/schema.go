@@ -146,7 +146,7 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 			}
 		}
 	}
-	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds}
+	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds, PkPrefixLengths: []uint16{}}
 }
 
 // NewPrimaryKeySchemaWithPrefixLengths constructs a new PrimaryKeySchema with
