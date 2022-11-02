@@ -2341,6 +2341,51 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "using having and group by clauses in subquery ",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int, t varchar(2));",
+			"insert into t values (1, 'a'), (1, 'a2'), (2, 'b'), (3, 'c'), (3, 'c2'), (4, 'd'), (5, 'e'), (5, 'e2');", //, (6, 'f'), (7, 'g'), (7, 'g2')
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select i from t group by i having count(1) = 1",
+				Expected: []sql.Row{{2}, {4}},
+			},
+			{
+				Query:    "select i from t group by i having count(1) != 1",
+				Expected: []sql.Row{{1}, {3}, {5}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t group by i having count(1) = 1);",
+				Expected: []sql.Row{{2, "b"}, {4, "d"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t group by i having count(1) != 1);",
+				Expected: []sql.Row{{1, "a"}, {1, "a2"}, {3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i = 2 group by i having count(1) = 1);",
+				Expected: []sql.Row{{2, "b"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i = 3 group by i having count(1) != 1);",
+				Expected: []sql.Row{{3, "c"}, {3, "c2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1);",
+				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1 order by i desc);",
+				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1) order by i desc;",
+				Expected: []sql.Row{{5, "e"}, {5, "e2"}, {3, "c"}, {3, "c2"}},
+			},
+		},
+	},
+	{
 		Name: "can't create view with same name as existing table",
 		SetUpScript: []string{
 			"create table t (i int);",
