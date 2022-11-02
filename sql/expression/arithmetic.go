@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"math"
 	"reflect"
 	"strings"
 	"time"
@@ -36,11 +35,15 @@ var (
 	errUnableToEval = errors.NewKind("Unable to evaluate an expression: %v %s %v")
 )
 
+// '4 scales' are added to scale of the number on the left side of division operator at every division operation.
+const divisionScaleAddition = 4
+
 // Arithmetic expressions (+, -, *, /, ...)
 type Arithmetic struct {
 	BinaryExpression
 	Op string
 
+	// used only for "/" division operation for getting exact precision for the result
 	DivScale int32
 }
 
@@ -112,6 +115,9 @@ func NewMod(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.ModStr)
 }
 
+// setDivs will set the innermost node's DivScale to the number counted by countDivs, and the rest of it
+// to 0. This allows us to calculate the first division with the exact precision of the end result. Otherwise,
+// we lose precision at each division since we only add 4 scales at every division operation.
 func setDivs(e sql.Expression, d int32, divScale int32) {
 	if e == nil {
 		return
@@ -130,6 +136,16 @@ func setDivs(e sql.Expression, d int32, divScale int32) {
 	return
 }
 
+// countDivs returns the number of division operators in order on the left child node of the current node.
+// This lets us count how many division operator used one after the other. E.g. 24/3/2/1 will have this structure:
+//
+//		     'div'
+//		     /   \
+//		   'div'  1
+//		   /   \
+//		 'div'  2
+//		 /   \
+//	    24    3
 func countDivs(e sql.Expression) int32 {
 	if e == nil {
 		return 0
@@ -161,11 +177,17 @@ func (a *Arithmetic) IsNullable() bool {
 
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
-	return a.getType(nil, nil)
+	return a.returnType(nil, nil)
 }
 
-// Type returns the greatest type for given operation.
-func (a *Arithmetic) getType(lval, rval interface{}) sql.Type {
+// returnType returns the greatest type for given operation depending on the evaluated left and
+// right values and the original types of the left and right expressions. The evaluated left and
+// right values are mainly used for `+`, `-`, `*`, `/` operations as the original expression type
+// is different from the evaluated value types. For example, 2/4 gives int types for expressions
+// types, but the return type should be decimal type. Another example, 2/1 + 3/1 gives int types
+// for expressions types, but the evaluated values are both decimal of 2.0000 + 3.0000, so that
+// the correct precision is preserved.
+func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := a.Right.Type()
 	if sql.IsDeferredType(rTyp) {
@@ -218,6 +240,13 @@ func (a *Arithmetic) getType(lval, rval interface{}) sql.Type {
 	return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
 }
 
+// floatOrDecimal returns either Float64 or decimaltype depending on column reference,
+// left and right expressions types and left and right evaluated types.
+// If there is float type column reference, the result type is always float
+// regardless of the column reference on the left or right side of division operation.
+// Otherwise, the return type is always decimal. The expression and evaluated types
+// are used to determine appropriate decimaltype to return that will not result in
+// precision loss.
 func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{}) sql.Type {
 	var resType sql.Type
 	sql.Inspect(a, func(expr sql.Expression) bool {
@@ -235,42 +264,52 @@ func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{})
 		return resType
 	}
 
-	defType, derr := sql.CreateDecimalType(65, uint8(a.DivScale*4))
+	// using max precision which is 65 and DivScale for scale number.
+	// DivScale will be non-zero number if it is the innermost division operation.
+	defType, derr := sql.CreateDecimalType(65, uint8(a.DivScale*divisionScaleAddition))
 	if derr != nil {
 		return sql.Float64
 	}
 
 	if lval != nil && rval != nil {
-		lp, ls := getPrecisionAndScale(lval)
+		p, s := getPrecisionAndScale(lval)
 		rp, rs := getPrecisionAndScale(rval)
-		maxp := uint8(math.Max(float64(lp), float64(rp)))
-		maxs := uint8(math.Max(float64(ls), float64(rs)))
-		r, err := sql.CreateDecimalType(maxp+maxs, maxs)
+		if rp > p {
+			p = rp
+		}
+		if rs > s {
+			s = rs
+		}
+		r, err := sql.CreateDecimalType(p, s)
 		if err == nil {
 			return r
 		}
 	} else if rval != nil {
 		p, s := getPrecisionAndScale(rval)
-		r, err := sql.CreateDecimalType(uint8(p), uint8(s))
+		r, err := sql.CreateDecimalType(p, s)
 		if err == nil {
 			return r
 		}
 	} else if lval != nil {
 		p, s := getPrecisionAndScale(lval)
-		r, err := sql.CreateDecimalType(uint8(p), uint8(s))
+		r, err := sql.CreateDecimalType(p, s)
 		if err == nil {
 			return r
 		}
 	}
 
 	if sql.IsDecimal(lTyp) && sql.IsDecimal(rTyp) {
-		lp := lTyp.(sql.DecimalType).Precision()
-		ls := lTyp.(sql.DecimalType).Scale()
+		p := lTyp.(sql.DecimalType).Precision()
+		s := lTyp.(sql.DecimalType).Scale()
 		rp := rTyp.(sql.DecimalType).Precision()
+		if rp > p {
+			p = rp
+		}
 		rs := lTyp.(sql.DecimalType).Scale()
-		maxp := uint8(math.Max(float64(lp), float64(rp)))
-		maxs := uint8(math.Max(float64(ls), float64(rs)))
-		r, err := sql.CreateDecimalType(maxp+maxs, maxs)
+		if rs > s {
+			s = rs
+		}
+		r, err := sql.CreateDecimalType(p, s)
 		if err == nil {
 			return r
 		}
@@ -281,29 +320,6 @@ func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{})
 	}
 
 	return defType
-}
-
-func getPrecisionAndScale(val interface{}) (int, int) {
-	var str string
-	switch v := val.(type) {
-	case decimal.Decimal:
-		str = v.StringFixed(v.Exponent() * -1)
-	case float32:
-		d := decimal.NewFromFloat32(v)
-		str = d.StringFixed(d.Exponent() * -1)
-	case float64:
-		d := decimal.NewFromFloat(v)
-		str = d.StringFixed(d.Exponent() * -1)
-	default:
-		str = fmt.Sprintf("%v", val)
-	}
-	ps := strings.Split(str, ".")
-	p := len(ps[0])
-	s := 0
-	if len(ps) == 2 {
-		s = len(ps[1])
-	}
-	return p, s
 }
 
 // getArithmeticTypeFromExpr returns a type that left and right values to be converted into.
@@ -366,6 +382,24 @@ func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type, lval, rval i
 	}
 
 	return resType
+}
+
+// getPrecisionAndScale converts the value to string format and parses it to get the precision and scale.
+func getPrecisionAndScale(val interface{}) (uint8, uint8) {
+	var str string
+	switch v := val.(type) {
+	case decimal.Decimal:
+		str = v.StringFixed(v.Exponent() * -1)
+	case float32:
+		d := decimal.NewFromFloat32(v)
+		str = d.StringFixed(d.Exponent() * -1)
+	case float64:
+		d := decimal.NewFromFloat(v)
+		str = d.StringFixed(d.Exponent() * -1)
+	default:
+		str = fmt.Sprintf("%v", val)
+	}
+	return GetDecimalPrecisionAndScale(str)
 }
 
 // GetDecimalPrecisionAndScale returns precision and scale for given string formatted float/double number.
@@ -470,8 +504,7 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (interface{}, interface{}, error) {
 	var err error
 
-	// type needs to be found in better way...
-	typ := a.getType(left, right)
+	typ := a.returnType(left, right)
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
@@ -787,7 +820,7 @@ func div(lval, rval interface{}, divScale int32) (interface{}, error) {
 			if r.String() == "0" {
 				return nil, nil
 			}
-			exp := (l.Exponent() * -1) + divScale*4
+			exp := (l.Exponent() * -1) + divScale*divisionScaleAddition
 			return l.DivRound(r, exp), nil
 		}
 	}
