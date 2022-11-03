@@ -9678,54 +9678,54 @@ var StatisticsQueries = []ScriptTest{
 }
 
 var IndexPrefixQueries = []ScriptTest{
-	{
-		Name: "varchar prefix",
-		SetUpScript: []string{
-			"create table t (v varchar(100))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table t add primary key (v(10))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-			{
-				Query:       "alter table t add index (v(10))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-			{
-				Query:       "create table v_tbl (v varchar(100), primary key (v(10)))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-			{
-				Query:       "create table v_tbl (i int primary key, v varchar(100), index (v(10)))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-		},
-	},
-	{
-		Name: "char prefix",
-		SetUpScript: []string{
-			"create table t (c char(100))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table t add primary key (c(10))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-			{
-				Query:       "alter table t add index (c(10))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-			{
-				Query:       "create table c_tbl (c char(100), primary key (c(10)))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-			{
-				Query:       "create table c_tbl (i int primary key, c char(100), index (c(10)))",
-				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
-			},
-		},
-	},
+	//{
+	//	Name: "varchar prefix",
+	//	SetUpScript: []string{
+	//		"create table t (v varchar(100))",
+	//	},
+	//	Assertions: []ScriptTestAssertion{
+	//		{
+	//			Query:       "alter table t add primary key (v(10))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//		{
+	//			Query:       "alter table t add index (v(10))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//		{
+	//			Query:       "create table v_tbl (v varchar(100), primary key (v(10)))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//		{
+	//			Query:       "create table v_tbl (i int primary key, v varchar(100), index (v(10)))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//	},
+	//},
+	//{
+	//	Name: "char prefix",
+	//	SetUpScript: []string{
+	//		"create table t (c char(100))",
+	//	},
+	//	Assertions: []ScriptTestAssertion{
+	//		{
+	//			Query:       "alter table t add primary key (c(10))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//		{
+	//			Query:       "alter table t add index (c(10))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//		{
+	//			Query:       "create table c_tbl (c char(100), primary key (c(10)))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//		{
+	//			Query:       "create table c_tbl (i int primary key, c char(100), index (c(10)))",
+	//			ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+	//		},
+	//	},
+	//},
 	{
 		Name: "int prefix",
 		SetUpScript: []string{
@@ -9746,6 +9746,30 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:       "create table c_tbl (i int primary key, j int, index (j(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "float prefix",
+		SetUpScript: []string{
+			"create table t (f float)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (f float, primary key (f(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, f float, index (f(10)))",
 				ExpectedErr: sql.ErrInvalidIndexPrefix,
 			},
 		},

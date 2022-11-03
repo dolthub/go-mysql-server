@@ -388,16 +388,10 @@ func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
 			return sql.ErrInvalidTextIndex.New(sch[i].Name)
 		}
 
-		if c.Length > 0 {
-			if sql.IsText(sch[i].Type) {
-				// Throw unsupported prefix index error for all STRING types
-				return sql.ErrUnsupportedIndexPrefix.New(sch[i].Name)
-			} else {
-				// Throw prefix length error for non-string types with prefixes
-				return sql.ErrInvalidIndexPrefix.New(sch[i].Name)
-			}
+		// Throw prefix length error for non-string types with prefixes
+		if c.Length > 0 && !sql.IsText(sch[i].Type) {
+			return sql.ErrInvalidIndexPrefix.New(sch[i].Name)
 		}
-
 	}
 	return nil
 }
@@ -517,14 +511,9 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 				return sql.ErrInvalidTextIndex.New(col.Name)
 			}
 
-			if idxCol.Length > 0 {
-				if sql.IsText(col.Type) {
-					// Throw unsupported prefix index error for all STRING types
-					return sql.ErrUnsupportedIndexPrefix.New(col.Name)
-				} else {
-					// Throw prefix length error for non-string types with prefixes
-					return sql.ErrInvalidIndexPrefix.New(col.Name)
-				}
+			// Throw prefix length error for non-string types with prefixes
+			if idxCol.Length > 0 && !sql.IsText(col.Type) {
+				return sql.ErrInvalidIndexPrefix.New(col.Name)
 			}
 		}
 	}
@@ -596,15 +585,9 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 
+		// Throw prefix length error for non-string types with prefixes
 		for _, col := range ai.Columns {
-			if col.Length == 0 {
-				continue
-			}
-			if sql.IsText(sch[sch.IndexOf(col.Name, tableName)].Type) {
-				// Throw unsupported prefix index error for all STRING types
-				return nil, sql.ErrUnsupportedIndexPrefix.New(col.Name)
-			} else {
-				// Throw prefix length error for non-string types with prefixes
+			if col.Length > 0 && !sql.IsText(sch[sch.IndexOf(col.Name, tableName)].Type) {
 				return nil, sql.ErrInvalidIndexPrefix.New(col.Name)
 			}
 		}
