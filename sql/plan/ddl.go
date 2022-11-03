@@ -292,6 +292,9 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
 			} else {
 				err = creatable.CreateIndexedTable(ctx, c.name, c.CreateSchema, idxCols, c.collation)
+				if sql.ErrUnsupportedIndexPrefix.Is(err) {
+					return sql.RowsToRowIter(), err
+				}
 			}
 		case sql.TableCreator:
 			err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
