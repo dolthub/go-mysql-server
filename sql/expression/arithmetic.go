@@ -511,7 +511,10 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 	} else {
 		left, err = typ.Convert(left)
 		if err != nil {
-			return nil, nil, err
+			// TODO : any error here from converting should be added as warning
+			// the value is interpreted as 0, but we need to match the type of the other valid value
+			// to avoid additional conversion, the nil value is handled in each operation
+			left = nil
 		}
 	}
 
@@ -520,7 +523,10 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 	} else {
 		right, err = typ.Convert(right)
 		if err != nil {
-			return nil, nil, err
+			// TODO : any error here from converting should be added as warning
+			// the value is interpreted as 0, but we need to match the type of the other valid value
+			// to avoid additional conversion, the nil value is handled in each operation
+			right = nil
 		}
 	}
 
@@ -528,6 +534,13 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {
+	if lval == nil && rval == nil {
+		return 0, nil
+	} else if lval == nil {
+		return rval, nil
+	} else if rval == nil {
+		return lval, nil
+	}
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -602,6 +615,37 @@ func plus(lval, rval interface{}) (interface{}, error) {
 }
 
 func minus(lval, rval interface{}) (interface{}, error) {
+	if lval == nil && rval == nil {
+		return 0, nil
+	} else if rval == nil {
+		return lval, nil
+	} else if lval == nil {
+		switch r := rval.(type) {
+		case uint8:
+			return -r, nil
+		case int8:
+			return -r, nil
+		case uint16:
+			return -r, nil
+		case int16:
+			return -r, nil
+		case uint32:
+			return -r, nil
+		case int32:
+			return -r, nil
+		case uint64:
+			return -r, nil
+		case int64:
+			return -r, nil
+		case float32:
+			return -r, nil
+		case float64:
+			return -r, nil
+		case decimal.Decimal:
+			return r.Neg(), nil
+		}
+	}
+
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -671,6 +715,10 @@ func minus(lval, rval interface{}) (interface{}, error) {
 }
 
 func mult(lval, rval interface{}) (interface{}, error) {
+	if lval == nil || rval == nil {
+		return 0, nil
+	}
+
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -733,6 +781,13 @@ func mult(lval, rval interface{}) (interface{}, error) {
 }
 
 func div(lval, rval interface{}, divScale int32) (interface{}, error) {
+	if rval == nil {
+		return nil, nil
+	}
+	if lval == nil {
+		return 0, nil
+	}
+
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -829,6 +884,9 @@ func div(lval, rval interface{}, divScale int32) (interface{}, error) {
 }
 
 func bitAnd(lval, rval interface{}) (interface{}, error) {
+	if lval == nil || rval == nil {
+		return 0, nil
+	}
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -847,6 +905,14 @@ func bitAnd(lval, rval interface{}) (interface{}, error) {
 }
 
 func bitOr(lval, rval interface{}) (interface{}, error) {
+	if lval == nil && rval == nil {
+		return 0, nil
+	} else if lval == nil {
+		return rval, nil
+	} else if rval == nil {
+		return lval, nil
+	}
+
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -865,6 +931,14 @@ func bitOr(lval, rval interface{}) (interface{}, error) {
 }
 
 func bitXor(lval, rval interface{}) (interface{}, error) {
+	if lval == nil && rval == nil {
+		return 0, nil
+	} else if lval == nil {
+		return rval, nil
+	} else if rval == nil {
+		return lval, nil
+	}
+
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -883,6 +957,12 @@ func bitXor(lval, rval interface{}) (interface{}, error) {
 }
 
 func shiftLeft(lval, rval interface{}) (interface{}, error) {
+	if lval == nil {
+		return 0, nil
+	}
+	if rval == nil {
+		return lval, nil
+	}
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -895,6 +975,12 @@ func shiftLeft(lval, rval interface{}) (interface{}, error) {
 }
 
 func shiftRight(lval, rval interface{}) (interface{}, error) {
+	if lval == nil {
+		return 0, nil
+	}
+	if rval == nil {
+		return lval, nil
+	}
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -907,6 +993,13 @@ func shiftRight(lval, rval interface{}) (interface{}, error) {
 }
 
 func intDiv(lval, rval interface{}) (interface{}, error) {
+	if rval == nil {
+		return nil, nil
+	}
+	if lval == nil {
+		return 0, nil
+	}
+
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -931,6 +1024,13 @@ func intDiv(lval, rval interface{}) (interface{}, error) {
 }
 
 func mod(lval, rval interface{}) (interface{}, error) {
+	if rval == nil {
+		return nil, nil
+	}
+	if lval == nil {
+		return 0, nil
+	}
+
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {

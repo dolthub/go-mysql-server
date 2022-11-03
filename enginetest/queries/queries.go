@@ -3036,6 +3036,138 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
 	},
 	{
+		Query:    `select 'a'+4;`,
+		Expected: []sql.Row{{"4"}},
+	},
+	{
+		Query:    `select 4+'a';`,
+		Expected: []sql.Row{{"4"}},
+	},
+	{
+		Query:    `select 'a'+'a';`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    `select 'a'-4;`,
+		Expected: []sql.Row{{"-4"}},
+	},
+	{
+		Query:    `select 4-'a';`,
+		Expected: []sql.Row{{"4"}},
+	},
+	{
+		Query:    `select 'a'-'a';`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    `select 'a'*4;`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    `select 4*'a';`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    `select 'a'*'a';`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    `select 'a'/4;`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    `select 4/'a';`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `select 'a'/'a';`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a'&'a';",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 'a'&4;",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 4&'a';",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 'a'|'a';",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 'a'|4;",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select 4|'a';",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select 'a'^'a';",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 'a'^4;",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select 4^'a';",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select 'a'>>'a';",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 'a'>>4;",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 4>>'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'<<'a';",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 'a'<<4;",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 4<<'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a' div 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a' div 4;",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 4 div 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a' mod 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a' mod 4;",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 4 mod 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}},
 	},
@@ -4314,6 +4446,14 @@ var QueryTests = []QueryTest{
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
 		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
+		Expected: []sql.Row{{"-1"}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
+		Expected: []sql.Row{{"-1"}},
 	},
 	{
 		Query:    `SELECT CONNECTION_ID()`,
@@ -9116,14 +9256,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT JSON_OBJECT("a","b","c") FROM dual`,
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
-	},
-	{
-		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: `number has no digits`,
-	},
-	{
-		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `value map[a:abc] is not a valid Decimal`,
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,
