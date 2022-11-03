@@ -87,13 +87,32 @@ func (doc JSONDocument) Contains(ctx *Context, candidate JSONValue) (val interfa
 }
 
 func (doc JSONDocument) Extract(ctx *Context, path string) (JSONValue, error) {
+	if path == "$" {
+		// Special case the identity operation to handle a nil value for doc.Val
+		return doc, nil
+	}
+
 	c, err := jsonpath.Compile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO(andy) handle error
-	val, _ := c.Lookup(doc.Val) // err ignored
+	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
+	// to always result in sql NULL, except in the case of the identity lookup
+	// $.
+	r := doc.Val
+	if r == nil {
+		return nil, nil
+	}
+
+	val, err := c.Lookup(r)
+	if err != nil {
+		if strings.Contains(err.Error(), "key error") {
+			// A missing key results in a SQL null
+			return nil, nil
+		}
+		return nil, err
+	}
 
 	return JSONDocument{Val: val}, nil
 }
@@ -314,7 +333,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func compareJSON(a, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := compareNulls(b, a); hasNulls {
 		return res, nil
 	}
 
