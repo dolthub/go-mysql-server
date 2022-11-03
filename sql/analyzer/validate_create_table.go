@@ -388,10 +388,16 @@ func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
 			return sql.ErrInvalidTextIndex.New(sch[i].Name)
 		}
 
-		// VARCHAR and CHAR do not support prefixes
-		if sch[i].Type == nil {
-
+		if c.Length > 0 {
+			if sql.IsText(sch[i].Type) {
+				// Throw unsupported prefix index error for all STRING types
+				return sql.ErrUnsupportedIndexPrefix.New(sch[i].Name)
+			} else {
+				// Throw prefix length error for non-string types with prefixes
+				return sql.ErrInvalidIndexPrefix.New(sch[i].Name)
+			}
 		}
+
 	}
 	return nil
 }
@@ -588,6 +594,19 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 
 		if hasPrimaryKeys(sch) {
 			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
+		}
+
+		for _, col := range ai.Columns {
+			if col.Length == 0 {
+				continue
+			}
+			if sql.IsText(sch[sch.IndexOf(col.Name, tableName)].Type) {
+				// Throw unsupported prefix index error for all STRING types
+				return nil, sql.ErrUnsupportedIndexPrefix.New(col.Name)
+			} else {
+				// Throw prefix length error for non-string types with prefixes
+				return nil, sql.ErrInvalidIndexPrefix.New(col.Name)
+			}
 		}
 
 		// Set the primary keys
