@@ -966,6 +966,10 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
+type IndexedTableCreator interface {
+	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxCols []IndexColumn, collation CollationID) error
+}
+
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
 // Note that temporary tables with the same name as persisted tables take precedence in most SQL operations.
 type TemporaryTableCreator interface {
