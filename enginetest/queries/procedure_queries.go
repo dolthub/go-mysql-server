@@ -869,6 +869,53 @@ END;`,
 		Query:       "CREATE PROCEDURE test_proc(z VARCHAR(20)) SELECT z",
 		ExpectedErr: sql.ErrStoredProcedureAlreadyExists,
 	},
+	{
+		Name: "Broken procedure shouldn't break other procedures",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, other INT);",
+			"INSERT INTO t VALUES (1, 1), (2, 2), (3, 3);",
+			"CREATE PROCEDURE fragile() select other from t;",
+			"CREATE PROCEDURE stable() select pk from t;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "CALL fragile();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'stable'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'fragile'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:    "alter table t drop other;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:          "CALL fragile();",
+				ExpectedErrStr: "column \"other\" could not be found in any table in scope",
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'stable'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'fragile'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{
