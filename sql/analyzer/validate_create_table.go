@@ -387,6 +387,11 @@ func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
 		} else if sql.IsTextBlob(sch[i].Type) {
 			return sql.ErrInvalidTextIndex.New(sch[i].Name)
 		}
+
+		// VARCHAR and CHAR do not support prefixes
+		if sch[i].Type == nil {
+
+		}
 	}
 	return nil
 }
@@ -499,10 +504,21 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
 
+			// Throw unsupported index error for TEXT and BLOB types
 			if sql.IsByteType(col.Type) {
 				return sql.ErrInvalidByteIndex.New(col.Name)
 			} else if sql.IsTextBlob(col.Type) {
 				return sql.ErrInvalidTextIndex.New(col.Name)
+			}
+
+			if idxCol.Length > 0 {
+				if sql.IsText(col.Type) {
+					// Throw unsupported prefix index error for all STRING types
+					return sql.ErrUnsupportedIndexPrefix.New(col.Name)
+				} else {
+					// Throw prefix length error for non-string types with prefixes
+					return sql.ErrInvalidIndexPrefix.New(col.Name)
+				}
 			}
 		}
 	}
