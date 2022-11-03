@@ -9703,7 +9703,7 @@ var IndexPrefixQueries = []ScriptTest{
 		},
 	},
 	{
-		Name: "char primary key prefix",
+		Name: "char prefix",
 		SetUpScript: []string{
 			"create table t (c char(100))",
 		},
@@ -9723,6 +9723,30 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query:       "create table c_tbl (i int primary key, c char(100), index (c(10)))",
 				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "int prefix",
+		SetUpScript: []string{
+			"create table t (i int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int, primary key (i(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, j int, index (j(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
 			},
 		},
 	},
