@@ -145,6 +145,9 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		if err != nil {
 			return nil, err
 		}
+		if result == nil {
+			return nil, nil
+		}
 
 		target, err = result.Unmarshall(ctx)
 		if err != nil {

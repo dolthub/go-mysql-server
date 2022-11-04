@@ -330,4 +330,96 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	// from https://dev.mysql.com/doc/refman/8.0/en/json.html#json-converting-between-types:~:text=information%20and%20examples.-,Comparison%20and%20Ordering%20of%20JSON%20Values,-JSON%20values%20can
+	{
+		Name: "json is ordered correctly",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 json);",
+			"insert into t values (1, null);",
+			"insert into t values (2, '{}');",
+			"insert into t values (3, (select json_extract('{\"a\": null}', '$.a')));",
+			"insert into t values (4, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t order by col1 asc;",
+				Expected: []sql.Row{
+					{1, nil},
+					{3, sql.MustJSON("null")},
+					{4, sql.MustJSON("0")},
+					{2, sql.MustJSON("{}")},
+				},
+			},
+			{
+				Query: "select * from t order by col1 desc;",
+				Expected: []sql.Row{
+					{2, sql.MustJSON("{}")},
+					{4, sql.MustJSON("0")},
+					{3, sql.MustJSON("null")},
+					{1, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "json_extract returns missing keys as sql null and handles json null literals correctly",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 json);",
+			"insert into t values (1, '{\"items\": {\"1\": 1, \"2\": 2}}');",
+			"insert into t values (2, null);",
+			"insert into t values (3, '{}');",
+			"insert into t values (4, '{\"items\": null}');",
+			"insert into t values (5, (select json_extract('{\"a\": null}', '$.a')));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, json_extract(col1, '$.items') from t order by pk;",
+				Expected: []sql.Row{
+					{1, sql.MustJSON("{\"1\":1,\"2\":2}")},
+					{2, nil},
+					{3, nil},
+					{4, sql.MustJSON("null")},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_extract(col1, '$') from t order by pk;",
+				Expected: []sql.Row{
+					{1, sql.MustJSON("{\"items\": {\"1\": 1, \"2\": 2}}")},
+					{2, nil},
+					{3, sql.MustJSON("{}")},
+					{4, sql.MustJSON("{\"items\": null}")},
+					{5, sql.MustJSON("null")},
+				},
+			},
+			{
+				Query: "select pk, json_extract(col1, '$.items') is null from t order by pk;",
+				Expected: []sql.Row{
+					{1, false},
+					{2, true},
+					{3, true},
+					{4, false},
+					{5, true},
+				},
+			},
+			{
+				Query: "select pk, json_extract(col1, '$.items') <> null from t order by pk;",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, nil},
+					{3, nil},
+					{4, nil},
+					{5, nil},
+				},
+			},
+			{
+				Query:    "select pk from t where json_extract(col1, '$.items') is null;",
+				Expected: []sql.Row{{2}, {3}, {5}},
+			},
+			{
+				Query:    "select pk from t where json_extract(col1, '$.items') <> null;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
