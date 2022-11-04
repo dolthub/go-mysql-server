@@ -61,7 +61,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 				}
 
 				var procToRegister *plan.Procedure
-				analyzedProc, err := validate(ctx, a, cp, scope, sel)
+				analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel)
 				if err != nil {
 					procToRegister = cp.Procedure
 					procToRegister.ValidationError = err
@@ -79,8 +79,8 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	return scope, nil
 }
 
-// validates the plan.CreateProcedure and returns a plan.Procedure
-func validate(ctx *sql.Context, a *Analyzer, cp *plan.CreateProcedure, scope *Scope, sel RuleSelector) (*plan.Procedure, error) {
+// analyzeCreateProcedure checks the plan.CreateProcedure and returns a valid plan.Procedure or an error
+func analyzeCreateProcedure(ctx *sql.Context, a *Analyzer, cp *plan.CreateProcedure, scope *Scope, sel RuleSelector) (*plan.Procedure, error) {
 	paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
 	if err != nil {
 		return nil, err
