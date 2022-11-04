@@ -914,6 +914,30 @@ END;`,
 				Query:            "SHOW PROCEDURE STATUS LIKE 'fragile'",
 				SkipResultsCheck: true, // ensure that there's no error
 			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN other INT",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "CALL fragile();",
+				Expected: []sql.Row{{nil}, {nil}, {nil}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (4, 4), (5, 5), (6, 6);",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}, {6}},
+			},
+			{
+				Query:    "CALL fragile();",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {4}, {5}, {6}},
+			},
 		},
 	},
 }
