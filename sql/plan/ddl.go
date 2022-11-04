@@ -277,24 +277,31 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	} else {
 		switch creatable := maybePrivDb.(type) {
 		case sql.IndexedTableCreator:
-			var idxCols []sql.IndexColumn
+			var pkIdxDef sql.IndexDef
+			var hasPkIdxDef bool
 			for _, idxDef := range c.idxDefs {
 				if idxDef.Constraint == sql.IndexConstraint_Primary {
-					idxCols = idxDef.Columns
-					break
+					hasPkIdxDef = true
+					pkIdxDef = sql.IndexDef{
+						Name:       idxDef.IndexName,
+						Columns:    idxDef.Columns,
+						Constraint: idxDef.Constraint,
+						Storage:    idxDef.Using,
+						Comment:    idxDef.Comment,
+					}
 				}
 			}
-			if len(idxCols) == 0 {
+			if hasPkIdxDef {
+				err = creatable.CreateIndexedTable(ctx, c.name, c.CreateSchema, pkIdxDef, c.collation)
+				if sql.ErrUnsupportedIndexPrefix.Is(err) {
+					return sql.RowsToRowIter(), err
+				}
+			} else {
 				creatable, ok := maybePrivDb.(sql.TableCreator)
 				if !ok {
 					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
 				}
 				err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
-			} else {
-				err = creatable.CreateIndexedTable(ctx, c.name, c.CreateSchema, idxCols, c.collation)
-				if sql.ErrUnsupportedIndexPrefix.Is(err) {
-					return sql.RowsToRowIter(), err
-				}
 			}
 		case sql.TableCreator:
 			err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
@@ -303,11 +310,11 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	vd, _ = maybePrivDb.(sql.ViewDatabase)
 	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
 		return sql.RowsToRowIter(), err
 	}
 
+	vd, _ = maybePrivDb.(sql.ViewDatabase)
 	if vd != nil {
 		_, ok, err := vd.GetView(ctx, c.name)
 		if err != nil {

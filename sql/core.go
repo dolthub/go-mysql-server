@@ -939,8 +939,9 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
+// IndexedTableCreator should be implemented by databases that create new tables where they have a Primary Key that has columns that have prefix lengths.
 type IndexedTableCreator interface {
-	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxCols []IndexColumn, collation CollationID) error
+	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxDefs IndexDef, collation CollationID) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
