@@ -25,7 +25,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var UnixSocketInUseError = errors.New("unix socket in use")
+var UnixSocketInUseError = errors.New("bind address at given unix socket path is already in use")
 
 // connRes represents a connection made to a listener and an error result
 type connRes struct {
@@ -68,9 +68,9 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		if err == nil {
 			unixl = unixListener
 		} else if errors.Is(err, syscall.EADDRINUSE) {
+			// we continue if error is unix docket bind address is already in use
+			// we return UnixSocketInUseError error to track the error back to where server gets started and add warning
 			unixSocketInUse = UnixSocketInUseError
-			// TODO : create warning but continue without unix socket
-			//return nil, err
 		} else {
 			return nil, err
 		}
