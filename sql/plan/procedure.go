@@ -83,6 +83,7 @@ type Procedure struct {
 	Body                  sql.Node
 	CreatedAt             time.Time
 	ModifiedAt            time.Time
+	ValidationError       error
 }
 
 var _ sql.Node = (*Procedure)(nil)
