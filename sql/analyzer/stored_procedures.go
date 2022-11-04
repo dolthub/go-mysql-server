@@ -60,28 +60,16 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 					return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
 				}
 
-				paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
+				var procToRegister *plan.Procedure
+				analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel)
 				if err != nil {
-					return nil, err
-				}
-				analyzedNode, _, err := resolveDeclarations(ctx, a, cp.Procedure, scope, sel)
-				if err != nil {
-					return nil, err
-				}
-				analyzedNode, _, err = resolveProcedureParams(ctx, paramNames, analyzedNode)
-				if err != nil {
-					return nil, err
-				}
-				analyzedNode, _, err = analyzeProcedureBodies(ctx, a, analyzedNode, false, scope, sel)
-				if err != nil {
-					return nil, err
-				}
-				analyzedProc, ok := analyzedNode.(*plan.Procedure)
-				if !ok {
-					return nil, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
+					procToRegister = cp.Procedure
+					procToRegister.ValidationError = err
+				} else {
+					procToRegister = analyzedProc
 				}
 
-				err = scope.procedures.Register(database.Name(), analyzedProc)
+				err = scope.procedures.Register(database.Name(), procToRegister)
 				if err != nil {
 					return nil, err
 				}
@@ -89,6 +77,32 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 	}
 	return scope, nil
+}
+
+// analyzeCreateProcedure checks the plan.CreateProcedure and returns a valid plan.Procedure or an error
+func analyzeCreateProcedure(ctx *sql.Context, a *Analyzer, cp *plan.CreateProcedure, scope *Scope, sel RuleSelector) (*plan.Procedure, error) {
+	paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
+	if err != nil {
+		return nil, err
+	}
+	var analyzedNode sql.Node
+	analyzedNode, _, err = resolveDeclarations(ctx, a, cp.Procedure, scope, sel)
+	if err != nil {
+		return nil, err
+	}
+	analyzedNode, _, err = resolveProcedureParams(ctx, paramNames, analyzedNode)
+	if err != nil {
+		return nil, err
+	}
+	analyzedNode, _, err = analyzeProcedureBodies(ctx, a, analyzedNode, false, scope, sel)
+	if err != nil {
+		return nil, err
+	}
+	analyzedProc, ok := analyzedNode.(*plan.Procedure)
+	if !ok {
+		return nil, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
+	}
+	return analyzedProc, nil
 }
 
 func hasProcedureCall(n sql.Node) bool {
@@ -392,6 +406,10 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
 		}
 		return nil, transform.SameTree, err
+	}
+
+	if procedure.ValidationError != nil {
+		return nil, transform.SameTree, procedure.ValidationError
 	}
 
 	if procedure.HasVariadicParameter() {
