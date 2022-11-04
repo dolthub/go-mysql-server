@@ -78,6 +78,10 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	//  sql NULLs, should result in sql NULLs.
+	if js == nil {
+		return nil, err
+	}
 
 	js, err = j.Type().Convert(js)
 	if err != nil {
