@@ -106,6 +106,16 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set system variable sql_mode to ANSI for session",
+		SetUpScript: []string{
+			"set SESSION sql_mode = 'ANSI'",
+		},
+		Query: "SELECT @@session.sql_mode",
+		Expected: []sql.Row{
+			{uint64(0x100000)},
+		},
+	},
+	{
 		Name: "set system variable true / false quoted",
 		SetUpScript: []string{
 			`set @@autocommit = "true", default_table_encryption = "false"`,
