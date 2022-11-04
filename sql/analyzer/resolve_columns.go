@@ -401,18 +401,10 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 					symbols.indexTable(alias, name, scopeLevel)
 				}
 				return false
-			case *plan.GroupBy:
-				// project aliases can overwrite lower namespaces, but importantly,
+			case sql.Projector:
+				// projected aliases overwrite lower namespaces, but importantly,
 				// we do not terminate symbol generation.
-				for _, e := range n.SelectedExprs {
-					if a, ok := e.(*expression.Alias); ok {
-						symbols.indexAlias(a, scopeLevel)
-					}
-				}
-			case *plan.Project:
-				// project aliases can overwrite lower namespaces, but importantly,
-				// we do not terminate symbol generation.
-				for _, e := range n.Projections {
+				for _, e := range n.ProjectedExprs() {
 					if a, ok := e.(*expression.Alias); ok {
 						symbols.indexAlias(a, scopeLevel)
 					}
@@ -590,15 +582,9 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, scopeLevel int) {
 			for _, col := range n.Schema() {
 				names.indexColumn(col.Source, col.Name, scopeLevel)
 			}
-		case *plan.Project:
-			indexExpressions(n.Projections)
-			getColumnsInNodes(n.Children(), names, scopeLevel)
-		case *plan.GroupBy:
-			indexExpressions(n.SelectedExprs)
-			getColumnsInNodes(n.Children(), names, scopeLevel)
-		case *plan.Window:
-			indexExpressions(n.SelectExprs)
-			getColumnsInNodes(n.Children(), names, scopeLevel)
+		case sql.Projector:
+			indexExpressions(n.ProjectedExprs())
+			getColumnsInNodes(node.Children(), names, scopeLevel)
 		default:
 			getColumnsInNodes(n.Children(), names, scopeLevel)
 		}
@@ -784,16 +770,8 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 
 	indexChildNode := func(n sql.Node) {
 		switch n := n.(type) {
-		case *plan.Project:
-			for _, e := range n.Projections {
-				indexColumnExpr(e)
-			}
-		case *plan.GroupBy:
-			for _, e := range n.SelectedExprs {
-				indexColumnExpr(e)
-			}
-		case *plan.Window:
-			for _, e := range n.SelectExprs {
+		case sql.Projector:
+			for _, e := range n.ProjectedExprs() {
 				indexColumnExpr(e)
 			}
 		case *plan.Values:
