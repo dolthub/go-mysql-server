@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"bytes"
 	"encoding/json"
 	"sort"
 	"strings"
@@ -70,8 +71,18 @@ func (doc JSONDocument) Compare(ctx *Context, v JSONValue) (int, error) {
 }
 
 func (doc JSONDocument) ToString(_ *Context) (string, error) {
-	bb, err := json.Marshal(doc.Val)
-	return string(bb), err
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	// Prevents special characters like <, >, or & from being escaped.
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(doc.Val)
+	if err != nil {
+		return "", err
+	}
+	// json.Encoder appends a newline character so we trim it.
+	// SELECT cast('6\n' as JSON) returns only 6 in MySQL.
+	out := strings.TrimRight(buffer.String(), "\n")
+	return out, err
 }
 
 var _ SearchableJSONValue = JSONDocument{}
