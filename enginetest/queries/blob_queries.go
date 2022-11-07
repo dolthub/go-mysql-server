@@ -192,12 +192,20 @@ var BlobErrors = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
+		Query:       "alter table blobt add index bidx (b(3073))",
+		ExpectedErr: sql.ErrKeyTooLong,
+	},
+	{
 		Query:       "alter table blobt add column b2 blob default '1'",
 		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
 	},
 	{
 		Query:       "alter table textt add index tidx (t)",
 		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "alter table textt add index tidx (t(769))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "alter table textt add column t2 text default '1'",
@@ -228,8 +236,20 @@ var BlobErrors = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
+		Query:       "create table b (b blob, primary key (b(3073)))",
+		ExpectedErr: sql.ErrKeyTooLong,
+	},
+	{
+		Query:       "create table t (t text, primary key (t(769)))",
+		ExpectedErr: sql.ErrKeyTooLong,
+	},
+	{
 		Query:       "create table b (i int primary key, b blob, index bidx(b))",
 		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "create table b (i int primary key, b blob, index bidx(b(3073)))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TEXT, INDEX (v1));",

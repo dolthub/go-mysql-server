@@ -9731,6 +9731,7 @@ var IndexPrefixQueries = []ScriptTest{
 		SetUpScript: []string{
 			"create table v_tbl (v varchar(10))",
 			"create table c_tbl (c char(10))",
+			"create table b_tbl (b blob)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
