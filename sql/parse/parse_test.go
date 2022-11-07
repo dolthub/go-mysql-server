@@ -2884,12 +2884,11 @@ CREATE TABLE t2
 			plan: plan.NewGroupBy(
 				[]sql.Expression{
 					expression.NewAlias("MAX(i)/2",
-						expression.NewArithmetic(
+						expression.NewDiv(
 							expression.NewUnresolvedFunction(
 								"max", true, nil, expression.NewUnresolvedColumn("i"),
 							),
 							expression.NewLiteral(int8(2), sql.Int8),
-							"/",
 						),
 					),
 				},

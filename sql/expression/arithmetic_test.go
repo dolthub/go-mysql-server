@@ -492,9 +492,17 @@ func TestAllFloat64(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.op, func(t *testing.T) {
 			require := require.New(t)
-			result, err := NewArithmetic(lval,
-				NewLiteral(tt.value, sql.Float64), tt.op,
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
+			var result interface{}
+			var err error
+			if tt.op == "/" {
+				result, err = NewDiv(lval,
+					NewLiteral(tt.value, sql.Float64),
+				).Eval(sql.NewEmptyContext(), sql.NewRow())
+			} else {
+				result, err = NewArithmetic(lval,
+					NewLiteral(tt.value, sql.Float64), tt.op,
+				).Eval(sql.NewEmptyContext(), sql.NewRow())
+			}
 			require.NoError(err)
 			if r, ok := result.(decimal.Decimal); ok {
 				assert.Equal(t, tt.expected, r.StringFixed(r.Exponent()*-1))

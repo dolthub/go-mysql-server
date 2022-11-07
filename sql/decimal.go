@@ -295,7 +295,10 @@ func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
+	// the decimalType precision and scale is not accurately determined from plan only.
+	// The result value should have the correct precision and scale, so they are used here.
+	decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
+	val := appendAndSliceString(dest, decStr)
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
