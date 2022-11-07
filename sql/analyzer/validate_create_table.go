@@ -522,10 +522,6 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 		lwrNames[strings.ToLower(col.Name)] = col
 	}
 
-	// want to error on (b blob primary key)
-	// want to error on (b blob primary key, index (b(1)))
-
-	// basically, want to know if trying to create a primary key using a blob column and there's no index
 	var hasPkIndexDef bool
 	for _, idx := range tableSpec.IdxDefs {
 		if idx.Constraint == sql.IndexConstraint_Primary {
