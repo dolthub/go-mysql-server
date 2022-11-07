@@ -543,12 +543,12 @@ func TestPushdownIndex(t *testing.T) {
 	}), nil)
 
 	table.EnablePrimaryKeyIndexes()
-	err := table.CreateIndex(ctx, "f", sql.IndexUsing_BTree, sql.IndexConstraint_None, []sql.IndexColumn{
-		{
-			Name:   "f",
-			Length: 0,
-		},
-	}, "")
+	err := table.CreateIndex(ctx, sql.IndexDef{
+		Name:       "f",
+		Columns:    []sql.IndexColumn{{Name: "f", Length: 0}},
+		Constraint: sql.IndexConstraint_None,
+		Storage:    sql.IndexUsing_BTree,
+	})
 	require.NoError(err)
 
 	table1Idxes, err := table.GetIndexes(ctx)

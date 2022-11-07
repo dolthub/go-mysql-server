@@ -180,7 +180,13 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 				}
 			}
 		}
-		err = indexable.CreateIndex(ctx, indexName, p.Using, p.Constraint, p.Columns, p.Comment)
+		err = indexable.CreateIndex(ctx, sql.IndexDef{
+			Name:       indexName,
+			Columns:    p.Columns,
+			Constraint: p.Constraint,
+			Storage:    p.Using,
+			Comment:    p.Comment,
+		})
 		if err != nil {
 			return err
 		}
