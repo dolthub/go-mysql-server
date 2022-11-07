@@ -9726,4 +9726,46 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "string index prefix errors",
+		SetUpScript: []string{
+			"create table v_tbl (v varchar(10))",
+			"create table c_tbl (c char(10))",
+			"create table b_tbl (b blob)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table v_tbl add primary key (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add primary key (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add index (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), index(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), primary key(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), index(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
 }
