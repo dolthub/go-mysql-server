@@ -1448,8 +1448,9 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Issue #499",
+		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
+			"set time_zone = '+0:00';",
 			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
 			`INSERT INTO test VALUES 
 			("2021-07-04 10:00:00", 1.0),
@@ -1459,12 +1460,18 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// In the original, reported issue, the order by clause did not qualify the table name
+				// for `test.time`. When there is ambiguity between a column name and an expression
+				// alias name in the order by clause, MySQL choose the alias; however, if the reference
+				// is used in a function call, MySQL instead seems to resolve to the column name.
+				// Until we determine the exact rule for this behavior, we've qualified the reference
+				// in the order by clause to ensure it selects the table column and not the alias.
 				Query: `SELECT
 				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
 				avg(value) AS "value"
 				FROM test
 				GROUP BY 1
-				ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
+				ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
 				Expected: []sql.Row{
 					{1625133600, 4.0},
 					{1625220000, 3.0},

@@ -296,6 +296,53 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			}
 		}
 
+		groupByChanged := false
+		if groupBy, ok := n.(*plan.GroupBy); ok {
+			// TODO: Isn't there an existing helper method that gets us a map of all the defined aliases in a node?
+			// Find any aliases defined in the GroupBy's projection
+			projectedAliases := make(map[string]struct{})
+			for _, selectedExpr := range groupBy.SelectedExprs {
+				if aliasDefinition, ok := selectedExpr.(*expression.Alias); ok {
+					projectedAliases[aliasDefinition.Name()] = struct{}{}
+				}
+			}
+
+			// See if any of those aliases are referenced in the GroupBy's grouping expressions and
+			// mark them as aliases
+			var newGroupingExprs []sql.Expression
+			for i, groupingExpr := range groupBy.GroupByExprs {
+				newExpr, identity, err := transform.Expr(groupingExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					uc, ok := e.(*expression.UnresolvedColumn)
+					if !ok || uc.Table() != "" {
+						return e, transform.SameTree, nil
+					}
+
+					if _, ok := projectedAliases[uc.Name()]; ok {
+						return expression.NewAliasReference(uc.Name()), transform.NewTree, nil
+					}
+
+					return e, transform.SameTree, nil
+				})
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+
+				// TODO: Can we get rid of this? Messy to do multiple transforms in sequence like this...
+				if identity == transform.NewTree {
+					if newGroupingExprs == nil {
+						newGroupingExprs = make([]sql.Expression, len(groupBy.GroupByExprs))
+						copy(newGroupingExprs, groupBy.GroupByExprs)
+					}
+					newGroupingExprs[i] = newExpr
+				}
+			}
+			if newGroupingExprs != nil {
+				groupBy.GroupByExprs = newGroupingExprs
+				n = groupBy
+				groupByChanged = true
+			}
+		}
+
 		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			evalSymbols := symbols
 			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
@@ -306,7 +353,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if err != nil {
 			return n, transform.SameTree, err
 		}
-		if checkConstraintsUpdated {
+		if checkConstraintsUpdated || groupByChanged {
 			identity = transform.NewTree
 		}
 		return newNode, identity, nil
@@ -902,6 +949,10 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 
 			// This means the expression is either a non-existent column or an alias defined in the same projection.
 			// Check for the latter first.
+			// TODO: For GroupBy nodes, this could be a Projection expression or a Grouping expression
+			//       If it IS a grouping expression... it's okay to reference the alias. We mark these
+			//       aliases earlier, so basic cases work, but more complex cases (e.g. where the alias
+			//       is defined from an outer scope) need to be tested more.
 			aliasesInNode := aliasesDefinedInNode(n)
 			if stringContains(aliasesInNode, name) {
 				return nil, transform.SameTree, sql.ErrMisusedAlias.New(name)
@@ -932,7 +983,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	// replacedAliases is a map of original expression string to alias that has been pushed down below the GroupBy in
 	// the new projection node.
 	replacedAliases := make(map[string]string)
-	var err error
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
 		// GroupBy itself.
@@ -940,7 +990,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if ok && len(replacedAliases) > 0 {
 			newExprs, same := replaceExpressionsWithAliases(ex.Expressions(), replacedAliases)
 			if !same {
-				n, err = ex.WithExpressions(newExprs...)
+				n, err := ex.WithExpressions(newExprs...)
 				return n, transform.NewTree, err
 			}
 		}
@@ -959,14 +1009,14 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// it refers to the alias, and not the one in the child. However,
 		// in the aggregate, aliases in that same aggregate cannot be used,
 		// so it refers to the column in the child node.
-		var groupingColumns = make(map[string]*expression.UnresolvedColumn)
+		var groupingColumns = make(map[string]column)
 		for _, g := range g.GroupByExprs {
 			for _, n := range findAllColumns(g) {
 				groupingColumns[strings.ToLower(n.Name())] = n
 			}
 		}
 
-		var selectedColumns = make(map[string]*expression.UnresolvedColumn)
+		var selectedColumns = make(map[string]column)
 		for _, agg := range g.SelectedExprs {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
@@ -1028,7 +1078,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
-		var missingCols = make([]*expression.UnresolvedColumn, 0, len(selectedColumns)+len(groupingColumns))
+		var missingCols = make([]column, 0, len(selectedColumns)+len(groupingColumns))
 		for _, col := range selectedColumns {
 			missingCols = append(missingCols, col)
 		}
@@ -1133,12 +1183,13 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliasesByExpr
 	return exprs, transform.SameTree
 }
 
-func findAllColumns(e sql.Expression) []*expression.UnresolvedColumn {
-	var cols []*expression.UnresolvedColumn
+func findAllColumns(e sql.Expression) []column {
+	var cols []column
 	sql.Inspect(e, func(e sql.Expression) bool {
-		col, ok := e.(*expression.UnresolvedColumn)
-		if ok {
-			cols = append(cols, col)
+		switch e.(type) {
+		case *expression.UnresolvedColumn, *expression.AliasReference:
+			cols = append(cols, e.(column))
+		default:
 		}
 		return true
 	})
