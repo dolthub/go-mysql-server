@@ -3768,6 +3768,9 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 			return nil, sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
 		}
 
+		if be.Operator == sqlparser.DivStr {
+			return expression.NewDiv(l, r), nil
+		}
 		return expression.NewArithmetic(l, r, be.Operator), nil
 	case
 		sqlparser.JSONExtractOp,

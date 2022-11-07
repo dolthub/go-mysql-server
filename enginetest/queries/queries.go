@@ -3168,6 +3168,58 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "select 0.0015 / 0.0026;",
+		Expected: []sql.Row{{"0.57692308"}},
+	},
+	{
+		Query:    "select (14620 / 9432456);",
+		Expected: []sql.Row{{"0.0015"}},
+	},
+	{
+		Query:    "select (24250 / 9432456);",
+		Expected: []sql.Row{{"0.0026"}},
+	},
+	{
+		Query:    "select 5.2/3.1/1.7/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.98671726755218216294117647000"}},
+	},
+	{
+		Query:    "select 5.2/3.1/1.9/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.88285229202037351421052631500"}},
+	},
+	{
+		Query:    "select 1.677419354838709677/1.9;",
+		Expected: []sql.Row{{"0.8828522920203735142105"}},
+	},
+	{
+		Query:    "select 1.9/1.677419354838709677;",
+		Expected: []sql.Row{{"1.13269"}},
+	},
+	{
+		Query:    "select 1.677419354838709677/1.9/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.882852292020373514210526315000"}},
+	},
+	{
+		Query:    "select (14620 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.60288653"}},
+	},
+	{
+		Query:    "select (14620.0 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.602886527"}},
+	},
+	{
+		Query:    "select (14620 / 9432456),  (24250 / 9432456), (14620 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.0015", "0.0026", "0.60288653"}},
+	},
+	{
+		Query:    "select 1000.0 / 20.00;",
+		Expected: []sql.Row{{"50.00000"}},
+	},
+	{
+		Query:    "select 1 / 2 / 3 / 4 / 5 / 6;",
+		Expected: []sql.Row{{"0.00138888888888888888"}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}},
 	},

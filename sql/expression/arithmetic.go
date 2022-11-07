@@ -35,24 +35,15 @@ var (
 	errUnableToEval = errors.NewKind("Unable to evaluate an expression: %v %s %v")
 )
 
-// '4 scales' are added to scale of the number on the left side of division operator at every division operation.
-const divisionScaleAddition = 4
-
-// Arithmetic expressions (+, -, *, /, ...)
+// Arithmetic expressions (+, -, *, ...) DOES NOT INCLUDE "/" as it has its own function
 type Arithmetic struct {
 	BinaryExpression
 	Op string
-
-	// used only for "/" division operation for getting exact precision for the result
-	DivScale int32
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
 func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
-	a := &Arithmetic{BinaryExpression{Left: left, Right: right}, op, 0}
-	divs := countDivs(a)
-	setDivs(a, 0, divs)
-	return a
+	return &Arithmetic{BinaryExpression{Left: left, Right: right}, op}
 }
 
 // NewPlus creates a new Arithmetic + sql.Expression.
@@ -73,11 +64,6 @@ func NewMinus(left, right sql.Expression) *Arithmetic {
 // NewMult creates a new Arithmetic * sql.Expression.
 func NewMult(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.MultStr)
-}
-
-// NewDiv creates a new Arithmetic / sql.Expression.
-func NewDiv(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.DivStr)
 }
 
 // NewShiftLeft creates a new Arithmetic << sql.Expression.
@@ -113,49 +99,6 @@ func NewIntDiv(left, right sql.Expression) *Arithmetic {
 // NewMod creates a new Arithmetic % sql.Expression.
 func NewMod(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.ModStr)
-}
-
-// setDivs will set the innermost node's DivScale to the number counted by countDivs, and the rest of it
-// to 0. This allows us to calculate the first division with the exact precision of the end result. Otherwise,
-// we lose precision at each division since we only add 4 scales at every division operation.
-func setDivs(e sql.Expression, d int32, divScale int32) {
-	if e == nil {
-		return
-	}
-
-	if a, ok := e.(*Arithmetic); ok && a.Op == sqlparser.DivStr {
-		d = d + 1
-		if d == divScale {
-			a.DivScale = divScale
-		} else {
-			a.DivScale = 0
-		}
-		setDivs(a.Left, d, divScale)
-	}
-
-	return
-}
-
-// countDivs returns the number of division operators in order on the left child node of the current node.
-// This lets us count how many division operator used one after the other. E.g. 24/3/2/1 will have this structure:
-//
-//		     'div'
-//		     /   \
-//		   'div'  1
-//		   /   \
-//		 'div'  2
-//		 /   \
-//	    24    3
-func countDivs(e sql.Expression) int32 {
-	if e == nil {
-		return 0
-	}
-
-	if a, ok := e.(*Arithmetic); ok && a.Op == sqlparser.DivStr {
-		return countDivs(a.Left) + 1
-	}
-
-	return 0
 }
 
 func (a *Arithmetic) String() string {
@@ -217,16 +160,6 @@ func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 
 		return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
 
-	case sqlparser.DivStr:
-		if isInterval(a.Left) || isInterval(a.Right) {
-			return sql.Datetime
-		}
-
-		if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
-			return sql.Int64
-		}
-		return a.floatOrDecimal(lTyp, rTyp, lval, rval)
-
 	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
 		return sql.Uint64
 
@@ -266,7 +199,7 @@ func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{})
 
 	// using max precision which is 65 and DivScale for scale number.
 	// DivScale will be non-zero number if it is the innermost division operation.
-	defType, derr := sql.CreateDecimalType(65, uint8(a.DivScale*divisionScaleAddition))
+	defType, derr := sql.CreateDecimalType(65, 0)
 	if derr != nil {
 		return sql.Float64
 	}
@@ -384,35 +317,6 @@ func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type, lval, rval i
 	return resType
 }
 
-// getPrecisionAndScale converts the value to string format and parses it to get the precision and scale.
-func getPrecisionAndScale(val interface{}) (uint8, uint8) {
-	var str string
-	switch v := val.(type) {
-	case decimal.Decimal:
-		str = v.StringFixed(v.Exponent() * -1)
-	case float32:
-		d := decimal.NewFromFloat32(v)
-		str = d.StringFixed(d.Exponent() * -1)
-	case float64:
-		d := decimal.NewFromFloat(v)
-		str = d.StringFixed(d.Exponent() * -1)
-	default:
-		str = fmt.Sprintf("%v", val)
-	}
-	return GetDecimalPrecisionAndScale(str)
-}
-
-// GetDecimalPrecisionAndScale returns precision and scale for given string formatted float/double number.
-func GetDecimalPrecisionAndScale(val string) (uint8, uint8) {
-	scale := 0
-	precScale := strings.Split(strings.TrimPrefix(val, "-"), ".")
-	if len(precScale) != 1 {
-		scale = len(precScale[1])
-	}
-	precision := len((precScale)[0]) + scale
-	return uint8(precision), uint8(scale)
-}
-
 func isInterval(expr sql.Expression) bool {
 	_, ok := expr.(*Interval)
 	return ok
@@ -449,8 +353,6 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return minus(lval, rval)
 	case sqlparser.MultStr:
 		return mult(lval, rval)
-	case sqlparser.DivStr:
-		return div(lval, rval, a.DivScale)
 	case sqlparser.BitAndStr:
 		return bitAnd(lval, rval)
 	case sqlparser.BitOrStr:
@@ -774,109 +676,6 @@ func mult(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case decimal.Decimal:
 			return l.Mul(r), nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func div(lval, rval interface{}, divScale int32) (interface{}, error) {
-	if rval == nil {
-		return nil, nil
-	}
-	if lval == nil {
-		return 0, nil
-	}
-
-	switch l := lval.(type) {
-	case uint8:
-		switch r := rval.(type) {
-		case uint8:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case int8:
-		switch r := rval.(type) {
-		case int8:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case uint16:
-		switch r := rval.(type) {
-		case uint16:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case int16:
-		switch r := rval.(type) {
-		case int16:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case uint32:
-		switch r := rval.(type) {
-		case uint32:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case int32:
-		switch r := rval.(type) {
-		case int32:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case float32:
-		switch r := rval.(type) {
-		case float32:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case float64:
-		switch r := rval.(type) {
-		case float64:
-			if r == 0 {
-				return nil, nil
-			}
-			return l / r, nil
-		}
-	case decimal.Decimal:
-		switch r := rval.(type) {
-		case decimal.Decimal:
-			if r.String() == "0" {
-				return nil, nil
-			}
-			exp := (l.Exponent() * -1) + divScale*divisionScaleAddition
-			return l.DivRound(r, exp), nil
 		}
 	}
 
