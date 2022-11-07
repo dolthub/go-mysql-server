@@ -374,36 +374,46 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	return indexes, nil
 }
 
-// validateIndexType prevents indexing blob columns
-func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
-	for _, c := range cols {
-		i := sch.IndexOfColName(c.Name)
-		col := sch[i]
-		if sql.IsByteType(col.Type) {
-			if c.Length == 0 {
-				// TODO: should be this error, but can't tell the difference between 0 and unspecified
-				// return sql.ErrKeyZero.New(col.Name)
-				return sql.ErrInvalidBlobTextKey.New(col.Name)
-			} else if c.Length < 0 {
-				return sql.ErrInvalidBlobTextKey.New(col.Name)
-			} else if c.Length > 3072 {
-				return sql.ErrKeyTooLong.New()
-			}
-		} else if sql.IsTextBlob(col.Type) {
-			if c.Length == 0 {
-				// TODO: should be this error, but can't tell the difference between 0 and unspecified
-				// return sql.ErrKeyZero.New(col.Name)
-				return sql.ErrInvalidBlobTextKey.New(col.Name)
-			} else if c.Length < 0 {
-				return sql.ErrInvalidBlobTextKey.New(col.Name)
-			} else if c.Length > 768 {
-				return sql.ErrKeyTooLong.New()
-			}
-		}
+// validatePrefixLength handles all errors related to creating indexes with prefix lengths
+func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
+	// Throw prefix length error for non-string types with prefixes
+	if idxCol.Length > 0 && !sql.IsText(schCol.Type) {
+		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+	}
 
-		// Throw prefix length error for non-string types with prefixes
-		if c.Length > 0 && !sql.IsText(sch[i].Type) {
-			return sql.ErrInvalidIndexPrefix.New(sch[i].Name)
+	// Get prefix key length in bytes, so times 4 for text
+	prefixByteLength := idxCol.Length
+	if sql.IsText(schCol.Type) {
+		prefixByteLength = 4 * idxCol.Length
+	}
+
+	// Prefix length is longer than max
+	if prefixByteLength > 3072 { // TODO: constant
+		return sql.ErrKeyTooLong.New(schCol.Name)
+	}
+
+	// The specified prefix length is longer than the column
+	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength())
+	if prefixByteLength > maxByteLength {
+		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+	}
+
+	// Prefix length is only required for BLOB and TEXT columns
+	if sql.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
+		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+	}
+
+	// TODO: detect specified zero length prefix
+	return nil
+}
+
+// validateIndexType prevents creating invalid indexes
+func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
+	for _, idxCol := range cols {
+		schCol := sch[sch.IndexOfColName(idxCol.Name)]
+		err := validatePrefixLength(schCol, idxCol)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -505,6 +515,7 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 const textIndexPrefix = 1000
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
+// TODO: this method is very similar to validateIndexType...
 func validateIndexes(tableSpec *plan.TableSpec) error {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
@@ -512,49 +523,17 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 	}
 
 	// if there is a primary key defined without being listed as an index def, then it does not have length
-	strIdxs := make(map[string]bool)
 	for _, idx := range tableSpec.IdxDefs {
 		for _, idxCol := range idx.Columns {
-			col, ok := lwrNames[strings.ToLower(idxCol.Name)]
+			schCol, ok := lwrNames[strings.ToLower(idxCol.Name)]
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
 
-			// Throw unsupported index error for TEXT and BLOB types
-			if sql.IsByteType(col.Type) {
-				if idxCol.Length == 0 {
-					// TODO: should be this error, but can't tell the difference between 0 and unspecified
-					// return sql.ErrKeyZero.New(col.Name)
-					return sql.ErrInvalidBlobTextKey.New(col.Name)
-				} else if idxCol.Length < 0 {
-					return sql.ErrInvalidBlobTextKey.New(col.Name)
-				} else if idxCol.Length > 3072 {
-					return sql.ErrKeyTooLong.New()
-				}
-				strIdxs[strings.ToLower(col.Name)] = true
-			} else if sql.IsTextBlob(col.Type) {
-				if idxCol.Length == 0 {
-					// TODO: should be this error, but can't tell the difference between 0 and unspecified
-					// return sql.ErrKeyZero.New(col.Name)
-					return sql.ErrInvalidBlobTextKey.New(col.Name)
-				} else if idxCol.Length < 0 {
-					return sql.ErrInvalidBlobTextKey.New(col.Name)
-				} else if idxCol.Length > 768 {
-					return sql.ErrKeyTooLong.New()
-				}
-				strIdxs[strings.ToLower(col.Name)] = true
+			err := validatePrefixLength(schCol, idxCol)
+			if err != nil {
+				return err
 			}
-
-			// Throw prefix length error for non-string types with prefixes
-			if idxCol.Length > 0 && !sql.IsText(col.Type) {
-				return sql.ErrInvalidIndexPrefix.New(col.Name)
-			}
-		}
-	}
-
-	for _, col := range tableSpec.Schema.Schema {
-		if col.PrimaryKey && (sql.IsByteType(col.Type) || sql.IsTextBlob(col.Type)) && !strIdxs[strings.ToLower(col.Name)] {
-			return sql.ErrInvalidBlobTextKey.New(col.Name)
 		}
 	}
 
@@ -612,10 +591,11 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 
-		// Throw prefix length error for non-string types with prefixes
-		for _, col := range ai.Columns {
-			if col.Length > 0 && !sql.IsText(sch[sch.IndexOf(col.Name, tableName)].Type) {
-				return nil, sql.ErrInvalidIndexPrefix.New(col.Name)
+		for _, idxCol := range ai.Columns {
+			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
+			err := validatePrefixLength(schCol, idxCol)
+			if err != nil {
+				return nil, err
 			}
 		}
 
