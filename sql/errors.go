@@ -501,8 +501,8 @@ var (
 	// ErrInvalidSQLValType is returned when a SQL value is of the incorrect type during parsing
 	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
 
-	// ErrInvalidIndexPrefix is returned when an index prefix is outside the accepted range
-	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
+	// ErrInvalidIndexPrefixLength is returned when an index prefix is outside the accepted range
+	ErrInvalidIndexPrefixLength = errors.NewKind("invalid index prefix: %v")
 
 	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in index '%s'")
@@ -607,6 +607,12 @@ var (
 
 	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
 	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
+
+	// ErrUnsupportedIndexPrefix is returned for an index on a string column with a prefix
+	ErrUnsupportedIndexPrefix = errors.NewKind("prefix index on string column '%s' unsupported")
+
+	// ErrInvalidIndexPrefix is returned for an index prefix on a non-string column
+	ErrInvalidIndexPrefix = errors.NewKind("prefix on non-string column '%s'")
 
 	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server

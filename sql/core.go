@@ -662,7 +662,7 @@ type RewritableTable interface {
 	// be streamed from the table and passed to this RowInserter. Implementor tables must still return rows in the
 	// current schema until the rewrite operation completes. |Close| will be called on RowInserter when all rows have
 	// been inserted.
-	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) (RowInserter, error)
+	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column, idxCols []IndexColumn) (RowInserter, error)
 }
 
 // DatabaseProvider is a collection of Database.
@@ -937,6 +937,11 @@ type TableCreator interface {
 	// CreateTable creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
+}
+
+// IndexedTableCreator should be implemented by databases that create new tables where they have a Primary Key that has columns that have prefix lengths.
+type IndexedTableCreator interface {
+	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxDef IndexDef, collation CollationID) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.

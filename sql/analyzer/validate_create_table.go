@@ -387,6 +387,11 @@ func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
 		} else if sql.IsTextBlob(sch[i].Type) {
 			return sql.ErrInvalidTextIndex.New(sch[i].Name)
 		}
+
+		// Throw prefix length error for non-string types with prefixes
+		if c.Length > 0 && !sql.IsText(sch[i].Type) {
+			return sql.ErrInvalidIndexPrefix.New(sch[i].Name)
+		}
 	}
 	return nil
 }
@@ -499,10 +504,16 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
 
+			// Throw unsupported index error for TEXT and BLOB types
 			if sql.IsByteType(col.Type) {
 				return sql.ErrInvalidByteIndex.New(col.Name)
 			} else if sql.IsTextBlob(col.Type) {
 				return sql.ErrInvalidTextIndex.New(col.Name)
+			}
+
+			// Throw prefix length error for non-string types with prefixes
+			if idxCol.Length > 0 && !sql.IsText(col.Type) {
+				return sql.ErrInvalidIndexPrefix.New(col.Name)
 			}
 		}
 	}
@@ -572,6 +583,13 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 
 		if hasPrimaryKeys(sch) {
 			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
+		}
+
+		// Throw prefix length error for non-string types with prefixes
+		for _, col := range ai.Columns {
+			if col.Length > 0 && !sql.IsText(sch[sch.IndexOf(col.Name, tableName)].Type) {
+				return nil, sql.ErrInvalidIndexPrefix.New(col.Name)
+			}
 		}
 
 		// Set the primary keys

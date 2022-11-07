@@ -195,7 +195,7 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 			return nil
 		}
 		sch := sql.SchemaToPrimaryKeySchema(table, table.Schema())
-		inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil)
+		inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, p.Columns)
 		if err != nil {
 			return err
 		}

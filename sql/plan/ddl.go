@@ -258,43 +258,63 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
+	err = c.validateDefaultPosition()
+	if err != nil {
+		return sql.RowsToRowIter(), err
+	}
+
+	maybePrivDb := c.db
+	if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
+		maybePrivDb = privDb.Unwrap()
+	}
+
 	if c.temporary == IsTempTable {
-		maybePrivDb := c.db
-		if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
-			maybePrivDb = privDb.Unwrap()
-		}
 		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
-		vd, _ = maybePrivDb.(sql.ViewDatabase)
-
-		if err := c.validateDefaultPosition(); err != nil {
-			return sql.RowsToRowIter(), err
-		}
-
 		err = creatable.CreateTemporaryTable(ctx, c.name, c.CreateSchema, c.collation)
 	} else {
-		maybePrivDb := c.db
-		if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
-			maybePrivDb = privDb.Unwrap()
-		}
-		creatable, ok := maybePrivDb.(sql.TableCreator)
-		if !ok {
+		switch creatable := maybePrivDb.(type) {
+		case sql.IndexedTableCreator:
+			var pkIdxDef sql.IndexDef
+			var hasPkIdxDef bool
+			for _, idxDef := range c.idxDefs {
+				if idxDef.Constraint == sql.IndexConstraint_Primary {
+					hasPkIdxDef = true
+					pkIdxDef = sql.IndexDef{
+						Name:       idxDef.IndexName,
+						Columns:    idxDef.Columns,
+						Constraint: idxDef.Constraint,
+						Storage:    idxDef.Using,
+						Comment:    idxDef.Comment,
+					}
+				}
+			}
+			if hasPkIdxDef {
+				err = creatable.CreateIndexedTable(ctx, c.name, c.CreateSchema, pkIdxDef, c.collation)
+				if sql.ErrUnsupportedIndexPrefix.Is(err) {
+					return sql.RowsToRowIter(), err
+				}
+			} else {
+				creatable, ok := maybePrivDb.(sql.TableCreator)
+				if !ok {
+					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
+				}
+				err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
+			}
+		case sql.TableCreator:
+			err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
+		default:
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
 		}
-		vd, _ = maybePrivDb.(sql.ViewDatabase)
-
-		if err := c.validateDefaultPosition(); err != nil {
-			return sql.RowsToRowIter(), err
-		}
-
-		err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
 	}
+
 	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
 		return sql.RowsToRowIter(), err
 	}
 
+	vd, _ = maybePrivDb.(sql.ViewDatabase)
 	if vd != nil {
 		_, ok, err := vd.GetView(ctx, c.name)
 		if err != nil {
