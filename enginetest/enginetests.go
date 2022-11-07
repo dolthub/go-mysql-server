@@ -1860,6 +1860,11 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "", "NULL", ""},
 			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
 	})
+
+	t.Skip("primary key lengths are not stored properly")
+	for _, tt := range queries.BrokenCreateTableQueries {
+		RunWriteQueryTest(t, harness, tt)
+	}
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
