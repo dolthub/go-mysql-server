@@ -253,6 +253,8 @@ func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[sql.Expression]bo
 
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	originalNode := n
+
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
 	// on the full scope; otherwise transform looks at sub-nodes and calculates a partial view of what is available.
 	symbols := getAvailableNamesByScope(n, scope)
@@ -277,8 +279,16 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
 		}
+
+		// Don't qualify unresolved JSON tables, wait for joins
+		if jt, ok := n.(*plan.JSONTable); ok {
+			if !jt.Resolved() {
+				return n, transform.SameTree, nil
+			}
+		}
+
 		// Updates need to have check constraints qualified since multiple tables could be involved
-		checkConstraintsUpdated := false
+		checkConstraintsChanged := false
 		if nn, ok := n.(*plan.Update); ok {
 			newChecks, err := qualifyCheckConstraints(nn)
 			if err != nil {
@@ -286,60 +296,20 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			}
 			nn.Checks = newChecks
 			n = nn
-			checkConstraintsUpdated = true
+			checkConstraintsChanged = true
 		}
 
-		// don't qualify unresolved JSON tables, wait for joins
-		if jt, ok := n.(*plan.JSONTable); ok {
-			if !jt.Resolved() {
-				return n, transform.SameTree, nil
-			}
-		}
-
+		// Before we can qualify references in a GroupBy node, we need to see if any aliases
+		// were defined and then used in grouping expressions
 		groupByChanged := false
 		if groupBy, ok := n.(*plan.GroupBy); ok {
-			// TODO: Isn't there an existing helper method that gets us a map of all the defined aliases in a node?
-			// Find any aliases defined in the GroupBy's projection
-			projectedAliases := make(map[string]struct{})
-			for _, selectedExpr := range groupBy.SelectedExprs {
-				if aliasDefinition, ok := selectedExpr.(*expression.Alias); ok {
-					projectedAliases[aliasDefinition.Name()] = struct{}{}
-				}
+			newGroupBy, identity, err := identifyGroupingAliasReferences(groupBy)
+			if err != nil {
+				return originalNode, transform.SameTree, err
 			}
-
-			// See if any of those aliases are referenced in the GroupBy's grouping expressions and
-			// mark them as aliases
-			var newGroupingExprs []sql.Expression
-			for i, groupingExpr := range groupBy.GroupByExprs {
-				newExpr, identity, err := transform.Expr(groupingExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					uc, ok := e.(*expression.UnresolvedColumn)
-					if !ok || uc.Table() != "" {
-						return e, transform.SameTree, nil
-					}
-
-					if _, ok := projectedAliases[uc.Name()]; ok {
-						return expression.NewAliasReference(uc.Name()), transform.NewTree, nil
-					}
-
-					return e, transform.SameTree, nil
-				})
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-
-				// TODO: Can we get rid of this? Messy to do multiple transforms in sequence like this...
-				if identity == transform.NewTree {
-					if newGroupingExprs == nil {
-						newGroupingExprs = make([]sql.Expression, len(groupBy.GroupByExprs))
-						copy(newGroupingExprs, groupBy.GroupByExprs)
-					}
-					newGroupingExprs[i] = newExpr
-				}
-			}
-			if newGroupingExprs != nil {
-				groupBy.GroupByExprs = newGroupingExprs
-				n = groupBy
+			if identity == transform.NewTree {
 				groupByChanged = true
+				n = newGroupBy
 			}
 		}
 
@@ -351,13 +321,39 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			return qualifyExpression(e, n, evalSymbols)
 		})
 		if err != nil {
-			return n, transform.SameTree, err
+			return originalNode, transform.SameTree, err
 		}
-		if checkConstraintsUpdated || groupByChanged {
+		if checkConstraintsChanged || groupByChanged {
 			identity = transform.NewTree
 		}
 		return newNode, identity, nil
 	})
+}
+
+// identifyGroupingAliasReferences finds any aliases defined in the projected expressions of
+// the specified GroupBy node, looks for references to those aliases in the grouping expressions
+// of the same GroupBy node, and transforms them to an AliasReference expression.
+func identifyGroupingAliasReferences(groupBy *plan.GroupBy) (*plan.GroupBy, transform.TreeIdentity, error) {
+	projectedAliases := aliasesDefinedInNode(groupBy)
+
+	// Temporarily remove projection expressions so we can transform only the grouping expressions
+	groupByWithOnlyGroupingExprs := plan.NewGroupBy(nil, groupBy.GroupByExprs, groupBy.Child)
+	newNode, identity, err := transform.OneNodeExpressions(groupByWithOnlyGroupingExprs, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		uc, ok := e.(*expression.UnresolvedColumn)
+		if !ok || uc.Table() != "" {
+			return e, transform.SameTree, nil
+		}
+
+		if stringContains(projectedAliases, strings.ToLower(uc.Name())) {
+			return expression.NewAliasReference(uc.Name()), transform.NewTree, nil
+		}
+
+		return e, transform.SameTree, nil
+	})
+	if identity == transform.NewTree && err == nil {
+		groupBy = plan.NewGroupBy(groupBy.SelectedExprs, newNode.(*plan.GroupBy).GroupByExprs, groupBy.Child)
+	}
+	return groupBy, identity, err
 }
 
 // qualifyCheckConstraints returns a new set of CheckConstraints created by taking the specified Update node's checks

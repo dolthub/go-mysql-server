@@ -142,7 +142,8 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 }
 
 // aliasedExpressionsInNode returns a map of the aliased expressions defined in the first Projector node found (starting
-// the search from the specified node), mapped from the expression string to the alias name.
+// the search from the specified node), mapped from the expression string to the alias name. Returned
+// map keys are normalized to lower case.
 func aliasedExpressionsInNode(n sql.Node) map[string]string {
 	projector := findFirstProjectorNode(n)
 	if projector == nil {
@@ -160,7 +161,7 @@ func aliasedExpressionsInNode(n sql.Node) map[string]string {
 }
 
 // aliasesDefinedInNode returns the expression aliases that are defined in the first Projector node found, starting
-// the search from the specified node.
+// the search from the specified node. All returned alias names are normalized to lower case.
 func aliasesDefinedInNode(n sql.Node) []string {
 	projector := findFirstProjectorNode(n)
 	if projector == nil {

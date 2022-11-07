@@ -1466,6 +1466,8 @@ var ScriptTests = []ScriptTest{
 				// is used in a function call, MySQL instead seems to resolve to the column name.
 				// Until we determine the exact rule for this behavior, we've qualified the reference
 				// in the order by clause to ensure it selects the table column and not the alias.
+				// TODO: Waiting to hear back from MySQL on whether this is intended behavior or not:
+				//       https://bugs.mysql.com/bug.php?id=109020
 				Query: `SELECT
 				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
 				avg(value) AS "value"
