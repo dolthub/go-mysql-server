@@ -24,6 +24,26 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: "select x from xy join uv on y = v join ab on y = b and u = -1",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x]\n" +
+			" └─ HashJoin(xy.y = ab.b)\n" +
+			"     ├─ HashJoin(xy.y = uv.v)\n" +
+			"     │   ├─ Table(xy)\n" +
+			"     │   │   └─ columns: [x y]\n" +
+			"     │   └─ HashLookup(child: (uv.v), lookup: (xy.y))\n" +
+			"     │       └─ CachedResults\n" +
+			"     │           └─ IndexedTableAccess(uv)\n" +
+			"     │               ├─ index: [uv.u]\n" +
+			"     │               ├─ filters: [{[-1, -1]}]\n" +
+			"     │               └─ columns: [u v]\n" +
+			"     └─ HashLookup(child: (ab.b), lookup: (xy.y))\n" +
+			"         └─ CachedResults\n" +
+			"             └─ Table(ab)\n" +
+			"                 └─ columns: [b]\n" +
+			"",
+	},
+	{
 		Query: "select * from (select a,v from ab join uv on a=u) av join (select x,q from xy join pq on x = p) xq on av.v = xq.x",
 		ExpectedPlan: "HashJoin(av.v = xq.x)\n" +
 			" ├─ SubqueryAlias(av)\n" +
