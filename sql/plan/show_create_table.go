@@ -294,15 +294,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	if len(primaryKeyCols) > 0 {
-		for i, col := range primaryKeyCols {
-			colStr := quoteIdentifier(col)
-			if len(pkSchema.PkPrefixLengths) > i && pkSchema.PkPrefixLengths[i] != 0 {
-				colStr += fmt.Sprintf("(%v)", pkSchema.PkPrefixLengths[i])
-
-			}
-			primaryKeyCols[i] = colStr
-		}
-		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
+		primaryKey := fmt.Sprintf(" PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
 	}
 

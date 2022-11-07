@@ -131,8 +131,7 @@ func IsKeyless(s Schema) bool {
 // PrimaryKeySchema defines table metadata for columns and primary key ordering
 type PrimaryKeySchema struct {
 	Schema
-	PkOrdinals      []int
-	PkPrefixLengths []uint16
+	PkOrdinals []int
 }
 
 // NewPrimaryKeySchema constructs a new PrimaryKeySchema. PK ordinals
@@ -146,21 +145,7 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 			}
 		}
 	}
-	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds, PkPrefixLengths: []uint16{}}
-}
-
-// NewPrimaryKeySchemaWithPrefixLengths constructs a new PrimaryKeySchema with
-// primary key lengths initialized.
-func NewPrimaryKeySchemaWithPrefixLengths(s Schema, pkOrds []int, pkPrefixLengths []uint16) PrimaryKeySchema {
-	if len(pkOrds) == 0 {
-		pkOrds = make([]int, 0)
-		for i, c := range s {
-			if c.PrimaryKey {
-				pkOrds = append(pkOrds, i)
-			}
-		}
-	}
-	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds, PkPrefixLengths: pkPrefixLengths}
+	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds}
 }
 
 // SchemaToPrimaryKeySchema adapts the schema given to a PrimaryKey schema using the primary keys of the table given, if
