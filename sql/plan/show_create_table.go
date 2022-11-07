@@ -294,7 +294,15 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	if len(primaryKeyCols) > 0 {
-		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
+		for i, col := range primaryKeyCols {
+			colStr := quoteIdentifier(col)
+			if len(pkSchema.PkPrefixLengths) > i && pkSchema.PkPrefixLengths[i] != 0 {
+				colStr += fmt.Sprintf("(%v)", pkSchema.PkPrefixLengths[i])
+
+			}
+			primaryKeyCols[i] = colStr
+		}
+		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(primaryKeyCols, ","))
 		colStmts = append(colStmts, primaryKey)
 	}
 
@@ -304,11 +312,16 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			continue
 		}
 
+		prefixLengths := index.PrefixLengths()
 		var indexCols []string
-		for _, expr := range index.Expressions() {
+		for i, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexCols = append(indexCols, quoteIdentifier(col.Name))
+				indexDef := quoteIdentifier(col.Name)
+				if len(prefixLengths) > i && prefixLengths[i] != 0 {
+					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
+				}
+				indexCols = append(indexCols, indexDef)
 			}
 		}
 

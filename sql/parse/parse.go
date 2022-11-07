@@ -1531,18 +1531,16 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error) {
 	out := make([]sql.IndexColumn, len(cols))
-	var length int64
-	var err error
 	for i, col := range cols {
-		if col.Length != nil {
-			if col.Length.Type == sqlparser.IntVal {
-				length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				if length < 1 {
-					return nil, sql.ErrInvalidIndexPrefixLength.New(length)
-				}
+		var length int64
+		var err error
+		if col.Length != nil && col.Length.Type == sqlparser.IntVal {
+			length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if length < 1 {
+				return nil, sql.ErrInvalidIndexPrefixLength.New(length)
 			}
 		}
 		out[i] = sql.IndexColumn{
@@ -1694,6 +1692,15 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	// TODO: probably need to check for tiny, medium, and long
+	// gather all columns names that are blob type
+	blobCols := map[string]bool{}
+	for _, col := range c.TableSpec.Columns {
+		if col.Type.Type == "blob" {
+			blobCols[col.Name.String()] = true
+		}
+	}
+
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
 		constraint := sql.IndexConstraint_None
@@ -1713,18 +1720,33 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			return nil, err
 		}
 
+		// TODO: helper method
+		var hasBlob bool
+		prefixLengths := make([]uint16, len(columns))
+		for i, col := range columns {
+			if blobCols[col.Name] {
+				hasBlob = true
+			}
+			prefixLengths[i] = uint16(col.Length)
+		}
+		if !hasBlob {
+			prefixLengths = nil
+		}
+
 		var comment string
 		for _, option := range idxDef.Options {
 			if strings.ToLower(option.Name) == strings.ToLower(sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD)) {
 				comment = string(option.Value.Val)
 			}
 		}
+
 		idxDefs = append(idxDefs, &plan.IndexDefinition{
-			IndexName:  idxDef.Info.Name.String(),
-			Using:      sql.IndexUsing_Default, //TODO: add vitess support for USING
-			Constraint: constraint,
-			Columns:    columns,
-			Comment:    comment,
+			IndexName:     idxDef.Info.Name.String(),
+			Using:         sql.IndexUsing_Default, //TODO: add vitess support for USING
+			Constraint:    constraint,
+			Columns:       columns,
+			Comment:       comment,
+			PrefixLengths: prefixLengths,
 		})
 	}
 

@@ -31,12 +31,8 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, transform.SameTree, nil
 	}
 
-	err := validateIndexes(ct.TableSpec())
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	err = validatePkTypes(ct.TableSpec())
+	var err error
+	err = validateIndexes(ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -382,10 +378,27 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
 	for _, c := range cols {
 		i := sch.IndexOfColName(c.Name)
-		if sql.IsByteType(sch[i].Type) {
-			return sql.ErrInvalidByteIndex.New(sch[i].Name)
-		} else if sql.IsTextBlob(sch[i].Type) {
-			return sql.ErrInvalidTextIndex.New(sch[i].Name)
+		col := sch[i]
+		if sql.IsByteType(col.Type) {
+			if c.Length == 0 {
+				// TODO: should be this error, but can't tell the difference between 0 and unspecified
+				// return sql.ErrKeyZero.New(col.Name)
+				return sql.ErrInvalidBlobTextKey.New(col.Name)
+			} else if c.Length < 0 {
+				return sql.ErrInvalidBlobTextKey.New(col.Name)
+			} else if c.Length > 3072 {
+				return sql.ErrKeyTooLong.New()
+			}
+		} else if sql.IsTextBlob(col.Type) {
+			if c.Length == 0 {
+				// TODO: should be this error, but can't tell the difference between 0 and unspecified
+				// return sql.ErrKeyZero.New(col.Name)
+				return sql.ErrInvalidBlobTextKey.New(col.Name)
+			} else if c.Length < 0 {
+				return sql.ErrInvalidBlobTextKey.New(col.Name)
+			} else if c.Length > 768 {
+				return sql.ErrKeyTooLong.New()
+			}
 		}
 
 		// Throw prefix length error for non-string types with prefixes
@@ -491,12 +504,15 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 
 const textIndexPrefix = 1000
 
+// validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 func validateIndexes(tableSpec *plan.TableSpec) error {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
 		lwrNames[strings.ToLower(col.Name)] = col
 	}
 
+	// if there is a primary key defined without being listed as an index def, then it does not have length
+	strIdxs := make(map[string]bool)
 	for _, idx := range tableSpec.IdxDefs {
 		for _, idxCol := range idx.Columns {
 			col, ok := lwrNames[strings.ToLower(idxCol.Name)]
@@ -506,9 +522,27 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 
 			// Throw unsupported index error for TEXT and BLOB types
 			if sql.IsByteType(col.Type) {
-				return sql.ErrInvalidByteIndex.New(col.Name)
+				if idxCol.Length == 0 {
+					// TODO: should be this error, but can't tell the difference between 0 and unspecified
+					// return sql.ErrKeyZero.New(col.Name)
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length < 0 {
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length > 3072 {
+					return sql.ErrKeyTooLong.New()
+				}
+				strIdxs[strings.ToLower(col.Name)] = true
 			} else if sql.IsTextBlob(col.Type) {
-				return sql.ErrInvalidTextIndex.New(col.Name)
+				if idxCol.Length == 0 {
+					// TODO: should be this error, but can't tell the difference between 0 and unspecified
+					// return sql.ErrKeyZero.New(col.Name)
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length < 0 {
+					return sql.ErrInvalidBlobTextKey.New(col.Name)
+				} else if idxCol.Length > 768 {
+					return sql.ErrKeyTooLong.New()
+				}
+				strIdxs[strings.ToLower(col.Name)] = true
 			}
 
 			// Throw prefix length error for non-string types with prefixes
@@ -518,16 +552,9 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 		}
 	}
 
-	return nil
-}
-
-// validatePkTypes prevents creating tables with blob primary keys
-func validatePkTypes(tableSpec *plan.TableSpec) error {
 	for _, col := range tableSpec.Schema.Schema {
-		if col.PrimaryKey && sql.IsByteType(col.Type) {
-			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
-		} else if col.PrimaryKey && sql.IsTextBlob(col.Type) {
-			return sql.ErrInvalidTextIndex.New(col.Name)
+		if col.PrimaryKey && (sql.IsByteType(col.Type) || sql.IsTextBlob(col.Type)) && !strIdxs[strings.ToLower(col.Name)] {
+			return sql.ErrInvalidBlobTextKey.New(col.Name)
 		}
 	}
 
