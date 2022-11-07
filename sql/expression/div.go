@@ -358,6 +358,10 @@ func countDivs(e sql.Expression) int32 {
 		return countDivs(a.Left) + 1
 	}
 
+	if a, ok := e.(*Arithmetic); ok {
+		return countDivs(a.Left)
+	}
+
 	return 0
 }
 
@@ -371,6 +375,11 @@ func setDivs(e sql.Expression, dScale int32) {
 
 	if a, ok := e.(*Div); ok {
 		a.divScale = dScale
+		setDivs(a.Left, dScale)
+		setDivs(a.Right, dScale)
+	}
+
+	if a, ok := e.(*Arithmetic); ok {
 		setDivs(a.Left, dScale)
 		setDivs(a.Right, dScale)
 	}
@@ -425,6 +434,8 @@ func isOutermostDiv(e sql.Expression, d, dScale int32) bool {
 		} else {
 			return isOutermostDiv(a.Left, d, dScale)
 		}
+	} else if a, ok := e.(*Arithmetic); ok {
+		return isOutermostDiv(a.Left, d, dScale)
 	}
 
 	return false
@@ -488,6 +499,16 @@ func getPrecInc(e sql.Expression, cur int) int {
 		if d.curIntermediatePrecisionInc > cur {
 			return d.curIntermediatePrecisionInc
 		}
+		l := getPrecInc(d.Left, cur)
+		if l > cur {
+			cur = l
+		}
+		r := getPrecInc(d.Right, cur)
+		if r > cur {
+			cur = r
+		}
+		return cur
+	} else if d, ok := e.(*Arithmetic); ok {
 		l := getPrecInc(d.Left, cur)
 		if l > cur {
 			cur = l

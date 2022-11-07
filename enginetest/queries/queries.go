@@ -3216,8 +3216,12 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"50.00000"}},
 	},
 	{
-		Query:    "select 1 / 2 / 3 / 4 / 5 / 6;",
+		Query:    "select 1/2/3/4/5/6;",
 		Expected: []sql.Row{{"0.00138888888888888888"}},
+	},
+	{
+		Query:    "select 24/3/2*1/2/3;",
+		Expected: []sql.Row{{"0.6666666666666667"}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
