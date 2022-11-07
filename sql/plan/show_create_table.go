@@ -294,7 +294,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	if len(primaryKeyCols) > 0 {
-		primaryKey := fmt.Sprintf(" PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
+		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
 		colStmts = append(colStmts, primaryKey)
 	}
 
