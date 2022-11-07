@@ -514,6 +514,10 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 			{3, 2, 2, 2},
 		},
 	},
+	{
+		Query:    "select x from xy join uv on y = v join ab on y = b and u = -1",
+		Expected: []sql.Row{},
+	},
 }
 
 var SkippedJoinQueryTests = []QueryTest{
@@ -526,6 +530,11 @@ var SkippedJoinQueryTests = []QueryTest{
 	{
 		Query:    "with recursive a(x,y) as (select i,i from mytable where i < 4 union select a.x, mytable.i from a join mytable on a.x+1 = mytable.i limit 2) select * from a;",
 		Expected: []sql.Row{{1, 1}, {2, 2}},
+	},
+	{
+		// resolve error
+		Query:    "select x from xy, uv join ab on x = a and u = -1",
+		Expected: []sql.Row{{}},
 	},
 }
 

@@ -127,12 +127,18 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		primary := i.primaryRow
 		secondary, err := i.loadSecondary(ctx)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				if !i.foundMatch && i.joinType.IsLeftOuter() {
 					row := i.buildRow(primary, nil)
 					return i.removeParentRow(row), nil
 				}
 				continue
+			} else if errors.Is(err, ErrEmptyCachedResult) {
+				if !i.foundMatch && i.joinType.IsLeftOuter() {
+					row := i.buildRow(primary, nil)
+					return i.removeParentRow(row), nil
+				}
+				return nil, io.EOF
 			}
 			return nil, err
 		}

@@ -1541,7 +1541,7 @@ func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error
 					return nil, err
 				}
 				if length < 1 {
-					return nil, sql.ErrInvalidIndexPrefix.New(length)
+					return nil, sql.ErrInvalidIndexPrefixLength.New(length)
 				}
 			}
 		}

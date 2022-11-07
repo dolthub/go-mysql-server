@@ -409,33 +409,6 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
-// IndexUsing is the desired storage type.
-type IndexUsing byte
-
-const (
-	IndexUsing_Default IndexUsing = iota
-	IndexUsing_BTree
-	IndexUsing_Hash
-)
-
-// IndexConstraint represents any constraints that should be applied to the index.
-type IndexConstraint byte
-
-const (
-	IndexConstraint_None IndexConstraint = iota
-	IndexConstraint_Unique
-	IndexConstraint_Fulltext
-	IndexConstraint_Spatial
-	IndexConstraint_Primary
-)
-
-// IndexColumn is the column by which to add to an index.
-type IndexColumn struct {
-	Name string
-	// Length represents the index prefix length. If zero, then no length was specified.
-	Length int64
-}
-
 // IndexAddressable is a table that can be scanned through a primary index
 type IndexAddressable interface {
 	// IndexedAccess returns a table that can perform scans constrained to
@@ -467,7 +440,7 @@ type IndexAlterableTable interface {
 	Table
 	// CreateIndex creates an index for this table, using the provided parameters.
 	// Returns an error if the index name already exists, or an index with the same columns already exists.
-	CreateIndex(ctx *Context, indexName string, using IndexUsing, constraint IndexConstraint, columns []IndexColumn, comment string) error
+	CreateIndex(ctx *Context, indexDef IndexDef) error
 	// DropIndex removes an index from this table, if it exists.
 	// Returns an error if the removal failed or the index does not exist.
 	DropIndex(ctx *Context, indexName string) error
@@ -481,7 +454,7 @@ type ForeignKeyTable interface {
 	// CreateIndexForForeignKey creates an index for this table, using the provided parameters. Indexes created through
 	// this function are specifically ones generated for use with a foreign key. Returns an error if the index name
 	// already exists, or an index on the same columns already exists.
-	CreateIndexForForeignKey(ctx *Context, indexName string, using IndexUsing, constraint IndexConstraint, columns []IndexColumn) error
+	CreateIndexForForeignKey(ctx *Context, indexDef IndexDef) error
 
 	// GetDeclaredForeignKeys returns the foreign key constraints that are declared by this table.
 	GetDeclaredForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
@@ -689,7 +662,7 @@ type RewritableTable interface {
 	// be streamed from the table and passed to this RowInserter. Implementor tables must still return rows in the
 	// current schema until the rewrite operation completes. |Close| will be called on RowInserter when all rows have
 	// been inserted.
-	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column) (RowInserter, error)
+	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column, idxCols []IndexColumn) (RowInserter, error)
 }
 
 // DatabaseProvider is a collection of Database.
@@ -964,6 +937,11 @@ type TableCreator interface {
 	// CreateTable creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
+}
+
+// IndexedTableCreator should be implemented by databases that create new tables where they have a Primary Key that has columns that have prefix lengths.
+type IndexedTableCreator interface {
+	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxDef IndexDef, collation CollationID) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
