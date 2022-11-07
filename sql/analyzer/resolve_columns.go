@@ -332,7 +332,10 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 
 // identifyGroupingAliasReferences finds any aliases defined in the projected expressions of
 // the specified GroupBy node, looks for references to those aliases in the grouping expressions
-// of the same GroupBy node, and transforms them to an AliasReference expression.
+// of the same GroupBy node, and transforms them to an AliasReference expression. This is
+// necessary because when qualifying columns, we can't currently distinguish between projection
+// expressions and grouping expressions because GroupBy combines both in its Expresions() func,
+// so we special case GroupBy here to identify aliases used in the grouping expressions.
 func identifyGroupingAliasReferences(groupBy *plan.GroupBy) (*plan.GroupBy, transform.TreeIdentity, error) {
 	projectedAliases := aliasesDefinedInNode(groupBy)
 
@@ -945,10 +948,13 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 
 			// This means the expression is either a non-existent column or an alias defined in the same projection.
 			// Check for the latter first.
-			// TODO: For GroupBy nodes, this could be a Projection expression or a Grouping expression
-			//       If it IS a grouping expression... it's okay to reference the alias. We mark these
-			//       aliases earlier, so basic cases work, but more complex cases (e.g. where the alias
-			//       is defined from an outer scope) need to be tested more.
+			// NOTE: For GroupBy nodes, the projected expressions and grouping expressions are both returned from
+			//       Expressions(), so at this point in the code, we can't tell if we are looking at a projected
+			//       expression or a grouping expression here, and the alias resolution rules are different for each.
+			//       We handle this with special casing for GroupBy that transforms identified aliases in grouping
+			//       expressions into AliasReferences, so here we assume that this is a projection expression.
+			//       Being able to differentiate between grouping and projection expressions here could help
+			//       clean up this logic.
 			aliasesInNode := aliasesDefinedInNode(n)
 			if stringContains(aliasesInNode, name) {
 				return nil, transform.SameTree, sql.ErrMisusedAlias.New(name)
