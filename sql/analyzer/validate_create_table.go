@@ -400,7 +400,7 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 
 	// Prefix length is only required for BLOB and TEXT columns
 	if sql.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
-		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
 	}
 
 	// TODO: detect specified zero length prefix
@@ -522,17 +522,33 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 		lwrNames[strings.ToLower(col.Name)] = col
 	}
 
-	// if there is a primary key defined without being listed as an index def, then it does not have length
+	// want to error on (b blob primary key)
+	// want to error on (b blob primary key, index (b(1)))
+
+	// basically, want to know if trying to create a primary key using a blob column and there's no index
+	var hasPkIndexDef bool
 	for _, idx := range tableSpec.IdxDefs {
+		if idx.Constraint == sql.IndexConstraint_Primary {
+			hasPkIndexDef = true
+		}
 		for _, idxCol := range idx.Columns {
 			schCol, ok := lwrNames[strings.ToLower(idxCol.Name)]
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-
 			err := validatePrefixLength(schCol, idxCol)
 			if err != nil {
 				return err
+			}
+		}
+	}
+
+	// if there was not a PkIndexDef, then any primary key text/blob columns must not have index lengths
+	// otherwise, then it would've been validated before this
+	if !hasPkIndexDef {
+		for _, col := range tableSpec.Schema.Schema {
+			if col.PrimaryKey && sql.IsTextBlob(col.Type) {
+				return sql.ErrInvalidBlobTextKey.New(col.Name)
 			}
 		}
 	}

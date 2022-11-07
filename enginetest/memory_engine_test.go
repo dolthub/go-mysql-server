@@ -181,7 +181,8 @@ func TestSingleScript(t *testing.T) {
 	script := queries.ScriptTest{
 		Name: "DELETE ME",
 		SetUpScript: []string{
-			"create table t (v varchar(10), index(v(3)))",
+			"create table b (b blob primary key, i int, index(i))",
+			//"create table t (v varchar(10), index(v(3)))",
 		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
