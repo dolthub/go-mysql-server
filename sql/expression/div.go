@@ -19,11 +19,10 @@ import (
 	"math"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
-
 	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/shopspring/decimal"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // '4 scales' are added to scale of the number on the left side of division operator at every division operation.

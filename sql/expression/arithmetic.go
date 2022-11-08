@@ -16,12 +16,12 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 	errors "gopkg.in/src-d/go-errors.v1"
