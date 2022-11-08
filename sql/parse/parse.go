@@ -1531,18 +1531,16 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error) {
 	out := make([]sql.IndexColumn, len(cols))
-	var length int64
-	var err error
 	for i, col := range cols {
-		if col.Length != nil {
-			if col.Length.Type == sqlparser.IntVal {
-				length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				if length < 1 {
-					return nil, sql.ErrInvalidIndexPrefix.New(length)
-				}
+		var length int64
+		var err error
+		if col.Length != nil && col.Length.Type == sqlparser.IntVal {
+			length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if length < 1 {
+				return nil, sql.ErrKeyZero.New(col.Column)
 			}
 		}
 		out[i] = sql.IndexColumn{

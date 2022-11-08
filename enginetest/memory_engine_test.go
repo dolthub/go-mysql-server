@@ -757,6 +757,10 @@ func TestBlobs(t *testing.T) {
 	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestIndexPrefix(t *testing.T) {
+	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestPersist(t *testing.T) {
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
 		persistedGlobals := memory.GlobalsMap{}

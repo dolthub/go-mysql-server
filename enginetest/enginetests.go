@@ -6444,3 +6444,12 @@ func TestBlobs(t *testing.T, h Harness) {
 		RunWriteQueryTest(t, h, tt)
 	}
 }
+
+func TestIndexPrefix(t *testing.T, h Harness) {
+	e := mustNewEngine(t, h)
+	defer e.Close()
+
+	for _, tt := range queries.IndexPrefixQueries {
+		TestScript(t, h, tt)
+	}
+}

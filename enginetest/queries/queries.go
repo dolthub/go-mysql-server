@@ -9924,3 +9924,107 @@ var StatisticsQueries = []ScriptTest{
 		},
 	},
 }
+
+var IndexPrefixQueries = []ScriptTest{
+	{
+		Name: "int prefix",
+		SetUpScript: []string{
+			"create table t (i int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int, primary key (i(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, j int, index (j(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "float prefix",
+		SetUpScript: []string{
+			"create table t (f float)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (f float, primary key (f(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, f float, index (f(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "string index prefix errors",
+		SetUpScript: []string{
+			"create table v_tbl (v varchar(10))",
+			"create table c_tbl (c char(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table v_tbl add primary key (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "alter table v_tbl add primary key (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add primary key (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add index (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(0)))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), index(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), primary key(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), index(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+}

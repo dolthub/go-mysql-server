@@ -290,7 +290,12 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 				}
 			}
 		}
-		err = tbl.CreateIndexForForeignKey(ctx, indexName, sql.IndexUsing_Default, sql.IndexConstraint_None, indexColumns)
+		err = tbl.CreateIndexForForeignKey(ctx, sql.IndexDef{
+			Name:       indexName,
+			Columns:    indexColumns,
+			Constraint: sql.IndexConstraint_None,
+			Storage:    sql.IndexUsing_Default,
+		})
 		if err != nil {
 			return err
 		}
