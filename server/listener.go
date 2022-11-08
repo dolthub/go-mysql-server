@@ -68,7 +68,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		if err == nil {
 			unixl = unixListener
 		} else if errors.Is(err, syscall.EADDRINUSE) {
-			// we continue if error is unix docket bind address is already in use
+			// we continue if error is unix socket bind address is already in use
 			// we return UnixSocketInUseError error to track the error back to where server gets started and add warning
 			unixSocketInUse = UnixSocketInUseError
 		} else {
