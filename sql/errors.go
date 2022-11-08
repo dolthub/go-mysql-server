@@ -501,9 +501,6 @@ var (
 	// ErrInvalidSQLValType is returned when a SQL value is of the incorrect type during parsing
 	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
 
-	// ErrInvalidIndexPrefixLength is returned when an index prefix is outside the accepted range
-	ErrInvalidIndexPrefixLength = errors.NewKind("invalid index prefix: %v")
-
 	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in index '%s'")
 
@@ -599,20 +596,20 @@ var (
 	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
 	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you sent to the GEOMETRY field")
 
-	// ErrInvalidBytePrimaryKey is returned when attempting to create a primary key with a byte column
-	ErrInvalidBytePrimaryKey = errors.NewKind("invalid primary key on byte column '%s'")
-
-	// ErrInvalidByteIndex is returned for an index on a byte column with no prefix or an invalid prefix
-	ErrInvalidByteIndex = errors.NewKind("index on byte column '%s' unsupported")
-
-	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
-	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
-
 	// ErrUnsupportedIndexPrefix is returned for an index on a string column with a prefix
 	ErrUnsupportedIndexPrefix = errors.NewKind("prefix index on string column '%s' unsupported")
 
-	// ErrInvalidIndexPrefix is returned for an index prefix on a non-string column
-	ErrInvalidIndexPrefix = errors.NewKind("prefix on non-string column '%s'")
+	// ErrInvalidIndexPrefix is returned for an index prefix on a non-string column, or the prefix is longer than string itself, or just unsupported
+	ErrInvalidIndexPrefix = errors.NewKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys")
+
+	// ErrInvalidBlobTextKey is returned for an index on a blob or text column with no key length specified
+	ErrInvalidBlobTextKey = errors.NewKind("blob/text column '%s' used in key specification without a key length")
+
+	// ErrKeyTooLong is returned for an index on a blob or text column that is longer than 3072 bytes
+	ErrKeyTooLong = errors.NewKind("specified key was too long; max key length is 3072 bytes")
+
+	// ErrKeyZero is returned for an index on a blob or text column that is 0 in length
+	ErrKeyZero = errors.NewKind("key part '%s' length cannot be 0")
 
 	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server
