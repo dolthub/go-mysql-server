@@ -86,7 +86,7 @@ var InternalDecimalType DecimalType = decimalType{
 	scale:               30,
 }
 
-// CreateDecimalType creates a DecimalType.
+// CreateDecimalType creates a DecimalType for NON-TABLE-COLUMN.
 func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	if scale > DecimalTypeMaxScale {
 		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
@@ -109,7 +109,7 @@ func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	}, nil
 }
 
-// CreateColumnDecimalType creates a DecimalType.
+// CreateColumnDecimalType creates a DecimalType for VALID-TABLE-COLUMN.
 func CreateColumnDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	if scale > DecimalTypeMaxScale {
 		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
@@ -132,7 +132,7 @@ func CreateColumnDecimalType(precision uint8, scale uint8) (DecimalType, error) 
 	}, nil
 }
 
-// MustCreateDecimalType is the same as CreateDecimalType except it panics on errors.
+// MustCreateDecimalType is the same as CreateDecimalType except it panics on errors and for NON-TABLE-COLUMN.
 func MustCreateDecimalType(precision uint8, scale uint8) DecimalType {
 	dt, err := CreateDecimalType(precision, scale)
 	if err != nil {
@@ -141,7 +141,7 @@ func MustCreateDecimalType(precision uint8, scale uint8) DecimalType {
 	return dt
 }
 
-// MustCreateColumnDecimalType is the same as CreateDecimalType except it panics on errors.
+// MustCreateColumnDecimalType is the same as CreateDecimalType except it panics on errors and for VALID-TABLE-COLUMN.
 func MustCreateColumnDecimalType(precision uint8, scale uint8) DecimalType {
 	dt, err := CreateColumnDecimalType(precision, scale)
 	if err != nil {
