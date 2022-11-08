@@ -110,7 +110,7 @@ func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 }
 
 // CreateColumnDecimalType creates a DecimalType for VALID-TABLE-COLUMN. Creating a decimal type for a column ensures that
-// when operating on instances of this type, the result will be restricted to the defined precision and scale. 
+// when operating on instances of this type, the result will be restricted to the defined precision and scale.
 func CreateColumnDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	if scale > DecimalTypeMaxScale {
 		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
