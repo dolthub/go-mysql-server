@@ -109,7 +109,8 @@ func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	}, nil
 }
 
-// CreateColumnDecimalType creates a DecimalType for VALID-TABLE-COLUMN.
+// CreateColumnDecimalType creates a DecimalType for VALID-TABLE-COLUMN. Creating a decimal type for a column ensures that
+// when operating on instances of this type, the result will be restricted to the defined precision and scale. 
 func CreateColumnDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	if scale > DecimalTypeMaxScale {
 		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
@@ -335,7 +336,7 @@ func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 
 	// decimal type value for valid table column should use scale defined by the column.
 	// if the value is not part of valid table column, the result value should used its
-	//own precision and scale.
+	// own precision and scale.
 	var val []byte
 	if t.defineColumn {
 		val = appendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))

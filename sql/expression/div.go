@@ -355,7 +355,7 @@ func (d *Div) floatOrDecimal() sql.Type {
 //		   /   \
 //		 'div'  2
 //		 /   \
-//	    24    3
+//	        24    3
 func countDivs(e sql.Expression) int32 {
 	if e == nil {
 		return 0
