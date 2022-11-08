@@ -501,9 +501,6 @@ var (
 	// ErrInvalidSQLValType is returned when a SQL value is of the incorrect type during parsing
 	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
 
-	// ErrInvalidIndexPrefixLength is returned when an index prefix is outside the accepted range
-	ErrInvalidIndexPrefixLength = errors.NewKind("invalid index prefix: %v")
-
 	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in index '%s'")
 
