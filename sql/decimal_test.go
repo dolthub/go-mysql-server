@@ -134,53 +134,53 @@ func TestDecimalCompare(t *testing.T) {
 	}
 }
 
-func TestDecimalCreate(t *testing.T) {
+func TestCreateNonColumnDecimal(t *testing.T) {
 	tests := []struct {
 		precision    uint8
 		scale        uint8
 		expectedType decimalType
 		expectedErr  bool
 	}{
-		{0, 0, decimalType{decimal.New(1, 10), 10, 0}, false},
+		{0, 0, decimalType{decimal.New(1, 10), false, 10, 0}, false},
 		{0, 1, decimalType{}, true},
 		{0, 5, decimalType{}, true},
 		{0, 10, decimalType{}, true},
 		{0, 30, decimalType{}, true},
 		{0, 65, decimalType{}, true},
 		{0, 66, decimalType{}, true},
-		{1, 0, decimalType{decimal.New(1, 1), 1, 0}, false},
-		{1, 1, decimalType{decimal.New(1, 0), 1, 1}, false},
+		{1, 0, decimalType{decimal.New(1, 1), false, 1, 0}, false},
+		{1, 1, decimalType{decimal.New(1, 0), false, 1, 1}, false},
 		{1, 5, decimalType{}, true},
 		{1, 10, decimalType{}, true},
 		{1, 30, decimalType{}, true},
 		{1, 65, decimalType{}, true},
 		{1, 66, decimalType{}, true},
-		{5, 0, decimalType{decimal.New(1, 5), 5, 0}, false},
-		{5, 1, decimalType{decimal.New(1, 4), 5, 1}, false},
-		{5, 5, decimalType{decimal.New(1, 0), 5, 5}, false},
+		{5, 0, decimalType{decimal.New(1, 5), false, 5, 0}, false},
+		{5, 1, decimalType{decimal.New(1, 4), false, 5, 1}, false},
+		{5, 5, decimalType{decimal.New(1, 0), false, 5, 5}, false},
 		{5, 10, decimalType{}, true},
 		{5, 30, decimalType{}, true},
 		{5, 65, decimalType{}, true},
 		{5, 66, decimalType{}, true},
-		{10, 0, decimalType{decimal.New(1, 10), 10, 0}, false},
-		{10, 1, decimalType{decimal.New(1, 9), 10, 1}, false},
-		{10, 5, decimalType{decimal.New(1, 5), 10, 5}, false},
-		{10, 10, decimalType{decimal.New(1, 0), 10, 10}, false},
+		{10, 0, decimalType{decimal.New(1, 10), false, 10, 0}, false},
+		{10, 1, decimalType{decimal.New(1, 9), false, 10, 1}, false},
+		{10, 5, decimalType{decimal.New(1, 5), false, 10, 5}, false},
+		{10, 10, decimalType{decimal.New(1, 0), false, 10, 10}, false},
 		{10, 30, decimalType{}, true},
 		{10, 65, decimalType{}, true},
 		{10, 66, decimalType{}, true},
-		{30, 0, decimalType{decimal.New(1, 30), 30, 0}, false},
-		{30, 1, decimalType{decimal.New(1, 29), 30, 1}, false},
-		{30, 5, decimalType{decimal.New(1, 25), 30, 5}, false},
-		{30, 10, decimalType{decimal.New(1, 20), 30, 10}, false},
-		{30, 30, decimalType{decimal.New(1, 0), 30, 30}, false},
+		{30, 0, decimalType{decimal.New(1, 30), false, 30, 0}, false},
+		{30, 1, decimalType{decimal.New(1, 29), false, 30, 1}, false},
+		{30, 5, decimalType{decimal.New(1, 25), false, 30, 5}, false},
+		{30, 10, decimalType{decimal.New(1, 20), false, 30, 10}, false},
+		{30, 30, decimalType{decimal.New(1, 0), false, 30, 30}, false},
 		{30, 65, decimalType{}, true},
 		{30, 66, decimalType{}, true},
-		{65, 0, decimalType{decimal.New(1, 65), 65, 0}, false},
-		{65, 1, decimalType{decimal.New(1, 64), 65, 1}, false},
-		{65, 5, decimalType{decimal.New(1, 60), 65, 5}, false},
-		{65, 10, decimalType{decimal.New(1, 55), 65, 10}, false},
-		{65, 30, decimalType{decimal.New(1, 35), 65, 30}, false},
+		{65, 0, decimalType{decimal.New(1, 65), false, 65, 0}, false},
+		{65, 1, decimalType{decimal.New(1, 64), false, 65, 1}, false},
+		{65, 5, decimalType{decimal.New(1, 60), false, 65, 5}, false},
+		{65, 10, decimalType{decimal.New(1, 55), false, 65, 10}, false},
+		{65, 30, decimalType{decimal.New(1, 35), false, 65, 30}, false},
 		{65, 65, decimalType{}, true},
 		{65, 66, decimalType{}, true},
 		{66, 00, decimalType{}, true},
@@ -195,6 +195,77 @@ func TestDecimalCreate(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.precision, test.scale), func(t *testing.T) {
 			typ, err := CreateDecimalType(test.precision, test.scale)
+			if test.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedType, typ)
+			}
+		})
+	}
+}
+
+func TestCreateColumnDecimal(t *testing.T) {
+	tests := []struct {
+		precision    uint8
+		scale        uint8
+		expectedType decimalType
+		expectedErr  bool
+	}{
+		{0, 0, decimalType{decimal.New(1, 10), true, 10, 0}, false},
+		{0, 1, decimalType{}, true},
+		{0, 5, decimalType{}, true},
+		{0, 10, decimalType{}, true},
+		{0, 30, decimalType{}, true},
+		{0, 65, decimalType{}, true},
+		{0, 66, decimalType{}, true},
+		{1, 0, decimalType{decimal.New(1, 1), true, 1, 0}, false},
+		{1, 1, decimalType{decimal.New(1, 0), true, 1, 1}, false},
+		{1, 5, decimalType{}, true},
+		{1, 10, decimalType{}, true},
+		{1, 30, decimalType{}, true},
+		{1, 65, decimalType{}, true},
+		{1, 66, decimalType{}, true},
+		{5, 0, decimalType{decimal.New(1, 5), true, 5, 0}, false},
+		{5, 1, decimalType{decimal.New(1, 4), true, 5, 1}, false},
+		{5, 5, decimalType{decimal.New(1, 0), true, 5, 5}, false},
+		{5, 10, decimalType{}, true},
+		{5, 30, decimalType{}, true},
+		{5, 65, decimalType{}, true},
+		{5, 66, decimalType{}, true},
+		{10, 0, decimalType{decimal.New(1, 10), true, 10, 0}, false},
+		{10, 1, decimalType{decimal.New(1, 9), true, 10, 1}, false},
+		{10, 5, decimalType{decimal.New(1, 5), true, 10, 5}, false},
+		{10, 10, decimalType{decimal.New(1, 0), true, 10, 10}, false},
+		{10, 30, decimalType{}, true},
+		{10, 65, decimalType{}, true},
+		{10, 66, decimalType{}, true},
+		{30, 0, decimalType{decimal.New(1, 30), true, 30, 0}, false},
+		{30, 1, decimalType{decimal.New(1, 29), true, 30, 1}, false},
+		{30, 5, decimalType{decimal.New(1, 25), true, 30, 5}, false},
+		{30, 10, decimalType{decimal.New(1, 20), true, 30, 10}, false},
+		{30, 30, decimalType{decimal.New(1, 0), true, 30, 30}, false},
+		{30, 65, decimalType{}, true},
+		{30, 66, decimalType{}, true},
+		{65, 0, decimalType{decimal.New(1, 65), true, 65, 0}, false},
+		{65, 1, decimalType{decimal.New(1, 64), true, 65, 1}, false},
+		{65, 5, decimalType{decimal.New(1, 60), true, 65, 5}, false},
+		{65, 10, decimalType{decimal.New(1, 55), true, 65, 10}, false},
+		{65, 30, decimalType{decimal.New(1, 35), true, 65, 30}, false},
+		{65, 65, decimalType{}, true},
+		{65, 66, decimalType{}, true},
+		{66, 00, decimalType{}, true},
+		{66, 01, decimalType{}, true},
+		{66, 05, decimalType{}, true},
+		{66, 10, decimalType{}, true},
+		{66, 30, decimalType{}, true},
+		{66, 65, decimalType{}, true},
+		{66, 66, decimalType{}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v", test.precision, test.scale), func(t *testing.T) {
+			typ, err := CreateColumnDecimalType(test.precision, test.scale)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
