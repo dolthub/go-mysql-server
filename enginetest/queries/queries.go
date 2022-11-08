@@ -9731,12 +9731,19 @@ var IndexPrefixQueries = []ScriptTest{
 		SetUpScript: []string{
 			"create table v_tbl (v varchar(10))",
 			"create table c_tbl (c char(10))",
-			"create table b_tbl (b blob)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:       "alter table v_tbl add primary key (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
 				Query:       "alter table v_tbl add primary key (v(11))",
 				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
 			},
 			{
 				Query:       "alter table v_tbl add index (v(11))",
@@ -9749,6 +9756,10 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query:       "alter table c_tbl add index (c(11))",
 				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(0)))",
+				ExpectedErr: sql.ErrKeyZero,
 			},
 			{
 				Query:       "create table t (v varchar(10), primary key(v(11)))",

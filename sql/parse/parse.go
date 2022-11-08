@@ -1540,7 +1540,7 @@ func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error
 				return nil, err
 			}
 			if length < 1 {
-				return nil, sql.ErrInvalidIndexPrefixLength.New(length)
+				return nil, sql.ErrKeyZero.New(col.Column)
 			}
 		}
 		out[i] = sql.IndexColumn{

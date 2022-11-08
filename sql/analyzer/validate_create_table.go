@@ -389,7 +389,7 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 	}
 
 	// Prefix length is longer than max
-	if prefixByteLength > MaxBytePrefix { // TODO: constant
+	if prefixByteLength > MaxBytePrefix {
 		return sql.ErrKeyTooLong.New(schCol.Name)
 	}
 
@@ -404,7 +404,6 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
 	}
 
-	// TODO: detect specified zero length prefix
 	return nil
 }
 
