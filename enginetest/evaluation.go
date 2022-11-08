@@ -440,7 +440,7 @@ func checkResults(
 	// The result from SELECT or WITH queries can be decimal.Decimal type.
 	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
 	// which is the value we get on sql shell.
-	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") {
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") || strings.HasPrefix(upperQuery, "CALL ") {
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
 				if d, ok := val.(decimal.Decimal); ok {

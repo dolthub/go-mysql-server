@@ -2409,6 +2409,49 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "'/' division operation result in decimal or float",
+		SetUpScript: []string{
+			"create table floats (f float);",
+			"insert into floats values (1.1), (1.2), (1.3);",
+			"create table decimals (d decimal(2,1));",
+			"insert into decimals values (1.0), (2.0), (2.5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select f/2 from floats;",
+				Expected: []sql.Row{{0.550000011920929}, {0.6000000238418579}, {0.6499999761581421}},
+			},
+			{
+				Query:    "select 2/f from floats;",
+				Expected: []sql.Row{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
+			},
+			{
+				Query:    "select d/2 from decimals;",
+				Expected: []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
+			},
+			{
+				Query:    "select 2/d from decimals;",
+				Expected: []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
+			},
+			{
+				Query: "select f/d from floats, decimals;",
+				Expected: []sql.Row{{1.2999999523162842}, {1.2000000476837158}, {1.100000023841858},
+					{0.6499999761581421}, {0.6000000238418579}, {0.550000011920929},
+					{0.5199999809265137}, {0.48000001907348633}, {0.4400000095367432}},
+			},
+			{
+				Query: "select d/f from floats, decimals;",
+				Expected: []sql.Row{{0.7692307974459868}, {0.8333333002196431}, {0.9090908893868948},
+					{1.5384615948919735}, {1.6666666004392863}, {1.8181817787737895},
+					{1.9230769936149668}, {2.083333250549108}, {2.272727223467237}},
+			},
+			{
+				Query:    `select f/'a' from floats;`,
+				Expected: []sql.Row{{nil}, {nil}, {nil}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

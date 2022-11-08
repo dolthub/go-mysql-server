@@ -2884,12 +2884,11 @@ CREATE TABLE t2
 			plan: plan.NewGroupBy(
 				[]sql.Expression{
 					expression.NewAlias("MAX(i)/2",
-						expression.NewArithmetic(
+						expression.NewDiv(
 							expression.NewUnresolvedFunction(
 								"max", true, nil, expression.NewUnresolvedColumn("i"),
 							),
 							expression.NewLiteral(int8(2), sql.Int8),
-							"/",
 						),
 					),
 				},
@@ -5187,23 +5186,23 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"DECIMAL",
-			sql.MustCreateDecimalType(10, 0),
+			sql.MustCreateColumnDecimalType(10, 0),
 		},
 		{
 			"DECIMAL(22)",
-			sql.MustCreateDecimalType(22, 0),
+			sql.MustCreateColumnDecimalType(22, 0),
 		},
 		{
 			"DECIMAL(55, 13)",
-			sql.MustCreateDecimalType(55, 13),
+			sql.MustCreateColumnDecimalType(55, 13),
 		},
 		{
 			"DEC(34, 2)",
-			sql.MustCreateDecimalType(34, 2),
+			sql.MustCreateColumnDecimalType(34, 2),
 		},
 		{
 			"FIXED(4, 4)",
-			sql.MustCreateDecimalType(4, 4),
+			sql.MustCreateColumnDecimalType(4, 4),
 		},
 		{
 			"BIT(31)",
