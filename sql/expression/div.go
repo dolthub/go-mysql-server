@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -30,6 +32,8 @@ const divPrecisionIncrement = 4
 
 // '9 scales' are added for every non-integer divider(right side).
 const divIntermediatePrecisionInc = 9
+
+const ERDivisionByZero = 1365
 
 // Div expression (/)
 type Div struct {
@@ -119,12 +123,12 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lval, rval, err = d.convertLeftRight(lval, rval)
+	lval, rval, err = d.convertLeftRight(ctx, lval, rval)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := d.div(lval, rval)
+	result, err := d.div(ctx, lval, rval)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +185,7 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // If there is no float type column reference, both values should be handled as decimal type
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
-func (d *Div) convertLeftRight(left interface{}, right interface{}) (interface{}, interface{}, error) {
+func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	var err error
 
 	typ := d.Type()
@@ -192,7 +196,7 @@ func (d *Div) convertLeftRight(left interface{}, right interface{}) (interface{}
 		if sql.IsFloat(typ) {
 			left, err = typ.Convert(left)
 			if err != nil {
-				// TODO : any error here from converting should be added as warning
+				arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), left))
 				// the value is interpreted as 0, but we need to match the type of the other valid value
 				// to avoid additional conversion, the nil value is handled in each operation
 				left = nil
@@ -218,7 +222,7 @@ func (d *Div) convertLeftRight(left interface{}, right interface{}) (interface{}
 		if sql.IsFloat(typ) {
 			right, err = typ.Convert(right)
 			if err != nil {
-				// TODO : any error here from converting should be added as warning
+				arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), right))
 				// the value is interpreted as 0, but we need to match the type of the other valid value
 				// to avoid additional conversion, the nil value is handled in each operation
 				right = nil
@@ -241,8 +245,9 @@ func (d *Div) convertLeftRight(left interface{}, right interface{}) (interface{}
 	return left, right, nil
 }
 
-func (d *Div) div(lval, rval interface{}) (interface{}, error) {
+func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 	if rval == nil {
+		arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
 		return nil, nil
 	}
 	if lval == nil {
@@ -254,6 +259,7 @@ func (d *Div) div(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case float32:
 			if r == 0 {
+				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
 				return nil, nil
 			}
 			return l / r, nil
@@ -262,6 +268,7 @@ func (d *Div) div(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case float64:
 			if r == 0 {
+				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
 				return nil, nil
 			}
 			return l / r, nil
@@ -269,7 +276,8 @@ func (d *Div) div(lval, rval interface{}) (interface{}, error) {
 	case decimal.Decimal:
 		switch r := rval.(type) {
 		case decimal.Decimal:
-			if r.String() == "0" {
+			if r.Equal(decimal.NewFromInt(0)) {
+				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
 				return nil, nil
 			}
 

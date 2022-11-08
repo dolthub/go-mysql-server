@@ -16,6 +16,8 @@ package expression
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
+	"math"
 	"reflect"
 	"strings"
 	"time"
@@ -34,6 +36,14 @@ var (
 	// errUnableToEval means that we could not evaluate an expression
 	errUnableToEval = errors.NewKind("Unable to evaluate an expression: %v %s %v")
 )
+
+func arithmeticWarning(ctx *sql.Context, errCode int, errMsg string) {
+	ctx.Session.Warn(&sql.Warning{
+		Level:   "Warning",
+		Code:    errCode,
+		Message: errMsg,
+	})
+}
 
 // Arithmetic expressions (+, -, *, ...) DOES NOT INCLUDE "/" as it has its own function
 type Arithmetic struct {
@@ -205,15 +215,9 @@ func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{})
 	}
 
 	if lval != nil && rval != nil {
-		p, s := getPrecisionAndScale(lval)
+		lp, ls := getPrecisionAndScale(lval)
 		rp, rs := getPrecisionAndScale(rval)
-		if rp > p {
-			p = rp
-		}
-		if rs > s {
-			s = rs
-		}
-		r, err := sql.CreateDecimalType(p, s)
+		r, err := sql.CreateDecimalType(uint8(math.Max(float64(lp), float64(rp))), uint8(math.Max(float64(ls), float64(rs))))
 		if err == nil {
 			return r
 		}
@@ -232,17 +236,11 @@ func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{})
 	}
 
 	if sql.IsDecimal(lTyp) && sql.IsDecimal(rTyp) {
-		p := lTyp.(sql.DecimalType).Precision()
-		s := lTyp.(sql.DecimalType).Scale()
+		lp := lTyp.(sql.DecimalType).Precision()
+		ls := lTyp.(sql.DecimalType).Scale()
 		rp := rTyp.(sql.DecimalType).Precision()
-		if rp > p {
-			p = rp
-		}
 		rs := lTyp.(sql.DecimalType).Scale()
-		if rs > s {
-			s = rs
-		}
-		r, err := sql.CreateDecimalType(p, s)
+		r, err := sql.CreateDecimalType(uint8(math.Max(float64(lp), float64(rp))), uint8(math.Max(float64(ls), float64(rs))))
 		if err == nil {
 			return r
 		}
@@ -341,7 +339,7 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lval, rval, err = a.convertLeftRight(lval, rval)
+	lval, rval, err = a.convertLeftRight(ctx, lval, rval)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +401,7 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 	return lval, rval, nil
 }
 
-func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (interface{}, interface{}, error) {
+func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	var err error
 
 	typ := a.returnType(left, right)
@@ -413,7 +411,11 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 	} else {
 		left, err = typ.Convert(left)
 		if err != nil {
-			// TODO : any error here from converting should be added as warning
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERTruncatedWrongValue,
+				Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), left),
+			})
 			// the value is interpreted as 0, but we need to match the type of the other valid value
 			// to avoid additional conversion, the nil value is handled in each operation
 			left = nil
@@ -425,7 +427,11 @@ func (a *Arithmetic) convertLeftRight(left interface{}, right interface{}) (inte
 	} else {
 		right, err = typ.Convert(right)
 		if err != nil {
-			// TODO : any error here from converting should be added as warning
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERTruncatedWrongValue,
+				Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), right),
+			})
 			// the value is interpreted as 0, but we need to match the type of the other valid value
 			// to avoid additional conversion, the nil value is handled in each operation
 			right = nil
