@@ -57,7 +57,7 @@ func hasSingleOutput(e sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal, *expression.GetField,
 			expression.Comparer, *expression.Convert, sql.FunctionExpression,
-			*expression.IsTrue, *expression.IsNull, *expression.Arithmetic:
+			*expression.IsTrue, *expression.IsNull, expression.ArithmeticOp:
 			return false
 		default:
 			return true

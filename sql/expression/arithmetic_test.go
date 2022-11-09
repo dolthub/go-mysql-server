@@ -332,18 +332,19 @@ func TestMod(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		left, right int64
-		expected    int64
+		expected    string
 		null        bool
 	}{
-		{"1 % 1", 1, 1, 0, false},
-		{"8 % 3", 8, 3, 2, false},
-		{"1 % 3", 1, 3, 1, false},
-		{"0 % -1024", 0, -1024, 0, false},
-		{"-1 % 2", -1, 2, -1, false},
-		{"1 % -2", 1, -2, 1, false},
-		{"-1 % -2", -1, -2, -1, false},
-		{"1 % 0", 1, 0, 0, true},
-		{"0 % 0", 0, 0, 0, true},
+		{"1 % 1", 1, 1, "0", false},
+		{"8 % 3", 8, 3, "2", false},
+		{"1 % 3", 1, 3, "1", false},
+		{"0 % -1024", 0, -1024, "0", false},
+		{"-1 % 2", -1, 2, "-1", false},
+		{"1 % -2", 1, -2, "1", false},
+		{"-1 % -2", -1, -2, "-1", false},
+		{"1 % 0", 1, 0, "0", true},
+		{"0 % 0", 0, 0, "0", true},
+		{"0.5 % 0.24", 0, 0, "0.02", true},
 	}
 
 	for _, tt := range testCases {
@@ -357,7 +358,9 @@ func TestMod(t *testing.T) {
 			if tt.null {
 				require.Nil(result)
 			} else {
-				require.Equal(tt.expected, result)
+				r, ok := result.(decimal.Decimal)
+				require.True(ok)
+				require.Equal(tt.expected, r.StringFixed(r.Exponent()*-1))
 			}
 		})
 	}
@@ -374,10 +377,11 @@ func TestAllFloat64(t *testing.T) {
 		{"+", 1.0, "1"},
 		{"-", -8.0, "9"},
 		{"/", 3.0, "3.0000"},
-		{"*", 0.0, "0.0000"},
+		{"*", 4.0, "12.0000"},
+		{"%", 11, "1.0000"},
 	}
 
-	// ((((0 + 1) - (-8)) / 3) * 0) == 0
+	// ((((0 + 1) - (-8)) / 3) * 4) % 11 == 1
 	lval := NewLiteral(float64(0.0), sql.Float64)
 	for _, tt := range testCases {
 		t.Run(tt.op, func(t *testing.T) {
@@ -386,6 +390,10 @@ func TestAllFloat64(t *testing.T) {
 			var err error
 			if tt.op == "/" {
 				result, err = NewDiv(lval,
+					NewLiteral(tt.value, sql.Float64),
+				).Eval(sql.NewEmptyContext(), sql.NewRow())
+			} else if tt.op == "%" {
+				result, err = NewMod(lval,
 					NewLiteral(tt.value, sql.Float64),
 				).Eval(sql.NewEmptyContext(), sql.NewRow())
 			} else {
@@ -414,8 +422,7 @@ func TestAllInt64(t *testing.T) {
 		{"|", 1, 1},
 		{"&", 3, 1},
 		{"^", 1024, 1025},
-		{"%", 1024, 1},
-		{"div", 1024, 0},
+		{"div", 1024, 1},
 	}
 
 	// (((((0 | 1) & 3) ^ 1024) % 1024) div 1024) == 0
