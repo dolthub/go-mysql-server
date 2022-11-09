@@ -116,13 +116,10 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 	// find subset of allGetFields not covered by newAggregates
 	newAggDeps := make(map[int]struct{}, 0)
 	for _, agg := range newAggregates {
-		_ = transform.InspectExpr(agg, func(e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.GetField:
-				newAggDeps[e.Index()] = struct{}{}
-			}
-			return false
-		})
+		switch e := agg.(type) {
+		case *expression.GetField:
+			newAggDeps[e.Index()] = struct{}{}
+		}
 	}
 	for i, _ := range projDeps {
 		if _, ok := newAggDeps[i]; !ok {
