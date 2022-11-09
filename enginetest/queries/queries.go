@@ -1387,14 +1387,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select f32/(lag(i) over (order by f64)) from floattable;",
+		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable;",
 		Expected: []sql.Row{
-			{nil},
-			{.6},
-			{-1.0},
-			{1.5},
-			{1.0},
-			{2.5 / float64(3)},
+			{1.0, nil},
+			{1.0, .5},
+			{1.0, -1.0},
+			{1.0, 1.5},
+			{1.0, 1.0},
+			{1.0, 2.5 / float64(3)},
 		},
 	},
 	{
