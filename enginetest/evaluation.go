@@ -270,7 +270,9 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
+	if expected != nil {
+		checkResults(t, require, expected, expectedCols, sch, rows, q)
+	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, harness, e)

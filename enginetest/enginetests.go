@@ -1594,6 +1594,18 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
+		for _, script := range queries.NoDbProcedureTests {
+			if script.Expected != nil || script.SkipResultsCheck {
+				expectedResult := script.Expected
+				if script.SkipResultsCheck {
+					expectedResult = nil
+				}
+				TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
+			} else if script.ExpectedErr != nil {
+				AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
+			}
+		}
+
 		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.Row{{sql.OkResult{}}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p2() SELECT 6", []sql.Row{{sql.OkResult{}}}, nil, nil)
 
@@ -1602,12 +1614,16 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+			{"mydb", "p5", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
+				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 		}, nil, nil)
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP PROCEDURE mydb.p1", []sql.Row{}, nil, nil)
 
 		TestQueryWithContext(t, ctx, e, harness, "SHOW PROCEDURE STATUS", []sql.Row{
 			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
+				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+			{"mydb", "p5", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 		}, nil, nil)
 	})
