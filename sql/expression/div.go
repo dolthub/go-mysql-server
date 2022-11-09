@@ -316,7 +316,7 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 	return defType
 }
 
-// floatOrDecimalType returns value converted to either float or decimaltype.
+// floatOrDecimalValue returns value converted to either float or decimaltype.
 // If typ is defined as float64, the value is converted to float. For all
 // other types, the value is converted to decimaltype value. If the value
 // is invalid, it returns nil with warning, and it is interpreted as 0.
