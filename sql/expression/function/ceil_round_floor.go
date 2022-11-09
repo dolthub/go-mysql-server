@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -158,6 +160,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// non number type will be caught here
 	if !sql.IsNumber(f.Child.Type()) {
 		child, err = sql.Float64.Convert(child)
 		if err != nil {
@@ -167,17 +170,16 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int32(math.Floor(child.(float64))), nil
 	}
 
-	if !sql.IsFloat(f.Child.Type()) {
-		return child, err
-	}
-
+	// if it's number type and not float value, it does not need floor-ing
 	switch num := child.(type) {
 	case float64:
 		return math.Floor(num), nil
 	case float32:
 		return float32(math.Floor(float64(num))), nil
+	case decimal.Decimal:
+		return num.Floor(), nil
 	default:
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(num))
+		return child, nil
 	}
 }
 
@@ -335,6 +337,8 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return uint8(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
 	case int:
 		return int(math.Round(float64(xNum)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)), nil
+	case decimal.Decimal:
+		return xNum.Round(int32(dVal)), nil
 	default:
 		return nil, sql.ErrInvalidType.New(r.Left.Type().String())
 	}

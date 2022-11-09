@@ -70,7 +70,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			"INSERT INTO `users` (`id`,`username`) VALUES (1,'u2');",
 			"INSERT INTO `users` (`id`,`username`) VALUES (2,'u3');",
 			"INSERT INTO `users` (`id`,`username`) VALUES (3,'u4');",
-			"CREATE TABLE `tweet` (`id` int NOT NULL AUTO_INCREMENT,  `user_id` int NOT NULL,  `content` text NOT NULL,  `timestamp` bigint NOT NULL,  PRIMARY KEY (`id`),  KEY `tweet_user_id` (`user_id`),  CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`));",
+			"CREATE TABLE `tweet` (`id` int NOT NULL AUTO_INCREMENT,  `user_id` int NOT NULL,  `content` text NOT NULL,  `timestamp` bigint NOT NULL,  PRIMARY KEY (`id`),  KEY `tweet_user_id` (`user_id`));",
 			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727);",
 			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (2,1,'purr',1647463727);",
 			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (3,2,'hiss',1647463727);",
@@ -112,6 +112,16 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id LIMIT 1;",
 				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/4684
+		Name: "Group by with decimal columns",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT column_0, sum(column_1) FROM (values row(1.00,1), row(1.00,3), row(2,2), row(2,5), row(3,9)) a group by 1 order by 1;",
+				Expected: []sql.Row{{"1.00", float64(4)}, {2, float64(7)}, {3, float64(9)}},
 			},
 		},
 	},

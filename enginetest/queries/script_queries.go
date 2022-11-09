@@ -2409,6 +2409,70 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "'/' division operation result in decimal or float",
+		SetUpScript: []string{
+			"create table floats (f float);",
+			"insert into floats values (1.1), (1.2), (1.3);",
+			"create table decimals (d decimal(2,1));",
+			"insert into decimals values (1.0), (2.0), (2.5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select f/2 from floats;",
+				Expected: []sql.Row{{0.550000011920929}, {0.6000000238418579}, {0.6499999761581421}},
+			},
+			{
+				Query:    "select 2/f from floats;",
+				Expected: []sql.Row{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
+			},
+			{
+				Query:    "select d/2 from decimals;",
+				Expected: []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
+			},
+			{
+				Query:    "select 2/d from decimals;",
+				Expected: []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
+			},
+			{
+				Query: "select f/d from floats, decimals;",
+				Expected: []sql.Row{{1.2999999523162842}, {1.2000000476837158}, {1.100000023841858},
+					{0.6499999761581421}, {0.6000000238418579}, {0.550000011920929},
+					{0.5199999809265137}, {0.48000001907348633}, {0.4400000095367432}},
+			},
+			{
+				Query: "select d/f from floats, decimals;",
+				Expected: []sql.Row{{0.7692307974459868}, {0.8333333002196431}, {0.9090908893868948},
+					{1.5384615948919735}, {1.6666666004392863}, {1.8181817787737895},
+					{1.9230769936149668}, {2.083333250549108}, {2.272727223467237}},
+			},
+			{
+				Query:    `select f/'a' from floats;`,
+				Expected: []sql.Row{{nil}, {nil}, {nil}},
+			},
+		},
+	},
+	{
+		Name: "'%' mod operation result in decimal or float",
+		SetUpScript: []string{
+			"create table a (pk int primary key, c1 int, c2 double, c3 decimal(5,3));",
+			"insert into a values (1, 1, 1.111, 1.111), (2, 2, 2.111, 2.111);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select c1 % 2, c2 % 2, c3 % 2 from a;",
+				Expected: []sql.Row{{"1", 1.111, "1.111"}, {"0", 0.11100000000000021, "0.111"}},
+			},
+			{
+				Query:    "select c1 % 0.5, c2 % 0.5, c3 % 0.5 from a;",
+				Expected: []sql.Row{{"0.0", 0.11099999999999999, "0.111"}, {"0.0", 0.11100000000000021, "0.111"}},
+			},
+			{
+				Query:    "select 20 % c1, 20 % c2, 20 % c3 from a;",
+				Expected: []sql.Row{{"0", 0.002000000000000224, "0.002"}, {"0", 1.0009999999999981, "1.001"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

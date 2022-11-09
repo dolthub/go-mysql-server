@@ -304,7 +304,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 				return nil, err
 			}
 		}
-		return CreateDecimalType(uint8(precision), uint8(scale))
+		return CreateColumnDecimalType(uint8(precision), uint8(scale))
 	case "bit":
 		length := int64(1)
 		if ct.Length != nil {
