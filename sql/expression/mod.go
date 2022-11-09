@@ -16,9 +16,9 @@ package expression
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -42,6 +42,10 @@ func (m *Mod) LeftChild() sql.Expression {
 
 func (m *Mod) RightChild() sql.Expression {
 	return m.Right
+}
+
+func (m *Mod) Operator() string {
+	return sqlparser.ModStr
 }
 
 func (m *Mod) String() string {
@@ -83,41 +87,7 @@ func (m *Mod) Type() sql.Type {
 
 	// for division operation, it's either float or decimal.Decimal type
 	// except invalid value will result it either 0 or nil
-	return m.floatOrDecimal()
-}
-
-// floatOrDecimal returns either Float64 or decimaltype depending on column reference,
-// left and right expressions types and left and right evaluated types.
-// If there is float type column reference, the result type is always float
-// regardless of the column reference on the left or right side of division operation.
-// Otherwise, the return type is always decimal. The expression and evaluated types
-// are used to determine appropriate decimaltype to return that will not result in
-// precision loss.
-func (m *Mod) floatOrDecimal() sql.Type {
-	var resType sql.Type
-	sql.Inspect(m, func(expr sql.Expression) bool {
-		switch c := expr.(type) {
-		case *GetField:
-			if sql.IsFloat(c.Type()) {
-				resType = sql.Float64
-				return false
-			}
-		}
-		return true
-	})
-
-	if resType == sql.Float64 {
-		return resType
-	}
-
-	// using max precision which is 65 and DivScale for scale number.
-	// DivScale will be non-zero number if it is the innermost division operation.
-	defType, derr := sql.CreateDecimalType(65, 30)
-	if derr != nil {
-		return sql.Float64
-	}
-
-	return defType
+	return floatOrDecimalType(m)
 }
 
 // WithChildren implements the Expression interface.
@@ -139,10 +109,7 @@ func (m *Mod) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lval, rval, err = m.convertLeftRight(ctx, lval, rval)
-	if err != nil {
-		return nil, err
-	}
+	lval, rval = m.convertLeftRight(ctx, lval, rval)
 
 	return mod(ctx, lval, rval)
 }
@@ -178,64 +145,22 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	return lval, rval, nil
 }
 
-func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	var err error
-
+func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := m.Type()
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
-		if sql.IsFloat(typ) {
-			left, err = typ.Convert(left)
-			if err != nil {
-				arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), left))
-				// the value is interpreted as 0, but we need to match the type of the other valid value
-				// to avoid additional conversion, the nil value is handled in each operation
-				left = nil
-			}
-		} else {
-			if _, ok := left.(decimal.Decimal); !ok {
-				p, s := getPrecisionAndScale(left)
-				ltyp, err := sql.CreateDecimalType(p, s)
-				if err != nil {
-					left = nil
-				}
-				left, err = ltyp.Convert(left)
-				if err != nil {
-					left = nil
-				}
-			}
-		}
+		left = floatOrDecimalValue(ctx, typ, left)
 	}
 
 	if i, ok := right.(*TimeDelta); ok {
 		right = i
 	} else {
-		if sql.IsFloat(typ) {
-			right, err = typ.Convert(right)
-			if err != nil {
-				arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), right))
-				// the value is interpreted as 0, but we need to match the type of the other valid value
-				// to avoid additional conversion, the nil value is handled in each operation
-				right = nil
-			}
-		} else {
-			if _, ok := right.(decimal.Decimal); !ok {
-				p, s := getPrecisionAndScale(right)
-				rtyp, err := sql.CreateDecimalType(p, s)
-				if err != nil {
-					right = nil
-				}
-				right, err = rtyp.Convert(right)
-				if err != nil {
-					right = nil
-				}
-			}
-		}
+		right = floatOrDecimalValue(ctx, typ, right)
 	}
 
-	return left, right, nil
+	return left, right
 }
 
 func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {

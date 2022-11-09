@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -63,6 +64,10 @@ func (d *Div) RightChild() sql.Expression {
 	return d.Right
 }
 
+func (d *Div) Operator() string {
+	return sqlparser.DivStr
+}
+
 func (d *Div) String() string {
 	return fmt.Sprintf("(%s / %s)", d.Left, d.Right)
 }
@@ -102,7 +107,7 @@ func (d *Div) Type() sql.Type {
 
 	// for division operation, it's either float or decimal.Decimal type
 	// except invalid value will result it either 0 or nil
-	return d.floatOrDecimal()
+	return floatOrDecimalType(d)
 }
 
 // WithChildren implements the Expression interface.
@@ -132,10 +137,7 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lval, rval, err = d.convertLeftRight(ctx, lval, rval)
-	if err != nil {
-		return nil, err
-	}
+	lval, rval = d.convertLeftRight(ctx, lval, rval)
 
 	result, err := d.div(ctx, lval, rval)
 	if err != nil {
@@ -194,64 +196,22 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // If there is no float type column reference, both values should be handled as decimal type
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
-func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	var err error
-
+func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := d.Type()
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
-		if sql.IsFloat(typ) {
-			left, err = typ.Convert(left)
-			if err != nil {
-				arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), left))
-				// the value is interpreted as 0, but we need to match the type of the other valid value
-				// to avoid additional conversion, the nil value is handled in each operation
-				left = nil
-			}
-		} else {
-			if _, ok := left.(decimal.Decimal); !ok {
-				p, s := getPrecisionAndScale(left)
-				ltyp, err := sql.CreateDecimalType(p, s)
-				if err != nil {
-					left = nil
-				}
-				left, err = ltyp.Convert(left)
-				if err != nil {
-					left = nil
-				}
-			}
-		}
+		left = floatOrDecimalValue(ctx, typ, left)
 	}
 
 	if i, ok := right.(*TimeDelta); ok {
 		right = i
 	} else {
-		if sql.IsFloat(typ) {
-			right, err = typ.Convert(right)
-			if err != nil {
-				arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), right))
-				// the value is interpreted as 0, but we need to match the type of the other valid value
-				// to avoid additional conversion, the nil value is handled in each operation
-				right = nil
-			}
-		} else {
-			if _, ok := right.(decimal.Decimal); !ok {
-				p, s := getPrecisionAndScale(right)
-				rtyp, err := sql.CreateDecimalType(p, s)
-				if err != nil {
-					right = nil
-				}
-				right, err = rtyp.Convert(right)
-				if err != nil {
-					right = nil
-				}
-			}
-		}
+		right = floatOrDecimalValue(ctx, typ, right)
 	}
 
-	return left, right, nil
+	return left, right
 }
 
 func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
@@ -322,16 +282,16 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 	return nil, errUnableToCast.New(lval, rval)
 }
 
-// floatOrDecimal returns either Float64 or decimaltype depending on column reference,
+// floatOrDecimalType returns either Float64 or decimaltype depending on column reference,
 // left and right expressions types and left and right evaluated types.
 // If there is float type column reference, the result type is always float
 // regardless of the column reference on the left or right side of division operation.
 // Otherwise, the return type is always decimal. The expression and evaluated types
 // are used to determine appropriate decimaltype to return that will not result in
 // precision loss.
-func (d *Div) floatOrDecimal() sql.Type {
+func floatOrDecimalType(e sql.Expression) sql.Type {
 	var resType sql.Type
-	sql.Inspect(d, func(expr sql.Expression) bool {
+	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
 			if sql.IsFloat(c.Type()) {
@@ -356,6 +316,38 @@ func (d *Div) floatOrDecimal() sql.Type {
 	return defType
 }
 
+// floatOrDecimalType returns value converted to either float or decimaltype.
+// If typ is defined as float64, the value is converted to float. For all
+// other types, the value is converted to decimaltype value. If the value
+// is invalid, it returns nil with warning, and it is interpreted as 0.
+// This function is used for 'div' or 'mod' arithmetic operation, which requires
+// the result value to have precise precision and scale.
+func floatOrDecimalValue(ctx *sql.Context, typ sql.Type, val interface{}) interface{} {
+	var err error
+	if sql.IsFloat(typ) {
+		val, err = typ.Convert(val)
+		if err != nil {
+			arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
+			// the value is interpreted as 0, but we need to match the type of the other valid value
+			// to avoid additional conversion, the nil value is handled in each operation
+			val = nil
+		}
+	} else {
+		if _, ok := val.(decimal.Decimal); !ok {
+			p, s := getPrecisionAndScale(val)
+			ltyp, err := sql.CreateDecimalType(p, s)
+			if err != nil {
+				val = nil
+			}
+			val, err = ltyp.Convert(val)
+			if err != nil {
+				val = nil
+			}
+		}
+	}
+	return val
+}
+
 // countDivs returns the number of division operators in order on the left child node of the current node.
 // This lets us count how many division operator used one after the other. E.g. 24/3/2/1 will have this structure:
 //
@@ -365,7 +357,7 @@ func (d *Div) floatOrDecimal() sql.Type {
 //		   /   \
 //		 'div'  2
 //		 /   \
-//	        24    3
+//	    24    3
 func countDivs(e sql.Expression) int32 {
 	if e == nil {
 		return 0

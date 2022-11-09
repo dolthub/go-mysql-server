@@ -50,9 +50,9 @@ func arithmeticWarning(ctx *sql.Context, errCode int, errMsg string) {
 // expression to define any arithmetic operation that is separately implemented from
 // Arithmetic expression in the future.
 type ArithmeticOp interface {
-	sql.Expression
 	LeftChild() sql.Expression
 	RightChild() sql.Expression
+	Operator() string
 }
 
 var _ ArithmeticOp = (*Arithmetic)(nil)
@@ -126,6 +126,10 @@ func (a *Arithmetic) RightChild() sql.Expression {
 	return a.Right
 }
 
+func (a *Arithmetic) Operator() string {
+	return a.Op
+}
+
 func (a *Arithmetic) String() string {
 	return fmt.Sprintf("(%s %s %s)", a.Left, a.Op, a.Right)
 }
@@ -197,14 +201,14 @@ func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 	return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
 }
 
-// floatOrDecimal returns either Float64 or decimaltype depending on column reference,
+// floatOrDecimalType returns either Float64 or decimaltype depending on column reference,
 // left and right expressions types and left and right evaluated types.
 // If there is float type column reference, the result type is always float
 // regardless of the column reference on the left or right side of division operation.
 // Otherwise, the return type is always decimal. The expression and evaluated types
 // are used to determine appropriate decimaltype to return that will not result in
 // precision loss.
-func (a *Arithmetic) floatOrDecimal(lTyp, rTyp sql.Type, lval, rval interface{}) sql.Type {
+func (a *Arithmetic) floatOrDecimalType(lTyp, rTyp sql.Type, lval, rval interface{}) sql.Type {
 	var resType sql.Type
 	sql.Inspect(a, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
@@ -323,7 +327,7 @@ func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type, lval, rval i
 			resType = r
 		}
 	} else if resType == nil {
-		return a.floatOrDecimal(lTyp, rTyp, lval, rval)
+		return a.floatOrDecimalType(lTyp, rTyp, lval, rval)
 	}
 
 	return resType
