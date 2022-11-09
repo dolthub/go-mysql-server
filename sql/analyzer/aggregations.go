@@ -134,23 +134,6 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 		}
 	}
 
-	// clean up projection dependency columns not synthesized by
-	// aggregation
-	//for _, e := range newProjection {
-	//	transform.InspectExpr(e, func(e sql.Expression) bool {
-	//		switch e := e.(type) {
-	//		case *expression.GetField:
-	//			if _, ok := aggPassthrough[e.Name()]; !ok {
-	//				// this is a column input to the projection that
-	//				// the aggregation parent has not passed-through.
-	//				newAggregates = append(newAggregates, e)
-	//			}
-	//		default:
-	//		}
-	//		return false
-	//	})
-	//}
-
 	return newProjection, newAggregates, transform.NewTree, nil
 }
 
