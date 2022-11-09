@@ -16,13 +16,15 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 	"strconv"
 	"strings"
 	"unsafe"
+
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var _ ArithmeticOp = (*BitOp)(nil)
