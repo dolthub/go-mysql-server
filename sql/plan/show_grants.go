@@ -162,18 +162,18 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	//TODO: implement USING, perhaps by creating a new context with the chosen roles set as the active roles
 	var rows []sql.Row
 	userStr := user.UserHostToString("`")
-	privStr := generatePrivStrings("*", "*", userStr, user.PrivilegeSet.ToSortedSlice())
+	privStr := generatePrivStrings("*", "*", userStr, user.PrivilegeSet.ToSlice())
 	rows = append(rows, sql.Row{privStr})
 
 	for _, db := range user.PrivilegeSet.GetDatabases() {
 		dbStr := fmt.Sprintf("`%s`", db.Name())
-		if privStr = generatePrivStrings(dbStr, "*", userStr, db.ToSortedSlice()); len(privStr) != 0 {
+		if privStr = generatePrivStrings(dbStr, "*", userStr, db.ToSlice()); len(privStr) != 0 {
 			rows = append(rows, sql.Row{privStr})
 		}
 
 		for _, tbl := range db.GetTables() {
 			tblStr := fmt.Sprintf("`%s`", tbl.Name())
-			privStr = generatePrivStrings(dbStr, tblStr, userStr, tbl.ToSortedSlice())
+			privStr = generatePrivStrings(dbStr, tblStr, userStr, tbl.ToSlice())
 			rows = append(rows, sql.Row{privStr})
 		}
 	}

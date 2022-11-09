@@ -102,7 +102,9 @@ func (t *mysqlTable) Replacer(ctx *sql.Context) sql.RowReplacer {
 
 // Truncate implements the interface sql.TruncateableTable.
 func (t *mysqlTable) Truncate(ctx *sql.Context) (int, error) {
-	defer t.db.clearCache()
+	if t.db != nil {
+		t.db.updateCounter++
+	}
 	count := t.data.Count()
 	t.data.Clear()
 	return int(count), nil
@@ -120,17 +122,23 @@ type cacheClearingDataEditor struct {
 }
 
 func (c cacheClearingDataEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	defer c.db.clearCache()
+	if c.db != nil {
+		c.db.updateCounter++
+	}
 	return c.editor.Insert(ctx, row)
 }
 
 func (c cacheClearingDataEditor) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
-	defer c.db.clearCache()
+	if c.db != nil {
+		c.db.updateCounter++
+	}
 	return c.editor.Update(ctx, old, new)
 }
 
 func (c cacheClearingDataEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	defer c.db.clearCache()
+	if c.db != nil {
+		c.db.updateCounter++
+	}
 	return c.editor.Delete(ctx, row)
 }
 
