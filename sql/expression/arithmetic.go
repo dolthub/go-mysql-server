@@ -50,6 +50,7 @@ func arithmeticWarning(ctx *sql.Context, errCode int, errMsg string) {
 // expression to define any arithmetic operation that is separately implemented from
 // Arithmetic expression in the future.
 type ArithmeticOp interface {
+	sql.Expression
 	LeftChild() sql.Expression
 	RightChild() sql.Expression
 	Operator() string
