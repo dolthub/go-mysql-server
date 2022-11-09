@@ -3771,6 +3771,8 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 			return expression.NewDiv(l, r), nil
 		case sqlparser.ModStr:
 			return expression.NewMod(l, r), nil
+		case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.ShiftRightStr, sqlparser.ShiftLeftStr:
+			return expression.NewBitOp(l, r, be.Operator), nil
 		default:
 			return expression.NewArithmetic(l, r, be.Operator), nil
 		}
