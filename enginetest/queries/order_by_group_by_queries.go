@@ -116,6 +116,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/4684
 		Name: "Group by with decimal columns",
 		Assertions: []ScriptTestAssertion{
 			{
