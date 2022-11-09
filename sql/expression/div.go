@@ -34,6 +34,8 @@ const divIntermediatePrecisionInc = 9
 
 const ERDivisionByZero = 1365
 
+var _ ArithmeticOp = (*Div)(nil)
+
 // Div expression (/)
 type Div struct {
 	BinaryExpression
@@ -43,6 +45,14 @@ type Div struct {
 	// leftmostScale is a length of scale of the leftmost value in continuous division operation
 	leftmostScale               int32
 	curIntermediatePrecisionInc int
+}
+
+func (d *Div) LeftChild() sql.Expression {
+	return d.Left
+}
+
+func (d *Div) RightChild() sql.Expression {
+	return d.Right
 }
 
 // NewDiv creates a new Div / sql.Expression.
@@ -189,7 +199,7 @@ func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 
 	typ := d.Type()
 
-	if i, ok := left.(*TimeDelta); ok {
+	if i, ok := left.(*Interval); ok {
 		left = i
 	} else {
 		if sql.IsFloat(typ) {
@@ -215,7 +225,7 @@ func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 		}
 	}
 
-	if i, ok := right.(*TimeDelta); ok {
+	if i, ok := right.(*Interval); ok {
 		right = i
 	} else {
 		if sql.IsFloat(typ) {
@@ -365,8 +375,8 @@ func countDivs(e sql.Expression) int32 {
 		return countDivs(a.Left) + 1
 	}
 
-	if a, ok := e.(*Arithmetic); ok {
-		return countDivs(a.Left)
+	if a, ok := e.(ArithmeticOp); ok {
+		return countDivs(a.LeftChild())
 	}
 
 	return 0
@@ -386,9 +396,9 @@ func setDivs(e sql.Expression, dScale int32) {
 		setDivs(a.Right, dScale)
 	}
 
-	if a, ok := e.(*Arithmetic); ok {
-		setDivs(a.Left, dScale)
-		setDivs(a.Right, dScale)
+	if a, ok := e.(ArithmeticOp); ok {
+		setDivs(a.LeftChild(), dScale)
+		setDivs(a.RightChild(), dScale)
 	}
 
 	return
@@ -441,8 +451,8 @@ func isOutermostDiv(e sql.Expression, d, dScale int32) bool {
 		} else {
 			return isOutermostDiv(a.Left, d, dScale)
 		}
-	} else if a, ok := e.(*Arithmetic); ok {
-		return isOutermostDiv(a.Left, d, dScale)
+	} else if a, ok := e.(ArithmeticOp); ok {
+		return isOutermostDiv(a.LeftChild(), d, dScale)
 	}
 
 	return false
@@ -515,12 +525,12 @@ func getPrecInc(e sql.Expression, cur int) int {
 			cur = r
 		}
 		return cur
-	} else if d, ok := e.(*Arithmetic); ok {
-		l := getPrecInc(d.Left, cur)
+	} else if d, ok := e.(ArithmeticOp); ok {
+		l := getPrecInc(d.LeftChild(), cur)
 		if l > cur {
 			cur = l
 		}
-		r := getPrecInc(d.Right, cur)
+		r := getPrecInc(d.RightChild(), cur)
 		if r > cur {
 			cur = r
 		}

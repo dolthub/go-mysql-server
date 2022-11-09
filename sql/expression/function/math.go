@@ -709,11 +709,5 @@ func NewMod(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("mod", "2", len(args))
 	}
 
-	return &expression.Arithmetic{
-		BinaryExpression: expression.BinaryExpression{
-			Left:  args[0],
-			Right: args[1],
-		},
-		Op: "%",
-	}, nil
+	return expression.NewMod(args[0], args[1]), nil
 }

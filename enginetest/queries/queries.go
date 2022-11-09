@@ -3224,6 +3224,22 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"0.6666666666666667"}},
 	},
 	{
+		Query:    "select 1/2/3%4/5/6;",
+		Expected: []sql.Row{{"0.0055555555555556"}},
+	},
+	{
+		Query:    "select 0.05 % 0.024;",
+		Expected: []sql.Row{{"0.002"}},
+	},
+	{
+		Query:    "select 0.0500 % 0.05;",
+		Expected: []sql.Row{{"0.0000"}},
+	},
+	{
+		Query:    "select 0.05 % 4;",
+		Expected: []sql.Row{{"0.05"}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}},
 	},
@@ -4089,7 +4105,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT MOD(i, 2) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{1},
+			{"1"},
 		},
 	},
 	{

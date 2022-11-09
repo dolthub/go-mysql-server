@@ -45,10 +45,30 @@ func arithmeticWarning(ctx *sql.Context, errCode int, errMsg string) {
 	})
 }
 
-// Arithmetic expressions (+, -, *, ...) DOES NOT INCLUDE "/" as it has its own function
+// ArithmeticOp implements an arithmetic expression. Since we had separate expressions
+// for division and mod operation, we need to group all arithmetic together. Use this
+// expression to define any arithmetic operation that is separately implemented from
+// Arithmetic expression in the future.
+type ArithmeticOp interface {
+	sql.Expression
+	LeftChild() sql.Expression
+	RightChild() sql.Expression
+}
+
+var _ ArithmeticOp = (*Arithmetic)(nil)
+
+// Arithmetic expressions (+, -, *, ...) DOES NOT INCLUDE "/" and "%" as it has its own function
 type Arithmetic struct {
 	BinaryExpression
 	Op string
+}
+
+func (a *Arithmetic) LeftChild() sql.Expression {
+	return a.Left
+}
+
+func (a *Arithmetic) RightChild() sql.Expression {
+	return a.Right
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
@@ -104,11 +124,6 @@ func NewBitXor(left, right sql.Expression) *Arithmetic {
 // NewIntDiv creates a new Arithmetic div sql.Expression.
 func NewIntDiv(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.IntDivStr)
-}
-
-// NewMod creates a new Arithmetic % sql.Expression.
-func NewMod(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.ModStr)
 }
 
 func (a *Arithmetic) String() string {
@@ -172,8 +187,7 @@ func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 
 	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
 		return sql.Uint64
-
-	case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.IntDivStr, sqlparser.ModStr:
+	case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.IntDivStr:
 		if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 			return sql.Uint64
 		}
@@ -325,6 +339,13 @@ func (a *Arithmetic) WithChildren(children ...sql.Expression) (sql.Expression, e
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 2)
 	}
+	// sanity check
+	switch strings.ToLower(a.Op) {
+	case sqlparser.DivStr:
+		return NewDiv(children[0], children[1]), nil
+	case sqlparser.ModStr:
+		return NewMod(children[0], children[1]), nil
+	}
 	return NewArithmetic(children[0], children[1], a.Op), nil
 }
 
@@ -363,8 +384,6 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return shiftRight(lval, rval)
 	case sqlparser.IntDivStr:
 		return intDiv(lval, rval)
-	case sqlparser.ModStr:
-		return mod(lval, rval)
 	}
 
 	return nil, errUnableToEval.New(lval, a.Op, rval)
@@ -822,37 +841,6 @@ func intDiv(lval, rval interface{}) (interface{}, error) {
 				return nil, nil
 			}
 			return int64(l / r), nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func mod(lval, rval interface{}) (interface{}, error) {
-	if rval == nil {
-		return nil, nil
-	}
-	if lval == nil {
-		return 0, nil
-	}
-
-	switch l := lval.(type) {
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			if r == 0 {
-				return nil, nil
-			}
-			return l % r, nil
-		}
-
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			if r == 0 {
-				return nil, nil
-			}
-			return l % r, nil
 		}
 	}
 

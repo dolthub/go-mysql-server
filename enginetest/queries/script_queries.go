@@ -2452,6 +2452,27 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "'%' mod operation result in decimal or float",
+		SetUpScript: []string{
+			"create table a (pk int primary key, c1 int, c2 double, c3 decimal(5,3));",
+			"insert into a values (1, 1, 1.111, 1.111), (2, 2, 2.111, 2.111);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select c1 % 2, c2 % 2, c3 % 2 from a;",
+				Expected: []sql.Row{{"1", 1.111, "1.111"}, {"0", 0.11100000000000021, "0.111"}},
+			},
+			{
+				Query:    "select c1 % 0.5, c2 % 0.5, c3 % 0.5 from a;",
+				Expected: []sql.Row{{"0.0", 0.11099999999999999, "0.111"}, {"0.0", 0.11100000000000021, "0.111"}},
+			},
+			{
+				Query:    "select 20 % c1, 20 % c2, 20 % c3 from a;",
+				Expected: []sql.Row{{"0", 0.002000000000000224, "0.002"}, {"0", 1.0009999999999981, "1.001"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
