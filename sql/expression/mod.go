@@ -16,9 +16,10 @@ package expression
 
 import (
 	"fmt"
+	"math"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
-	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
