@@ -16,9 +16,9 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"math"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
