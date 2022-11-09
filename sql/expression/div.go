@@ -36,7 +36,7 @@ const ERDivisionByZero = 1365
 
 var _ ArithmeticOp = (*Div)(nil)
 
-// Div expression (/)
+// Div expression represents "/" arithmetic operation
 type Div struct {
 	BinaryExpression
 
@@ -47,20 +47,20 @@ type Div struct {
 	curIntermediatePrecisionInc int
 }
 
-func (d *Div) LeftChild() sql.Expression {
-	return d.Left
-}
-
-func (d *Div) RightChild() sql.Expression {
-	return d.Right
-}
-
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
 	a := &Div{BinaryExpression{Left: left, Right: right}, 0, 0, 0}
 	divs := countDivs(a)
 	setDivs(a, divs)
 	return a
+}
+
+func (d *Div) LeftChild() sql.Expression {
+	return d.Left
+}
+
+func (d *Div) RightChild() sql.Expression {
+	return d.Right
 }
 
 func (d *Div) String() string {
@@ -199,7 +199,7 @@ func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 
 	typ := d.Type()
 
-	if i, ok := left.(*Interval); ok {
+	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
 		if sql.IsFloat(typ) {
@@ -225,7 +225,7 @@ func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 		}
 	}
 
-	if i, ok := right.(*Interval); ok {
+	if i, ok := right.(*TimeDelta); ok {
 		right = i
 	} else {
 		if sql.IsFloat(typ) {

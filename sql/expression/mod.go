@@ -26,9 +26,14 @@ import (
 
 var _ ArithmeticOp = (*Mod)(nil)
 
-// Mod expressions (+, -, *, ...) DOES NOT INCLUDE "/" as it has its own function
+// Mod expression represents "%" arithmetic operation
 type Mod struct {
 	BinaryExpression
+}
+
+// NewMod creates a new Mod sql.Expression.
+func NewMod(left, right sql.Expression) *Mod {
+	return &Mod{BinaryExpression{Left: left, Right: right}}
 }
 
 func (m *Mod) LeftChild() sql.Expression {
@@ -37,11 +42,6 @@ func (m *Mod) LeftChild() sql.Expression {
 
 func (m *Mod) RightChild() sql.Expression {
 	return m.Right
-}
-
-// NewMod creates a new Mod sql.Expression.
-func NewMod(left, right sql.Expression) *Mod {
-	return &Mod{BinaryExpression{Left: left, Right: right}}
 }
 
 func (m *Mod) String() string {
@@ -275,6 +275,7 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 				return nil, nil
 			}
 
+			// Mod function from the decimal package takes care of precision and scale for the result value
 			return l.Mod(r), nil
 		}
 	}

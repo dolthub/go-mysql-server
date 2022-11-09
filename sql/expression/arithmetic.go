@@ -63,14 +63,6 @@ type Arithmetic struct {
 	Op string
 }
 
-func (a *Arithmetic) LeftChild() sql.Expression {
-	return a.Left
-}
-
-func (a *Arithmetic) RightChild() sql.Expression {
-	return a.Right
-}
-
 // NewArithmetic creates a new Arithmetic sql.Expression.
 func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
 	return &Arithmetic{BinaryExpression{Left: left, Right: right}, op}
@@ -124,6 +116,14 @@ func NewBitXor(left, right sql.Expression) *Arithmetic {
 // NewIntDiv creates a new Arithmetic div sql.Expression.
 func NewIntDiv(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.IntDivStr)
+}
+
+func (a *Arithmetic) LeftChild() sql.Expression {
+	return a.Left
+}
+
+func (a *Arithmetic) RightChild() sql.Expression {
+	return a.Right
 }
 
 func (a *Arithmetic) String() string {
