@@ -58,7 +58,7 @@ type ArithmeticOp interface {
 
 var _ ArithmeticOp = (*Arithmetic)(nil)
 
-// Arithmetic expressions (+, -, *, ...) DOES NOT INCLUDE "/" and "%" as it has its own function
+// Arithmetic expressions include plus, minus, multiplication and integer division (+, -, * and div) operations.
 type Arithmetic struct {
 	BinaryExpression
 	Op string
@@ -87,31 +87,6 @@ func NewMinus(left, right sql.Expression) *Arithmetic {
 // NewMult creates a new Arithmetic * sql.Expression.
 func NewMult(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.MultStr)
-}
-
-// NewShiftLeft creates a new Arithmetic << sql.Expression.
-func NewShiftLeft(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.ShiftLeftStr)
-}
-
-// NewShiftRight creates a new Arithmetic >> sql.Expression.
-func NewShiftRight(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.ShiftRightStr)
-}
-
-// NewBitAnd creates a new Arithmetic & sql.Expression.
-func NewBitAnd(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.BitAndStr)
-}
-
-// NewBitOr creates a new Arithmetic | sql.Expression.
-func NewBitOr(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.BitOrStr)
-}
-
-// NewBitXor creates a new Arithmetic ^ sql.Expression.
-func NewBitXor(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.BitXorStr)
 }
 
 // NewIntDiv creates a new Arithmetic div sql.Expression.
@@ -190,9 +165,7 @@ func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 
 		return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
 
-	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
-		return sql.Uint64
-	case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.IntDivStr:
+	case sqlparser.IntDivStr:
 		if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 			return sql.Uint64
 		}
@@ -377,16 +350,6 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return minus(lval, rval)
 	case sqlparser.MultStr:
 		return mult(lval, rval)
-	case sqlparser.BitAndStr:
-		return bitAnd(lval, rval)
-	case sqlparser.BitOrStr:
-		return bitOr(lval, rval)
-	case sqlparser.BitXorStr:
-		return bitXor(lval, rval)
-	case sqlparser.ShiftLeftStr:
-		return shiftLeft(lval, rval)
-	case sqlparser.ShiftRightStr:
-		return shiftRight(lval, rval)
 	case sqlparser.IntDivStr:
 		return intDiv(lval, rval)
 	}
@@ -426,43 +389,35 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 }
 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	var err error
-
 	typ := a.returnType(left, right)
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
-		left, err = typ.Convert(left)
-		if err != nil {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Warning",
-				Code:    mysql.ERTruncatedWrongValue,
-				Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), left),
-			})
-			// the value is interpreted as 0, but we need to match the type of the other valid value
-			// to avoid additional conversion, the nil value is handled in each operation
-			left = nil
-		}
+		left = convertValueToType(ctx, typ, left)
 	}
 
 	if i, ok := right.(*TimeDelta); ok {
 		right = i
 	} else {
-		right, err = typ.Convert(right)
-		if err != nil {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Warning",
-				Code:    mysql.ERTruncatedWrongValue,
-				Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), right),
-			})
-			// the value is interpreted as 0, but we need to match the type of the other valid value
-			// to avoid additional conversion, the nil value is handled in each operation
-			right = nil
-		}
+		right = convertValueToType(ctx, typ, right)
 	}
 
 	return left, right, nil
+}
+
+// convertValueToType returns given value converted into the given type. If the value is
+// invalid and cannot be converted to the given type, it returns nil and it should be
+// interpreted as value of 0.
+func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}) interface{} {
+	val, err := typ.Convert(val)
+	if err != nil {
+		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
+		// the value is interpreted as 0, but we need to match the type of the other valid value
+		// to avoid additional conversion, the nil value is handled in each operation
+		val = nil
+	}
+	return val
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {
@@ -706,115 +661,6 @@ func mult(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case decimal.Decimal:
 			return l.Mul(r), nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func bitAnd(lval, rval interface{}) (interface{}, error) {
-	if lval == nil || rval == nil {
-		return 0, nil
-	}
-	switch l := lval.(type) {
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			return l & r, nil
-		}
-
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			return l & r, nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func bitOr(lval, rval interface{}) (interface{}, error) {
-	if lval == nil && rval == nil {
-		return 0, nil
-	} else if lval == nil {
-		return rval, nil
-	} else if rval == nil {
-		return lval, nil
-	}
-
-	switch l := lval.(type) {
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			return l | r, nil
-		}
-
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			return l | r, nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func bitXor(lval, rval interface{}) (interface{}, error) {
-	if lval == nil && rval == nil {
-		return 0, nil
-	} else if lval == nil {
-		return rval, nil
-	} else if rval == nil {
-		return lval, nil
-	}
-
-	switch l := lval.(type) {
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			return l ^ r, nil
-		}
-
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			return l ^ r, nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func shiftLeft(lval, rval interface{}) (interface{}, error) {
-	if lval == nil {
-		return 0, nil
-	}
-	if rval == nil {
-		return lval, nil
-	}
-	switch l := lval.(type) {
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			return l << r, nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func shiftRight(lval, rval interface{}) (interface{}, error) {
-	if lval == nil {
-		return 0, nil
-	}
-	if rval == nil {
-		return lval, nil
-	}
-	switch l := lval.(type) {
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			return l >> r, nil
 		}
 	}
 

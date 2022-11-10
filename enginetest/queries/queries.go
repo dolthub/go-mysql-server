@@ -3120,11 +3120,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select 'a'|4;",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'|-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 4|'a';",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
 	},
 	{
 		Query:    "select 'a'^'a';",
@@ -3132,11 +3136,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select 'a'^4;",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'^-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 4^'a';",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
 	},
 	{
 		Query:    "select 'a'>>'a';",
@@ -3151,6 +3159,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{uint64(4)}},
 	},
 	{
+		Query:    "select -1>>'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
 		Query:    "select 'a'<<'a';",
 		Expected: []sql.Row{{0}},
 	},
@@ -3161,6 +3173,10 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select 4<<'a';",
 		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select -1<<'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 'a' div 'a';",
@@ -3257,6 +3273,34 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select 0.05 % 4;",
 		Expected: []sql.Row{{"0.05"}},
+	},
+	{
+		Query:    "select 2.6 & -1.3;",
+		Expected: []sql.Row{{uint64(3)}},
+	},
+	{
+		Query:    "select -1.5 & -3.3;",
+		Expected: []sql.Row{{uint64(18446744073709551612)}},
+	},
+	{
+		Query:    "select -1.7 & 0.5;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select -1.7 & 1.5;",
+		Expected: []sql.Row{{uint64(2)}},
+	},
+	{
+		Query:    "SELECT '127' | '128', '128' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'7F' | X'80', X'80' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
+		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
