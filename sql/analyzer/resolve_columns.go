@@ -288,7 +288,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		}
 
 		// Updates need to have check constraints qualified since multiple tables could be involved
-		checkConstraintsChanged := false
+		sameCheckConstraints := true
 		if nn, ok := n.(*plan.Update); ok {
 			newChecks, err := qualifyCheckConstraints(nn)
 			if err != nil {
@@ -296,24 +296,24 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			}
 			nn.Checks = newChecks
 			n = nn
-			checkConstraintsChanged = true
+			sameCheckConstraints = false
 		}
 
 		// Before we can qualify references in a GroupBy node, we need to see if any aliases
 		// were defined and then used in grouping expressions
-		groupByChanged := false
+		sameGroupBy := true
 		if groupBy, ok := n.(*plan.GroupBy); ok {
 			newGroupBy, identity, err := identifyGroupingAliasReferences(groupBy)
 			if err != nil {
 				return originalNode, transform.SameTree, err
 			}
 			if identity == transform.NewTree {
-				groupByChanged = true
 				n = newGroupBy
+				sameGroupBy = false
 			}
 		}
 
-		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		newNode, sameNode, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			evalSymbols := symbols
 			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
 				evalSymbols = onDupUpdateSymbols
@@ -323,10 +323,11 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if err != nil {
 			return originalNode, transform.SameTree, err
 		}
-		if checkConstraintsChanged || groupByChanged {
-			identity = transform.NewTree
+
+		if sameCheckConstraints && sameGroupBy && sameNode == transform.SameTree {
+			return originalNode, transform.SameTree, nil
 		}
-		return newNode, identity, nil
+		return newNode, transform.NewTree, nil
 	})
 }
 
