@@ -125,4 +125,33 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/4739
+		Name: "Validation for use of non-aggregated columns with implicit grouping of all rows",
+		SetUpScript: []string{
+			"CREATE TABLE t (num INTEGER, val DOUBLE);",
+			"INSERT INTO t VALUES (1, 0.01), (2,0.5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT AVG(val), LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT 1 + AVG(val) + 1, LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT AVG(1), 1 + LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				// GMS currently allows this query to execute and chooses the first result for val.
+				// To match MySQL's behavior, GMS should be throwing an ErrNonAggregatedColumnWithoutGroupBy error.
+				Skip:        true,
+				Query:       "select AVG(val), val from t;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+		},
+	},
 }
