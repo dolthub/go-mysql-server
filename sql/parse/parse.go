@@ -502,8 +502,15 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return node, nil
 	case "create procedure":
+		dbName := s.Table.Qualifier.String()
+		if dbName == "" {
+			dbName = ctx.GetCurrentDatabase()
+		}
+		if dbName == "" {
+			return nil, sql.ErrNoDatabaseSelected.New()
+		}
 		return plan.NewShowCreateProcedure(
-			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
+			sql.UnresolvedDatabase(dbName),
 			s.Table.Name.String(),
 		), nil
 	case "procedure status":
