@@ -1379,6 +1379,25 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select i+0.0/(lag(i) over (order by s)) from mytable;",
+		Expected: []sql.Row{
+			{nil},
+			{2.0},
+			{3.0},
+		},
+	},
+	{
+		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable;",
+		Expected: []sql.Row{
+			{1.0, nil},
+			{1.0, .5},
+			{1.0, -1.0},
+			{1.0, 1.5},
+			{1.0, 1.0},
+			{1.0, 2.5 / float64(3)},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{

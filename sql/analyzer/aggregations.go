@@ -70,33 +70,37 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 	), transform.NewTree, nil
 }
 
-// replaceAggregatesWithGetFieldProjections takes a slice of projection expressions and flattens out any aggregate
-// expressions within, wrapping all such flattened aggregations into a GetField projection. Returns two new slices: the
-// new set of project expressions, and the new set of aggregations. The former always matches the size of the projection
-// expressions passed in. The latter will have the size of the number of aggregate expressions contained in the input
-// slice.
+// replaceAggregatesWithGetFieldProjections inserts an indirection Projection
+// between an aggregation and its scope output, resulting in two buckets of
+// expressions:
+// 1) Parent projection expressions.
+// 2) Child aggregation expressions.
+//
+// A scope always returns a fixed number of columns, so the number of projection
+// inputs and outputs must match.
+//
+// The aggregation must provide input dependencies for parent projections.
+// Each parent expression can depend on zero or many aggregation expressions.
+// There are two basic kinds of aggregation expressions:
+// 1) Passthrough columns from scope input relation.
+// 2) Synthesized columns from in-scope aggregation relation.
 func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
-	allGetFields := make(map[int]sql.Expression)
-	projDeps := make(map[int]struct{})
+	aggPassthrough := make(map[string]struct{})
+	/* every aggregation creates one pass-through reference into parent */
 	for i, p := range projection {
 		e, same, err := transform.Expr(p, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
-			// continue on
-			case *expression.GetField:
-				allGetFields[e.Index()] = e
-				projDeps[e.Index()] = struct{}{}
-				return e, transform.SameTree, nil
+				newAggregates = append(newAggregates, e)
+				aggPassthrough[e.String()] = struct{}{}
+				return expression.NewGetField(
+					len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
+				), transform.NewTree, nil
 			default:
 				return e, transform.SameTree, nil
 			}
-
-			newAggregates = append(newAggregates, e)
-			return expression.NewGetField(
-				len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
-			), transform.NewTree, nil
 		})
 		if err != nil {
 			return nil, nil, transform.SameTree, err
@@ -110,24 +114,23 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 			)
 		} else {
 			newProjection[i] = e
-		}
-	}
-
-	// find subset of allGetFields not covered by newAggregates
-	newAggDeps := make(map[int]struct{}, 0)
-	for _, agg := range newAggregates {
-		_ = transform.InspectExpr(agg, func(e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.GetField:
-				newAggDeps[e.Index()] = struct{}{}
-			}
-			return false
-		})
-	}
-	for i, _ := range projDeps {
-		if _, ok := newAggDeps[i]; !ok {
-			// add pass-through dependency
-			newAggregates = append(newAggregates, allGetFields[i])
+			transform.InspectExpr(e, func(e sql.Expression) bool {
+				// clean up projection dependency columns not synthesized by
+				// aggregation.
+				switch e := e.(type) {
+				case *expression.GetField:
+					if _, ok := aggPassthrough[e.Name()]; !ok {
+						// this is a column input to the projection that
+						// the aggregation parent has not passed-through.
+						// TODO: for functions without aggregate dependency,
+						// we just execute the function in the aggregation.
+						// why don't we do that for both?
+						newAggregates = append(newAggregates, e)
+					}
+				default:
+				}
+				return false
+			})
 		}
 	}
 
