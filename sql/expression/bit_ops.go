@@ -21,7 +21,6 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -181,33 +180,10 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 }
 
 func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	var err error
-
 	typ := b.Type()
 
-	left, err = typ.Convert(left)
-	if err != nil {
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Warning",
-			Code:    mysql.ERTruncatedWrongValue,
-			Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), left),
-		})
-		// the value is interpreted as 0, but we need to match the type of the other valid value
-		// to avoid additional conversion, the nil value is handled in each operation
-		left = nil
-	}
-
-	right, err = typ.Convert(right)
-	if err != nil {
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Warning",
-			Code:    mysql.ERTruncatedWrongValue,
-			Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), right),
-		})
-		// the value is interpreted as 0, but we need to match the type of the other valid value
-		// to avoid additional conversion, the nil value is handled in each operation
-		right = nil
-	}
+	left = convertValueToType(ctx, typ, left)
+	right = convertValueToType(ctx, typ, right)
 
 	return left, right, nil
 }

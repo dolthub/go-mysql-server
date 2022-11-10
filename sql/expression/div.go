@@ -19,7 +19,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 
@@ -323,15 +322,8 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 // This function is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
 func floatOrDecimalValue(ctx *sql.Context, typ sql.Type, val interface{}) interface{} {
-	var err error
 	if sql.IsFloat(typ) {
-		val, err = typ.Convert(val)
-		if err != nil {
-			arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
-			// the value is interpreted as 0, but we need to match the type of the other valid value
-			// to avoid additional conversion, the nil value is handled in each operation
-			val = nil
-		}
+		val = convertValueToType(ctx, typ, val)
 	} else {
 		if _, ok := val.(decimal.Decimal); !ok {
 			p, s := getPrecisionAndScale(val)

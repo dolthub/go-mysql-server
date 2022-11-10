@@ -389,43 +389,35 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 }
 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	var err error
-
 	typ := a.returnType(left, right)
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
-		left, err = typ.Convert(left)
-		if err != nil {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Warning",
-				Code:    mysql.ERTruncatedWrongValue,
-				Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), left),
-			})
-			// the value is interpreted as 0, but we need to match the type of the other valid value
-			// to avoid additional conversion, the nil value is handled in each operation
-			left = nil
-		}
+		left = convertValueToType(ctx, typ, left)
 	}
 
 	if i, ok := right.(*TimeDelta); ok {
 		right = i
 	} else {
-		right, err = typ.Convert(right)
-		if err != nil {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Warning",
-				Code:    mysql.ERTruncatedWrongValue,
-				Message: fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), right),
-			})
-			// the value is interpreted as 0, but we need to match the type of the other valid value
-			// to avoid additional conversion, the nil value is handled in each operation
-			right = nil
-		}
+		right = convertValueToType(ctx, typ, right)
 	}
 
 	return left, right, nil
+}
+
+// convertValueToType returns given value converted into the given type. If the value is
+// invalid and cannot be converted to the given type, it returns nil and it should be
+// interpreted as value of 0.
+func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}) interface{} {
+	val, err := typ.Convert(val)
+	if err != nil {
+		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
+		// the value is interpreted as 0, but we need to match the type of the other valid value
+		// to avoid additional conversion, the nil value is handled in each operation
+		val = nil
+	}
+	return val
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {
