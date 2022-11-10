@@ -1379,6 +1379,25 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select i+0.0/(lag(i) over (order by s)) from mytable order by 1;",
+		Expected: []sql.Row{
+			{nil},
+			{2.0},
+			{3.0},
+		},
+	},
+	{
+		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable order by 1,2;",
+		Expected: []sql.Row{
+			{1.0, nil},
+			{1.0, -1.0},
+			{1.0, .5},
+			{1.0, 2.5 / float64(3)},
+			{1.0, 1.0},
+			{1.0, 1.5},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
@@ -3101,11 +3120,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select 'a'|4;",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'|-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 4|'a';",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
 	},
 	{
 		Query:    "select 'a'^'a';",
@@ -3113,11 +3136,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select 'a'^4;",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'^-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 4^'a';",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.Row{{uint64(4)}},
 	},
 	{
 		Query:    "select 'a'>>'a';",
@@ -3132,6 +3159,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{uint64(4)}},
 	},
 	{
+		Query:    "select -1>>'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
 		Query:    "select 'a'<<'a';",
 		Expected: []sql.Row{{0}},
 	},
@@ -3142,6 +3173,10 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select 4<<'a';",
 		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select -1<<'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 'a' div 'a';",
@@ -3238,6 +3273,34 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select 0.05 % 4;",
 		Expected: []sql.Row{{"0.05"}},
+	},
+	{
+		Query:    "select 2.6 & -1.3;",
+		Expected: []sql.Row{{uint64(3)}},
+	},
+	{
+		Query:    "select -1.5 & -3.3;",
+		Expected: []sql.Row{{uint64(18446744073709551612)}},
+	},
+	{
+		Query:    "select -1.7 & 0.5;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select -1.7 & 1.5;",
+		Expected: []sql.Row{{uint64(2)}},
+	},
+	{
+		Query:    "SELECT '127' | '128', '128' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'7F' | X'80', X'80' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
+		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",

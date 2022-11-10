@@ -2473,6 +2473,42 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "arithmetic bit operations on int, float and decimal types",
+		SetUpScript: []string{
+			"CREATE TABLE num_types (pk int primary key, a int, b float, c decimal(5,3));",
+			"insert into num_types values (1,1,1.1,1.1), (2,2,1.2,2.2), (3,3,1.6,3.7), (4,4,1.7,4.0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select a & 2.4, a | 2.4, a ^ 2.4 from num_types;",
+				Expected: []sql.Row{
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(2), uint64(2), uint64(0)},
+					{uint64(2), uint64(3), uint64(1)},
+					{uint64(0), uint64(6), uint64(6)},
+				},
+			},
+			{
+				Query: "select b & 2.4, b | 2.4, b ^ 2.4 from num_types;",
+				Expected: []sql.Row{
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(2), uint64(2), uint64(0)},
+					{uint64(2), uint64(2), uint64(0)},
+				},
+			},
+			{
+				Query: "select c & 2.4, c | 2.4, c ^ 2.4 from num_types;",
+				Expected: []sql.Row{
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(2), uint64(2), uint64(0)},
+					{uint64(0), uint64(6), uint64(6)},
+					{uint64(0), uint64(6), uint64(6)},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
