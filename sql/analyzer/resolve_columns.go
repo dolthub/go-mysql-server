@@ -325,7 +325,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		}
 
 		if sameCheckConstraints && sameGroupBy && sameNode == transform.SameTree {
-			return originalNode, transform.SameTree, nil
+			return newNode, transform.SameTree, nil
 		}
 		return newNode, transform.NewTree, nil
 	})
