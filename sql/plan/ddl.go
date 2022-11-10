@@ -63,12 +63,11 @@ func (*ddlNode) Schema() sql.Schema {
 func (c *ddlNode) Children() []sql.Node { return nil }
 
 type IndexDefinition struct {
-	IndexName     string
-	Using         sql.IndexUsing
-	Constraint    sql.IndexConstraint
-	Columns       []sql.IndexColumn
-	Comment       string
-	PrefixLengths []uint16
+	IndexName  string
+	Using      sql.IndexUsing
+	Constraint sql.IndexConstraint
+	Columns    []sql.IndexColumn
+	Comment    string
 }
 
 func (i *IndexDefinition) String() string {

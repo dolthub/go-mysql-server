@@ -1720,33 +1720,18 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			return nil, err
 		}
 
-		// TODO: helper method
-		var hasBlob bool
-		prefixLengths := make([]uint16, len(columns))
-		for i, col := range columns {
-			if blobCols[col.Name] {
-				hasBlob = true
-			}
-			prefixLengths[i] = uint16(col.Length)
-		}
-		if !hasBlob {
-			prefixLengths = nil
-		}
-
 		var comment string
 		for _, option := range idxDef.Options {
 			if strings.ToLower(option.Name) == strings.ToLower(sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD)) {
 				comment = string(option.Value.Val)
 			}
 		}
-
 		idxDefs = append(idxDefs, &plan.IndexDefinition{
-			IndexName:     idxDef.Info.Name.String(),
-			Using:         sql.IndexUsing_Default, //TODO: add vitess support for USING
-			Constraint:    constraint,
-			Columns:       columns,
-			Comment:       comment,
-			PrefixLengths: prefixLengths,
+			IndexName:  idxDef.Info.Name.String(),
+			Using:      sql.IndexUsing_Default, //TODO: add vitess support for USING
+			Constraint: constraint,
+			Columns:    columns,
+			Comment:    comment,
 		})
 	}
 
