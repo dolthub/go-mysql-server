@@ -1379,7 +1379,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select i+0.0/(lag(i) over (order by s)) from mytable;",
+		Query: "select i+0.0/(lag(i) over (order by s)) from mytable order by 1;",
 		Expected: []sql.Row{
 			{nil},
 			{2.0},
@@ -1387,14 +1387,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable;",
+		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable order by 1,2;",
 		Expected: []sql.Row{
 			{1.0, nil},
-			{1.0, .5},
 			{1.0, -1.0},
-			{1.0, 1.5},
-			{1.0, 1.0},
+			{1.0, .5},
 			{1.0, 2.5 / float64(3)},
+			{1.0, 1.0},
+			{1.0, 1.5},
 		},
 	},
 	{
