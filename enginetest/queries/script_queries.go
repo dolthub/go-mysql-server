@@ -2518,6 +2518,90 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "year type behavior",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 year);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// 1901 - 2155 are interpreted as 1901 - 2155
+			{
+				Query:    "INSERT INTO t VALUES (1, '1901'), (2, 1901);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (3, '2000'), (4, 2000);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (5, '2155'), (6, 2155);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 1 - 69 are interpreted as 2001 - 2069
+			{
+				Query:    "INSERT INTO t VALUES (7, '1'), (8, 1);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (9, '35'), (10, 35);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (11, '69'), (12, 69);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 70 - 99 are interpreted as 1970 - 1999
+			{
+				Query:    "INSERT INTO t VALUES (13, '70'), (14, 70);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (15, '85'), (16, 85);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (17, '99'), (18, 99);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// '0', and '00' are interpreted as 2000
+			{
+				Query:    "INSERT INTO t VALUES (19, '0'), (20, '00');",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 0 is interpreted as 0000
+			{
+				Query:    "INSERT INTO t VALUES (21, 0)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			// Assert that returned values are correct.
+			{
+				Query: "SELECT * from t order by pk;",
+				Expected: []sql.Row{
+					{1, int16(1901)},
+					{2, int16(1901)},
+					{3, int16(2000)},
+					{4, int16(2000)},
+					{5, int16(2155)},
+					{6, int16(2155)},
+					{7, int16(2001)},
+					{8, int16(2001)},
+					{9, int16(2035)},
+					{10, int16(2035)},
+					{11, int16(2069)},
+					{12, int16(2069)},
+					{13, int16(1970)},
+					{14, int16(1970)},
+					{15, int16(1985)},
+					{16, int16(1985)},
+					{17, int16(1999)},
+					{18, int16(1999)},
+					{19, int16(2000)},
+					{20, int16(2000)},
+					{21, int16(0)},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
