@@ -58,7 +58,7 @@ type ArithmeticOp interface {
 
 var _ ArithmeticOp = (*Arithmetic)(nil)
 
-// Arithmetic expressions (+, -, *, ...) DOES NOT INCLUDE "/" and "%" as it has its own function
+// Arithmetic expressions include plus, minus, multiplication and integer division (+, -, * and div) operations.
 type Arithmetic struct {
 	BinaryExpression
 	Op string
@@ -165,9 +165,7 @@ func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 
 		return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
 
-	case sqlparser.ShiftLeftStr, sqlparser.ShiftRightStr:
-		return sql.Uint64
-	case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.IntDivStr:
+	case sqlparser.IntDivStr:
 		if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 			return sql.Uint64
 		}
