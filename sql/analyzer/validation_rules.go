@@ -695,12 +695,14 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var validationErr error
 	transform.Inspect(n, func(n sql.Node) bool {
-		if gb, ok := n.(*plan.GroupBy); ok {
-			validationErr = checkForAggregationFunctions(gb.GroupByExprs)
-		} else if w, ok := n.(*plan.Window); ok {
-			validationErr = checkForNonAggregatedColumnReferences(w)
-		} else if n, ok := n.(sql.Expressioner); ok {
+		switch n := n.(type) {
+		case *plan.GroupBy:
+			validationErr = checkForAggregationFunctions(n.GroupByExprs)
+		case *plan.Window:
+			validationErr = checkForNonAggregatedColumnReferences(n)
+		case sql.Expressioner:
 			validationErr = checkForAggregationFunctions(n.Expressions())
+		default:
 		}
 		return validationErr == nil
 	})
