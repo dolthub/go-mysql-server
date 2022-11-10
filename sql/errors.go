@@ -444,6 +444,11 @@ var (
 	// ErrTableFunctionNotFound is thrown when a table function is not found
 	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
 
+	// ErrNonAggregatedColumnWithoutGroupBy is thrown when an aggregate function is used with the implicit, all-rows
+	// grouping and another projected expression contains a non-aggregated column.
+	// MySQL error code: 1140, SQL state: 42000
+	ErrNonAggregatedColumnWithoutGroupBy = errors.NewKind("in aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; this is incompatible with sql_mode=only_full_group_by")
+
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
 	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
