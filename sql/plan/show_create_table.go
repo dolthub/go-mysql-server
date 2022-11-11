@@ -304,11 +304,16 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			continue
 		}
 
+		prefixLengths := index.PrefixLengths()
 		var indexCols []string
-		for _, expr := range index.Expressions() {
+		for i, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexCols = append(indexCols, quoteIdentifier(col.Name))
+				indexDef := quoteIdentifier(col.Name)
+				if len(prefixLengths) > i && prefixLengths[i] != 0 {
+					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
+				}
+				indexCols = append(indexCols, indexDef)
 			}
 		}
 

@@ -1253,10 +1253,12 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 
 	exprs := make([]sql.Expression, len(columns))
 	colNames := make([]string, len(columns))
+	prefixLengths := make([]uint16, len(columns))
 	for i, column := range columns {
 		idx, field := t.getField(column.Name)
 		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 		colNames[i] = column.Name
+		prefixLengths[i] = uint16(column.Length)
 	}
 
 	if constraint == sql.IndexConstraint_Unique {
@@ -1275,6 +1277,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Name:       name,
 		Unique:     constraint == sql.IndexConstraint_Unique,
 		CommentStr: comment,
+		PrefixLens: prefixLengths,
 	}, nil
 }
 
