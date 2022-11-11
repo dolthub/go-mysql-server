@@ -1382,8 +1382,8 @@ var QueryTests = []QueryTest{
 		Query: "select i+0.0/(lag(i) over (order by s)) from mytable order by 1;",
 		Expected: []sql.Row{
 			{nil},
-			{2.0},
-			{3.0},
+			{"2.00000"},
+			{"3.00000"},
 		},
 	},
 	{
@@ -2718,9 +2718,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
 		Expected: []sql.Row{
-			{float64(1577966400), 1.0},
-			{float64(1578225600), 2.0},
-			{float64(1578398400), 3.0}},
+			{"1577966400", 1.0},
+			{"1578225600", 2.0},
+			{"1578398400", 3.0}},
 		SkipPrepared: true,
 	},
 	{
@@ -5307,15 +5307,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select ceil(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{2.0}, {3.0}, {4.0}},
+		Expected: []sql.Row{{"2"}, {"3"}, {"4"}},
 	},
 	{
 		Query:    "select floor(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{1.0}, {2.0}, {3.0}},
+		Expected: []sql.Row{{"1"}, {"2"}, {"3"}},
 	},
 	{
 		Query:    "select round(i + 0.55, 1) from mytable order by 1",
-		Expected: []sql.Row{{1.6}, {2.6}, {3.6}},
+		Expected: []sql.Row{{"1.6"}, {"2.6"}, {"3.6"}},
 	},
 	{
 		Query:    "select date_format(da, '%s') from typestable order by 1",
@@ -6960,9 +6960,9 @@ var QueryTests = []QueryTest{
 			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0
 			from mytable order by 1;`,
 		Expected: []sql.Row{
-			{1, 6, 1.0},
-			{2, 5, 3.0},
-			{3, 4, 2.0},
+			{1, 6, "1.00000"},
+			{2, 5, "3.00000"},
+			{3, 4, "2.00000"},
 		},
 	},
 	{

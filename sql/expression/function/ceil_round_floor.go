@@ -18,7 +18,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
-	"reflect"
 	"strconv"
 
 	"github.com/shopspring/decimal"
@@ -82,6 +81,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// non number type will be caught here
 	if !sql.IsNumber(c.Child.Type()) {
 		child, err = sql.Float64.Convert(child)
 		if err != nil {
@@ -91,17 +91,16 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int32(math.Ceil(child.(float64))), nil
 	}
 
-	if !sql.IsFloat(c.Child.Type()) {
-		return child, err
-	}
-
+	// if it's number type and not float value, it does not need ceil-ing
 	switch num := child.(type) {
 	case float64:
 		return math.Ceil(num), nil
 	case float32:
 		return float32(math.Ceil(float64(num))), nil
+	case decimal.Decimal:
+		return num.Ceil(), nil
 	default:
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(num))
+		return child, nil
 	}
 }
 

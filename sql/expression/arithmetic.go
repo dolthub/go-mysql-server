@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"math"
 	"reflect"
 	"regexp"
 	"strings"
@@ -123,17 +122,6 @@ func (a *Arithmetic) IsNullable() bool {
 
 // Type returns the greatest type for given operation.
 func (a *Arithmetic) Type() sql.Type {
-	return a.returnType(nil, nil)
-}
-
-// returnType returns the greatest type for given operation depending on the evaluated left and
-// right values and the original types of the left and right expressions. The evaluated left and
-// right values are mainly used for `+`, `-`, `*`, `/` operations as the original expression type
-// is different from the evaluated value types. For example, 2/4 gives int types for expressions
-// types, but the return type should be decimal type. Another example, 2/1 + 3/1 gives int types
-// for expressions types, but the evaluated values are both decimal of 2.0000 + 3.0000, so that
-// the correct precision is preserved.
-func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := a.Right.Type()
 	if sql.IsDeferredType(rTyp) {
@@ -163,139 +151,7 @@ func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 		return sql.Int64
 	}
 
-	return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
-}
-
-// floatOrDecimalType returns either Float64 or decimaltype depending on column reference,
-// left and right expressions types and left and right evaluated types.
-// If there is float type column reference, the result type is always float
-// regardless of the column reference on the left or right side of division operation.
-// Otherwise, the return type is always decimal. The expression and evaluated types
-// are used to determine appropriate decimaltype to return that will not result in
-// precision loss.
-func (a *Arithmetic) floatOrDecimalType(lTyp, rTyp sql.Type, lval, rval interface{}) sql.Type {
-	var resType sql.Type
-	sql.Inspect(a, func(expr sql.Expression) bool {
-		switch c := expr.(type) {
-		case *GetField:
-			if sql.IsFloat(c.Type()) {
-				resType = sql.Float64
-				return false
-			}
-		}
-		return true
-	})
-
-	if resType == sql.Float64 {
-		return resType
-	}
-
-	// using max precision which is 65 and 0 for scale number.
-	// DivScale will be non-zero number if it is the innermost division operation.
-	defType, derr := sql.CreateDecimalType(65, 0)
-	if derr != nil {
-		return sql.Float64
-	}
-
-	if lval != nil && rval != nil {
-		lp, ls := getPrecisionAndScale(lval)
-		rp, rs := getPrecisionAndScale(rval)
-		r, err := sql.CreateDecimalType(uint8(math.Max(float64(lp), float64(rp))), uint8(math.Max(float64(ls), float64(rs))))
-		if err == nil {
-			return r
-		}
-	} else if rval != nil {
-		p, s := getPrecisionAndScale(rval)
-		r, err := sql.CreateDecimalType(p, s)
-		if err == nil {
-			return r
-		}
-	} else if lval != nil {
-		p, s := getPrecisionAndScale(lval)
-		r, err := sql.CreateDecimalType(p, s)
-		if err == nil {
-			return r
-		}
-	}
-
-	if sql.IsDecimal(lTyp) && sql.IsDecimal(rTyp) {
-		lp := lTyp.(sql.DecimalType).Precision()
-		ls := lTyp.(sql.DecimalType).Scale()
-		rp := rTyp.(sql.DecimalType).Precision()
-		rs := lTyp.(sql.DecimalType).Scale()
-		r, err := sql.CreateDecimalType(uint8(math.Max(float64(lp), float64(rp))), uint8(math.Max(float64(ls), float64(rs))))
-		if err == nil {
-			return r
-		}
-	} else if sql.IsDecimal(lTyp) {
-		return lTyp
-	} else if sql.IsDecimal(rTyp) {
-		return rTyp
-	}
-
-	return defType
-}
-
-// getArithmeticTypeFromExpr returns a type that left and right values to be converted into.
-// If there is system variable, return type should be the type of that system variable.
-// For any non-DECIMAL column type, it will use default sql.Float64 type.
-// For DECIMAL column type, or any Literal values, the return type will the DECIMAL type with
-// the highest precision and scale calculated out of all Literals and DECIMAL column type definition.
-func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type, lval, rval interface{}) sql.Type {
-	var resType sql.Type
-	var precision uint8
-	var scale uint8
-	sql.Inspect(a, func(expr sql.Expression) bool {
-		switch c := expr.(type) {
-		case *SystemVar:
-			resType = c.Type()
-			return false
-		case *GetField:
-			if sql.IsDecimal(resType) {
-				resType = c.Type()
-				dt, _ := resType.(sql.DecimalType)
-				if dt.Precision() > (precision) {
-					precision = dt.Precision()
-				}
-				if dt.Scale() > scale {
-					scale = dt.Precision()
-				}
-			} else {
-				resType = sql.Float64
-			}
-		case *Literal:
-			val, err := c.Eval(nil, nil)
-			if err != nil {
-				return false
-			}
-			var v string
-			switch val.(type) {
-			case float64:
-				v = fmt.Sprintf("%f", val)
-			default:
-				v = fmt.Sprintf("%v", val)
-			}
-			p, s := GetDecimalPrecisionAndScale(v)
-			if p > precision {
-				precision = p
-			}
-			if s > scale {
-				scale = s
-			}
-		}
-		return true
-	})
-
-	if sql.IsDecimal(resType) {
-		r, err := sql.CreateDecimalType(precision, scale)
-		if err == nil {
-			resType = r
-		}
-	} else if resType == nil {
-		return a.floatOrDecimalType(lTyp, rTyp, lval, rval)
-	}
-
-	return resType
+	return floatOrDecimalType(a)
 }
 
 // WithChildren implements the Expression interface.
@@ -373,18 +229,31 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 }
 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	typ := a.returnType(left, right)
+	typ := a.Type()
+
+	lIsTimeType := sql.IsTime(a.Left.Type())
+	rIsTimeType := sql.IsTime(a.Right.Type())
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
-		left = convertValueToType(ctx, typ, left, sql.IsTime(a.Left.Type()))
+		// these are the types we specifically want to capture from we get from Type()
+		if sql.IsInteger(typ) || sql.IsFloat(typ) || sql.IsTime(typ) {
+			left = convertValueToType(ctx, typ, left, lIsTimeType)
+		} else {
+			left = convertToDecimalValue(left, lIsTimeType)
+		}
 	}
 
 	if i, ok := right.(*TimeDelta); ok {
 		right = i
 	} else {
-		right = convertValueToType(ctx, typ, right, sql.IsTime(a.Right.Type()))
+		// these are the types we specifically want to capture from we get from Type()
+		if sql.IsInteger(typ) || sql.IsFloat(typ) || sql.IsTime(typ) {
+			right = convertValueToType(ctx, typ, right, rIsTimeType)
+		} else {
+			right = convertToDecimalValue(right, rIsTimeType)
+		}
 	}
 
 	return left, right, nil
