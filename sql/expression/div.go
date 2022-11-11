@@ -267,6 +267,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 // precision loss.
 func floatOrDecimalType(e sql.Expression) sql.Type {
 	var resType sql.Type
+	var decType sql.Type
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
@@ -274,12 +275,19 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 				resType = sql.Float64
 				return false
 			}
+			if sql.IsDecimal(c.Type()) {
+				decType = c.Type()
+			}
 		}
 		return true
 	})
 
 	if resType == sql.Float64 {
 		return resType
+	}
+
+	if decType != nil {
+		return decType
 	}
 
 	// using max precision which is 65 and DivScale for scale number.
