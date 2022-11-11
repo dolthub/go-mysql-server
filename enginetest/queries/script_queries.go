@@ -1468,17 +1468,13 @@ var ScriptTests = []ScriptTest{
 				// in the order by clause to ensure it selects the table column and not the alias.
 				// TODO: Waiting to hear back from MySQL on whether this is intended behavior or not:
 				//       https://bugs.mysql.com/bug.php?id=109020
-				Query: `SELECT
-				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
-				avg(value) AS "value"
-				FROM test
-				GROUP BY 1
-				ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
+				Query: `SELECT UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time", avg(value) AS "value"
+				FROM test GROUP BY 1 ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
 				Expected: []sql.Row{
-					{1625133600, 4.0},
-					{1625220000, 3.0},
-					{1625306400, 2.0},
-					{1625392800, 1.0},
+					{"1625133600", 4.0},
+					{"1625220000", 3.0},
+					{"1625306400", 2.0},
+					{"1625392800", 1.0},
 				},
 			},
 		},

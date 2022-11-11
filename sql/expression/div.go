@@ -18,12 +18,16 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+var ErrIntDivDataOutOfRange = errors.NewKind("BIGINT value is out of range (%s DIV %s)")
 
 // '4 scales' are added to scale of the number on the left side of division operator at every division operation.
 // The default value is 4, and it can be set using sysvar https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_div_precision_increment
@@ -77,10 +81,6 @@ func (d *Div) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (d *Div) IsNullable() bool {
-	if d.Type() == sql.Timestamp || d.Type() == sql.Datetime {
-		return true
-	}
-
 	return d.BinaryExpression.IsNullable()
 }
 
@@ -96,12 +96,8 @@ func (d *Div) Type() sql.Type {
 		return lTyp
 	}
 
-	if isInterval(d.Left) || isInterval(d.Right) {
-		return sql.Datetime
-	}
-
-	if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
-		return sql.Int64
+	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+		return sql.Float64
 	}
 
 	// for division operation, it's either float or decimal.Decimal type
@@ -162,28 +158,15 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	var lval, rval interface{}
 	var err error
 
-	if i, ok := d.Left.(*Interval); ok {
-		lval, err = i.EvalDelta(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		lval, err = d.Left.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
+	// division used with Interval error is caught at parsing the query
+	lval, err = d.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if i, ok := d.Right.(*Interval); ok {
-		rval, err = i.EvalDelta(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		rval, err = d.Right.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
+	rval, err = d.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return lval, rval, nil
@@ -197,31 +180,25 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // should be preserved.
 func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := d.Type()
+	lIsTimeType := sql.IsTime(d.Left.Type())
+	rIsTimeType := sql.IsTime(d.Right.Type())
 
-	if i, ok := left.(*TimeDelta); ok {
-		left = i
+	if sql.IsFloat(typ) {
+		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
-		left = floatOrDecimalValue(ctx, typ, left)
+		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if i, ok := right.(*TimeDelta); ok {
-		right = i
+	if sql.IsFloat(typ) {
+		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		right = floatOrDecimalValue(ctx, typ, right)
+		right = convertToDecimalValue(right, rIsTimeType)
 	}
 
 	return left, right
 }
 
 func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
-	if rval == nil {
-		arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
-		return nil, nil
-	}
-	if lval == nil {
-		return 0, nil
-	}
-
 	switch l := lval.(type) {
 	case float32:
 		switch r := rval.(type) {
@@ -315,28 +292,27 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 	return defType
 }
 
-// floatOrDecimalValue returns value converted to either float or decimaltype.
-// If typ is defined as float64, the value is converted to float. For all
-// other types, the value is converted to decimaltype value. If the value
-// is invalid, it returns nil with warning, and it is interpreted as 0.
-// This function is used for 'div' or 'mod' arithmetic operation, which requires
+// convertToDecimalValue returns value converted to decimaltype.
+// If the value is invalid, it returns decimal 0. This function
+// is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func floatOrDecimalValue(ctx *sql.Context, typ sql.Type, val interface{}) interface{} {
-	if sql.IsFloat(typ) {
-		val = convertValueToType(ctx, typ, val)
-	} else {
-		if _, ok := val.(decimal.Decimal); !ok {
-			p, s := getPrecisionAndScale(val)
-			ltyp, err := sql.CreateDecimalType(p, s)
-			if err != nil {
-				val = nil
-			}
-			val, err = ltyp.Convert(val)
-			if err != nil {
-				val = nil
-			}
+func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
+	if isTimeType {
+		val = convertTimeTypeToString(val)
+	}
+
+	if _, ok := val.(decimal.Decimal); !ok {
+		p, s := getPrecisionAndScale(val)
+		dtyp, err := sql.CreateDecimalType(p, s)
+		if err != nil {
+			val = decimal.Zero
+		}
+		val, err = dtyp.Convert(val)
+		if err != nil {
+			val = decimal.Zero
 		}
 	}
+
 	return val
 }
 
@@ -457,6 +433,8 @@ func GetDecimalPrecisionAndScale(val string) (uint8, uint8) {
 func getPrecisionAndScale(val interface{}) (uint8, uint8) {
 	var str string
 	switch v := val.(type) {
+	case time.Time:
+		str = fmt.Sprintf("%v", v.In(time.UTC).Format("2006-01-02 15:04:05"))
 	case decimal.Decimal:
 		str = v.StringFixed(v.Exponent() * -1)
 	case float32:
@@ -466,7 +444,7 @@ func getPrecisionAndScale(val interface{}) (uint8, uint8) {
 		d := decimal.NewFromFloat(v)
 		str = d.StringFixed(d.Exponent() * -1)
 	default:
-		str = fmt.Sprintf("%v", val)
+		str = fmt.Sprintf("%v", v)
 	}
 	return GetDecimalPrecisionAndScale(str)
 }
@@ -522,4 +500,194 @@ func getPrecInc(e sql.Expression, cur int) int {
 	} else {
 		return cur
 	}
+}
+
+var _ ArithmeticOp = (*IntDiv)(nil)
+
+// IntDiv expression represents integer "div" arithmetic operation
+type IntDiv struct {
+	BinaryExpression
+}
+
+// NewIntDiv creates a new IntDiv 'div' sql.Expression.
+func NewIntDiv(left, right sql.Expression) *IntDiv {
+	a := &IntDiv{BinaryExpression{Left: left, Right: right}}
+	return a
+}
+
+func (i *IntDiv) LeftChild() sql.Expression {
+	return i.Left
+}
+
+func (i *IntDiv) RightChild() sql.Expression {
+	return i.Right
+}
+
+func (i *IntDiv) Operator() string {
+	return sqlparser.IntDivStr
+}
+
+func (i *IntDiv) String() string {
+	return fmt.Sprintf("(%s div %s)", i.Left, i.Right)
+}
+
+func (i *IntDiv) DebugString() string {
+	return fmt.Sprintf("(%s div %s)", sql.DebugString(i.Left), sql.DebugString(i.Right))
+}
+
+// IsNullable implements the sql.Expression interface.
+func (i *IntDiv) IsNullable() bool {
+	return i.BinaryExpression.IsNullable()
+}
+
+// Type returns the greatest type for given operation.
+func (i *IntDiv) Type() sql.Type {
+	//TODO: what if both BindVars? should be constant folded
+	rTyp := i.Right.Type()
+	if sql.IsDeferredType(rTyp) {
+		return rTyp
+	}
+	lTyp := i.Left.Type()
+	if sql.IsDeferredType(lTyp) {
+		return lTyp
+	}
+
+	if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
+		return sql.Int64
+	}
+
+	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+		return sql.Float64
+	}
+
+	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
+		return sql.Uint64
+	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
+		return sql.Int64
+	}
+
+	// using max precision which is 65.
+	defType := sql.MustCreateDecimalType(65, 0)
+	return defType
+}
+
+// WithChildren implements the Expression interface.
+func (i *IntDiv) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
+	}
+	return NewIntDiv(children[0], children[1]), nil
+}
+
+// Eval implements the Expression interface.
+func (i *IntDiv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	lval, rval, err := i.evalLeftRight(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if lval == nil || rval == nil {
+		return nil, nil
+	}
+
+	lval, rval = i.convertLeftRight(ctx, lval, rval)
+
+	return intDiv(ctx, lval, rval)
+}
+
+func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
+	var lval, rval interface{}
+	var err error
+
+	// int division used with Interval error is caught at parsing the query
+	lval, err = i.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rval, err = i.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return lval, rval, nil
+}
+
+// convertLeftRight return most appropriate value for left and right from evaluated value,
+// which can might or might not be converted from its original value.
+// It checks for float type column reference, then the both values converted to the same float types.
+// If there is no float type column reference, both values should be handled as decimal type
+// The decimal types of left and right value does NOT need to be the same. Both the types
+// should be preserved.
+func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
+	typ := i.Type()
+	lIsTimeType := sql.IsTime(i.Left.Type())
+	rIsTimeType := sql.IsTime(i.Right.Type())
+
+	if sql.IsInteger(typ) || sql.IsFloat(typ) {
+		left = convertValueToType(ctx, typ, left, lIsTimeType)
+	} else {
+		left = convertToDecimalValue(left, lIsTimeType)
+	}
+
+	if sql.IsInteger(typ) || sql.IsFloat(typ) {
+		right = convertValueToType(ctx, typ, right, rIsTimeType)
+	} else {
+		right = convertToDecimalValue(right, rIsTimeType)
+	}
+
+	return left, right
+}
+
+func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
+	switch l := lval.(type) {
+	case uint64:
+		switch r := rval.(type) {
+		case uint64:
+			if r == 0 {
+				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case int64:
+		switch r := rval.(type) {
+		case int64:
+			if r == 0 {
+				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				return nil, nil
+			}
+			return l / r, nil
+		}
+	case float64:
+		switch r := rval.(type) {
+		case float64:
+			if r == 0 {
+				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				return nil, nil
+			}
+			res := l / r
+			return int64(math.Floor(res)), nil
+		}
+	case decimal.Decimal:
+		switch r := rval.(type) {
+		case decimal.Decimal:
+			if r.Equal(decimal.NewFromInt(0)) {
+				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				return nil, nil
+			}
+
+			// intDiv operation gets the integer part of the divided value
+			divRes := l.DivRound(r, 2)
+			intPart := divRes.IntPart()
+
+			if (divRes.IsNegative() && intPart >= 0) || (divRes.IsPositive() && intPart < 0) {
+				return nil, ErrIntDivDataOutOfRange.New(l.StringFixed(l.Exponent()), r.StringFixed(r.Exponent()))
+			}
+
+			return intPart, nil
+		}
+	}
+
+	return nil, errUnableToCast.New(lval, rval)
 }

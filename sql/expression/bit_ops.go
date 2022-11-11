@@ -100,11 +100,16 @@ func (b *BitOp) Type() sql.Type {
 		return lTyp
 	}
 
+	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+		return sql.Float64
+	}
+
 	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
 		return sql.Uint64
 	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
 		return sql.Int64
 	}
+
 	return sql.Float64
 }
 
@@ -152,28 +157,15 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 	var lval, rval interface{}
 	var err error
 
-	if i, ok := b.Left.(*Interval); ok {
-		lval, err = i.EvalDelta(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		lval, err = b.Left.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
+	// bit ops used with Interval error is caught at parsing the query
+	lval, err = b.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if i, ok := b.Right.(*Interval); ok {
-		rval, err = i.EvalDelta(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		rval, err = b.Right.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
+	rval, err = b.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return lval, rval, nil
@@ -182,8 +174,8 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := b.Type()
 
-	left = convertValueToType(ctx, typ, left)
-	right = convertValueToType(ctx, typ, right)
+	left = convertValueToType(ctx, typ, left, sql.IsTime(b.Left.Type()))
+	right = convertValueToType(ctx, typ, right, sql.IsTime(b.Right.Type()))
 
 	return left, right, nil
 }

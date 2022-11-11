@@ -55,9 +55,7 @@ func TestPlus(t *testing.T) {
 	result, err := NewPlus(NewLiteral("2", sql.LongText), NewLiteral(3, sql.Float64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	r, ok := result.(decimal.Decimal)
-	require.True(ok)
-	require.Equal("5", r.StringFixed(r.Exponent()*-1))
+	require.Equal(5.0, result)
 }
 
 func TestPlusInterval(t *testing.T) {
@@ -113,9 +111,7 @@ func TestMinus(t *testing.T) {
 	result, err := NewMinus(NewLiteral("10", sql.LongText), NewLiteral(10, sql.Int64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	r, ok := result.(decimal.Decimal)
-	require.True(ok)
-	require.Equal("0", r.StringFixed(r.Exponent()*-1))
+	require.Equal(0.0, result)
 }
 
 func TestMinusInterval(t *testing.T) {
@@ -162,41 +158,7 @@ func TestMult(t *testing.T) {
 	result, err := NewMult(NewLiteral("10", sql.LongText), NewLiteral("10", sql.LongText)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	r, ok := result.(decimal.Decimal)
-	require.True(ok)
-	require.Equal("100", r.StringFixed(r.Exponent()*-1))
-}
-
-func TestIntDiv(t *testing.T) {
-	var testCases = []struct {
-		name        string
-		left, right int64
-		expected    int64
-		null        bool
-	}{
-		{"1 div 1", 1, 1, 1, false},
-		{"8 div 3", 8, 3, 2, false},
-		{"1 div 3", 1, 3, 0, false},
-		{"0 div -1024", 0, -1024, 0, false},
-		{"1 div 0", 1, 0, 0, true},
-		{"0 div 0", 1, 0, 0, true},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			result, err := NewIntDiv(
-				NewLiteral(tt.left, sql.Int64),
-				NewLiteral(tt.right, sql.Int64),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(err)
-			if tt.null {
-				assert.Equal(t, nil, result)
-			} else {
-				assert.Equal(t, tt.expected, result)
-			}
-		})
-	}
+	require.Equal(100.0, result)
 }
 
 func TestMod(t *testing.T) {

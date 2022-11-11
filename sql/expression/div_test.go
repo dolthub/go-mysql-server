@@ -116,3 +116,39 @@ func TestDiv(t *testing.T) {
 		})
 	}
 }
+
+func TestIntDiv(t *testing.T) {
+	var testCases = []struct {
+		name                string
+		left, right         interface{}
+		leftType, rightType sql.Type
+		expected            int64
+		null                bool
+	}{
+		{"1 div 1", 1, 1, sql.Int64, sql.Int64, 1, false},
+		{"8 div 3", 8, 3, sql.Int64, sql.Int64, 2, false},
+		{"1 div 3", 1, 3, sql.Int64, sql.Int64, 0, false},
+		{"0 div -1024", 0, -1024, sql.Int64, sql.Int64, 0, false},
+		{"1 div 0", 1, 0, sql.Int64, sql.Int64, 0, true},
+		{"0 div 0", 1, 0, sql.Int64, sql.Int64, 0, true},
+		{"10.24 div 0.6", 10.24, 0.6, sql.Float64, sql.Float64, 17, false},
+		{"-10.24 div 0.6", -10.24, 0.6, sql.Float64, sql.Float64, -17, false},
+		{"-10.24 div -0.6", -10.24, -0.6, sql.Float64, sql.Float64, 17, false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			result, err := NewIntDiv(
+				NewLiteral(tt.left, tt.leftType),
+				NewLiteral(tt.right, tt.rightType),
+			).Eval(sql.NewEmptyContext(), sql.NewRow())
+			require.NoError(err)
+			if tt.null {
+				assert.Equal(t, nil, result)
+			} else {
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
