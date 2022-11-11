@@ -626,6 +626,10 @@ func IsNumber(t Type) bool {
 
 // IsSigned checks if t is a signed type.
 func IsSigned(t Type) bool {
+	// systemBoolType is Int8
+	if _, ok := t.(systemBoolType); ok {
+		return true
+	}
 	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
 }
 
