@@ -617,7 +617,7 @@ func IsNull(ex Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t Type) bool {
 	switch t.(type) {
-	case numberTypeImpl, decimalType, bitType, yearType:
+	case numberTypeImpl, decimalType, bitType, yearType, systemBoolType:
 		return true
 	default:
 		return false

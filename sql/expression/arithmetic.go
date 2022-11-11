@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -35,6 +36,8 @@ var (
 
 	// errUnableToEval means that we could not evaluate an expression
 	errUnableToEval = errors.NewKind("Unable to evaluate an expression: %v %s %v")
+
+	timeTypeRegex = regexp.MustCompile("[0-9]+")
 )
 
 func arithmeticWarning(ctx *sql.Context, errCode int, errMsg string) {
@@ -58,7 +61,7 @@ type ArithmeticOp interface {
 
 var _ ArithmeticOp = (*Arithmetic)(nil)
 
-// Arithmetic expressions include plus, minus, multiplication and integer division (+, -, * and div) operations.
+// Arithmetic expressions include plus, minus and multiplication (+, -, *) operations.
 type Arithmetic struct {
 	BinaryExpression
 	Op string
@@ -87,11 +90,6 @@ func NewMinus(left, right sql.Expression) *Arithmetic {
 // NewMult creates a new Arithmetic * sql.Expression.
 func NewMult(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.MultStr)
-}
-
-// NewIntDiv creates a new Arithmetic div sql.Expression.
-func NewIntDiv(left, right sql.Expression) *Arithmetic {
-	return NewArithmetic(left, right, sqlparser.IntDivStr)
 }
 
 func (a *Arithmetic) LeftChild() sql.Expression {
@@ -146,29 +144,22 @@ func (a *Arithmetic) returnType(lval, rval interface{}) sql.Type {
 		return lTyp
 	}
 
-	switch strings.ToLower(a.Op) {
-	case sqlparser.PlusStr, sqlparser.MinusStr, sqlparser.MultStr:
-		if isInterval(a.Left) || isInterval(a.Right) {
-			return sql.Datetime
-		}
+	// applies for + and - ops
+	if isInterval(a.Left) || isInterval(a.Right) {
+		return sql.Datetime
+	}
 
-		if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
-			return sql.Int64
-		}
+	if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
+		return sql.Int64
+	}
 
-		if sql.IsInteger(lTyp) && sql.IsInteger(rTyp) {
-			if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
-				return sql.Uint64
-			}
-			return sql.Int64
-		}
+	if !sql.IsNumber(lTyp) || !sql.IsNumber(rTyp) {
+		return sql.Float64
+	}
 
-		return a.getArithmeticTypeFromExpr(lTyp, rTyp, lval, rval)
-
-	case sqlparser.IntDivStr:
-		if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
-			return sql.Uint64
-		}
+	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
+		return sql.Uint64
+	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
 		return sql.Int64
 	}
 
@@ -199,7 +190,7 @@ func (a *Arithmetic) floatOrDecimalType(lTyp, rTyp sql.Type, lval, rval interfac
 		return resType
 	}
 
-	// using max precision which is 65 and DivScale for scale number.
+	// using max precision which is 65 and 0 for scale number.
 	// DivScale will be non-zero number if it is the innermost division operation.
 	defType, derr := sql.CreateDecimalType(65, 0)
 	if derr != nil {
@@ -307,11 +298,6 @@ func (a *Arithmetic) getArithmeticTypeFromExpr(lTyp, rTyp sql.Type, lval, rval i
 	return resType
 }
 
-func isInterval(expr sql.Expression) bool {
-	_, ok := expr.(*Interval)
-	return ok
-}
-
 // WithChildren implements the Expression interface.
 func (a *Arithmetic) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
@@ -350,8 +336,6 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return minus(lval, rval)
 	case sqlparser.MultStr:
 		return mult(lval, rval)
-	case sqlparser.IntDivStr:
-		return intDiv(lval, rval)
 	}
 
 	return nil, errUnableToEval.New(lval, a.Op, rval)
@@ -394,40 +378,61 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
-		left = convertValueToType(ctx, typ, left)
+		left = convertValueToType(ctx, typ, left, sql.IsTime(a.Left.Type()))
 	}
 
 	if i, ok := right.(*TimeDelta); ok {
 		right = i
 	} else {
-		right = convertValueToType(ctx, typ, right)
+		right = convertValueToType(ctx, typ, right, sql.IsTime(a.Right.Type()))
 	}
 
 	return left, right, nil
 }
 
+func isInterval(expr sql.Expression) bool {
+	_, ok := expr.(*Interval)
+	return ok
+}
+
 // convertValueToType returns given value converted into the given type. If the value is
-// invalid and cannot be converted to the given type, it returns nil and it should be
-// interpreted as value of 0.
-func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}) interface{} {
-	val, err := typ.Convert(val)
+// invalid and cannot be converted to the given type, it returns nil, and it should be
+// interpreted as value of 0. For time types, all the numbers are parsed up to seconds only.
+// E.g: `2022-11-10 12:14:36` is parsed into `20221110121436` and `2022-03-24` is parsed into `20220324`.
+func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}, isTimeType bool) interface{} {
+	var cval interface{}
+	if isTimeType {
+		val = convertTimeTypeToString(val)
+	}
+
+	cval, err := typ.Convert(val)
 	if err != nil {
 		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
 		// the value is interpreted as 0, but we need to match the type of the other valid value
 		// to avoid additional conversion, the nil value is handled in each operation
-		val = nil
 	}
+	return cval
+}
+
+// convertTimeTypeToString returns string value parsed from either time.Time or string
+// representation. all the numbers are parsed up to seconds only. The location can be
+// different between two time.Time values, so we set it to default UTC location before
+// parsing. E.g:
+// `2022-11-10 12:14:36` is parsed into `20221110121436`
+// `2022-03-24` is parsed into `20220324`.
+func convertTimeTypeToString(val interface{}) interface{} {
+	if t, ok := val.(time.Time); ok {
+		val = t.In(time.UTC).Format("2006-01-02 15:04:05")
+	}
+	if t, ok := val.(string); ok {
+		nums := timeTypeRegex.FindAllString(t, -1)
+		val = strings.Join(nums, "")
+	}
+
 	return val
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {
-	if lval == nil && rval == nil {
-		return 0, nil
-	} else if lval == nil {
-		return rval, nil
-	} else if rval == nil {
-		return lval, nil
-	}
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -502,37 +507,6 @@ func plus(lval, rval interface{}) (interface{}, error) {
 }
 
 func minus(lval, rval interface{}) (interface{}, error) {
-	if lval == nil && rval == nil {
-		return 0, nil
-	} else if rval == nil {
-		return lval, nil
-	} else if lval == nil {
-		switch r := rval.(type) {
-		case uint8:
-			return -r, nil
-		case int8:
-			return -r, nil
-		case uint16:
-			return -r, nil
-		case int16:
-			return -r, nil
-		case uint32:
-			return -r, nil
-		case int32:
-			return -r, nil
-		case uint64:
-			return -r, nil
-		case int64:
-			return -r, nil
-		case float32:
-			return -r, nil
-		case float64:
-			return -r, nil
-		case decimal.Decimal:
-			return r.Neg(), nil
-		}
-	}
-
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -602,10 +576,6 @@ func minus(lval, rval interface{}) (interface{}, error) {
 }
 
 func mult(lval, rval interface{}) (interface{}, error) {
-	if lval == nil || rval == nil {
-		return 0, nil
-	}
-
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -661,37 +631,6 @@ func mult(lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case decimal.Decimal:
 			return l.Mul(r), nil
-		}
-	}
-
-	return nil, errUnableToCast.New(lval, rval)
-}
-
-func intDiv(lval, rval interface{}) (interface{}, error) {
-	if rval == nil {
-		return nil, nil
-	}
-	if lval == nil {
-		return 0, nil
-	}
-
-	switch l := lval.(type) {
-	case uint64:
-		switch r := rval.(type) {
-		case uint64:
-			if r == 0 {
-				return nil, nil
-			}
-			return uint64(l / r), nil
-		}
-
-	case int64:
-		switch r := rval.(type) {
-		case int64:
-			if r == 0 {
-				return nil, nil
-			}
-			return int64(l / r), nil
 		}
 	}
 

@@ -58,10 +58,6 @@ func (m *Mod) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (m *Mod) IsNullable() bool {
-	if m.Type() == sql.Timestamp || m.Type() == sql.Datetime {
-		return true
-	}
-
 	return m.BinaryExpression.IsNullable()
 }
 
@@ -77,12 +73,8 @@ func (m *Mod) Type() sql.Type {
 		return lTyp
 	}
 
-	if isInterval(m.Left) || isInterval(m.Right) {
-		return sql.Datetime
-	}
-
-	if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
-		return sql.Int64
+	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+		return sql.Float64
 	}
 
 	// for division operation, it's either float or decimal.Decimal type
@@ -118,28 +110,15 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	var lval, rval interface{}
 	var err error
 
-	if i, ok := m.Left.(*Interval); ok {
-		lval, err = i.EvalDelta(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		lval, err = m.Left.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
+	// mod used with Interval error is caught at parsing the query
+	lval, err = m.Left.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if i, ok := m.Right.(*Interval); ok {
-		rval, err = i.EvalDelta(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		rval, err = m.Right.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
+	rval, err = m.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return lval, rval, nil
@@ -147,31 +126,25 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 
 func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := m.Type()
+	lIsTimeType := sql.IsTime(m.Left.Type())
+	rIsTimeType := sql.IsTime(m.Right.Type())
 
-	if i, ok := left.(*TimeDelta); ok {
-		left = i
+	if sql.IsFloat(typ) {
+		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
-		left = floatOrDecimalValue(ctx, typ, left)
+		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if i, ok := right.(*TimeDelta); ok {
-		right = i
+	if sql.IsFloat(typ) {
+		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		right = floatOrDecimalValue(ctx, typ, right)
+		right = convertToDecimalValue(right, rIsTimeType)
 	}
 
 	return left, right
 }
 
 func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
-	if rval == nil {
-		arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
-		return nil, nil
-	}
-	if lval == nil {
-		return 0, nil
-	}
-
 	switch l := lval.(type) {
 	case float32:
 		switch r := rval.(type) {

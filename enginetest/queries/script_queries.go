@@ -1466,10 +1466,10 @@ var ScriptTests = []ScriptTest{
 				GROUP BY 1
 				ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
 				Expected: []sql.Row{
-					{1625133600, 4.0},
-					{1625220000, 3.0},
-					{1625306400, 2.0},
-					{1625392800, 1.0},
+					{float64(1625133600), 4.0},
+					{float64(1625220000), 3.0},
+					{float64(1625306400), 2.0},
+					{float64(1625392800), 1.0},
 				},
 			},
 		},

@@ -1851,12 +1851,12 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT "1" + '1'`,
 		Expected: []sql.Row{
-			{"2"},
+			{float64(2)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: `"1" + '1'`,
-				Type: sql.MustCreateDecimalType(65, 0),
+				Type: sql.Float64,
 			},
 		},
 	},
@@ -2718,9 +2718,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
 		Expected: []sql.Row{
-			{1577966400, 1.0},
-			{1578225600, 2.0},
-			{1578398400, 3.0}},
+			{float64(1577966400), 1.0},
+			{float64(1578225600), 2.0},
+			{float64(1578398400), 3.0}},
 		SkipPrepared: true,
 	},
 	{
@@ -3056,43 +3056,63 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select 'a'+4;`,
-		Expected: []sql.Row{{"4"}},
+		Expected: []sql.Row{{float64(4)}},
+	},
+	{
+		Query:    `select '20a'+4;`,
+		Expected: []sql.Row{{float64(24)}},
 	},
 	{
 		Query:    `select 4+'a';`,
-		Expected: []sql.Row{{"4"}},
+		Expected: []sql.Row{{float64(4)}},
 	},
 	{
 		Query:    `select 'a'+'a';`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{float64(0)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') + STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
+		Expected: []sql.Row{{40261002186034}},
 	},
 	{
 		Query:    `select 'a'-4;`,
-		Expected: []sql.Row{{"-4"}},
+		Expected: []sql.Row{{float64(-4)}},
 	},
 	{
 		Query:    `select 4-'a';`,
-		Expected: []sql.Row{{"4"}},
+		Expected: []sql.Row{{float64(4)}},
+	},
+	{
+		Query:    `select 4-'2a';`,
+		Expected: []sql.Row{{float64(2)}},
 	},
 	{
 		Query:    `select 'a'-'a';`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{float64(0)}},
 	},
 	{
 		Query:    `select 'a'*4;`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{float64(0)}},
 	},
 	{
 		Query:    `select 4*'a';`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{float64(0)}},
 	},
 	{
 		Query:    `select 'a'*'a';`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{float64(0)}},
+	},
+	{
+		Query:    "select 1 * '2.50a';",
+		Expected: []sql.Row{{float64(2.5)}},
+	},
+	{
+		Query:    "select 1 * '2.a50a';",
+		Expected: []sql.Row{{float64(2)}},
 	},
 	{
 		Query:    `select 'a'/4;`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{float64(0)}},
 	},
 	{
 		Query:    `select 4/'a';`,
@@ -3103,20 +3123,44 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "select 1 / '2.50a';",
+		Expected: []sql.Row{{float64(0.4)}},
+	},
+	{
+		Query:    "select 1 / '2.a50a';",
+		Expected: []sql.Row{{float64(0.5)}},
+	},
+	{
+		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') / 1;`,
+		Expected: []sql.Row{{"20130501093017.0000"}},
+	},
+	{
 		Query:    "select 'a'&'a';",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'&4;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select 4&'a';",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select date('2022-11-19 11:53:45') & date('2022-11-11 11:53:45');",
+		Expected: []sql.Row{{uint64(20221111)}},
+	},
+	{
+		Query:    "select '2022-11-19 11:53:45' & '2023-11-11 11:53:45';",
+		Expected: []sql.Row{{uint64(2022)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') & STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
+		Expected: []sql.Row{{uint64(20130501093017)}},
 	},
 	{
 		Query:    "select 'a'|'a';",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'|4;",
@@ -3132,7 +3176,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select 'a'^'a';",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'^4;",
@@ -3147,12 +3191,16 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{uint64(4)}},
 	},
 	{
+		Query:    "select now() ^ now();",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
 		Query:    "select 'a'>>'a';",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'>>4;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select 4>>'a';",
@@ -3164,11 +3212,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select 'a'<<'a';",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'<<4;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select '2a'<<4;",
+		Expected: []sql.Row{{uint64(32)}},
 	},
 	{
 		Query:    "select 4<<'a';",
@@ -3191,16 +3243,40 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "select 1.2 div 0.2;",
+		Expected: []sql.Row{{6}},
+	},
+	{
+		Query:    "select 1.2 div 0.4;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select 1.2 div '1' ;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select 1.2 div 'a1' ;",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select '12a' div '3' ;",
+		Expected: []sql.Row{{4}},
+	},
+	{
 		Query:    "select 'a' mod 'a';",
 		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "select 'a' mod 4;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{float64(0)}},
 	},
 	{
 		Query:    "select 4 mod 'a';",
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
+		Expected: []sql.Row{{"10487"}},
 	},
 	{
 		Query:    "select 0.0015 / 0.0026;",
@@ -4576,7 +4652,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
-		Expected: []sql.Row{{"233"}},
+		Expected: []sql.Row{{float64(233)}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
@@ -4584,11 +4660,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		Expected: []sql.Row{{"-1"}},
+		Expected: []sql.Row{{float64(-1)}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		Expected: []sql.Row{{"-1"}},
+		Expected: []sql.Row{{float64(-1)}},
 	},
 	{
 		Query:    `SELECT CONNECTION_ID()`,
@@ -5470,6 +5546,14 @@ var QueryTests = []QueryTest{
 	{
 		Query:    `SELECT NOW() - NOW()`,
 		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:    `SELECT NOW() / NOW()`,
+		Expected: []sql.Row{{"1.0000"}},
+	},
+	{
+		Query:    `SELECT NOW() div NOW()`,
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    `SELECT DATETIME(NOW()) - NOW()`,
@@ -9577,6 +9661,18 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
 		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+	{
+		Query:       "select 18446744073709551615 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
+	},
+	{
+		Query:       "select -9223372036854775807 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
+	},
+	{
+		Query:       "select -9223372036854775808 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
 	},
 }
 
