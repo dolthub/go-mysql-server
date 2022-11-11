@@ -3056,19 +3056,27 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select 'a'+4;`,
-		Expected: []sql.Row{{float64(4)}},
+		Expected: []sql.Row{{4.0}},
 	},
 	{
 		Query:    `select '20a'+4;`,
-		Expected: []sql.Row{{float64(24)}},
+		Expected: []sql.Row{{24.0}},
+	},
+	{
+		Query:    `select '10.a'+4;`,
+		Expected: []sql.Row{{14.0}},
+	},
+	{
+		Query:    `select '.20a'+4;`,
+		Expected: []sql.Row{{4.2}},
 	},
 	{
 		Query:    `select 4+'a';`,
-		Expected: []sql.Row{{float64(4)}},
+		Expected: []sql.Row{{4.0}},
 	},
 	{
 		Query:    `select 'a'+'a';`,
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.Row{{0.0}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') + STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
@@ -3076,43 +3084,43 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select 'a'-4;`,
-		Expected: []sql.Row{{float64(-4)}},
+		Expected: []sql.Row{{-4.0}},
 	},
 	{
 		Query:    `select 4-'a';`,
-		Expected: []sql.Row{{float64(4)}},
+		Expected: []sql.Row{{4.0}},
 	},
 	{
 		Query:    `select 4-'2a';`,
-		Expected: []sql.Row{{float64(2)}},
+		Expected: []sql.Row{{2.0}},
 	},
 	{
 		Query:    `select 'a'-'a';`,
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.Row{{0.0}},
 	},
 	{
 		Query:    `select 'a'*4;`,
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.Row{{0.0}},
 	},
 	{
 		Query:    `select 4*'a';`,
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.Row{{0.0}},
 	},
 	{
 		Query:    `select 'a'*'a';`,
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.Row{{0.0}},
 	},
 	{
 		Query:    "select 1 * '2.50a';",
-		Expected: []sql.Row{{float64(2.5)}},
+		Expected: []sql.Row{{2.5}},
 	},
 	{
 		Query:    "select 1 * '2.a50a';",
-		Expected: []sql.Row{{float64(2)}},
+		Expected: []sql.Row{{2.0}},
 	},
 	{
 		Query:    `select 'a'/4;`,
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.Row{{0.0}},
 	},
 	{
 		Query:    `select 4/'a';`,
@@ -3124,11 +3132,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select 1 / '2.50a';",
-		Expected: []sql.Row{{float64(0.4)}},
+		Expected: []sql.Row{{0.4}},
 	},
 	{
 		Query:    "select 1 / '2.a50a';",
-		Expected: []sql.Row{{float64(0.5)}},
+		Expected: []sql.Row{{0.5}},
 	},
 	{
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') / 1;`,

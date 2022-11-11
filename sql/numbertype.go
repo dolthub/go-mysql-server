@@ -88,7 +88,7 @@ var (
 	numberFloat32ValueType = reflect.TypeOf(float32(0))
 	numberFloat64ValueType = reflect.TypeOf(float64(0))
 
-	numre = regexp.MustCompile("[0-9]")
+	numre = regexp.MustCompile(`^[ ]*[0-9]*\.?[0-9]+`)
 )
 
 // NumberType represents all integer and floating point types.
@@ -1013,7 +1013,7 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// parse the first longest valid numbers
-			s := getFirstLongestNumberValue(v)
+			s := numre.FindString(v)
 			i, _ = strconv.ParseFloat(s, 64)
 			return i, ErrInvalidValue.New(v, t.String())
 		}
@@ -1028,23 +1028,6 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 	default:
 		return 0, ErrInvalidValueType.New(v, t.String())
 	}
-}
-
-func getFirstLongestNumberValue(v string) string {
-	j := 0
-	gotPoint := false
-	for _, s := range []byte(v) {
-		if numre.Match([]byte{s}) {
-			j++
-		} else if !gotPoint && '.' == s {
-			gotPoint = true
-			j++
-		} else {
-			break
-		}
-	}
-	res := string([]byte(v)[:j])
-	return res
 }
 
 func convertValueToFloat64(t numberTypeImpl, v Value) (float64, error) {
