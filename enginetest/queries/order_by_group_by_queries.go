@@ -152,6 +152,21 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Query:       "select AVG(val), val from t;",
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
 			},
+			{
+				// Test validation for a derived table opaque node
+				Query:       "select * from (SELECT AVG(val), LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) as dt;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				// Test validation for a union opaque node
+				Query:       "select 1, 1 union SELECT AVG(val), LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				// Test validation for a recursive CTE opaque node
+				Query:       "select * from (with recursive a as (select 1 as c1, 1 as c2 union SELECT AVG(t.val), LAST_VALUE(t.val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) select * from a union select * from a limit 1) as dt;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
 		},
 	},
 }
