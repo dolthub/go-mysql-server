@@ -1429,3 +1429,26 @@ var ProcedureShowCreate = []ScriptTest{
 		},
 	},
 }
+
+var NoDbProcedureTests = []ScriptTestAssertion{
+	{
+		Query:    "SHOW databases;",
+		Expected: []sql.Row{{"information_schema"}, {"mydb"}, {"mysql"}},
+	},
+	{
+		Query:    "SELECT database();",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "CREATE PROCEDURE mydb.p5() SELECT 42;",
+		Expected: []sql.Row{{sql.NewOkResult(0)}},
+	},
+	{
+		Query:            "SHOW CREATE PROCEDURE mydb.p5;",
+		SkipResultsCheck: true,
+	},
+	{
+		Query:       "SHOW CREATE PROCEDURE p5;",
+		ExpectedErr: sql.ErrNoDatabaseSelected,
+	},
+}
