@@ -1129,6 +1129,36 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Call procedures by their qualified name",
+		SetUpScript: []string{
+			"CREATE DATABASE otherdb",
+			"CREATE PROCEDURE mydb.p1() SELECT 42",
+			"CREATE PROCEDURE otherdb.p1() SELECT 43",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1()",
+				Expected: []sql.Row{{42}},
+			},
+			{
+				Query:    "CALL mydb.p1()",
+				Expected: []sql.Row{{42}},
+			},
+			{
+				Query:    "CALL otherdb.p1()",
+				Expected: []sql.Row{{43}},
+			},
+			{
+				Query:    "USE otherdb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "CALL p1()",
+				Expected: []sql.Row{{43}},
+			},
+		},
+	},
 }
 
 var ProcedureDropTests = []ScriptTest{

@@ -1244,7 +1244,16 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 		}
 		params[i] = expr
 	}
-	return plan.NewCall(c.FuncName, params), nil
+
+	var db sql.Database = nil
+	if !c.ProcName.Qualifier.IsEmpty() {
+		db = sql.UnresolvedDatabase(c.ProcName.Qualifier.String())
+	}
+
+	return plan.NewCall(
+		db,
+		c.ProcName.Name.String(),
+		params), nil
 }
 
 func convertDeclare(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
