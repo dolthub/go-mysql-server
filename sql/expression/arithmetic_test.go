@@ -55,9 +55,7 @@ func TestPlus(t *testing.T) {
 	result, err := NewPlus(NewLiteral("2", sql.LongText), NewLiteral(3, sql.Float64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	r, ok := result.(decimal.Decimal)
-	require.True(ok)
-	require.Equal("5", r.StringFixed(r.Exponent()*-1))
+	require.Equal(5.0, result)
 }
 
 func TestPlusInterval(t *testing.T) {
@@ -113,9 +111,7 @@ func TestMinus(t *testing.T) {
 	result, err := NewMinus(NewLiteral("10", sql.LongText), NewLiteral(10, sql.Int64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	r, ok := result.(decimal.Decimal)
-	require.True(ok)
-	require.Equal("0", r.StringFixed(r.Exponent()*-1))
+	require.Equal(0.0, result)
 }
 
 func TestMinusInterval(t *testing.T) {
@@ -162,9 +158,7 @@ func TestMult(t *testing.T) {
 	result, err := NewMult(NewLiteral("10", sql.LongText), NewLiteral("10", sql.LongText)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
-	r, ok := result.(decimal.Decimal)
-	require.True(ok)
-	require.Equal("100", r.StringFixed(r.Exponent()*-1))
+	require.Equal(100.0, result)
 }
 
 func TestMod(t *testing.T) {
