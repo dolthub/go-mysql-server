@@ -5572,7 +5572,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(0)}},
 	},
 	{
-		Query:    `SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
+		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
