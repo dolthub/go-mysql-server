@@ -29,6 +29,9 @@ import (
 
 func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if scope == nil {
+
+		}
 		having, ok := node.(*plan.Having)
 		if !ok {
 			return node, transform.SameTree, nil
@@ -51,7 +54,7 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, s
 			}
 		}
 
-		missingCols := findMissingColumns(having, having.Cond)
+		missingCols := findMissingColumns(having, scope, having.Cond)
 		// If any columns required by the having aren't available, pull them up.
 		if len(missingCols) > 0 {
 			var err error
@@ -73,9 +76,12 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, s
 	})
 }
 
-func findMissingColumns(node sql.Node, expr sql.Expression) map[string]bool {
+func findMissingColumns(node sql.Node, scope *Scope, expr sql.Expression) map[string]bool {
 	var schemaCols []string
 	for _, col := range node.Schema() {
+		schemaCols = append(schemaCols, strings.ToLower(col.Name))
+	}
+	for _, col := range scope.Schema() {
 		schemaCols = append(schemaCols, strings.ToLower(col.Name))
 	}
 
