@@ -1448,8 +1448,9 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Issue #499",
+		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
+			"set time_zone = '+0:00';",
 			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
 			`INSERT INTO test VALUES 
 			("2021-07-04 10:00:00", 1.0),
@@ -1459,12 +1460,20 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// In the original, reported issue, the order by clause did not qualify the table name
+				// for `test.time`. When there is ambiguity between a column name and an expression
+				// alias name in the order by clause, MySQL choose the alias; however, if the reference
+				// is used in a function call, MySQL instead seems to resolve to the column name.
+				// Until we determine the exact rule for this behavior, we've qualified the reference
+				// in the order by clause to ensure it selects the table column and not the alias.
+				// TODO: Waiting to hear back from MySQL on whether this is intended behavior or not:
+				//       https://bugs.mysql.com/bug.php?id=109020
 				Query: `SELECT
 				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
 				avg(value) AS "value"
 				FROM test
 				GROUP BY 1
-				ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
+				ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
 				Expected: []sql.Row{
 					{1625133600, 4.0},
 					{1625220000, 3.0},
@@ -2505,6 +2514,90 @@ var ScriptTests = []ScriptTest{
 					{uint64(2), uint64(2), uint64(0)},
 					{uint64(0), uint64(6), uint64(6)},
 					{uint64(0), uint64(6), uint64(6)},
+				},
+			},
+		},
+	},
+	{
+		Name: "year type behavior",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 year);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// 1901 - 2155 are interpreted as 1901 - 2155
+			{
+				Query:    "INSERT INTO t VALUES (1, '1901'), (2, 1901);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (3, '2000'), (4, 2000);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (5, '2155'), (6, 2155);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 1 - 69 are interpreted as 2001 - 2069
+			{
+				Query:    "INSERT INTO t VALUES (7, '1'), (8, 1);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (9, '35'), (10, 35);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (11, '69'), (12, 69);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 70 - 99 are interpreted as 1970 - 1999
+			{
+				Query:    "INSERT INTO t VALUES (13, '70'), (14, 70);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (15, '85'), (16, 85);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (17, '99'), (18, 99);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// '0', and '00' are interpreted as 2000
+			{
+				Query:    "INSERT INTO t VALUES (19, '0'), (20, '00');",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 0 is interpreted as 0000
+			{
+				Query:    "INSERT INTO t VALUES (21, 0)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			// Assert that returned values are correct.
+			{
+				Query: "SELECT * from t order by pk;",
+				Expected: []sql.Row{
+					{1, int16(1901)},
+					{2, int16(1901)},
+					{3, int16(2000)},
+					{4, int16(2000)},
+					{5, int16(2155)},
+					{6, int16(2155)},
+					{7, int16(2001)},
+					{8, int16(2001)},
+					{9, int16(2035)},
+					{10, int16(2035)},
+					{11, int16(2069)},
+					{12, int16(2069)},
+					{13, int16(1970)},
+					{14, int16(1970)},
+					{15, int16(1985)},
+					{16, int16(1985)},
+					{17, int16(1999)},
+					{18, int16(1999)},
+					{19, int16(2000)},
+					{20, int16(2000)},
+					{21, int16(0)},
 				},
 			},
 		},
