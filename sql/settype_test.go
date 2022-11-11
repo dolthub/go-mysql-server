@@ -249,3 +249,8 @@ func TestSetString(t *testing.T) {
 		})
 	}
 }
+
+func TestSetZero(t *testing.T) {
+	setType := MustCreateSetType([]string{"a", "b"}, Collation_Default)
+	require.Equal(t, uint64(0), setType.Zero())
+}

@@ -62,6 +62,9 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 			return nil, ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
 		}
 		err = json.Unmarshal(v, &doc)
+		if err != nil {
+			return nil, ErrInvalidJson.New(err.Error())
+		}
 	case string:
 		charsetMaxLength := Collation_Default.CharacterSet().MaxLength()
 		length := int64(len(v)) * charsetMaxLength
@@ -69,6 +72,9 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
 		}
 		err = json.Unmarshal([]byte(v), &doc)
+		if err != nil {
+			return nil, ErrInvalidJson.New(err.Error())
+		}
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
@@ -77,6 +83,9 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 				return nil, ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
 			}
 			err = json.Unmarshal(b, &doc)
+			if err != nil {
+				return nil, ErrInvalidJson.New(err.Error())
+			}
 		}
 	}
 	if err != nil {

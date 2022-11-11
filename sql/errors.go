@@ -660,6 +660,8 @@ var (
 
 	// ErrNoTablesUsed is returned when there is no table provided or dual table is defined with column access.
 	ErrNoTablesUsed = errors.NewKind("No tables used")
+
+	ErrInvalidJson = errors.NewKind("Invalid JSON text: %s")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
