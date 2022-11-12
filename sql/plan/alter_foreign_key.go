@@ -537,6 +537,13 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 	if err != nil {
 		return nil, false, err
 	}
+	// ignore indexes with prefix lengths; they are unsupported in MySQL
+	// https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html#:~:text=Index%20prefixes%20on%20foreign%20key%20columns%20are%20not%20supported.
+	for _, idx := range indexes {
+		if len(idx.PrefixLengths()) > 0 {
+			ignoredIndexesMap[idx.ID()] = struct{}{}
+		}
+	}
 	tblName := strings.ToLower(tbl.Name())
 	exprCols := make([]string, len(prefixCols))
 	for i, prefixCol := range prefixCols {

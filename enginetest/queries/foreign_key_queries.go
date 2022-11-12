@@ -61,6 +61,18 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "indexes with prefix lengths are ignored for foreign keys",
+		SetUpScript: []string{
+			"create table prefixParent(v varchar(100), index(v(1)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table prefixChild(v varchar(100), foreign key (v) references prefixParent(v))",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+		},
+	},
+	{
 		Name: "CREATE TABLE Name Collision",
 		Assertions: []ScriptTestAssertion{
 			{
