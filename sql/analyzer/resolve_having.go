@@ -29,9 +29,6 @@ import (
 
 func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if scope == nil {
-
-		}
 		having, ok := node.(*plan.Having)
 		if !ok {
 			return node, transform.SameTree, nil
