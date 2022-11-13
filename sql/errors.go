@@ -696,6 +696,8 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.EROperandColumns
 	case ErrInsertIntoNonNullableProvidedNull.Is(err):
 		code = mysql.ERBadNullError
+	case ErrNonAggregatedColumnWithoutGroupBy.Is(err):
+		code = mysql.ERMixOfGroupFuncAndFields
 	case ErrPrimaryKeyViolation.Is(err):
 		code = mysql.ERDupEntry
 	case ErrUniqueKeyViolation.Is(err):
