@@ -61,6 +61,25 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Query:    "SELECT DISTINCT t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t2.id > 0 ORDER BY t1.id",
 				Expected: []sql.Row{{3}, {4}, {5}, {6}, {7}, {8}},
 			},
+			{
+				// aliases from outer scopes can be used in a subquery's having clause.
+				// https://github.com/dolthub/dolt/issues/4723
+				Query:    "SELECT id as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM members where id < 6;",
+				Expected: []sql.Row{{3, 4}, {4, 5}, {5, 6}},
+			},
+			{
+				// columns from outer scopes can be used in a subquery's having clause.
+				// https://github.com/dolthub/dolt/issues/4723
+				Query:    "SELECT id, (SELECT UPPER(team) having id > 3) as upper_team FROM members where id < 6;",
+				Expected: []sql.Row{{3, nil}, {4, "RED"}, {5, "ORANGE"}},
+			},
+			{
+				// When there is ambiguity between a reference in an outer scope and a reference in the current
+				// scope, the reference in the innermost scope will be used.
+				// https://github.com/dolthub/dolt/issues/4723
+				Query:    "SELECT id, (SELECT -1 as id having id < 10) as upper_team FROM members where id < 6;",
+				Expected: []sql.Row{{3, -1}, {4, -1}, {5, -1}},
+			},
 		},
 	},
 	{
