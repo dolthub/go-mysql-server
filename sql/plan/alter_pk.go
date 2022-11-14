@@ -21,6 +21,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type PKAction byte
@@ -96,7 +97,7 @@ func (a *AlterPK) TargetSchema() sql.Schema {
 }
 
 func (a *AlterPK) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(a.targetSchema)
+	return transform.WrappedColumnDefaults(a.targetSchema)
 }
 
 func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -104,7 +105,7 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), len(a.targetSchema))
 	}
 
-	a.targetSchema = schemaWithDefaults(a.targetSchema, exprs[:len(a.targetSchema)])
+	a.targetSchema = transform.SchemaWithDefaults(a.targetSchema, exprs[:len(a.targetSchema)])
 	return &a, nil
 }
 
@@ -146,7 +147,7 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -229,7 +230,7 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), newSchema
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, nil, nil, c.columns)
 	if err != nil {
 		return err
 	}

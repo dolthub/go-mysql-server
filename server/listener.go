@@ -20,9 +20,12 @@ import (
 	"net"
 	"runtime"
 	"sync"
+	"syscall"
 
 	"golang.org/x/sync/errgroup"
 )
+
+var UnixSocketInUseError = errors.New("bind address at given unix socket path is already in use")
 
 // connRes represents a connection made to a listener and an error result
 type connRes struct {
@@ -56,15 +59,21 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 	}
 
 	var unixl net.Listener
+	var unixSocketInUse error
 	if unixSocketPath != "" {
 		if runtime.GOOS == "windows" {
 			return nil, fmt.Errorf("unable to create unix socket listener on Windows")
 		}
 		unixListener, err := net.ListenUnix("unix", &net.UnixAddr{Name: unixSocketPath, Net: "unix"})
-		if err != nil {
+		if err == nil {
+			unixl = unixListener
+		} else if errors.Is(err, syscall.EADDRINUSE) {
+			// we continue if error is unix socket bind address is already in use
+			// we return UnixSocketInUseError error to track the error back to where server gets started and add warning
+			unixSocketInUse = UnixSocketInUseError
+		} else {
 			return nil, err
 		}
-		unixl = unixListener
 	}
 
 	l := &Listener{
@@ -111,7 +120,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		})
 	}
 
-	return l, nil
+	return l, unixSocketInUse
 }
 
 func (l *Listener) Accept() (net.Conn, error) {

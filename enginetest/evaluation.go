@@ -270,7 +270,9 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
+	if expected != nil {
+		checkResults(t, require, expected, expectedCols, sch, rows, q)
+	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, harness, e)
@@ -440,7 +442,7 @@ func checkResults(
 	// The result from SELECT or WITH queries can be decimal.Decimal type.
 	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
 	// which is the value we get on sql shell.
-	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") {
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") || strings.HasPrefix(upperQuery, "CALL ") {
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
 				if d, ok := val.(decimal.Decimal); ok {
@@ -623,8 +625,8 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Co
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
-		_, orig, _ := sql.CastSQLError(err)
-		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
+		err = sql.UnwrapError(err)
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {

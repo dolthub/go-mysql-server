@@ -39,6 +39,8 @@ type Column struct {
 	Nullable bool
 	// Source is the name of the table this column came from.
 	Source string
+	// DatabaseSource is the name of the database this column came from.
+	DatabaseSource string
 	// PrimaryKey is true if the column is part of the primary key for its table.
 	PrimaryKey bool
 	// Comment contains the string comment for this column.

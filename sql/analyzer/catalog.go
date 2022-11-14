@@ -68,13 +68,27 @@ func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
-func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string) error {
+func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.CollationID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mut, ok := c.provider.(sql.MutableDatabaseProvider)
-	if ok {
-		return mut.CreateDatabase(ctx, dbName)
+	if collatedDbProvider, ok := c.provider.(sql.CollatedDatabaseProvider); ok {
+		// If the database provider supports creation with a collation, then we call that function directly
+		return collatedDbProvider.CreateCollatedDatabase(ctx, dbName, collation)
+	} else if mut, ok := c.provider.(sql.MutableDatabaseProvider); ok {
+		err := mut.CreateDatabase(ctx, dbName)
+		if err != nil {
+			return err
+		}
+		// It's possible that the db provider doesn't support creation with a collation, in which case we create the
+		// database and then set the collation. If the database doesn't support collations at all, then we ignore the
+		// provided collation rather than erroring.
+		if db, err := c.Database(ctx, dbName); err == nil {
+			if collatedDb, ok := db.(sql.CollatedDatabase); ok {
+				return collatedDb.SetCollation(ctx, collation)
+			}
+		}
+		return nil
 	} else {
 		return sql.ErrImmutableDatabaseProvider.New()
 	}

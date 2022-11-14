@@ -272,7 +272,7 @@ var TypeWireTests = []TypeWireTest{
 		Results: [][]sql.Row{
 			{{"-75", "-2532.35600"}, {"0", "0.00000"}, {"2547", "3325.00000"}},
 			{{"-2532.35600", "-75"}, {"0.00000", "0"}, {"3325.00000", "2547"}},
-			{{"-5064.712", "-74"}, {"0", "1"}, {"6650", "2548"}},
+			{{"-5064.71200", "-74"}, {"0.00000", "1"}, {"6650.00000", "2548"}},
 		},
 	},
 	{
@@ -291,7 +291,7 @@ var TypeWireTests = []TypeWireTest{
 		Results: [][]sql.Row{
 			{{"\x00\x00\x00\x00\x00\x00\x00", "\x00", "\x00\x00\x00"}, {"\x00\x00\x00\x00\x00\x00K", "\x00", "\x0020"}, {"\x00\x00\x00\x00\x00\t\xf3", "", "\x00\xfd"}},
 			{{"\x00\x00\x00", "\x00", "\x00\x00\x00\x00\x00\x00\x00"}, {"\x0020", "\x00", "\x00\x00\x00\x00\x00\x00K"}, {"\x00\xfd", "", "\x00\x00\x00\x00\x00\t\xf3"}},
-			{{"0", "0", "1"}, {"0", "7.5", "12849"}, {"1", "254.7", "3326"}},
+			{{"0", "0.0000", "1"}, {"0", "7.5000", "12849"}, {"1", "254.7000", "3326"}},
 		},
 	},
 	{
@@ -325,11 +325,21 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT * FROM test ORDER BY pk;`,
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
+			`SELECT DATE_ADD(TIMESTAMP('2022-10-26 13:14:15'), INTERVAL 1 DAY);`,
+			`SELECT DATE_ADD('2022-10-26 13:14:15', INTERVAL 1 DAY);`,
+			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 SECOND);`,
+			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 MINUTE);`,
+			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 HOUR);`,
 		},
 		Results: [][]sql.Row{
 			{{"1980-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"1980-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"2000-01-01 00:00:00", "1980-04-12 12:02:11"}, {"2022-01-14 15:08:44", "1999-11-28 13:06:33"}},
+			{{"2022-10-27 13:14:15"}},
+			{{"2022-10-27 13:14:15"}},
+			{{"2022-10-26 00:00:01"}},
+			{{"2022-10-26 00:01:00"}},
+			{{"2022-10-26 01:00:00"}},
 		},
 	},
 	{
@@ -344,11 +354,19 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT * FROM test ORDER BY pk;`,
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
+			`SELECT DATE_ADD('2022-10-26 13:14:15', INTERVAL 1 DAY);`,
+			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 SECOND);`,
+			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 MINUTE);`,
+			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 HOUR);`,
 		},
 		Results: [][]sql.Row{
 			{{"1000-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"1000-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"2000-01-01 00:00:00", "1000-04-12 12:02:11"}, {"2022-01-14 15:08:44", "1999-11-28 13:06:33"}},
+			{{"2022-10-27 13:14:15"}},
+			{{"2022-10-26 00:00:01"}},
+			{{"2022-10-26 00:01:00"}},
+			{{"2022-10-26 01:00:00"}},
 		},
 	},
 	{
@@ -363,11 +381,21 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT * FROM test ORDER BY pk;`,
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
+			`SELECT DATE_ADD(DATE('2022-10-26'), INTERVAL 1 DAY);`,
+			`SELECT DATE_ADD(DATE('2022-10-26'), INTERVAL 1 WEEK);`,
+			`SELECT DATE_ADD(DATE('2022-10-26'), INTERVAL 1 MONTH);`,
+			`SELECT DATE_ADD(DATE('2022-10-26'), INTERVAL 1 QUARTER);`,
+			`SELECT DATE_ADD(DATE('2022-10-26'), INTERVAL 1 YEAR);`,
 		},
 		Results: [][]sql.Row{
 			{{"1000-04-12", "2000-01-01"}, {"1999-11-28", "2022-01-14"}},
 			{{"1000-04-12", "2000-01-01"}, {"1999-11-28", "2022-01-14"}},
 			{{"2000-01-01", "1000-04-12"}, {"2022-01-14", "1999-11-28"}},
+			{{"2022-10-27"}},
+			{{"2022-11-02"}},
+			{{"2022-11-26"}},
+			{{"2023-01-26"}},
+			{{"2023-10-26"}},
 		},
 	},
 	{
@@ -382,6 +410,10 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT * FROM test ORDER BY pk;`,
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
+			// Known bug  - https://github.com/dolthub/dolt/issues/4643
+			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 SECOND);`,
+			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 MINUTE);`,
+			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 HOUR);`,
 		},
 		Results: [][]sql.Row{
 			{{"-800:00:00", "-120:12:20"}, {"00:00:00", "00:00:00"}, {"10:26:57", "30:53:14"}},
@@ -420,11 +452,13 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT * FROM test ORDER BY pk;`,
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
+			`SELECT DATE_ADD('2022-10-26 13:14:15', INTERVAL 1 DAY);`,
 		},
 		Results: [][]sql.Row{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
+			{{"2022-10-27 13:14:15"}},
 		},
 	},
 	{

@@ -23,7 +23,6 @@ import (
 	"net"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
 	flatbuffers "github.com/google/flatbuffers/go"
@@ -70,7 +69,7 @@ type MySQLDb struct {
 	persister MySQLDbPersistence
 	plugins   map[string]PlaintextAuthPlugin
 
-	cache *privilegeCache
+	updateCounter uint64
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -101,7 +100,9 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	// mysqlTable shims
 	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
 	mysqlDb.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, mysqlDb.user, TablesPrivConverter{})
-	mysqlDb.cache = newPrivilegeCache()
+
+	// Start the counter at 1, all new sessions will start at zero so this forces an update for any new session
+	mysqlDb.updateCounter = 1
 
 	return mysqlDb
 }
@@ -127,7 +128,7 @@ func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnec
 		}
 	}
 
-	db.clearCache()
+	db.updateCounter++
 
 	return nil
 }
@@ -188,7 +189,7 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 		}
 	}
 
-	db.clearCache()
+	db.updateCounter++
 
 	// TODO: fill in other tables when they exist
 	return
@@ -215,7 +216,7 @@ func (db *MySQLDb) VerifyPlugin(plugin string) error {
 func (db *MySQLDb) AddRootAccount() {
 	db.Enabled = true
 	addSuperUser(db.user, "root", "localhost", "")
-	db.clearCache()
+	db.updateCounter++
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
@@ -233,7 +234,7 @@ func (db *MySQLDb) AddSuperUser(username string, host string, password string) {
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
 	addSuperUser(db.user, username, host, password)
-	db.clearCache()
+	db.updateCounter++
 }
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
@@ -282,14 +283,15 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
 // active roles, which are set in the context, therefore the user is also pulled from the context.
 func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
+	if privSet, counter := ctx.Session.GetPrivilegeSet(); db.updateCounter == counter {
+		// If the counters are equal, we can guarantee that the privilege set exists and is valid
+		return privSet.(PrivilegeSet)
+	}
+
 	client := ctx.Session.Client()
 	user := db.GetUser(client.User, client.Address, false)
 	if user == nil {
 		return NewPrivilegeSet()
-	}
-
-	if priv, ok := db.cache.userPrivileges(user); ok {
-		return priv
 	}
 
 	privSet := user.PrivilegeSet.Copy()
@@ -307,10 +309,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 		}
 	}
 
-	// This is technically a race -- two clients could cache at the same time. But this shouldn't matter, as they will
-	// eventually get the same data after the cache is cleared on a write, and MySQL doesn't even guarantee immediate
-	// effect for grant statements.
-	db.cache.cacheUserPrivileges(user, privSet)
+	ctx.Session.SetPrivilegeSet(privSet, db.updateCounter)
 	return privSet
 }
 
@@ -318,6 +317,9 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.
 func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
+	if !db.Enabled {
+		return true
+	}
 	privSet := db.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
 		for _, operationPriv := range operation.Privileges {
@@ -379,6 +381,9 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 
 // AuthMethod implements the interface mysql.AuthServer.
 func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
+	if !db.Enabled {
+		return "mysql_native_password", nil
+	}
 	var host string
 	// TODO : need to check for network type instead of addr string if it's unix socket network,
 	//  macOS passes empty addr, but ubuntu returns "@" as addr for `localhost`
@@ -482,8 +487,7 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 
 // Persist passes along all changes to the integrator.
 func (db *MySQLDb) Persist(ctx *sql.Context) error {
-	defer db.clearCache()
-
+	db.updateCounter++
 	// Extract all user entries from table, and sort
 	userEntries := db.user.data.ToSlice(ctx)
 	users := make([]*User, 0)
@@ -548,13 +552,6 @@ func (db *MySQLDb) UserTable() *mysqlTable {
 // RoleEdgesTable returns the "role_edges" table.
 func (db *MySQLDb) RoleEdgesTable() *mysqlTable {
 	return db.role_edges
-}
-
-func (db *MySQLDb) clearCache() {
-	if db == nil { // nil in the case of some tests
-		return
-	}
-	db.cache.clear()
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given
@@ -622,42 +619,4 @@ var _ sql.Partition = dummyPartition{}
 // Key implements the interface sql.Partition.
 func (d dummyPartition) Key() []byte {
 	return nil
-}
-
-type privilegeCache struct {
-	mu       sync.Mutex
-	userPriv map[string]PrivilegeSet
-}
-
-func newPrivilegeCache() *privilegeCache {
-	return &privilegeCache{
-		userPriv: make(map[string]PrivilegeSet),
-	}
-}
-
-func userKey(user *User) string {
-	return fmt.Sprintf("%s@%s", user.User, user.Host)
-}
-
-func (pc *privilegeCache) userPrivileges(user *User) (PrivilegeSet, bool) {
-	pc.mu.Lock()
-	defer pc.mu.Unlock()
-
-	privs, ok := pc.userPriv[userKey(user)]
-	return privs, ok
-}
-
-// cacheUserPrivileges Caches the user privileges given. Needs external locking.
-func (pc *privilegeCache) cacheUserPrivileges(user *User, privs PrivilegeSet) {
-	pc.mu.Lock()
-	defer pc.mu.Unlock()
-
-	pc.userPriv[userKey(user)] = privs
-}
-
-func (pc *privilegeCache) clear() {
-	pc.mu.Lock()
-	defer pc.mu.Unlock()
-
-	pc.userPriv = make(map[string]PrivilegeSet)
 }

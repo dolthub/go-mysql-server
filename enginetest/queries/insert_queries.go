@@ -1427,6 +1427,129 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Insert on duplicate key references table in subquery",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`insert into a values (1)`,
+			`create table b (j int primary key)`,
+			`insert into b values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into a (select * from b) on duplicate key update a.i = b.j + 100`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{101},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
+		Name: "Insert on duplicate key references table in aliased subquery",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`insert into a values (1)`,
+			`create table b (j int primary key)`,
+			`insert into b values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `insert into a (select * from b as t) on duplicate key update a.i = b.j + 100`,
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: `insert into a (select * from b as t) on duplicate key update a.i = t.j + 100`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{101},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert on duplicate key update errors",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`create table b (i int primary key)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `insert into a (select * from b) on duplicate key update i = i`,
+				ExpectedErr: sql.ErrAmbiguousColumnName,
+			},
+			{
+				Query:       `insert into a (select * from b) on duplicate key update b.i = a.i`,
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+		},
+	},
+	{
+		Name: "Insert on duplicate key references table in subquery with join",
+		SetUpScript: []string{
+			`create table a (i int primary key, j int)`,
+			`insert into a values (1,1)`,
+			`create table b (x int primary key)`,
+			`insert into b values (1), (2), (3)`,
+			`create table c (y int primary key)`,
+			`insert into c values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into a (select * from b join c where b.x = c.y) on duplicate key update a.j = b.x + c.y + 100`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{1, 102},
+					{2, 2},
+					{3, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "Insert on duplicate key references table in subquery with alias",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`insert into a values (1)`,
+			`create table b (i int primary key)`,
+			`insert into b values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into a (select t.i from b as t, b where t.i = b.i) on duplicate key update i = b.i;`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key);",
@@ -2014,6 +2137,31 @@ var InsertBrokenScripts = []ScriptTest{
 					{sql.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+		},
+	},
+	{
+		Name: "Insert on duplicate key references table in cte",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+			`insert into a values (1)`,
+			`create table b (j int primary key)`,
+			`insert into b values (1), (2), (3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into a with cte as (select * from b) select * from cte on duplicate key update a.i = cte.j + 100`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{101},
+					{2},
+					{3},
+				},
 			},
 		},
 	},

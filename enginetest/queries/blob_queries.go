@@ -185,11 +185,15 @@ var BlobWriteQueries = []WriteQueryTest{
 var BlobErrors = []QueryErrorTest{
 	{
 		Query:       "alter table blobt add index bidx (b)",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "alter table blobt add index tidx (i, b)",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "alter table blobt add index bidx (b(3073))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "alter table blobt add column b2 blob default '1'",
@@ -197,7 +201,11 @@ var BlobErrors = []QueryErrorTest{
 	},
 	{
 		Query:       "alter table textt add index tidx (t)",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "alter table textt add index tidx (t(769))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "alter table textt add column t2 text default '1'",
@@ -205,39 +213,51 @@ var BlobErrors = []QueryErrorTest{
 	},
 	{
 		Query:       "alter table textt add index tidx (i, t)",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table b (b blob primary key)",
-		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table b (b tinyblob primary key)",
-		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table t (t text primary key)",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table t (t text, primary key (t))",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table b (b blob, primary key (b))",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "create table b (b blob, primary key (b(3073)))",
+		ExpectedErr: sql.ErrKeyTooLong,
+	},
+	{
+		Query:       "create table t (t text, primary key (t(769)))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "create table b (i int primary key, b blob, index bidx(b))",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "create table b (i int primary key, b blob, index bidx(b(3073)))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TEXT, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TINYTEXT, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 }
 

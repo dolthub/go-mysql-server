@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -86,6 +87,8 @@ var (
 	numberUint64ValueType  = reflect.TypeOf(uint64(0))
 	numberFloat32ValueType = reflect.TypeOf(float32(0))
 	numberFloat64ValueType = reflect.TypeOf(float64(0))
+
+	numre = regexp.MustCompile(`^[ ]*[0-9]*\.?[0-9]+`)
 )
 
 // NumberType represents all integer and floating point types.
@@ -1009,7 +1012,10 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 	case string:
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return 0, ErrInvalidValue.New(v, t.String())
+			// parse the first longest valid numbers
+			s := numre.FindString(v)
+			i, _ = strconv.ParseFloat(s, 64)
+			return i, ErrInvalidValue.New(v, t.String())
 		}
 		return i, nil
 	case bool:

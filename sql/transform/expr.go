@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Expr applies a transformation function to the given expression
@@ -64,6 +65,34 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 		return nil, SameTree, err
 	}
 	return e, sameC && sameN, nil
+}
+
+// Exprs applies a transformation function to the given set of expressions and returns the result.
+func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, error) {
+	var (
+		newExprs []sql.Expression
+	)
+
+	for i := 0; i < len(e); i++ {
+		c := e[i]
+		c, same, err := Expr(c, f)
+		if err != nil {
+			return nil, SameTree, err
+		}
+		if !same {
+			if newExprs == nil {
+				newExprs = make([]sql.Expression, len(e))
+				copy(newExprs, e)
+			}
+			newExprs[i] = c
+		}
+	}
+
+	if len(newExprs) == 0 {
+		return e, SameTree, nil
+	}
+
+	return newExprs, NewTree, nil
 }
 
 // InspectExpr traverses the given expression tree from the bottom up, breaking if
@@ -150,10 +179,42 @@ func ExpressionToColumn(e sql.Expression) *sql.Column {
 		table = t.Table()
 	}
 
-	return &sql.Column{
-		Name:     name,
-		Type:     e.Type(),
-		Nullable: e.IsNullable(),
-		Source:   table,
+	// TODO: Is this still necessary?
+	if e.Resolved() {
+		return &sql.Column{
+			Name:     name,
+			Source:   table,
+			Type:     e.Type(),
+			Nullable: e.IsNullable(),
+		}
+	} else {
+		return &sql.Column{
+			Name:   name,
+			Source: table,
+		}
 	}
+}
+
+// SchemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
+// wrapped with expression.Wrapper.
+func SchemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
+	sc := schema.Copy()
+	for i, d := range defaults {
+		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			sc[i].Default = unwrappedColDefVal
+		} else {
+			sc[i].Default = nil
+		}
+	}
+	return sc
+}
+
+// WrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
+func WrappedColumnDefaults(schema sql.Schema) []sql.Expression {
+	defs := make([]sql.Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
 }

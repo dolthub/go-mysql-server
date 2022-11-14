@@ -183,17 +183,18 @@ func TestParse(t *testing.T) {
 				plan.IfNotExistsAbsent,
 				plan.IsTempTableAbsent,
 				&plan.TableSpec{
-					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
-						Name:       "a",
-						Type:       sql.Int32,
-						Nullable:   false,
-						PrimaryKey: true,
-					}, {
-						Name:       "b",
-						Type:       sql.Text,
-						Nullable:   false,
-						PrimaryKey: true,
-					}}),
+					Schema: sql.NewPrimaryKeySchema(
+						sql.Schema{{
+							Name:       "a",
+							Type:       sql.Int32,
+							Nullable:   false,
+							PrimaryKey: true,
+						}, {
+							Name:       "b",
+							Type:       sql.Text,
+							Nullable:   false,
+							PrimaryKey: true,
+						}}),
 					IdxDefs: []*plan.IndexDefinition{
 						{
 							IndexName: "PRIMARY",
@@ -215,17 +216,18 @@ func TestParse(t *testing.T) {
 				plan.IfNotExistsAbsent,
 				plan.IsTempTableAbsent,
 				&plan.TableSpec{
-					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
-						Name:       "a",
-						Type:       sql.Int32,
-						Nullable:   false,
-						PrimaryKey: true,
-					}, {
-						Name:       "b",
-						Type:       sql.Text,
-						Nullable:   false,
-						PrimaryKey: true,
-					}}, 1, 0),
+					Schema: sql.NewPrimaryKeySchema(
+						sql.Schema{{
+							Name:       "a",
+							Type:       sql.Int32,
+							Nullable:   false,
+							PrimaryKey: true,
+						}, {
+							Name:       "b",
+							Type:       sql.Text,
+							Nullable:   false,
+							PrimaryKey: true,
+						}}, 1, 0),
 					IdxDefs: []*plan.IndexDefinition{
 						{
 							IndexName: "PRIMARY",
@@ -285,17 +287,18 @@ func TestParse(t *testing.T) {
 				plan.IfNotExists,
 				plan.IsTempTableAbsent,
 				&plan.TableSpec{
-					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
-						Name:       "a",
-						Type:       sql.Int32,
-						Nullable:   false,
-						PrimaryKey: true,
-					}, {
-						Name:       "b",
-						Type:       sql.Text,
-						Nullable:   false,
-						PrimaryKey: true,
-					}}),
+					Schema: sql.NewPrimaryKeySchema(
+						sql.Schema{{
+							Name:       "a",
+							Type:       sql.Int32,
+							Nullable:   false,
+							PrimaryKey: true,
+						}, {
+							Name:       "b",
+							Type:       sql.Text,
+							Nullable:   false,
+							PrimaryKey: true,
+						}}),
 					IdxDefs: []*plan.IndexDefinition{
 						{
 							IndexName:  "PRIMARY",
@@ -1200,7 +1203,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1277,7 +1280,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 					Name:     "bar",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1290,7 +1293,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 					Name:     "baz",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1303,7 +1306,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase("mydb"),
 				plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
 					Name:     "col1",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Invalid),
+					Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "changed",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -2884,12 +2887,11 @@ CREATE TABLE t2
 			plan: plan.NewGroupBy(
 				[]sql.Expression{
 					expression.NewAlias("MAX(i)/2",
-						expression.NewArithmetic(
+						expression.NewDiv(
 							expression.NewUnresolvedFunction(
 								"max", true, nil, expression.NewUnresolvedColumn("i"),
 							),
 							expression.NewLiteral(int8(2), sql.Int8),
-							"/",
 						),
 					),
 				},
@@ -3698,7 +3700,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo LEFT JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewLeftJoin(
+				plan.NewLeftOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
@@ -3712,7 +3714,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo LEFT OUTER JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewLeftJoin(
+				plan.NewLeftOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
@@ -3726,7 +3728,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo RIGHT JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewRightJoin(
+				plan.NewRightOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
@@ -3740,7 +3742,7 @@ CREATE TABLE t2
 			input: `SELECT * FROM foo RIGHT OUTER JOIN bar ON 1=1`,
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewRightJoin(
+				plan.NewRightOuterJoin(
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
@@ -4825,11 +4827,11 @@ CREATE TABLE t2
 		},
 		{
 			input: `CREATE DATABASE test`,
-			plan:  plan.NewCreateDatabase("test", false),
+			plan:  plan.NewCreateDatabase("test", false, sql.Collation_Unspecified),
 		},
 		{
 			input: `CREATE DATABASE IF NOT EXISTS test`,
-			plan:  plan.NewCreateDatabase("test", true),
+			plan:  plan.NewCreateDatabase("test", true, sql.Collation_Unspecified),
 		},
 		{
 			input: `DROP DATABASE test`,
@@ -4855,6 +4857,14 @@ CREATE TABLE t2
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, tt.input)
 			require.NoError(err)
+			if createTable, ok := p.(*plan.CreateTable); ok {
+				for _, col := range createTable.CreateSchema.Schema {
+					if collatedType, ok := col.Type.(sql.TypeWithCollation); ok {
+						col.Type, err = collatedType.WithNewCollation(sql.Collation_Default)
+						require.NoError(err)
+					}
+				}
+			}
 			if !assertNodesEqualWithDiff(t, tt.plan, p) {
 				t.Logf("Unexpected result for query %s", tt.input)
 			}
@@ -5179,23 +5189,23 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"DECIMAL",
-			sql.MustCreateDecimalType(10, 0),
+			sql.MustCreateColumnDecimalType(10, 0),
 		},
 		{
 			"DECIMAL(22)",
-			sql.MustCreateDecimalType(22, 0),
+			sql.MustCreateColumnDecimalType(22, 0),
 		},
 		{
 			"DECIMAL(55, 13)",
-			sql.MustCreateDecimalType(55, 13),
+			sql.MustCreateColumnDecimalType(55, 13),
 		},
 		{
 			"DEC(34, 2)",
-			sql.MustCreateDecimalType(34, 2),
+			sql.MustCreateColumnDecimalType(34, 2),
 		},
 		{
 			"FIXED(4, 4)",
-			sql.MustCreateDecimalType(4, 4),
+			sql.MustCreateColumnDecimalType(4, 4),
 		},
 		{
 			"BIT(31)",
@@ -5280,12 +5290,24 @@ func TestParseColumnTypeString(t *testing.T) {
 		t.Run("parse "+test.columnType, func(t *testing.T) {
 			res, err := ParseColumnTypeString(ctx, test.columnType)
 			require.NoError(t, err)
+			if collatedType, ok := res.(sql.TypeWithCollation); ok {
+				if collatedType.Collation() == sql.Collation_Unspecified {
+					res, err = collatedType.WithNewCollation(sql.Collation_Default)
+					require.NoError(t, err)
+				}
+			}
 			require.Equal(t, test.expectedSqlType, res)
 		})
 		t.Run("round trip "+test.columnType, func(t *testing.T) {
 			str := test.expectedSqlType.String()
 			typ, err := ParseColumnTypeString(ctx, str)
 			require.NoError(t, err)
+			if collatedType, ok := typ.(sql.TypeWithCollation); ok {
+				if collatedType.Collation() == sql.Collation_Unspecified {
+					typ, err = collatedType.WithNewCollation(sql.Collation_Default)
+					require.NoError(t, err)
+				}
+			}
 			require.Equal(t, test.expectedSqlType, typ)
 			require.Equal(t, typ.String(), str)
 		})

@@ -19,13 +19,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -87,6 +85,14 @@ func (tc tableCol) Table() string {
 
 func (tc tableCol) Name() string {
 	return tc.col
+}
+
+func (tc tableCol) String() string {
+	if tc.table != "" {
+		return fmt.Sprintf("%s.%s", tc.table, tc.col)
+	} else {
+		return tc.col
+	}
 }
 
 type indexedCol struct {
@@ -233,18 +239,56 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
+// findOnDupUpdateLeftExprs gathers all the left expressions for statements in InsertInto.OnDupExprs
+// the
+func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[sql.Expression]bool {
+	onDupUpdateLeftExprs := map[sql.Expression]bool{}
+	for _, e := range onDupExprs {
+		if sf, ok := e.(*expression.SetField); ok {
+			onDupUpdateLeftExprs[sf.Left] = true
+		}
+	}
+	return onDupUpdateLeftExprs
+}
+
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	originalNode := n
+
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
 	// on the full scope; otherwise transform looks at sub-nodes and calculates a partial view of what is available.
 	symbols := getAvailableNamesByScope(n, scope)
+
+	var onDupUpdateSymbols availableNames
+	var onDupUpdateLeftExprs map[sql.Expression]bool
+	if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 {
+		inNoSrc := plan.NewInsertInto(
+			in.Database(),
+			in.Destination,
+			nil,
+			in.IsReplace,
+			in.ColumnNames,
+			in.OnDupExprs,
+			in.Ignore,
+		)
+		onDupUpdateSymbols = getAvailableNamesByScope(inNoSrc, scope)
+		onDupUpdateLeftExprs = findOnDupUpdateLeftExprs(in.OnDupExprs)
+	}
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, transform.SameTree, nil
 		}
+
+		// Don't qualify unresolved JSON tables, wait for joins
+		if jt, ok := n.(*plan.JSONTable); ok {
+			if !jt.Resolved() {
+				return n, transform.SameTree, nil
+			}
+		}
+
 		// Updates need to have check constraints qualified since multiple tables could be involved
-		checkConstraintsUpdated := false
+		sameCheckConstraints := true
 		if nn, ok := n.(*plan.Update); ok {
 			newChecks, err := qualifyCheckConstraints(nn)
 			if err != nil {
@@ -252,27 +296,68 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			}
 			nn.Checks = newChecks
 			n = nn
-			checkConstraintsUpdated = true
+			sameCheckConstraints = false
 		}
 
-		// don't qualify unresolved JSON tables, wait for joins
-		if jt, ok := n.(*plan.JSONTable); ok {
-			if !jt.Resolved() {
-				return n, transform.SameTree, nil
+		// Before we can qualify references in a GroupBy node, we need to see if any aliases
+		// were defined and then used in grouping expressions
+		sameGroupBy := true
+		if groupBy, ok := n.(*plan.GroupBy); ok {
+			newGroupBy, identity, err := identifyGroupingAliasReferences(groupBy)
+			if err != nil {
+				return originalNode, transform.SameTree, err
+			}
+			if identity == transform.NewTree {
+				n = newGroupBy
+				sameGroupBy = false
 			}
 		}
 
-		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			return qualifyExpression(e, n, symbols)
+		newNode, sameNode, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			evalSymbols := symbols
+			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
+				evalSymbols = onDupUpdateSymbols
+			}
+			return qualifyExpression(e, n, evalSymbols)
 		})
 		if err != nil {
-			return n, transform.SameTree, err
+			return originalNode, transform.SameTree, err
 		}
-		if checkConstraintsUpdated {
-			identity = transform.NewTree
+
+		if sameCheckConstraints && sameGroupBy && sameNode == transform.SameTree {
+			return newNode, transform.SameTree, nil
 		}
-		return newNode, identity, nil
+		return newNode, transform.NewTree, nil
 	})
+}
+
+// identifyGroupingAliasReferences finds any aliases defined in the projected expressions of
+// the specified GroupBy node, looks for references to those aliases in the grouping expressions
+// of the same GroupBy node, and transforms them to an AliasReference expression. This is
+// necessary because when qualifying columns, we can't currently distinguish between projection
+// expressions and grouping expressions because GroupBy combines both in its Expresions() func,
+// so we special case GroupBy here to identify aliases used in the grouping expressions.
+func identifyGroupingAliasReferences(groupBy *plan.GroupBy) (*plan.GroupBy, transform.TreeIdentity, error) {
+	projectedAliases := aliasesDefinedInNode(groupBy)
+
+	// Temporarily remove projection expressions so we can transform only the grouping expressions
+	groupByWithOnlyGroupingExprs := plan.NewGroupBy(nil, groupBy.GroupByExprs, groupBy.Child)
+	newNode, identity, err := transform.OneNodeExpressions(groupByWithOnlyGroupingExprs, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		uc, ok := e.(*expression.UnresolvedColumn)
+		if !ok || uc.Table() != "" {
+			return e, transform.SameTree, nil
+		}
+
+		if stringContains(projectedAliases, strings.ToLower(uc.Name())) {
+			return expression.NewAliasReference(uc.Name()), transform.NewTree, nil
+		}
+
+		return e, transform.SameTree, nil
+	})
+	if identity == transform.NewTree && err == nil {
+		groupBy = plan.NewGroupBy(groupBy.SelectedExprs, newNode.(*plan.GroupBy).GroupByExprs, groupBy.Child)
+	}
+	return groupBy, identity, err
 }
 
 // qualifyCheckConstraints returns a new set of CheckConstraints created by taking the specified Update node's checks
@@ -319,7 +404,27 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	currentScopeLevel := len(scopeNodes)
 
 	// Examine all columns, from the innermost scope (this node) outward.
-	getColumnsInNodes(n.Children(), symbols, currentScopeLevel-1)
+	children := n.Children()
+
+	// find all ResolvedTables in InsertInto.Source visible when resolving columns iff there are on duplicate key updates
+	if in, ok := n.(*plan.InsertInto); ok && in.Source != nil && len(in.OnDupExprs) > 0 {
+		aliasedTables := make(map[sql.Node]bool)
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				children = append(children, tblAlias)
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				children = append(children, resTbl)
+			}
+			return true
+		})
+	}
+
+	getColumnsInNodes(children, symbols, currentScopeLevel-1)
 	for _, currentScopeNode := range scopeNodes {
 		getColumnsInNodes([]sql.Node{currentScopeNode}, symbols, currentScopeLevel-1)
 		currentScopeLevel--
@@ -330,31 +435,23 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	for scopeLevel, n := range scopeNodes {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess, *plan.JSONTable:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *plan.IndexedTableAccess, *plan.JSONTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				symbols.indexTable(name, name, scopeLevel)
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
 				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias,
-					*plan.RecursiveTable, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
+					*plan.RecursiveTable, *plan.IndexedTableAccess:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					symbols.indexTable(alias, name, scopeLevel)
 				}
 				return false
-			case *plan.GroupBy:
-				// project aliases can overwrite lower namespaces, but importantly,
+			case sql.Projector:
+				// projected aliases overwrite lower namespaces, but importantly,
 				// we do not terminate symbol generation.
-				for _, e := range n.SelectedExprs {
-					if a, ok := e.(*expression.Alias); ok {
-						symbols.indexAlias(a, scopeLevel)
-					}
-				}
-			case *plan.Project:
-				// project aliases can overwrite lower namespaces, but importantly,
-				// we do not terminate symbol generation.
-				for _, e := range n.Projections {
+				for _, e := range n.ProjectedExprs() {
 					if a, ok := e.(*expression.Alias); ok {
 						symbols.indexAlias(a, scopeLevel)
 					}
@@ -528,19 +625,13 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, scopeLevel int) {
 
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *information_schema.ColumnsTable, *plan.JSONTable:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.JSONTable:
 			for _, col := range n.Schema() {
 				names.indexColumn(col.Source, col.Name, scopeLevel)
 			}
-		case *plan.Project:
-			indexExpressions(n.Projections)
-			getColumnsInNodes(n.Children(), names, scopeLevel)
-		case *plan.GroupBy:
-			indexExpressions(n.SelectedExprs)
-			getColumnsInNodes(n.Children(), names, scopeLevel)
-		case *plan.Window:
-			indexExpressions(n.SelectExprs)
-			getColumnsInNodes(n.Children(), names, scopeLevel)
+		case sql.Projector:
+			indexExpressions(n.ProjectedExprs())
+			getColumnsInNodes(node.Children(), names, scopeLevel)
 		default:
 			getColumnsInNodes(n.Children(), names, scopeLevel)
 		}
@@ -548,12 +639,6 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, scopeLevel int) {
 }
 
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
-
-const (
-	sessionTable  = "@@" + sqlparser.SessionStr
-	sessionPrefix = sqlparser.SessionStr + "."
-	globalPrefix  = sqlparser.GlobalStr + "."
-)
 
 // resolveJSONTables is a helper function that resolves JSONTables in join as they have special visibility into the left side of the join
 // This function should return a *plan.JSONTable when there's no error
@@ -597,17 +682,14 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		var jtSame transform.TreeIdentity
 		var jtErr error
 		switch j := n.(type) {
-		case *plan.CrossJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.NaturalJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.InnerJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+		case *plan.JoinNode:
+			switch {
+			case j.Op.IsNatural() || j.Op.IsInner():
+				if jt, ok := j.Right().(*plan.JSONTable); ok {
+					jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+				}
+			default:
+				return n, transform.SameTree, nil
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -635,7 +717,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			return nil, transform.SameTree, err
 		}
 
-		return transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		ret, _, err := transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, transform.SameTree, nil
@@ -643,6 +725,10 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 
 			return resolveColumnExpression(a, newN, uc, columns)
 		})
+		if err != nil {
+			return nil, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, nil
 	})
 }
 
@@ -697,7 +783,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
+func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
 	var idx int
 
@@ -731,16 +817,8 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 
 	indexChildNode := func(n sql.Node) {
 		switch n := n.(type) {
-		case *plan.Project:
-			for _, e := range n.Projections {
-				indexColumnExpr(e)
-			}
-		case *plan.GroupBy:
-			for _, e := range n.SelectedExprs {
-				indexColumnExpr(e)
-			}
-		case *plan.Window:
-			for _, e := range n.SelectExprs {
+		case sql.Projector:
+			for _, e := range n.ProjectedExprs() {
 				indexColumnExpr(e)
 			}
 		case *plan.Values:
@@ -829,6 +907,25 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
+	case *plan.InsertInto:
+		// should index columns in InsertInto.Source
+		aliasedTables := make(map[sql.Node]bool)
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			// need to reset idx for each table found, as this function assumes only 1 table
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				idx = 0
+				indexSchema(tblAlias.Schema())
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				idx = 0
+				indexSchema(resTbl.Schema())
+			}
+			return true
+		})
 	}
 
 	return columns, nil
@@ -852,6 +949,13 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 
 			// This means the expression is either a non-existent column or an alias defined in the same projection.
 			// Check for the latter first.
+			// NOTE: For GroupBy nodes, the projected expressions and grouping expressions are both returned from
+			//       Expressions(), so at this point in the code, we can't tell if we are looking at a projected
+			//       expression or a grouping expression here, and the alias resolution rules are different for each.
+			//       We handle this with special casing for GroupBy that transforms identified aliases in grouping
+			//       expressions into AliasReferences, so here we assume that this is a projection expression.
+			//       Being able to differentiate between grouping and projection expressions here could help
+			//       clean up this logic.
 			aliasesInNode := aliasesDefinedInNode(n)
 			if stringContains(aliasesInNode, name) {
 				return nil, transform.SameTree, sql.ErrMisusedAlias.New(name)
@@ -882,7 +986,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	// replacedAliases is a map of original expression string to alias that has been pushed down below the GroupBy in
 	// the new projection node.
 	replacedAliases := make(map[string]string)
-	var err error
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
 		// GroupBy itself.
@@ -890,7 +993,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if ok && len(replacedAliases) > 0 {
 			newExprs, same := replaceExpressionsWithAliases(ex.Expressions(), replacedAliases)
 			if !same {
-				n, err = ex.WithExpressions(newExprs...)
+				n, err := ex.WithExpressions(newExprs...)
 				return n, transform.NewTree, err
 			}
 		}
@@ -909,14 +1012,14 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// it refers to the alias, and not the one in the child. However,
 		// in the aggregate, aliases in that same aggregate cannot be used,
 		// so it refers to the column in the child node.
-		var groupingColumns = make(map[string]*expression.UnresolvedColumn)
+		var groupingColumns = make(map[string]column)
 		for _, g := range g.GroupByExprs {
 			for _, n := range findAllColumns(g) {
 				groupingColumns[strings.ToLower(n.Name())] = n
 			}
 		}
 
-		var selectedColumns = make(map[string]*expression.UnresolvedColumn)
+		var selectedColumns = make(map[string]column)
 		for _, agg := range g.SelectedExprs {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
@@ -978,7 +1081,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
-		var missingCols = make([]*expression.UnresolvedColumn, 0, len(selectedColumns)+len(groupingColumns))
+		var missingCols = make([]column, 0, len(selectedColumns)+len(groupingColumns))
 		for _, col := range selectedColumns {
 			missingCols = append(missingCols, col)
 		}
@@ -1083,12 +1186,13 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliasesByExpr
 	return exprs, transform.SameTree
 }
 
-func findAllColumns(e sql.Expression) []*expression.UnresolvedColumn {
-	var cols []*expression.UnresolvedColumn
+func findAllColumns(e sql.Expression) []column {
+	var cols []column
 	sql.Inspect(e, func(e sql.Expression) bool {
-		col, ok := e.(*expression.UnresolvedColumn)
-		if ok {
-			cols = append(cols, col)
+		switch e.(type) {
+		case *expression.UnresolvedColumn, *expression.AliasReference:
+			cols = append(cols, e.(column))
+		default:
 		}
 		return true
 	})

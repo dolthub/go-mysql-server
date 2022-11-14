@@ -22,6 +22,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrNotView = errors.NewKind("'%' is not VIEW")
@@ -107,7 +108,7 @@ func (sc ShowCreateTable) WithPrimaryKeySchema(schema sql.PrimaryKeySchema) (sql
 }
 
 func (sc *ShowCreateTable) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(sc.targetSchema)
+	return transform.WrappedColumnDefaults(sc.targetSchema)
 }
 
 func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -115,7 +116,7 @@ func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(exprs), len(sc.targetSchema))
 	}
 
-	sc.targetSchema = schemaWithDefaults(sc.targetSchema, exprs)
+	sc.targetSchema = transform.SchemaWithDefaults(sc.targetSchema, exprs)
 	return &sc, nil
 }
 
@@ -303,11 +304,16 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			continue
 		}
 
+		prefixLengths := index.PrefixLengths()
 		var indexCols []string
-		for _, expr := range index.Expressions() {
+		for i, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexCols = append(indexCols, quoteIdentifier(col.Name))
+				indexDef := quoteIdentifier(col.Name)
+				if len(prefixLengths) > i && prefixLengths[i] != 0 {
+					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
+				}
+				indexCols = append(indexCols, indexDef)
 			}
 		}
 

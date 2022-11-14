@@ -45,7 +45,7 @@ func NewPrivilegedDatabaseProvider(grantTables *MySQLDb, p sql.DatabaseProvider)
 func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
 	privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
 	// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
-	if privSet.StaticCount() == 0 && !privSet.Database(name).HasPrivileges() {
+	if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
 		return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), name)
 	}
 	if strings.ToLower(name) == "mysql" {
@@ -62,7 +62,7 @@ func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (s
 func (pdp PrivilegedDatabaseProvider) HasDatabase(ctx *sql.Context, name string) bool {
 	privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
 	// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
-	if privSet.StaticCount() == 0 && !privSet.Database(name).HasPrivileges() {
+	if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
 		return false
 	}
 	return pdp.provider.HasDatabase(ctx, name)
@@ -71,7 +71,7 @@ func (pdp PrivilegedDatabaseProvider) HasDatabase(ctx *sql.Context, name string)
 // AllDatabases implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) AllDatabases(ctx *sql.Context) []sql.Database {
 	privilegeSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
-	privilegeSetCount := privilegeSet.StaticCount()
+	privilegeSetCount := privilegeSet.Count()
 
 	var databasesWithAccess []sql.Database
 	allDatabases := pdp.provider.AllDatabases(ctx)
@@ -108,6 +108,7 @@ var _ sql.StoredProcedureDatabase = PrivilegedDatabase{}
 var _ sql.TableCopierDatabase = PrivilegedDatabase{}
 var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
+var _ sql.CollatedDatabase = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
 func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database) sql.Database {
@@ -127,14 +128,14 @@ func (pdb PrivilegedDatabase) GetTableInsensitive(ctx *sql.Context, tblName stri
 	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 	dbSet := privSet.Database(pdb.db.Name())
 	// If there are no usable privileges for this database then the table is inaccessible.
-	if privSet.StaticCount() == 0 && !dbSet.HasPrivileges() {
+	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
 		return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), pdb.db.Name())
 	}
 
 	tblSet := dbSet.Table(tblName)
 	// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
 	// table is not accessible.
-	if privSet.StaticCount() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
+	if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
 		return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
 	}
 	return pdb.db.GetTableInsensitive(ctx, tblName)
@@ -145,7 +146,7 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 	dbSet := privSet.Database(pdb.db.Name())
 	// If there are no usable privileges for this database then no table is accessible.
-	if privSet.StaticCount() == 0 && !dbSet.HasPrivileges() {
+	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
 		return nil, nil
 	}
 
@@ -153,7 +154,7 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
-	privSetCount := privSet.StaticCount()
+	privSetCount := privSet.Count()
 	dbSetCount := dbSet.Count()
 	var tablesWithAccess []string
 	for _, tblName := range tblNames {
@@ -176,14 +177,14 @@ func (pdb PrivilegedDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName 
 	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 	dbSet := privSet.Database(pdb.db.Name())
 	// If there are no usable privileges for this database then the table is inaccessible.
-	if privSet.StaticCount() == 0 && !dbSet.HasPrivileges() {
+	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
 		return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), pdb.db.Name())
 	}
 
 	tblSet := dbSet.Table(tblName)
 	// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
 	// table is not accessible.
-	if privSet.StaticCount() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
+	if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
 		return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
 	}
 	return db.GetTableInsensitiveAsOf(ctx, tblName, asOf)
@@ -199,7 +200,7 @@ func (pdb PrivilegedDatabase) GetTableNamesAsOf(ctx *sql.Context, asOf interface
 	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 	dbSet := privSet.Database(pdb.db.Name())
 	// If there are no usable privileges for this database then no table is accessible.
-	if privSet.StaticCount() == 0 && !dbSet.HasPrivileges() {
+	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
 		return nil, nil
 	}
 
@@ -207,7 +208,7 @@ func (pdb PrivilegedDatabase) GetTableNamesAsOf(ctx *sql.Context, asOf interface
 	if err != nil {
 		return nil, err
 	}
-	privSetCount := privSet.StaticCount()
+	privSetCount := privSet.Count()
 	dbSetCount := dbSet.Count()
 	var tablesWithAccess []string
 	for _, tblName := range tblNames {
@@ -322,6 +323,22 @@ func (pdb PrivilegedDatabase) GetAllTemporaryTables(ctx *sql.Context) ([]sql.Tab
 	}
 	// All current temp table checks skip if not implemented, same is iterating over an empty slice
 	return nil, nil
+}
+
+// GetCollation implements the interface sql.CollatedDatabase.
+func (pdb PrivilegedDatabase) GetCollation(ctx *sql.Context) sql.CollationID {
+	if db, ok := pdb.db.(sql.CollatedDatabase); ok {
+		return db.GetCollation(ctx)
+	}
+	return sql.Collation_Default
+}
+
+// SetCollation implements the interface sql.CollatedDatabase.
+func (pdb PrivilegedDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID) error {
+	if db, ok := pdb.db.(sql.CollatedDatabase); ok {
+		return db.SetCollation(ctx, collation)
+	}
+	return sql.ErrDatabaseCollationsNotSupported.New(pdb.db.Name())
 }
 
 // Unwrap returns the wrapped sql.Database.

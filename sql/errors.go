@@ -79,6 +79,9 @@ var (
 	// ErrRenameTableNotSupported is thrown when the database doesn't support renaming tables
 	ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
 
+	// ErrDatabaseCollationsNotSupported is thrown when a database does not allow updating its collation
+	ErrDatabaseCollationsNotSupported = errors.NewKind("database %s does not support collation operations")
+
 	// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
 	ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
 
@@ -441,6 +444,12 @@ var (
 	// ErrTableFunctionNotFound is thrown when a table function is not found
 	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
 
+	// ErrNonAggregatedColumnWithoutGroupBy is thrown when an aggregate function is used with the implicit, all-rows
+	// grouping and another projected expression contains a non-aggregated column.
+	// MySQL error code: 1140, SQL state: 42000
+	ErrNonAggregatedColumnWithoutGroupBy = errors.NewKind("in aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; " +
+		"this is incompatible with sql_mode=only_full_group_by")
+
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
 	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
@@ -497,9 +506,6 @@ var (
 
 	// ErrInvalidSQLValType is returned when a SQL value is of the incorrect type during parsing
 	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
-
-	// ErrInvalidIndexPrefix is returned when an index prefix is outside the accepted range
-	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
 
 	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
 	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in index '%s'")
@@ -596,14 +602,20 @@ var (
 	// ErrSpatialTypeConversion is returned when one spatial type cannot be converted to the other spatial type
 	ErrSpatialTypeConversion = errors.NewKind("Cannot get geometry object from data you sent to the GEOMETRY field")
 
-	// ErrInvalidBytePrimaryKey is returned when attempting to create a primary key with a byte column
-	ErrInvalidBytePrimaryKey = errors.NewKind("invalid primary key on byte column '%s'")
+	// ErrUnsupportedIndexPrefix is returned for an index on a string column with a prefix
+	ErrUnsupportedIndexPrefix = errors.NewKind("prefix index on string column '%s' unsupported")
 
-	// ErrInvalidByteIndex is returned for an index on a byte column with no prefix or an invalid prefix
-	ErrInvalidByteIndex = errors.NewKind("index on byte column '%s' unsupported")
+	// ErrInvalidIndexPrefix is returned for an index prefix on a non-string column, or the prefix is longer than string itself, or just unsupported
+	ErrInvalidIndexPrefix = errors.NewKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys")
 
-	// ErrInvalidTextIndex is returned for an index on a byte column with no prefix or an invalid prefix
-	ErrInvalidTextIndex = errors.NewKind("index on text column '%s' unsupported")
+	// ErrInvalidBlobTextKey is returned for an index on a blob or text column with no key length specified
+	ErrInvalidBlobTextKey = errors.NewKind("blob/text column '%s' used in key specification without a key length")
+
+	// ErrKeyTooLong is returned for an index on a blob or text column that is longer than 3072 bytes
+	ErrKeyTooLong = errors.NewKind("specified key was too long; max key length is 3072 bytes")
+
+	// ErrKeyZero is returned for an index on a blob or text column that is 0 in length
+	ErrKeyZero = errors.NewKind("key part '%s' length cannot be 0")
 
 	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server
@@ -650,12 +662,16 @@ var (
 	ErrNoTablesUsed = errors.NewKind("No tables used")
 )
 
-func CastSQLError(err error) (*mysql.SQLError, error, bool) {
+// CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
+// specified error object. Using this method enables Vitess to return an error code, instead of just "unknown error".
+// Many tools (e.g. ORMs, SQL workbenches) rely on this error metadata to work correctly. If the specified error is nil,
+// nil will be returned. If the error is already of type *mysql.SQLError, the error will be returned as is.
+func CastSQLError(err error) *mysql.SQLError {
 	if err == nil {
-		return nil, nil, true
+		return nil
 	}
 	if mysqlErr, ok := err.(*mysql.SQLError); ok {
-		return mysqlErr, nil, false
+		return mysqlErr
 	}
 
 	var code int
@@ -680,6 +696,8 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = mysql.EROperandColumns
 	case ErrInsertIntoNonNullableProvidedNull.Is(err):
 		code = mysql.ERBadNullError
+	case ErrNonAggregatedColumnWithoutGroupBy.Is(err):
+		code = mysql.ERMixOfGroupFuncAndFields
 	case ErrPrimaryKeyViolation.Is(err):
 		code = mysql.ERDupEntry
 	case ErrUniqueKeyViolation.Is(err):
@@ -722,7 +740,20 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 	}
 
 	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
-	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1)), err, false // return the original error as well
+	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1))
+}
+
+// UnwrapError removes any wrapping errors (e.g. WrappedInsertError) around the specified error and
+// returns the first non-wrapped error type.
+func UnwrapError(err error) error {
+	switch wrappedError := err.(type) {
+	case WrappedInsertError:
+		return UnwrapError(wrappedError.Cause)
+	case WrappedTypeConversionError:
+		return UnwrapError(wrappedError.Err)
+	default:
+		return err
+	}
 }
 
 type UniqueKeyError struct {

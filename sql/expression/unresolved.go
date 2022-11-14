@@ -238,7 +238,7 @@ func (uf *UnresolvedFunction) Children() []sql.Expression {
 	return append(uf.Arguments, uf.Window.ToExpressions()...)
 }
 
-// Children implements the Expression interface.
+// WithWindow implements the Expression interface.
 func (uf *UnresolvedFunction) WithWindow(def *sql.WindowDefinition) *UnresolvedFunction {
 	nf := *uf
 	nf.Window = def

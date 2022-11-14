@@ -203,8 +203,8 @@ func TestPreparedStaticIndexQuery(t *testing.T, harness Harness) {
 		[]sql.Row{{1, 1}}, sql.Schema{{Name: "i", Type: sql.Int64}, {Name: "square", Type: sql.Int64}}, nil)
 }
 
-// Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
-// debugging.
+// RunQueryTests runs the query tests given after setting up the engine. Useful for testing out a smaller subset of
+// queries during debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	for _, tt := range queries {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
@@ -428,46 +428,12 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt q
 
 		assert.Equal(t, tt.ExpectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
 	})
-
 }
 
 func TestOrderByGroupBy(t *testing.T, harness Harness) {
-	require := require.New(t)
-
-	harness.Setup([]setup.SetupScript{{
-		"create database mydb",
-		"use mydb",
-		"create table members (id bigint primary key, team text)",
-		"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple')",
-	}})
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-
-	sch, iter, err := e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2")
-	require.NoError(err)
-
-	ctx := NewContext(harness)
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err)
-
-	expected := []sql.Row{
-		{"purple", int64(1)},
-		{"red", int64(2)},
-		{"orange", int64(3)},
+	for _, tt := range queries.OrderByGroupByScriptTests {
+		TestScript(t, harness, tt)
 	}
-
-	require.Equal(expected, rows)
-
-	sch, iter, err = e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2")
-	require.NoError(err)
-
-	rows, err = sql.RowIterToRows(ctx, sch, iter)
-	require.NoError(err)
-
-	require.Equal(expected, rows)
-
-	_, _, err = e.Query(NewContext(harness), "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist")
-	require.Error(err)
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {
@@ -496,6 +462,12 @@ func TestReadOnly(t *testing.T, harness Harness) {
 func TestColumnAliases(t *testing.T, harness Harness) {
 	harness.Setup(setup.Mytable...)
 	for _, tt := range queries.ColumnAliasQueries {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestDerivedTableOuterScopeVisibility(t *testing.T, harness Harness) {
+	for _, tt := range queries.DerivedTableOuterScopeVisibilityQueries {
 		TestScript(t, harness, tt)
 	}
 }
@@ -1622,6 +1594,18 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
+		for _, script := range queries.NoDbProcedureTests {
+			if script.Expected != nil || script.SkipResultsCheck {
+				expectedResult := script.Expected
+				if script.SkipResultsCheck {
+					expectedResult = nil
+				}
+				TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
+			} else if script.ExpectedErr != nil {
+				AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
+			}
+		}
+
 		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.Row{{sql.OkResult{}}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p2() SELECT 6", []sql.Row{{sql.OkResult{}}}, nil, nil)
 
@@ -1630,12 +1614,16 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+			{"mydb", "p5", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
+				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 		}, nil, nil)
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP PROCEDURE mydb.p1", []sql.Row{}, nil, nil)
 
 		TestQueryWithContext(t, ctx, e, harness, "SHOW PROCEDURE STATUS", []sql.Row{
 			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
+				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+			{"mydb", "p5", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 		}, nil, nil)
 	})
@@ -1888,6 +1876,11 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "", "NULL", ""},
 			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
 	})
+
+	t.Skip("primary key lengths are not stored properly")
+	for _, tt := range queries.BrokenCreateTableQueries {
+		RunWriteQueryTest(t, harness, tt)
+	}
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
@@ -4996,6 +4989,87 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			{1, 1},
 		}, nil, nil)
 	})
+
+}
+
+func TestAddAutoIncrementColumn(t *testing.T, harness Harness) {
+	harness.Setup([]setup.SetupScript{{
+		"create database mydb",
+		"use mydb",
+	}})
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+
+	t.Run("Add primary key column with auto increment", func(t *testing.T) {
+		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "CREATE TABLE t1 (i int, j int);")
+		RunQuery(t, e, harness, "insert into t1 values (1,1), (2,2), (3,3)")
+		AssertErr(
+			t, e, harness,
+			"alter table t1 add column pk int primary key;",
+			sql.ErrPrimaryKeyViolation,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"alter table t1 add column pk int primary key auto_increment;",
+			[]sql.Row{{sql.NewOkResult(0)}},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"select pk from t1;",
+			[]sql.Row{
+				{1},
+				{2},
+				{3},
+			},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"show create table t1;",
+			[]sql.Row{
+				{"t1", "CREATE TABLE `t1` (\n  `i` int,\n  `j` int,\n  `pk` int NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+			},
+			nil, nil,
+		)
+	})
+
+	t.Run("Add primary key column with auto increment first", func(t *testing.T) {
+		ctx.SetCurrentDatabase("mydb")
+		RunQuery(t, e, harness, "CREATE TABLE t2 (i int, j int);")
+		RunQuery(t, e, harness, "insert into t2 values (1,1), (2,2), (3,3)")
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"alter table t2 add column pk int primary key auto_increment first;",
+			[]sql.Row{{sql.NewOkResult(0)}},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"select pk from t2;",
+			[]sql.Row{
+				{1},
+				{2},
+				{3},
+			},
+			nil, nil,
+		)
+
+		TestQueryWithContext(
+			t, ctx, e, harness,
+			"show create table t2;",
+			[]sql.Row{
+				{"t2", "CREATE TABLE `t2` (\n  `pk` int NOT NULL AUTO_INCREMENT,\n  `i` int,\n  `j` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+			},
+			nil, nil,
+		)
+	})
 }
 
 func TestNullRanges(t *testing.T, harness Harness) {
@@ -5508,7 +5582,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t28 (pk) VALUES (1), (2)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28 order by 1", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
 
 		ctx := NewContext(harness)
 		t28, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
@@ -5901,6 +5975,20 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query:    "Select RELEASE_ALL_LOCKS()",
 			Expected: []sql.Row{{0}},
 		},
+		{
+			Query:    "SELECT DATE_ADD(TIMESTAMP(:var), INTERVAL 1 DAY);",
+			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Bindings: map[string]sql.Expression{
+				"var": expression.NewLiteral("2022-10-26 13:14:15", sql.Text),
+			},
+		},
+		{
+			Query:    "SELECT DATE_ADD(:var, INTERVAL 1 DAY);",
+			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Bindings: map[string]sql.Expression{
+				"var": expression.NewLiteral("2022-10-26 13:14:15", sql.Datetime),
+			},
+		},
 	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
@@ -5973,6 +6061,10 @@ func TestPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestDatabaseCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
+	testCharsetCollationWire(t, h, sessionBuilder, false, queries.DatabaseCollationWireTests)
+}
+
 func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.CharsetCollationEngineTests {
@@ -6019,14 +6111,20 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 }
 
 func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
+	testCharsetCollationWire(t, h, sessionBuilder, true, queries.CharsetCollationWireTests)
+}
+
+func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder, useDefaultData bool, tests []queries.CharsetCollationWireTest) {
 	harness, ok := h.(ClientHarness)
 	if !ok {
-		t.Skip("Cannot run TestCharsetCollationWire as the harness must implement ClientHarness")
+		t.Skip(fmt.Sprintf("Cannot run %s as the harness must implement ClientHarness", t.Name()))
 	}
-	harness.Setup(setup.MydbData)
+	if useDefaultData {
+		harness.Setup(setup.MydbData)
+	}
 
 	port := getEmptyPort(t)
-	for _, script := range queries.CharsetCollationWireTests {
+	for _, script := range tests {
 		t.Run(script.Name, func(t *testing.T) {
 			serverConfig := server.Config{
 				Protocol:       "tcp",
@@ -6050,8 +6148,10 @@ func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 
 			conn, err := dbr.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/", port), nil)
 			require.NoError(t, err)
-			_, err = conn.Exec("USE mydb;")
-			require.NoError(t, err)
+			if useDefaultData {
+				_, err = conn.Exec("USE mydb;")
+				require.NoError(t, err)
+			}
 
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -6363,5 +6463,14 @@ func TestBlobs(t *testing.T, h Harness) {
 
 	for _, tt := range queries.BlobWriteQueries {
 		RunWriteQueryTest(t, h, tt)
+	}
+}
+
+func TestIndexPrefix(t *testing.T, h Harness) {
+	e := mustNewEngine(t, h)
+	defer e.Close()
+
+	for _, tt := range queries.IndexPrefixQueries {
+		TestScript(t, h, tt)
 	}
 }

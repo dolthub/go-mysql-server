@@ -124,14 +124,13 @@ func TestFlattenAggregationExprs(t *testing.T) {
 			name: "multiple aggregates in one expression",
 			node: plan.NewGroupBy(
 				[]sql.Expression{
-					expression.NewArithmetic(
+					expression.NewDiv(
 						aggregation.NewSum(
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 						aggregation.NewCount(
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
-						"/",
 					),
 					expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
 				},
@@ -143,10 +142,9 @@ func TestFlattenAggregationExprs(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewArithmetic(
+					expression.NewDiv(
 						expression.NewGetField(0, sql.Int64, "SUM(foo.a)", false),
 						expression.NewGetField(1, sql.Int64, "COUNT(foo.a)", false),
-						"/",
 					),
 					expression.NewGetFieldWithTable(2, sql.Int64, "foo", "b", false),
 				},

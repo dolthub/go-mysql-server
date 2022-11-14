@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -71,6 +70,10 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, transform.NewTree, nil
+		case *plan.AlterDB:
+			nc := *node
+			nc.Catalog = a.Catalog
+			return &nc, transform.NewTree, nil
 		case *plan.DropDB:
 			nc := *node
 			nc.Catalog = a.Catalog
@@ -84,16 +87,13 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			nc.Catalog = a.Catalog
 			return &nc, transform.NewTree, nil
 		case *plan.ResolvedTable:
-			nc := *node
-			ct, ok := nc.Table.(CatalogTable)
+			ct, ok := node.Table.(CatalogTable)
 			if ok {
+				nc := *node
 				nc.Table = ct.AssignCatalog(a.Catalog)
+				return &nc, transform.NewTree, nil
 			}
-			return &nc, transform.NewTree, nil
-		case *information_schema.ColumnsTable:
-			nc := *node
-			nc.Catalog = a.Catalog
-			return &nc, transform.NewTree, nil
+			return node, transform.SameTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

@@ -441,7 +441,7 @@ func ConvertToCollatedString(val interface{}, typ Type) (string, CollationID, er
 		} else {
 			val, err = LongText.Convert(val)
 			if err != nil {
-				return "", Collation_Invalid, err
+				return "", Collation_Unspecified, err
 			}
 			content = val.(string)
 		}
@@ -449,7 +449,7 @@ func ConvertToCollatedString(val interface{}, typ Type) (string, CollationID, er
 		collation = Collation_Default
 		val, err = LongText.Convert(val)
 		if err != nil {
-			return "", Collation_Invalid, err
+			return "", Collation_Unspecified, err
 		}
 		content = val.(string)
 	}
@@ -504,7 +504,7 @@ func (t stringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Valu
 			return sqltypes.Value{}, err
 		}
 		resultCharset := ctx.GetCharacterSetResults()
-		if resultCharset == CharacterSet_Invalid || resultCharset == CharacterSet_binary {
+		if resultCharset == CharacterSet_Unspecified || resultCharset == CharacterSet_binary {
 			resultCharset = t.collation.CharacterSet()
 		}
 		encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(v))
@@ -591,8 +591,12 @@ func (t stringType) Collation() CollationID {
 }
 
 // WithNewCollation implements TypeWithCollation interface.
-func (t stringType) WithNewCollation(collation CollationID) Type {
-	return MustCreateString(t.baseType, t.maxCharLength, collation)
+func (t stringType) WithNewCollation(collation CollationID) (Type, error) {
+	// Blobs are special as, although they use collations, they don't change like a standard collated type
+	if t.baseType == sqltypes.Blob || t.baseType == sqltypes.Binary || t.baseType == sqltypes.VarBinary {
+		return t, nil
+	}
+	return CreateString(t.baseType, t.maxCharLength, collation)
 }
 
 // MaxCharacterLength is the maximum character length for this type.

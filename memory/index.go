@@ -34,6 +34,7 @@ type Index struct {
 	Name       string
 	Unique     bool
 	CommentStr string
+	PrefixLens []uint16
 }
 
 var _ sql.Index = (*Index)(nil)
@@ -64,6 +65,10 @@ func (idx *Index) IsUnique() bool {
 
 func (idx *Index) Comment() string {
 	return idx.CommentStr
+}
+
+func (idx *Index) PrefixLengths() []uint16 {
+	return idx.PrefixLens
 }
 
 func (idx *Index) IndexType() string {
@@ -156,7 +161,7 @@ func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
-func (idx *Index) ColumnExpressionTypes(*sql.Context) []sql.ColumnExpressionType {
+func (idx *Index) ColumnExpressionTypes() []sql.ColumnExpressionType {
 	cets := make([]sql.ColumnExpressionType, len(idx.Exprs))
 	for i, expr := range idx.Exprs {
 		cets[i] = sql.ColumnExpressionType{

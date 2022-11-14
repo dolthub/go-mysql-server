@@ -1379,6 +1379,25 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select i+0.0/(lag(i) over (order by s)) from mytable order by 1;",
+		Expected: []sql.Row{
+			{nil},
+			{"2.00000"},
+			{"3.00000"},
+		},
+	},
+	{
+		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable order by 1,2;",
+		Expected: []sql.Row{
+			{1.0, nil},
+			{1.0, -1.0},
+			{1.0, .5},
+			{1.0, 2.5 / float64(3)},
+			{1.0, 1.0},
+			{1.0, 1.5},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
@@ -1832,7 +1851,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT "1" + '1'`,
 		Expected: []sql.Row{
-			{2.0},
+			{float64(2)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -2699,9 +2718,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
 		Expected: []sql.Row{
-			{1577966400, 1.0},
-			{1578225600, 2.0},
-			{1578398400, 3.0}},
+			{"1577966400", 1.0},
+			{"1578225600", 2.0},
+			{"1578398400", 3.0}},
 		SkipPrepared: true,
 	},
 	{
@@ -3034,6 +3053,338 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
 		Expected: []sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
+	},
+	{
+		Query:    `select 'a'+4;`,
+		Expected: []sql.Row{{4.0}},
+	},
+	{
+		Query:    `select '20a'+4;`,
+		Expected: []sql.Row{{24.0}},
+	},
+	{
+		Query:    `select '10.a'+4;`,
+		Expected: []sql.Row{{14.0}},
+	},
+	{
+		Query:    `select '.20a'+4;`,
+		Expected: []sql.Row{{4.2}},
+	},
+	{
+		Query:    `select 4+'a';`,
+		Expected: []sql.Row{{4.0}},
+	},
+	{
+		Query:    `select 'a'+'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') + STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
+		Expected: []sql.Row{{40261002186034}},
+	},
+	{
+		Query:    `select 'a'-4;`,
+		Expected: []sql.Row{{-4.0}},
+	},
+	{
+		Query:    `select 4-'a';`,
+		Expected: []sql.Row{{4.0}},
+	},
+	{
+		Query:    `select 4-'2a';`,
+		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query:    `select 'a'-'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 'a'*4;`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 4*'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 'a'*'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    "select 1 * '2.50a';",
+		Expected: []sql.Row{{2.5}},
+	},
+	{
+		Query:    "select 1 * '2.a50a';",
+		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query:    `select 'a'/4;`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 4/'a';`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `select 'a'/'a';`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 1 / '2.50a';",
+		Expected: []sql.Row{{0.4}},
+	},
+	{
+		Query:    "select 1 / '2.a50a';",
+		Expected: []sql.Row{{0.5}},
+	},
+	{
+		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') / 1;`,
+		Expected: []sql.Row{{"20130501093017.0000"}},
+	},
+	{
+		Query:    "select 'a'&'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'&4;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 4&'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select date('2022-11-19 11:53:45') & date('2022-11-11 11:53:45');",
+		Expected: []sql.Row{{uint64(20221111)}},
+	},
+	{
+		Query:    "select '2022-11-19 11:53:45' & '2023-11-11 11:53:45';",
+		Expected: []sql.Row{{uint64(2022)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') & STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
+		Expected: []sql.Row{{uint64(20130501093017)}},
+	},
+	{
+		Query:    "select 'a'|'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'|4;",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'|-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 4|'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'^'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'^4;",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'^-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 4^'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select now() ^ now();",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'>>'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'>>4;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 4>>'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select -1>>'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 'a'<<'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'<<4;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select '2a'<<4;",
+		Expected: []sql.Row{{uint64(32)}},
+	},
+	{
+		Query:    "select 4<<'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select -1<<'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 'a' div 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a' div 4;",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 4 div 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 1.2 div 0.2;",
+		Expected: []sql.Row{{6}},
+	},
+	{
+		Query:    "select 1.2 div 0.4;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select 1.2 div '1' ;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select 1.2 div 'a1' ;",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select '12a' div '3' ;",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select 'a' mod 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a' mod 4;",
+		Expected: []sql.Row{{float64(0)}},
+	},
+	{
+		Query:    "select 4 mod 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
+		Expected: []sql.Row{{"10487"}},
+	},
+	{
+		Query:    "select 0.0015 / 0.0026;",
+		Expected: []sql.Row{{"0.57692308"}},
+	},
+	{
+		Query:    "select (14620 / 9432456);",
+		Expected: []sql.Row{{"0.0015"}},
+	},
+	{
+		Query:    "select (24250 / 9432456);",
+		Expected: []sql.Row{{"0.0026"}},
+	},
+	{
+		Query:    "select 5.2/3.1/1.7/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.98671726755218216294117647000"}},
+	},
+	{
+		Query:    "select 5.2/3.1/1.9/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.88285229202037351421052631500"}},
+	},
+	{
+		Query:    "select 1.677419354838709677/1.9;",
+		Expected: []sql.Row{{"0.8828522920203735142105"}},
+	},
+	{
+		Query:    "select 1.9/1.677419354838709677;",
+		Expected: []sql.Row{{"1.13269"}},
+	},
+	{
+		Query:    "select 1.677419354838709677/1.9/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.882852292020373514210526315000"}},
+	},
+	{
+		Query:    "select (14620 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.60288653"}},
+	},
+	{
+		Query:    "select (14620.0 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.602886527"}},
+	},
+	{
+		Query:    "select (14620 / 9432456),  (24250 / 9432456), (14620 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.0015", "0.0026", "0.60288653"}},
+	},
+	{
+		Query:    "select 1000.0 / 20.00;",
+		Expected: []sql.Row{{"50.00000"}},
+	},
+	{
+		Query:    "select 1/2/3/4/5/6;",
+		Expected: []sql.Row{{"0.00138888888888888888"}},
+	},
+	{
+		Query:    "select 24/3/2*1/2/3;",
+		Expected: []sql.Row{{"0.6666666666666667"}},
+	},
+	{
+		Query:    "select 1/2/3%4/5/6;",
+		Expected: []sql.Row{{"0.0055555555555556"}},
+	},
+	{
+		Query:    "select 0.05 % 0.024;",
+		Expected: []sql.Row{{"0.002"}},
+	},
+	{
+		Query:    "select 0.0500 % 0.05;",
+		Expected: []sql.Row{{"0.0000"}},
+	},
+	{
+		Query:    "select 0.05 % 4;",
+		Expected: []sql.Row{{"0.05"}},
+	},
+	{
+		Query:    "select 2.6 & -1.3;",
+		Expected: []sql.Row{{uint64(3)}},
+	},
+	{
+		Query:    "select -1.5 & -3.3;",
+		Expected: []sql.Row{{uint64(18446744073709551612)}},
+	},
+	{
+		Query:    "select -1.7 & 0.5;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select -1.7 & 1.5;",
+		Expected: []sql.Row{{uint64(2)}},
+	},
+	{
+		Query:    "SELECT '127' | '128', '128' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'7F' | X'80', X'80' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
+		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
@@ -3901,7 +4252,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT MOD(i, 2) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{1},
+			{"1"},
 		},
 	},
 	{
@@ -4309,11 +4660,19 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
-		Expected: []sql.Row{{233.0}},
+		Expected: []sql.Row{{float64(233)}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
 		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
+		Expected: []sql.Row{{float64(-1)}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
+		Expected: []sql.Row{{float64(-1)}},
 	},
 	{
 		Query:    `SELECT CONNECTION_ID()`,
@@ -4504,9 +4863,69 @@ var QueryTests = []QueryTest{
 		Expected: nil,
 	},
 	{
-		Query: `SELECT round(15728640/1024/1024)`,
+		Query: `SELECT 2/4`,
 		Expected: []sql.Row{
-			{int64(15)},
+			{"0.5000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1024`,
+		Expected: []sql.Row{
+			{"15.00000000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1030`,
+		Expected: []sql.Row{
+			{"14.91262136"},
+		},
+	},
+	{
+		Query: `SELECT 2/4/5/5`,
+		Expected: []sql.Row{
+			{"0.020000000000"},
+		},
+	},
+	{
+		Query: `SELECT 4/3/1`,
+		Expected: []sql.Row{
+			{"1.33333333"},
+		},
+	},
+	{
+		Query: `select 5/4/3/(2/1+3/1)`,
+		Expected: []sql.Row{
+			{"0.083333333333"},
+		},
+	},
+	{
+		Query: `select (2/1+3/1)/5/4/3`,
+		Expected: []sql.Row{
+			{"0.0833333333333333"},
+		},
+	},
+	{
+		Query: `select cast(X'20' as decimal)`,
+		Expected: []sql.Row{
+			{"32"},
+		},
+	},
+	{
+		Query: `SELECT FLOOR(15728640/1024/1030)`,
+		Expected: []sql.Row{
+			{"14"},
+		},
+	},
+	{
+		Query: `SELECT ROUND(15728640/1024/1030)`,
+		Expected: []sql.Row{
+			{"15"},
+		},
+	},
+	{
+		Query: `SELECT ROUND(15.00, 1)`,
+		Expected: []sql.Row{
+			{"15.0"},
 		},
 	},
 	{
@@ -4896,15 +5315,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select ceil(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{2.0}, {3.0}, {4.0}},
+		Expected: []sql.Row{{"2"}, {"3"}, {"4"}},
 	},
 	{
 		Query:    "select floor(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{1.0}, {2.0}, {3.0}},
+		Expected: []sql.Row{{"1"}, {"2"}, {"3"}},
 	},
 	{
 		Query:    "select round(i + 0.55, 1) from mytable order by 1",
-		Expected: []sql.Row{{1.6}, {2.6}, {3.6}},
+		Expected: []sql.Row{{"1.6"}, {"2.6"}, {"3.6"}},
 	},
 	{
 		Query:    "select date_format(da, '%s') from typestable order by 1",
@@ -5137,6 +5556,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(0)}},
 	},
 	{
+		Query:    `SELECT NOW() / NOW()`,
+		Expected: []sql.Row{{"1.0000"}},
+	},
+	{
+		Query:    `SELECT NOW() div NOW()`,
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    `SELECT DATETIME(NOW()) - NOW()`,
 		Expected: []sql.Row{{int64(0)}},
 	},
@@ -5145,7 +5572,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(0)}},
 	},
 	{
-		Query:    `SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
+		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
@@ -6198,12 +6625,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-		},
-	},
-	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NULL AND pk < 2 ORDER BY 1",
 		Expected: []sql.Row{
 			{0, nil, nil},
@@ -6220,19 +6641,6 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
 		Expected: []sql.Row{
 			{2, 2, nil},
 			{3, 3, nil},
@@ -6260,6 +6668,25 @@ var QueryTests = []QueryTest{
 			{2, 2},
 			{3, nil},
 			{5, nil},
+		},
+	},
+	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{2, 2, nil},
+		},
+	},
+	{
+		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{2, 2, nil},
+			{3, 3, nil},
+		},
+	},
+	{
+		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
+		Expected: []sql.Row{
+			{2, int64(2), nil},
 		},
 	},
 	{
@@ -6374,7 +6801,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
-		Expected: []sql.Row{{float64(7)}},
+		Expected: []sql.Row{{"7.0"}},
 	},
 	{
 		Query:    "SELECT (CASE WHEN i THEN i ELSE 0 END) as cases_i from mytable",
@@ -6541,9 +6968,9 @@ var QueryTests = []QueryTest{
 			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0
 			from mytable order by 1;`,
 		Expected: []sql.Row{
-			{1, 6, 1.0},
-			{2, 5, 3.0},
-			{3, 4, 2.0},
+			{1, 6, "1.00000"},
+			{2, 5, "3.00000"},
+			{3, 4, "2.00000"},
 		},
 	},
 	{
@@ -7399,6 +7826,33 @@ var KeylessQueries = []QueryTest{
 
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
+	{
+		// natural join filter columns do not hide duplicated columns
+		Query: "select t2.* from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		// natural join join filter columns aliased
+		Query: "select t1.*, t2.*, i from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+		Expected: []sql.Row{
+			{1, "first row", 1, "first row", 1},
+			{2, "second row", 2, "second row", 2},
+			{3, "third row", 3, "third row", 3},
+		},
+	},
+	{
+		// natural join w/ inner join
+		Query: "select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+		Expected: []sql.Row{
+			{1, "first row", "third", 1},
+			{2, "second row", "second", 2},
+			{3, "third row", "first", 3},
+		},
+	},
 	{
 		// mysql is case-sensitive with CTE name
 		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select j from MYTABLE",
@@ -8571,12 +9025,12 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='t'",
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='t' order by 1,2",
 				Expected: []sql.Row{
-					{"t", "pk", nil, "NO"},
 					{"t", "fname", "", "NO"},
-					{"t", "lname", "ln", "NO"},
 					{"t", "h", nil, "YES"},
+					{"t", "lname", "ln", "NO"},
+					{"t", "pk", nil, "NO"},
 				},
 			},
 		},
@@ -8936,10 +9390,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
 	{
-		Query:       "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
-		ExpectedErr: sql.ErrTableNotFound,
-	},
-	{
 		Query: `WITH mt1 (x,y) as (select i,s FROM mytable)
 			SELECT mt1.i, mt1.s FROM mt1`,
 		ExpectedErr: sql.ErrTableColumnNotFound,
@@ -9033,14 +9483,6 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT JSON_OBJECT("a","b","c") FROM dual`,
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
-	},
-	{
-		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'abc' is not a valid value for 'double'`,
-	},
-	{
-		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'double'`,
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,
@@ -9155,61 +9597,6 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
 		ExpectedErr: sql.ErrConvertingToTime,
 	},
-	{
-		Query: `SELECT t1.*
-					  FROM
-						mytable as t1,
-						mytable as t2,
-						mytable as t3,
-						mytable as t4,
-						mytable as t5,
-						mytable as t6,
-						mytable as t7,
-						mytable as t8,
-						mytable as t9,
-						mytable as t10,
-						mytable as t11,
-						mytable as t12,
-						mytable as t13,
-						mytable as t14,
-						mytable as t15
-					  WHERE
-						t1.i = t2.i and
-						t2.i = t3.i and
-						t3.i = t4.i and
-						t4.i = t5.i and
-						t5.i = t6.i and
-						t6.i = t7.i and
-						t7.i = t8.i and
-						t8.i = t9.i and
-						t9.i = t10.i and
-						t10.i = t11.i and
-						t11.i = t12.i and
-						t12.i = t13.i and
-						t13.i = t14.i and
-						t14.i = t15.i`,
-		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
-	},
-	{
-		Query: `SELECT t1.*
-					  FROM
-						mytable as t1
-						LEFT JOIN mytable as t2 ON t1.i = t2.i
-						LEFT JOIN mytable as t3 ON t2.i = t3.i
-						LEFT JOIN mytable as t4 ON t3.i = t4.i
-						LEFT JOIN mytable as t5 ON t4.i = t5.i
-						LEFT JOIN mytable as t6 ON t5.i = t6.i
-						LEFT JOIN mytable as t7 ON t6.i = t7.i
-						LEFT JOIN mytable as t8 ON t7.i = t8.i
-						LEFT JOIN mytable as t9 ON t8.i = t9.i
-						LEFT JOIN mytable as t10 ON t9.i = t10.i
-						LEFT JOIN mytable as t11 ON t10.i = t11.i
-						LEFT JOIN mytable as t12 ON t11.i = t12.i
-						LEFT JOIN mytable as t13 ON t12.i = t13.i
-						LEFT JOIN mytable as t14 ON t13.i = t14.i
-						LEFT JOIN mytable as t15 ON t14.i = t15.i`,
-		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
-	},
 	// this query was panicing, but should be allowed and should return error when this query is called
 	{
 		Query:       `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
@@ -9282,6 +9669,18 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
 		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+	{
+		Query:       "select 18446744073709551615 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
+	},
+	{
+		Query:       "select -9223372036854775807 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
+	},
+	{
+		Query:       "select -9223372036854775808 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
 	},
 }
 
@@ -9704,6 +10103,110 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query:    "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+}
+
+var IndexPrefixQueries = []ScriptTest{
+	{
+		Name: "int prefix",
+		SetUpScript: []string{
+			"create table t (i int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int, primary key (i(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, j int, index (j(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "float prefix",
+		SetUpScript: []string{
+			"create table t (f float)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (f float, primary key (f(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, f float, index (f(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "string index prefix errors",
+		SetUpScript: []string{
+			"create table v_tbl (v varchar(10))",
+			"create table c_tbl (c char(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table v_tbl add primary key (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "alter table v_tbl add primary key (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add primary key (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add index (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(0)))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), index(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), primary key(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), index(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
 			},
 		},
 	},

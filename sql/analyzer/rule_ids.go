@@ -27,6 +27,7 @@ const (
 	resolveDropConstraintId                     // resolveDropConstraint
 	validateDropConstraintId                    // validateDropConstraint
 	loadCheckConstraintsId                      // loadCheckConstraints
+	assignCatalogId                             // assignCatalog
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
 	setViewTargetSchemaId                       // setViewTargetSchema
@@ -35,6 +36,8 @@ const (
 	checkUniqueTableNamesId                     // checkUniqueTableNames
 	resolveTableFunctionsId                     // resolveTableFunctions
 	resolveDeclarationsId                       // resolveDeclarations
+	resolveColumnDefaultsId                     // resolveColumnDefaults
+	validateColumnDefaultsId                    // validateColumnDefaults
 	validateCreateTriggerId                     // validateCreateTrigger
 	validateCreateProcedureId                   // validateCreateProcedure
 	loadInfoSchemaId                            // loadInfoSchema
@@ -43,6 +46,7 @@ const (
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePrivilegesId                        // validatePrivileges
 	reresolveTablesId                           // reresolveTables
+	setInsertColumnsId                          // setInsertColumns
 	validateJoinComplexityId                    // validateJoinComplexity
 
 	// default
@@ -55,10 +59,10 @@ const (
 	pushdownSubqueryAliasFiltersId // pushdownSubqueryAliasFilters
 	qualifyColumnsId               // qualifyColumns
 	resolveColumnsId               // resolveColumns
-	resolveColumnDefaultsId        // resolveColumnDefaults
 	validateCheckConstraintId      // validateCheckConstraint
 	resolveBarewordSetVariablesId  // resolveBarewordSetVariables
 	expandStarsId                  // expandStars
+	transposeRightJoinsId          // transposeRightJoins
 	resolveHavingId                // resolveHaving
 	mergeUnionSchemasId            // mergeUnionSchemas
 	flattenAggregationExprsId      // flattenAggregationExprs
@@ -78,8 +82,8 @@ const (
 	resolveAlterColumnId          // resolveAlterColumn
 	resolveGeneratorsId           // resolveGenerators
 	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
-	assignCatalogId               // assignCatalog
 	pruneColumnsId                // pruneColumns
+	stripTableNameInDefaultsId    // stripTableNamesFromColumnDefaults
 	hoistSelectExistsId           // hoistSelectExists
 	optimizeJoinsId               // optimizeJoins
 	pushdownFiltersId             // pushdownFilters

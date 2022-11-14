@@ -180,3 +180,21 @@ func TestEnumString(t *testing.T) {
 		})
 	}
 }
+
+func TestEnumZero(t *testing.T) {
+	tests := []struct {
+		vals []string
+	}{
+		{[]string{"a"}},
+		{[]string{"a", "b"}},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v ok", test.vals), func(t *testing.T) {
+			typ := MustCreateEnumType(test.vals, Collation_Default)
+			v, ok := typ.Zero().(uint16)
+			assert.True(t, ok)
+			assert.Equal(t, uint16(1), v)
+		})
+	}
+}

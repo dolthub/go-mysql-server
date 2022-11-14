@@ -304,7 +304,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 				return nil, err
 			}
 		}
-		return CreateDecimalType(uint8(precision), uint8(scale))
+		return CreateColumnDecimalType(uint8(precision), uint8(scale))
 	case "bit":
 		length := int64(1)
 		if ct.Length != nil {
@@ -617,7 +617,7 @@ func IsNull(ex Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t Type) bool {
 	switch t.(type) {
-	case numberTypeImpl, decimalType, bitType, yearType:
+	case numberTypeImpl, decimalType, bitType, yearType, systemBoolType:
 		return true
 	default:
 		return false
@@ -626,6 +626,10 @@ func IsNumber(t Type) bool {
 
 // IsSigned checks if t is a signed type.
 func IsSigned(t Type) bool {
+	// systemBoolType is Int8
+	if _, ok := t.(systemBoolType); ok {
+		return true
+	}
 	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
 }
 

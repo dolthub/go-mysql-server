@@ -85,7 +85,7 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 SELECT * from mytable`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `i` bigint NOT NULL,\n  `s` varchar(20) NOT NULL COMMENT 'column s',\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `i` bigint NOT NULL,\n  `s` varchar(20) NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE mydb.t1 (a INTEGER NOT NULL PRIMARY KEY, b VARCHAR(10) NOT NULL)`,
@@ -149,5 +149,99 @@ var CreateTableQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         `SHOW CREATE TABLE t1`,
 		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` varchar(16383),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `create table t1 (i int primary key, b1 blob, b2 blob, index(b1(123), b2(456)))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         `show create table t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  KEY `b1b2` (`b1`(123),`b2`(456))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `create table t1 (i int primary key, b1 blob, b2 blob, unique index(b1(123), b2(456)))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         `show create table t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `b1b2` (`b1`(123),`b2`(456))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `create table t1 (i int primary key, b1 blob, b2 blob, index(b1(10)), index(b2(20)), index(b1(123), b2(456)))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         `show create table t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  KEY `b1` (`b1`(10)),\n  KEY `b1b2` (`b1`(123),`b2`(456)),\n  KEY `b2` (`b2`(20))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select * from mytable`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         `select * from t1 order by i`,
+		ExpectedSelect:      []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select * from mytable`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         `show create table t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` bigint NOT NULL,\n  `s` varchar(20) NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select s, i from mytable`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         `select * from t1 order by i`,
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select distinct s, i from mytable`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         `select * from t1 order by i`,
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select s, i from mytable order by s`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         `select * from t1 order by i`,
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
+	},
+	// TODO: the second column should be named `sum(i)` but is `SUM(mytable.i)`
+	{
+		WriteQuery:          `CREATE TABLE t1 as select s, sum(i) from mytable group by s`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         `select * from t1 order by s`, // other column is named `SUM(mytable.i)`
+		ExpectedSelect:      []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select s, sum(i) from mytable group by s having sum(i) > 2`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "select * from t1",
+		ExpectedSelect:      []sql.Row{{"third row", 3}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select s, i from mytable order by s limit 1`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         `select * from t1 order by i`,
+		ExpectedSelect:      []sql.Row{{"first row", 1}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 as select concat("new", s), i from mytable`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         `select * from t1 order by i`,
+		ExpectedSelect:      []sql.Row{{"newfirst row", 1}, {"newsecond row", 2}, {"newthird row", 3}},
+	},
+}
+
+var BrokenCreateTableQueries = []WriteQueryTest{
+	{
+		WriteQuery:          `create table t1 (b blob, primary key(b(1)))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         `show create table t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `b` blob NOT NULL,\n  PRIMARY KEY (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `create table t1 (b1 blob, b2 blob, primary key(b1(123), b2(456)))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         `show create table t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `b1` blob NOT NULL,\n  `b2` blob NOT NULL,\n  PRIMARY KEY (`b1`(123),`b2`(456))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `create table t1 (i int, b1 blob, b2 blob, primary key(b1(123), b2(456), i))`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		SelectQuery:         `show create table t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob NOT NULL,\n  `b2` blob NOT NULL,\n  PRIMARY KEY (`b1`(123),`b2`(456),`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 }

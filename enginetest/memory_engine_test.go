@@ -134,7 +134,7 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-
+	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
 		Query:    `select 1 as b, (select b order by b);`,
@@ -172,13 +172,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
-	//engine, err := harness.NewEngine(t)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//engine.Analyzer.Debug = true
-	//engine.Analyzer.Verbose = true
 
 	enginetest.TestPreparedQuery(t, harness, test.Query, test.Expected, nil)
 }
@@ -189,50 +182,23 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "non-existent procedure in trigger body",
+			Name: "create table as select distinct",
 			SetUpScript: []string{
-				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+				"CREATE TABLE t1 (a int, b varchar(10));",
+				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+					Query:    "create table t2 as select distinct b, a from t1;",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
 				},
 				{
-					Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
-SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
-INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
-					ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
-				},
-				{
-					Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
-					Expected: []sql.Row{{sql.OkResult{}}},
-				},
-				{
-					Query:    "CALL add_entry(4, 'aaa');",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
-				},
-				{
-					Query:    "SELECT * FROM t0;",
-					Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
-				},
-				{
-					Query:    "SELECT * FROM t1;",
-					Expected: []sql.Row{{1, 8, "aaa"}},
-				},
-				{
-					Query:          "CALL add_entry(54, 'bbb');",
-					ExpectedErrStr: "too big number (errno 1644) (sqlstate 45000)",
+					Query: "select * from t2 order by a;",
+					Expected: []sql.Row{
+						{"a", 1},
+						{"b", 2},
+						{"c", 3},
+					},
 				},
 			},
 		},
@@ -244,8 +210,8 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		if err != nil {
 			panic(err)
 		}
-		// engine.Analyzer.Debug = true
-		// engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
@@ -353,7 +319,7 @@ func TestIntegrationQueryPlans(t *testing.T) {
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 2, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestIntegrationPlans(t, harness)
 		})
 	}
@@ -402,6 +368,10 @@ func TestReadOnlyDatabases(t *testing.T) {
 
 func TestColumnAliases(t *testing.T) {
 	enginetest.TestColumnAliases(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestDerivedTableOuterScopeVisibility(t *testing.T) {
+	enginetest.TestDerivedTableOuterScopeVisibility(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestOrderByGroupBy(t *testing.T) {
@@ -774,12 +744,21 @@ func TestAddDropPks(t *testing.T) {
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestAddAutoIncrementColumn(t *testing.T) {
+	t.Skip("in memory tables don't implement sql.RewritableTable yet")
+	enginetest.TestAddAutoIncrementColumn(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestNullRanges(t *testing.T) {
 	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestBlobs(t *testing.T) {
 	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestIndexPrefix(t *testing.T) {
+	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestPersist(t *testing.T) {
@@ -818,6 +797,10 @@ func TestCharsetCollationEngine(t *testing.T) {
 
 func TestCharsetCollationWire(t *testing.T) {
 	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+}
+
+func TestDatabaseCollationWire(t *testing.T) {
+	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
 func TestTypesOverWire(t *testing.T) {

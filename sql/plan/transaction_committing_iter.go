@@ -79,8 +79,9 @@ func (t *TransactionCommittingNode) WithChildren(children ...sql.Node) (sql.Node
 		return nil, fmt.Errorf("ds")
 	}
 
-	t.UnaryNode = UnaryNode{Child: children[0]}
-	return t, nil
+	t2 := *t
+	t2.UnaryNode = UnaryNode{Child: children[0]}
+	return &t2, nil
 }
 
 // CheckPrivileges implements the sql.Node interface.

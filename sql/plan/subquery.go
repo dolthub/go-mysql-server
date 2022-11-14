@@ -72,6 +72,10 @@ func (sri *stripRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return r[sri.numCols:], nil
 }
 
+func (sri *stripRowIter) Close(ctx *sql.Context) error {
+	return sri.RowIter.Close(ctx)
+}
+
 func NewStripRowNode(child sql.Node, numCols int) sql.Node {
 	return &StripRowNode{UnaryNode: UnaryNode{child}, numCols: numCols}
 }
@@ -217,14 +221,41 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, *IndexedTableAccess, sql.Table, *ValueDerivedTable, *Union:
+		case sql.Table, sql.Projector, *ValueDerivedTable:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
 			}, transform.NewTree, nil
-		default:
-			return n, transform.SameTree, nil
+		case *Union:
+			newUnion := *n
+			newRight, _, err := transform.Node(n.Right(), prependRowInPlan(row))
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			newLeft, _, err := transform.Node(n.Left(), prependRowInPlan(row))
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			newUnion.left = newLeft
+			newUnion.right = newRight
+			return &newUnion, transform.NewTree, nil
+		case *RecursiveCte:
+			newRecursiveCte := *n
+			newUnion, _, err := transform.Node(n.union, prependRowInPlan(row))
+			newRecursiveCte.union = newUnion.(*Union)
+			return &newRecursiveCte, transform.NewTree, err
+		case *SubqueryAlias:
+			// For SubqueryAliases (i.e. DerivedTables), since they may have visibility to outer scopes, we need to
+			// transform their inner nodes to prepend the outer scope row data. Ideally, we would only do this when
+			// the subquery alias references those outer fields. That will also require updating subquery expression
+			// scope handling to also make the same optimization.
+			newSubqueryAlias := *n
+			newChildNode, _, err := transform.Node(n.Child, prependRowInPlan(row))
+			newSubqueryAlias.Child = newChildNode
+			return &newSubqueryAlias, transform.NewTree, err
 		}
+
+		return n, transform.SameTree, nil
 	}
 }
 

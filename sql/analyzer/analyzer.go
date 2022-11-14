@@ -376,18 +376,34 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId, optimizeJoinsId, finalizeSubqueryExprsId, parallelizeId:
+		case pruneColumnsId,
+			optimizeJoinsId,
+			setJoinScopeLenId,
+			applyHashLookupsId,
+			finalizeSubqueryExprsId,
+			parallelizeId,
+			pushdownFiltersId:
 			return false
 		}
 		return sel(id)
 	}
 }
 
-func NewNestedSubqueryFinalizer(sel RuleSelector) RuleSelector {
+func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId, optimizeJoinsId:
+		case pruneColumnsId, optimizeJoinsId, setJoinScopeLenId, applyHashLookupsId, pushdownFiltersId:
 			return true
+		}
+		return sel(id)
+	}
+}
+
+func NewResolveSubquerySel(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case pruneColumnsId, optimizeJoinsId, pushdownFiltersId:
+			return false
 		}
 		return sel(id)
 	}
@@ -436,7 +452,10 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
 		validateAggregationsId,
-		validateExplodeUsageId:
+		validateExplodeUsageId,
+
+		// OnceAfterAll
+		TrackProcessId:
 		return false
 	default:
 		return true
@@ -460,6 +479,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 		reresolveTablesId,
 		setTargetSchemasId,
 		parseColumnDefaultsId,
+		assignCatalogId,
+		resolveColumnDefaultsId,
 		resolveTableFunctionsId,
 		validatePrivilegesId,
 
@@ -471,16 +492,19 @@ func postPrepareRuleSelector(id RuleId) bool {
 		pushdownGroupbyAliasesId,
 		qualifyColumnsId,
 		resolveColumnsId,
-		resolveColumnDefaultsId,
 		expandStarsId,
 		flattenAggregationExprsId,
 
 		// OnceAfterDefault
 		subqueryIndexesId,
 		inSubqueryIndexesId,
-		resolvePreparedInsertId:
+		stripTableNameInDefaultsId,
+		resolvePreparedInsertId,
+
 		// DefaultValidationRules
+
 		// OnceAfterAll
+		TrackProcessId:
 		return true
 	}
 	return false

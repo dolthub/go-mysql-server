@@ -61,6 +61,18 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "indexes with prefix lengths are ignored for foreign keys",
+		SetUpScript: []string{
+			"create table prefixParent(v varchar(100), index(v(1)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table prefixChild(v varchar(100), foreign key (v) references prefixParent(v))",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+		},
+	},
+	{
 		Name: "CREATE TABLE Name Collision",
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1722,6 +1734,18 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				Query:    "SELECT * from b;",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "May use different collations as long as the character sets are equivalent",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk char(32) COLLATE utf8mb4_0900_ai_ci PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE t2 (pk char(32) COLLATE utf8mb4_0900_bin PRIMARY KEY, CONSTRAINT fk_1 FOREIGN KEY (pk) REFERENCES t1 (pk));",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 		},
 	},

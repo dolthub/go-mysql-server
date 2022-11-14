@@ -15,9 +15,11 @@
 package sql
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -70,6 +72,7 @@ type DecimalType interface {
 
 type decimalType struct {
 	exclusiveUpperBound decimal.Decimal
+	definesColumn       bool
 	precision           uint8
 	scale               uint8
 }
@@ -78,12 +81,25 @@ type decimalType struct {
 // from integrators.
 var InternalDecimalType DecimalType = decimalType{
 	exclusiveUpperBound: decimal.New(1, int32(65)),
+	definesColumn:       false,
 	precision:           95,
 	scale:               30,
 }
 
-// CreateDecimalType creates a DecimalType.
+// CreateDecimalType creates a DecimalType for NON-TABLE-COLUMN.
 func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
+	return createDecimalType(precision, scale, false)
+}
+
+// CreateColumnDecimalType creates a DecimalType for VALID-TABLE-COLUMN. Creating a decimal type for a column ensures that
+// when operating on instances of this type, the result will be restricted to the defined precision and scale.
+func CreateColumnDecimalType(precision uint8, scale uint8) (DecimalType, error) {
+	return createDecimalType(precision, scale, true)
+}
+
+// createDecimalType creates a DecimalType using given precision, scale
+// and whether this type defines a valid table column.
+func createDecimalType(precision uint8, scale uint8, definesColumn bool) (DecimalType, error) {
 	if scale > DecimalTypeMaxScale {
 		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
 	}
@@ -99,14 +115,24 @@ func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	}
 	return decimalType{
 		exclusiveUpperBound: decimal.New(1, int32(precision-scale)),
+		definesColumn:       definesColumn,
 		precision:           precision,
 		scale:               scale,
 	}, nil
 }
 
-// MustCreateDecimalType is the same as CreateDecimalType except it panics on errors.
+// MustCreateDecimalType is the same as CreateDecimalType except it panics on errors and for NON-TABLE-COLUMN.
 func MustCreateDecimalType(precision uint8, scale uint8) DecimalType {
 	dt, err := CreateDecimalType(precision, scale)
+	if err != nil {
+		panic(err)
+	}
+	return dt
+}
+
+// MustCreateColumnDecimalType is the same as CreateDecimalType except it panics on errors and for VALID-TABLE-COLUMN.
+func MustCreateColumnDecimalType(precision uint8, scale uint8) DecimalType {
+	dt, err := CreateColumnDecimalType(precision, scale)
 	if err != nil {
 		panic(err)
 	}
@@ -214,12 +240,21 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 		return t.ConvertToNullDecimal(new(big.Float).SetRat(value))
 	case decimal.Decimal:
 		res = value
+	case []uint8:
+		var err error
+		val, err := strconv.ParseUint(hex.EncodeToString(value), 16, 64)
+		if err != nil {
+			return decimal.NullDecimal{}, err
+		}
+		res = decimal.NewFromBigInt(new(big.Int).SetUint64(val), 0)
 	case decimal.NullDecimal:
 		// This is the equivalent of passing in a nil
 		if !value.Valid {
 			return decimal.NullDecimal{}, nil
 		}
 		res = value.Decimal
+	case JSONDocument:
+		return t.ConvertToNullDecimal(value.Val)
 	default:
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}
@@ -271,6 +306,9 @@ func (t decimalType) MaxTextResponseByteLength() uint32 {
 
 // Promote implements the Type interface.
 func (t decimalType) Promote() Type {
+	if t.definesColumn {
+		return MustCreateColumnDecimalType(DecimalTypeMaxPrecision, t.scale)
+	}
 	return MustCreateDecimalType(DecimalTypeMaxPrecision, t.scale)
 }
 
@@ -284,7 +322,16 @@ func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
+	// decimal type value for valid table column should use scale defined by the column.
+	// if the value is not part of valid table column, the result value should used its
+	// own precision and scale.
+	var val []byte
+	if t.definesColumn {
+		val = appendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
+	} else {
+		decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
+		val = appendAndSliceString(dest, decStr)
+	}
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
@@ -301,7 +348,7 @@ func (t decimalType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t decimalType) Zero() interface{} {
-	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
+	return decimal.NewFromInt(0)
 }
 
 // ExclusiveUpperBound implements DecimalType interface.

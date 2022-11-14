@@ -381,6 +381,7 @@ func (i *mockIndex) IsUnique() bool                 { return i.unique }
 func (i *mockIndex) Comment() string                { return i.comment }
 func (i *mockIndex) IndexType() string              { return "BTREE" }
 func (i *mockIndex) IsGenerated() bool              { return false }
+func (i *mockIndex) PrefixLengths() []uint16        { return nil }
 func (i *mockIndex) Expressions() []string {
 	exprs := make([]string, len(i.exprs))
 	for i, e := range i.exprs {
@@ -390,7 +391,7 @@ func (i *mockIndex) Expressions() []string {
 	return exprs
 }
 
-func (*mockIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
+func (*mockIndex) ColumnExpressionTypes() []sql.ColumnExpressionType {
 	panic("unimplemented")
 }
 

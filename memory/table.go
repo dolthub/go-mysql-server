@@ -1186,8 +1186,8 @@ func (t *Table) UpdateForeignKey(ctx *sql.Context, fkName string, fk sql.Foreign
 }
 
 // CreateIndexForForeignKey implements sql.ForeignKeyTable.
-func (t *Table) CreateIndexForForeignKey(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn) error {
-	return t.CreateIndex(ctx, indexName, using, constraint, columns, "")
+func (t *Table) CreateIndexForForeignKey(ctx *sql.Context, idx sql.IndexDef) error {
+	return t.CreateIndex(ctx, idx)
 }
 
 // SetForeignKeyResolved implements sql.ForeignKeyTable.
@@ -1259,6 +1259,22 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		colNames[i] = column.Name
 	}
 
+	var hasNonZeroLengthColumn bool
+	for _, column := range columns {
+		if column.Length > 0 {
+			hasNonZeroLengthColumn = true
+			break
+		}
+	}
+	var prefixLengths []uint16
+	if hasNonZeroLengthColumn {
+		prefixLengths = make([]uint16, len(columns))
+		for i, column := range columns {
+			prefixLengths[i] = uint16(column.Length)
+		}
+
+	}
+
 	if constraint == sql.IndexConstraint_Unique {
 		err := t.errIfDuplicateEntryExist(colNames, name)
 		if err != nil {
@@ -1275,6 +1291,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Name:       name,
 		Unique:     constraint == sql.IndexConstraint_Unique,
 		CommentStr: comment,
+		PrefixLens: prefixLengths,
 	}, nil
 }
 
@@ -1333,12 +1350,12 @@ func (t *Table) getField(col string) (int, *sql.Column) {
 }
 
 // CreateIndex implements sql.IndexAlterableTable
-func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) error {
+func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	if t.indexes == nil {
 		t.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(indexName, columns, constraint, comment)
+	index, err := t.createIndex(idx.Name, idx.Columns, idx.Constraint, idx.Comment)
 	if err != nil {
 		return err
 	}

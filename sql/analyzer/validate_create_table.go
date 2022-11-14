@@ -23,6 +23,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+const MaxBytePrefix = 3072
+
 // validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
 // at execution time, and should be moved here over time.
 func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -32,11 +34,6 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	}
 
 	err := validateIndexes(ct.TableSpec())
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	err = validatePkTypes(ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -378,14 +375,45 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	return indexes, nil
 }
 
-// validateIndexType prevents indexing blob columns
+// validatePrefixLength handles all errors related to creating indexes with prefix lengths
+func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
+	// Throw prefix length error for non-string types with prefixes
+	if idxCol.Length > 0 && !sql.IsText(schCol.Type) {
+		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+	}
+
+	// Get prefix key length in bytes, so times 4 for text
+	prefixByteLength := idxCol.Length
+	if sql.IsText(schCol.Type) {
+		prefixByteLength = 4 * idxCol.Length
+	}
+
+	// Prefix length is longer than max
+	if prefixByteLength > MaxBytePrefix {
+		return sql.ErrKeyTooLong.New(schCol.Name)
+	}
+
+	// The specified prefix length is longer than the column
+	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength())
+	if prefixByteLength > maxByteLength {
+		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+	}
+
+	// Prefix length is only required for BLOB and TEXT columns
+	if sql.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
+		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
+	}
+
+	return nil
+}
+
+// validateIndexType prevents creating invalid indexes
 func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
-	for _, c := range cols {
-		i := sch.IndexOfColName(c.Name)
-		if sql.IsByteType(sch[i].Type) {
-			return sql.ErrInvalidByteIndex.New(sch[i].Name)
-		} else if sql.IsTextBlob(sch[i].Type) {
-			return sql.ErrInvalidTextIndex.New(sch[i].Name)
+	for _, idxCol := range cols {
+		schCol := sch[sch.IndexOfColName(idxCol.Name)]
+		err := validatePrefixLength(schCol, idxCol)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -486,40 +514,40 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) erro
 
 const textIndexPrefix = 1000
 
+// validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
+// TODO: this method is very similar to validateIndexType...
 func validateIndexes(tableSpec *plan.TableSpec) error {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
 		lwrNames[strings.ToLower(col.Name)] = col
 	}
 
+	var hasPkIndexDef bool
 	for _, idx := range tableSpec.IdxDefs {
+		if idx.Constraint == sql.IndexConstraint_Primary {
+			hasPkIndexDef = true
+		}
 		for _, idxCol := range idx.Columns {
-			col, ok := lwrNames[strings.ToLower(idxCol.Name)]
+			schCol, ok := lwrNames[strings.ToLower(idxCol.Name)]
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-
-			if sql.IsByteType(col.Type) {
-				return sql.ErrInvalidByteIndex.New(col.Name)
-			} else if sql.IsTextBlob(col.Type) {
-				return sql.ErrInvalidTextIndex.New(col.Name)
+			err := validatePrefixLength(schCol, idxCol)
+			if err != nil {
+				return err
 			}
 		}
 	}
 
-	return nil
-}
-
-// validatePkTypes prevents creating tables with blob primary keys
-func validatePkTypes(tableSpec *plan.TableSpec) error {
-	for _, col := range tableSpec.Schema.Schema {
-		if col.PrimaryKey && sql.IsByteType(col.Type) {
-			return sql.ErrInvalidBytePrimaryKey.New(col.Name)
-		} else if col.PrimaryKey && sql.IsTextBlob(col.Type) {
-			return sql.ErrInvalidTextIndex.New(col.Name)
+	// if there was not a PkIndexDef, then any primary key text/blob columns must not have index lengths
+	// otherwise, then it would've been validated before this
+	if !hasPkIndexDef {
+		for _, col := range tableSpec.Schema.Schema {
+			if col.PrimaryKey && sql.IsTextBlob(col.Type) {
+				return sql.ErrInvalidBlobTextKey.New(col.Name)
+			}
 		}
 	}
-
 	return nil
 }
 
@@ -572,6 +600,14 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 
 		if hasPrimaryKeys(sch) {
 			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
+		}
+
+		for _, idxCol := range ai.Columns {
+			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
+			err := validatePrefixLength(schCol, idxCol)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Set the primary keys

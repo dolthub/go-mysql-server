@@ -40,140 +40,125 @@ func hoistSelectExists(
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-
-		s := pluckCorrelatedExistsSubquery(f, len(f.Schema())+len(scope.Schema()))
-		if s == nil {
-			return n, transform.SameTree, nil
-		}
-		if s.right == nil || s.left == nil {
-			panic("unexpected empty scope")
-		}
-
-		if p, ok := s.right.(*plan.Project); ok {
-			s.right = p.Child
-		}
-
-		if gb, ok := s.right.(*plan.GroupBy); ok {
-			s.right = gb.Child
-		}
-
-		outerFilters, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, append(s.left.Schema(), s.right.Schema()...), s.outerFilters...)
-		if err != nil {
-			return n, transform.SameTree, err
-		}
-
-		switch s.joinType {
-		case plan.JoinTypeAnti:
-			return plan.NewAntiJoin(s.left, s.right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
-		case plan.JoinTypeSemi:
-			return plan.NewSemiJoin(s.left, s.right, expression.JoinAnd(outerFilters...)), transform.NewTree, nil
-		default:
-			panic("expected JoinTypeSemi or JoinTypeAnti")
-		}
+		return hoistExistSubqueries(scope, a, f, len(f.Schema())+len(scope.Schema()))
 	})
 }
 
-type hoistExistsSubquery struct {
-	left         sql.Node
-	right        sql.Node
-	outerFilters []sql.Expression
-	joinType     plan.JoinType
+// simplifyPartialJoinParents discards nodes that will not affect an existence check.
+func simplifyPartialJoinParents(n sql.Node) sql.Node {
+	ret := n
+	for {
+		switch n := ret.(type) {
+		case *plan.Project, *plan.GroupBy, *plan.Limit, *plan.Sort, *plan.Distinct, *plan.TopN:
+			ret = n.Children()[0]
+		case *plan.Filter:
+			panic("unhandled filter")
+		default:
+			return ret
+		}
+	}
 }
 
-// pluckCorrelatedExistsSubquery scans a filter for [NOT] WHERE EXISTS, and then attempts to
+// hoistExistSubqueries scans a filter for [NOT] WHERE EXISTS, and then attempts to
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
-func pluckCorrelatedExistsSubquery(filter *plan.Filter, scopeLen int) *hoistExistsSubquery {
-	var decorrelated sql.Node
-	var outerFilters []sql.Expression
-
-	filters := splitConjunction(filter.Expression)
-	var newFilters []sql.Expression
-	var joinType plan.JoinType
-	for _, f := range filters {
+func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeLen int) (sql.Node, transform.TreeIdentity, error) {
+	ret := filter.Child
+	var retFilters []sql.Expression
+	same := transform.SameTree
+	for _, f := range splitConjunction(filter.Expression) {
+		var joinType plan.JoinType
+		var s *hoistSubquery
 		switch e := f.(type) {
 		case *plan.ExistsSubquery:
-			decorrelated, outerFilters = decorrelateOuterCols(e.Query, scopeLen)
-			if len(outerFilters) == 0 {
-				return nil
-			}
 			joinType = plan.JoinTypeSemi
+			s = decorrelateOuterCols(e.Query, scopeLen)
 		case *expression.Not:
-			esq, ok := e.Child.(*plan.ExistsSubquery)
-			if !ok {
-				return nil
+			if esq, ok := e.Child.(*plan.ExistsSubquery); ok {
+				joinType = plan.JoinTypeAnti
+				s = decorrelateOuterCols(esq.Query, scopeLen)
 			}
-			decorrelated, outerFilters = decorrelateOuterCols(esq.Query, scopeLen)
-			if len(outerFilters) == 0 {
-				return nil
-			}
-			joinType = plan.JoinTypeAnti
 		default:
 		}
-	}
-	if len(outerFilters) == 0 {
-		return nil
-	}
-	if len(newFilters) == 0 {
-		return &hoistExistsSubquery{
-			left:         filter.Child,
-			right:        decorrelated,
-			outerFilters: outerFilters,
-			joinType:     joinType,
-		}
-	}
-	newFilter := plan.NewFilter(expression.JoinAnd(newFilters...), filter.Child)
 
-	return &hoistExistsSubquery{
-		left:         newFilter,
-		right:        decorrelated,
-		outerFilters: outerFilters,
-		joinType:     joinType,
+		if s == nil {
+			retFilters = append(retFilters, f)
+			continue
+		}
+
+		// if we reached here, |s| contains the state we need to
+		// decorrelate the subquery expression into a new node
+		outerFilters, _, err := FixFieldIndexesOnExpressions(scope, a, append(ret.Schema(), s.inner.Schema()...), s.outerFilters...)
+		if err != nil {
+			return filter, transform.SameTree, err
+		}
+
+		retFilters = append(retFilters, s.innerFilters...)
+
+		switch joinType {
+		case plan.JoinTypeAnti:
+			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...))
+		case plan.JoinTypeSemi:
+			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...))
+		default:
+			panic("expected JoinTypeSemi or JoinTypeAnti")
+		}
+		same = transform.NewTree
 	}
+
+	if same {
+		return filter, transform.SameTree, nil
+	}
+	if len(retFilters) > 0 {
+		ret = plan.NewFilter(expression.JoinAnd(retFilters...), ret)
+	}
+	return ret, transform.NewTree, nil
+}
+
+type hoistSubquery struct {
+	inner        sql.Node
+	innerFilters []sql.Expression
+	outerFilters []sql.Expression
 }
 
 // decorrelateOuterCols returns an optionally modified subquery and extracted
 // filters referencing an outer scope.
-func decorrelateOuterCols(e *plan.Subquery, scopeLen int) (sql.Node, []sql.Expression) {
+func decorrelateOuterCols(e *plan.Subquery, scopeLen int) *hoistSubquery {
 	var outerFilters []sql.Expression
+	var innerFilters []sql.Expression
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
 		filters := splitConjunction(f.Expression)
-		var newFilters []sql.Expression
 		for _, f := range filters {
 			var outerRef bool
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				gf, ok := e.(*expression.GetField)
-				if !ok {
-					return false
-				}
-				if gf.Index() < scopeLen {
+				if ok && gf.Index() < scopeLen {
 					// has to be from out of scope
 					outerRef = true
-					return false
+					return true
 				}
-				return true
+				return false
 			})
 			if outerRef {
 				outerFilters = append(outerFilters, f)
 			} else {
-				newFilters = append(newFilters, f)
+				innerFilters = append(innerFilters, f)
 			}
 		}
-
-		if len(newFilters) == len(filters) {
-			return n, transform.SameTree, nil
-		} else if len(newFilters) == 0 {
-			return f.Child, transform.NewTree, nil
-		} else {
-			return plan.NewFilter(expression.JoinAnd(newFilters...), f.Child), transform.NewTree, nil
-		}
+		return f.Child, transform.NewTree, nil
 	})
-	if same {
-		return nil, nil
+
+	if same || len(outerFilters) == 0 {
+		return nil
 	}
-	return n, outerFilters
+
+	return &hoistSubquery{
+		inner:        simplifyPartialJoinParents(n),
+		innerFilters: innerFilters,
+		outerFilters: outerFilters,
+	}
 }

@@ -202,9 +202,9 @@ func (t Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Col
 }
 
 // CreateIndex implements the interface sql.IndexAlterableTable.
-func (t Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) error {
+func (t Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	statement := "CREATE"
-	switch constraint {
+	switch idx.Constraint {
 	case sql.IndexConstraint_Unique:
 		statement += " UNIQUE INDEX"
 	case sql.IndexConstraint_Fulltext:
@@ -214,16 +214,16 @@ func (t Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexUs
 	default:
 		statement += " INDEX"
 	}
-	idxColumnNames := make([]string, len(columns))
-	for i, column := range columns {
+	idxColumnNames := make([]string, len(idx.Columns))
+	for i, column := range idx.Columns {
 		idxColumnNames[i] = column.Name
 	}
-	if len(indexName) == 0 {
-		indexName = randString(10)
+	if len(idx.Name) == 0 {
+		idx.Name = randString(10)
 	}
-	statement = fmt.Sprintf("%s `%s` ON `%s` (`%s`)", statement, indexName, t.name, strings.Join(idxColumnNames, "`,`"))
-	if len(comment) > 0 {
-		statement = fmt.Sprintf("%s COMMENT '%s'", statement, strings.ReplaceAll(comment, "'", `\'`))
+	statement = fmt.Sprintf("%s `%s` ON `%s` (`%s`)", statement, idx.Name, t.name, strings.Join(idxColumnNames, "`,`"))
+	if len(idx.Comment) > 0 {
+		statement = fmt.Sprintf("%s COMMENT '%s'", statement, strings.ReplaceAll(idx.Comment, "'", `\'`))
 	}
 	return t.db.shim.Exec(t.db.name, statement)
 }
@@ -287,7 +287,7 @@ func (t Table) UpdateForeignKey(ctx *sql.Context, fkName string, fkDef sql.Forei
 }
 
 // CreateIndexForForeignKey implements the interface sql.ForeignKeyTable.
-func (t Table) CreateIndexForForeignKey(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn) error {
+func (t Table) CreateIndexForForeignKey(ctx *sql.Context, idx sql.IndexDef) error {
 	return nil
 }
 

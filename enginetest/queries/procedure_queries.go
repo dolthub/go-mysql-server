@@ -31,7 +31,7 @@ var ProcedureLogicTests = []ScriptTest{
 				Query: "CALL testabc(2, 3)",
 				Expected: []sql.Row{
 					{
-						float64(6),
+						"6",
 					},
 				},
 			},
@@ -39,7 +39,7 @@ var ProcedureLogicTests = []ScriptTest{
 				Query: "CALL testabc(9, 9.5)",
 				Expected: []sql.Row{
 					{
-						float64(85.5),
+						"85.5",
 					},
 				},
 			},
@@ -869,6 +869,77 @@ END;`,
 		Query:       "CREATE PROCEDURE test_proc(z VARCHAR(20)) SELECT z",
 		ExpectedErr: sql.ErrStoredProcedureAlreadyExists,
 	},
+	{
+		Name: "Broken procedure shouldn't break other procedures",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, other INT);",
+			"INSERT INTO t VALUES (1, 1), (2, 2), (3, 3);",
+			"CREATE PROCEDURE fragile() select other from t;",
+			"CREATE PROCEDURE stable() select pk from t;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "CALL fragile();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'stable'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'fragile'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:    "alter table t drop other;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:          "CALL fragile();",
+				ExpectedErrStr: "column \"other\" could not be found in any table in scope",
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'stable'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'fragile'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN other INT",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "CALL fragile();",
+				Expected: []sql.Row{{nil}, {nil}, {nil}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (4, 4), (5, 5), (6, 6);",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}, {6}},
+			},
+			{
+				Query:    "CALL fragile();",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {4}, {5}, {6}},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{
@@ -1356,5 +1427,28 @@ var ProcedureShowCreate = []ScriptTest{
 				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
 			},
 		},
+	},
+}
+
+var NoDbProcedureTests = []ScriptTestAssertion{
+	{
+		Query:    "SHOW databases;",
+		Expected: []sql.Row{{"information_schema"}, {"mydb"}, {"mysql"}},
+	},
+	{
+		Query:    "SELECT database();",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "CREATE PROCEDURE mydb.p5() SELECT 42;",
+		Expected: []sql.Row{{sql.NewOkResult(0)}},
+	},
+	{
+		Query:            "SHOW CREATE PROCEDURE mydb.p5;",
+		SkipResultsCheck: true,
+	},
+	{
+		Query:       "SHOW CREATE PROCEDURE p5;",
+		ExpectedErr: sql.ErrNoDatabaseSelected,
 	},
 }

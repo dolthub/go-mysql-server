@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -55,16 +56,22 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		}
 
 		var colsFromChild []string
-		var missingCols []string
+		var missingCols []tableCol
+		var missingSortFieldExpressions []string
 		for _, f := range sort.SortFields {
 			ns := findExprNameables(f.Column)
 
 			for _, n := range ns {
+				col := tableColFromNameable(n)
 				name := strings.ToLower(n.Name())
-				if stringContains(childAliases, name) {
+				if col.Table() == "" && stringContains(childAliases, name) {
 					colsFromChild = append(colsFromChild, n.Name())
-				} else if !tableColsContains(schemaCols, tableColFromNameable(n)) {
-					missingCols = append(missingCols, n.Name())
+				} else if !tableColsContains(schemaCols, col) {
+					missingCols = append(missingCols, col)
+					expr := strings.ToLower(f.Column.String())
+					if !stringContains(missingSortFieldExpressions, expr) {
+						missingSortFieldExpressions = append(missingSortFieldExpressions, expr)
+					}
 				}
 			}
 		}
@@ -75,14 +82,20 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			return n, transform.SameTree, nil
 		}
 
-		// If there are no columns required by the order by available, then move the order by
-		// below its child.
+		// If all the missing sort fields are available as aliased expressions, swap in the alias reference
+		expressionToAliasName := aliasedExpressionsInNode(sort.Child)
+		if allMissingSortFieldsAreAliasedExpressions(expressionToAliasName, missingSortFieldExpressions) {
+			a.Log("swapping in alias references for missing sort fields: %s", strings.Join(missingSortFieldExpressions, ", "))
+			return replaceSortFieldsWithAliasReferences(sort, expressionToAliasName, missingSortFieldExpressions)
+		}
+
+		// If there are no columns required by the order by available, then move the order by below its child.
 		if len(colsFromChild) == 0 {
-			a.Log("pushing down sort, missing columns: %s", strings.Join(missingCols, ", "))
+			a.Log("pushing down sort, missing columns: %s", tableColsToString(missingCols))
 			return pushSortDown(sort)
 		}
 
-		a.Log("fixing sort dependencies, missing columns: %s", strings.Join(missingCols, ", "))
+		a.Log("fixing sort dependencies, missing columns: %s", tableColsToString(missingCols))
 
 		// If there are some columns required by the order by on the child but some are missing
 		// we have to do some more complex logic and split the projection in two.
@@ -91,11 +104,47 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	})
 }
 
+// tableColsToString converts each of the specified |tableCols| into a string and returns them, joined with commas,
+// as a single string.
+func tableColsToString(tableCols []tableCol) string {
+	var s string
+	for _, tableCol := range tableCols {
+		if s == "" {
+			s = tableCol.String()
+		} else {
+			s = fmt.Sprintf("%s, %s", s, tableCol.String())
+		}
+	}
+	return s
+}
+
+// findFirstProjectorNode returns the first sql.Projector node found, starting the search from the specified node.
+// If the specified node is a sql.Projector, it will be returned, otherwise its children will be searched for the first
+// Projector until one is found. If no Projector is found, nil is returned.
+func findFirstProjectorNode(node sql.Node) sql.Projector {
+	children := []sql.Node{node}
+
+	for {
+		if len(children) == 0 {
+			return nil
+		}
+
+		currentChild := children[0]
+		children = children[1:]
+
+		if projector, ok := currentChild.(sql.Projector); ok {
+			return projector
+		}
+
+		children = append(children, currentChild.Children()...)
+	}
+}
+
 // reorderSort replaces the sort node by adding necessary missing columns to the child node and then reordering the
 // sort with its child:
 // sort(project(a)) becomes project(sort(project(a)))
 // sort(groupBy(a)) becomes project(sort(groupby(a)))
-func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
+func reorderSort(sort *plan.Sort, missingCols []tableCol) (sql.Node, error) {
 	var expressions []sql.Expression
 	switch child := sort.Child.(type) {
 	case *plan.Project:
@@ -110,7 +159,7 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 
 	var newExpressions = append([]sql.Expression{}, expressions...)
 	for _, col := range missingCols {
-		newExpressions = append(newExpressions, expression.NewUnresolvedColumn(col))
+		newExpressions = append(newExpressions, expression.NewUnresolvedQualifiedColumn(col.Table(), col.Name()))
 	}
 
 	for i, e := range expressions {
@@ -203,6 +252,46 @@ func pushSortDown(sort *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 		// the sort must be pushed down.
 		return nil, transform.SameTree, errSortPushdown.New(child)
 	}
+}
+
+// allMissingSortFieldsAreAliasedExpressions returns true if the specified |missingSortFields| are all available as
+// aliased expressions, otherwise returns false.
+func allMissingSortFieldsAreAliasedExpressions(expressionToAliasName map[string]string, missingSortFields []string) bool {
+	for _, missingSortField := range missingSortFields {
+		if _, ok := expressionToAliasName[missingSortField]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// replaceSortFieldsWithAliasReferences transforms the specified |sort| node, by replacing the specified
+// sort fields from |missingSortFieldExpressions| with their aliased names from |expressionToAliasName|.
+func replaceSortFieldsWithAliasReferences(sort *plan.Sort, expressionToAliasName map[string]string, missingSortFieldExpressions []string) (sql.Node, transform.TreeIdentity, error) {
+	var newSortFields []sql.Expression
+	for i, sortField := range sort.SortFields {
+		exprString := strings.ToLower(sortField.Column.String())
+
+		// if exprString is one of our missing columns and there's an alias we can reference, swap it in
+		for _, missingSortField := range missingSortFieldExpressions {
+			if missingSortField == exprString {
+				if aliasName, ok := expressionToAliasName[exprString]; ok {
+					if newSortFields == nil {
+						newSortFields = make([]sql.Expression, len(sort.SortFields))
+						copy(newSortFields, sort.SortFields.ToExpressions())
+					}
+					newSortFields[i] = expression.NewAliasReference(aliasName)
+				}
+				break
+			}
+		}
+	}
+
+	newSort, err := sort.WithExpressions(newSortFields...)
+	if err != nil {
+		return sort, transform.SameTree, err
+	}
+	return newSort, transform.NewTree, nil
 }
 
 func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

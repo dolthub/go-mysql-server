@@ -33,6 +33,10 @@ type Project struct {
 	Projections []sql.Expression
 }
 
+var _ sql.Expressioner = (*Project)(nil)
+var _ sql.Node = (*Project)(nil)
+var _ sql.Projector = (*Project)(nil)
+
 // NewProject creates a new projection.
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
@@ -68,8 +72,8 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, &iter{
-		p:         p,
+	return sql.NewSpanIter(span, &projectIter{
+		p:         p.Projections,
 		childIter: i,
 		row:       row,
 	}), nil
@@ -105,6 +109,17 @@ func (p *Project) Expressions() []sql.Expression {
 	return p.Projections
 }
 
+// ProjectedExprs implements sql.Projector
+func (p *Project) ProjectedExprs() []sql.Expression {
+	return p.Projections
+}
+
+// WithProjectedExprs implements sql.Projector
+func (p *Project) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
+	node, err := p.WithExpressions(exprs...)
+	return node.(sql.Projector), err
+}
+
 // WithChildren implements the Node interface.
 func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -128,22 +143,22 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewProject(exprs, p.Child), nil
 }
 
-type iter struct {
-	p         *Project
+type projectIter struct {
+	p         []sql.Expression
 	childIter sql.RowIter
 	row       sql.Row
 }
 
-func (i *iter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return ProjectRow(ctx, i.p.Projections, childRow)
+	return ProjectRow(ctx, i.p, childRow)
 }
 
-func (i *iter) Close(ctx *sql.Context) error {
+func (i *projectIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 

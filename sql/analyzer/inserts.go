@@ -24,6 +24,35 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// We capture all INSERTs along the tree, such as those inside of block statements.
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		ii, ok := n.(*plan.InsertInto)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		if !ii.Destination.Resolved() {
+			return n, transform.SameTree, nil
+		}
+
+		schema := ii.Destination.Schema()
+
+		// If no column names were specified in the query, go ahead and fill
+		// them all in now that the destination is resolved.
+		// TODO: setting the plan field directly is not great
+		if len(ii.ColumnNames) == 0 {
+			colNames := make([]string, len(schema))
+			for i, col := range schema {
+				colNames[i] = col.Name
+			}
+			ii.ColumnNames = colNames
+		}
+
+		return ii, transform.NewTree, nil
+	})
+}
+
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
 		return n, transform.SameTree, nil
