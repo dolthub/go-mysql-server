@@ -112,9 +112,6 @@ var ColumnAliasQueries = []ScriptTest{
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
 			{
-				// This test currently fails with error "found HAVING clause with no GROUP BY"
-				Skip: true,
-
 				// Having clause may reference expression aliases from current scope
 				Query:    "select t1.u as a from uv as t1 having a = t1.u order by a;",
 				Expected: []sql.Row{{0}, {1}, {2}, {3}},
