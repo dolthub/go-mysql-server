@@ -231,6 +231,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 		rel = &tableScan{relBase: b, table: n.ResolvedTable}
 	case *plan.ValueDerivedTable:
 		rel = &values{relBase: b, table: n}
+	case sql.TableFunction:
+		rel = &tableFunc{relBase: b, table: n}
 	default:
 		panic(fmt.Sprintf("unrecognized join leaf: %T", n))
 	}
