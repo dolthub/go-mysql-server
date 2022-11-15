@@ -198,6 +198,6 @@ func (c *coster) costSubqueryAlias(_ *subqueryAlias) (float64, error) {
 }
 
 func (c *coster) costTableFunc(_ *tableFunc) (float64, error) {
-	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
+	// TODO: sql.TableFunction should expose RowCount()
 	return 10, nil
 }
