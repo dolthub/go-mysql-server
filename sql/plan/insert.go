@@ -19,6 +19,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -351,12 +352,20 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 
+	origRow := make(sql.Row, len(row))
+	copy(origRow, row)
+
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
 			converted, cErr := col.Type.Convert(row[idx]) // allows for better error handling
 			if cErr != nil {
-				if i.ignore {
+				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
+				// For JSON column types, always throw an error. MySQL throws the following error even when
+				// IGNORE is specified:
+				// ERROR 3140 (22032): Invalid JSON text: "Invalid value." at position 0 in value for column
+				// 'table.column'.
+				if i.ignore && col.Type.Type() != query.Type_JSON {
 					row = convertDataAndWarn(ctx, i.schema, row, idx, cErr)
 					continue
 				} else {
@@ -366,7 +375,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					}
-					return nil, sql.NewWrappedInsertError(row, cErr)
+					return nil, sql.NewWrappedInsertError(origRow, cErr)
 				}
 			}
 			row[idx] = converted
