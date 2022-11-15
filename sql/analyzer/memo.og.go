@@ -317,6 +317,34 @@ func (r *subqueryAlias) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
+type tableFunc struct {
+	*relBase
+	table sql.TableFunction
+}
+
+var _ relExpr = (*tableFunc)(nil)
+var _ sourceRel = (*tableFunc)(nil)
+
+func (r *tableFunc) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *tableFunc) name() string {
+	return strings.ToLower(r.table.Name())
+}
+
+func (r *tableFunc) tableId() TableId {
+	return tableIdForSource(r.g.id)
+}
+
+func (r *tableFunc) children() []*exprGroup {
+	return nil
+}
+
+func (r *tableFunc) outputCols() sql.Schema {
+	return r.table.Schema()
+}
+
 func formatRelExpr(r relExpr) string {
 	switch r := r.(type) {
 	case *crossJoin:
@@ -349,6 +377,8 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("recursiveCte: %s", r.name())
 	case *subqueryAlias:
 		return fmt.Sprintf("subqueryAlias: %s", r.name())
+	case *tableFunc:
+		return fmt.Sprintf("tableFunc: %s", r.name())
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
@@ -386,6 +416,8 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		return b.buildRecursiveCte(r, input, children...)
 	case *subqueryAlias:
 		return b.buildSubqueryAlias(r, input, children...)
+	case *tableFunc:
+		return b.buildTableFunc(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
