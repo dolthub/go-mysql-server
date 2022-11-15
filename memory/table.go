@@ -540,6 +540,7 @@ func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
 
 func (t *Table) newTableEditor() *tableEditor {
 	var uniqIdxCols [][]int
+	var prefixLengths [][]uint16
 	for _, idx := range t.indexes {
 		if !idx.IsUnique() {
 			continue
@@ -554,6 +555,7 @@ func (t *Table) newTableEditor() *tableEditor {
 			panic("failed to get column indexes")
 		}
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
+		prefixLengths = append(prefixLengths, idx.PrefixLengths())
 	}
 	return &tableEditor{
 		table:             t,
@@ -561,7 +563,9 @@ func (t *Table) newTableEditor() *tableEditor {
 		initialPartitions: nil,
 		ea:                NewTableEditAccumulator(t),
 		initialInsert:     0,
-		uniqueIdxCols:     uniqIdxCols}
+		uniqueIdxCols:     uniqIdxCols,
+		prefixLengths:     prefixLengths,
+	}
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
@@ -1455,6 +1459,9 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		found := false
 		for j, currCol := range potentialSchema {
 			if strings.ToLower(currCol.Name) == strings.ToLower(newCol.Name) {
+				if sql.IsText(currCol.Type) && newCol.Length > 0 {
+					return sql.ErrUnsupportedIndexPrefix.New(currCol.Name)
+				}
 				currCol.PrimaryKey = true
 				currCol.Nullable = false
 				found = true
