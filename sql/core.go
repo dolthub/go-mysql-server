@@ -352,11 +352,10 @@ type TableFunction interface {
 	Node
 	Expressioner
 	Databaser
+	Nameable
 
 	// NewInstance returns a new instance of the table function
 	NewInstance(ctx *Context, db Database, expressions []Expression) (Node, error)
-	// FunctionName returns the name of this table function
-	FunctionName() string
 }
 
 // Table represents the backend of a SQL table.
