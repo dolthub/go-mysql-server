@@ -30,6 +30,7 @@ type tableEditor struct {
 	initialInsert     int
 	// array of key ordinals for each unique index defined on the table
 	uniqueIdxCols [][]int
+	prefixLengths [][]uint16
 	fkTable       *Table
 }
 
@@ -133,11 +134,12 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return sql.NewUniqueKeyErr(formatRow(row, pkColIdxes), true, partitionRow)
 	}
 
-	for _, cols := range t.uniqueIdxCols {
+	for i, cols := range t.uniqueIdxCols {
 		if hasNullForAnyCols(row, cols) {
 			continue
 		}
-		existing, found, err := t.ea.GetByCols(row, cols)
+		prefixLengths := t.prefixLengths[i]
+		existing, found, err := t.ea.GetByCols(row, cols, prefixLengths)
 		if err != nil {
 			return err
 		}
@@ -224,11 +226,12 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	// Throw a unique key error if any unique indexes are defined
-	for _, cols := range t.uniqueIdxCols {
+	for i, cols := range t.uniqueIdxCols {
 		if hasNullForAnyCols(newRow, cols) {
 			continue
 		}
-		existing, found, err := t.ea.GetByCols(newRow, cols)
+		prefixLengths := t.prefixLengths[i]
+		existing, found, err := t.ea.GetByCols(newRow, cols, prefixLengths)
 		if err != nil {
 			return err
 		}
@@ -315,13 +318,49 @@ func (t *tableEditor) pkColumnIndexes() []int {
 
 func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
-	return !columnsMatch(pkColIdxes, row, row2)
+	return !columnsMatch(pkColIdxes, nil, row, row2)
 }
 
 // Returns whether the values for the columns given match in the two rows provided
-func columnsMatch(colIndexes []int, row sql.Row, row2 sql.Row) bool {
-	for _, i := range colIndexes {
-		if row[i] != row2[i] {
+func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sql.Row) bool {
+	for i, idx := range colIndexes {
+		v1 := row[idx]
+		v2 := row2[idx]
+		if len(prefixLengths) > i && prefixLengths[i] > 0 {
+			prefixLength := prefixLengths[i]
+			switch v := v1.(type) {
+			case string:
+				if prefixLength > uint16(len(v)) {
+					prefixLength = uint16(len(v))
+				}
+				v1 = v[:prefixLength]
+			case []byte:
+				if prefixLength > uint16(len(v)) {
+					prefixLength = uint16(len(v))
+				}
+				v1 = v[:prefixLength]
+			}
+			prefixLength = prefixLengths[i]
+			switch v := v2.(type) {
+			case string:
+				if prefixLength > uint16(len(v)) {
+					prefixLength = uint16(len(v))
+				}
+				v2 = v[:prefixLength]
+			case []byte:
+				if prefixLength > uint16(len(v)) {
+					prefixLength = uint16(len(v))
+				}
+				v2 = v[:prefixLength]
+			}
+		}
+		if v, ok := v1.([]byte); ok {
+			v1 = string(v)
+		}
+		if v, ok := v2.([]byte); ok {
+			v2 = string(v)
+		}
+		if v1 != v2 {
 			return false
 		}
 	}
@@ -340,7 +379,7 @@ type tableEditAccumulator interface {
 	// ApplyEdits takes a initialTable and runs through a sequence of inserts and deletes that have been stored in the
 	// accumulator.
 	ApplyEdits(ctx *sql.Context) error
-	GetByCols(value sql.Row, cols []int) (sql.Row, bool, error)
+	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
 	Clear()
 }
@@ -406,7 +445,7 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 	pkColIdxes := pke.pkColumnIndexes()
 	for _, partition := range pke.table.partitions {
 		for _, partitionRow := range partition {
-			if columnsMatch(pkColIdxes, partitionRow, value) {
+			if columnsMatch(pkColIdxes, nil, partitionRow, value) {
 				return partitionRow, true, nil
 			}
 		}
@@ -416,23 +455,23 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 }
 
 // GetByCols finds a row that has the same |cols| values as |value|.
-func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int) (sql.Row, bool, error) {
+func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error) {
 	// If we have this row in any delete, bail.
 	for _, r := range pke.deletes {
-		if columnsMatch(cols, r, value) {
+		if columnsMatch(cols, prefixLengths, r, value) {
 			return nil, false, nil
 		}
 	}
 
 	for _, r := range pke.adds {
-		if columnsMatch(cols, r, value) {
+		if columnsMatch(cols, prefixLengths, r, value) {
 			return r, true, nil
 		}
 	}
 
 	for _, partition := range pke.table.partitions {
 		for _, partitionRow := range partition {
-			if columnsMatch(cols, partitionRow, value) {
+			if columnsMatch(cols, prefixLengths, partitionRow, value) {
 				return partitionRow, true, nil
 			}
 		}
@@ -497,7 +536,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Table, 
 			// have the row to be replaced, so we need to consider primary key information.
 			pkColIdxes := pke.pkColumnIndexes()
 			if len(pkColIdxes) > 0 {
-				if columnsMatch(pkColIdxes, partitionRow, row) {
+				if columnsMatch(pkColIdxes, nil, partitionRow, row) {
 					table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 					break
 				}
@@ -536,7 +575,7 @@ func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *Table, 
 	if len(pkColIdxes) > 0 {
 		for partitionIndex, partition := range table.partitions {
 			for partitionRowIndex, partitionRow := range partition {
-				if columnsMatch(pkColIdxes, partitionRow, row) {
+				if columnsMatch(pkColIdxes, nil, partitionRow, row) {
 					// Instead of throwing a unique key error, we perform an update operation to essentially represent
 					// map semantics for the keyed table.
 					savedPartitionIndex = partitionIndex
@@ -607,23 +646,23 @@ func (k *keylessTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) 
 	return nil, false, nil
 }
 
-func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int) (sql.Row, bool, error) {
+func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error) {
 	// If we have this row in any delete, bail.
 	for _, r := range k.deletes {
-		if columnsMatch(cols, r, value) {
+		if columnsMatch(cols, prefixLengths, r, value) {
 			return nil, false, nil
 		}
 	}
 
 	for _, r := range k.adds {
-		if columnsMatch(cols, r, value) {
+		if columnsMatch(cols, prefixLengths, r, value) {
 			return r, true, nil
 		}
 	}
 
 	for _, partition := range k.table.partitions {
 		for _, partitionRow := range partition {
-			if columnsMatch(cols, partitionRow, value) {
+			if columnsMatch(cols, prefixLengths, partitionRow, value) {
 				return partitionRow, true, nil
 			}
 		}

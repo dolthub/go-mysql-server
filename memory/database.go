@@ -35,6 +35,7 @@ type MemoryDatabase interface {
 
 var _ sql.Database = (*Database)(nil)
 var _ sql.TableCreator = (*Database)(nil)
+var _ sql.IndexedTableCreator = (*Database)(nil)
 var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
@@ -173,6 +174,29 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
+	d.tables[name] = table
+	return nil
+}
+
+// CreateIndexedTable creates a table with the given name and schema
+func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID) error {
+	_, ok := d.tables[name]
+	if ok {
+		return sql.ErrTableAlreadyExists.New(name)
+	}
+
+	table := NewTableWithCollation(name, sch, d.fkColl, collation)
+	if d.primaryKeyIndexes {
+		table.EnablePrimaryKeyIndexes()
+	}
+
+	for _, idxCol := range idxDef.Columns {
+		col := sch.Schema[sch.Schema.IndexOfColName(idxCol.Name)]
+		if col.PrimaryKey && sql.IsText(col.Type) && idxCol.Length > 0 {
+			return sql.ErrUnsupportedIndexPrefix.New(col.Name)
+		}
+	}
+
 	d.tables[name] = table
 	return nil
 }
