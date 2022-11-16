@@ -16,9 +16,6 @@ package enginetest_test
 
 import (
 	"fmt"
-	"log"
-	"testing"
-
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -28,6 +25,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"log"
+	"testing"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -177,6 +177,10 @@ func TestSingleQueryPrepared(t *testing.T) {
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
+func newVarChar(length int64) sql.StringType {
+	return sql.MustCreateStringWithDefaults(sqltypes.VarChar, length)
+}
+
 func TestSingleScript(t *testing.T) {
 	t.Skip()
 
@@ -755,6 +759,10 @@ func TestNullRanges(t *testing.T) {
 
 func TestBlobs(t *testing.T) {
 	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestIndexes(t *testing.T) {
+	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestIndexPrefix(t *testing.T) {

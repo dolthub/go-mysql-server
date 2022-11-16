@@ -6474,3 +6474,12 @@ func TestIndexPrefix(t *testing.T, h Harness) {
 		TestScript(t, h, tt)
 	}
 }
+
+func TestIndexes(t *testing.T, h Harness) {
+	e := mustNewEngine(t, h)
+	defer e.Close()
+
+	for _, tt := range queries.IndexQueries {
+		TestScript(t, h, tt)
+	}
+}
