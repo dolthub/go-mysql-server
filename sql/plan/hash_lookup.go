@@ -158,6 +158,10 @@ func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 			return sql.HashOf(s)
 		}
 	}
+	// byte slices are not hashable
+	if k, ok := key.([]byte); ok {
+		key = string(k)
+	}
 	return key, nil
 }
 
