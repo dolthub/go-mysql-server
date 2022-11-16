@@ -10108,6 +10108,55 @@ var StatisticsQueries = []ScriptTest{
 	},
 }
 
+var IndexQueries = []ScriptTest{
+	{
+		Name: "unique key violation prevents insert",
+		SetUpScript: []string{
+			"create table users (id varchar(26) primary key, namespace varchar(50), name varchar(50));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create unique index namespace__name on users (namespace, name)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+			},
+			{
+				Query: "show create table users",
+				Expected: []sql.Row{
+					{"users", "CREATE TABLE `users` (\n  `id` varchar(26) NOT NULL,\n  `namespace` varchar(50),\n  `name` varchar(50),\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `namespace__name` (`namespace`,`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into users values ('user1', 'namespace1', 'name1')",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query:       "insert into users values ('user2', 'namespace1', 'name1')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		Name: "unique key duplicate key update",
+		SetUpScript: []string{
+			"CREATE TABLE auniquetable (pk int primary key, uk int unique key, i int);",
+			"INSERT INTO auniquetable VALUES(0,0,0);",
+			"INSERT INTO auniquetable (pk,uk) VALUES(1,0) on duplicate key update i = 99;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT pk, uk, i from auniquetable",
+				Expected: []sql.Row{
+					{0, 0, 99},
+				},
+			},
+		},
+	},
+}
+
 var IndexPrefixQueries = []ScriptTest{
 	{
 		Name: "int prefix",

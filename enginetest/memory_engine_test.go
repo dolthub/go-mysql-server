@@ -757,6 +757,10 @@ func TestBlobs(t *testing.T) {
 	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestIndexes(t *testing.T) {
+	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
 }
