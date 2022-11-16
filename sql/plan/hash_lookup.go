@@ -109,9 +109,6 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 				if err != nil {
 					return nil, err
 				}
-				if k, ok := key.([]byte); ok {
-					key = string(k)
-				}
 				n.lookup[key] = append(n.lookup[key], row)
 			}
 			// TODO: After the row cache is consumed and
@@ -160,6 +157,10 @@ func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		default:
 			return sql.HashOf(s)
 		}
+	}
+	// byte slices are not hashable
+	if k, ok := key.([]byte); ok {
+		key = string(k)
 	}
 	return key, nil
 }

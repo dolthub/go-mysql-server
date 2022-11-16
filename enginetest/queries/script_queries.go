@@ -2674,6 +2674,39 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "hash lookup for joins works with binary",
+		SetUpScript: []string{
+			"create table uv (u int primary key, v int);",
+			"create table xy (x int primary key, y int);",
+			"insert into uv values (0,0), (1,1), (2,2);",
+			"insert into xy values (0,0), (1,1), (2,2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select uv.u from uv join xy on binary xy.x = binary uv.u;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+					{2},
+				},
+			},
+			{
+				Query: "explain select uv.u from uv join xy on binary xy.x = binary uv.u;",
+				Expected: []sql.Row{
+					{"Project"},
+					{" ├─ columns: [uv.u]"},
+					{" └─ HashJoin(BINARY(xy.x) = BINARY(uv.u))"},
+					{"     ├─ Table(uv)"},
+					{"     │   └─ columns: [u]"},
+					{"     └─ HashLookup(child: (BINARY(xy.x)), lookup: (BINARY(uv.u)))"},
+					{"         └─ CachedResults"},
+					{"             └─ Table(xy)"},
+					{"                 └─ columns: [x]"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
