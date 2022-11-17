@@ -394,11 +394,16 @@ func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilte
 	if !ok {
 		group = j.memoize(op, left, right, joinFilter, selFilters)
 		j.plans[union] = group
-	} else {
-		j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
 	}
 	if commute(op) {
+		// Adding joints to the expression group places them at the start of the list, so if an operation is
+		// commutative, make sure we add the commuted version first, then add the original version, so that the original
+		// version is seen first. Otherwise, if both versions have the same, best cost, the analyzer will get stuck
+		// cycling between the two versions and the plan won't stabilize.
 		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
+	}
+	if ok {
+		j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
 	}
 }
 

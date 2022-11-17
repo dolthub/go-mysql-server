@@ -119,6 +119,9 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
+	for _, ts := range queries.JoinScripts {
+		TestScript(t, harness, ts)
+	}
 	for _, tt := range queries.JoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
@@ -127,7 +130,6 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
-
 	for _, ts := range queries.SkippedJoinScripts {
 		TestScript(t, harness, ts)
 	}
