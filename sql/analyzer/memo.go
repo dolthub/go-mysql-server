@@ -294,7 +294,6 @@ type exprGroup struct {
 	id            GroupId
 	m             *Memo
 	first         relExpr
-	last          relExpr
 	best          relExpr
 	cost          float64
 	done          bool
@@ -310,7 +309,6 @@ func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
 		m:     m,
 		id:    id,
 		first: rel,
-		last:  rel,
 	}
 	rel.setGroup(grp)
 	grp.relProps = newRelProps(rel)
