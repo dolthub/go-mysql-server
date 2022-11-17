@@ -482,13 +482,13 @@ func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) 
 			}
 			ts, ok := ctx.Session.(sql.TransactionSession)
 			if ok {
+				ctx.SetTransactionDatabase(transactionDatabase)
 				tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
 				if err != nil {
 					return err
 				}
 
 				ctx.SetTransaction(tx)
-				ctx.SetTransactionDatabase(transactionDatabase)
 			}
 		}
 	}
