@@ -2691,20 +2691,6 @@ var ScriptTests = []ScriptTest{
 					{2},
 				},
 			},
-			{
-				Query: "explain select uv.u from uv join xy on binary xy.x = binary uv.u;",
-				Expected: []sql.Row{
-					{"Project"},
-					{" ├─ columns: [uv.u]"},
-					{" └─ HashJoin(BINARY(xy.x) = BINARY(uv.u))"},
-					{"     ├─ Table(uv)"},
-					{"     │   └─ columns: [u]"},
-					{"     └─ HashLookup(child: (BINARY(xy.x)), lookup: (BINARY(uv.u)))"},
-					{"         └─ CachedResults"},
-					{"             └─ Table(xy)"},
-					{"                 └─ columns: [x]"},
-				},
-			},
 		},
 	},
 }
