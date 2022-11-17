@@ -61,7 +61,6 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 				// TODO: nested subqueries attempt to replan joins, which
 				// is not ideal but not the end of the world.
 				reorder = false
-
 			}
 		case *plan.HashLookup:
 			// TODO: hash lookup rule is unnecessary, fold into join ordering
@@ -398,7 +397,7 @@ func splitIndexableOr(filters []sql.Expression, indexes []sql.Index, attributeSo
 }
 
 // firstMatchingIndex returns first index that |e| can use as a lookup.
-// This simplifes index selection for concatJoin to avoid building
+// This simplifies index selection for concatJoin to avoid building
 // memo objects for equality expressions and indexes.
 func firstMatchingIndex(e *expression.Equals, indexes []sql.Index, attributeSource string, aliases TableAliases) *lookup {
 	for _, lIdx := range indexes {

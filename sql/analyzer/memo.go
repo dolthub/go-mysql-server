@@ -73,7 +73,7 @@ func (m *Memo) memoize(rel relExpr) *exprGroup {
 }
 
 // optimizeRoot finds the implementation for the root expression
-// that ahs the lowest cost.
+// that has the lowest cost.
 func (m *Memo) optimizeRoot() error {
 	return m.optimizeMemoGroup(m.root)
 }
@@ -367,7 +367,7 @@ type relExpr interface {
 }
 
 type relBase struct {
-	// g is this relation's expresion group
+	// g is this relation's expression group
 	g *exprGroup
 	// n is the next relExpr in the exprGroup linked list
 	n relExpr

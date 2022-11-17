@@ -88,7 +88,6 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 		return float64(0), err
 	}
 	return float64(stats.RowCount()), nil
-
 }
 
 func (c *coster) costValues(v *values) (float64, error) {
