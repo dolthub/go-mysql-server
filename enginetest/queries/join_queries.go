@@ -20,6 +20,10 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query:    `SELECT (SELECT 1 FROM (SELECT x FROM xy INNER JOIN uv ON (x = u OR y = v) LIMIT 1) r) AS s FROM xy`,
+		Expected: []sql.Row{{1}, {1}, {1}, {1}},
+	},
+	{
 		Query:    `select a from ab where exists (select 1 from xy where a =x)`,
 		Expected: []sql.Row{{0}, {1}, {2}, {3}},
 	},
@@ -517,54 +521,6 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	{
 		Query:    "select x from xy join uv on y = v join ab on y = b and u = -1",
 		Expected: []sql.Row{},
-	},
-}
-
-var JoinScripts = []ScriptTest{
-	{
-		// https://github.com/dolthub/dolt/issues/4816
-		Name: "commutative inner join plan stabilizes",
-		SetUpScript: []string{
-			"CREATE TABLE `t1` (`id` char(32) NOT NULL, `lft` int unsigned NOT NULL, `rght` int unsigned NOT NULL, `tree_id` int unsigned NOT NULL, `level` int unsigned NOT NULL, `parent_id` char(32), PRIMARY KEY (`id`), KEY `t1_parent_id_2486f5d4` (`parent_id`),  KEY `t1_tree_id_a09ea9a7` (`tree_id`), CONSTRAINT `t1_parent_id_2486f5d4_fk_t1_id` FOREIGN KEY (`parent_id`) REFERENCES `t1` (`id`));",
-			"CREATE TABLE `t2` (`id` char(32) NOT NULL, `region_id` char(32), PRIMARY KEY (`id`), KEY `t2_region_id_45210932` (`region_id`), CONSTRAINT `t2_region_id_45210932_fk_t1_id` FOREIGN KEY (`region_id`) REFERENCES `t1` (`id`));",
-			"INSERT INTO `t1` (`id`, `parent_id`, `lft`, `rght`, `tree_id`, `level`) VALUES ('3ab5d9743e25401da3d4aac4c73d38e2', NULL, 1, 2, 4, 0);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT COUNT(*) FROM (SELECT (SELECT count(*) FROM (SELECT U0.`id` FROM `t2` U0 INNER JOIN `t1` U1 ON (U0.`region_id` = U1.`id`) WHERE (U1.`lft` >= `t1`.`lft` AND U1.`lft` <= `t1`.`rght` AND U1.`tree_id` = `t1`.`tree_id`)) _count) AS `site_count` FROM `t1` WHERE `t1`.`id` IN ('3ab5d9743e25401da3d4aac4c73d38e2')) subquery;",
-				Expected: []sql.Row{{1}},
-			},
-			{
-				// Assert that the query plan is using an InnerJoin (non-commutative join types don't trigger the behavior being tested)
-				Query: "EXPLAIN SELECT COUNT(*) FROM (SELECT (SELECT count(*) FROM (SELECT U0.`id` FROM `t2` U0 INNER JOIN `t1` U1 ON (U0.`region_id` = U1.`id`) WHERE (U1.`lft` >= `t1`.`lft` AND U1.`lft` <= `t1`.`rght` AND U1.`tree_id` = `t1`.`tree_id`)) _count) AS `site_count` FROM `t1` WHERE `t1`.`id` IN ('3ab5d9743e25401da3d4aac4c73d38e2')) subquery;",
-				Expected: []sql.Row{
-					{"GroupBy"},
-					{" ├─ SelectedExprs(COUNT(*))"},
-					{" ├─ Grouping()"},
-					{" └─ SubqueryAlias(subquery)"},
-					{"     └─ Project"},
-					{"         ├─ columns: [(GroupBy"},
-					{"         │   ├─ SelectedExprs(COUNT(*))"},
-					{"         │   ├─ Grouping()"},
-					{"         │   └─ SubqueryAlias(_count)"},
-					{"         │       └─ Project"},
-					{"         │           ├─ columns: [U0.id]"},
-					{"         │           └─ Filter(((U1.lft >= t1.lft) AND (U1.lft <= t1.rght)) AND (U1.tree_id = t1.tree_id))"},
-					{"         │               └─ InnerJoin(U0.region_id = U1.id)"},
-					{"         │                   ├─ TableAlias(U0)"},
-					{"         │                   │   └─ Table(t2)"},
-					{"         │                   │       └─ columns: [id region_id]"},
-					{"         │                   └─ TableAlias(U1)"},
-					{"         │                       └─ Table(t1)"},
-					{"         │                           └─ columns: [id lft rght tree_id]"},
-					{"         │  ) as site_count]"},
-					{"         └─ Filter(t1.id HASH IN ('3ab5d9743e25401da3d4aac4c73d38e2'))"},
-					{"             └─ IndexedTableAccess(t1)"},
-					{"                 ├─ index: [t1.id]"},
-					{"                 └─ filters: [{[3ab5d9743e25401da3d4aac4c73d38e2, 3ab5d9743e25401da3d4aac4c73d38e2]}]"},
-				},
-			},
-		},
 	},
 }
 
