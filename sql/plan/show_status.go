@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
+	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -66,11 +67,22 @@ func (s *ShowStatus) Children() []sql.Node {
 
 // RowIter implements sql.Node interface.
 func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// TODO: sort?
-	// TODO: separate global vs session
+	var names []string
+	for name := range sql.SystemVariables.NewSessionMap() {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
 	var rows []sql.Row
-	for k, v := range sql.SystemVariables.NewSessionMap() {
-		rows = append(rows, sql.Row{k, v})
+	for _, name := range names {
+		sysVar, val, ok := sql.SystemVariables.GetGlobal(name)
+		if !ok {
+			panic("attempted to retrieve non-existent system variable; shouldn't be possible")
+		}
+		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global {
+			continue
+		}
+		rows = append(rows, sql.Row{name, val})
 	}
 
 	return sql.RowsToRowIter(rows...), nil
