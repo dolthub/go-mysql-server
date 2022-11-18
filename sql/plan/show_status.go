@@ -66,7 +66,14 @@ func (s *ShowStatus) Children() []sql.Node {
 
 // RowIter implements sql.Node interface.
 func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(), nil
+	// TODO: sort?
+	// TODO: separate global vs session
+	var rows []sql.Row
+	for k, v := range sql.SystemVariables.NewSessionMap() {
+		rows = append(rows, sql.Row{k, v})
+	}
+
+	return sql.RowsToRowIter(rows...), nil
 }
 
 // WithChildren implements sql.Node interface.
