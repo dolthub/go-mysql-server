@@ -51,14 +51,14 @@ func TestJoinOrderBuilder(t *testing.T) {
 			plans: `memo:
 ├── G1: (tableScan: a)
 ├── G2: (tableScan: b)
-├── G3: (innerJoin 2 1) (innerJoin 1 2) (innerJoin 1 2)
+├── G3: (innerJoin 1 2) (innerJoin 2 1) (innerJoin 1 2)
 ├── G4: (tableScan: c)
-├── G5: (innerJoin 4 3) (innerJoin 3 4) (innerJoin 8 1) (innerJoin 1 8) (innerJoin 3 4)
+├── G5: (innerJoin 3 4) (innerJoin 4 3) (innerJoin 1 8) (innerJoin 8 1) (innerJoin 3 4)
 ├── G6: (tableScan: d)
-├── G7: (innerJoin 6 5) (innerJoin 5 6) (innerJoin 9 3) (innerJoin 3 9) (innerJoin 10 1) (innerJoin 1 10) (innerJoin 5 6)
+├── G7: (innerJoin 5 6) (innerJoin 6 5) (innerJoin 3 9) (innerJoin 9 3) (innerJoin 1 10) (innerJoin 10 1) (innerJoin 5 6)
 ├── G8: (innerJoin 4 2) (innerJoin 2 4)
 ├── G9: (innerJoin 6 4) (innerJoin 4 6)
-└── G10: (innerJoin 6 8) (innerJoin 8 6) (innerJoin 9 2) (innerJoin 2 9)
+└── G10: (innerJoin 8 6) (innerJoin 6 8) (innerJoin 9 2) (innerJoin 2 9)
 `,
 		},
 		{
@@ -97,14 +97,14 @@ func TestJoinOrderBuilder(t *testing.T) {
 ├── G6: (fullOuterJoin 4 5) (fullOuterJoin 4 5)
 ├── G7: (tableScan: e)
 ├── G8: (leftJoin 6 7) (leftJoin 6 7)
-├── G9: (innerJoin 8 3) (innerJoin 3 8) (leftJoin 14 2) (innerJoin 3 8)
+├── G9: (innerJoin 3 8) (innerJoin 8 3) (leftJoin 14 2) (innerJoin 3 8)
 ├── G10: (tableScan: f)
 ├── G11: (tableScan: g)
-├── G12: (innerJoin 11 10) (innerJoin 10 11) (innerJoin 10 11)
-├── G13: (innerJoin 12 9) (innerJoin 9 12) (innerJoin 15 3) (innerJoin 3 15) (leftJoin 16 2) (innerJoin 9 12)
+├── G12: (innerJoin 10 11) (innerJoin 11 10) (innerJoin 10 11)
+├── G13: (innerJoin 9 12) (innerJoin 12 9) (innerJoin 3 15) (innerJoin 15 3) (leftJoin 16 2) (innerJoin 9 12)
 ├── G14: (innerJoin 8 1) (innerJoin 1 8)
 ├── G15: (innerJoin 12 8) (innerJoin 8 12)
-└── G16: (innerJoin 12 14) (innerJoin 14 12) (innerJoin 15 1) (innerJoin 1 15)
+└── G16: (innerJoin 14 12) (innerJoin 12 14) (innerJoin 15 1) (innerJoin 1 15)
 `,
 		},
 	}
