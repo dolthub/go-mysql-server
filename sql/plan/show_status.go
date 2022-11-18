@@ -15,8 +15,9 @@
 package plan
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
 	"sort"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
