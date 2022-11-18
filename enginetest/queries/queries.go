@@ -5859,6 +5859,10 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    `SELECT sum(i) as isum, s FROM mytable GROUP BY i ORDER BY isum ASC LIMIT 0, 200`,
+		Expected: []sql.Row{{1.0, "first row"}, {2.0, "second row"}, {3.0, "third row"}},
+	},
+	{
 		Query:    `SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
 		Expected: []sql.Row{{int64(1)}},
 	},
