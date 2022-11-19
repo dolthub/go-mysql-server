@@ -80,9 +80,12 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		if !ok {
 			panic("attempted to retrieve non-existent system variable; shouldn't be possible")
 		}
-		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global {
+
+		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
+			s.modifier == ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
 			continue
 		}
+
 		rows = append(rows, sql.Row{name, val})
 	}
 

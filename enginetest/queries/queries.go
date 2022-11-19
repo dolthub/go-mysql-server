@@ -7334,31 +7334,42 @@ var QueryTests = []QueryTest{
 		Query:    `START TRANSACTION READ WRITE`,
 		Expected: []sql.Row{},
 	},
-	// TODO (james): how to test?
-	//{
-	//	Query:    `SHOW STATUS`,
-	//	Expected: []sql.Row{},
-	//},
-	//{
-	//	Query:    `SHOW GLOBAL STATUS`,
-	//	Expected: []sql.Row{},
-	//},
-	//{
-	//	Query:    `SHOW SESSION STATUS`,
-	//	Expected: []sql.Row{},
-	//},
-	//{
-	//	Query:    `SHOW SESSION STATUS`,
-	//	Expected: []sql.Row{},
-	//},
-	//{
-	//	Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
-	//	Expected: []sql.Row{}, // TODO: should be added at some point
-	//},
-	//{
-	//	Query:    `SHOW SESSION STATUS WHERE Value > 5`,
-	//	Expected: []sql.Row{},
-	//},
+	{
+		Query: `SHOW STATUS LIKE 'use_secondary_engine'`,
+		Expected: []sql.Row{
+			{"use_secondary_engine", "ON"},
+		},
+	},
+	{
+		Query: `SHOW GLOBAL STATUS LIKE 'admin_port'`,
+		Expected: []sql.Row{
+			{"admin_port", 33062},
+		},
+	},
+	{
+		Query: `SHOW SESSION STATUS LIKE 'auto_increment_increment'`,
+		Expected: []sql.Row{
+			{"auto_increment_increment", 1},
+		},
+	},
+	{
+		Query:    `SHOW GLOBAL STATUS LIKE 'use_secondary_engine'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW SESSION STATUS LIKE 'version'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
+		Expected: []sql.Row{}, // TODO: should be added at some point
+	},
+	{
+		Query: `SHOW SESSION STATUS WHERE Value < 0`,
+		Expected: []sql.Row{
+			{"optimizer_trace_offset", -1},
+		},
+	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
 		Expected: []sql.Row{
