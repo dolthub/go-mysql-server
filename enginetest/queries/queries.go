@@ -8181,17 +8181,6 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
 	// Currently, not matching MySQL's information schema for this table
-	{
-		Query: `
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
-		`,
-		Expected: nil,
-	},
 	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
 	{
 		Query:    "SELECT X'0a'",
@@ -10110,6 +10099,17 @@ var StatisticsQueries = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 		},
+	},
+	{
+		Query: `
+		SELECT
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
+		`,
+		Expected: nil,
 	},
 }
 
