@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -78,7 +79,7 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	for _, name := range names {
 		sysVar, val, ok := sql.SystemVariables.GetGlobal(name)
 		if !ok {
-			panic("attempted to retrieve non-existent system variable; shouldn't be possible")
+			return nil, fmt.Errorf("missing system variable %s", name)
 		}
 
 		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
