@@ -217,7 +217,7 @@ var columnStatisticsSchema = Schema{
 	{Name: "NULL_COUNT", Type: Uint64, Source: ColumnStatisticsTableName},
 	{Name: "DISTINCT_COUNT", Type: Uint64, Source: ColumnStatisticsTableName},
 	{Name: "BUCKETS", Type: LongText, Source: ColumnStatisticsTableName},
-	{Name: "HISTOGRAM", Type: LongText, Source: ColumnStatisticsTableName}, // TODO: should be JSON
+	{Name: "HISTOGRAM", Type: JSON, Source: ColumnStatisticsTableName},
 }
 
 var tablesSchema = Schema{
