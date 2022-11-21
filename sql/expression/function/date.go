@@ -92,6 +92,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: need to also convert to sql.Time type, which we currently do not support
 	date, err = sql.Datetime.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
