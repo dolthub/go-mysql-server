@@ -17,6 +17,7 @@ package function
 import (
 	"encoding/hex"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -361,16 +362,16 @@ func (h *Bin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return strconv.FormatUint(val, 2), nil
 
 	default:
-		n, err := sql.Int64.Convert(arg)
+		n, err := h.convertToInt64(arg)
 
 		if err != nil {
 			return "0", nil
 		}
 
-		if n.(int64) < 0 {
-			return binForNegativeInt64(n.(int64)), nil
+		if n < 0 {
+			return binForNegativeInt64(n), nil
 		} else {
-			return strconv.FormatInt(n.(int64), 2), nil
+			return strconv.FormatInt(n, 2), nil
 		}
 	}
 }
@@ -381,6 +382,80 @@ func (h *Bin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
 	return NewBin(children[0]), nil
+}
+
+// convertToInt64 handles the conversion from the given interface to an Int64. This mirrors the original behavior of how
+// sql.Int64 handled conversions, which matches the expected behavior of this function. sql.Int64 has been fixed,
+// and the fixes cause incorrect behavior for this function (as they use different rules), therefore this is simply to
+// restore the original behavior specifically for this function.
+func (h *Bin) convertToInt64(v interface{}) (int64, error) {
+	switch v := v.(type) {
+	case int:
+		return int64(v), nil
+	case int8:
+		return int64(v), nil
+	case int16:
+		return int64(v), nil
+	case int32:
+		return int64(v), nil
+	case int64:
+		return v, nil
+	case uint:
+		return int64(v), nil
+	case uint8:
+		return int64(v), nil
+	case uint16:
+		return int64(v), nil
+	case uint32:
+		return int64(v), nil
+	case uint64:
+		if v > math.MaxInt64 {
+			return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+		}
+		return int64(v), nil
+	case float32:
+		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
+			return int64(v), nil
+		}
+		return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+	case float64:
+		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
+			return int64(v), nil
+		}
+		return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+	case decimal.Decimal:
+		if v.GreaterThan(decimal.NewFromInt(math.MaxInt64)) || v.LessThan(decimal.NewFromInt(math.MinInt64)) {
+			return 0, sql.ErrOutOfRange.New(v.String(), sql.Int64)
+		}
+		return v.IntPart(), nil
+	case []byte:
+		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
+		if err != nil {
+			return 0, sql.ErrInvalidValue.New(v, sql.Int64.String())
+		}
+		return i, nil
+	case string:
+		// Parse first an integer, which allows for more values than float64
+		i, err := strconv.ParseInt(v, 10, 64)
+		if err == nil {
+			return i, nil
+		}
+		// If that fails, try as a float and truncate it to integral
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0, sql.ErrInvalidValue.New(v, sql.Int64.String())
+		}
+		return int64(f), nil
+	case bool:
+		if v {
+			return 1, nil
+		}
+		return 0, nil
+	case nil:
+		return 0, nil
+	default:
+		return 0, sql.ErrInvalidValueType.New(v, sql.Int64.String())
+	}
 }
 
 // Bitlength implements the sql function "bit_length" which returns the data length of the argument in bits
