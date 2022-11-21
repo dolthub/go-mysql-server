@@ -217,9 +217,7 @@ var columnStatisticsSchema = Schema{
 	{Name: "NULL_COUNT", Type: Uint64, Source: ColumnStatisticsTableName},
 	{Name: "DISTINCT_COUNT", Type: Uint64, Source: ColumnStatisticsTableName},
 	{Name: "BUCKETS", Type: LongText, Source: ColumnStatisticsTableName},
-	// TODO: mysql just has histogram
-	//{Name: "HISTOGRAM", Type: JSON, Source: ColumnStatisticsTableName},
-
+	{Name: "HISTOGRAM", Type: JSON, Source: ColumnStatisticsTableName},
 }
 
 var tablesSchema = Schema{
