@@ -95,7 +95,7 @@ func TestDateSub(t *testing.T) {
 	require.Nil(result)
 
 	_, err = f.Eval(ctx, sql.Row{"asdasdasd"})
-	require.Error(err)
+	require.NoError(err)
 }
 
 func TestUnixTimestamp(t *testing.T) {
