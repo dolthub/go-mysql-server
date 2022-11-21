@@ -261,6 +261,19 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewShowPrivileges(), nil
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
+	case *sqlparser.Prepare:
+		// TODO: this should just return whether or not the statement was prepared
+		// TODO: should probably update the STATUS variable Prepared_stmt_count
+
+		newStmt, err := sqlparser.Parse(n.Expr)
+		if err != nil {
+			return nil, err
+		}
+		return convert(ctx, newStmt, n.Expr)
+		//case *sqlparser.Execute:
+		// TODO: this needs to find the existing prepared statement, fill in the bindvars, and run it
+		//case *sqlparser.Deallocate:
+		// TODO: this needs to find the existing prepared statement, and delete it
 	}
 }
 
