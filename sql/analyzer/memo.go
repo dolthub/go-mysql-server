@@ -59,9 +59,6 @@ func NewMemo(ctx *sql.Context, s *Scope) *Memo {
 // memoize creates a new logical expression group to encapsulate the
 // action of a SQL clause.
 // TODO: this is supposed to deduplicate logically equivalent table scans
-//
-//	is this what we're fixing?
-//
 // and scalar expressions, replacing references with a pointer. Currently,
 // a hacky format to quickly support memoizing join trees.
 func (m *Memo) memoize(rel relExpr) *exprGroup {
@@ -324,22 +321,19 @@ func (e *exprGroup) prepend(rel relExpr) {
 	first := e.first
 	e.first = rel
 	rel.setNext(first)
-
-	// TODO: Add unit tests for hasRelExpr
 }
 
-// hasRelExpr returns true if the specified relExpr is already represented by an identical
-// relExpr in this exprGroup.
-// TODO: This implementation only handles `joinRel` instances, but should be expanded to
-//
-//	handle other non-joinRel types of relExpr.
-func (e *exprGroup) hasRelExpr(rel relExpr) bool {
-	for curr := e.first; curr != nil; {
-		jbRel, relIsJb := rel.(joinRel)
-		jbCurr, currIsJb := curr.(joinRel)
+// hasJoinRelExpr returns true if the specified relExpr is a joinRel that is already represented by an identical
+// relExpr in this exprGroup. If |rel| is not an instance of joinRel, or if
+func (e *exprGroup) hasJoinRelExpr(rel relExpr) bool {
+	joinRelExpr, isJoinRel := rel.(joinRel)
+	if !isJoinRel {
+		return false
+	}
 
-		if relIsJb && currIsJb {
-			jbRel := jbRel.joinPrivate()
+	for curr := e.first; curr != nil; {
+		if jbCurr, ok := curr.(joinRel); ok {
+			jbRel := joinRelExpr.joinPrivate()
 			jbCurr := jbCurr.joinPrivate()
 			if jbRel.op == jbCurr.op &&
 				jbRel.left.id == jbCurr.left.id &&

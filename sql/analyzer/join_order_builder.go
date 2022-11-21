@@ -413,7 +413,7 @@ func (j *joinOrderBuilder) addJoinToGroup(
 	group *exprGroup,
 ) {
 	rel := j.constructJoin(op, left, right, joinFilter, group)
-	if !group.hasRelExpr(rel) {
+	if !group.hasJoinRelExpr(rel) {
 		group.prepend(rel)
 	}
 	return
