@@ -791,11 +791,35 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return infoSchemaSelect, nil
 	case sqlparser.KeywordString(sqlparser.STATUS):
+		var node sql.Node
 		if s.Scope == sqlparser.GlobalStr {
-			return plan.NewShowStatus(plan.ShowStatusModifier_Global), nil
+			node = plan.NewShowStatus(plan.ShowStatusModifier_Global)
+		} else {
+			node = plan.NewShowStatus(plan.ShowStatusModifier_Session)
 		}
 
-		return plan.NewShowStatus(plan.ShowStatusModifier_Session), nil
+		var filter sql.Expression
+		if s.Filter != nil {
+			if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Variable_name"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+			} else if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+
+		return node, nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
