@@ -59,7 +59,10 @@ func NewMemo(ctx *sql.Context, s *Scope) *Memo {
 // memoize creates a new logical expression group to encapsulate the
 // action of a SQL clause.
 // TODO: this is supposed to deduplicate logically equivalent table scans
-// and scalar expressions, replacing references with a pointer. Currently
+//
+//	is this what we're fixing?
+//
+// and scalar expressions, replacing references with a pointer. Currently,
 // a hacky format to quickly support memoizing join trees.
 func (m *Memo) memoize(rel relExpr) *exprGroup {
 	m.cnt++
@@ -321,6 +324,34 @@ func (e *exprGroup) prepend(rel relExpr) {
 	first := e.first
 	e.first = rel
 	rel.setNext(first)
+
+	// TODO: Add unit tests for hasRelExpr
+}
+
+// hasRelExpr returns true if the specified relExpr is already represented by an identical
+// relExpr in this exprGroup.
+// TODO: This implementation only handles `joinRel` instances, but should be expanded to
+//
+//	handle other non-joinRel types of relExpr.
+func (e *exprGroup) hasRelExpr(rel relExpr) bool {
+	for curr := e.first; curr != nil; {
+		jbRel, relIsJb := rel.(joinRel)
+		jbCurr, currIsJb := curr.(joinRel)
+
+		if relIsJb && currIsJb {
+			jbRel := jbRel.joinPrivate()
+			jbCurr := jbCurr.joinPrivate()
+			if jbRel.op == jbCurr.op &&
+				jbRel.left.id == jbCurr.left.id &&
+				jbRel.right.id == jbCurr.right.id {
+				return true
+			}
+		}
+
+		curr = curr.next()
+	}
+
+	return false
 }
 
 func (e *exprGroup) children() []*exprGroup {
@@ -334,7 +365,8 @@ func (e *exprGroup) children() []*exprGroup {
 }
 
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
-	if e.best == nil || grpCost < e.cost {
+	// TODO: This seems to work... but not sure why...
+	if e.best == nil || grpCost < e.cost || grpCost == e.cost && grpCost > 0 {
 		e.best = n
 		e.cost = grpCost
 	}

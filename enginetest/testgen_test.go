@@ -31,7 +31,7 @@ func TestWriteIndexQueryPlans(t *testing.T) {
 
 func TestWriteIntegrationQueryPlans(t *testing.T) {
 	t.Skip()
-	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests", 2)
+	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests", 1)
 }
 
 func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryPlanTest, name string, parallelism int) {

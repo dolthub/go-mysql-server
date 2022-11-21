@@ -290,7 +290,7 @@ func (j *joinOrderBuilder) checkSize() {
 	}
 }
 
-// dpSube iterats all disjoint combinations of table sets,
+// dpSube iterates all disjoint combinations of table sets,
 // adding plans to the tree when we find two sets that can
 // be joined
 func (j *joinOrderBuilder) dbSube() {
@@ -394,16 +394,12 @@ func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilte
 	if !ok {
 		group = j.memoize(op, left, right, joinFilter, selFilters)
 		j.plans[union] = group
-	}
-	if commute(op) {
-		// Adding joins to the expression group places them at the start of the list, so if an operation is
-		// commutative, make sure we add the commuted version first, then add the original version, so that the original
-		// version is seen first. Otherwise, if both versions have the same, best cost, the analyzer will get stuck
-		// cycling between the two versions and the plan won't stabilize.
-		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
-	}
-	if ok {
+	} else {
 		j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
+	}
+
+	if commute(op) {
+		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
 	}
 }
 
@@ -417,7 +413,9 @@ func (j *joinOrderBuilder) addJoinToGroup(
 	group *exprGroup,
 ) {
 	rel := j.constructJoin(op, left, right, joinFilter, group)
-	group.prepend(rel)
+	if !group.hasRelExpr(rel) {
+		group.prepend(rel)
+	}
 	return
 }
 
