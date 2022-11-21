@@ -53,12 +53,17 @@ func TestDateAdd(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 
+	result, err = f.Eval(ctx, sql.Row{"12:34:56"})
+	require.NoError(err)
+	require.Nil(result)
+
 	result, err = f.Eval(ctx, sql.Row{nil})
 	require.NoError(err)
 	require.Nil(result)
 
-	_, err = f.Eval(ctx, sql.Row{"asdasdasd"})
+	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
 	require.NoError(err)
+	require.Nil(result)
 }
 
 func TestDateSub(t *testing.T) {
@@ -90,12 +95,17 @@ func TestDateSub(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 
+	result, err = f.Eval(ctx, sql.Row{"12:34:56"})
+	require.NoError(err)
+	require.Nil(result)
+
 	result, err = f.Eval(ctx, sql.Row{nil})
 	require.NoError(err)
 	require.Nil(result)
 
-	_, err = f.Eval(ctx, sql.Row{"asdasdasd"})
+	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
 	require.NoError(err)
+	require.Nil(result)
 }
 
 func TestUnixTimestamp(t *testing.T) {
