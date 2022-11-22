@@ -2693,6 +2693,23 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "enum columns work as expected in when clauses",
+		SetUpScript: []string{
+			"create table enums (e enum('a'));",
+			"insert into enums values ('a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select (case e when 'a' then 42 end) from enums",
+				Expected: []sql.Row{{42}},
+			},
+			{
+				Query:    "select (case 'a' when e then 42 end) from enums",
+				Expected: []sql.Row{{42}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
