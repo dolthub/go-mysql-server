@@ -406,9 +406,9 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
-	// Get prefix key length in bytes, so times 4 for text
+	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
 	prefixByteLength := idxCol.Length
-	if sql.IsText(schCol.Type) {
+	if sql.IsTextOnly(schCol.Type) {
 		prefixByteLength = 4 * idxCol.Length
 	}
 
