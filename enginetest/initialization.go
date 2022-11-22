@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -98,31 +97,30 @@ func NewBaseSession() *sql.BaseSession {
 
 // NewEngine creates test data and returns an engine using the harness provided.
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
-	dbs := CreateTestData(t, harness)
-	engine := NewEngineWithDbs(t, harness, dbs)
+	_ = CreateTestData(t, harness)
+	engine := NewEngineWithDbs(t, harness)
 	return engine
 }
 
 // NewSpatialEngine creates test data and returns an engine using the harness provided.
 func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
-	dbs := CreateSpatialTestData(t, harness)
-	engine := NewEngineWithDbs(t, harness, dbs)
+	_ = CreateSpatialTestData(t, harness)
+	engine := NewEngineWithDbs(t, harness)
 	return engine
 }
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
-func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database) *sqle.Engine {
-	databases = append(databases, information_schema.NewInformationSchemaDatabase())
-	provider := harness.NewDatabaseProvider(databases...)
-
-	return NewEngineWithProvider(t, harness, provider)
+func NewEngineWithDbs(t *testing.T, harness Harness) *sqle.Engine {
+	return NewEngineWithProvider(t, harness)
 }
 
 // NewEngineWithProvider returns a new engine with the specified provider. This is useful when you don't want to
 // implement a full harness, but you need more control over the database provider than the default test MemoryProvider.
-func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDatabaseProvider) *sqle.Engine {
+// TODO: this should just be NewEngine, all other paths end here
+func NewEngineWithProvider(_ *testing.T, harness Harness) *sqle.Engine {
 	var a *analyzer.Analyzer
+	provider := harness.Provider()
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
 	} else {
@@ -142,7 +140,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDa
 
 // NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
 func NewEngineWithProviderSetup(t *testing.T, harness Harness, pro sql.MutableDatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness, pro)
+	e := NewEngineWithProvider(t, harness)
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool

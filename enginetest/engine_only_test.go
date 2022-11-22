@@ -639,10 +639,10 @@ func TestTableFunctions(t *testing.T) {
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	db := harness.NewDatabase("mydb")
-	databaseProvider := harness.NewDatabaseProvider(db)
-	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
-	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
+	// db := harness.NewDatabase("mydb")
+	// databaseProvider := harness.NewDatabaseProvider(db)
+	// testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
+	engine := enginetest.NewEngineWithProvider(t, harness)
 	for _, test := range tableFunctionScriptTests {
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

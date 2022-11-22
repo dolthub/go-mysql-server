@@ -217,18 +217,15 @@ func (m *MemoryHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableData
 }
 
 func (m *MemoryHarness) NewDatabase(name string) sql.Database {
-	err := m.provider.CreateDatabase(m.NewContext(), name)
+	ctx := m.NewContext()
+
+	err := m.provider.CreateDatabase(ctx, name)
 	if err != nil {
 		panic(err)
 	}
 
-	db, _ := m.provider.Database(m.NewContext(), name)
-	database := memory.NewHistoryDatabase(name)
-	if m.nativeIndexSupport {
-		db.(memory.HistoryDatabase).EnablePrimaryKeyIndexes()
-	}
-
-	return database
+	db, _ := m.provider.Database(ctx, name)
+	return db
 }
 
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
@@ -240,11 +237,14 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 }
 
 func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
-	dbs := make([]sql.ReadOnlyDatabase, len(names))
-	for i, name := range names {
-		dbs[i] = memory.NewReadOnlyDatabase(name)
+	m.provider.(*memory.DbProvider).WithOption(memory.ReadOnlyProvider())
+	dbs := m.NewDatabases(names...)
+	readOnlyDbs := make([]sql.ReadOnlyDatabase, len(dbs))
+	for i := range dbs {
+		readOnlyDbs[i] = dbs[i].(sql.ReadOnlyDatabase)
 	}
-	return dbs
+
+	return readOnlyDbs
 }
 
 func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {

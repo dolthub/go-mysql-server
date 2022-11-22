@@ -22,11 +22,13 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 type Catalog struct {
-	MySQLDb *mysql_db.MySQLDb
+	MySQLDb    *mysql_db.MySQLDb
+	infoSchema sql.Database
 
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
@@ -49,12 +51,14 @@ type sessionLocks map[uint32]dbLocks
 func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
 		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
+		infoSchema:       information_schema.NewInformationSchemaDatabase(),
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
 	}
 }
 
+// TODO: kill this
 func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
 }
@@ -108,8 +112,11 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 }
 
 func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
+	db = strings.ToLower(db)
 	if c.MySQLDb.Enabled {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).HasDatabase(ctx, db)
+	} else if db == "information_schema" {
+		return true
 	} else {
 		return c.provider.HasDatabase(ctx, db)
 	}
@@ -117,8 +124,11 @@ func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
+	db = strings.ToLower(db)
 	if c.MySQLDb.Enabled {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).Database(ctx, db)
+	} else if db == "information_schema" {
+		return c.infoSchema, nil
 	} else {
 		return c.provider.Database(ctx, db)
 	}

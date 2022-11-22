@@ -262,7 +262,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	}
 	dbs := createReadOnlyDatabases(ro)
 	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
-	engine := NewEngineWithDbs(t, harness, dbs)
+	engine := NewEngineWithDbs(t, harness)
 	defer engine.Close()
 
 	for _, querySet := range [][]queries.QueryTest{

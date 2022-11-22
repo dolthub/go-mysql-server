@@ -132,8 +132,24 @@ func (pro *DbProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
 	pro.mu.Lock()
 	defer pro.mu.Unlock()
 
-	db := NewHistoryDatabase(name)
-	db.EnablePrimaryKeyIndexes()
+	var db sql.Database
+	if pro.readOnly {
+		db = NewReadOnlyDatabase(name)
+		if pro.nativeIndexes {
+			db.(*ReadOnlyDatabase).EnablePrimaryKeyIndexes()
+		}
+	} else if pro.history {
+		db = NewHistoryDatabase(name)
+		if pro.nativeIndexes {
+			db.(*HistoryDatabase).EnablePrimaryKeyIndexes()
+		}
+	} else {
+		db = NewDatabase(name)
+		if pro.nativeIndexes {
+			db.(*BaseDatabase).EnablePrimaryKeyIndexes()
+		}
+	}
+
 	pro.dbs[strings.ToLower(db.Name())] = db
 	return
 }
