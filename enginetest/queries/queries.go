@@ -7335,28 +7335,40 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SHOW STATUS`,
+		Query: `SHOW STATUS LIKE 'use_secondary_engine'`,
+		Expected: []sql.Row{
+			{"use_secondary_engine", "ON"},
+		},
+	},
+	{
+		Query: `SHOW GLOBAL STATUS LIKE 'admin_port'`,
+		Expected: []sql.Row{
+			{"admin_port", 33062},
+		},
+	},
+	{
+		Query: `SHOW SESSION STATUS LIKE 'auto_increment_increment'`,
+		Expected: []sql.Row{
+			{"auto_increment_increment", 1},
+		},
+	},
+	{
+		Query:    `SHOW GLOBAL STATUS LIKE 'use_secondary_engine'`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SHOW GLOBAL STATUS`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SHOW SESSION STATUS`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SHOW SESSION STATUS`,
+		Query:    `SHOW SESSION STATUS LIKE 'version'`,
 		Expected: []sql.Row{},
 	},
 	{
 		Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
-		Expected: []sql.Row{},
+		Expected: []sql.Row{}, // TODO: should be added at some point
 	},
 	{
-		Query:    `SHOW SESSION STATUS WHERE Value > 5`,
-		Expected: []sql.Row{},
+		Query: `SHOW SESSION STATUS WHERE Value < 0`,
+		Expected: []sql.Row{
+			{"optimizer_trace_offset", -1},
+		},
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
@@ -8181,17 +8193,6 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
 	// Currently, not matching MySQL's information schema for this table
-	{
-		Query: `
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
-		`,
-		Expected: nil,
-	},
 	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
 	{
 		Query:    "SELECT X'0a'",
@@ -10110,6 +10111,17 @@ var StatisticsQueries = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 		},
+	},
+	{
+		Query: `
+		SELECT
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
+		`,
+		Expected: nil,
 	},
 }
 

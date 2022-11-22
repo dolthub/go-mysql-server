@@ -32,7 +32,7 @@ func TestStoredProcedureNotFoundWithNoDatabaseSelected(t *testing.T) {
 	analyzer := NewBuilder(sql.NewDatabaseProvider(db)).Build()
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 
-	call := plan.NewCall("non_existent_procedure", []sql.Expression{})
+	call := plan.NewCall(nil, "non_existent_procedure", []sql.Expression{})
 	scope, err := loadStoredProcedures(ctx, analyzer, call, newScope(call), DefaultRuleSelector)
 	require.NoError(t, err)
 
