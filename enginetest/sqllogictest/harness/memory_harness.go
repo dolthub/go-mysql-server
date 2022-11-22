@@ -47,7 +47,7 @@ func (h *memoryHarness) EngineStr() string {
 
 func (h *memoryHarness) Init() error {
 	db := h.harness.NewDatabase("mydb")
-	pro := memory.NewMemoryDBProvider(db)
+	pro := memory.NewDBProvider(db)
 	h.engine = sqle.NewDefault(pro)
 	return nil
 }

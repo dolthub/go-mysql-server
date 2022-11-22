@@ -35,14 +35,13 @@ type MemoryHarness struct {
 	name                      string
 	parallelism               int
 	numTablePartitions        int
+	provider 									sql.MutableDatabaseProvider
 	indexDriverInitializer    IndexDriverInitalizer
 	driver                    sql.IndexDriver
 	nativeIndexSupport        bool
 	skippedQueries            map[string]struct{}
 	session                   sql.Session
 	checkpointTables          []*memory.Table
-	dbOff                     []int
-	dbNames                   []string
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 }
@@ -63,8 +62,13 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		externalProcedureRegistry.Register(esp)
 	}
 
+	var opts []memory.ProviderOption
+	opts = append(opts, memory.NativeIndexProvider(useNativeIndexes))
+	opts = append(opts, memory.HistoryProvider())
+
 	return &MemoryHarness{
 		name:                      name,
+		provider:                  memory.NewDBProvider(),
 		numTablePartitions:        numTablePartitions,
 		indexDriverInitializer:    indexDriverInitalizer,
 		parallelism:               parallelism,
@@ -134,7 +138,7 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	pro := memory.NewMemoryDBProvider(information_schema.NewInformationSchemaDatabase())
+	pro := memory.NewDBProvider(information_schema.NewInformationSchemaDatabase())
 	return NewEngineWithProviderSetup(t, m, pro, m.setupData)
 }
 
@@ -209,14 +213,21 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 }
 
 func (m *MemoryHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
-	return memory.NewMemoryDBProvider(dbs...)
+	return memory.NewDBProvider(dbs...)
 }
 
 func (m *MemoryHarness) NewDatabase(name string) sql.Database {
+	err := m.provider.CreateDatabase(m.NewContext(), name)
+	if err != nil {
+		panic(err)
+	}
+
+	db, _ := m.provider.Database(m.NewContext(), name)
 	database := memory.NewHistoryDatabase(name)
 	if m.nativeIndexSupport {
-		database.EnablePrimaryKeyIndexes()
+		db.(memory.HistoryDatabase).EnablePrimaryKeyIndexes()
 	}
+
 	return database
 }
 
@@ -258,6 +269,10 @@ func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Primar
 		db.(*memory.HistoryDatabase).AddTable(name, table)
 	}
 	return table, nil
+}
+
+func (m *MemoryHarness) Provider() sql.MutableDatabaseProvider {
+	return m.provider
 }
 
 func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {

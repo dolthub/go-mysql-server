@@ -535,7 +535,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	// todo: change this function or thread a context
 	ctx := sql.NewEmptyContext()
 	db := plan.NewDummyResolvedDB("temporary")
-	e := NewDefault(memory.NewMemoryDBProvider(db))
+	e := NewDefault(memory.NewDBProvider(db))
 	defer e.Close()
 
 	unresolvedSchema := make(sql.Schema, len(schema))
