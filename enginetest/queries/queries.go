@@ -11022,7 +11022,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
-	// TODO (james): not sure if collations work for in-memory tables; this test is in dolt_queries.go
+	// TODO (james): collations do not work for in-memory tables; this test is in dolt_queries.go
 	{
 		Name: "inline secondary indexes with collation",
 		SetUpScript: []string{
@@ -11210,7 +11210,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 = 'a'",
 				Expected: []sql.Row{
 					{"Filter(t.v1 = 'a')"},
@@ -11227,7 +11226,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 = 'abc'",
 				Expected: []sql.Row{
 					{"Filter(t.v1 = 'abc')"},
@@ -11242,7 +11240,6 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 = 'abcd'",
 				Expected: []sql.Row{
 					{"Filter(t.v1 = 'abcd')"},
@@ -11260,7 +11257,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
 				Expected: []sql.Row{
 					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
@@ -11278,7 +11274,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
 				Expected: []sql.Row{
 					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
@@ -11295,7 +11290,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
 					{"Update"},
@@ -11322,7 +11316,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
 					{"Delete"},
@@ -11335,6 +11328,44 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query:    "select * from t",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name:        "test prefix limits",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table varchar_limit(c varchar(10000), index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table text_limit(c text, index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table varbinary_limit(c varbinary(10000), index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table blob_limit(c blob, index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table bad(c varchar(10000), index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c text, index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c varbinary(10000), index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c blob, index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
 			},
 		},
 	},
