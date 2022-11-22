@@ -332,12 +332,8 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	})
 }
 
-// Tests a variety of queries against databases and tables provided by the given harness.
+// TestVersionedQueries tests a variety of versioned queries
 func TestVersionedQueries(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
 	harness.Setup(setup.SimpleSetup...)
 	engine := NewEngine(t, harness)
 	defer engine.Close()
@@ -4383,7 +4379,6 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
-// Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	for _, tt := range queries.ShowTableStatusQueries {
@@ -4398,7 +4393,6 @@ func TestDateParse(t *testing.T, harness Harness) {
 	}
 }
 
-// Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatusPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	for _, tt := range queries.ShowTableStatusQueries {

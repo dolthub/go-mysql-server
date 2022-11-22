@@ -229,6 +229,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
+// TODO: this should take en engine
 func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -244,6 +245,7 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 	})
 }
 
+// TODO: collapse into TestQuery
 func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {

@@ -97,7 +97,7 @@ func NewBaseSession() *sql.BaseSession {
 
 // NewEngine creates test data and returns an engine using the harness provided.
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
-	_ = CreateTestData(t, harness)
+	_ = CreateVersionedTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness)
 	return engine
 }
@@ -139,15 +139,15 @@ func NewEngineWithProvider(_ *testing.T, harness Harness) *sqle.Engine {
 }
 
 // NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
-func NewEngineWithProviderSetup(t *testing.T, harness Harness, pro sql.MutableDatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
+func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup.SetupScript) (*sqle.Engine, error) {
 	e := NewEngineWithProvider(t, harness)
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
 		supportsIndexes = true
-
 	}
+
 	if len(setupData) == 0 {
 		setupData = setup.MydbData
 	}
