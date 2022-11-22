@@ -297,6 +297,9 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 				if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
 					return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
 				}
+				if sql.IsTextOnly(newCol.Type) && prefixLengths[i]*4 > MaxBytePrefix {
+					return nil, sql.ErrKeyTooLong.New()
+				}
 			}
 		}
 	}
