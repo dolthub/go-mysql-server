@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
 const testNumPartitions = 5
@@ -138,8 +137,7 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	pro := memory.NewDBProvider(information_schema.NewInformationSchemaDatabase())
-	return NewEngineWithProviderSetup(t, m, pro, m.setupData)
+	return NewEngineWithProviderSetup(t, m, m.provider, m.setupData)
 }
 
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {

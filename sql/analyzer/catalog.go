@@ -64,11 +64,16 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 }
 
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
+	var dbs []sql.Database
+	dbs = append(dbs, c.infoSchema)
+
 	if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).AllDatabases(ctx)
+		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).AllDatabases(ctx)...)
 	} else {
-		return c.provider.AllDatabases(ctx)
+		dbs = append(dbs, c.provider.AllDatabases(ctx)...)
 	}
+
+	return dbs
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
