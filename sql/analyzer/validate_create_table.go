@@ -414,7 +414,7 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 
 	// Prefix length is longer than max
 	if prefixByteLength > MaxBytePrefix {
-		return sql.ErrKeyTooLong.New(schCol.Name)
+		return sql.ErrKeyTooLong.New()
 	}
 
 	// The specified prefix length is longer than the column

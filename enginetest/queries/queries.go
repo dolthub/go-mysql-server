@@ -11331,4 +11331,42 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "test prefix limits",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table varchar_limit(c varchar(10000), index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table text_limit(c text, index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table varbinary_limit(c varbinary(10000), index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table blob_limit(c blob, index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table bad(c varchar(10000), index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c text, index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c varbinary(10000), index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c blob, index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+		},
+	},
 }
