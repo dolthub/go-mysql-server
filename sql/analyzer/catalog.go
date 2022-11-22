@@ -118,10 +118,10 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 
 func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 	db = strings.ToLower(db)
-	if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).HasDatabase(ctx, db)
-	} else if db == "information_schema" {
+	if db == "information_schema" {
 		return true
+	} else if c.MySQLDb.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).HasDatabase(ctx, db)
 	} else {
 		return c.provider.HasDatabase(ctx, db)
 	}
@@ -130,10 +130,10 @@ func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
 	db = strings.ToLower(db)
-	if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).Database(ctx, db)
-	} else if db == "information_schema" {
+	if db == "information_schema" {
 		return c.infoSchema, nil
+	} else if c.MySQLDb.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).Database(ctx, db)
 	} else {
 		return c.provider.Database(ctx, db)
 	}
