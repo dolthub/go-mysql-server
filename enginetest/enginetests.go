@@ -67,7 +67,7 @@ func TestQueries(t *testing.T, harness Harness) {
 
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
-			TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+			TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		}
 	}
 }
@@ -119,13 +119,15 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
+	e := NewEngine(t, harness)
+
 	for _, tt := range queries.JoinQueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 
 	for _, ts := range queries.SkippedJoinScripts {
@@ -135,8 +137,10 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Pk_tablesData)
+	e := NewEngine(t, harness)
+
 	for _, tt := range queries.JSONTableQueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 }
 

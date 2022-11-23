@@ -245,6 +245,20 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 	})
 }
 
+// TestQuery runs a query on the engine given and asserts that results are as expected.
+func TestQuery2(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+	t.Run(q, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(q) {
+				t.Skipf("Skipping query %s", q)
+			}
+		}
+
+		ctx := NewContext(harness)
+		TestQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings)
+	})
+}
+
 // TODO: collapse into TestQuery
 func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
