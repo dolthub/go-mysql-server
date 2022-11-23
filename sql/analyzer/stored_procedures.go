@@ -383,6 +383,11 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	pRef := expression.NewProcedureParamReference()
 	call = call.WithParamReference(pRef)
 
+	dbName := ctx.GetCurrentDatabase()
+	if call.Database() != nil {
+		dbName = call.Database().Name()
+	}
+
 	esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -397,12 +402,12 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 
 		procedure = externalProcedure
 	} else {
-		procedure = scope.procedures.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
+		procedure = scope.procedures.Get(dbName, call.Name, len(call.Params))
 	}
 
 	if procedure == nil {
 		err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
-		if ctx.GetCurrentDatabase() == "" {
+		if dbName == "" {
 			return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
 		}
 		return nil, transform.SameTree, err

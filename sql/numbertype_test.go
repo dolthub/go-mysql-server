@@ -183,7 +183,7 @@ func TestNumberConvert(t *testing.T) {
 		{Int64, false, int64(0), false},
 		{Uint8, int64(34), uint8(34), false},
 		{Uint16, int16(35), uint16(35), false},
-		{Uint24, 36.756, uint32(36), false},
+		{Uint24, 36.756, uint32(37), false},
 		{Uint32, uint8(37), uint32(37), false},
 		{Uint64, time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), false},
 		{Uint64, "01000", uint64(1000), false},

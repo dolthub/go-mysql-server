@@ -2353,12 +2353,12 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 	require.NoError(t, err)
 
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i bigint NOT NULL COMMENT 'modified'", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, sql.Schema{
-		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified", PrimaryKey: true},
+		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "modified", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
