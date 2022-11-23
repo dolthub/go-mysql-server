@@ -359,8 +359,7 @@ func (e *exprGroup) children() []*exprGroup {
 }
 
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
-	// TODO: This seems to work... but not sure why...
-	if e.best == nil || grpCost < e.cost || grpCost == e.cost && grpCost > 0 {
+	if e.best == nil || grpCost <= e.cost {
 		e.best = n
 		e.cost = grpCost
 	}

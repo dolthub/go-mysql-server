@@ -380,7 +380,7 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 			optimizeJoinsId,
 			setJoinScopeLenId,
 			applyHashLookupsId,
-			finalizeSubqueryExprsId,
+			finalizeSubqueriesId,
 			parallelizeId,
 			pushdownFiltersId:
 			return false
@@ -394,15 +394,9 @@ func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 		switch id {
 		case pruneColumnsId, optimizeJoinsId, setJoinScopeLenId, applyHashLookupsId, pushdownFiltersId:
 			return true
-		}
-		return sel(id)
-	}
-}
-
-func NewResolveSubquerySel(sel RuleSelector) RuleSelector {
-	return func(id RuleId) bool {
-		switch id {
-		case pruneColumnsId, optimizeJoinsId, pushdownFiltersId:
+		case finalizeSubqueriesId:
+			// Don't run finalizeSubqueries on subqueries, since calling it on the root of the statement will
+			// recursively handle subqueries from the bottom of the plan up.
 			return false
 		}
 		return sel(id)
@@ -412,7 +406,9 @@ func NewResolveSubquerySel(sel RuleSelector) RuleSelector {
 func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case resolveSubqueryExprsId:
+		case finalizeSubqueriesId:
+			// Don't run finalizeSubqueries on subqueries, since calling it on the root of the statement will
+			// recursively handle subqueries from the bottom of the plan up.
 			return false
 		}
 		return sel(id)
