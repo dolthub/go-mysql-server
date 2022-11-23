@@ -96,6 +96,7 @@ func NewBaseSession() *sql.BaseSession {
 }
 
 // NewEngine creates test data and returns an engine using the harness provided.
+// TODO: find places that use this explicitly, replace with Setup()
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	_ = CreateVersionedTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness)
@@ -103,6 +104,7 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 }
 
 // NewSpatialEngine creates test data and returns an engine using the harness provided.
+// TODO: find uses of this, replace with Setup()
 func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
 	_ = CreateSpatialTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness)

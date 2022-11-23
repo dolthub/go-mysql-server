@@ -65,6 +65,7 @@ func TestQueries(t *testing.T, harness Harness) {
 		})
 	}
 
+	// TODO: move this into its own test method
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
 			TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
