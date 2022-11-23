@@ -52,7 +52,7 @@ var _ json.Unmarshaler = (*PrivilegeSet)(nil)
 
 // MarshalJSON implements the interface json.Marshaler.
 func (ps PrivilegeSet) MarshalJSON() ([]byte, error) {
-	globalStaticPrivs := ps.ToSortedSlice()
+	globalStaticPrivs := ps.ToSlice()
 	psm := privilegeSetMarshaler{
 		GlobalStatic: make([]string, len(globalStaticPrivs)),
 		Databases:    make([]privilegeSetMarshalerDatabase, len(ps.databases)),
@@ -61,11 +61,11 @@ func (ps PrivilegeSet) MarshalJSON() ([]byte, error) {
 		psm.GlobalStatic[i] = globalStaticPriv.String()
 	}
 	for dbIndex, database := range ps.GetDatabases() {
-		dbPrivs := database.ToSortedSlice()
+		dbPrivs := database.ToSlice()
 		dbm := privilegeSetMarshalerDatabase{
-			Name:       database.name,
+			Name:       database.Name(),
 			Privileges: make([]string, len(dbPrivs)),
-			Tables:     make([]privilegeSetMarshalerTable, len(database.tables)),
+			Tables:     make([]privilegeSetMarshalerTable, len(database.(PrivilegeSetDatabase).tables)),
 		}
 		for i, dbPriv := range dbPrivs {
 			dbm.Privileges[i] = dbPriv.String()
@@ -73,11 +73,11 @@ func (ps PrivilegeSet) MarshalJSON() ([]byte, error) {
 		psm.Databases[dbIndex] = dbm
 
 		for tblIndex, table := range database.GetTables() {
-			tblPrivs := table.ToSortedSlice()
+			tblPrivs := table.ToSlice()
 			tbm := privilegeSetMarshalerTable{
-				Name:       table.name,
-				Privileges: make([]string, len(table.privs)),
-				Columns:    make([]privilegeSetMarshalerColumn, len(table.columns)),
+				Name:       table.Name(),
+				Privileges: make([]string, len(table.(PrivilegeSetTable).privs)),
+				Columns:    make([]privilegeSetMarshalerColumn, len(table.(PrivilegeSetTable).columns)),
 			}
 			for i, tblPriv := range tblPrivs {
 				tbm.Privileges[i] = tblPriv.String()
@@ -85,10 +85,10 @@ func (ps PrivilegeSet) MarshalJSON() ([]byte, error) {
 			dbm.Tables[tblIndex] = tbm
 
 			for colIndex, column := range table.GetColumns() {
-				colPrivs := column.ToSortedSlice()
+				colPrivs := column.ToSlice()
 				cbm := privilegeSetMarshalerColumn{
-					Name:       column.name,
-					Privileges: make([]string, len(column.privs)),
+					Name:       column.Name(),
+					Privileges: make([]string, len(column.(PrivilegeSetColumn).privs)),
 				}
 				for i, colPriv := range colPrivs {
 					cbm.Privileges[i] = colPriv.String()

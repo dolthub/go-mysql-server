@@ -683,39 +683,102 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	return n, transform.SameTree, nil
 }
 
-// validateAggregations returns an error if an Aggregation
-// expression node appears outside of a GroupBy or Window node. Only GroupBy
-// and Window nodes know how to evaluate Aggregation expressions.
+// validateAggregations returns an error if an Aggregation expression has been used in
+// an invalid way, such as appearing outside of a GroupBy or Window node, or if an aggregate
+// function is used with the implicit all-rows grouping and contains projected expressions with
+// window aggregation functions that reference non-aggregated columns. Only GroupBy and Window
+// nodes know how to evaluate Aggregation expressions.
 //
 // See https://github.com/dolthub/go-mysql-server/issues/542 for some queries
 // that should be supported but that currently trigger this validation because
 // aggregation expressions end up in the wrong place.
 func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var invalidExpr sql.Expression
-	checkExpressions := func(exprs []sql.Expression) bool {
-		for _, e := range exprs {
-			sql.Inspect(e, func(ie sql.Expression) bool {
-				if _, ok := ie.(sql.Aggregation); ok {
-					invalidExpr = e
-				}
-				return invalidExpr == nil
-			})
-		}
-		return invalidExpr == nil
-	}
+	var validationErr error
 	transform.Inspect(n, func(n sql.Node) bool {
-		if gb, ok := n.(*plan.GroupBy); ok {
-			return checkExpressions(gb.GroupByExprs)
-		} else if _, ok := n.(*plan.Window); ok {
-		} else if n, ok := n.(sql.Expressioner); ok {
-			return checkExpressions(n.Expressions())
+		switch n := n.(type) {
+		case *plan.GroupBy:
+			validationErr = checkForAggregationFunctions(n.GroupByExprs)
+		case *plan.Window:
+			validationErr = checkForNonAggregatedColumnReferences(n)
+		case sql.Expressioner:
+			validationErr = checkForAggregationFunctions(n.Expressions())
+		default:
 		}
-		return invalidExpr == nil
+		return validationErr == nil
 	})
-	if invalidExpr != nil {
-		return nil, transform.SameTree, ErrAggregationUnsupported.New(invalidExpr.String())
+
+	return n, transform.SameTree, validationErr
+}
+
+// checkForAggregationFunctions returns an ErrAggregationUnsupported error if any aggregation
+// functions are found in the specified expressions.
+func checkForAggregationFunctions(exprs []sql.Expression) error {
+	var validationErr error
+	for _, e := range exprs {
+		sql.Inspect(e, func(ie sql.Expression) bool {
+			if _, ok := ie.(sql.Aggregation); ok {
+				validationErr = ErrAggregationUnsupported.New(e.String())
+			}
+			return validationErr == nil
+		})
 	}
-	return n, transform.SameTree, nil
+	return validationErr
+}
+
+// checkForNonAggregatedColumnReferences returns an ErrNonAggregatedColumnWithoutGroupBy error
+// if an aggregate function with the implicit/all-rows grouping is mixed with aggregate window
+// functions that reference a non-aggregated column.
+// You cannot mix aggregations on the implicit/all-rows grouping with window aggregations.
+func checkForNonAggregatedColumnReferences(w *plan.Window) error {
+	for _, expr := range w.ProjectedExprs() {
+		if agg, ok := expr.(sql.Aggregation); ok {
+			if agg.Window() == nil {
+				index, gf := findFirstWindowAggregationColumnReference(w)
+
+				if index > 0 {
+					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index+1, gf.String())
+				} else {
+					// We should always have an index and GetField value to use, but just in case
+					// something changes that, return a similar error message without those details.
+					return fmt.Errorf("in aggregated query without GROUP BY, expression in " +
+						"SELECT list contains nonaggregated column; " +
+						"this is incompatible with sql_mode=only_full_group_by")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// findFirstWindowAggregationColumnReference returns the index and GetField expression for the
+// first column reference in the first window aggregation function in the specified node's
+// projection expressions. If no window aggregation function with a column reference is found,
+// (-1, nil) is returned. This information is needed to populate an
+// ErrNonAggregatedColumnWithoutGroupBy error.
+func findFirstWindowAggregationColumnReference(w *plan.Window) (index int, gf *expression.GetField) {
+	for index, expr := range w.ProjectedExprs() {
+		var firstColumnRef *expression.GetField
+
+		transform.InspectExpr(expr, func(e sql.Expression) bool {
+			if windowAgg, ok := e.(sql.WindowAggregation); ok {
+				transform.InspectExpr(windowAgg, func(e sql.Expression) bool {
+					if gf, ok := e.(*expression.GetField); ok {
+						firstColumnRef = gf
+						return true
+					}
+					return false
+				})
+				return firstColumnRef != nil
+			}
+			return false
+		})
+
+		if firstColumnRef != nil {
+			return index, firstColumnRef
+		}
+	}
+
+	return -1, nil
 }
 
 func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

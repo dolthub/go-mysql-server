@@ -290,7 +290,12 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 				}
 			}
 		}
-		err = tbl.CreateIndexForForeignKey(ctx, indexName, sql.IndexUsing_Default, sql.IndexConstraint_None, indexColumns)
+		err = tbl.CreateIndexForForeignKey(ctx, sql.IndexDef{
+			Name:       indexName,
+			Columns:    indexColumns,
+			Constraint: sql.IndexConstraint_None,
+			Storage:    sql.IndexUsing_Default,
+		})
 		if err != nil {
 			return err
 		}
@@ -531,6 +536,13 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 	indexes, err := tbl.GetIndexes(ctx)
 	if err != nil {
 		return nil, false, err
+	}
+	// ignore indexes with prefix lengths; they are unsupported in MySQL
+	// https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html#:~:text=Index%20prefixes%20on%20foreign%20key%20columns%20are%20not%20supported.
+	for _, idx := range indexes {
+		if len(idx.PrefixLengths()) > 0 {
+			ignoredIndexesMap[idx.ID()] = struct{}{}
+		}
 	}
 	tblName := strings.ToLower(tbl.Name())
 	exprCols := make([]string, len(prefixCols))

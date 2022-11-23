@@ -201,6 +201,10 @@ func (b *ExecBuilder) buildSubqueryAlias(r *subqueryAlias, input sql.Schema, chi
 	return r.table, nil
 }
 
+func (b *ExecBuilder) buildTableFunc(r *tableFunc, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return r.table, nil
+}
+
 func (b *ExecBuilder) buildRecursiveCte(r *recursiveCte, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	return r.table, nil
 }

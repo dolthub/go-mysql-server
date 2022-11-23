@@ -57,17 +57,20 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 
 		var colsFromChild []string
 		var missingCols []tableCol
+		var missingSortFieldExpressions []string
 		for _, f := range sort.SortFields {
 			ns := findExprNameables(f.Column)
 
 			for _, n := range ns {
+				col := tableColFromNameable(n)
 				name := strings.ToLower(n.Name())
-				if stringContains(childAliases, name) {
+				if col.Table() == "" && stringContains(childAliases, name) {
 					colsFromChild = append(colsFromChild, n.Name())
-				} else {
-					col := tableColFromNameable(n)
-					if !tableColsContains(schemaCols, col) {
-						missingCols = append(missingCols, col)
+				} else if !tableColsContains(schemaCols, col) {
+					missingCols = append(missingCols, col)
+					expr := strings.ToLower(f.Column.String())
+					if !stringContains(missingSortFieldExpressions, expr) {
+						missingSortFieldExpressions = append(missingSortFieldExpressions, expr)
 					}
 				}
 			}
@@ -79,11 +82,11 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			return n, transform.SameTree, nil
 		}
 
-		// If all the missing expressions are aliased, swap in the alias name and don't move the sort node
+		// If all the missing sort fields are available as aliased expressions, swap in the alias reference
 		expressionToAliasName := aliasedExpressionsInNode(sort.Child)
-		if allMissingColsAreAliasedExpressions(expressionToAliasName, missingCols) {
-			a.Log("swapping in alias names for missing columns: %s", tableColsToString(missingCols))
-			return replaceOrderByExpressionsWithAliasReferences(sort, expressionToAliasName, missingCols)
+		if allMissingSortFieldsAreAliasedExpressions(expressionToAliasName, missingSortFieldExpressions) {
+			a.Log("swapping in alias references for missing sort fields: %s", strings.Join(missingSortFieldExpressions, ", "))
+			return replaceSortFieldsWithAliasReferences(sort, expressionToAliasName, missingSortFieldExpressions)
 		}
 
 		// If there are no columns required by the order by available, then move the order by below its child.
@@ -251,36 +254,33 @@ func pushSortDown(sort *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	}
 }
 
-// allMissingColsAreAliasedExpressions returns true if all the missing tableCols in |missingCols| are defined
-// as aliases in the map of aliased expressions to their alias name in |expressionToAliasName|.
-func allMissingColsAreAliasedExpressions(expressionToAliasName map[string]string, missingCols []tableCol) bool {
-	for _, missingCol := range missingCols {
-		if _, ok := expressionToAliasName[missingCol.String()]; !ok {
+// allMissingSortFieldsAreAliasedExpressions returns true if the specified |missingSortFields| are all available as
+// aliased expressions, otherwise returns false.
+func allMissingSortFieldsAreAliasedExpressions(expressionToAliasName map[string]string, missingSortFields []string) bool {
+	for _, missingSortField := range missingSortFields {
+		if _, ok := expressionToAliasName[missingSortField]; !ok {
 			return false
 		}
 	}
-
 	return true
 }
 
-// replaceOrderByExpressionsWithAliasReferences transforms the specified |sort| node, by replacing the specified
-// tableCols from |missingCols| with their aliased names from |expressionToAliasName|.
-func replaceOrderByExpressionsWithAliasReferences(sort *plan.Sort, expressionToAliasName map[string]string, missingCols []tableCol) (sql.Node, transform.TreeIdentity, error) {
+// replaceSortFieldsWithAliasReferences transforms the specified |sort| node, by replacing the specified
+// sort fields from |missingSortFieldExpressions| with their aliased names from |expressionToAliasName|.
+func replaceSortFieldsWithAliasReferences(sort *plan.Sort, expressionToAliasName map[string]string, missingSortFieldExpressions []string) (sql.Node, transform.TreeIdentity, error) {
 	var newSortFields []sql.Expression
-	var replacedCols []string
 	for i, sortField := range sort.SortFields {
 		exprString := strings.ToLower(sortField.Column.String())
 
 		// if exprString is one of our missing columns and there's an alias we can reference, swap it in
-		for _, missingCol := range missingCols {
-			if missingCol.String() == exprString {
+		for _, missingSortField := range missingSortFieldExpressions {
+			if missingSortField == exprString {
 				if aliasName, ok := expressionToAliasName[exprString]; ok {
 					if newSortFields == nil {
 						newSortFields = make([]sql.Expression, len(sort.SortFields))
 						copy(newSortFields, sort.SortFields.ToExpressions())
 					}
 					newSortFields[i] = expression.NewAliasReference(aliasName)
-					replacedCols = append(replacedCols, exprString)
 				}
 				break
 			}

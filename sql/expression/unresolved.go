@@ -137,8 +137,8 @@ func (utf *UnresolvedTableFunction) WithDatabase(database sql.Database) (sql.Nod
 	return utf, nil
 }
 
-// FunctionName implements the TableFunction interface
-func (utf *UnresolvedTableFunction) FunctionName() string {
+// Name implements the TableFunction interface
+func (utf *UnresolvedTableFunction) Name() string {
 	return utf.name
 }
 
@@ -238,7 +238,7 @@ func (uf *UnresolvedFunction) Children() []sql.Expression {
 	return append(uf.Arguments, uf.Window.ToExpressions()...)
 }
 
-// Children implements the Expression interface.
+// WithWindow implements the Expression interface.
 func (uf *UnresolvedFunction) WithWindow(def *sql.WindowDefinition) *UnresolvedFunction {
 	nf := *uf
 	nf.Window = def

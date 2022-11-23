@@ -622,7 +622,7 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 
 	if h.sel != nil {
-		h.sel.QueryCompleted(query, retErr == nil, time.Since(start))
+		h.sel.QueryCompleted(query, err == nil, time.Since(start))
 	}
 
 	return remainder, err

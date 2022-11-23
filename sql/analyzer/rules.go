@@ -67,13 +67,13 @@ var OnceBeforeDefault = []Rule{
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
 	{resolveNaturalJoinsId, resolveNaturalJoins},
+	{qualifyColumnsId, qualifyColumns},
 	{resolveOrderbyLiteralsId, resolveOrderByLiterals},
 	{resolveFunctionsId, resolveFunctions},
 	{flattenTableAliasesId, flattenTableAliases},
 	{pushdownSortId, pushdownSort},
 	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
-	{qualifyColumnsId, qualifyColumns},
 	{pruneTablesId, pruneTables},
 	{resolveColumnsId, resolveColumns},
 	{validateCheckConstraintId, validateCheckConstraints},

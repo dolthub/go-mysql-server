@@ -24,6 +24,46 @@ type QueryPlanTest struct {
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select i+0.0/(lag(i) over (order by s)) from mytable order by 1;`,
+		ExpectedPlan: "Sort(i+0.0/(lag(i) over (order by s)) ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(mytable.i + (0.0 / lag(mytable.i, 1) over ( order by mytable.s ASC))) as i+0.0/(lag(i) over (order by s))]\n" +
+			"     └─ Window(lag(mytable.i, 1) over ( order by mytable.s ASC), mytable.i)\n" +
+			"         └─ Table(mytable)\n" +
+			"             └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `select f64/f32, f32/(lag(i) over (order by f64)) from floattable order by 1,2;`,
+		ExpectedPlan: "Sort(f64/f32 ASC, f32/(lag(i) over (order by f64)) ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [f64/f32, (floattable.f32 / lag(floattable.i, 1) over ( order by floattable.f64 ASC)) as f32/(lag(i) over (order by f64))]\n" +
+			"     └─ Window((floattable.f64 / floattable.f32) as f64/f32, lag(floattable.i, 1) over ( order by floattable.f64 ASC), floattable.f32)\n" +
+			"         └─ Table(floattable)\n" +
+			"             └─ columns: [i f32 f64]\n" +
+			"",
+	},
+	{
+		Query: "select x from xy join uv on y = v join ab on y = b and u = -1",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x]\n" +
+			" └─ HashJoin(xy.y = ab.b)\n" +
+			"     ├─ HashJoin(xy.y = uv.v)\n" +
+			"     │   ├─ Table(xy)\n" +
+			"     │   │   └─ columns: [x y]\n" +
+			"     │   └─ HashLookup(child: (uv.v), lookup: (xy.y))\n" +
+			"     │       └─ CachedResults\n" +
+			"     │           └─ IndexedTableAccess(uv)\n" +
+			"     │               ├─ index: [uv.u]\n" +
+			"     │               ├─ filters: [{[-1, -1]}]\n" +
+			"     │               └─ columns: [u v]\n" +
+			"     └─ HashLookup(child: (ab.b), lookup: (xy.y))\n" +
+			"         └─ CachedResults\n" +
+			"             └─ Table(ab)\n" +
+			"                 └─ columns: [b]\n" +
+			"",
+	},
+	{
 		Query: "select * from (select a,v from ab join uv on a=u) av join (select x,q from xy join pq on x = p) xq on av.v = xq.x",
 		ExpectedPlan: "HashJoin(av.v = xq.x)\n" +
 			" ├─ SubqueryAlias(av)\n" +

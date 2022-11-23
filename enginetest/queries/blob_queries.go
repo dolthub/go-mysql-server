@@ -100,16 +100,6 @@ var BlobWriteQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          "alter table mytable modify s blob",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
-		SelectQuery:         "select * from blobt",
-		ExpectedSelect: []sql.Row{
-			{1, []byte("first row")},
-			{2, []byte("second row")},
-			{3, []byte("third row")},
-		},
-	},
-	{
 		WriteQuery:          "alter table blobt rename column b to v, add v1 int",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "select * from blobt",
@@ -151,16 +141,6 @@ var BlobWriteQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          "alter table mytable modify s text",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
-		SelectQuery:         "select * from textt",
-		ExpectedSelect: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
 		WriteQuery:          "alter table textt rename column t to v, add v1 int",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "select * from textt",
@@ -184,12 +164,24 @@ var BlobWriteQueries = []WriteQueryTest{
 
 var BlobErrors = []QueryErrorTest{
 	{
+		Query:       "alter table mytable modify s blob",
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "alter table mytable modify s text",
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
 		Query:       "alter table blobt add index bidx (b)",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "alter table blobt add index tidx (i, b)",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "alter table blobt add index bidx (b(3073))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "alter table blobt add column b2 blob default '1'",
@@ -197,7 +189,11 @@ var BlobErrors = []QueryErrorTest{
 	},
 	{
 		Query:       "alter table textt add index tidx (t)",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "alter table textt add index tidx (t(769))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "alter table textt add column t2 text default '1'",
@@ -205,39 +201,51 @@ var BlobErrors = []QueryErrorTest{
 	},
 	{
 		Query:       "alter table textt add index tidx (i, t)",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table b (b blob primary key)",
-		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table b (b tinyblob primary key)",
-		ExpectedErr: sql.ErrInvalidBytePrimaryKey,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table t (t text primary key)",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table t (t text, primary key (t))",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "create table b (b blob, primary key (b))",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "create table b (b blob, primary key (b(3073)))",
+		ExpectedErr: sql.ErrKeyTooLong,
+	},
+	{
+		Query:       "create table t (t text, primary key (t(769)))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "create table b (i int primary key, b blob, index bidx(b))",
-		ExpectedErr: sql.ErrInvalidByteIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "create table b (i int primary key, b blob, index bidx(b(3073)))",
+		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TEXT, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "CREATE TABLE b (pk BIGINT PRIMARY KEY, v1 TINYTEXT, INDEX (v1));",
-		ExpectedErr: sql.ErrInvalidTextIndex,
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 }
 

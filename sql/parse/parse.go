@@ -502,8 +502,15 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return node, nil
 	case "create procedure":
+		dbName := s.Table.Qualifier.String()
+		if dbName == "" {
+			dbName = ctx.GetCurrentDatabase()
+		}
+		if dbName == "" {
+			return nil, sql.ErrNoDatabaseSelected.New()
+		}
 		return plan.NewShowCreateProcedure(
-			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
+			sql.UnresolvedDatabase(dbName),
 			s.Table.Name.String(),
 		), nil
 	case "procedure status":
@@ -784,11 +791,35 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return infoSchemaSelect, nil
 	case sqlparser.KeywordString(sqlparser.STATUS):
+		var node sql.Node
 		if s.Scope == sqlparser.GlobalStr {
-			return plan.NewShowStatus(plan.ShowStatusModifier_Global), nil
+			node = plan.NewShowStatus(plan.ShowStatusModifier_Global)
+		} else {
+			node = plan.NewShowStatus(plan.ShowStatusModifier_Session)
 		}
 
-		return plan.NewShowStatus(plan.ShowStatusModifier_Session), nil
+		var filter sql.Expression
+		if s.Filter != nil {
+			if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Variable_name"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+			} else if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+
+		return node, nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
@@ -1237,7 +1268,16 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 		}
 		params[i] = expr
 	}
-	return plan.NewCall(c.FuncName, params), nil
+
+	var db sql.Database = nil
+	if !c.ProcName.Qualifier.IsEmpty() {
+		db = sql.UnresolvedDatabase(c.ProcName.Qualifier.String())
+	}
+
+	return plan.NewCall(
+		db,
+		c.ProcName.Name.String(),
+		params), nil
 }
 
 func convertDeclare(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
@@ -1531,18 +1571,16 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func gatherIndexColumns(cols []*sqlparser.IndexColumn) ([]sql.IndexColumn, error) {
 	out := make([]sql.IndexColumn, len(cols))
-	var length int64
-	var err error
 	for i, col := range cols {
-		if col.Length != nil {
-			if col.Length.Type == sqlparser.IntVal {
-				length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
-				if err != nil {
-					return nil, err
-				}
-				if length < 1 {
-					return nil, sql.ErrInvalidIndexPrefix.New(length)
-				}
+		var length int64
+		var err error
+		if col.Length != nil && col.Length.Type == sqlparser.IntVal {
+			length, err = strconv.ParseInt(string(col.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if length < 1 {
+				return nil, sql.ErrKeyZero.New(col.Column)
 			}
 		}
 		out[i] = sql.IndexColumn{
@@ -3768,7 +3806,18 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 			return nil, sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
 		}
 
-		return expression.NewArithmetic(l, r, be.Operator), nil
+		switch strings.ToLower(be.Operator) {
+		case sqlparser.DivStr:
+			return expression.NewDiv(l, r), nil
+		case sqlparser.ModStr:
+			return expression.NewMod(l, r), nil
+		case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.ShiftRightStr, sqlparser.ShiftLeftStr:
+			return expression.NewBitOp(l, r, be.Operator), nil
+		case sqlparser.IntDivStr:
+			return expression.NewIntDiv(l, r), nil
+		default:
+			return expression.NewArithmetic(l, r, be.Operator), nil
+		}
 	case
 		sqlparser.JSONExtractOp,
 		sqlparser.JSONUnquoteExtractOp:

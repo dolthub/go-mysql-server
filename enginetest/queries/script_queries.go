@@ -15,11 +15,12 @@
 package queries
 
 import (
+	"time"
+
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -1448,8 +1449,9 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Issue #499",
+		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
+			"set time_zone = '+0:00';",
 			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
 			`INSERT INTO test VALUES 
 			("2021-07-04 10:00:00", 1.0),
@@ -1459,17 +1461,21 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT
-				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
-				avg(value) AS "value"
-				FROM test
-				GROUP BY 1
-				ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
+				// In the original, reported issue, the order by clause did not qualify the table name
+				// for `test.time`. When there is ambiguity between a column name and an expression
+				// alias name in the order by clause, MySQL choose the alias; however, if the reference
+				// is used in a function call, MySQL instead seems to resolve to the column name.
+				// Until we determine the exact rule for this behavior, we've qualified the reference
+				// in the order by clause to ensure it selects the table column and not the alias.
+				// TODO: Waiting to hear back from MySQL on whether this is intended behavior or not:
+				//       https://bugs.mysql.com/bug.php?id=109020
+				Query: `SELECT UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time", avg(value) AS "value"
+				FROM test GROUP BY 1 ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
 				Expected: []sql.Row{
-					{1625133600, 4.0},
-					{1625220000, 3.0},
-					{1625306400, 2.0},
-					{1625392800, 1.0},
+					{"1625133600", 4.0},
+					{"1625220000", 3.0},
+					{"1625306400", 2.0},
+					{"1625392800", 1.0},
 				},
 			},
 		},
@@ -2341,6 +2347,51 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "using having and group by clauses in subquery ",
+		SetUpScript: []string{
+			"CREATE TABLE t (i int, t varchar(2));",
+			"insert into t values (1, 'a'), (1, 'a2'), (2, 'b'), (3, 'c'), (3, 'c2'), (4, 'd'), (5, 'e'), (5, 'e2');", //, (6, 'f'), (7, 'g'), (7, 'g2')
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select i from t group by i having count(1) = 1 order by i asc",
+				Expected: []sql.Row{{2}, {4}},
+			},
+			{
+				Query:    "select i from t group by i having count(1) != 1 order by i asc",
+				Expected: []sql.Row{{1}, {3}, {5}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t group by i having count(1) = 1) order by i, t asc;",
+				Expected: []sql.Row{{2, "b"}, {4, "d"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t group by i having count(1) != 1) order by i, t asc;",
+				Expected: []sql.Row{{1, "a"}, {1, "a2"}, {3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i = 2 group by i having count(1) = 1) order by i, t asc;",
+				Expected: []sql.Row{{2, "b"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i = 3 group by i having count(1) != 1) order by i, t asc;",
+				Expected: []sql.Row{{3, "c"}, {3, "c2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1) order by i, t asc;",
+				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1 order by i desc) order by i, t asc;",
+				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+			},
+			{
+				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1) order by i desc, t asc;",
+				Expected: []sql.Row{{5, "e"}, {5, "e2"}, {3, "c"}, {3, "c2"}},
+			},
+		},
+	},
+	{
 		Name: "can't create view with same name as existing table",
 		SetUpScript: []string{
 			"create table t (i int);",
@@ -2361,6 +2412,301 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:       "create table t (i int);",
 				ExpectedErr: sql.ErrTableAlreadyExists,
+			},
+		},
+	},
+	{
+		Name: "'/' division operation result in decimal or float",
+		SetUpScript: []string{
+			"create table floats (f float);",
+			"insert into floats values (1.1), (1.2), (1.3);",
+			"create table decimals (d decimal(2,1));",
+			"insert into decimals values (1.0), (2.0), (2.5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select f/2 from floats;",
+				Expected: []sql.Row{{0.550000011920929}, {0.6000000238418579}, {0.6499999761581421}},
+			},
+			{
+				Query:    "select 2/f from floats;",
+				Expected: []sql.Row{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
+			},
+			{
+				Query:    "select d/2 from decimals;",
+				Expected: []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
+			},
+			{
+				Query:    "select 2/d from decimals;",
+				Expected: []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
+			},
+			{
+				Query: "select f/d from floats, decimals;",
+				Expected: []sql.Row{{1.2999999523162842}, {1.2000000476837158}, {1.100000023841858},
+					{0.6499999761581421}, {0.6000000238418579}, {0.550000011920929},
+					{0.5199999809265137}, {0.48000001907348633}, {0.4400000095367432}},
+			},
+			{
+				Query: "select d/f from floats, decimals;",
+				Expected: []sql.Row{{0.7692307974459868}, {0.8333333002196431}, {0.9090908893868948},
+					{1.5384615948919735}, {1.6666666004392863}, {1.8181817787737895},
+					{1.9230769936149668}, {2.083333250549108}, {2.272727223467237}},
+			},
+			{
+				Query:    `select f/'a' from floats;`,
+				Expected: []sql.Row{{nil}, {nil}, {nil}},
+			},
+		},
+	},
+	{
+		Name: "'%' mod operation result in decimal or float",
+		SetUpScript: []string{
+			"create table a (pk int primary key, c1 int, c2 double, c3 decimal(5,3));",
+			"insert into a values (1, 1, 1.111, 1.111), (2, 2, 2.111, 2.111);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select c1 % 2, c2 % 2, c3 % 2 from a;",
+				Expected: []sql.Row{{"1", 1.111, "1.111"}, {"0", 0.11100000000000021, "0.111"}},
+			},
+			{
+				Query:    "select c1 % 0.5, c2 % 0.5, c3 % 0.5 from a;",
+				Expected: []sql.Row{{"0.0", 0.11099999999999999, "0.111"}, {"0.0", 0.11100000000000021, "0.111"}},
+			},
+			{
+				Query:    "select 20 % c1, 20 % c2, 20 % c3 from a;",
+				Expected: []sql.Row{{"0", 0.002000000000000224, "0.002"}, {"0", 1.0009999999999981, "1.001"}},
+			},
+		},
+	},
+	{
+		Name: "arithmetic bit operations on int, float and decimal types",
+		SetUpScript: []string{
+			"CREATE TABLE num_types (pk int primary key, a int, b float, c decimal(5,3));",
+			"insert into num_types values (1,1,1.1,1.1), (2,2,1.2,2.2), (3,3,1.6,3.7), (4,4,1.7,4.0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select a & 2.4, a | 2.4, a ^ 2.4 from num_types;",
+				Expected: []sql.Row{
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(2), uint64(2), uint64(0)},
+					{uint64(2), uint64(3), uint64(1)},
+					{uint64(0), uint64(6), uint64(6)},
+				},
+			},
+			{
+				Query: "select b & 2.4, b | 2.4, b ^ 2.4 from num_types;",
+				Expected: []sql.Row{
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(2), uint64(2), uint64(0)},
+					{uint64(2), uint64(2), uint64(0)},
+				},
+			},
+			{
+				Query: "select c & 2.4, c | 2.4, c ^ 2.4 from num_types;",
+				Expected: []sql.Row{
+					{uint64(0), uint64(3), uint64(3)},
+					{uint64(2), uint64(2), uint64(0)},
+					{uint64(0), uint64(6), uint64(6)},
+					{uint64(0), uint64(6), uint64(6)},
+				},
+			},
+		},
+	},
+	{
+		Name: "year type behavior",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 year);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// 1901 - 2155 are interpreted as 1901 - 2155
+			{
+				Query:    "INSERT INTO t VALUES (1, '1901'), (2, 1901);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (3, '2000'), (4, 2000);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (5, '2155'), (6, 2155);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 1 - 69 are interpreted as 2001 - 2069
+			{
+				Query:    "INSERT INTO t VALUES (7, '1'), (8, 1);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (9, '35'), (10, 35);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (11, '69'), (12, 69);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 70 - 99 are interpreted as 1970 - 1999
+			{
+				Query:    "INSERT INTO t VALUES (13, '70'), (14, 70);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (15, '85'), (16, 85);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (17, '99'), (18, 99);",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// '0', and '00' are interpreted as 2000
+			{
+				Query:    "INSERT INTO t VALUES (19, '0'), (20, '00');",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			// 0 is interpreted as 0000
+			{
+				Query:    "INSERT INTO t VALUES (21, 0)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			// Assert that returned values are correct.
+			{
+				Query: "SELECT * from t order by pk;",
+				Expected: []sql.Row{
+					{1, int16(1901)},
+					{2, int16(1901)},
+					{3, int16(2000)},
+					{4, int16(2000)},
+					{5, int16(2155)},
+					{6, int16(2155)},
+					{7, int16(2001)},
+					{8, int16(2001)},
+					{9, int16(2035)},
+					{10, int16(2035)},
+					{11, int16(2069)},
+					{12, int16(2069)},
+					{13, int16(1970)},
+					{14, int16(1970)},
+					{15, int16(1985)},
+					{16, int16(1985)},
+					{17, int16(1999)},
+					{18, int16(1999)},
+					{19, int16(2000)},
+					{20, int16(2000)},
+					{21, int16(0)},
+				},
+			},
+		},
+	},
+	{
+		Name: "INSERT IGNORE correctly truncates column data",
+		SetUpScript: []string{
+			`
+			CREATE TABLE t (
+				pk int primary key,
+				col1 boolean,
+				col2 integer,
+				col3 tinyint,
+				col4 smallint,
+				col5 mediumint,
+				col6 int,
+				col7 bigint,
+				col8 decimal,
+				col9 float,
+				col10 double,
+				col11 date,
+				col12 time,
+				col13 datetime,
+				col14 timestamp,
+				col15 year,
+				col16 ENUM('first', 'second'),
+				col17 SET('a', 'b')
+			);
+			`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+					INSERT IGNORE INTO t VALUES (
+						1, 'val1', 'val2', 'val3', 'val4', 'val5', 'val6', 'val7', 'val8', 'val9', 'val10',
+						'val11', 'val12', 'val13', 'val14', 'val15', 'val16', 'val17'
+					);
+				`,
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query: "SELECT * from t",
+				Expected: []sql.Row{
+					{
+						1,
+						0,
+						0,
+						0,
+						0,
+						0,
+						0,
+						0,
+						"0",
+						float64(0),
+						float64(0),
+						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
+						sql.Timespan(0),
+						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
+						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
+						0,
+						uint64(1), // 'first' value in enum
+						uint64(0), // empty set
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "INSERT IGNORE throws an error when json is badly formatted",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk int primary key, col1 json);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT IGNORE into t VALUES (1, 'val1');",
+				ExpectedErr: sql.ErrInvalidJson,
+			},
+		},
+	},
+	{
+		Name: "hash lookup for joins works with binary",
+		SetUpScript: []string{
+			"create table uv (u int primary key, v int);",
+			"create table xy (x int primary key, y int);",
+			"insert into uv values (0,0), (1,1), (2,2);",
+			"insert into xy values (0,0), (1,1), (2,2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select uv.u from uv join xy on binary xy.x = binary uv.u;",
+				Expected: []sql.Row{
+					{0},
+					{1},
+					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "enum columns work as expected in when clauses",
+		SetUpScript: []string{
+			"create table enums (e enum('a'));",
+			"insert into enums values ('a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select (case e when 'a' then 42 end) from enums",
+				Expected: []sql.Row{{42}},
+			},
+			{
+				Query:    "select (case 'a' when e then 42 end) from enums",
+				Expected: []sql.Row{{42}},
 			},
 		},
 	},

@@ -16,6 +16,41 @@ package sql
 
 import "fmt"
 
+type IndexDef struct {
+	Name       string
+	Columns    []IndexColumn
+	Constraint IndexConstraint
+	Storage    IndexUsing
+	Comment    string
+}
+
+// IndexColumn is the column by which to add to an index.
+type IndexColumn struct {
+	Name string
+	// Length represents the index prefix length. If zero, then no length was specified.
+	Length int64
+}
+
+// IndexConstraint represents any constraints that should be applied to the index.
+type IndexConstraint byte
+
+const (
+	IndexConstraint_None IndexConstraint = iota
+	IndexConstraint_Unique
+	IndexConstraint_Fulltext
+	IndexConstraint_Spatial
+	IndexConstraint_Primary
+)
+
+// IndexUsing is the desired storage type.
+type IndexUsing byte
+
+const (
+	IndexUsing_Default IndexUsing = iota
+	IndexUsing_BTree
+	IndexUsing_Hash
+)
+
 // Index is the representation of an index, and also creates an IndexLookup when given a collection of ranges.
 type Index interface {
 	// ID returns the identifier of the index.
@@ -44,6 +79,8 @@ type Index interface {
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
 	CanSupport(...Range) bool
+	// PrefixLengths returns the prefix lengths for each column in this index
+	PrefixLengths() []uint16
 }
 
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary

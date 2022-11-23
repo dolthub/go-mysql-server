@@ -15,6 +15,9 @@
 package plan
 
 import (
+	"fmt"
+	"sort"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -66,7 +69,28 @@ func (s *ShowStatus) Children() []sql.Node {
 
 // RowIter implements sql.Node interface.
 func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(), nil
+	var names []string
+	for name := range sql.SystemVariables.NewSessionMap() {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var rows []sql.Row
+	for _, name := range names {
+		sysVar, val, ok := sql.SystemVariables.GetGlobal(name)
+		if !ok {
+			return nil, fmt.Errorf("missing system variable %s", name)
+		}
+
+		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
+			s.modifier == ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
+			continue
+		}
+
+		rows = append(rows, sql.Row{name, val})
+	}
+
+	return sql.RowsToRowIter(rows...), nil
 }
 
 // WithChildren implements sql.Node interface.

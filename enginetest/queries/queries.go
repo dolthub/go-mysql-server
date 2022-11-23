@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 type QueryTest struct {
@@ -1379,6 +1380,25 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select i+0.0/(lag(i) over (order by s)) from mytable order by 1;",
+		Expected: []sql.Row{
+			{nil},
+			{"2.00000"},
+			{"3.00000"},
+		},
+	},
+	{
+		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable order by 1,2;",
+		Expected: []sql.Row{
+			{1.0, nil},
+			{1.0, -1.0},
+			{1.0, .5},
+			{1.0, 2.5 / float64(3)},
+			{1.0, 1.0},
+			{1.0, 1.5},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
@@ -1832,7 +1852,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT "1" + '1'`,
 		Expected: []sql.Row{
-			{2.0},
+			{float64(2)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -2699,9 +2719,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
 		Expected: []sql.Row{
-			{1577966400, 1.0},
-			{1578225600, 2.0},
-			{1578398400, 3.0}},
+			{"1577966400", 1.0},
+			{"1578225600", 2.0},
+			{"1578398400", 3.0}},
 		SkipPrepared: true,
 	},
 	{
@@ -3034,6 +3054,338 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
 		Expected: []sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
+	},
+	{
+		Query:    `select 'a'+4;`,
+		Expected: []sql.Row{{4.0}},
+	},
+	{
+		Query:    `select '20a'+4;`,
+		Expected: []sql.Row{{24.0}},
+	},
+	{
+		Query:    `select '10.a'+4;`,
+		Expected: []sql.Row{{14.0}},
+	},
+	{
+		Query:    `select '.20a'+4;`,
+		Expected: []sql.Row{{4.2}},
+	},
+	{
+		Query:    `select 4+'a';`,
+		Expected: []sql.Row{{4.0}},
+	},
+	{
+		Query:    `select 'a'+'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') + STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
+		Expected: []sql.Row{{40261002186034}},
+	},
+	{
+		Query:    `select 'a'-4;`,
+		Expected: []sql.Row{{-4.0}},
+	},
+	{
+		Query:    `select 4-'a';`,
+		Expected: []sql.Row{{4.0}},
+	},
+	{
+		Query:    `select 4-'2a';`,
+		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query:    `select 'a'-'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 'a'*4;`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 4*'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 'a'*'a';`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    "select 1 * '2.50a';",
+		Expected: []sql.Row{{2.5}},
+	},
+	{
+		Query:    "select 1 * '2.a50a';",
+		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query:    `select 'a'/4;`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `select 4/'a';`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `select 'a'/'a';`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 1 / '2.50a';",
+		Expected: []sql.Row{{0.4}},
+	},
+	{
+		Query:    "select 1 / '2.a50a';",
+		Expected: []sql.Row{{0.5}},
+	},
+	{
+		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') / 1;`,
+		Expected: []sql.Row{{"20130501093017.0000"}},
+	},
+	{
+		Query:    "select 'a'&'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'&4;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 4&'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select date('2022-11-19 11:53:45') & date('2022-11-11 11:53:45');",
+		Expected: []sql.Row{{uint64(20221111)}},
+	},
+	{
+		Query:    "select '2022-11-19 11:53:45' & '2023-11-11 11:53:45';",
+		Expected: []sql.Row{{uint64(2022)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') & STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
+		Expected: []sql.Row{{uint64(20130501093017)}},
+	},
+	{
+		Query:    "select 'a'|'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'|4;",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'|-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 4|'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'^'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'^4;",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select 'a'^-1;",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 4^'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select now() ^ now();",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'>>'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'>>4;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 4>>'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select -1>>'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 'a'<<'a';",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select 'a'<<4;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select '2a'<<4;",
+		Expected: []sql.Row{{uint64(32)}},
+	},
+	{
+		Query:    "select 4<<'a';",
+		Expected: []sql.Row{{uint64(4)}},
+	},
+	{
+		Query:    "select -1<<'a';",
+		Expected: []sql.Row{{uint64(18446744073709551615)}},
+	},
+	{
+		Query:    "select 'a' div 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a' div 4;",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select 4 div 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 1.2 div 0.2;",
+		Expected: []sql.Row{{6}},
+	},
+	{
+		Query:    "select 1.2 div 0.4;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select 1.2 div '1' ;",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select 1.2 div 'a1' ;",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select '12a' div '3' ;",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select 'a' mod 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select 'a' mod 4;",
+		Expected: []sql.Row{{float64(0)}},
+	},
+	{
+		Query:    "select 4 mod 'a';",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
+		Expected: []sql.Row{{"10487"}},
+	},
+	{
+		Query:    "select 0.0015 / 0.0026;",
+		Expected: []sql.Row{{"0.57692308"}},
+	},
+	{
+		Query:    "select (14620 / 9432456);",
+		Expected: []sql.Row{{"0.0015"}},
+	},
+	{
+		Query:    "select (24250 / 9432456);",
+		Expected: []sql.Row{{"0.0026"}},
+	},
+	{
+		Query:    "select 5.2/3.1/1.7/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.98671726755218216294117647000"}},
+	},
+	{
+		Query:    "select 5.2/3.1/1.9/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.88285229202037351421052631500"}},
+	},
+	{
+		Query:    "select 1.677419354838709677/1.9;",
+		Expected: []sql.Row{{"0.8828522920203735142105"}},
+	},
+	{
+		Query:    "select 1.9/1.677419354838709677;",
+		Expected: []sql.Row{{"1.13269"}},
+	},
+	{
+		Query:    "select 1.677419354838709677/1.9/1/1/1/1/1;",
+		Expected: []sql.Row{{"0.882852292020373514210526315000"}},
+	},
+	{
+		Query:    "select (14620 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.60288653"}},
+	},
+	{
+		Query:    "select (14620.0 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.602886527"}},
+	},
+	{
+		Query:    "select (14620 / 9432456),  (24250 / 9432456), (14620 / 9432456) / (24250 / 9432456);",
+		Expected: []sql.Row{{"0.0015", "0.0026", "0.60288653"}},
+	},
+	{
+		Query:    "select 1000.0 / 20.00;",
+		Expected: []sql.Row{{"50.00000"}},
+	},
+	{
+		Query:    "select 1/2/3/4/5/6;",
+		Expected: []sql.Row{{"0.00138888888888888888"}},
+	},
+	{
+		Query:    "select 24/3/2*1/2/3;",
+		Expected: []sql.Row{{"0.6666666666666667"}},
+	},
+	{
+		Query:    "select 1/2/3%4/5/6;",
+		Expected: []sql.Row{{"0.0055555555555556"}},
+	},
+	{
+		Query:    "select 0.05 % 0.024;",
+		Expected: []sql.Row{{"0.002"}},
+	},
+	{
+		Query:    "select 0.0500 % 0.05;",
+		Expected: []sql.Row{{"0.0000"}},
+	},
+	{
+		Query:    "select 0.05 % 4;",
+		Expected: []sql.Row{{"0.05"}},
+	},
+	{
+		Query:    "select 2.6 & -1.3;",
+		Expected: []sql.Row{{uint64(3)}},
+	},
+	{
+		Query:    "select -1.5 & -3.3;",
+		Expected: []sql.Row{{uint64(18446744073709551612)}},
+	},
+	{
+		Query:    "select -1.7 & 0.5;",
+		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query:    "select -1.7 & 1.5;",
+		Expected: []sql.Row{{uint64(2)}},
+	},
+	{
+		Query:    "SELECT '127' | '128', '128' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'7F' | X'80', X'80' << 2;",
+		Expected: []sql.Row{{uint64(255), uint64(512)}},
+	},
+	{
+		Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
+		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
@@ -3901,7 +4253,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: "SELECT MOD(i, 2) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{1},
+			{"1"},
 		},
 	},
 	{
@@ -4309,11 +4661,19 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
-		Expected: []sql.Row{{233.0}},
+		Expected: []sql.Row{{float64(233)}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
 		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
+		Expected: []sql.Row{{float64(-1)}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
+		Expected: []sql.Row{{float64(-1)}},
 	},
 	{
 		Query:    `SELECT CONNECTION_ID()`,
@@ -4504,9 +4864,69 @@ var QueryTests = []QueryTest{
 		Expected: nil,
 	},
 	{
-		Query: `SELECT round(15728640/1024/1024)`,
+		Query: `SELECT 2/4`,
 		Expected: []sql.Row{
-			{int64(15)},
+			{"0.5000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1024`,
+		Expected: []sql.Row{
+			{"15.00000000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1030`,
+		Expected: []sql.Row{
+			{"14.91262136"},
+		},
+	},
+	{
+		Query: `SELECT 2/4/5/5`,
+		Expected: []sql.Row{
+			{"0.020000000000"},
+		},
+	},
+	{
+		Query: `SELECT 4/3/1`,
+		Expected: []sql.Row{
+			{"1.33333333"},
+		},
+	},
+	{
+		Query: `select 5/4/3/(2/1+3/1)`,
+		Expected: []sql.Row{
+			{"0.083333333333"},
+		},
+	},
+	{
+		Query: `select (2/1+3/1)/5/4/3`,
+		Expected: []sql.Row{
+			{"0.0833333333333333"},
+		},
+	},
+	{
+		Query: `select cast(X'20' as decimal)`,
+		Expected: []sql.Row{
+			{"32"},
+		},
+	},
+	{
+		Query: `SELECT FLOOR(15728640/1024/1030)`,
+		Expected: []sql.Row{
+			{"14"},
+		},
+	},
+	{
+		Query: `SELECT ROUND(15728640/1024/1030)`,
+		Expected: []sql.Row{
+			{"15"},
+		},
+	},
+	{
+		Query: `SELECT ROUND(15.00, 1)`,
+		Expected: []sql.Row{
+			{"15.0"},
 		},
 	},
 	{
@@ -4896,15 +5316,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select ceil(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{2.0}, {3.0}, {4.0}},
+		Expected: []sql.Row{{"2"}, {"3"}, {"4"}},
 	},
 	{
 		Query:    "select floor(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{1.0}, {2.0}, {3.0}},
+		Expected: []sql.Row{{"1"}, {"2"}, {"3"}},
 	},
 	{
 		Query:    "select round(i + 0.55, 1) from mytable order by 1",
-		Expected: []sql.Row{{1.6}, {2.6}, {3.6}},
+		Expected: []sql.Row{{"1.6"}, {"2.6"}, {"3.6"}},
 	},
 	{
 		Query:    "select date_format(da, '%s') from typestable order by 1",
@@ -5137,6 +5557,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(0)}},
 	},
 	{
+		Query:    `SELECT NOW() / NOW()`,
+		Expected: []sql.Row{{"1.0000"}},
+	},
+	{
+		Query:    `SELECT NOW() div NOW()`,
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    `SELECT DATETIME(NOW()) - NOW()`,
 		Expected: []sql.Row{{int64(0)}},
 	},
@@ -5145,7 +5573,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(0)}},
 	},
 	{
-		Query:    `SELECT NOW() - (NOW() - INTERVAL 1 SECOND)`,
+		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
@@ -5429,6 +5857,10 @@ var QueryTests = []QueryTest{
 			{2},
 			{3},
 		},
+	},
+	{
+		Query:    `SELECT sum(i) as isum, s FROM mytable GROUP BY i ORDER BY isum ASC LIMIT 0, 200`,
+		Expected: []sql.Row{{1.0, "first row"}, {2.0, "second row"}, {3.0, "third row"}},
 	},
 	{
 		Query:    `SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
@@ -6374,7 +6806,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
-		Expected: []sql.Row{{float64(7)}},
+		Expected: []sql.Row{{"7.0"}},
 	},
 	{
 		Query:    "SELECT (CASE WHEN i THEN i ELSE 0 END) as cases_i from mytable",
@@ -6541,9 +6973,9 @@ var QueryTests = []QueryTest{
 			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0
 			from mytable order by 1;`,
 		Expected: []sql.Row{
-			{1, 6, 1.0},
-			{2, 5, 3.0},
-			{3, 4, 2.0},
+			{1, 6, "1.00000"},
+			{2, 5, "3.00000"},
+			{3, 4, "2.00000"},
 		},
 	},
 	{
@@ -6903,28 +7335,40 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SHOW STATUS`,
+		Query: `SHOW STATUS LIKE 'use_secondary_engine'`,
+		Expected: []sql.Row{
+			{"use_secondary_engine", "ON"},
+		},
+	},
+	{
+		Query: `SHOW GLOBAL STATUS LIKE 'admin_port'`,
+		Expected: []sql.Row{
+			{"admin_port", 33062},
+		},
+	},
+	{
+		Query: `SHOW SESSION STATUS LIKE 'auto_increment_increment'`,
+		Expected: []sql.Row{
+			{"auto_increment_increment", 1},
+		},
+	},
+	{
+		Query:    `SHOW GLOBAL STATUS LIKE 'use_secondary_engine'`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SHOW GLOBAL STATUS`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SHOW SESSION STATUS`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SHOW SESSION STATUS`,
+		Query:    `SHOW SESSION STATUS LIKE 'version'`,
 		Expected: []sql.Row{},
 	},
 	{
 		Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
-		Expected: []sql.Row{},
+		Expected: []sql.Row{}, // TODO: should be added at some point
 	},
 	{
-		Query:    `SHOW SESSION STATUS WHERE Value > 5`,
-		Expected: []sql.Row{},
+		Query: `SHOW SESSION STATUS WHERE Value < 0`,
+		Expected: []sql.Row{
+			{"optimizer_trace_offset", -1},
+		},
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
@@ -7749,17 +8193,6 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
 	// Currently, not matching MySQL's information schema for this table
-	{
-		Query: `
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
-		`,
-		Expected: nil,
-	},
 	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
 	{
 		Query:    "SELECT X'0a'",
@@ -9058,14 +9491,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
-		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'abc' is not a valid value for 'double'`,
-	},
-	{
-		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'double'`,
-	},
-	{
 		Query:       `alter table mytable add primary key (s)`,
 		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
 	},
@@ -9250,6 +9675,18 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
 		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+	},
+	{
+		Query:       "select 18446744073709551615 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
+	},
+	{
+		Query:       "select -9223372036854775807 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
+	},
+	{
+		Query:       "select -9223372036854775808 div 0.1;",
+		ExpectedErr: expression.ErrIntDivDataOutOfRange,
 	},
 }
 
@@ -9672,6 +10109,1263 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query:    "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Query: `
+		SELECT
+			COLUMN_NAME,
+			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
+		FROM information_schema.COLUMN_STATISTICS
+		WHERE SCHEMA_NAME = 'mydb'
+		AND TABLE_NAME = 'mytable'
+		`,
+		Expected: nil,
+	},
+}
+
+var IndexQueries = []ScriptTest{
+	{
+		Name: "unique key violation prevents insert",
+		SetUpScript: []string{
+			"create table users (id varchar(26) primary key, namespace varchar(50), name varchar(50));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create unique index namespace__name on users (namespace, name)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+			},
+			{
+				Query: "show create table users",
+				Expected: []sql.Row{
+					{"users", "CREATE TABLE `users` (\n  `id` varchar(26) NOT NULL,\n  `namespace` varchar(50),\n  `name` varchar(50),\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `namespace__name` (`namespace`,`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into users values ('user1', 'namespace1', 'name1')",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query:       "insert into users values ('user2', 'namespace1', 'name1')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		Name: "unique key duplicate key update",
+		SetUpScript: []string{
+			"CREATE TABLE auniquetable (pk int primary key, uk int unique key, i int);",
+			"INSERT INTO auniquetable VALUES(0,0,0);",
+			"INSERT INTO auniquetable (pk,uk) VALUES(1,0) on duplicate key update i = 99;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT pk, uk, i from auniquetable",
+				Expected: []sql.Row{
+					{0, 0, 99},
+				},
+			},
+		},
+	},
+}
+
+var IndexPrefixQueries = []ScriptTest{
+	{
+		Name: "int prefix",
+		SetUpScript: []string{
+			"create table t (i int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (i(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int, primary key (i(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, j int, index (j(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "float prefix",
+		SetUpScript: []string{
+			"create table t (f float)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table t add index (f(10))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (f float, primary key (f(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (i int primary key, f float, index (f(10)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "string index prefix errors",
+		SetUpScript: []string{
+			"create table v_tbl (v varchar(10))",
+			"create table c_tbl (c char(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table v_tbl add primary key (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "alter table v_tbl add primary key (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(0))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "alter table v_tbl add index (v(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add primary key (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "alter table c_tbl add index (c(11))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(0)))",
+				ExpectedErr: sql.ErrKeyZero,
+			},
+			{
+				Query:       "create table t (v varchar(10), primary key(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (v varchar(10), index(v(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), primary key(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:       "create table t (c char(10), index(c(11)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "varchar primary key prefix",
+		SetUpScript: []string{
+			"create table t (v varchar(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (v(10))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+			{
+				Query:       "create table v_tbl (v varchar(100), primary key (v(10)))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "varchar keyed secondary index prefix",
+		SetUpScript: []string{
+			"create table t (i int primary key, v varchar(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (v(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v` (`v`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values (0, 'aa'), (1, 'ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "insert into t values (0, 'aa'), (1, 'bb'), (2, 'cc')",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				Query:    "select * from t where v = 'a'",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t where v = 'aa'",
+				Expected: []sql.Row{
+					{0, "aa"},
+				},
+			},
+			{
+				Query:    "create table v_tbl (i int primary key, v varchar(100), index (v(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table v_tbl",
+				Expected: []sql.Row{{"v_tbl", "CREATE TABLE `v_tbl` (\n  `i` int NOT NULL,\n  `v` varchar(100),\n  PRIMARY KEY (`i`),\n  KEY `v` (`v`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "varchar keyless secondary index prefix",
+		SetUpScript: []string{
+			"create table t (v varchar(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (v(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `v` varchar(10),\n  UNIQUE KEY `v` (`v`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values ('aa'), ('ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table v_tbl (v varchar(100), index (v(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table v_tbl",
+				Expected: []sql.Row{{"v_tbl", "CREATE TABLE `v_tbl` (\n  `v` varchar(100),\n  KEY `v` (`v`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "char primary key prefix",
+		SetUpScript: []string{
+			"create table t (c char(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (c(10))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+			{
+				Query:       "create table c_tbl (c char(100), primary key (c(10)))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "char keyed secondary index prefix",
+		SetUpScript: []string{
+			"create table t (i int primary key, c char(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (c(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `c` char(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `c` (`c`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values (0, 'aa'), (1, 'ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table c_tbl (i int primary key, c varchar(100), index (c(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table c_tbl",
+				Expected: []sql.Row{{"c_tbl", "CREATE TABLE `c_tbl` (\n  `i` int NOT NULL,\n  `c` varchar(100),\n  PRIMARY KEY (`i`),\n  KEY `c` (`c`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "char keyless secondary index prefix",
+		SetUpScript: []string{
+			"create table t (c char(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (c(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `c` char(10),\n  UNIQUE KEY `c` (`c`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values ('aa'), ('ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table c_tbl (c char(100), index (c(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table c_tbl",
+				Expected: []sql.Row{{"c_tbl", "CREATE TABLE `c_tbl` (\n  `c` char(100),\n  KEY `c` (`c`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "varbinary primary key prefix",
+		SetUpScript: []string{
+			"create table t (v varbinary(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (v(10))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+			{
+				Query:       "create table v_tbl (v varbinary(100), primary key (v(10)))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "varbinary keyed secondary index prefix",
+		SetUpScript: []string{
+			"create table t (i int primary key, v varbinary(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (v(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v` varbinary(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v` (`v`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values (0, 'aa'), (1, 'ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table v_tbl (i int primary key, v varbinary(100), index (v(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table v_tbl",
+				Expected: []sql.Row{{"v_tbl", "CREATE TABLE `v_tbl` (\n  `i` int NOT NULL,\n  `v` varbinary(100),\n  PRIMARY KEY (`i`),\n  KEY `v` (`v`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "varbinary keyless secondary index prefix",
+		SetUpScript: []string{
+			"create table t (v varbinary(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (v(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `v` varbinary(10),\n  UNIQUE KEY `v` (`v`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values ('aa'), ('ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table v_tbl (v varbinary(100), index (v(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table v_tbl",
+				Expected: []sql.Row{{"v_tbl", "CREATE TABLE `v_tbl` (\n  `v` varbinary(100),\n  KEY `v` (`v`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "binary primary key prefix",
+		SetUpScript: []string{
+			"create table t (b binary(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (b(10))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+			{
+				Query:       "create table b_tbl (b binary(100), primary key (b(10)))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "binary keyed secondary index prefix",
+		SetUpScript: []string{
+			"create table t (i int primary key, b binary(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (b(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `b` binary(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values (0, 'aa'), (1, 'ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table b_tbl (i int primary key, b binary(100), index (b(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table b_tbl",
+				Expected: []sql.Row{{"b_tbl", "CREATE TABLE `b_tbl` (\n  `i` int NOT NULL,\n  `b` binary(100),\n  PRIMARY KEY (`i`),\n  KEY `b` (`b`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "binary keyless secondary index prefix",
+		SetUpScript: []string{
+			"create table t (b binary(10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (b(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `b` binary(10),\n  UNIQUE KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values ('aa'), ('ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table b_tbl (b binary(100), index (b(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table b_tbl",
+				Expected: []sql.Row{{"b_tbl", "CREATE TABLE `b_tbl` (\n  `b` binary(100),\n  KEY `b` (`b`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "blob primary key prefix",
+		SetUpScript: []string{
+			"create table t (b blob)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (b(10))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+			{
+				Query:       "create table b_tbl (b blob, primary key (b(10)))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "blob keyed secondary index prefix",
+		SetUpScript: []string{
+			"create table t (i int primary key, b blob)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (b(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `b` blob,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values (0, 'aa'), (1, 'ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table b_tbl (i int primary key, b blob, index (b(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table b_tbl",
+				Expected: []sql.Row{{"b_tbl", "CREATE TABLE `b_tbl` (\n  `i` int NOT NULL,\n  `b` blob,\n  PRIMARY KEY (`i`),\n  KEY `b` (`b`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "blob keyless secondary index prefix",
+		SetUpScript: []string{
+			"create table t (b blob)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (b(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `b` blob,\n  UNIQUE KEY `b` (`b`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values ('aa'), ('ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table b_tbl (b blob, index (b(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table b_tbl",
+				Expected: []sql.Row{{"b_tbl", "CREATE TABLE `b_tbl` (\n  `b` blob,\n  KEY `b` (`b`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "text primary key prefix",
+		SetUpScript: []string{
+			"create table t (t text)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add primary key (t(10))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+			{
+				Query:       "create table b_tbl (t text, primary key (t(10)))",
+				ExpectedErr: sql.ErrUnsupportedIndexPrefix,
+			},
+		},
+	},
+	{
+		Name: "text keyed secondary index prefix",
+		SetUpScript: []string{
+			"create table t (i int primary key, t text)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (t(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `t` text,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `t` (`t`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values (0, 'aa'), (1, 'ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table t_tbl (i int primary key, t text, index (t(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t_tbl",
+				Expected: []sql.Row{{"t_tbl", "CREATE TABLE `t_tbl` (\n  `i` int NOT NULL,\n  `t` text,\n  PRIMARY KEY (`i`),\n  KEY `t` (`t`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "text keyless secondary index prefix",
+		SetUpScript: []string{
+			"create table t (t text)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add unique index (t(1))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `t` text,\n  UNIQUE KEY `t` (`t`(1))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "insert into t values ('aa'), ('ab')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "create table t_tbl (t text, index (t(10)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "show create table t_tbl",
+				Expected: []sql.Row{{"t_tbl", "CREATE TABLE `t_tbl` (\n  `t` text,\n  KEY `t` (`t`(10))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "inline secondary indexes",
+		SetUpScript: []string{
+			"create table t (i int primary key, v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10),\n  `v2` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
+				Expected: []sql.Row{{sql.NewOkResult(4)}},
+			},
+			{
+				Query:       "insert into t values (99, 'abc', 'abcde')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:       "insert into t values (99, 'abc123', 'abcde123')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query: "select * from t where v1 = 'a'",
+				Expected: []sql.Row{
+					{0, "a", "a"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'a'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'a')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[a, a], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 = 'abc'",
+				Expected: []sql.Row{
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'abc'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'abc')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[abc, abc], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query:    "select * from t where v1 = 'abcd'",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "explain select * from t where v1 = 'abcd'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'abcd')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 > 'a' and v1 < 'abcde'",
+				Expected: []sql.Row{
+					{1, "ab", "ab"},
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(a, abcde), [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 > 'a' and v2 < 'abcde'",
+				Expected: []sql.Row{
+					{1, "ab", "ab"},
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(a, ∞), (NULL, abcde)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+				},
+			},
+			{
+				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
+				Expected: []sql.Row{
+					{"Update"},
+					{" └─ UpdateSource(SET t.v1 = concat(t.v1, 'z'))"},
+					{"     └─ Filter(t.v1 >= 'a')"},
+					{"         └─ IndexedTableAccess(t)"},
+					{"             ├─ index: [t.v1,t.v2]"},
+					{"             └─ filters: [{[a, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{0, "az", "a"},
+					{1, "abz", "ab"},
+					{2, "abcz", "abc"},
+					{3, "abcdez", "abcde"},
+				},
+			},
+			{
+				Query: "delete from t where v1 >= 'a'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "explain delete from t where v1 >= 'a'",
+				Expected: []sql.Row{
+					{"Delete"},
+					{" └─ Filter(t.v1 >= 'a')"},
+					{"     └─ IndexedTableAccess(t)"},
+					{"         ├─ index: [t.v1,t.v2]"},
+					{"         └─ filters: [{[a, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "inline secondary indexes keyless",
+		SetUpScript: []string{
+			"create table t (v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `v1` varchar(10),\n  `v2` varchar(10),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t values ('a', 'a'), ('ab','ab'), ('abc', 'abc'), ('abcde', 'abcde')",
+				Expected: []sql.Row{{sql.NewOkResult(4)}},
+			},
+			{
+				Query:       "insert into t values ('abc', 'abcde')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:       "insert into t values ('abc123', 'abcde123')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query: "select * from t where v1 = 'a'",
+				Expected: []sql.Row{
+					{"a", "a"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'a'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'a')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[a, a], [NULL, ∞)}]"},
+					{"     └─ columns: [v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 = 'abc'",
+				Expected: []sql.Row{
+					{"abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'abc'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'abc')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[abc, abc], [NULL, ∞)}]"},
+					{"     └─ columns: [v1 v2]"},
+				},
+			},
+			{
+				Query:    "select * from t where v1 = 'abcd'",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "explain select * from t where v1 = 'abcd'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'abcd')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]"},
+					{"     └─ columns: [v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 > 'a' and v1 < 'abcde'",
+				Expected: []sql.Row{
+					{"ab", "ab"},
+					{"abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(a, abcde), [NULL, ∞)}]"},
+					{"     └─ columns: [v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 > 'a' and v2 < 'abcde'",
+				Expected: []sql.Row{
+					{"ab", "ab"},
+					{"abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(a, ∞), (NULL, abcde)}]"},
+					{"     └─ columns: [v1 v2]"},
+				},
+			},
+			{
+				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+				},
+			},
+			{
+				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
+				Expected: []sql.Row{
+					{"Update"},
+					{" └─ UpdateSource(SET t.v1 = concat(t.v1, 'z'))"},
+					{"     └─ Filter(t.v1 >= 'a')"},
+					{"         └─ IndexedTableAccess(t)"},
+					{"             ├─ index: [t.v1,t.v2]"},
+					{"             └─ filters: [{[a, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{"az", "a"},
+					{"abz", "ab"},
+					{"abcz", "abc"},
+					{"abcdez", "abcde"},
+				},
+			},
+			{
+				Query: "delete from t where v1 >= 'a'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "explain delete from t where v1 >= 'a'",
+				Expected: []sql.Row{
+					{"Delete"},
+					{" └─ Filter(t.v1 >= 'a')"},
+					{"     └─ IndexedTableAccess(t)"},
+					{"         ├─ index: [t.v1,t.v2]"},
+					{"         └─ filters: [{[a, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	// TODO (james): collations do not work for in-memory tables; this test is in dolt_queries.go
+	{
+		Name: "inline secondary indexes with collation",
+		SetUpScript: []string{
+			"create table t (i int primary key, v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5))) collate utf8mb4_0900_ai_ci",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10) COLLATE utf8mb4_0900_ai_ci,\n  `v2` varchar(10) COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"}},
+			},
+			{
+				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
+				Expected: []sql.Row{{sql.NewOkResult(4)}},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into t values (99, 'ABC', 'ABCDE')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Skip:        true,
+				Query:       "insert into t values (99, 'ABC123', 'ABCDE123')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Skip:  true,
+				Query: "select * from t where v1 = 'A'",
+				Expected: []sql.Row{
+					{0, "a", "a"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'A'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'A')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[A, A], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select * from t where v1 = 'ABC'",
+				Expected: []sql.Row{
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'ABC'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'ABC')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[ABC, ABC], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query:    "select * from t where v1 = 'ABCD'",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "explain select * from t where v1 = 'ABCD'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'ABCD')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[ABCD, ABCD], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select * from t where v1 > 'A' and v1 < 'ABCDE'",
+				Expected: []sql.Row{
+					{1, "ab", "ab"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'A' and v1 < 'ABCDE'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'A') AND (t.v1 < 'ABCDE'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(A, ABCDE), [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 > 'A' and v2 < 'ABCDE'",
+				Expected: []sql.Row{
+					{1, "ab", "ab"},
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'A' and v2 < 'ABCDE'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'A') AND (t.v2 < 'ABCDE'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(A, ∞), (NULL, ABCDE)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "update t set v1 = concat(v1, 'Z') where v1 >= 'A'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+				},
+			},
+			{
+				Query: "explain update t set v1 = concat(v1, 'Z') where v1 >= 'A'",
+				Expected: []sql.Row{
+					{"Update"},
+					{" └─ UpdateSource(SET t.v1 = concat(t.v1, 'Z'))"},
+					{"     └─ Filter(t.v1 >= 'A')"},
+					{"         └─ IndexedTableAccess(t)"},
+					{"             ├─ index: [t.v1,t.v2]"},
+					{"             └─ filters: [{[A, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{0, "aZ", "a"},
+					{1, "abZ", "ab"},
+					{2, "abcZ", "abc"},
+					{3, "abcdeZ", "abcde"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "delete from t where v1 >= 'A'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "explain delete from t where v1 >= 'A'",
+				Expected: []sql.Row{
+					{"Delete"},
+					{" └─ Filter(t.v1 >= 'A')"},
+					{"     └─ IndexedTableAccess(t)"},
+					{"         ├─ index: [t.v1,t.v2]"},
+					{"         └─ filters: [{[A, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Skip:     true,
+				Query:    "select * from t",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "referenced secondary indexes",
+		SetUpScript: []string{
+			"create table t (i int primary key, v1 text, v2 text, unique index (v1(3),v2(5)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` text,\n  `v2` text,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
+				Expected: []sql.Row{{sql.NewOkResult(4)}},
+			},
+			{
+				Query:       "insert into t values (99, 'abc', 'abcde')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:       "insert into t values (99, 'abc123', 'abcde123')",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query: "select * from t where v1 = 'a'",
+				Expected: []sql.Row{
+					{0, "a", "a"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'a'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'a')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[a, a], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 = 'abc'",
+				Expected: []sql.Row{
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 = 'abc'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'abc')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[abc, abc], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query:    "select * from t where v1 = 'abcd'",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "explain select * from t where v1 = 'abcd'",
+				Expected: []sql.Row{
+					{"Filter(t.v1 = 'abcd')"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 > 'a' and v1 < 'abcde'",
+				Expected: []sql.Row{
+					{1, "ab", "ab"},
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(a, abcde), [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 > 'a' and v2 < 'abcde'",
+				Expected: []sql.Row{
+					{1, "ab", "ab"},
+					{2, "abc", "abc"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
+				Expected: []sql.Row{
+					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{(a, ∞), (NULL, abcde)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+				},
+			},
+			{
+				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
+				Expected: []sql.Row{
+					{"Update"},
+					{" └─ UpdateSource(SET t.v1 = concat(t.v1, 'z'))"},
+					{"     └─ Filter(t.v1 >= 'a')"},
+					{"         └─ IndexedTableAccess(t)"},
+					{"             ├─ index: [t.v1,t.v2]"},
+					{"             └─ filters: [{[a, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{0, "az", "a"},
+					{1, "abz", "ab"},
+					{2, "abcz", "abc"},
+					{3, "abcdez", "abcde"},
+				},
+			},
+			{
+				Query: "delete from t where v1 >= 'a'",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 4}},
+				},
+			},
+			{
+				Query: "explain delete from t where v1 >= 'a'",
+				Expected: []sql.Row{
+					{"Delete"},
+					{" └─ Filter(t.v1 >= 'a')"},
+					{"     └─ IndexedTableAccess(t)"},
+					{"         ├─ index: [t.v1,t.v2]"},
+					{"         └─ filters: [{[a, ∞), [NULL, ∞)}]"},
+				},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name:        "test prefix limits",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table varchar_limit(c varchar(10000), index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table text_limit(c text, index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table varbinary_limit(c varbinary(10000), index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table blob_limit(c blob, index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table bad(c varchar(10000), index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c text, index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c varbinary(10000), index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c blob, index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
 			},
 		},
 	},

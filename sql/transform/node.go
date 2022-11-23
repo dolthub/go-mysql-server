@@ -89,7 +89,7 @@ func NodeExprs(node sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
 }
 
 // OneNodeExprsWithNode applies a transformation function to all expressions
-// on the given plan tree.
+// on the specified node. It does not traverse the children of the specified node.
 func OneNodeExprsWithNode(n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
 	ne, ok := n.(sql.Expressioner)
 	if !ok {
@@ -132,7 +132,7 @@ func OneNodeExprsWithNode(n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentit
 }
 
 // OneNodeExpressions applies a transformation function to all expressions
-// on the given node.
+// on the specified node. It does not traverse the children of the specified node.
 func OneNodeExpressions(n sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
 	e, ok := n.(sql.Expressioner)
 	if !ok {

@@ -259,8 +259,9 @@ func TestMod(t *testing.T) {
 		right    interface{}
 		expected interface{}
 	}{
-		{"MOD(5,2)", 5, 2, int64(1)},
-		{"MOD(2,5)", 2, 5, int64(2)},
+		{"MOD(5,2)", 5, 2, "1"},
+		{"MOD(2,5)", 2, 5, "2"},
+		{"MOD(1,0.240)", 1, "0.240", "0.040"},
 		{"MOD(NULL,2)", nil, 2, nil},
 		{"MOD(5,NULL)", 5, nil, nil},
 		{"MOD(NULL,NULL)", nil, nil, nil},
@@ -273,7 +274,11 @@ func TestMod(t *testing.T) {
 			mod, err := f.Fn(expression.NewLiteral(test.left, sql.Int32), expression.NewLiteral(test.right, sql.Int32))
 			res, err := mod.Eval(nil, nil)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expected, res)
+			if r, ok := res.(decimal.Decimal); ok {
+				assert.Equal(t, test.expected, r.StringFixed(r.Exponent()*-1))
+			} else {
+				assert.Equal(t, test.expected, res)
+			}
 		})
 	}
 }

@@ -270,7 +270,9 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
+	if expected != nil {
+		checkResults(t, require, expected, expectedCols, sch, rows, q)
+	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, harness, e)
@@ -440,7 +442,7 @@ func checkResults(
 	// The result from SELECT or WITH queries can be decimal.Decimal type.
 	// The exact expected value cannot be defined in enginetests, so convert the result to string format,
 	// which is the value we get on sql shell.
-	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") {
+	if strings.HasPrefix(upperQuery, "SELECT ") || strings.HasPrefix(upperQuery, "WITH ") || strings.HasPrefix(upperQuery, "CALL ") {
 		for _, widenedRow := range widenedRows {
 			for i, val := range widenedRow {
 				if d, ok := val.(decimal.Decimal); ok {

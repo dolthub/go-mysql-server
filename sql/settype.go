@@ -286,7 +286,7 @@ func (t setType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t setType) Zero() interface{} {
-	return ""
+	return uint64(0)
 }
 
 // CharacterSet implements SetType interface.

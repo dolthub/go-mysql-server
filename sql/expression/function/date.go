@@ -92,9 +92,11 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: need to also convert to sql.Time type, which we currently do not support
 	date, err = sql.Datetime.Convert(date)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, err.Error())
+		return nil, nil
 	}
 
 	delta, err := d.Interval.EvalDelta(ctx, row)
@@ -184,7 +186,8 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	date, err = sql.Datetime.Convert(date)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, err.Error())
+		return nil, nil
 	}
 
 	delta, err := d.Interval.EvalDelta(ctx, row)

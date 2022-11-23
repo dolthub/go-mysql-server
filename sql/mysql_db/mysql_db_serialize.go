@@ -79,7 +79,7 @@ func serializeTables(b *flatbuffers.Builder, tables []PrivilegeSetTable) flatbuf
 	for i, table := range tables {
 		name := b.CreateString(table.Name())
 		privs := serializePrivilegeTypes(b, serial.PrivilegeSetTableStartPrivsVector, table.ToSlice())
-		cols := serializeColumns(b, table.GetColumns())
+		cols := serializeColumns(b, table.getColumns())
 
 		serial.PrivilegeSetTableStart(b)
 		serial.PrivilegeSetTableAddName(b, name)
@@ -98,7 +98,7 @@ func serializeDatabases(b *flatbuffers.Builder, databases []PrivilegeSetDatabase
 	for i, database := range databases {
 		name := b.CreateString(database.Name())
 		privs := serializePrivilegeTypes(b, serial.PrivilegeSetDatabaseStartPrivsVector, database.ToSlice())
-		tables := serializeTables(b, database.GetTables())
+		tables := serializeTables(b, database.getTables())
 
 		serial.PrivilegeSetDatabaseStart(b)
 		serial.PrivilegeSetDatabaseAddName(b, name)
@@ -115,7 +115,7 @@ func serializePrivilegeSet(b *flatbuffers.Builder, ps *PrivilegeSet) flatbuffers
 	// Write privilege set variables, and save offsets
 	globalStatic := serializePrivilegeTypes(b, serial.PrivilegeSetStartGlobalStaticVector, ps.ToSlice())
 	globalDynamic := serializeGlobalDynamic(b, ps.globalDynamic)
-	databases := serializeDatabases(b, ps.GetDatabases())
+	databases := serializeDatabases(b, ps.getDatabases())
 
 	// Write PrivilegeSet
 	serial.PrivilegeSetStart(b)

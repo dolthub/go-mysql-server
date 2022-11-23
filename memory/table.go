@@ -555,6 +555,7 @@ func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
 
 func (t *Table) newTableEditor() *tableEditor {
 	var uniqIdxCols [][]int
+	var prefixLengths [][]uint16
 	for _, idx := range t.indexes {
 		if !idx.IsUnique() {
 			continue
@@ -569,6 +570,7 @@ func (t *Table) newTableEditor() *tableEditor {
 			panic("failed to get column indexes")
 		}
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
+		prefixLengths = append(prefixLengths, idx.PrefixLengths())
 	}
 	return &tableEditor{
 		table:             t,
@@ -576,7 +578,9 @@ func (t *Table) newTableEditor() *tableEditor {
 		initialPartitions: nil,
 		ea:                NewTableEditAccumulator(t),
 		initialInsert:     0,
-		uniqueIdxCols:     uniqIdxCols}
+		uniqueIdxCols:     uniqIdxCols,
+		prefixLengths:     prefixLengths,
+	}
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
@@ -1225,8 +1229,8 @@ func (t *Table) UpdateForeignKey(ctx *sql.Context, fkName string, fk sql.Foreign
 }
 
 // CreateIndexForForeignKey implements sql.ForeignKeyTable.
-func (t *Table) CreateIndexForForeignKey(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn) error {
-	return t.CreateIndex(ctx, indexName, using, constraint, columns, "")
+func (t *Table) CreateIndexForForeignKey(ctx *sql.Context, idx sql.IndexDef) error {
+	return t.CreateIndex(ctx, idx)
 }
 
 // SetForeignKeyResolved implements sql.ForeignKeyTable.
@@ -1298,6 +1302,22 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		colNames[i] = column.Name
 	}
 
+	var hasNonZeroLengthColumn bool
+	for _, column := range columns {
+		if column.Length > 0 {
+			hasNonZeroLengthColumn = true
+			break
+		}
+	}
+	var prefixLengths []uint16
+	if hasNonZeroLengthColumn {
+		prefixLengths = make([]uint16, len(columns))
+		for i, column := range columns {
+			prefixLengths[i] = uint16(column.Length)
+		}
+
+	}
+
 	if constraint == sql.IndexConstraint_Unique {
 		err := t.errIfDuplicateEntryExist(colNames, name)
 		if err != nil {
@@ -1314,6 +1334,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Name:       name,
 		Unique:     constraint == sql.IndexConstraint_Unique,
 		CommentStr: comment,
+		PrefixLens: prefixLengths,
 	}, nil
 }
 
@@ -1372,12 +1393,12 @@ func (t *Table) getField(col string) (int, *sql.Column) {
 }
 
 // CreateIndex implements sql.IndexAlterableTable
-func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) error {
+func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	if t.indexes == nil {
 		t.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(indexName, columns, constraint, comment)
+	index, err := t.createIndex(idx.Name, idx.Columns, idx.Constraint, idx.Comment)
 	if err != nil {
 		return err
 	}
@@ -1477,6 +1498,9 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		found := false
 		for j, currCol := range potentialSchema {
 			if strings.ToLower(currCol.Name) == strings.ToLower(newCol.Name) {
+				if sql.IsText(currCol.Type) && newCol.Length > 0 {
+					return sql.ErrUnsupportedIndexPrefix.New(currCol.Name)
+				}
 				currCol.PrimaryKey = true
 				currCol.Nullable = false
 				found = true

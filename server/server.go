@@ -15,6 +15,7 @@
 package server
 
 import (
+	"errors"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -90,9 +91,14 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		cfg.MaxConnections = 0
 	}
 
+	var unixSocketInUse error
 	l, err := NewListener(cfg.Protocol, cfg.Address, cfg.Socket)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, UnixSocketInUseError) {
+			unixSocketInUse = err
+		} else {
+			return nil, err
+		}
 	}
 
 	listenerCfg := mysql.ListenerConfig{
@@ -120,7 +126,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		Listener:   vtListnr,
 		handler:    handler,
 		sessionMgr: sm,
-	}, nil
+	}, unixSocketInUse
 }
 
 // Start starts accepting connections on the server.

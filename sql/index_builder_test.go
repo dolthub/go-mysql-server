@@ -206,4 +206,8 @@ func (i testIndex) ColumnExpressionTypes() []ColumnExpressionType {
 	return res
 }
 
+func (testIndex) PrefixLengths() []uint16 {
+	return nil
+}
+
 var _ Index = testIndex{}

@@ -139,6 +139,13 @@ type Session interface {
 	GetCharacterSetResults() CharacterSetID
 	// GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
 	GetCollation() CollationID
+	// GetPrivilegeSet returns the cached privilege set associated with this session, along with its counter. The
+	// PrivilegeSet is only valid when the counter is greater than zero.
+	GetPrivilegeSet() (PrivilegeSet, uint64)
+	// SetPrivilegeSet updates this session's cache with the given counter and privilege set. Setting the counter to a
+	// value of zero will force the cache to reload. This is an internal function and is not intended to be used by
+	// integrators.
+	SetPrivilegeSet(newPs PrivilegeSet, counter uint64)
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context, dbName string) error
 }
@@ -181,6 +188,11 @@ type BaseSession struct {
 	lastQueryInfo    map[string]int64
 	tx               Transaction
 	ignoreAutocommit bool
+
+	// When the MySQL database updates any tables related to privileges, it increments its counter. We then update our
+	// privilege set if our counter doesn't equal the database's counter.
+	privSetCounter uint64
+	privilegeSet   PrivilegeSet
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
@@ -596,20 +608,30 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 	s.tx = tx
 }
 
+func (s *BaseSession) GetPrivilegeSet() (PrivilegeSet, uint64) {
+	return s.privilegeSet, s.privSetCounter
+}
+
+func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
+	s.privSetCounter = counter
+	s.privilegeSet = newPs
+}
+
 // NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
 	return &BaseSession{
-		addr:          server,
-		client:        client,
-		id:            id,
-		systemVars:    SystemVariables.NewSessionMap(),
-		userVars:      make(map[string]interface{}),
-		idxReg:        NewIndexRegistry(),
-		viewReg:       NewViewRegistry(),
-		mu:            sync.RWMutex{},
-		locks:         make(map[string]bool),
-		lastQueryInfo: defaultLastQueryInfo(),
+		addr:           server,
+		client:         client,
+		id:             id,
+		systemVars:     SystemVariables.NewSessionMap(),
+		userVars:       make(map[string]interface{}),
+		idxReg:         NewIndexRegistry(),
+		viewReg:        NewViewRegistry(),
+		mu:             sync.RWMutex{},
+		locks:          make(map[string]bool),
+		lastQueryInfo:  defaultLastQueryInfo(),
+		privSetCounter: 0,
 	}
 }
 
@@ -620,14 +642,15 @@ var autoSessionIDs uint32 = 1
 func NewBaseSession() *BaseSession {
 	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
 	return &BaseSession{
-		id:            atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:    SystemVariables.NewSessionMap(),
-		userVars:      make(map[string]interface{}),
-		idxReg:        NewIndexRegistry(),
-		viewReg:       NewViewRegistry(),
-		mu:            sync.RWMutex{},
-		locks:         make(map[string]bool),
-		lastQueryInfo: defaultLastQueryInfo(),
+		id:             atomic.AddUint32(&autoSessionIDs, 1),
+		systemVars:     SystemVariables.NewSessionMap(),
+		userVars:       make(map[string]interface{}),
+		idxReg:         NewIndexRegistry(),
+		viewReg:        NewViewRegistry(),
+		mu:             sync.RWMutex{},
+		locks:          make(map[string]bool),
+		lastQueryInfo:  defaultLastQueryInfo(),
+		privSetCounter: 0,
 	}
 }
 
@@ -862,6 +885,7 @@ func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 func (c *Context) NewCtxWithClient(client Client) *Context {
 	nc := *c
 	nc.Session.SetClient(client)
+	nc.Session.SetPrivilegeSet(nil, 0)
 	return &nc
 }
 
