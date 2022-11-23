@@ -165,7 +165,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	addHashJoins(m)
 
 	if a.Verbose && a.Debug {
-		ctx.GetLogger().Logger.Println(m.String())
+		a.Log(m.String())
 	}
 
 	if hint := extractJoinHint(n); !hint.IsEmpty() {

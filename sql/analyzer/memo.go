@@ -59,7 +59,7 @@ func NewMemo(ctx *sql.Context, s *Scope) *Memo {
 // memoize creates a new logical expression group to encapsulate the
 // action of a SQL clause.
 // TODO: this is supposed to deduplicate logically equivalent table scans
-// and scalar expressions, replacing references with a pointer. Currently,
+// and scalar expressions, replacing references with a pointer. Currently
 // a hacky format to quickly support memoizing join trees.
 func (m *Memo) memoize(rel relExpr) *exprGroup {
 	m.cnt++
