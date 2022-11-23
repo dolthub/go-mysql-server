@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var typeToNumericPrecision = map[query.Type]int{
@@ -44,73 +45,45 @@ var typeToNumericPrecision = map[query.Type]int{
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
 type ColumnsTable struct {
-	// allColsWithDefaultValue is a list of all columns with a non nil default value. The default values should be
-	// completely resolved.
-	allColsWithDefaultValue []*sql.Column
+	// allColsWithDefaultValue is the full schema of all tables in all databases. We need this during analysis in order
+	// to resolve the default values of some columns, so we pre-compute it.
+	allColsWithDefaultValue sql.Schema
 
-	Catalog sql.Catalog
-	name    string
+	catalog sql.Catalog
 }
 
-var _ sql.Node = (*ColumnsTable)(nil)
-var _ sql.Nameable = (*ColumnsTable)(nil)
 var _ sql.Table = (*ColumnsTable)(nil)
 
-// Resolved implements the sql.Node interface.
-func (c *ColumnsTable) Resolved() bool {
-	for _, col := range c.allColsWithDefaultValue {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
-}
-
-// String implements the sql.Node interface.
+// String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
-	return fmt.Sprintf("ColumnsTable(%s)", c.name)
+	return fmt.Sprintf(ColumnsTableName)
 }
 
-// Schema implements the sql.Node interface.
+// Schema implements the sql.Table interface.
 func (c *ColumnsTable) Schema() sql.Schema {
 	return columnsSchema
 }
 
-// Collation implements the sql.Node interface.
+// Collation implements the sql.Table interface.
 func (c *ColumnsTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
-// RowIter implements the sql.Node interface.
-func (c *ColumnsTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	partitions, err := c.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.NewTableRowIter(ctx, c, partitions), nil
-}
-
-// WithChildren implements the sql.Node interface.
-func (c *ColumnsTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return c, nil
-}
-
-// Children implements the sql.Node interface.
-func (c *ColumnsTable) Children() []sql.Node {
-	return nil
-}
-
-// CheckPrivileges implements the sql.Node interface.
-func (c *ColumnsTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// Copied from the resolved table implementation
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("information_schema", c.name, "", sql.PrivilegeType_Select))
-}
-
-// Name implements the sql.Nameable interface.
+// Name implements the sql.Table interface.
 func (c *ColumnsTable) Name() string {
-	return c.name
+	return ColumnsTableName
+}
+
+func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
+	c.catalog = cat
+	return c
+}
+
+// WithAllColumns passes in a set of all columns.
+func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Table {
+	nc := *c
+	nc.allColsWithDefaultValue = cols
+	return &nc
 }
 
 // Partitions implements the sql.Table interface.
@@ -124,29 +97,62 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
 
-	if c.Catalog == nil {
+	if c.catalog == nil {
 		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
 	}
 
-	colToDefaults := make(map[string]*sql.ColumnDefaultValue)
-	for _, col := range c.allColsWithDefaultValue {
-		colToDefaults[col.Name] = col.Default
-	}
-
-	return columnsRowIter(context, c.Catalog, colToDefaults)
+	return c.columnsRowIter(context)
 }
 
-// WithAllColumns passes in a set of all columns.
-func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Node {
-	nc := *c
-	nc.allColsWithDefaultValue = cols
-	return &nc
+// AllColumns returns all columns in the catalog, renamed to reflect their database and table names
+func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
+	if len(c.allColsWithDefaultValue) > 0 {
+		return c.allColsWithDefaultValue, nil
+	}
+
+	if c.catalog == nil {
+		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
+	}
+
+	var allColumns sql.Schema
+
+	for _, db := range c.catalog.AllDatabases(ctx) {
+		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+			tableSch := t.Schema()
+			for i := range tableSch {
+				newCol := tableSch[i].Copy()
+				newCol.DatabaseSource = db.Name()
+				allColumns = append(allColumns, newCol)
+			}
+			return true, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	c.allColsWithDefaultValue = allColumns
+	return c.allColsWithDefaultValue, nil
+}
+
+func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.Table, error) {
+	if c.allColsWithDefaultValue == nil {
+		return nil, fmt.Errorf("WithColumnDefaults called with nil columns for table %s", c.Name())
+	}
+
+	if len(columnDefaults) != len(c.allColsWithDefaultValue) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(columnDefaults), len(c.allColsWithDefaultValue))
+	}
+
+	c.allColsWithDefaultValue = transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	return &c, nil
 }
 
 // columnsRowIter implements the custom sql.RowIter for the information_schema.columns table.
-func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {
+func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 	var rows []sql.Row
-	for _, db := range cat.AllDatabases(ctx) {
+	for _, db := range c.catalog.AllDatabases(ctx) {
 		// Get all Tables
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
 			var columnKeyMap = make(map[string]string)
@@ -182,67 +188,65 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 				}
 			}
 
-			for i, c := range t.Schema() {
+			for i, col := range c.schemaForTable(t, db) {
 				var (
 					charName   interface{}
 					collName   interface{}
-					colDefault interface{}
 					charMaxLen interface{}
 					columnKey  string
 					nullable   = "NO"
 					ordinalPos = uint32(i + 1)
-					colType    = c.Type.String()
+					colType    = col.Type.String()
 					dataType   = colType
 					srsId      interface{}
 				)
 
-				if c.Nullable {
+				if col.Nullable {
 					nullable = "YES"
 				}
 
-				if sql.IsText(c.Type) {
+				if sql.IsText(col.Type) {
 					charName = sql.Collation_Default.CharacterSet().String()
 					collName = sql.Collation_Default.String()
-					if st, ok := c.Type.(sql.StringType); ok {
+					if st, ok := col.Type.(sql.StringType); ok {
 						charMaxLen = st.MaxCharacterLength()
 					}
 					dataType = strings.TrimSuffix(dataType, fmt.Sprintf("(%v)", charMaxLen))
 				}
 
-				if c.Type == sql.Boolean {
+				if col.Type == sql.Boolean {
 					colType = colType + "(1)"
 				}
 
-				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
-				colDefault = getColumnDefaultValue(ctx, columnNameToDefault[fullColumnName])
-
 				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
-				if c.PrimaryKey {
+				if col.PrimaryKey {
 					columnKey = "PRI"
-				} else if val, ok := columnKeyMap[c.Name]; ok {
+				} else if val, ok := columnKeyMap[col.Name]; ok {
 					columnKey = val
 					// A UNIQUE index may be displayed as PRI if it cannot contain NULL values and there is no PRIMARY KEY in the table
-					if !c.Nullable && !hasPK && columnKey == "UNI" {
+					if !col.Nullable && !hasPK && columnKey == "UNI" {
 						columnKey = "PRI"
 						hasPK = true
 					}
 				}
 
-				if s, ok := c.Type.(sql.SpatialColumnType); ok {
+				if s, ok := col.Type.(sql.SpatialColumnType); ok {
 					if srid, d := s.GetSpatialTypeSRID(); d {
 						srsId = srid
 					}
 				}
 
-				numericPrecision, numericScale := getColumnPrecisionAndScale(c)
+				numericPrecision, numericScale := getColumnPrecisionAndScale(col)
+				tableName := t.Name()
 
+				columnDefault := getColumnDefault(ctx, col.Default)
 				rows = append(rows, sql.Row{
 					"def",            // table_catalog
 					db.Name(),        // table_schema
-					t.Name(),         // table_name
-					c.Name,           // column_name
+					tableName,        // table_name
+					col.Name,         // column_name
 					ordinalPos,       // ordinal_position
-					colDefault,       // column_default
+					columnDefault,    // column_default
 					nullable,         // is_nullable
 					dataType,         // data_type
 					charMaxLen,       // character_maximum_length
@@ -254,9 +258,9 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 					collName,         // collation_name
 					colType,          // column_type
 					columnKey,        // column_key
-					c.Extra,          // extra
+					col.Extra,        // extra
 					"select",         // privileges
-					c.Comment,        // column_comment
+					col.Comment,      // column_comment
 					"",               // generation_expression
 					srsId,            // srs_id
 				})
@@ -305,11 +309,12 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[s
 	return sql.RowsToRowIter(rows...), nil
 }
 
-// getColumnDefaultValue returns the column default value for given sql.ColumnDefaultValue
-func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
+// getColumnDefault returns the column default value for given sql.ColumnDefaultValue
+func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
 	if cd == nil {
 		return nil
 	}
+
 	defStr := cd.String()
 	if defStr == "NULL" {
 		return nil
@@ -332,14 +337,40 @@ func getColumnDefaultValue(ctx *sql.Context, cd *sql.ColumnDefaultValue) interfa
 
 	v, err := cd.Eval(ctx, nil)
 	if err != nil {
-		return nil
+		return ""
 	}
+
 	switch l := v.(type) {
 	case time.Time:
 		v = l.Format("2006-01-02 15:04:05")
 	}
 
 	return fmt.Sprint(v)
+}
+
+func (c *ColumnsTable) schemaForTable(t sql.Table, db sql.Database) sql.Schema {
+	start, end := -1, -1
+	tableName := strings.ToLower(t.Name())
+
+	for i, col := range c.allColsWithDefaultValue {
+		dbName := strings.ToLower(db.Name())
+		if start < 0 && strings.ToLower(col.Source) == tableName && strings.ToLower(col.DatabaseSource) == dbName {
+			start = i
+		} else if start >= 0 && (strings.ToLower(col.Source) != tableName || strings.ToLower(col.DatabaseSource) != dbName) {
+			end = i
+			break
+		}
+	}
+
+	if start < 0 {
+		return nil
+	}
+
+	if end < 0 {
+		end = len(c.allColsWithDefaultValue)
+	}
+
+	return c.allColsWithDefaultValue[start:end]
 }
 
 // getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this

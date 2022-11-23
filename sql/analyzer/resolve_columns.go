@@ -19,13 +19,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -87,6 +85,14 @@ func (tc tableCol) Table() string {
 
 func (tc tableCol) Name() string {
 	return tc.col
+}
+
+func (tc tableCol) String() string {
+	if tc.table != "" {
+		return fmt.Sprintf("%s.%s", tc.table, tc.col)
+	} else {
+		return tc.col
+	}
 }
 
 type indexedCol struct {
@@ -233,11 +239,39 @@ func dedupStrings(in []string) []string {
 	return result
 }
 
+// findOnDupUpdateLeftExprs gathers all the left expressions for statements in InsertInto.OnDupExprs
+// the
+func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[sql.Expression]bool {
+	onDupUpdateLeftExprs := map[sql.Expression]bool{}
+	for _, e := range onDupExprs {
+		if sf, ok := e.(*expression.SetField); ok {
+			onDupUpdateLeftExprs[sf.Left] = true
+		}
+	}
+	return onDupUpdateLeftExprs
+}
+
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
 	// on the full scope; otherwise transform looks at sub-nodes and calculates a partial view of what is available.
 	symbols := getAvailableNamesByScope(n, scope)
+
+	var onDupUpdateSymbols availableNames
+	var onDupUpdateLeftExprs map[sql.Expression]bool
+	if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 {
+		inNoSrc := plan.NewInsertInto(
+			in.Database(),
+			in.Destination,
+			nil,
+			in.IsReplace,
+			in.ColumnNames,
+			in.OnDupExprs,
+			in.Ignore,
+		)
+		onDupUpdateSymbols = getAvailableNamesByScope(inNoSrc, scope)
+		onDupUpdateLeftExprs = findOnDupUpdateLeftExprs(in.OnDupExprs)
+	}
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
@@ -263,7 +297,11 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		}
 
 		newNode, identity, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			return qualifyExpression(e, n, symbols)
+			evalSymbols := symbols
+			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
+				evalSymbols = onDupUpdateSymbols
+			}
+			return qualifyExpression(e, n, evalSymbols)
 		})
 		if err != nil {
 			return n, transform.SameTree, err
@@ -319,7 +357,27 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	currentScopeLevel := len(scopeNodes)
 
 	// Examine all columns, from the innermost scope (this node) outward.
-	getColumnsInNodes(n.Children(), symbols, currentScopeLevel-1)
+	children := n.Children()
+
+	// find all ResolvedTables in InsertInto.Source visible when resolving columns iff there are on duplicate key updates
+	if in, ok := n.(*plan.InsertInto); ok && in.Source != nil && len(in.OnDupExprs) > 0 {
+		aliasedTables := make(map[sql.Node]bool)
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				children = append(children, tblAlias)
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				children = append(children, resTbl)
+			}
+			return true
+		})
+	}
+
+	getColumnsInNodes(children, symbols, currentScopeLevel-1)
 	for _, currentScopeNode := range scopeNodes {
 		getColumnsInNodes([]sql.Node{currentScopeNode}, symbols, currentScopeLevel-1)
 		currentScopeLevel--
@@ -330,14 +388,14 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	for scopeLevel, n := range scopeNodes {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *information_schema.ColumnsTable, *plan.IndexedTableAccess, *plan.JSONTable:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *plan.IndexedTableAccess, *plan.JSONTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				symbols.indexTable(name, name, scopeLevel)
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
 				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias,
-					*plan.RecursiveTable, *information_schema.ColumnsTable, *plan.IndexedTableAccess:
+					*plan.RecursiveTable, *plan.IndexedTableAccess:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					symbols.indexTable(alias, name, scopeLevel)
@@ -528,7 +586,7 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, scopeLevel int) {
 
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *information_schema.ColumnsTable, *plan.JSONTable:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.JSONTable:
 			for _, col := range n.Schema() {
 				names.indexColumn(col.Source, col.Name, scopeLevel)
 			}
@@ -548,12 +606,6 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, scopeLevel int) {
 }
 
 var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variable, %s was requested")
-
-const (
-	sessionTable  = "@@" + sqlparser.SessionStr
-	sessionPrefix = sqlparser.SessionStr + "."
-	globalPrefix  = sqlparser.GlobalStr + "."
-)
 
 // resolveJSONTables is a helper function that resolves JSONTables in join as they have special visibility into the left side of the join
 // This function should return a *plan.JSONTable when there's no error
@@ -597,17 +649,14 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		var jtSame transform.TreeIdentity
 		var jtErr error
 		switch j := n.(type) {
-		case *plan.CrossJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.NaturalJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
-			}
-		case *plan.InnerJoin:
-			if jt, ok := j.Right().(*plan.JSONTable); ok {
-				jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+		case *plan.JoinNode:
+			switch {
+			case j.Op.IsNatural() || j.Op.IsInner():
+				if jt, ok := j.Right().(*plan.JSONTable); ok {
+					jtNew, jtSame, jtErr = resolveJSONTables(ctx, a, scope, j.Left(), jt)
+				}
+			default:
+				return n, transform.SameTree, nil
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -635,7 +684,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 			return nil, transform.SameTree, err
 		}
 
-		return transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		ret, _, err := transform.OneNodeExprsWithNode(newN, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, transform.SameTree, nil
@@ -643,6 +692,10 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 
 			return resolveColumnExpression(a, newN, uc, columns)
 		})
+		if err != nil {
+			return nil, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, nil
 	})
 }
 
@@ -697,7 +750,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
+func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
 	var idx int
 
@@ -829,6 +882,25 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
 		indexChildNode(node.(sql.BinaryNode).Left())
+	case *plan.InsertInto:
+		// should index columns in InsertInto.Source
+		aliasedTables := make(map[sql.Node]bool)
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			// need to reset idx for each table found, as this function assumes only 1 table
+			if tblAlias, ok := n.(*plan.TableAlias); ok {
+				idx = 0
+				indexSchema(tblAlias.Schema())
+				aliasedTables[tblAlias.Child] = true
+			}
+			return true
+		})
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				idx = 0
+				indexSchema(resTbl.Schema())
+			}
+			return true
+		})
 	}
 
 	return columns, nil

@@ -48,6 +48,22 @@ func TestDimension(t *testing.T) {
 		require.Equal(2, v)
 	})
 
+	t.Run("multipoint is dimension 0", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, sql.MultiPointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(0, v)
+	})
+
+	t.Run("multilinestring is dimension 1", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(1, v)
+	})
+
 	t.Run("geometry with inner point is dimension 0", func(t *testing.T) {
 		require := require.New(t)
 		f := NewDimension(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.GeometryType{}))
@@ -70,6 +86,45 @@ func TestDimension(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(2, v)
+	})
+
+	t.Run("empty geometry collection has dimension null", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(sql.GeomColl{}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("geometry collection of a point has dimension 0", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(sql.GeomColl{Geoms: []sql.GeometryValue{sql.Point{}}}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(0, v)
+	})
+
+	t.Run("geometry collection of a different types takes highest type", func(t *testing.T) {
+		require := require.New(t)
+		point := sql.Point{}
+		line := sql.LineStringType{}.Zero().(sql.LineString)
+		poly := sql.PolygonType{}.Zero().(sql.Polygon)
+		f := NewDimension(expression.NewLiteral(sql.GeomColl{Geoms: []sql.GeometryValue{point, line, poly}}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(2, v)
+	})
+
+	t.Run("geometry collection null is the largest dimension", func(t *testing.T) {
+		require := require.New(t)
+		point := sql.Point{}
+		line := sql.LineStringType{}.Zero().(sql.LineString)
+		poly := sql.PolygonType{}.Zero().(sql.Polygon)
+		geom := sql.GeomColl{}
+		f := NewDimension(expression.NewLiteral(sql.GeomColl{Geoms: []sql.GeometryValue{point, line, poly, geom}}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
 	})
 
 	t.Run("null is null", func(t *testing.T) {

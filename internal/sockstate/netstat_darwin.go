@@ -31,6 +31,10 @@ func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 	return nil, ErrSocketCheckNotImplemented.New()
 }
 
-func GetConnInode(c *net.TCPConn) (n uint64, err error) {
+func GetConnInode(c *net.TCPConn) (uint64, error) {
+	_, err := getConnFd(c)
+	if err != nil {
+		return 0, err
+	}
 	return 0, ErrSocketCheckNotImplemented.New()
 }

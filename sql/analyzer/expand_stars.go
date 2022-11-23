@@ -45,7 +45,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 				return n, transform.SameTree, nil
 			}
 
-			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child, tableAliases)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -58,7 +58,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 				return n, transform.SameTree, nil
 			}
 
-			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child, tableAliases)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -70,7 +70,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 			if !n.Child.Resolved() {
 				return n, transform.SameTree, nil
 			}
-			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child, tableAliases)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -84,11 +84,15 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 	})
 }
 
-func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, transform.TreeIdentity, error) {
+func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node, tableAliases TableAliases) ([]sql.Expression, transform.TreeIdentity, error) {
+	schema := n.Schema()
 	var expressions []sql.Expression
 	same := transform.SameTree
 	for _, e := range exprs {
 		if star, ok := e.(*expression.Star); ok {
+			if dt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(dt.Table) {
+				return nil, transform.SameTree, sql.ErrNoTablesUsed.New()
+			}
 			same = transform.NewTree
 			var exprs []sql.Expression
 			for i, col := range schema {

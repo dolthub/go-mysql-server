@@ -62,7 +62,7 @@ const (
 	MultiStmtModeOn  MultiStmtMode = 1
 )
 
-// Handler is a connection handler for a SQLe engine.
+// Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {
 	e                 *sqle.Engine
 	sm                *SessionManager
@@ -70,6 +70,8 @@ type Handler struct {
 	disableMultiStmts bool
 	sel               ServerEventListener
 }
+
+var _ mysql.Handler = (*Handler)(nil)
 
 // NewHandler creates a new Handler given a SQLe engine.
 func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, listener ServerEventListener) *Handler {
@@ -111,6 +113,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 		analyzed, err = h.e.PrepareQuery(ctx, query)
 	}
 	if err != nil {
+		err := sql.CastSQLError(err)
 		return nil, err
 	}
 
@@ -614,18 +617,15 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 
 	remainder, err := h.doQuery(c, query, mode, bindings, callback)
-	err, _, ok := sql.CastSQLError(err)
-
-	var retErr error
-	if !ok {
-		retErr = err
+	if err != nil {
+		err = sql.CastSQLError(err)
 	}
 
 	if h.sel != nil {
 		h.sel.QueryCompleted(query, retErr == nil, time.Since(start))
 	}
 
-	return remainder, retErr
+	return remainder, err
 }
 
 // Periodically polls the connection socket to determine if it is has been closed by the client, returning an error

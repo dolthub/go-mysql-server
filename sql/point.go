@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"encoding/binary"
+	"math"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -49,39 +51,7 @@ var (
 
 // Compare implements Type interface.
 func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a Point, throw error otherwise
-	_a, ok := a.(Point)
-	if !ok {
-		return 0, ErrNotPoint.New(a)
-	}
-	_b, ok := b.(Point)
-	if !ok {
-		return 0, ErrNotPoint.New(b)
-	}
-
-	// Compare X values
-	if _a.X > _b.X {
-		return 1, nil
-	}
-	if _a.X < _b.X {
-		return -1, nil
-	}
-
-	// Compare Y values
-	if _a.Y > _b.Y {
-		return 1, nil
-	}
-	if _a.Y < _b.Y {
-		return -1, nil
-	}
-
-	// Points must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.
@@ -94,7 +64,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	switch val := v.(type) {
 	case []byte:
 		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
+		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +73,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 			return nil, ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
-		point, err := WKBToPoint(val[EWKBHeaderSize:], isBig, srid)
+		point, _, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +117,7 @@ func (t PointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializePoint(v.(Point))
+	buf := v.(Point).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
@@ -200,3 +170,43 @@ func (t PointType) MatchSRID(v interface{}) error {
 
 // implementsGeometryValue implements GeometryValue interface.
 func (p Point) implementsGeometryValue() {}
+
+// GetSRID implements GeometryValue interface.
+func (p Point) GetSRID() uint32 {
+	return p.SRID
+}
+
+// SetSRID implements GeometryValue interface.
+func (p Point) SetSRID(srid uint32) GeometryValue {
+	return Point{
+		SRID: srid,
+		X:    p.X,
+		Y:    p.Y,
+	}
+}
+
+// Serialize implements GeometryValue interface.
+func (p Point) Serialize() (buf []byte) {
+	buf = allocateBuffer(1, 0, 0)
+	WriteEWKBHeader(buf, p.SRID, WKBPointID)
+	p.WriteData(buf[EWKBHeaderSize:])
+	return
+}
+
+// WriteData implements GeometryValue interface.
+func (p Point) WriteData(buf []byte) int {
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.X))
+	buf = buf[PointSize/2:]
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(p.Y))
+	return PointSize
+}
+
+// Swap implements GeometryValue interface.
+// TODO: possible in place?
+func (p Point) Swap() GeometryValue {
+	return Point{
+		SRID: p.SRID,
+		X:    p.Y,
+		Y:    p.X,
+	}
+}

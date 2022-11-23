@@ -81,6 +81,7 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 	if len(values) > SetTypeMaxElements {
 		return nil, fmt.Errorf("number of values is too large")
 	}
+
 	hashedValToBit := make(map[uint64]uint64)
 	bitToVal := make(map[uint64]string)
 	var maxByteLength uint32
@@ -249,7 +250,7 @@ func (t setType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, 
 	}
 
 	resultCharset := ctx.GetCharacterSetResults()
-	if resultCharset == CharacterSet_Invalid || resultCharset == CharacterSet_binary {
+	if resultCharset == CharacterSet_Unspecified || resultCharset == CharacterSet_binary {
 		resultCharset = t.collation.CharacterSet()
 	}
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
@@ -288,27 +289,27 @@ func (t setType) Zero() interface{} {
 	return ""
 }
 
-// CharacterSet implements EnumType interface.
+// CharacterSet implements SetType interface.
 func (t setType) CharacterSet() CharacterSetID {
 	return t.collation.CharacterSet()
 }
 
-// Collation implements EnumType interface.
+// Collation implements SetType interface.
 func (t setType) Collation() CollationID {
 	return t.collation
 }
 
-// NumberOfElements implements EnumType interface.
+// NumberOfElements implements SetType interface.
 func (t setType) NumberOfElements() uint16 {
 	return uint16(len(t.hashedValToBit))
 }
 
-// BitsToString implements EnumType interface.
+// BitsToString implements SetType interface.
 func (t setType) BitsToString(v uint64) (string, error) {
 	return t.convertBitFieldToString(v)
 }
 
-// Values implements EnumType interface.
+// Values implements SetType interface.
 func (t setType) Values() []string {
 	bitEdge := 64 - bits.LeadingZeros64(t.allValuesBitField())
 	valArray := make([]string, bitEdge)
@@ -320,8 +321,8 @@ func (t setType) Values() []string {
 }
 
 // WithNewCollation implements TypeWithCollation interface.
-func (t setType) WithNewCollation(collation CollationID) Type {
-	return MustCreateSetType(t.Values(), collation)
+func (t setType) WithNewCollation(collation CollationID) (Type, error) {
+	return CreateSetType(t.Values(), collation)
 }
 
 // allValuesBitField returns a bit field that references every value that the set contains.

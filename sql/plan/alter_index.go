@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -179,7 +180,47 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 				}
 			}
 		}
-		return indexable.CreateIndex(ctx, indexName, p.Using, p.Constraint, p.Columns, p.Comment)
+		err = indexable.CreateIndex(ctx, indexName, p.Using, p.Constraint, p.Columns, p.Comment)
+		if err != nil {
+			return err
+		}
+		rwt, ok := indexable.(sql.RewritableTable)
+		if !ok || p.Constraint != sql.IndexConstraint_Unique {
+			return nil
+		}
+		sch := sql.SchemaToPrimaryKeySchema(table, table.Schema())
+		inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		partitions, err := rwt.Partitions(ctx)
+		if err != nil {
+			return err
+		}
+
+		rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+
+		for {
+			r, err := rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+
+			err = inserter.Insert(ctx, r)
+			if err != nil {
+				return err
+			}
+		}
+
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+		if err != nil {
+			return err
+		}
+		return nil
 	case IndexAction_Drop:
 		if fkTable, ok := indexable.(sql.ForeignKeyTable); ok {
 			fks, err := fkTable.GetDeclaredForeignKeys(ctx)

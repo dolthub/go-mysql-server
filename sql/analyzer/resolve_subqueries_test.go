@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -47,6 +48,40 @@ func TestResolveSubqueries(t *testing.T) {
 
 	testCases := []analyzerFnTestCase{
 		{
+			// Test with a query containing a subquery alias that has outer scope visibility
+			name: `SELECT (select MAX(a) from (select a) sqa1) FROM foo`,
+			node: plan.NewProject(
+				[]sql.Expression{
+					plan.NewSubquery(
+						plan.NewGroupBy(
+							[]sql.Expression{expression.NewUnresolvedFunction("max", true, nil, uc("a"))},
+							[]sql.Expression{},
+							plan.NewSubqueryAlias(
+								"sqa1", "select a from bar",
+								plan.NewProject(
+									[]sql.Expression{uc("a")},
+									plan.NewUnresolvedTable("bar", "")),
+							)), "select MAX(a) from (select a from bar) sqa1")},
+				plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil)),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					plan.NewSubquery(
+						plan.NewGroupBy(
+							[]sql.Expression{aggregation.NewMax(expression.NewGetFieldWithTable(1, sql.Int64, "sqa1", "a", false))},
+							[]sql.Expression{},
+							newSubqueryAlias("sqa1", "select a from bar", true, false,
+								plan.NewProject(
+									[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)},
+									plan.NewResolvedTable(bar, db, nil)),
+							),
+						), "select MAX(a) from (select a from bar) sqa1",
+					),
+				},
+				plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil),
+			),
+		},
+		{
+			// Test a query with multiple subquery aliases, but no outer scope visibility
 			name: `SELECT * FROM
 			(SELECT a FROM foo) t1,
 			(SELECT b FROM (SELECT b FROM bar) t2alias) t2, baz`,
@@ -82,14 +117,10 @@ func TestResolveSubqueries(t *testing.T) {
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
 					plan.NewCrossJoin(
-						plan.NewSubqueryAlias(
-							"t1", "",
-							plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil),
-						),
-						plan.NewSubqueryAlias(
-							"t2", "",
-							plan.NewSubqueryAlias(
-								"t2alias", "",
+						newSubqueryAlias("t1", "", false, true, plan.NewResolvedTable(foo.WithProjections([]string{"a"}), db, nil)),
+
+						newSubqueryAlias("t2", "", false, true,
+							newSubqueryAlias("t2alias", "", false, true,
 								plan.NewResolvedTable(bar.WithProjections([]string{"b"}), db, nil),
 							),
 						),
@@ -102,6 +133,7 @@ func TestResolveSubqueries(t *testing.T) {
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	resolveSubqueries := getRule(resolveSubqueriesId)
+	cacheSubqueryResults := getRule(cacheSubqueryResultsId)
 	finalizeSubqueries := getRule(finalizeSubqueriesId)
 	runTestCases(t, ctx, testCases, a, Rule{
 		Id: -1,
@@ -110,9 +142,20 @@ func TestResolveSubqueries(t *testing.T) {
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			n, _, err = cacheSubqueryResults.Apply(ctx, a, n, scope, DefaultRuleSelector)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			return finalizeSubqueries.Apply(ctx, a, n, scope, DefaultRuleSelector)
 		},
 	})
+}
+
+func newSubqueryAlias(name, textDefinition string, hasOuterScopeVisibility, canCacheResults bool, child sql.Node) *plan.SubqueryAlias {
+	sqa := plan.NewSubqueryAlias(name, textDefinition, child)
+	sqa.OuterScopeVisibility = hasOuterScopeVisibility
+	sqa.CanCacheResults = canCacheResults
+	return sqa
 }
 
 func TestResolveSubqueryExpressions(t *testing.T) {
@@ -420,7 +463,56 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 	}
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
-	runTestCases(t, ctx, testCases, a, getRule(finalizeSubqueryExprsId))
+	runTestCases(t, ctx, testCases, a, getRule(resolveSubqueriesId))
+}
+
+func TestFinalizeSubqueryExpressions(t *testing.T) {
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable"},
+		{Name: "x", Type: sql.Int64, Source: "mytable"},
+	}), nil)
+	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "i", Type: sql.Int64, Source: "mytable2"},
+		{Name: "y", Type: sql.Int64, Source: "mytable2"},
+	}), nil)
+
+	db := memory.NewDatabase("mydb")
+	db.AddTable("mytable", table)
+	db.AddTable("mytable2", table2)
+
+	// Unlike most analyzer functions, resolving subqueries needs a fully functioning analyzer
+	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db)))
+
+	testCases := []analyzerFnTestCase{
+		{
+			name: "table column not found in outer scope",
+			node: plan.NewProject(
+				[]sql.Expression{
+					uc("i"),
+					plan.NewSubquery(
+						plan.NewProject(
+							[]sql.Expression{
+								&deferredColumn{uqc("mytable", "z")},
+							},
+							plan.NewFilter(
+								gt(
+									gf(1, "mytable", "x"),
+									gf(0, "mytable", "i"),
+								),
+								plan.NewResolvedTable(table2, db, nil),
+							),
+						),
+						""),
+				},
+				plan.NewResolvedTable(table, db, nil),
+			),
+			// FinalizeSubqueries will throw any errors instead of deferring resolution
+			err: sql.ErrTableColumnNotFound,
+		},
+	}
+
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	runTestCases(t, ctx, testCases, a, getRule(finalizeSubqueriesId))
 }
 
 func TestCacheSubqueryResults(t *testing.T) {

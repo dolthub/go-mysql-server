@@ -78,22 +78,17 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
-		case plan.JoinNode:
+		case *plan.JoinNode:
+			if n.JoinType().IsPhysical() || n.JoinType().IsNatural() {
+				return n, transform.SameTree, nil
+			}
 			if _, ok := n.Right().(*plan.JSONTable); ok {
 				outerCols, outerStars, outerUnq := gatherOuterCols(n.Right())
 				aliasCols, aliasStars := gatherTableAlias(n.Right(), parentCols, parentStars, unqualifiedStar)
 				push(outerCols, outerStars, outerUnq)
 				push(aliasCols, aliasStars, false)
 			}
-		case *plan.CrossJoin:
-			if _, ok := n.Right().(*plan.JSONTable); ok {
-				outerCols, outerStars, outerUnq := gatherOuterCols(n.Right())
-				aliasCols, aliasStars := gatherTableAlias(n.Right(), parentCols, parentStars, unqualifiedStar)
-				push(outerCols, outerStars, outerUnq)
-				push(aliasCols, aliasStars, false)
-			}
-		case *plan.IndexedJoin, *plan.Filter,
-			*plan.GroupBy, *plan.Project, *plan.TableAlias,
+		case *plan.Filter, *plan.GroupBy, *plan.Project, *plan.TableAlias,
 			*plan.Window, *plan.Sort, *plan.Limit, *plan.RecursiveCte,
 			*plan.RecursiveTable, *plan.TopN, *plan.Offset:
 		default:
@@ -174,7 +169,7 @@ func pruneTableCols(
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(n)
 	t, ok := table.(sql.ProjectedTable)
-	if !ok || t.Name() == sql.DualTableName {
+	if !ok || t.Name() == plan.DualTableName {
 		return n, transform.SameTree, nil
 	}
 

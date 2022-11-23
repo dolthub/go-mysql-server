@@ -49,85 +49,27 @@ var (
 
 // Compare implements Type interface.
 func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
-	// Compare nulls
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	// Expect to receive a LineString, throw error otherwise
-	_a, ok := a.(LineString)
-	if !ok {
-		return 0, ErrNotLineString.New(a)
-	}
-	_b, ok := b.(LineString)
-	if !ok {
-		return 0, ErrNotLineString.New(b)
-	}
-
-	// Get shorter length
-	var n int
-	lenA := len(_a.Points)
-	lenB := len(_b.Points)
-	if lenA < lenB {
-		n = lenA
-	} else {
-		n = lenB
-	}
-
-	// Compare each point until there's a difference
-	for i := 0; i < n; i++ {
-		diff, err := PointType{}.Compare(_a.Points[i], _b.Points[i])
-		if err != nil {
-			return 0, err
-		}
-		if diff != 0 {
-			return diff, nil
-		}
-	}
-
-	// Determine based off length
-	if lenA > lenB {
-		return 1, nil
-	}
-	if lenA < lenB {
-		return -1, nil
-	}
-
-	// Lines must be the same
-	return 0, nil
+	return GeometryType{}.Compare(a, b)
 }
 
 // Convert implements Type interface.
 func (t LineStringType) Convert(v interface{}) (interface{}, error) {
-	// Allow null
-	if v == nil {
+	switch buf := v.(type) {
+	case nil:
 		return nil, nil
-	}
-	// Handle conversions
-	switch val := v.(type) {
 	case []byte:
-		// Parse header
-		srid, isBig, geomType, err := ParseEWKBHeader(val)
-		if err != nil {
-			return nil, err
+		line, err := GeometryType{}.Convert(buf)
+		if ErrInvalidGISData.Is(err) {
+			return nil, ErrInvalidGISData.New("LineStringType.Convert")
 		}
-		// Throw error if not marked as linestring
-		if geomType != WKBLineID {
-			return nil, err
-		}
-		// Parse data section
-		line, err := WKBToLine(val[EWKBHeaderSize:], isBig, srid)
-		if err != nil {
-			return nil, err
-		}
-		return line, nil
+		return line, err
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert([]byte(buf))
 	case LineString:
-		if err := t.MatchSRID(val); err != nil {
+		if err := t.MatchSRID(buf); err != nil {
 			return nil, err
 		}
-		return val, nil
+		return buf, nil
 	default:
 		return nil, ErrSpatialTypeConversion.New()
 	}
@@ -160,7 +102,7 @@ func (t LineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, nil
 	}
 
-	buf := SerializeLineString(v.(LineString))
+	buf := v.(LineString).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
@@ -212,4 +154,53 @@ func (t LineStringType) MatchSRID(v interface{}) error {
 }
 
 // implementsGeometryValue implements GeometryValue interface.
-func (p LineString) implementsGeometryValue() {}
+func (l LineString) implementsGeometryValue() {}
+
+// GetSRID implements GeometryValue interface.
+func (l LineString) GetSRID() uint32 {
+	return l.SRID
+}
+
+// SetSRID implements GeometryValue interface.
+func (l LineString) SetSRID(srid uint32) GeometryValue {
+	points := make([]Point, len(l.Points))
+	for i, p := range l.Points {
+		points[i] = p.SetSRID(srid).(Point)
+	}
+	return LineString{
+		SRID:   srid,
+		Points: points,
+	}
+}
+
+// Serialize implements GeometryValue interface.
+func (l LineString) Serialize() (buf []byte) {
+	buf = allocateBuffer(len(l.Points), 1, 0)
+	WriteEWKBHeader(buf, l.SRID, WKBLineID)
+	l.WriteData(buf[EWKBHeaderSize:])
+	return
+}
+
+// WriteData implements GeometryValue interface.
+func (l LineString) WriteData(buf []byte) int {
+	writeCount(buf, uint32(len(l.Points)))
+	buf = buf[CountSize:]
+	for _, p := range l.Points {
+		p.WriteData(buf)
+		buf = buf[PointSize:]
+	}
+	return CountSize + PointSize*len(l.Points)
+}
+
+// Swap implements GeometryValue interface.
+// TODO: possible in place?
+func (l LineString) Swap() GeometryValue {
+	points := make([]Point, len(l.Points))
+	for i, p := range l.Points {
+		points[i] = p.Swap().(Point)
+	}
+	return LineString{
+		SRID:   l.SRID,
+		Points: points,
+	}
+}

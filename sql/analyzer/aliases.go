@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -32,7 +30,7 @@ type TableAliases map[string]sql.Nameable
 // returns an error.
 func (ta TableAliases) add(alias sql.Nameable, target sql.Nameable) error {
 	lowerName := strings.ToLower(alias.Name())
-	if _, ok := ta[lowerName]; ok && lowerName != sql.DualTableName {
+	if _, ok := ta[lowerName]; ok && lowerName != plan.DualTableName {
 		return sql.ErrDuplicateAliasOrTable.New(alias.Name())
 	}
 
@@ -71,9 +69,6 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
 				analysisErr = passAliases.add(at, t.(NameableNode))
-			case *information_schema.ColumnsTable:
-				analysisErr = passAliases.add(at, t)
-				return false
 			case *plan.IndexedTableAccess:
 				analysisErr = passAliases.add(at, t)
 			case *plan.RecursiveCte:
@@ -108,9 +103,6 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable:
 			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
-			return false
-		case *information_schema.ColumnsTable:
-			analysisErr = passAliases.add(node, node)
 			return false
 		case *plan.IndexedTableAccess:
 			rt := getResolvedTable(node.ResolvedTable)
@@ -149,18 +141,34 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	return aliases, analysisErr
 }
 
-// aliasesDefinedInNode returns the expression aliases that are defined in the node given
+// aliasedExpressionsInNode returns a map of the aliased expressions defined in the first Projector node found (starting
+// the search from the specified node), mapped from the expression string to the alias name.
+func aliasedExpressionsInNode(n sql.Node) map[string]string {
+	projector := findFirstProjectorNode(n)
+	if projector == nil {
+		return nil
+	}
+	aliasesFromExpressionToName := make(map[string]string)
+	for _, e := range projector.ProjectedExprs() {
+		alias, ok := e.(*expression.Alias)
+		if ok {
+			aliasesFromExpressionToName[strings.ToLower(alias.Child.String())] = alias.Name()
+		}
+	}
+
+	return aliasesFromExpressionToName
+}
+
+// aliasesDefinedInNode returns the expression aliases that are defined in the first Projector node found, starting
+// the search from the specified node.
 func aliasesDefinedInNode(n sql.Node) []string {
-	var exprs []sql.Expression
-	switch n := n.(type) {
-	case *plan.GroupBy:
-		exprs = n.SelectedExprs
-	case sql.Expressioner:
-		exprs = n.Expressions()
+	projector := findFirstProjectorNode(n)
+	if projector == nil {
+		return nil
 	}
 
 	var aliases []string
-	for _, e := range exprs {
+	for _, e := range projector.ProjectedExprs() {
 		alias, ok := e.(*expression.Alias)
 		if ok {
 			aliases = append(aliases, strings.ToLower(alias.Name()))
@@ -173,11 +181,11 @@ func aliasesDefinedInNode(n sql.Node) []string {
 // normalizeExpressions returns the expressions given after normalizing them to replace table and expression aliases
 // with their underlying names. This is necessary to match such expressions against those declared by implementors of
 // various interfaces that declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
-func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, expr ...sql.Expression) []sql.Expression {
+func normalizeExpressions(tableAliases TableAliases, expr ...sql.Expression) []sql.Expression {
 	expressions := make([]sql.Expression, len(expr))
 
 	for i, e := range expr {
-		expressions[i] = normalizeExpression(ctx, tableAliases, e)
+		expressions[i] = normalizeExpression(tableAliases, e)
 	}
 
 	return expressions
@@ -186,7 +194,7 @@ func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, expr ...s
 // normalizeExpression returns the expression given after normalizing it to replace table aliases with their underlying
 // names. This is necessary to match such expressions against those declared by implementors of various interfaces that
 // declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
-func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, e sql.Expression) sql.Expression {
+func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expression {
 	// If the query has table aliases, use them to replace any table aliases in column expressions
 	normalized, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {

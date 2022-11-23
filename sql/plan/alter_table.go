@@ -225,12 +225,18 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	// an invalid collation, then one has not been assigned at this point, so we assign it the table's collation. This
 	// does not create a reference to the table's collation, which may change at any point, and therefore will have no
 	// relation to this column after assignment.
-	if collatedType, ok := a.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-		a.column.Type = collatedType.WithNewCollation(alterable.Collation())
+	if collatedType, ok := a.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+		a.column.Type, err = collatedType.WithNewCollation(alterable.Collation())
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, col := range a.targetSch {
-		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-			col.Type = collatedType.WithNewCollation(alterable.Collation())
+		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+			col.Type, err = collatedType.WithNewCollation(alterable.Collation())
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -322,7 +328,7 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 }
 
 func (a *AddColumn) Expressions() []sql.Expression {
-	return append(wrappedColumnDefaults(a.targetSch), expression.WrapExpressions(a.column.Default)...)
+	return append(transform.WrappedColumnDefaults(a.targetSch), expression.WrapExpressions(a.column.Default)...)
 }
 
 func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -330,7 +336,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1+len(a.targetSch))
 	}
 
-	a.targetSch = schemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
+	a.targetSch = transform.SchemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 
@@ -491,6 +497,21 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
 
+	var val uint64
+	autoIncColIdx := -1
+	if newSch.HasAutoIncrement() && !i.a.targetSch.HasAutoIncrement() {
+		t, ok := rwt.(sql.AutoIncrementTable)
+		if !ok {
+			return false, ErrAutoIncrementNotSupported.New()
+		}
+
+		autoIncColIdx = newSch.IndexOf(i.a.column.Name, i.a.column.Source)
+		val, err = t.GetNextAutoIncrementValue(ctx, 0)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -502,6 +523,15 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
 			return false, err
+		}
+
+		if autoIncColIdx != -1 {
+			v, err := i.a.column.Type.Convert(val)
+			if err != nil {
+				return false, err
+			}
+			newRow[autoIncColIdx] = v
+			val++
 		}
 
 		err = inserter.Insert(ctx, newRow)
@@ -904,7 +934,7 @@ func (d *DropColumn) TargetSchema() sql.Schema {
 }
 
 func (d *DropColumn) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(d.targetSchema)
+	return transform.WrappedColumnDefaults(d.targetSchema)
 }
 
 func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -912,7 +942,7 @@ func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
 
-	d.targetSchema = schemaWithDefaults(d.targetSchema, exprs)
+	d.targetSchema = transform.SchemaWithDefaults(d.targetSchema, exprs)
 	return &d, nil
 }
 
@@ -989,7 +1019,7 @@ func (r *RenameColumn) Schema() sql.Schema {
 }
 
 func (r *RenameColumn) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(r.targetSchema)
+	return transform.WrappedColumnDefaults(r.targetSchema)
 }
 
 func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -997,7 +1027,7 @@ func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), len(r.targetSchema))
 	}
 
-	r.targetSchema = schemaWithDefaults(r.targetSchema, exprs)
+	r.targetSchema = transform.SchemaWithDefaults(r.targetSchema, exprs)
 	return &r, nil
 }
 
@@ -1149,12 +1179,18 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	// an invalid collation, then one has not been assigned at this point, so we assign it the table's collation. This
 	// does not create a reference to the table's collation, which may change at any point, and therefore will have no
 	// relation to this column after assignment.
-	if collatedType, ok := m.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-		m.column.Type = collatedType.WithNewCollation(alterable.Collation())
+	if collatedType, ok := m.column.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+		m.column.Type, err = collatedType.WithNewCollation(alterable.Collation())
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, col := range m.targetSchema {
-		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Invalid {
-			col.Type = collatedType.WithNewCollation(alterable.Collation())
+		if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
+			col.Type, err = collatedType.WithNewCollation(alterable.Collation())
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -1516,7 +1552,7 @@ func (m *ModifyColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 }
 
 func (m *ModifyColumn) Expressions() []sql.Expression {
-	return append(wrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
+	return append(transform.WrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
 }
 
 func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -1524,7 +1560,7 @@ func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1+len(m.targetSchema))
 	}
 
-	m.targetSchema = schemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+	m.targetSchema = transform.SchemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {

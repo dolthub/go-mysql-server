@@ -134,7 +134,7 @@ func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
 }
 
 func (id *InsertDestination) Expressions() []sql.Expression {
-	return wrappedColumnDefaults(id.Sch)
+	return transform.WrappedColumnDefaults(id.Sch)
 }
 
 func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -142,7 +142,7 @@ func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
 	}
 
-	id.Sch = schemaWithDefaults(id.Sch, exprs)
+	id.Sch = transform.SchemaWithDefaults(id.Sch, exprs)
 	return &id, nil
 }
 
@@ -569,7 +569,7 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 	}
 
-	sqlerr, _, _ := sql.CastSQLError(err)
+	sqlerr := sql.CastSQLError(err)
 
 	// Add a warning instead
 	ctx.Session.Warn(&sql.Warning{
@@ -585,7 +585,7 @@ func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 	// Check that this error is a part of the list of Ignorable Errors and create the relevant warning
 	for _, ie := range IgnorableErrors {
 		if ie.Is(err) {
-			sqlerr, _, _ := sql.CastSQLError(err)
+			sqlerr := sql.CastSQLError(err)
 
 			// Add a warning instead
 			ctx.Session.Warn(&sql.Warning{
@@ -705,11 +705,10 @@ func (ii InsertInto) String() string {
 
 func (ii InsertInto) DebugString() string {
 	pr := sql.NewTreePrinter()
-	var columnNames []string
 	if ii.IsReplace {
-		_ = pr.WriteNode("Replace(%s)", strings.Join(columnNames, ", "))
+		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
 	} else {
-		_ = pr.WriteNode("Insert(%s)", strings.Join(columnNames, ", "))
+		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
 	_ = pr.WriteChildren(sql.DebugString(ii.Destination), sql.DebugString(ii.Source))
 	return pr.String()
@@ -732,30 +731,6 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 
 func (ii *InsertInto) Expressions() []sql.Expression {
 	return append(ii.OnDupExprs, ii.Checks.ToExpressions()...)
-}
-
-// wrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
-func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
-	defs := make([]sql.Expression, len(schema))
-	for i, col := range schema {
-		defs[i] = expression.WrapExpression(col.Default)
-	}
-	return defs
-}
-
-// schemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
-// wrapped with expression.Wrapper.
-func schemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
-	sc := schema.Copy()
-	for i, d := range defaults {
-		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
-		if ok {
-			sc[i].Default = unwrappedColDefVal
-		} else {
-			sc[i].Default = nil
-		}
-	}
-	return sc
 }
 
 func (ii InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {

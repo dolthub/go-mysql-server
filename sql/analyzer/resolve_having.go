@@ -73,17 +73,17 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, s
 	})
 }
 
-func findMissingColumns(node sql.Node, expr sql.Expression) []string {
+func findMissingColumns(node sql.Node, expr sql.Expression) map[string]bool {
 	var schemaCols []string
 	for _, col := range node.Schema() {
 		schemaCols = append(schemaCols, strings.ToLower(col.Name))
 	}
 
-	var missingCols []string
+	var missingCols = make(map[string]bool)
 	for _, n := range findExprNameables(expr) {
 		name := strings.ToLower(n.Name())
 		if !stringContains(schemaCols, name) {
-			missingCols = append(missingCols, n.Name())
+			missingCols[n.Name()] = true
 		}
 	}
 
@@ -104,37 +104,44 @@ func projectOriginalAggregation(having *plan.Having, schema sql.Schema) *plan.Pr
 
 var errHavingChildMissingRef = errors.NewKind("cannot find column %s referenced in HAVING clause in either GROUP BY or its child")
 
-func pullMissingColumnsUp(having *plan.Having, missingCols []string) (*plan.Having, error) {
-	groupBy, err := findGroupBy(having)
-	if err != nil {
-		return nil, err
-	}
-
-	schema := groupBy.Child.Schema()
+// pullMissingColumnsUp will attempt to find given missing columns. It will traverse on plan.Having node and scan
+// its children's schema to find the missing columns. The columns that are found will be added in Projections of
+// underlying plan.Project node and SelectExprs of underlying plan.GroupBy node.
+func pullMissingColumnsUp(having *plan.Having, missingCols map[string]bool) (*plan.Having, error) {
 	var newAggregate []sql.Expression
-	for _, c := range missingCols {
-		idx := -1
-		for i, col := range schema {
-			if strings.ToLower(c) == strings.ToLower(col.Name) {
-				idx = i
-				break
+	loopSchema := func(schema sql.Schema) {
+		for i, c := range schema {
+			if _, ok := missingCols[strings.ToLower(c.Name)]; ok {
+				col := schema[i]
+				delete(missingCols, c.Name)
+				newAggregate = append(
+					newAggregate,
+					expression.NewGetFieldWithTable(i, col.Type, col.Source, col.Name, col.Nullable),
+				)
 			}
 		}
-		if idx < 0 {
-			return nil, errHavingChildMissingRef.New(c)
-		}
-		col := schema[idx]
-		newAggregate = append(
-			newAggregate,
-			expression.NewGetFieldWithTable(idx, col.Type, col.Source, col.Name, col.Nullable),
-		)
 	}
 
-	node, err := addColumnsToGroupBy(having, newAggregate)
+	transform.Inspect(having.Child, func(n sql.Node) bool {
+		if n == nil {
+			return false
+		}
+		loopSchema(n.Schema())
+		return true
+	})
+
+	if len(missingCols) > 0 {
+		var cs []string
+		for c, _ := range missingCols {
+			cs = append(cs, c)
+		}
+		return nil, errHavingChildMissingRef.New(strings.Join(cs, ", "))
+	}
+
+	node, err := addColumnsToGroupByAndProjectNodes(having, newAggregate)
 	if err != nil {
 		return nil, err
 	}
-
 	return node.(*plan.Having), nil
 }
 
@@ -151,10 +158,13 @@ func findGroupBy(n sql.Node) (*plan.GroupBy, error) {
 	return findGroupBy(children[0])
 }
 
-func addColumnsToGroupBy(node sql.Node, columns []sql.Expression) (sql.Node, error) {
+// addColumnsToGroupByAndProjectNodes will add the given columns to Projections of every plan.Project and
+// SelectExprs of plan.GroupBy nodes to expose these columns to schema of plan.Having node for its condition
+// expressions to refer to.
+func addColumnsToGroupByAndProjectNodes(node sql.Node, columns []sql.Expression) (sql.Node, error) {
 	switch node := node.(type) {
 	case *plan.Project:
-		child, err := addColumnsToGroupBy(node.Child, columns)
+		child, err := addColumnsToGroupByAndProjectNodes(node.Child, columns)
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +197,7 @@ func addColumnsToGroupBy(node sql.Node, columns []sql.Expression) (sql.Node, err
 		*plan.Offset,
 		*plan.Distinct,
 		*plan.Having:
-		child, err := addColumnsToGroupBy(node.Children()[0], columns)
+		child, err := addColumnsToGroupByAndProjectNodes(node.Children()[0], columns)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +205,7 @@ func addColumnsToGroupBy(node sql.Node, columns []sql.Expression) (sql.Node, err
 	case *plan.GroupBy:
 		return plan.NewGroupBy(append(node.SelectedExprs, columns...), node.GroupByExprs, node.Child), nil
 	default:
-		return nil, errHavingNeedsGroupBy.New()
+		return node, nil
 	}
 }
 
@@ -351,7 +361,7 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 	// The new aggregations will be added to the group by and pushed up until
 	// the topmost node.
 	having = plan.NewHaving(cond, having.Child)
-	node, err := addColumnsToGroupBy(having, newAggregate)
+	node, err := addColumnsToGroupByAndProjectNodes(having, newAggregate)
 	if err != nil {
 		return nil, false, err
 	}

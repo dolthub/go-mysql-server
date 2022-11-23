@@ -48,7 +48,7 @@ type Freeable interface {
 type KeyValueCache interface {
 	// Put a new value in the cache.
 	Put(uint64, interface{}) error
-	// Get the value with the given key.
+	// Get the value with the given key. An error is returned if the specified key does not exist.
 	Get(uint64) (interface{}, error)
 	// Size returns the number of elements in the cache.
 	Size() int

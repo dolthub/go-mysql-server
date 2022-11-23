@@ -39,6 +39,11 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 	return &ResolvedTable{Table: table, Database: db, AsOf: asOf}
 }
 
+// NewResolvedDualTable creates a new instance of ResolvedTable.
+func NewResolvedDualTable() *ResolvedTable {
+	return &ResolvedTable{Table: NewDualSqlTable(), Database: nil, AsOf: nil}
+}
+
 // Resolved implements the Resolvable interface.
 func (*ResolvedTable) Resolved() bool {
 	return true
@@ -55,6 +60,15 @@ func (t *ResolvedTable) String() string {
 		}
 		if len(columns) > 0 {
 			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
+		}
+	}
+	if ft, ok := table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
 	return pr.String()
@@ -74,9 +88,13 @@ func (t *ResolvedTable) DebugString() string {
 			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
 		}
 	}
-	if pt, ok := table.(sql.FilteredTable); ok {
-		if len(pt.Filters()) > 0 {
-			children = append(children, fmt.Sprintf("filters: %v", pt.Filters()))
+	if ft, ok := table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
 	pr.WriteChildren(children...)
@@ -131,7 +149,7 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
 	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
 	// nodes are things such as indexed access, filters, limits, etc.
-	if sql.IsDualTable(t) {
+	if IsDualTable(t) {
 		return true
 	}
 

@@ -470,7 +470,7 @@ func FindForeignKeyColMapping(
 	var appendTypes []sql.Type
 	indexTypeMap := make(map[string]sql.Type)
 	indexColMap := make(map[string]int)
-	for i, indexCol := range index.ColumnExpressionTypes(ctx) {
+	for i, indexCol := range index.ColumnExpressionTypes() {
 		indexColName := strings.ToLower(indexCol.Expression)
 		indexTypeMap[indexColName] = indexCol.Type
 		indexColMap[indexColName] = i
@@ -585,7 +585,7 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 			case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
 				type1String := type1.(sql.StringType)
 				type2String := type2.(sql.StringType)
-				if type1String.Collation() != type2String.Collation() {
+				if type1String.Collation().CharacterSet() != type2String.Collation().CharacterSet() {
 					return false
 				}
 			default:

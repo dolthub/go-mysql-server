@@ -301,7 +301,7 @@ func (t decimalType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t decimalType) Zero() interface{} {
-	return decimal.NewFromInt(0).StringFixed(int32(t.scale))
+	return decimal.NewFromInt(0)
 }
 
 // ExclusiveUpperBound implements DecimalType interface.

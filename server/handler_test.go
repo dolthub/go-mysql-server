@@ -177,9 +177,10 @@ func TestHandlerComPrepare(t *testing.T) {
 	handler.NewConnection(dummyConn)
 
 	type testcase struct {
-		name      string
-		statement string
-		expected  []*query.Field
+		name        string
+		statement   string
+		expected    []*query.Field
+		expectedErr *mysql.SQLError
 	}
 
 	for _, test := range []testcase{
@@ -205,12 +206,26 @@ func TestHandlerComPrepare(t *testing.T) {
 				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8, ColumnLength: 11},
 			},
 		},
+		{
+			name:        "errors are cast to SQLError",
+			statement:   "SELECT * from doesnotexist LIMIT ?",
+			expectedErr: mysql.NewSQLError(mysql.ERNoSuchTable, "", "table not found: %s", "doesnotexist"),
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(dummyConn, "test")
 			schema, err := handler.ComPrepare(dummyConn, test.statement)
-			require.NoError(t, err)
-			require.Equal(t, test.expected, schema)
+			if test.expectedErr == nil {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, schema)
+			} else {
+				require.NotNil(t, err)
+				sqlErr, isSqlError := err.(*mysql.SQLError)
+				require.True(t, isSqlError)
+				require.Equal(t, test.expectedErr.Number(), sqlErr.Number())
+				require.Equal(t, test.expectedErr.SQLState(), sqlErr.SQLState())
+				require.Equal(t, test.expectedErr.Error(), sqlErr.Error())
+			}
 		})
 	}
 }

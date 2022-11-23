@@ -153,6 +153,8 @@ func (e *ColumnDefaultValue) DebugString() string {
 
 	if e.literal {
 		return DebugString(e.Expression)
+	} else if e.parenthesized {
+		return fmt.Sprintf("parenthesized(%s)", DebugString(e.Expression))
 	} else {
 		return fmt.Sprintf("(%s)", DebugString(e.Expression))
 	}

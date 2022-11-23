@@ -17,7 +17,6 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -45,6 +44,11 @@ func filterHasBindVar(filter sql.Node) bool {
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
 // sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
 // sql.IndexAddressableTable will get an appropriate index lookup applied.
+// TODO(max): filter pushdown should happen as part of join reordering.
+// A memo should be built before reorder with filter exprGroups, with
+// bitmaps tracking table dependencies. The same processes here should
+// be applied there: 1) filter pushdown to table, 2) filter pushdown to
+// join node, 3) range scan indexes applied to non-lookup tables.
 func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("pushdown_filters")
 	defer span.End()
@@ -143,15 +147,18 @@ func filterPushdownChildSelector(c transform.Context) bool {
 		// filters pushed below them. Instead, the step will be run
 		// again by the Transform function, starting at this node.
 		return false
-	case *plan.IndexedJoin:
-		if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
+	case *plan.JoinNode:
+		switch {
+		case n.Op.IsLookup():
+			if n.JoinType().IsLeftOuter() {
+				return c.ChildNum == 0
+			}
+			return true
+		case n.Op.IsLeftOuter():
 			return c.ChildNum == 0
+		default:
 		}
-		return true
-	case *plan.LeftJoin:
-		return c.ChildNum == 0
-	case *plan.RightJoin:
-		return c.ChildNum == 1
+	default:
 	}
 	return true
 }
@@ -171,7 +178,7 @@ func filterPushdownAboveTablesChildSelector(c transform.Context) bool {
 		// Don't bother pushing filters down above tables if the direct child node is a table. At best this
 		// just splits the predicates into multiple filter nodes, and at worst it breaks other parts of the
 		// analyzer that don't expect this structure in the tree.
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 			return false
 		}
 	}
@@ -188,7 +195,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				n, sameFix, err := FixFieldIndexesForExpressions(ctx, a, n, scope)
+				n, sameFix, err := pushdownFixIndices(a, n, scope)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -210,18 +217,18 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				filters.markFiltersHandled(handled...)
 				return node, len(handled) == 0, nil
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				n, sameFix, err := FixFieldIndexesForExpressions(ctx, a, n, scope)
+				n, sameFix, err := pushdownFixIndices(a, n, scope)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 				return n, samePred && sameFix, nil
 			default:
-				return FixFieldIndexesForExpressions(ctx, a, node, scope)
+				return pushdownFixIndices(a, node, scope)
 			}
 		})
 	}
@@ -237,12 +244,12 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if same {
 					return n, transform.SameTree, nil
 				}
-				n, _, err = FixFieldIndexesForExpressions(ctx, a, n, scope)
+				n, _, err = pushdownFixIndices(a, n, scope)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 				return n, transform.NewTree, nil
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -250,13 +257,13 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if same {
 					return node, transform.SameTree, nil
 				}
-				node, _, err = FixFieldIndexesForExpressions(ctx, a, table, scope)
+				node, _, err = pushdownFixIndices(a, table, scope)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 				return node, transform.NewTree, nil
 			default:
-				return FixFieldIndexesForExpressions(ctx, a, node, scope)
+				return pushdownFixIndices(a, node, scope)
 			}
 		})
 	}
@@ -344,7 +351,7 @@ func convertFiltersToIndexedAccess(
 	indexes indexLookupsByTable,
 ) (sql.Node, transform.TreeIdentity, error) {
 	childSelector := func(c transform.Context) bool {
-		switch c.Node.(type) {
+		switch n := c.Node.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
 			return false
@@ -352,24 +359,20 @@ func convertFiltersToIndexedAccess(
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
 			// this probably fails for *plan.Union also, we just don't have tests for it
 			return false
-		case *plan.SemiJoin, *plan.AntiJoin, *plan.FullOuterJoin:
+		case *plan.JoinNode:
 			// avoid changing anti and semi join condition indexes
-			return false
+			return !n.Op.IsPartial() && !n.Op.IsFullOuter()
 		}
 
-		switch c.Parent.(type) {
+		switch n := c.Parent.(type) {
 		// For IndexedJoins, if we are already using indexed access during query execution for the secondary table,
 		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but
 		// *will* inappropriately remove the filter from the predicate.
 		// TODO: the analyzer should combine these indexed lookups better
-		case *plan.IndexedJoin:
-			// Left and right joins can push down indexes for the primary table, but not the secondary. See comment
-			// on transformPushdownFilters
-			return c.ChildNum == 0
-		case *plan.LeftJoin:
-			return c.ChildNum == 0
-		case *plan.RightJoin:
-			return c.ChildNum == 1
+		case *plan.JoinNode:
+			if n.Op.IsLookup() || n.Op.IsLeftOuter() {
+				return c.ChildNum == 0
+			}
 		case *plan.TableAlias:
 			// For a TableAlias, we apply this pushdown to the
 			// TableAlias, but not to the resolved table directly
@@ -401,7 +404,7 @@ func convertFiltersToIndexedAccess(
 					return n, transform.SameTree, nil
 				}
 
-				newExprs, same, err := FixFieldIndexesOnExpressions(ctx, scope, a, table.Schema(), ita.Expressions()...)
+				newExprs, same, err := FixFieldIndexesOnExpressions(scope, a, table.Schema(), ita.Expressions()...)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -421,7 +424,7 @@ func convertFiltersToIndexedAccess(
 				return nil, transform.SameTree, err
 			}
 
-			// We can't use FixFieldIndexesForExpressions here, because it uses the schema of children, and
+			// We can't use pushdownFixIndexes() here, because it uses the schema of children, and
 			// ResolvedTable doesn't have any.
 			if sameTab {
 				return c.Node, transform.SameTree, nil
@@ -432,7 +435,7 @@ func convertFiltersToIndexedAccess(
 			}
 			return n, transform.NewTree, nil
 		default:
-			return FixFieldIndexesForExpressions(ctx, a, node, scope)
+			return pushdownFixIndices(a, node, scope)
 		}
 	})
 }
@@ -448,7 +451,7 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *p
 	if len(idxFilters) == 0 {
 		return nil, nil
 	}
-	idxFilters = normalizeExpressions(ctx, tableAliases, idxFilters...)
+	idxFilters = normalizeExpressions(tableAliases, idxFilters...)
 
 	handled := filteredIdx.HandledFilters(idxFilters)
 	if len(handled) == 0 {
@@ -475,7 +478,7 @@ func pushdownFiltersToTable(
 	tableAliases TableAliases,
 ) (sql.Node, transform.TreeIdentity, error) {
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		// only subset of nodes can be sql.FilteredTables
 	default:
 		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
@@ -499,7 +502,7 @@ func pushdownFiltersToTable(
 	handledFilters := getHandledFilters(ctx, tableNode.Name(), ft, tableAliases, filters)
 	filters.markFiltersHandled(handledFilters...)
 
-	handledFilters, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), handledFilters...)
+	handledFilters, _, err := FixFieldIndexesOnExpressions(scope, a, tableNode.Schema(), handledFilters...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -522,7 +525,7 @@ func pushdownFiltersToTable(
 func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.FilteredTable, tableAliases TableAliases, filters *filterSet) []sql.Expression {
 	tableFilters := filters.availableFiltersForTable(ctx, tableNameOrAlias)
 
-	normalizedFilters := normalizeExpressions(ctx, tableAliases, tableFilters...)
+	normalizedFilters := normalizeExpressions(tableAliases, tableFilters...)
 	normalizedToDenormalizedFilterMap := make(map[sql.Expression]sql.Expression)
 	for i, normalizedFilter := range normalizedFilters {
 		normalizedToDenormalizedFilterMap[normalizedFilter] = tableFilters[i]
@@ -546,7 +549,7 @@ func pushdownFiltersToAboveTable(
 	filters *filterSet,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(tableNode)
-	if table == nil {
+	if table == nil || plan.IsDualTable(table) {
 		return tableNode, transform.SameTree, nil
 	}
 
@@ -555,7 +558,7 @@ func pushdownFiltersToAboveTable(
 	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
 
-		handled, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), tableFilters...)
+		handled, _, err := FixFieldIndexesOnExpressions(scope, a, tableNode.Schema(), tableFilters...)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -572,7 +575,7 @@ func pushdownFiltersToAboveTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable, *information_schema.ColumnsTable:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		node, _, err := withTable(tableNode, table)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -600,7 +603,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	}
 	filters.markFiltersHandled(handled...)
 	schema := sa.Schema()
-	handled, _, err := FixFieldIndexesOnExpressions(ctx, nil, a, schema, handled...)
+	handled, _, err := FixFieldIndexesOnExpressions(nil, a, schema, handled...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -636,6 +639,9 @@ func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[str
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
+			}
+			if tw, ok := table.(sql.TableWrapper); ok {
+				table = tw.Underlying()
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				indexLookup, ok := indexes[tableNode.Name()]
@@ -838,7 +844,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		// Create lookup based off of PrimaryKey
-		indexBuilder := sql.NewIndexBuilder(ctx, pkIndex)
+		indexBuilder := sql.NewIndexBuilder(pkIndex)
 		lookup, err := indexBuilder.Build(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -882,4 +888,13 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
 	})
 	return expr
+}
+
+// pushdownFixIndices fixes field indices for non-join expressions (replanJoin
+// is responsible for join filters and conditions.)
+func pushdownFixIndices(a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	if _, ok := n.(*plan.JoinNode); ok {
+		return n, transform.SameTree, nil
+	}
+	return FixFieldIndexesForExpressions(a, n, scope)
 }

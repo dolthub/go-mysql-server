@@ -29,6 +29,7 @@ type CreateDB struct {
 	Catalog     sql.Catalog
 	dbName      string
 	IfNotExists bool
+	Collation   sql.CollationID
 }
 
 func (c *CreateDB) Resolved() bool {
@@ -69,7 +70,11 @@ func (c *CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	err := c.Catalog.CreateDatabase(ctx, c.dbName)
+	collation := c.Collation
+	if collation == sql.Collation_Unspecified {
+		collation = sql.Collation_Default
+	}
+	err := c.Catalog.CreateDatabase(ctx, c.dbName, collation)
 	if err != nil {
 		return nil, err
 	}
@@ -87,10 +92,16 @@ func (c *CreateDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Create))
 }
 
-func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
+// Database returns the name of the database that will be used.
+func (c *CreateDB) Database() string {
+	return c.dbName
+}
+
+func NewCreateDatabase(dbName string, ifNotExists bool, collation sql.CollationID) *CreateDB {
 	return &CreateDB{
 		dbName:      dbName,
 		IfNotExists: ifNotExists,
+		Collation:   collation,
 	}
 }
 
@@ -169,4 +180,103 @@ func NewDropDatabase(dbName string, ifExists bool) *DropDB {
 		dbName:   dbName,
 		IfExists: ifExists,
 	}
+}
+
+// AlterDB alters a database from the Catalog.
+type AlterDB struct {
+	Catalog   sql.Catalog
+	dbName    string
+	Collation sql.CollationID
+}
+
+// Resolved implements the interface sql.Node.
+func (c *AlterDB) Resolved() bool {
+	return true
+}
+
+// String implements the interface sql.Node.
+func (c *AlterDB) String() string {
+	var dbName string
+	if len(c.dbName) > 0 {
+		dbName = fmt.Sprintf(" %s", c.dbName)
+	}
+	return fmt.Sprintf("%s database%s collate %s", sqlparser.AlterStr, dbName, c.Collation.Name())
+}
+
+// Schema implements the interface sql.Node.
+func (c *AlterDB) Schema() sql.Schema {
+	return sql.OkResultSchema
+}
+
+// Children implements the interface sql.Node.
+func (c *AlterDB) Children() []sql.Node {
+	return nil
+}
+
+// RowIter implements the interface sql.Node.
+func (c *AlterDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	dbName := c.Database(ctx)
+
+	if !c.Catalog.HasDB(ctx, dbName) {
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
+	db, err := c.Catalog.Database(ctx, dbName)
+	if err != nil {
+		return nil, err
+	}
+	collatedDb, ok := db.(sql.CollatedDatabase)
+	if !ok {
+		return nil, sql.ErrDatabaseCollationsNotSupported.New(dbName)
+	}
+
+	collation := c.Collation
+	if collation == sql.Collation_Unspecified {
+		collation = sql.Collation_Default
+	}
+	if err = collatedDb.SetCollation(ctx, collation); err != nil {
+		return nil, err
+	}
+
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	return sql.RowsToRowIter(rows...), nil
+}
+
+// WithChildren implements the interface sql.Node.
+func (c *AlterDB) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(c, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (c *AlterDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(c.Database(ctx), "", "", sql.PrivilegeType_Alter))
+}
+
+// Database returns the name of the database that will be used.
+func (c *AlterDB) Database(ctx *sql.Context) string {
+	if len(c.dbName) == 0 {
+		return ctx.GetCurrentDatabase()
+	}
+	return c.dbName
+}
+
+// NewAlterDatabase returns a new AlterDB.
+func NewAlterDatabase(dbName string, collation sql.CollationID) *AlterDB {
+	return &AlterDB{
+		dbName:    dbName,
+		Collation: collation,
+	}
+}
+
+// GetDatabaseCollation returns a database's collation. Also handles when a database does not explicitly support collations.
+func GetDatabaseCollation(ctx *sql.Context, db sql.Database) sql.CollationID {
+	collatedDb, ok := db.(sql.CollatedDatabase)
+	if !ok {
+		return sql.Collation_Default
+	}
+	collation := collatedDb.GetCollation(ctx)
+	if collation == sql.Collation_Unspecified {
+		return sql.Collation_Default
+	}
+	return collation
 }

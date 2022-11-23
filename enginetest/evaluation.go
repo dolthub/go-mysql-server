@@ -154,6 +154,10 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 				t.Skip()
 			}
 		}
+		if assertion.Skip {
+			t.Skip()
+		}
+
 		if assertion.ExpectedErr != nil {
 			t.Run(assertion.Query, func(t *testing.T) {
 				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
@@ -619,8 +623,8 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Co
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
-		_, orig, _ := sql.CastSQLError(err)
-		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
+		err = sql.UnwrapError(err)
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {
