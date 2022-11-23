@@ -34,7 +34,7 @@ type MemoryHarness struct {
 	name                      string
 	parallelism               int
 	numTablePartitions        int
-	provider 									sql.MutableDatabaseProvider
+	provider                  sql.MutableDatabaseProvider
 	indexDriverInitializer    IndexDriverInitalizer
 	driver                    sql.IndexDriver
 	nativeIndexSupport        bool
