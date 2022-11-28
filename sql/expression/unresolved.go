@@ -137,8 +137,8 @@ func (utf *UnresolvedTableFunction) WithDatabase(database sql.Database) (sql.Nod
 	return utf, nil
 }
 
-// FunctionName implements the TableFunction interface
-func (utf *UnresolvedTableFunction) FunctionName() string {
+// Name implements the TableFunction interface
+func (utf *UnresolvedTableFunction) Name() string {
 	return utf.name
 }
 

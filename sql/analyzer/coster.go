@@ -51,6 +51,8 @@ func (c *coster) costRel(n relExpr) (float64, error) {
 		return c.costAntiJoin(n)
 	case *subqueryAlias:
 		return c.costSubqueryAlias(n)
+	case *tableFunc:
+		return c.costTableFunc(n)
 	case *fullOuterJoin:
 		return c.costFullOuterJoin(n)
 	case *concatJoin:
@@ -86,7 +88,6 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 		return float64(0), err
 	}
 	return float64(stats.RowCount()), nil
-
 }
 
 func (c *coster) costValues(v *values) (float64, error) {
@@ -190,7 +191,12 @@ func (c *coster) costSemiJoin(n *semiJoin) (float64, error) {
 	return l, nil
 }
 
-func (c *coster) costSubqueryAlias(n *subqueryAlias) (float64, error) {
+func (c *coster) costSubqueryAlias(_ *subqueryAlias) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 10000, nil
+}
+
+func (c *coster) costTableFunc(_ *tableFunc) (float64, error) {
+	// TODO: sql.TableFunction should expose RowCount()
+	return 10, nil
 }

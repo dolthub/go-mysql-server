@@ -151,6 +151,11 @@ func (a *Arithmetic) Type() sql.Type {
 		return sql.Int64
 	}
 
+	// if one is uint and the other is int of any size, then use int64
+	if sql.IsInteger(lTyp) && sql.IsInteger(rTyp) {
+		return sql.Int64
+	}
+
 	return floatOrDecimalType(a)
 }
 

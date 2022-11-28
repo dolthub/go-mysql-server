@@ -110,7 +110,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			sch, err = validateModifyColumn(initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
+			sch, err = validateModifyColumn(ctx, initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -255,7 +255,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	return newSch, nil
 }
 
-func validateModifyColumn(initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
 	nameable := table.(sql.Nameable)
 
@@ -276,6 +276,33 @@ func validateModifyColumn(initialSch sql.Schema, schema sql.Schema, mc *plan.Mod
 	// TODO: When a column is being modified, we should ideally check that any existing table check constraints
 	//       are still valid (e.g. if the column type changed) and throw an error if they are invalidated.
 	//       That would be consistent with MySQL behavior.
+
+	// not becoming a text/blob column
+	newCol := mc.NewColumn()
+	if !sql.IsTextBlob(newCol.Type) {
+		return newSch, nil
+	}
+
+	// any indexes that use this column must have a prefix length
+	ia, err := newIndexAnalyzerForNode(ctx, table)
+	if err != nil {
+		return nil, err
+	}
+	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
+	for _, index := range indexes {
+		prefixLengths := index.PrefixLengths()
+		for i, expr := range index.Expressions() {
+			col := plan.GetColumnFromIndexExpr(expr, getTable(table))
+			if col.Name == mc.Column() {
+				if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
+					return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
+				}
+				if sql.IsTextOnly(newCol.Type) && prefixLengths[i]*4 > MaxBytePrefix {
+					return nil, sql.ErrKeyTooLong.New()
+				}
+			}
+		}
+	}
 
 	return newSch, nil
 }
@@ -382,15 +409,15 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
-	// Get prefix key length in bytes, so times 4 for text
+	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
 	prefixByteLength := idxCol.Length
-	if sql.IsText(schCol.Type) {
+	if sql.IsTextOnly(schCol.Type) {
 		prefixByteLength = 4 * idxCol.Length
 	}
 
 	// Prefix length is longer than max
 	if prefixByteLength > MaxBytePrefix {
-		return sql.ErrKeyTooLong.New(schCol.Name)
+		return sql.ErrKeyTooLong.New()
 	}
 
 	// The specified prefix length is longer than the column

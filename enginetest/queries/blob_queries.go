@@ -100,16 +100,6 @@ var BlobWriteQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          "alter table mytable modify s blob",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
-		SelectQuery:         "select * from blobt",
-		ExpectedSelect: []sql.Row{
-			{1, []byte("first row")},
-			{2, []byte("second row")},
-			{3, []byte("third row")},
-		},
-	},
-	{
 		WriteQuery:          "alter table blobt rename column b to v, add v1 int",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "select * from blobt",
@@ -151,16 +141,6 @@ var BlobWriteQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          "alter table mytable modify s text",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
-		SelectQuery:         "select * from textt",
-		ExpectedSelect: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
 		WriteQuery:          "alter table textt rename column t to v, add v1 int",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
 		SelectQuery:         "select * from textt",
@@ -183,6 +163,14 @@ var BlobWriteQueries = []WriteQueryTest{
 }
 
 var BlobErrors = []QueryErrorTest{
+	{
+		Query:       "alter table mytable modify s blob",
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
+	{
+		Query:       "alter table mytable modify s text",
+		ExpectedErr: sql.ErrInvalidBlobTextKey,
+	},
 	{
 		Query:       "alter table blobt add index bidx (b)",
 		ExpectedErr: sql.ErrInvalidBlobTextKey,

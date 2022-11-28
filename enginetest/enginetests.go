@@ -131,7 +131,6 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
-
 	for _, ts := range queries.SkippedJoinScripts {
 		TestScript(t, harness, ts)
 	}
@@ -2354,12 +2353,12 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 	require.NoError(t, err)
 
-	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i bigint NOT NULL COMMENT 'modified'", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, sql.Schema{
-		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified", PrimaryKey: true},
+		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "modified", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
@@ -6461,6 +6460,15 @@ func TestBlobs(t *testing.T, h Harness) {
 
 	for _, tt := range queries.BlobWriteQueries {
 		RunWriteQueryTest(t, h, tt)
+	}
+}
+
+func TestIndexes(t *testing.T, h Harness) {
+	e := mustNewEngine(t, h)
+	defer e.Close()
+
+	for _, tt := range queries.IndexQueries {
+		TestScript(t, h, tt)
 	}
 }
 

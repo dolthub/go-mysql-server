@@ -724,7 +724,7 @@ func (s SimpleTableFunction) WithDatabase(_ sql.Database) (sql.Node, error) {
 	return s, nil
 }
 
-func (s SimpleTableFunction) FunctionName() string {
+func (s SimpleTableFunction) Name() string {
 	return "simple_table_function"
 }
 
@@ -761,7 +761,7 @@ type TestProvider struct {
 func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf sql.TableFunction) *TestProvider {
 	return &TestProvider{
 		*dbProvider,
-		map[string]sql.TableFunction{strings.ToLower(tf.FunctionName()): tf},
+		map[string]sql.TableFunction{strings.ToLower(tf.Name()): tf},
 	}
 }
 

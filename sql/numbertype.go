@@ -769,19 +769,19 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 		return int64(v), nil
 	case float32:
 		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
-			return int64(v), nil
+			return int64(math.Round(float64(v))), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case float64:
 		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
-			return int64(v), nil
+			return int64(math.Round(v)), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case decimal.Decimal:
 		if v.GreaterThan(dec_int64_max) || v.LessThan(dec_int64_min) {
 			return 0, ErrOutOfRange.New(v.String(), t)
 		}
-		return v.IntPart(), nil
+		return v.Round(0).IntPart(), nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
@@ -841,13 +841,13 @@ func convertValueToInt64(t numberTypeImpl, v Value) (int64, error) {
 	case query.Type_FLOAT32:
 		v := values.ReadFloat32(v.Val)
 		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
-			return int64(v), nil
+			return int64(math.Round(float64(v))), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case query.Type_FLOAT64:
 		v := values.ReadFloat64(v.Val)
 		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
-			return int64(v), nil
+			return int64(math.Round(v)), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 		// TODO: add more conversions
@@ -881,13 +881,13 @@ func convertValueToUint64(t numberTypeImpl, v Value) (uint64, error) {
 	case query.Type_FLOAT32:
 		v := values.ReadFloat32(v.Val)
 		if float32(math.MaxUint64) >= v {
-			return uint64(v), nil
+			return uint64(math.Round(float64(v))), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case query.Type_FLOAT64:
 		v := values.ReadFloat64(v.Val)
 		if float64(math.MaxUint64) >= v {
-			return uint64(v), nil
+			return uint64(math.Round(v)), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 		// TODO: add more conversions
@@ -935,12 +935,12 @@ func convertToUint64(t numberTypeImpl, v interface{}) (uint64, error) {
 		return v, nil
 	case float32:
 		if float32(math.MaxUint64) >= v && v >= 0 {
-			return uint64(v), nil
+			return uint64(math.Round(float64(v))), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case float64:
 		if float64(math.MaxUint64) >= v && v >= 0 {
-			return uint64(v), nil
+			return uint64(math.Round(v)), nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case decimal.Decimal:
@@ -949,7 +949,7 @@ func convertToUint64(t numberTypeImpl, v interface{}) (uint64, error) {
 		}
 		// TODO: If we ever internally switch to using Decimal for large numbers, this will need to be updated
 		f, _ := v.Float64()
-		return uint64(f), nil
+		return uint64(math.Round(f)), nil
 	case []byte:
 		i, err := strconv.ParseUint(hex.EncodeToString(v), 16, 64)
 		if err != nil {

@@ -231,6 +231,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 		rel = &tableScan{relBase: b, table: n.ResolvedTable}
 	case *plan.ValueDerivedTable:
 		rel = &values{relBase: b, table: n}
+	case sql.TableFunction:
+		rel = &tableFunc{relBase: b, table: n}
 	default:
 		panic(fmt.Sprintf("unrecognized join leaf: %T", n))
 	}
@@ -288,7 +290,7 @@ func (j *joinOrderBuilder) checkSize() {
 	}
 }
 
-// dpSube iterats all disjoint combinations of table sets,
+// dpSube iterates all disjoint combinations of table sets,
 // adding plans to the tree when we find two sets that can
 // be joined
 func (j *joinOrderBuilder) dbSube() {
@@ -340,13 +342,15 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 
 	var innerJoinFilters []sql.Expression
 	var addInnerJoin bool
+	var isRedundant bool
 	for i, ok := j.innerEdges.Next(0); ok; i, ok = j.innerEdges.Next(i + 1) {
-		op := &j.edges[i]
+		e := &j.edges[i]
 		// Ensure that this edge forms a valid connection between the two sets.
-		if op.applicable(s1, s2) {
-			if op.filters != nil {
-				innerJoinFilters = append(innerJoinFilters, op.filters...)
+		if e.applicable(s1, s2) {
+			if e.filters != nil {
+				innerJoinFilters = append(innerJoinFilters, e.filters...)
 			}
+			isRedundant = isRedundant || e.joinIsRedundant(s1, s2)
 			addInnerJoin = true
 		}
 	}
@@ -356,13 +360,13 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 	for i, ok := j.nonInnerEdges.Next(0); ok; i, ok = j.nonInnerEdges.Next(i + 1) {
 		e := &j.edges[i]
 		if e.applicable(s1, s2) {
-			j.addJoin(e.op.joinType, s1, s2, e.filters, innerJoinFilters)
+			j.addJoin(e.op.joinType, s1, s2, e.filters, innerJoinFilters, e.joinIsRedundant(s1, s2))
 			return
 		}
 		if e.applicable(s2, s1) {
 			// This is necessary because we only iterate s1 up to subset / 2
 			// in DPSube()
-			j.addJoin(e.op.joinType, s2, s1, e.filters, innerJoinFilters)
+			j.addJoin(e.op.joinType, s2, s1, e.filters, innerJoinFilters, e.joinIsRedundant(s2, s1))
 			return
 		}
 	}
@@ -373,14 +377,14 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 		// non-inner join operator 'disappears' because an inner join has replaced
 		// it.
 		if innerJoinFilters == nil {
-			j.addJoin(plan.JoinTypeCross, s1, s2, nil, nil)
+			j.addJoin(plan.JoinTypeCross, s1, s2, nil, nil, isRedundant)
 		} else {
-			j.addJoin(plan.JoinTypeInner, s1, s2, innerJoinFilters, nil)
+			j.addJoin(plan.JoinTypeInner, s1, s2, innerJoinFilters, nil, isRedundant)
 		}
 	}
 }
 
-func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilter, selFilters []sql.Expression) {
+func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilter, selFilters []sql.Expression, isRedundant bool) {
 	if s1.intersects(s2) {
 		panic("sets are not disjoint")
 	}
@@ -389,12 +393,15 @@ func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilte
 	right := j.plans[s2]
 
 	group, ok := j.plans[union]
-	if !ok {
-		group = j.memoize(op, left, right, joinFilter, selFilters)
-		j.plans[union] = group
-	} else {
-		j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
+	if !isRedundant {
+		if !ok {
+			group = j.memoize(op, left, right, joinFilter, selFilters)
+			j.plans[union] = group
+		} else {
+			j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
+		}
 	}
+
 	if commute(op) {
 		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
 	}

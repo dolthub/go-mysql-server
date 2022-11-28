@@ -22,6 +22,7 @@ import (
 )
 
 type Call struct {
+	db     sql.Database
 	Name   string
 	Params []sql.Expression
 	proc   *Procedure
@@ -32,8 +33,9 @@ var _ sql.Node = (*Call)(nil)
 var _ sql.Expressioner = (*Call)(nil)
 
 // NewCall returns a *Call node.
-func NewCall(name string, params []sql.Expression) *Call {
+func NewCall(db sql.Database, name string, params []sql.Expression) *Call {
 	return &Call{
+		db:     db,
 		Name:   name,
 		Params: params,
 	}
@@ -41,6 +43,12 @@ func NewCall(name string, params []sql.Expression) *Call {
 
 // Resolved implements the sql.Node interface.
 func (c *Call) Resolved() bool {
+	if c.db != nil {
+		_, ok := c.db.(sql.UnresolvedDatabase)
+		if ok {
+			return false
+		}
+	}
 	for _, param := range c.Params {
 		if !param.Resolved() {
 			return false
@@ -118,7 +126,11 @@ func (c *Call) String() string {
 		}
 		paramStr += param.String()
 	}
-	return fmt.Sprintf("CALL %s(%s)", c.Name, paramStr)
+	if c.db == nil {
+		return fmt.Sprintf("CALL %s(%s)", c.Name, paramStr)
+	} else {
+		return fmt.Sprintf("CALL %s.%s(%s)", c.db.Name(), c.Name, paramStr)
+	}
 }
 
 // DebugString implements sql.DebugStringer
@@ -131,7 +143,11 @@ func (c *Call) DebugString() string {
 		paramStr += sql.DebugString(param)
 	}
 	tp := sql.NewTreePrinter()
-	tp.WriteNode("CALL %s(%s)", c.Name, paramStr)
+	if c.db == nil {
+		tp.WriteNode("CALL %s(%s)", c.Name, paramStr)
+	} else {
+		tp.WriteNode("CALL %s.%s(%s)", c.db.Name(), c.Name, paramStr)
+	}
 	if c.proc != nil {
 		tp.WriteChildren(sql.DebugString(c.proc.Body))
 	}
@@ -161,6 +177,18 @@ func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		call:      c,
 		innerIter: innerIter,
 	}, nil
+}
+
+// Database implements the sql.Databaser interface.
+func (c *Call) Database() sql.Database {
+	return c.db
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (c *Call) WithDatabase(db sql.Database) (sql.Node, error) {
+	nc := *c
+	nc.db = db
+	return &nc, nil
 }
 
 // callIter is the row iterator for *Call.

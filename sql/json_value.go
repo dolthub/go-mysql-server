@@ -16,7 +16,9 @@ package sql
 
 import (
 	"bytes"
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -138,6 +140,22 @@ func (doc JSONDocument) Overlaps(ctx *Context, val SearchableJSONValue) (ok bool
 
 func (doc JSONDocument) Search(ctx *Context) (path string, err error) {
 	panic("not implemented")
+}
+
+var _ driver.Value = JSONDocument{}
+
+// Value implements driver.Valuer for interoperability with other go libraries
+func (doc JSONDocument) Value() (driver.Value, error) {
+	if doc.Val == nil {
+		return nil, nil
+	}
+
+	byteSl, err := json.Marshal(doc.Val)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal document: %w", err)
+	}
+
+	return string(byteSl), nil
 }
 
 func ConcatenateJSONValues(ctx *Context, vals ...JSONValue) (JSONValue, error) {

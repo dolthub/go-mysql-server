@@ -33,7 +33,9 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 
 // finalizeSubqueries runs the final analysis pass on subquery expressions and subquery aliases in the node tree to ensure
 // they are fully resolved and that the plan is ready to be executed. The logic is similar to when subqueries are initially
-// resolved with resolveSubqueries, but with a few small differences:
+// resolved with resolveSubqueries, but with a few important differences:
+//   - finalizeSubqueries processes each subquery once, from the bottom of the plan tree up, and should only be included
+//     when analyzing a root node at the top of the plan.
 //   - resolveSubqueries skips pruneColumns and optimizeJoins for subquery expressions and only runs the OnceBeforeDefault
 //     rule set on subquery aliases.
 //   - finalizeSubqueries runs a full analysis pass on subquery expressions and runs all rule batches except for OnceBeforeDefault.
@@ -41,13 +43,65 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	span, ctx := ctx.Span("finalize_subqueries")
 	defer span.End()
 
-	return resolveSubqueriesHelper(ctx, a, n, scope, sel, true)
+	return finalizeSubqueriesHelper(ctx, a, n, scope, sel)
+}
+
+// finalizeSubqueriesHelper recurses through the specified |node| to find all leaf subqueries and subquery expressions,
+// working it's way from the bottom of the plan up, and runs a final analysis pass on subqueries to ensure they are
+// ready to be executed.
+func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if sqa, ok := n.(*plan.SubqueryAlias); ok {
+			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, sqa.Child, scope.newScopeFromSubqueryAlias(sqa), sel)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+
+			newSqa, err := sqa.WithChildren(newNode)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+
+			newNode, same2, err := analyzeSubqueryAlias(ctx, a, newSqa.(*plan.SubqueryAlias), scope, sel, true)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			if same1 && same2 {
+				return n, transform.SameTree, nil
+			} else {
+				return newNode, transform.NewTree, nil
+			}
+		} else {
+			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if sq, ok := e.(*plan.Subquery); ok {
+					newNode, same1, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
+					if err != nil {
+						return e, transform.SameTree, err
+					}
+
+					newSq := sq.WithQuery(newNode)
+					newExpression, same2, err := analyzeSubqueryExpression(ctx, a, node, newSq, scope, sel, true)
+					if err != nil {
+						return e, transform.SameTree, err
+					}
+
+					if same1 && same2 {
+						return e, transform.SameTree, nil
+					} else {
+						return newExpression, transform.NewTree, nil
+					}
+				} else {
+					return e, transform.SameTree, nil
+				}
+			})
+		}
+	})
 }
 
 func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			return analyzeSubqueryAlias(ctx, a, node, sqa, scope, sel, finalize)
+			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
 		} else {
 			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if sq, ok := e.(*plan.Subquery); ok {
@@ -124,7 +178,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 // analyzeSubqueryAlias runs analysis on the specified subquery alias, |sqa|. The |finalize| parameter indicates if this is
 // the final run of the analyzer on the query before execution, which means all rules, starting from the default-rules
 // batch are processed, otherwise only the once-before-default batch of rules is processed for all other non-final passes.
-func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, node sql.Node, sqa *plan.SubqueryAlias, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
+func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, sqa *plan.SubqueryAlias, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
 	subScope := scope.newScopeFromSubqueryAlias(sqa)
 
 	var child sql.Node
