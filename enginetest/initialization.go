@@ -95,21 +95,6 @@ func NewBaseSession() *sql.BaseSession {
 	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
 }
 
-// NewEngine creates test data and returns an engine using the harness provided.
-// TODO: find places that use this explicitly, replace with Setup()
-func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
-	_ = CreateVersionedTestData(t, harness)
-	engine := NewEngineWithDbs(t, harness)
-	return engine
-}
-
-// NewSpatialEngine creates test data and returns an engine using the harness provided.
-// TODO: find uses of this, replace with Setup()
-func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
-	_ = CreateSpatialTestData(t, harness)
-	engine := NewEngineWithDbs(t, harness)
-	return engine
-}
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.

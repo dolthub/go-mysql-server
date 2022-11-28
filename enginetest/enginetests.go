@@ -120,7 +120,8 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
-	e := NewEngine(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 
 	for _, tt := range queries.JoinQueryTests {
 		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
@@ -138,7 +139,8 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Pk_tablesData)
-	e := NewEngine(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 
 	for _, tt := range queries.JSONTableQueryTests {
 		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
@@ -338,9 +340,12 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 }
 
 // TestVersionedQueries tests a variety of versioned queries
-func TestVersionedQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.SimpleSetup...)
-	engine := NewEngine(t, harness)
+func TestVersionedQueries(t *testing.T, harness VersionedDBHarness) {
+	harness.Setup()
+
+	CreateVersionedTestData(t, harness)
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer engine.Close()
 
 	for _, tt := range queries.VersionedQueries {
@@ -373,12 +378,10 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 }
 
 // Tests a variety of queries against databases and tables provided by the given harness.
-func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
-	e := NewEngine(t, harness)
+func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
+	CreateVersionedTestData(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer e.Close()
 
 	for _, tt := range queries.VersionedQueries {
@@ -1752,12 +1755,10 @@ func initializeViewsForVersionedViewsTests(t *testing.T, harness Harness, e *sql
 	iter.Close(ctx)
 }
 
-func TestVersionedViews(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
-	e := NewEngine(t, harness)
+func TestVersionedViews(t *testing.T, harness VersionedDBHarness) {
+	CreateVersionedTestData(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer e.Close()
 
 	initializeViewsForVersionedViewsTests(t, harness, e)
@@ -1769,12 +1770,10 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 	}
 }
 
-func TestVersionedViewsPrepared(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
-	e := NewEngine(t, harness)
+func TestVersionedViewsPrepared(t *testing.T, harness VersionedDBHarness) {
+	CreateVersionedTestData(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer e.Close()
 
 	initializeViewsForVersionedViewsTests(t, harness, e)

@@ -54,15 +54,6 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 	}
 }
 
-func CreateSpatialSubsetTestData(t *testing.T, harness Harness) []sql.Database {
-	dbs := harness.NewDatabases("mydb", "foo")
-	return createSpatialSubsetTestData(t, harness, dbs[0], dbs[1])
-}
-
-func createSpatialSubsetTestData(t *testing.T, harness Harness, myDb, foo sql.Database) []sql.Database {
-	return []sql.Database{myDb, foo}
-}
-
 // TODO: trim this down to just the versioned tables
 func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
 	var table sql.Table
@@ -147,14 +138,9 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 }
 
 // CreateVersionedTestData uses the provided harness to create test tables and data for many of the other tests.
-func CreateVersionedTestData(t *testing.T, harness Harness) []sql.Database {
+func CreateVersionedTestData(t *testing.T, harness VersionedDBHarness) []sql.Database {
 	dbs := harness.NewDatabases("mydb", "foo")
 	return createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
-}
-
-// CreateSpatialTestData uses the provided harness to create test tables and data for tests involving spatial types.
-func CreateSpatialTestData(t *testing.T, harness Harness) []sql.Database {
-	return CreateSpatialSubsetTestData(t, harness)
 }
 
 func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
