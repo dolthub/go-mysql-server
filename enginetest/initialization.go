@@ -98,16 +98,17 @@ func NewBaseSession() *sql.BaseSession {
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
+// TODO: remove
 func NewEngineWithDbs(t *testing.T, harness Harness) *sqle.Engine {
-	return NewEngineWithProvider(t, harness)
+	return NewEngineWithProvider(t, harness, harness.NewDatabaseProvider())
 }
 
 // NewEngineWithProvider returns a new engine with the specified provider. This is useful when you don't want to
 // implement a full harness, but you need more control over the database provider than the default test MemoryProvider.
 // TODO: this should just be NewEngine, all other paths end here
-func NewEngineWithProvider(_ *testing.T, harness Harness) *sqle.Engine {
+func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
-	provider := harness.Provider()
+
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
 	} else {
@@ -126,8 +127,9 @@ func NewEngineWithProvider(_ *testing.T, harness Harness) *sqle.Engine {
 }
 
 // NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
+// TODO: rename
 func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness)
+	e := NewEngineWithProvider(t, harness, harness.NewDatabaseProvider())
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool

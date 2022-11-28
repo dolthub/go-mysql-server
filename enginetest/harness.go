@@ -38,8 +38,6 @@ type Harness interface {
 	// NewDatabaseProvider returns a sql.MutableDatabaseProvider to use for a test.
 	// TODO: kill off
 	NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider
-	// Provider returns the sql.MutableDatabaseProvider used by this harness.
-	Provider() sql.MutableDatabaseProvider
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
 	// their engine implementation. Every harnessed engine test uses the context created by this method, with some
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
