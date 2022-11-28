@@ -323,31 +323,6 @@ func (e *exprGroup) prepend(rel relExpr) {
 	rel.setNext(first)
 }
 
-// hasJoinRelExpr returns true if the specified relExpr is a joinRel that is already represented by an identical
-// relExpr in this exprGroup. If |rel| is not an instance of joinRel, or if
-func (e *exprGroup) hasJoinRelExpr(rel relExpr) bool {
-	joinRelExpr, isJoinRel := rel.(joinRel)
-	if !isJoinRel {
-		return false
-	}
-
-	for curr := e.first; curr != nil; {
-		if jbCurr, ok := curr.(joinRel); ok {
-			jbRel := joinRelExpr.joinPrivate()
-			jbCurr := jbCurr.joinPrivate()
-			if jbRel.op == jbCurr.op &&
-				jbRel.left.id == jbCurr.left.id &&
-				jbRel.right.id == jbCurr.right.id {
-				return true
-			}
-		}
-
-		curr = curr.next()
-	}
-
-	return false
-}
-
 func (e *exprGroup) children() []*exprGroup {
 	n := e.first
 	children := make([]*exprGroup, 0)
