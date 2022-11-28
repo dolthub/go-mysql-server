@@ -290,7 +290,7 @@ func (j *joinOrderBuilder) checkSize() {
 	}
 }
 
-// dpSube iterats all disjoint combinations of table sets,
+// dpSube iterates all disjoint combinations of table sets,
 // adding plans to the tree when we find two sets that can
 // be joined
 func (j *joinOrderBuilder) dbSube() {
@@ -397,6 +397,7 @@ func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilte
 	} else {
 		j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
 	}
+
 	if commute(op) {
 		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
 	}
@@ -412,7 +413,9 @@ func (j *joinOrderBuilder) addJoinToGroup(
 	group *exprGroup,
 ) {
 	rel := j.constructJoin(op, left, right, joinFilter, group)
-	group.prepend(rel)
+	if !group.hasJoinRelExpr(rel) {
+		group.prepend(rel)
+	}
 	return
 }
 

@@ -73,7 +73,7 @@ func (m *Memo) memoize(rel relExpr) *exprGroup {
 }
 
 // optimizeRoot finds the implementation for the root expression
-// that ahs the lowest cost.
+// that has the lowest cost.
 func (m *Memo) optimizeRoot() error {
 	return m.optimizeMemoGroup(m.root)
 }
@@ -294,7 +294,6 @@ type exprGroup struct {
 	id            GroupId
 	m             *Memo
 	first         relExpr
-	last          relExpr
 	best          relExpr
 	cost          float64
 	done          bool
@@ -310,7 +309,6 @@ func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
 		m:     m,
 		id:    id,
 		first: rel,
-		last:  rel,
 	}
 	rel.setGroup(grp)
 	grp.relProps = newRelProps(rel)
@@ -325,6 +323,31 @@ func (e *exprGroup) prepend(rel relExpr) {
 	rel.setNext(first)
 }
 
+// hasJoinRelExpr returns true if the specified relExpr is a joinRel that is already represented by an identical
+// relExpr in this exprGroup. If |rel| is not an instance of joinRel, or if
+func (e *exprGroup) hasJoinRelExpr(rel relExpr) bool {
+	joinRelExpr, isJoinRel := rel.(joinRel)
+	if !isJoinRel {
+		return false
+	}
+
+	for curr := e.first; curr != nil; {
+		if jbCurr, ok := curr.(joinRel); ok {
+			jbRel := joinRelExpr.joinPrivate()
+			jbCurr := jbCurr.joinPrivate()
+			if jbRel.op == jbCurr.op &&
+				jbRel.left.id == jbCurr.left.id &&
+				jbRel.right.id == jbCurr.right.id {
+				return true
+			}
+		}
+
+		curr = curr.next()
+	}
+
+	return false
+}
+
 func (e *exprGroup) children() []*exprGroup {
 	n := e.first
 	children := make([]*exprGroup, 0)
@@ -336,7 +359,7 @@ func (e *exprGroup) children() []*exprGroup {
 }
 
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
-	if e.best == nil || grpCost < e.cost {
+	if e.best == nil || grpCost <= e.cost {
 		e.best = n
 		e.cost = grpCost
 	}
@@ -367,7 +390,7 @@ type relExpr interface {
 }
 
 type relBase struct {
-	// g is this relation's expresion group
+	// g is this relation's expression group
 	g *exprGroup
 	// n is the next relExpr in the exprGroup linked list
 	n relExpr

@@ -20,6 +20,10 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query:    `SELECT (SELECT 1 FROM (SELECT x FROM xy INNER JOIN uv ON (x = u OR y = v) LIMIT 1) r) AS s FROM xy`,
+		Expected: []sql.Row{{1}, {1}, {1}, {1}},
+	},
+	{
 		Query:    `select a from ab where exists (select 1 from xy where a =x)`,
 		Expected: []sql.Row{{0}, {1}, {2}, {3}},
 	},
