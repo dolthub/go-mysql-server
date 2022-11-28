@@ -10172,6 +10172,88 @@ var IndexQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "non-unique indexes on keyless tables",
+		SetUpScript: []string{
+			"create table t (i int, j int, index(i))",
+			"insert into t values (0, 100), (0, 200), (1, 100), (1, 200), (2, 100), (2, 200)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, j from t where i = 0 order by i, j",
+				Expected: []sql.Row{
+					{0, 100},
+					{0, 200},
+				},
+			},
+			{
+				Query: "select i, j from t where i = 1 order by i, j",
+				Expected: []sql.Row{
+					{1, 100},
+					{1, 200},
+				},
+			},
+			{
+				Query: "select i, j from t where i > 0 order by i, j",
+				Expected: []sql.Row{
+					{1, 100},
+					{1, 200},
+					{2, 100},
+					{2, 200},
+				},
+			},
+			{
+				Query: "select i, j from t where i > 0 and i < 2 order by i, j",
+				Expected: []sql.Row{
+					{1, 100},
+					{1, 200},
+				},
+			},
+		},
+	},
+	{
+		Name: "more non-unique indexes on keyless tables",
+		SetUpScript: []string{
+			"create table t (i int, j int, k int, index(i, j))",
+			"insert into t values (0, 0, 123), (0, 1, 456), (1, 0, 123), (1, 1, 456), (2, 0, 123), (2, 1, 456)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, j, k from t where i = 0 order by i, j, k",
+				Expected: []sql.Row{
+					{0, 0, 123},
+					{0, 1, 456},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i = 0 and j = 0 order by i, j, k",
+				Expected: []sql.Row{
+					{0, 0, 123},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i = 1 and (j = 0 or j = 1) order by i, j, k",
+				Expected: []sql.Row{
+					{1, 0, 123},
+					{1, 1, 456},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i > 0 and j > 0 order by i, j, k",
+				Expected: []sql.Row{
+					{1, 1, 456},
+					{2, 1, 456},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i > 0 and i < 2 order by i, j, k",
+				Expected: []sql.Row{
+					{1, 0, 123},
+					{1, 1, 456},
+				},
+			},
+		},
+	},
 }
 
 var IndexPrefixQueries = []ScriptTest{
