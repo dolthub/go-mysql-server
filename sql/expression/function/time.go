@@ -1391,3 +1391,75 @@ func (c *CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	return _t, nil
 }
+
+// Time is a function takes the Time part out from a datetime expression.
+type Time struct {
+	expression.UnaryExpression
+}
+
+// NewTime returns a new Date node.
+func NewTime(date sql.Expression) sql.Expression {
+	return &Time{expression.UnaryExpression{Child: date}}
+}
+
+func (t *Time) String() string {
+	return fmt.Sprintf("TIME(%s)", t.Child)
+}
+
+// Type implements the Expression interface.
+func (t *Time) Type() sql.Type {
+	return sql.LongText
+}
+
+func getTime(ctx *sql.Context, u expression.UnaryExpression, row sql.Row) (interface{}, error) {
+	val, err := u.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if val == nil {
+		return nil, nil
+	}
+	tim, err := sql.Time.Convert(val)
+	if err != nil {
+		tim = sql.Time.Zero().(time.Time)
+	}
+
+	return tim, nil
+}
+
+// Eval implements the Expression interface.
+func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// evaluate expression
+	v, err := t.UnaryExpression.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, nil
+	}
+
+	// convert to date
+	date, err := sql.Datetime.ConvertWithoutRangeCheck(v)
+	if err == nil {
+		h, m, s := date.Clock()
+		return fmt.Sprintf("%02d:%02d:%02d", h, m, s), nil
+	}
+
+	// convert to time
+	tim, err := sql.Time.Convert(v)
+	if err != nil {
+		return nil, err
+	}
+	return tim.(sql.Timespan).String(), nil
+}
+
+// WithChildren implements the Expression interface.
+func (t *Time) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+	return NewTime(children[0]), nil
+}

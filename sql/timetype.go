@@ -226,6 +226,8 @@ func (t timespanType) ConvertToTimespan(v interface{}) (Timespan, error) {
 	case time.Duration:
 		microseconds := value.Nanoseconds() / nanosecondsPerMicrosecond
 		return t.MicrosecondsToTimespan(microseconds), nil
+	case time.Time:
+		return t.ConvertToTimespan(value.Unix())
 	}
 
 	return Timespan(0), ErrConvertingToTimeType.New(v)
