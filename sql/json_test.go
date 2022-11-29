@@ -171,3 +171,19 @@ func TestJsonSQL(t *testing.T) {
 		assert.Equal(t, querypb.Type_NULL_TYPE, val.Type())
 	})
 }
+
+func TestValuer(t *testing.T) {
+	var empty JSONDocument
+	res, err := empty.Value()
+	require.NoError(t, err)
+	require.Equal(t, nil, res)
+
+	withVal := JSONDocument{
+		Val: map[string]string{
+			"a": "one",
+		},
+	}
+	res, err = withVal.Value()
+	require.NoError(t, err)
+	require.Equal(t, `{"a":"one"}`, res)
+}
