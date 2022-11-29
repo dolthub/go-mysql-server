@@ -83,19 +83,12 @@ func (d *DateAdd) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Eval implements the sql.Expression interface.
 func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := d.Date.Eval(ctx, row)
+	val, err := d.Date.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if date == nil {
-		return nil, nil
-	}
-
-	// TODO: need to also convert to sql.Time type, which we currently do not support
-	date, err = sql.Datetime.Convert(date)
-	if err != nil {
-		ctx.Warn(1292, err.Error())
+	if val == nil {
 		return nil, nil
 	}
 
@@ -108,6 +101,20 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: should be receiving a sql.Time type rather than converting string to it
+	date, err := sql.Datetime.Convert(val)
+	if err == nil {
+		return sql.ValidateTime(delta.Add(date.(time.Time))), nil
+	}
+
+	tim, err := sql.Time.Convert(val)
+	if err != nil {
+		ctx.Warn(1292, err.Error())
+		return nil, nil
+	}
+
+	date = sql.Datetime.Zero()
+	date = date.(time.Time).Add(tim.(sql.Timespan).AsTimeDuration())
 	return sql.ValidateTime(delta.Add(date.(time.Time))), nil
 }
 
