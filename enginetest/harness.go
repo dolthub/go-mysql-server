@@ -101,10 +101,7 @@ type ForeignKeyHarness interface {
 type VersionedDBHarness interface {
 	Harness
 
-	// NewDatabase returns a sql.Database to use for a test. This method will always be called before asking for a
-	// context or other information.
-	NewDatabase(name string) sql.Database
-	// NewDatabases returns a set of new databases, for test setup that requires more than one database.
+	// NewDatabases returns a set of new databases used for the duration of a versioned test
 	NewDatabases(names ...string) []sql.Database
 
 	// NewTableAsOf creates a new table with the given name and schema, optionally handling snapshotting with the asOf

@@ -247,13 +247,6 @@ func TestInfoSchema(t *testing.T, h Harness) {
 	}
 }
 
-func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
-	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
-		err := createNativeIndexes(t, harness, engine)
-		require.NoError(t, err)
-	}
-}
-
 func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) (dbs []sql.Database) {
 	for _, r := range h.NewReadOnlyDatabases("mydb", "foo") {
 		dbs = append(dbs, sql.Database(r)) // FURP
@@ -267,7 +260,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 		t.Fatal("harness is not ReadOnlyDatabaseHarness")
 	}
 	dbs := createReadOnlyDatabases(ro)
-	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
+	dbs = createSubsetTestData(t, harness, dbs[0], dbs[1])
 	engine := NewEngineWithDbs(t, harness)
 	defer engine.Close()
 
@@ -340,8 +333,6 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 
 // TestVersionedQueries tests a variety of versioned queries
 func TestVersionedQueries(t *testing.T, harness VersionedDBHarness) {
-	harness.Setup()
-
 	CreateVersionedTestData(t, harness)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)

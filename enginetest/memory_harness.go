@@ -34,7 +34,7 @@ type MemoryHarness struct {
 	name                      string
 	parallelism               int
 	numTablePartitions        int
-	provider                  sql.MutableDatabaseProvider
+	versionedProvider         sql.MutableDatabaseProvider
 	indexDriverInitializer    IndexDriverInitalizer
 	driver                    sql.IndexDriver
 	nativeIndexSupport        bool
@@ -66,7 +66,6 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 
 	return &MemoryHarness{
 		name:                      name,
-		provider:                  memory.NewDBProvider(),
 		numTablePartitions:        numTablePartitions,
 		indexDriverInitializer:    indexDriverInitalizer,
 		parallelism:               parallelism,
@@ -210,19 +209,34 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 }
 
 func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
+	if m.versionedProvider != nil {
+		return m.versionedProvider
+	}
+
 	return memory.NewDBProviderWithOpts(memory.NativeIndexProvider(m.nativeIndexSupport))
 }
 
 func (m *MemoryHarness) NewDatabase(name string) sql.Database {
 	ctx := m.NewContext()
 
-	err := m.provider.CreateDatabase(ctx, name)
+	err := m.getVersionedProvider().CreateDatabase(ctx, name)
 	if err != nil {
 		panic(err)
 	}
 
-	db, _ := m.provider.Database(ctx, name)
+	db, _ := m.getVersionedProvider().Database(ctx, name)
 	return db
+}
+
+func (m *MemoryHarness) getVersionedProvider() sql.MutableDatabaseProvider {
+	if m.versionedProvider == nil {
+		opts := []memory.ProviderOption{
+			memory.NativeIndexProvider(m.nativeIndexSupport),
+			memory.HistoryProvider(),
+		}
+		m.versionedProvider = memory.NewDBProviderWithOpts(opts...)
+	}
+	return m.versionedProvider
 }
 
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
@@ -234,7 +248,9 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 }
 
 func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
-	m.provider.(*memory.DbProvider).WithOption(memory.ReadOnlyProvider())
+	// TODO: fix me
+	m.versionedProvider.(*memory.DbProvider).WithOption(memory.ReadOnlyProvider())
+
 	dbs := m.NewDatabases(names...)
 	readOnlyDbs := make([]sql.ReadOnlyDatabase, len(dbs))
 	for i := range dbs {
@@ -266,10 +282,6 @@ func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Primar
 		db.(*memory.HistoryDatabase).AddTable(name, table)
 	}
 	return table, nil
-}
-
-func (m *MemoryHarness) Provider() sql.MutableDatabaseProvider {
-	return m.provider
 }
 
 func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {
