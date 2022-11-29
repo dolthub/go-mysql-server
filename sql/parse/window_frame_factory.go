@@ -6,7 +6,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-//go:generate optgen -out window_frame_factory.og.go -pkg parse frameFactory window_frame_factory.go
+//go:generate go run ../../optgen/cmd/optgen/main.go -out window_frame_factory.og.go -pkg parse frameFactory window_frame_factory.go
 
 func getFrameStartNPreceding(ctx *sql.Context, frame *ast.Frame) (sql.Expression, error) {
 	if frame == nil || frame.Extent.Start.Type != ast.ExprPreceding {

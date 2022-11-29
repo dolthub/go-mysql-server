@@ -5,13 +5,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"go/format"
 	"io"
 	"os"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"golang.org/x/tools/imports"
 
 	"github.com/dolthub/go-mysql-server/optgen/cmd/support"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
@@ -154,7 +154,7 @@ func generate(defines support.GenDefs, w io.Writer, genFunc func(defines support
 	var err error
 
 	if useGoFmt {
-		b, err = format.Source(buf.Bytes())
+		b, err = imports.Process("github.com/dolthub/go-mysql-server", buf.Bytes(), nil)
 		if err != nil {
 			// Write out incorrect source for easier debugging.
 			b = buf.Bytes()
