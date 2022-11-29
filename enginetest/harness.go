@@ -36,8 +36,7 @@ type Harness interface {
 	// Parallelism returns how many parallel go routines to use when constructing an engine for test.
 	Parallelism() int
 	// NewDatabaseProvider returns a sql.MutableDatabaseProvider to use for a test.
-	// TODO: kill off
-	NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider
+	NewDatabaseProvider() sql.MutableDatabaseProvider
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
 	// their engine implementation. Every harnessed engine test uses the context created by this method, with some
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,

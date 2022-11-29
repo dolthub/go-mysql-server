@@ -134,23 +134,35 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `select 1 as b, (select b order by b);`,
-		Expected: []sql.Row{{1, 1}},
+		Query: `
+			WITH RECURSIVE bus_dst as (
+				SELECT origin as dst FROM bus_routes WHERE origin='New York'
+				UNION
+				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON bus_dst.dst= bus_routes.origin
+			)
+			SELECT * FROM bus_dst
+			ORDER BY dst`,
+		Expected: []sql.Row{
+			{"Boston"},
+			{"New York"},
+			{"Raleigh"},
+			{"Washington"},
+		},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
-	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
+	harness.Setup(setup.GraphSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
 	}
 
-	//engine.Analyzer.Debug = true
-	//engine.Analyzer.Verbose = true
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
 
 	enginetest.TestQueryWithEngine(t, harness, engine, test)
 }

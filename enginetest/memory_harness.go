@@ -40,7 +40,6 @@ type MemoryHarness struct {
 	nativeIndexSupport        bool
 	skippedQueries            map[string]struct{}
 	session                   sql.Session
-	checkpointTables          []*memory.Table
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 }
@@ -210,8 +209,8 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return nil
 }
 
-func (m *MemoryHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
-	return memory.NewDBProvider(dbs...)
+func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
+	return memory.NewDBProviderWithOpts(memory.NativeIndexProvider(m.nativeIndexSupport))
 }
 
 func (m *MemoryHarness) NewDatabase(name string) sql.Database {

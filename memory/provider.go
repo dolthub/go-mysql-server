@@ -146,7 +146,7 @@ func (pro *DbProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
 	} else {
 		db = NewDatabase(name)
 		if pro.nativeIndexes {
-			db.(*BaseDatabase).EnablePrimaryKeyIndexes()
+			db.(*Database).EnablePrimaryKeyIndexes()
 		}
 	}
 
