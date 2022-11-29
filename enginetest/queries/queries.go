@@ -645,6 +645,15 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		// https://github.com/dolthub/dolt/issues/4874
+		Query:    "select * from information_schema.columns where column_key in ('invalid_enum_value') and table_name = 'does_not_exist';",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select 0 in ('hi', 'bye'), 1 in ('hi', 'bye');",
+		Expected: []sql.Row{{true, false}},
+	},
+	{
 		Query: "SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},

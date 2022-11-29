@@ -15,16 +15,20 @@
 package expression_test
 
 import (
-	"testing"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
+	"testing"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
+
+var testEnumType = sql.MustCreateEnumType([]string{"", "one", "two"}, sql.Collation_Default)
+
+var testSetType = sql.MustCreateSetType([]string{"", "one", "two"}, sql.Collation_Default)
 
 func TestInTuple(t *testing.T) {
 	testCases := []struct {
@@ -90,7 +94,77 @@ func TestInTuple(t *testing.T) {
 			false,
 			nil,
 		},
-	}
+		{
+			name: "right values contain a different, coercible type",
+			left: expression.NewLiteral(1, sql.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: false,
+		},
+		{
+			name: "right values contain a different, coercible type, and left value is zero value",
+			left: expression.NewLiteral(0, sql.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "enum on left side; invalid values on right",
+			left: expression.NewLiteral("one", testEnumType),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: false,
+		},
+		{
+			name: "enum on left side; valid enum values on right",
+			left: expression.NewLiteral("one", testEnumType),
+			right: expression.NewTuple(
+				expression.NewLiteral("", sql.TinyText),
+				expression.NewLiteral("one", sql.TinyText),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "set on left side; invalid set values on right",
+			left: expression.NewLiteral("one", testSetType),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: false,
+		},
+		{
+			name: "set on left side; valid set values on right",
+			left: expression.NewLiteral("one", testSetType),
+			right: expression.NewTuple(
+				expression.NewLiteral("", sql.TinyText),
+				expression.NewLiteral("one", sql.TinyText),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "date on right side; non-dates on left",
+			left: expression.NewLiteral(time.Now(), sql.Datetime),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			err:    sql.ErrConvertingToTime,
+			row:    nil,
+			result: false,
+		}}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -215,7 +289,7 @@ func TestHashInTuple(t *testing.T) {
 			nil,
 		},
 		{
-			"left and right don't have the same cols; right has tuple",
+			"left and right don't have the same number of cols; right has tuple",
 			expression.NewLiteral(1, sql.Int64),
 			expression.NewTuple(
 				expression.NewTuple(
@@ -230,7 +304,7 @@ func TestHashInTuple(t *testing.T) {
 			nil,
 		},
 		{
-			"left and right don't have the same cols; left has tuple",
+			"left and right don't have the same number of cols; left has tuple",
 			expression.NewTuple(
 				expression.NewLiteral(1, sql.Int64),
 				expression.NewLiteral(0, sql.Int64),
@@ -387,6 +461,77 @@ func TestHashInTuple(t *testing.T) {
 			result: true,
 		},
 		{
+			name: "right values contain a different, coercible type",
+			left: expression.NewLiteral(1, sql.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: false,
+		},
+		{
+			name: "right values contain a different, coercible type, and left value is zero value",
+			left: expression.NewLiteral(0, sql.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "enum on left side; invalid values on right",
+			left: expression.NewLiteral("one", testEnumType),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: false,
+		},
+		{
+			name: "enum on left side; valid enum values on right",
+			left: expression.NewLiteral("one", testEnumType),
+			right: expression.NewTuple(
+				expression.NewLiteral("", sql.TinyText),
+				expression.NewLiteral("one", sql.TinyText),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "set on left side; invalid set values on right",
+			left: expression.NewLiteral("one", testSetType),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			row:    nil,
+			result: false,
+		},
+		{
+			name: "set on left side; valid set values on right",
+			left: expression.NewLiteral("one", testSetType),
+			right: expression.NewTuple(
+				expression.NewLiteral("", sql.TinyText),
+				expression.NewLiteral("one", sql.TinyText),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "date on right side; non-dates on left",
+			left: expression.NewLiteral(time.Now(), sql.Datetime),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("bye", sql.TinyText),
+			),
+			staticErr: sql.ErrConvertingToTime,
+			row:       nil,
+			result:    false,
+		},
+		{
 			name: "left has a convert (type cast)",
 			left: expression.NewConvert(
 				expression.NewGetField(0, sql.Int64, "foo", false),
@@ -447,14 +592,15 @@ func TestHashInTuple(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &sql.Context{}
+			ctx := sql.NewEmptyContext()
 			require := require.New(t)
 			expr, err := expression.NewHashInTuple(ctx, tt.left, tt.right)
 			if tt.staticErr != nil {
 				require.Error(err)
 				require.True(tt.staticErr.Is(err))
 			} else {
-				result, err := expr.Eval(sql.NewEmptyContext(), tt.row)
+				require.NoError(err)
+				result, err := expr.Eval(ctx, tt.row)
 				if tt.evalErr != nil {
 					require.Error(err)
 					require.True(tt.evalErr.Is(err))

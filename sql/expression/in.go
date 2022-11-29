@@ -84,17 +84,17 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		for _, el := range right {
-			right, err := el.Eval(ctx, row)
+			originalRight, err := el.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
 
-			if !rightNull && right == nil {
+			if !rightNull && originalRight == nil {
 				rightNull = true
 				continue
 			}
 
-			right, err = typ.Convert(right)
+			right, err := convertOrTruncate(ctx, originalRight, typ)
 			if err != nil {
 				return nil, err
 			}
@@ -177,8 +177,14 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 
 	elements := make(map[uint64]sql.Expression)
 	hasNull := false
+	lColumnCount := sql.NumColumns(lType)
 
 	for _, el := range right {
+		rColumnCount := sql.NumColumns(el.Type())
+		if rColumnCount != lColumnCount {
+			return nil, false, sql.ErrInvalidOperandColumns.New(lColumnCount, rColumnCount)
+		}
+
 		if el.Type() == sql.Null {
 			hasNull = true
 		}
@@ -187,9 +193,9 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 			return nil, hasNull, err
 		}
 
-		key, err := hashOfSimple(i, lType)
+		key, err := hashOfSimple(ctx, i, lType)
 		if err != nil {
-			return nil, hasNull, sql.ErrInvalidOperandColumns.New(el, sql.NumColumns(lType))
+			return nil, false, err
 		}
 		elements[key] = el
 	}
@@ -197,7 +203,7 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 	return elements, hasNull, nil
 }
 
-func hashOfSimple(i interface{}, t sql.Type) (uint64, error) {
+func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 	if i == nil {
 		return 0, nil
 	}
@@ -207,18 +213,19 @@ func hashOfSimple(i interface{}, t sql.Type) (uint64, error) {
 		if str, ok := i.(string); ok {
 			return t.(sql.StringType).Collation().HashToUint(str)
 		} else {
-			i, err := t.Convert(i)
+			converted, err := convertOrTruncate(ctx, i, t)
 			if err != nil {
 				return 0, err
 			}
-			return t.(sql.StringType).Collation().HashToUint(i.(string))
+			return t.(sql.StringType).Collation().HashToUint(converted.(string))
 		}
 	} else {
 		hash := xxhash.New()
-		x, err := t.Promote().Convert(i)
+		x, err := convertOrTruncate(ctx, i, t.Promote())
 		if err != nil {
-			return 0, sql.ErrInvalidType.New(i)
+			return 0, err
 		}
+
 		if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
 			return 0, err
 		}
@@ -243,7 +250,7 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	key, err := hashOfSimple(leftVal, hit.Left().Type())
+	key, err := hashOfSimple(ctx, leftVal, hit.Left().Type())
 	if err != nil {
 		return nil, err
 	}
@@ -258,6 +265,39 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	return true, nil
+}
+
+// convertOrTruncate converts the value |i| to type |t| and returns the converted value; if the value does not convert
+// cleanly and the type is automatically coerced (i.e. string and numeric types), then a warning is logged and the
+// value is truncated to the Zero value for type |t|. If the value does not convert and the type is not automatically
+// coerced, then an error is returned.
+func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
+	converted, err := t.Convert(i)
+	if err == nil {
+		return converted, nil
+	}
+
+	// If a value can't be converted to an enum or set type, truncate it to a value that is guaranteed
+	// to not match any enum value.
+	if sql.IsEnum(t) || sql.IsSet(t) {
+		return 0, nil
+	}
+
+	// Values for numeric and string types are automatically coerced. For all other types, if they
+	// don't convert cleanly, it's an error.
+	if err != nil && !(sql.IsNumber(t) || sql.IsTextOnly(t)) {
+		return nil, err
+	}
+
+	// For numeric and string types, if the value can't be cleanly converted, truncate to the zero value for
+	// the type and log a warning in the session.
+	warning := sql.Warning{
+		Level:   "Warning",
+		Message: fmt.Sprintf("Truncated incorrect %s value: %v", t.String(), i),
+		Code:    1292,
+	}
+	ctx.Session.Warn(&warning)
+	return t.Zero(), nil
 }
 
 func (hit *HashInTuple) String() string {
