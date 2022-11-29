@@ -558,4 +558,8 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		Name:       "subqueryAlias",
 		SourceType: "*plan.SubqueryAlias",
 	},
+	{
+		Name:       "tableFunc",
+		SourceType: "sql.TableFunction",
+	},
 }
