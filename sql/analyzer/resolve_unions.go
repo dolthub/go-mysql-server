@@ -136,9 +136,12 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 				}
 				hasdiff = true
 
+				// try to get optimal type to convert both into?
+				convertTo := getConvertToType(ls[i].Type, rs[i].Type)
+
 				// TODO: Principled type coercion...
-				les[i] = expression.NewConvert(les[i], expression.ConvertToChar)
-				res[i] = expression.NewConvert(res[i], expression.ConvertToChar)
+				les[i] = expression.NewConvert(les[i], convertTo)
+				res[i] = expression.NewConvert(res[i], convertTo)
 
 				// Preserve schema names across the conversion.
 				les[i] = expression.NewAlias(ls[i].Name, les[i])
@@ -157,4 +160,28 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		}
 		return n, transform.SameTree, nil
 	})
+}
+
+// getConvertToType returns which type the both left anf right values should be converted to.
+// If neither sql.Type represent number, then converted to string. Otherwise, we try to get
+// the appropriate type to avoid any precision loss.
+func getConvertToType(l, r sql.Type) string {
+	if !sql.IsNumber(l) || !sql.IsNumber(r) {
+		return expression.ConvertToChar
+	}
+
+	if sql.IsDecimal(l) || sql.IsDecimal(r) {
+		return expression.ConvertToDecimal
+	}
+	if sql.IsUnsigned(l) && sql.IsUnsigned(r) {
+		return expression.ConvertToUnsigned
+	}
+	if sql.IsSigned(l) && sql.IsSigned(r) {
+		return expression.ConvertToSigned
+	}
+	if sql.IsInteger(l) && sql.IsInteger(r) {
+		return expression.ConvertToSigned
+	}
+
+	return expression.ConvertToChar
 }

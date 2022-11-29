@@ -1710,6 +1710,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"3.00"},
+		},
+	},
+	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(55)},
@@ -8202,14 +8208,6 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
-	},
-	// mergeUnionSchemas adds convert the decimal value to cast to string, which loses decimal type info.
-	// 				https://github.com/dolthub/dolt/issues/4331
-	{
-		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
-			{"3.00"},
-		},
 	},
 }
 
