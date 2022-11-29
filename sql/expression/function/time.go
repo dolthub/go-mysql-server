@@ -1408,23 +1408,7 @@ func (t *Time) String() string {
 
 // Type implements the Expression interface.
 func (t *Time) Type() sql.Type {
-	return sql.LongText
-}
-
-func getTime(ctx *sql.Context, u expression.UnaryExpression, row sql.Row) (interface{}, error) {
-	val, err := u.Child.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if val == nil {
-		return nil, nil
-	}
-	tim, err := sql.Time.Convert(val)
-	if err != nil {
-		tim = sql.Time.Zero().(time.Time)
-	}
-
-	return tim, nil
+	return sql.Time
 }
 
 // Eval implements the Expression interface.
@@ -1445,15 +1429,11 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	date, err := sql.Datetime.ConvertWithoutRangeCheck(v)
 	if err == nil {
 		h, m, s := date.Clock()
-		return fmt.Sprintf("%02d:%02d:%02d", h, m, s), nil
+		return sql.Timespan(3600*h + 60*m + s), nil
 	}
 
 	// convert to time
-	tim, err := sql.Time.Convert(v)
-	if err != nil {
-		return nil, err
-	}
-	return tim.(sql.Timespan).String(), nil
+	return sql.Time.Convert(v)
 }
 
 // WithChildren implements the Expression interface.
