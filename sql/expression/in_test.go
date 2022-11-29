@@ -15,11 +15,12 @@
 package expression_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
