@@ -25,9 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -37,7 +35,7 @@ import (
 
 type indexBehaviorTestParams struct {
 	name              string
-	driverInitializer enginetest.IndexDriverInitalizer
+	driverInitializer enginetest.IndexDriverInitializer
 	nativeIndexes     bool
 }
 
@@ -373,17 +371,6 @@ func TestIndexQueryPlans(t *testing.T) {
 	}
 }
 
-func extractQueryNode(node sql.Node) sql.Node {
-	switch node := node.(type) {
-	case *plan.QueryProcess:
-		return extractQueryNode(node.Child())
-	case *analyzer.Releaser:
-		return extractQueryNode(node.Child)
-	default:
-		return node
-	}
-}
-
 func TestQueryErrors(t *testing.T) {
 	enginetest.TestQueryErrors(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -397,7 +384,11 @@ func TestInfoSchemaPrepared(t *testing.T) {
 }
 
 func TestReadOnlyDatabases(t *testing.T) {
-	enginetest.TestReadOnlyDatabases(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestReadOnlyDatabases(t, enginetest.NewReadOnlyMemoryHarness())
+}
+
+func TestReadOnlyVersionedQueries(t *testing.T) {
+	enginetest.TestReadOnlyVersionedQueries(t, enginetest.NewReadOnlyMemoryHarness())
 }
 
 func TestColumnAliases(t *testing.T) {
@@ -595,7 +586,6 @@ func TestStoredProcedures(t *testing.T) {
 func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	for _, script := range queries.ExternalProcedureTests {
-		_ = harness.NewDatabase("mydb")
 		e := enginetest.NewEngineWithDbs(t, harness)
 		defer e.Close()
 		enginetest.TestScriptWithEngine(t, e, harness, script)

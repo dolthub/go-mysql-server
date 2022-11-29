@@ -63,9 +63,9 @@ func (pro *DbProvider) WithOption(opt ProviderOption) {
 }
 
 // ReadOnlyProvider returns a ProviderOption to construct a memoryDBProvider that is read-only
-func ReadOnlyProvider() ProviderOption {
+func ReadOnlyProvider(enableReadOnly bool) ProviderOption {
 	return func(pro *DbProvider) {
-		pro.readOnly = true
+		pro.readOnly = enableReadOnly
 	}
 }
 
@@ -76,9 +76,9 @@ func NativeIndexProvider(useNativeIndexes bool) ProviderOption {
 }
 
 // HistoryProvider returns a ProviderOption to construct a memoryDBProvider that uses history databases
-func HistoryProvider() ProviderOption {
+func HistoryProvider(enableHistory bool) ProviderOption {
 	return func(pro *DbProvider) {
-		pro.history = true
+		pro.history = enableHistory
 	}
 }
 
@@ -136,7 +136,7 @@ func (pro *DbProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
 	if pro.readOnly {
 		db = NewReadOnlyDatabase(name)
 		if pro.nativeIndexes {
-			db.(*ReadOnlyDatabase).EnablePrimaryKeyIndexes()
+			db.(ReadOnlyDatabase).EnablePrimaryKeyIndexes()
 		}
 	} else if pro.history {
 		db = NewHistoryDatabase(name)

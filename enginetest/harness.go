@@ -133,8 +133,8 @@ type TransactionHarness interface {
 type ReadOnlyDatabaseHarness interface {
 	Harness
 
-	// NewReadOnlyDatabases returns a sql.ReadOnlyDatabase to use for a test.
-	NewReadOnlyDatabases(...string) []sql.ReadOnlyDatabase
+	// NewReadOnlyEngine returns a new engine with read-only databases.
+	NewReadOnlyEngine() (*sqle.Engine, error)
 }
 
 type ValidatingHarness interface {

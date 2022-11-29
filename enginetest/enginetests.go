@@ -247,27 +247,14 @@ func TestInfoSchema(t *testing.T, h Harness) {
 	}
 }
 
-func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) (dbs []sql.Database) {
-	for _, r := range h.NewReadOnlyDatabases("mydb", "foo") {
-		dbs = append(dbs, sql.Database(r)) // FURP
-	}
-	return dbs
-}
-
-func TestReadOnlyDatabases(t *testing.T, harness Harness) {
-	ro, ok := harness.(ReadOnlyDatabaseHarness)
-	if !ok {
-		t.Fatal("harness is not ReadOnlyDatabaseHarness")
-	}
-	dbs := createReadOnlyDatabases(ro)
-	dbs = createSubsetTestData(t, harness, dbs[0], dbs[1])
-	engine := NewEngineWithDbs(t, harness)
+func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
+	harness.Setup(setup.SimpleSetup...)
+	engine := mustNewEngine(t, harness)
 	defer engine.Close()
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,
 		queries.KeylessQueries,
-		queries.VersionedQueries,
 	} {
 		for _, tt := range querySet {
 			TestQueryWithEngine(t, harness, engine, tt)
@@ -288,8 +275,33 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	}
 }
 
-// Tests generating the correct query plans for various queries using databases and tables provided by the given
-// harness.
+func TestReadOnlyVersionedQueries(t *testing.T, harness Harness) {
+	_, ok := harness.(ReadOnlyDatabaseHarness)
+	if !ok {
+		t.Fatal("harness is not ReadOnlyDatabaseHarness")
+	}
+
+	vh, ok := harness.(VersionedDBHarness)
+	if !ok {
+		t.Fatal("harness is not ReadOnlyDatabaseHarness")
+	}
+
+	CreateVersionedTestData(t, vh)
+	engine, err := vh.NewEngine(t)
+	require.NoError(t, err)
+	defer engine.Close()
+
+	for _, tt := range queries.VersionedQueries {
+		TestQueryWithEngine(t, harness, engine, tt)
+	}
+
+	for _, tt := range queries.VersionedScripts {
+		TestScriptWithEngine(t, engine, harness, tt)
+	}
+}
+
+// TestQueryPlans tests generating the correct query plans for various queries using databases and tables provided by
+// the given harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
 	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)

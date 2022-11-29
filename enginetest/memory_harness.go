@@ -28,14 +28,15 @@ import (
 
 const testNumPartitions = 5
 
-type IndexDriverInitalizer func([]sql.Database) sql.IndexDriver
+type IndexDriverInitializer func([]sql.Database) sql.IndexDriver
 
 type MemoryHarness struct {
 	name                      string
 	parallelism               int
 	numTablePartitions        int
-	versionedProvider         sql.MutableDatabaseProvider
-	indexDriverInitializer    IndexDriverInitalizer
+	readonly                  bool
+	provider                  sql.MutableDatabaseProvider
+	indexDriverInitializer    IndexDriverInitializer
 	driver                    sql.IndexDriver
 	nativeIndexSupport        bool
 	skippedQueries            map[string]struct{}
@@ -54,15 +55,11 @@ var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
-func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer IndexDriverInitalizer) *MemoryHarness {
+func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer IndexDriverInitializer) *MemoryHarness {
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range memory.ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
 	}
-
-	var opts []memory.ProviderOption
-	opts = append(opts, memory.NativeIndexProvider(useNativeIndexes))
-	opts = append(opts, memory.HistoryProvider())
 
 	return &MemoryHarness{
 		name:                      name,
@@ -77,6 +74,12 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 
 func NewDefaultMemoryHarness() *MemoryHarness {
 	return NewMemoryHarness("default", 1, testNumPartitions, true, nil)
+}
+
+func NewReadOnlyMemoryHarness() *MemoryHarness {
+	h := NewMemoryHarness("default", 1, testNumPartitions, true, nil)
+	h.readonly = true
+	return h
 }
 
 // ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface
@@ -209,55 +212,48 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 }
 
 func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
-	if m.versionedProvider != nil {
-		return m.versionedProvider
+	if m.provider != nil {
+		return m.provider
 	}
 
 	return memory.NewDBProviderWithOpts(memory.NativeIndexProvider(m.nativeIndexSupport))
 }
 
-func (m *MemoryHarness) NewDatabase(name string) sql.Database {
+func (m *MemoryHarness) newDatabase(name string) sql.Database {
 	ctx := m.NewContext()
 
-	err := m.getVersionedProvider().CreateDatabase(ctx, name)
+	err := m.getProvider().CreateDatabase(ctx, name)
 	if err != nil {
 		panic(err)
 	}
 
-	db, _ := m.getVersionedProvider().Database(ctx, name)
+	db, _ := m.getProvider().Database(ctx, name)
 	return db
 }
 
-func (m *MemoryHarness) getVersionedProvider() sql.MutableDatabaseProvider {
-	if m.versionedProvider == nil {
+func (m *MemoryHarness) getProvider() sql.MutableDatabaseProvider {
+	if m.provider == nil {
 		opts := []memory.ProviderOption{
 			memory.NativeIndexProvider(m.nativeIndexSupport),
-			memory.HistoryProvider(),
+			memory.HistoryProvider(true),
+			memory.ReadOnlyProvider(true),
 		}
-		m.versionedProvider = memory.NewDBProviderWithOpts(opts...)
+		m.provider = memory.NewDBProviderWithOpts(opts...)
 	}
-	return m.versionedProvider
+	return m.provider
 }
 
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 	var dbs []sql.Database
 	for _, name := range names {
-		dbs = append(dbs, m.NewDatabase(name))
+		dbs = append(dbs, m.newDatabase(name))
 	}
 	return dbs
 }
 
-func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
-	// TODO: fix me
-	m.versionedProvider.(*memory.DbProvider).WithOption(memory.ReadOnlyProvider())
-
-	dbs := m.NewDatabases(names...)
-	readOnlyDbs := make([]sql.ReadOnlyDatabase, len(dbs))
-	for i := range dbs {
-		readOnlyDbs[i] = dbs[i].(sql.ReadOnlyDatabase)
-	}
-
-	return readOnlyDbs
+func (m *MemoryHarness) NewReadOnlyEngine() (*sqle.Engine, error) {
+	provider := m.getProvider()
+	return NewEngineWithProvider(nil, m, provider), nil
 }
 
 func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
