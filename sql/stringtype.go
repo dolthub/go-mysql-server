@@ -556,9 +556,9 @@ func (t stringType) String() string {
 		if t.CharacterSet() != Collation_Default.CharacterSet() {
 			s += " CHARACTER SET " + t.CharacterSet().String()
 		}
-		if t.collation != Collation_Default {
-			s += " COLLATE " + t.collation.Name()
-		}
+		//if t.collation != Collation_Default {
+		//	s += " COLLATE " + t.collation.Name()
+		//}
 	}
 
 	return s
