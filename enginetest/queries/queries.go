@@ -654,6 +654,22 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{true, false}},
 	},
 	{
+		Query:    "select count(*) from typestable where e1 in ('hi', 'bye');",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select count(*) from typestable where e1 in ('', 'bye');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(*) from typestable where s1 in ('hi', 'bye');",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select count(*) from typestable where s1 in ('', 'bye');",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query: "SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},

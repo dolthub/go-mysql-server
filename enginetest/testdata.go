@@ -551,6 +551,8 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "typestable") {
 		wrapInTransaction(t, myDb, harness, func() {
+			enumType := sql.MustCreateEnumType([]string{"", "v1", "v2"}, sql.Collation_Default)
+			setType := sql.MustCreateSetType([]string{"", "v1", "v2"}, sql.Collation_Default)
 			table, err = harness.NewTable(myDb, "typestable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "id", Type: sql.Int64, Source: "typestable", PrimaryKey: true},
 				{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
@@ -569,6 +571,8 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				{Name: "bo", Type: sql.Boolean, Source: "typestable", Nullable: true},
 				{Name: "js", Type: sql.JSON, Source: "typestable", Nullable: true},
 				{Name: "bl", Type: sql.Blob, Source: "typestable", Nullable: true},
+				{Name: "e1", Type: enumType, Source: "typestable", Nullable: true},
+				{Name: "s1", Type: setType, Source: "typestable", Nullable: true},
 			}))
 
 			if err == nil {
@@ -596,6 +600,8 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 						int8(0),
 						nil,
 						nil,
+						"",
+						"",
 					))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "typestable", err)
