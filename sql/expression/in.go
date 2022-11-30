@@ -280,7 +280,7 @@ func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 	// If a value can't be converted to an enum or set type, truncate it to a value that is guaranteed
 	// to not match any enum value.
 	if sql.IsEnum(t) || sql.IsSet(t) {
-		return 0, nil
+		return nil, nil
 	}
 
 	// Values for numeric and string types are automatically coerced. For all other types, if they

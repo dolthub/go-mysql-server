@@ -600,8 +600,8 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 						int8(0),
 						nil,
 						nil,
-						"",
-						"",
+						uint16(1),
+						uint64(0),
 					))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "typestable", err)
