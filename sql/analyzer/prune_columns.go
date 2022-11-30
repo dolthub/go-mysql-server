@@ -334,6 +334,9 @@ func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, sco
 			// do nothing, column defaults have already been resolved
 			return node, transform.SameTree, nil
 		case *plan.SubqueryAlias:
+			if !n.OuterScopeVisibility {
+				return n, transform.SameTree, nil
+			}
 			child, same, err := fixRemainingFieldsIndexes(ctx, a, n.Child, scope)
 			if err != nil {
 				return nil, transform.SameTree, err
