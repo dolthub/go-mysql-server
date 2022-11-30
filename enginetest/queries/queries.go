@@ -3184,14 +3184,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{uint64(20221111)}},
 	},
 	{
-		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{sql.Timespan(44054000000)}},
-	},
-	{
-		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{sql.Timespan(43934000000)}},
-	},
-	{
 		Query:    "select '2022-11-19 11:53:45' & '2023-11-11 11:53:45';",
 		Expected: []sql.Row{{uint64(2022)}},
 	},
@@ -5172,12 +5164,20 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
+		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{sql.Timespan(44054000000)}},
+	},
+	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",
 		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{sql.Timespan(43934000000)}},
 	},
 	{
 		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
