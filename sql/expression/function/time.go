@@ -1429,11 +1429,13 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	date, err := sql.Datetime.ConvertWithoutRangeCheck(v)
 	if err == nil {
 		h, m, s := date.Clock()
-		return sql.Timespan(3600*h + 60*m + s), nil
+		us := date.Nanosecond() / 1000
+		return sql.Timespan(1000000*(3600*h+60*m+s) + us), nil
 	}
 
 	// convert to time
-	return sql.Time.Convert(v)
+	val, err := sql.Time.Convert(v)
+	return val, err
 }
 
 // WithChildren implements the Expression interface.

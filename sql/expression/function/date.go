@@ -108,16 +108,6 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return sql.ValidateTime(delta.Add(date.(time.Time))), nil
-
-	//tim, err := sql.Time.Convert(val)
-	//if err != nil {
-	//	ctx.Warn(1292, err.Error())
-	//	return nil, nil
-	//}
-	//
-	//date = sql.Datetime.Zero()
-	//date = date.(time.Time).Add(tim.(sql.Timespan).AsTimeDuration())
-	//return sql.ValidateTime(delta.Add(date.(time.Time))), nil
 }
 
 func (d *DateAdd) String() string {
