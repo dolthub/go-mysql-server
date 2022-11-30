@@ -651,6 +651,17 @@ func TestTableFunctions(t *testing.T) {
 	}
 }
 
+func TestExternalProcedures(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	for _, script := range queries.ExternalProcedureTests {
+		harness.Setup(setup.MydbData)
+		e, err := harness.NewEngine(t)
+		require.NoError(t, err)
+		defer e.Close()
+		enginetest.TestScriptWithEngine(t, e, harness, script)
+	}
+}
+
 var _ sql.TableFunction = (*SimpleTableFunction)(nil)
 
 // SimpleTableFunction an extremely simple implementation of TableFunction for testing.

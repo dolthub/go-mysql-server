@@ -583,15 +583,6 @@ func TestStoredProcedures(t *testing.T) {
 	enginetest.TestStoredProcedures(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestExternalProcedures(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness()
-	for _, script := range queries.ExternalProcedureTests {
-		e := enginetest.NewEngineWithDbs(t, harness)
-		defer e.Close()
-		enginetest.TestScriptWithEngine(t, e, harness, script)
-	}
-}
-
 func TestTriggersErrors(t *testing.T) {
 	enginetest.TestTriggerErrors(t, enginetest.NewDefaultMemoryHarness())
 }
