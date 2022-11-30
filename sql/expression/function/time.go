@@ -1398,8 +1398,8 @@ type Time struct {
 }
 
 // NewTime returns a new Date node.
-func NewTime(date sql.Expression) sql.Expression {
-	return &Time{expression.UnaryExpression{Child: date}}
+func NewTime(time sql.Expression) sql.Expression {
+	return &Time{expression.UnaryExpression{Child: time}}
 }
 
 func (t *Time) String() string {
@@ -1431,7 +1431,11 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// convert to time
 	val, err := sql.Time.Convert(v)
-	return val, err
+	if err != nil {
+		ctx.Warn(1292, err.Error())
+		return nil, nil
+	}
+	return val, nil
 }
 
 // WithChildren implements the Expression interface.
