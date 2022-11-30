@@ -30,7 +30,7 @@ type Catalog struct {
 	MySQLDb    *mysql_db.MySQLDb
 	infoSchema sql.Database
 
-	provider         sql.DatabaseProvider
+	Provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
 	mu               sync.RWMutex
 	locks            sessionLocks
@@ -52,7 +52,7 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
 		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
 		infoSchema:       information_schema.NewInformationSchemaDatabase(),
-		provider:         provider,
+		Provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
 	}
@@ -68,9 +68,9 @@ func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	dbs = append(dbs, c.infoSchema)
 
 	if c.MySQLDb.Enabled {
-		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).AllDatabases(ctx)...)
+		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).AllDatabases(ctx)...)
 	} else {
-		dbs = append(dbs, c.provider.AllDatabases(ctx)...)
+		dbs = append(dbs, c.Provider.AllDatabases(ctx)...)
 	}
 
 	return dbs
@@ -81,10 +81,10 @@ func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if collatedDbProvider, ok := c.provider.(sql.CollatedDatabaseProvider); ok {
+	if collatedDbProvider, ok := c.Provider.(sql.CollatedDatabaseProvider); ok {
 		// If the database provider supports creation with a collation, then we call that function directly
 		return collatedDbProvider.CreateCollatedDatabase(ctx, dbName, collation)
-	} else if mut, ok := c.provider.(sql.MutableDatabaseProvider); ok {
+	} else if mut, ok := c.Provider.(sql.MutableDatabaseProvider); ok {
 		err := mut.CreateDatabase(ctx, dbName)
 		if err != nil {
 			return err
@@ -108,7 +108,7 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mut, ok := c.provider.(sql.MutableDatabaseProvider)
+	mut, ok := c.Provider.(sql.MutableDatabaseProvider)
 	if ok {
 		return mut.DropDatabase(ctx, dbName)
 	} else {
@@ -121,9 +121,9 @@ func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 	if db == "information_schema" {
 		return true
 	} else if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).HasDatabase(ctx, db)
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).HasDatabase(ctx, db)
 	} else {
-		return c.provider.HasDatabase(ctx, db)
+		return c.Provider.HasDatabase(ctx, db)
 	}
 }
 
@@ -133,9 +133,9 @@ func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
 	if db == "information_schema" {
 		return c.infoSchema, nil
 	} else if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).Database(ctx, db)
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).Database(ctx, db)
 	} else {
-		return c.provider.Database(ctx, db)
+		return c.Provider.Database(ctx, db)
 	}
 }
 
@@ -168,7 +168,7 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			database, err := c.provider.Database(ctx, db)
+			database, err := c.Provider.Database(ctx, db)
 			if err != nil {
 				return err
 			}
@@ -254,7 +254,7 @@ func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 
 // Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
 func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
-	if fp, ok := c.provider.(sql.FunctionProvider); ok {
+	if fp, ok := c.Provider.(sql.FunctionProvider); ok {
 		f, err := fp.Function(ctx, name)
 		if err != nil && !sql.ErrFunctionNotFound.Is(err) {
 			return nil, err
@@ -268,7 +268,7 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 
 // ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider
 func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	if espp, ok := c.provider.(sql.ExternalStoredProcedureProvider); ok {
+	if espp, ok := c.Provider.(sql.ExternalStoredProcedureProvider); ok {
 		esp, err := espp.ExternalStoredProcedure(ctx, name, numOfParams)
 		if err != nil {
 			return nil, err
@@ -282,7 +282,7 @@ func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfPa
 
 // ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
 func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	if espp, ok := c.provider.(sql.ExternalStoredProcedureProvider); ok {
+	if espp, ok := c.Provider.(sql.ExternalStoredProcedureProvider); ok {
 		esps, err := espp.ExternalStoredProcedures(ctx, name)
 		if err != nil {
 			return nil, err
@@ -296,7 +296,7 @@ func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql
 
 // TableFunction implements the TableFunctionProvider interface
 func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
-	if fp, ok := c.provider.(sql.TableFunctionProvider); ok {
+	if fp, ok := c.Provider.(sql.TableFunctionProvider); ok {
 		tf, err := fp.TableFunction(ctx, name)
 		if err != nil {
 			return nil, err

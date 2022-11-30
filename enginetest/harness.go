@@ -133,8 +133,9 @@ type TransactionHarness interface {
 type ReadOnlyDatabaseHarness interface {
 	Harness
 
-	// NewReadOnlyEngine returns a new engine with read-only databases.
-	NewReadOnlyEngine() (*sqle.Engine, error)
+	// NewReadOnlyEngine returns a new engine with read-only versions of the databases supplied by the provider.
+	// TODO: should this and NewEngine actually just be NewProvider?
+	NewReadOnlyEngine(provider sql.DatabaseProvider) (*sqle.Engine, error)
 }
 
 type ValidatingHarness interface {

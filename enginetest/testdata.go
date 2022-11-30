@@ -54,7 +54,7 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 	}
 }
 
-func createSubsetTestData(t *testing.T, harness Harness, myDb, foo sql.Database) []sql.Database {
+func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database) []sql.Database {
 	var table sql.Table
 	var err error
 
@@ -138,8 +138,9 @@ func createSubsetTestData(t *testing.T, harness Harness, myDb, foo sql.Database)
 
 // CreateVersionedTestData uses the provided harness to create test tables and data for many of the other tests.
 func CreateVersionedTestData(t *testing.T, harness VersionedDBHarness) []sql.Database {
+	// TODO: only create mydb here
 	dbs := harness.NewDatabases("mydb", "foo")
-	return createSubsetTestData(t, harness, dbs[0], dbs[1])
+	return createVersionedTables(t, harness, dbs[0], dbs[1])
 }
 
 func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {

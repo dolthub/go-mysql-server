@@ -102,9 +102,7 @@ func NewEngineWithDbs(t *testing.T, harness Harness) *sqle.Engine {
 	return NewEngineWithProvider(t, harness, harness.NewDatabaseProvider())
 }
 
-// NewEngineWithProvider returns a new engine with the specified provider. This is useful when you don't want to
-// implement a full harness, but you need more control over the database provider than the default test MemoryProvider.
-// TODO: this should just be NewEngine, all other paths end here
+// NewEngineWithProvider returns a new engine with the specified provider
 func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
 

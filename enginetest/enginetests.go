@@ -248,9 +248,12 @@ func TestInfoSchema(t *testing.T, h Harness) {
 }
 
 func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
+	// Data setup for a read only database looks like normal setup, then creating a new read-only version of the engine
+	// and provider with the data inserted
 	harness.Setup(setup.SimpleSetup...)
 	engine := mustNewEngine(t, harness)
-	defer engine.Close()
+	engine, err := harness.NewReadOnlyEngine(engine.Analyzer.Catalog.Provider)
+	require.NoError(t, err)
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,

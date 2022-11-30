@@ -303,6 +303,19 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 		return n, transform.SameTree, nil
 	}
 
+	containsRecursiveCte := false
+	transform.Inspect(node, func(node sql.Node) bool {
+		if _, ok := node.(*plan.RecursiveCte); ok {
+			containsRecursiveCte = true
+			return false
+		}
+		return true
+	})
+
+	if containsRecursiveCte {
+		return node, transform.SameTree, nil
+	}
+
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			subScope := scope.newScopeFromSubqueryAlias(sqa)

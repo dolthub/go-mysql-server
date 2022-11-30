@@ -82,6 +82,16 @@ func HistoryProvider(enableHistory bool) ProviderOption {
 	}
 }
 
+// WithDbsOption returns a ProviderOption to construct a DbProvider with the given databases
+func WithDbsOption(dbs []sql.Database) ProviderOption {
+	return func(pro *DbProvider) {
+		pro.dbs = make(map[string]sql.Database, len(dbs))
+		for _, db := range dbs {
+			pro.dbs[strings.ToLower(db.Name())] = db
+		}
+	}
+}
+
 // Database returns the Database with the given name if it exists.
 func (pro *DbProvider) Database(_ *sql.Context, name string) (sql.Database, error) {
 	pro.mu.RLock()
