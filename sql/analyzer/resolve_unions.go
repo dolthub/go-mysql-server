@@ -136,7 +136,7 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 				}
 				hasdiff = true
 
-				// try to get optimal type to convert both into?
+				// try to get optimal type to convert both into
 				convertTo := getConvertToType(ls[i].Type, rs[i].Type)
 
 				// TODO: Principled type coercion...
@@ -162,7 +162,7 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	})
 }
 
-// getConvertToType returns which type the both left anf right values should be converted to.
+// getConvertToType returns which type the both left and right values should be converted to.
 // If neither sql.Type represent number, then converted to string. Otherwise, we try to get
 // the appropriate type to avoid any precision loss.
 func getConvertToType(l, r sql.Type) string {
