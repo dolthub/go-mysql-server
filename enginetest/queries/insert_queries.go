@@ -95,7 +95,7 @@ var InsertQueries = []WriteQueryTest{
 			255, 65535, 4294967295, 18446744073709551615,
 			3.40282346638528859811704183484516925440e+38, 1.797693134862315708145274237317043567981e+308,
 			'2037-04-05 12:51:36', '2231-11-07',
-			'random text', true, '{"key":"value"}', 'blobdata'
+			'random text', true, '{"key":"value"}', 'blobdata', 'v1', 'v2'
 			);`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -104,7 +104,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
-			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"),
+			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
 		}},
 	},
 	{
@@ -113,7 +113,7 @@ var InsertQueries = []WriteQueryTest{
 			u8 = 255, u16 = 65535, u32 = 4294967295, u64 = 18446744073709551615,
 			f32 = 3.40282346638528859811704183484516925440e+38, f64 = 1.797693134862315708145274237317043567981e+308,
 			ti = '2037-04-05 12:51:36', da = '2231-11-07',
-			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata'
+			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata', e1 = 'v1', s1 = 'v2'
 			;`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -122,7 +122,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
-			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"),
+			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
 		}},
 	},
 	{
@@ -131,7 +131,7 @@ var InsertQueries = []WriteQueryTest{
 			0, 0, 0, 0,
 			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
 			'0000-00-00 00:00:00', '0000-00-00',
-			'', false, '""', ''
+			'', false, '""', '', '', ''
 			);`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -140,7 +140,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, sql.MustJSON(`""`), []byte(""),
+			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(1), uint(0),
 		}},
 	},
 	{
@@ -149,7 +149,7 @@ var InsertQueries = []WriteQueryTest{
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
 			ti = '0000-00-00 00:00:00', da = '0000-00-00',
-			te = '', bo = false, js = '""', bl = ''
+			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -158,7 +158,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, sql.MustJSON(`""`), []byte(""),
+			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(2), uint(4),
 		}},
 	},
 	{
@@ -167,7 +167,7 @@ var InsertQueries = []WriteQueryTest{
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
 			ti = '2037-04-05 12:51:36 -0000 UTC', da = '0000-00-00',
-			te = '', bo = false, js = '""', bl = ''
+			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -176,7 +176,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.Date.Zero(),
-			"", sql.False, sql.MustJSON(`""`), []byte(""),
+			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(2), uint(4),
 		}},
 	},
 	{
@@ -187,10 +187,10 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null);`,
+			null, null, null, null, null, null, null, null, null, null);`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 	},
 	{
 		WriteQuery:          `INSERT INTO typestable (id, ti, da) VALUES (999, '2021-09-1', '2021-9-01');`,
@@ -200,10 +200,10 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery: `INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
-			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null;`,
+			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null, e1=null, s1=null;`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SELECT i+100,s FROM mytable",

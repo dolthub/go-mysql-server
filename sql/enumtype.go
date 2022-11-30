@@ -138,14 +138,25 @@ func (t enumType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
+	// Attempt to convert the values to their enum values, but don't error
+	// out if they aren't valid enum values.
 	ai, err := t.Convert(a)
-	if err != nil {
+	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
 	bi, err := t.Convert(b)
-	if err != nil {
+	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
+
+	if ai == nil && bi == nil {
+		return 0, nil
+	} else if ai == nil {
+		return -1, nil
+	} else if bi == nil {
+		return 1, nil
+	}
+
 	au := ai.(uint16)
 	bu := bi.(uint16)
 

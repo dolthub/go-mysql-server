@@ -127,7 +127,9 @@ var UpdateTests = []WriteQueryTest{
 			"fourteen",
 			0,
 			nil,
-			nil}},
+			nil,
+			uint64(1),
+			uint64(0)}},
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
@@ -150,7 +152,9 @@ var UpdateTests = []WriteQueryTest{
 			"fourteen",
 			0,
 			nil,
-			nil}},
+			nil,
+			uint64(1),
+			uint64(0)}},
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET da = '0000-00-00', ti = '0000-00-00 00:00:00';",
@@ -173,7 +177,9 @@ var UpdateTests = []WriteQueryTest{
 			"fourteen",
 			0,
 			nil,
-			nil}},
+			nil,
+			uint64(1),
+			uint64(0)}},
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
