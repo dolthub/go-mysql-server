@@ -1413,11 +1413,7 @@ func (t *Time) Type() sql.Type {
 
 // Eval implements the Expression interface.
 func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// evaluate expression
 	v, err := t.UnaryExpression.Child.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
 	if err != nil {
 		return nil, err
 	}

@@ -572,3 +572,7 @@ func TestCurrentTimestamp(t *testing.T) {
 		})
 	}
 }
+
+func TestTime(t *testing.T) {
+
+}
