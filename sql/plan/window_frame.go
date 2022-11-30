@@ -6,7 +6,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-//go:generate optgen -out window_frame.og.go -pkg plan frame window_frame.go
+//go:generate go run ../../optgen/cmd/optgen/main.go -out window_frame.og.go -pkg plan frame window_frame.go
 
 // windowFrameBase maintains window frame bounds if
 // set for a plan.Window's over clause.

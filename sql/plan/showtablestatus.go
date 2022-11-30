@@ -104,7 +104,7 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			}
 		}
 
-		rows[i] = tableToStatusRow(tName, numRows, dataLength)
+		rows[i] = tableToStatusRow(tName, numRows, dataLength, table.Collation())
 	}
 
 	return sql.RowsToRowIter(rows...), nil
@@ -130,7 +130,7 @@ func (s *ShowTableStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 }
 
 // cc here: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html
-func tableToStatusRow(table string, numRows uint64, dataLength uint64) sql.Row {
+func tableToStatusRow(table string, numRows uint64, dataLength uint64, collation sql.CollationID) sql.Row {
 	var avgLength uint64 = 0
 	if numRows > 0 {
 		avgLength = dataLength / numRows
@@ -141,21 +141,21 @@ func tableToStatusRow(table string, numRows uint64, dataLength uint64) sql.Row {
 		// This column is unused. With the removal of .frm files in MySQL 8.0, this
 		// column now reports a hardcoded value of 10, which is the last .frm file
 		// version used in MySQL 5.7.
-		"10",                           // Version
-		"Fixed",                        // Row_format
-		numRows,                        // Rows
-		avgLength,                      // Avg_row_length
-		dataLength,                     // Data_length
-		uint64(0),                      // Max_data_length (Unused for InnoDB)
-		int64(0),                       // Index_length
-		int64(0),                       // Data_free
-		nil,                            // Auto_increment (always null)
-		nil,                            // Create_time
-		nil,                            // Update_time
-		nil,                            // Check_time
-		sql.Collation_Default.String(), // Collation
-		nil,                            // Checksum
-		nil,                            // Create_options
-		nil,                            // Comments
+		"10",               // Version
+		"Fixed",            // Row_format
+		numRows,            // Rows
+		avgLength,          // Avg_row_length
+		dataLength,         // Data_length
+		uint64(0),          // Max_data_length (Unused for InnoDB)
+		int64(0),           // Index_length
+		int64(0),           // Data_free
+		nil,                // Auto_increment (always null)
+		nil,                // Create_time
+		nil,                // Update_time
+		nil,                // Check_time
+		collation.String(), // Collation
+		nil,                // Checksum
+		nil,                // Create_options
+		nil,                // Comments
 	)
 }
