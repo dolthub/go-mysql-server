@@ -640,12 +640,15 @@ func TestTableFunctions(t *testing.T) {
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness.Setup(setup.MydbData)
 
-	// db := harness.NewDatabase("mydb")
 	databaseProvider := harness.NewDatabaseProvider()
 	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
+	engine, err := enginetest.RunEngineScripts(harness.NewContext(), engine, setup.MydbData, true)
+	require.NoError(t, err)
+
 	for _, test := range tableFunctionScriptTests {
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

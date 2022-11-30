@@ -118,7 +118,7 @@ func (m *MySQLHarness) NewDatabases(names ...string) []sql.Database {
 }
 
 // NewDatabaseProvider implements the interface Harness.
-func (m *MySQLHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
+func (m *MySQLHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
 	return m.shim
 }
 
