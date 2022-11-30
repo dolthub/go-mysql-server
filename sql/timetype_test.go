@@ -130,6 +130,7 @@ func TestTimeConvert(t *testing.T) {
 		{"850:00:00", "838:59:59", false},
 		{"-838:59:59.1", "-838:59:59", false},
 		{"838:59:59.1", "838:59:59", false},
+		{time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), "12:12:12", false},
 
 		{1060, nil, true},
 		{60, nil, true},
@@ -156,7 +157,6 @@ func TestTimeConvert(t *testing.T) {
 		{"-00:00:60", nil, true},
 		{"-00:60:00", nil, true},
 		{[]byte{0}, nil, true},
-		{time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), nil, true},
 	}
 
 	for _, test := range tests {

@@ -1391,3 +1391,57 @@ func (c *CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	return _t, nil
 }
+
+// Time is a function takes the Time part out from a datetime expression.
+type Time struct {
+	expression.UnaryExpression
+}
+
+// NewTime returns a new Date node.
+func NewTime(time sql.Expression) sql.Expression {
+	return &Time{expression.UnaryExpression{Child: time}}
+}
+
+func (t *Time) String() string {
+	return fmt.Sprintf("TIME(%s)", t.Child)
+}
+
+// Type implements the Expression interface.
+func (t *Time) Type() sql.Type {
+	return sql.Time
+}
+
+// Eval implements the Expression interface.
+func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	v, err := t.UnaryExpression.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, nil
+	}
+
+	// convert to date
+	date, err := sql.Datetime.ConvertWithoutRangeCheck(v)
+	if err == nil {
+		h, m, s := date.Clock()
+		us := date.Nanosecond() / 1000
+		return sql.Timespan(1000000*(3600*h+60*m+s) + us), nil
+	}
+
+	// convert to time
+	val, err := sql.Time.Convert(v)
+	if err != nil {
+		ctx.Warn(1292, err.Error())
+		return nil, nil
+	}
+	return val, nil
+}
+
+// WithChildren implements the Expression interface.
+func (t *Time) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+	return NewTime(children[0]), nil
+}
