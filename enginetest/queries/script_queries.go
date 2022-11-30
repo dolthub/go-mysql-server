@@ -161,8 +161,8 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
 				Expected: []sql.Row{{
-					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci",
-					"enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci"}},
+					"enum('abc','XYZ')",
+					"enum('abc','XYZ')"}},
 			},
 			{
 				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
