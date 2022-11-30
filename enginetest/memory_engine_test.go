@@ -152,7 +152,7 @@ func TestSingleQuery(t *testing.T) {
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
 	harness.Setup(setup.GraphSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
