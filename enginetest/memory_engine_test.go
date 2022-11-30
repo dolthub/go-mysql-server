@@ -184,8 +184,10 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "create table t (i blob, index (i(3073)));",
-					ExpectedErr: sql.ErrKeyTooLong,
+					Query: "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
+					Expected: []sql.Row{
+						{},
+					},
 				},
 			},
 		},

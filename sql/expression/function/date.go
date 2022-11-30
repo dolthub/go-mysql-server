@@ -107,7 +107,8 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.ValidateTime(delta.Add(date.(time.Time))), nil
+	res := sql.ValidateTime(delta.Add(date.(time.Time)))
+	return d.Type().Convert(res)
 }
 
 func (d *DateAdd) String() string {
@@ -198,7 +199,8 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.ValidateTime(delta.Sub(date.(time.Time))), nil
+	res := sql.ValidateTime(delta.Sub(date.(time.Time)))
+	return d.Type().Convert(res)
 }
 
 func (d *DateSub) String() string {
