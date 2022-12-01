@@ -7,7 +7,7 @@ import "github.com/dolthub/go-mysql-server/optgen/cmd/support"
 var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{
 		Name:     "AnyValue",
-		Desc:     "returns the value itself",
+		Desc:     "returns any single value in the grouped rows",
 		Nullable: true,
 	},
 	{
