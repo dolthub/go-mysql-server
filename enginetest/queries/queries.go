@@ -959,13 +959,13 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1, "ab"},
-			{2, "4"},
+			{1.0, "ab"},
+			{2.0, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: sql.Int64,
+				Type: sql.Float64,
 			},
 			{
 				Name: "column_1",
@@ -976,13 +976,13 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
 		Expected: []sql.Row{
-			{1, "ab"},
-			{2, "4"},
+			{1.0, "ab"},
+			{2.0, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: sql.Int64,
+				Type: sql.Float64,
 			},
 			{
 				Name: "d",
@@ -993,8 +993,8 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1},
-			{2},
+			{1.0},
+			{2.0},
 		},
 	},
 	{
@@ -1022,12 +1022,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"1.0"}, {"2.5"}},
 	},
 	{
+		SkipPrepared: true,
 		Query:    `SELECT column_0 FROM (values row('1.5',2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
 		Expected: []sql.Row{{"1"}, {"1.5"}},
 	},
 	{
+		// it's float '1' and '1.5' but instead it should have '1.0' and '1.5' decimal results
 		Query:    `SELECT column_0 FROM (values row(1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
-		Expected: []sql.Row{{"1.0"}, {"1.5"}},
+		Expected: []sql.Row{{1.0}, {1.5}},
 	},
 	{
 		Query: `SELECT FORMAT(val, 2) FROM
@@ -1228,8 +1230,8 @@ var QueryTests = []QueryTest{
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,
 		Expected: []sql.Row{
-			{1, "ab"},
-			{2, "4"},
+			{1.0, "ab"},
+			{2.0, "4"},
 		},
 	},
 	{

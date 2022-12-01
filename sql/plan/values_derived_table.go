@@ -7,7 +7,6 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 type ValueDerivedTable struct {
@@ -166,11 +165,7 @@ func getSchema(rows [][]sql.Expression) sql.Schema {
 					name = val.String()
 				}
 
-				t := val.Type()
-				if sql.IsFloat(t) {
-					t = getDecimalTypeFromFloatType(val)
-				}
-				s[i] = &sql.Column{Name: name, Type: t, Nullable: val.IsNullable()}
+				s[i] = &sql.Column{Name: name, Type: val.Type(), Nullable: val.IsNullable()}
 			} else {
 				s[i].Type = getMostPermissiveType(s[i], val)
 				if !s[i].Nullable {
@@ -194,31 +189,29 @@ func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
 	}
 
 	if st, ok := s.Type.(sql.DecimalType); ok {
-		if et, eok := e.Type().(sql.DecimalType); eok {
-			// if both are decimal types, get the bigger decimaltype
-			frac := st.Scale()
-			whole := st.Precision() - frac
-			if ep := et.Precision() - et.Scale(); ep > whole {
-				whole = ep
-			}
-			if et.Scale() > frac {
-				frac = et.Scale()
-			}
-			return sql.MustCreateDecimalType(whole+frac, frac)
-		} else if sql.IsFloat(e.Type()) {
-			return getDecimalTypeFromFloatType(e)
-		} else {
+		et, eok := e.Type().(sql.DecimalType)
+		if !eok {
 			return s.Type
 		}
+		// if both are decimal types, get the bigger decimaltype
+		frac := st.Scale()
+		whole := st.Precision() - frac
+		if ep := et.Precision() - et.Scale(); ep > whole {
+			whole = ep
+		}
+		if et.Scale() > frac {
+			frac = et.Scale()
+		}
+		return sql.MustCreateDecimalType(whole+frac, frac)
 	} else if sql.IsDecimal(e.Type()) {
 		return e.Type()
 	}
 
+	// TODO: float type should be interpreted as decimal type
 	if sql.IsFloat(s.Type) {
-		// TODO: need to convert to decimaltype if schema type is float type?
 		return s.Type
 	} else if sql.IsFloat(e.Type()) {
-		return getDecimalTypeFromFloatType(e)
+		return sql.Float64
 	}
 
 	if sql.IsSigned(s.Type) {
@@ -234,35 +227,4 @@ func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
 	}
 
 	return s.Type
-}
-
-// getDecimalTypeFromFloatType returns decimaltype for expression.Type() is float by evaluating
-// all literals available in the expression to determine the max precision and scale.
-func getDecimalTypeFromFloatType(e sql.Expression) sql.Type {
-	var maxWhole, maxFrac uint8
-	sql.Inspect(e, func(expr sql.Expression) bool {
-		switch c := expr.(type) {
-		case *expression.Literal:
-			if sql.IsNumber(c.Type()) {
-				l, err := c.Eval(nil, nil)
-				if err == nil {
-					p, s := expression.GetPrecisionAndScale(l)
-					if cw := p - s; cw > maxWhole {
-						maxWhole = cw
-					}
-					if s > maxFrac {
-						maxFrac = s
-					}
-				}
-			}
-		}
-		return true
-	})
-
-	defType, err := sql.CreateDecimalType(maxWhole+maxFrac, maxFrac)
-	if err != nil {
-		return sql.MustCreateDecimalType(65, 10)
-	}
-
-	return defType
 }

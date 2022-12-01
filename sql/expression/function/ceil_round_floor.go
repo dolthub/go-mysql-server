@@ -50,6 +50,10 @@ func (c *Ceil) Description() string {
 
 // Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
+	childType := c.Child.Type()
+	if sql.IsNumber(childType) {
+		return childType
+	}
 	return sql.Int32
 }
 
@@ -124,6 +128,10 @@ func (f *Floor) Description() string {
 
 // Type implements the Expression interface.
 func (f *Floor) Type() sql.Type {
+	childType := f.Child.Type()
+	if sql.IsNumber(childType) {
+		return childType
+	}
 	return sql.Int32
 }
 
@@ -355,7 +363,6 @@ func (r *Round) Resolved() bool {
 
 // Type implements the Expression interface.
 func (r *Round) Type() sql.Type {
-	// TODO: should be end result type, which is decimal? can make decimal(65, rightChildVal)
 	leftChildType := r.Left.Type()
 	if sql.IsNumber(leftChildType) {
 		return leftChildType
