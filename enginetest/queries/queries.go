@@ -1023,8 +1023,8 @@ var QueryTests = []QueryTest{
 	},
 	{
 		SkipPrepared: true,
-		Query:    `SELECT column_0 FROM (values row('1.5',2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
-		Expected: []sql.Row{{"1"}, {"1.5"}},
+		Query:        `SELECT column_0 FROM (values row('1.5',2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected:     []sql.Row{{"1"}, {"1.5"}},
 	},
 	{
 		// it's float '1' and '1.5' but instead it should have '1.0' and '1.5' decimal results
