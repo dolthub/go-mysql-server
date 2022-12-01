@@ -80,6 +80,7 @@ type joinIter struct {
 func (i *joinIter) loadPrimary(ctx *sql.Context) error {
 	if i.primaryRow == nil {
 		r, err := i.primary.Next(ctx)
+
 		if err != nil {
 			return err
 		}
@@ -301,13 +302,13 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if !matches {
 				continue
 			}
-			err = rIter.Close(ctx)
-			if err != nil {
-				return nil, err
-			}
 			if i.typ == JoinTypeAnti {
 				// reset iter, found match -> no return row
 				break
+			}
+			err = rIter.Close(ctx)
+			if err != nil {
+				return nil, err
 			}
 			return i.removeParentRow(left), nil
 		}
