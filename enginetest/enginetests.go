@@ -122,13 +122,13 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	for _, tt := range queries.JoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
+	for _, ts := range queries.JoinScriptTests {
+		TestScript(t, harness, ts)
+	}
 
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
-	}
-	for _, ts := range queries.SkippedJoinScripts {
-		TestScript(t, harness, ts)
 	}
 }
 
@@ -182,6 +182,22 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, tt := range queries.DateParseQueries {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
+	}
+}
+
+// TestJoinQueriesPrepared tests join queries as prepared statements against a provided harness.
+func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
+	for _, tt := range queries.JoinQueryTests {
+		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
+	}
+	for _, ts := range queries.JoinScriptTests {
+		TestScriptPrepared(t, harness, ts)
+	}
+
+	t.Skip()
+	for _, tt := range queries.SkippedJoinQueryTests {
+		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 }
 

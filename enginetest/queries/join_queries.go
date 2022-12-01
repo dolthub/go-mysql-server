@@ -526,9 +526,6 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		Query:    "select x from xy join uv on y = v join ab on y = b and u = -1",
 		Expected: []sql.Row{},
 	},
-}
-
-var SkippedJoinQueryTests = []QueryTest{
 	{
 		Query: "select a.* from one_pk_two_idx a LEFT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.pk = j.v3) on a.pk = i.pk LEFT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v2 = l.v3) on a.v1 = l.v2;",
 		Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0},
@@ -539,21 +536,16 @@ var SkippedJoinQueryTests = []QueryTest{
 		Query:    "with recursive a(x,y) as (select i,i from mytable where i < 4 union select a.x, mytable.i from a join mytable on a.x+1 = mytable.i limit 2) select * from a;",
 		Expected: []sql.Row{{1, 1}, {2, 2}},
 	},
-	{
-		// resolve error
-		Query:    "select x from xy, uv join ab on x = a and u = -1",
-		Expected: []sql.Row{{}},
-	},
 }
 
-var SkippedJoinScripts = []ScriptTest{
+var JoinScriptTests = []ScriptTest{
 	{
-		Name: "Complex join query currently returning a planning error",
+		Name: "Complex join query with foreign key constraints",
 		SetUpScript: []string{
-			"CREATE TABLE `tweet` ( id` int NOT NULL AUTO_INCREMENT, `user_id` int NOT NULL, `content` text NOT NULL, `timestamp` bigint NOT NULL, PRIMARY KEY (`id`), KEY `tweet_user_id` (`user_id`), CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`));",
-			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727), (2,1,'purr',1647463727), (3,2,'hiss',1647463727), (4,3,'woof',1647463727)",
 			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
+			"CREATE TABLE `tweet` ( `id` int NOT NULL AUTO_INCREMENT, `user_id` int NOT NULL, `content` text NOT NULL, `timestamp` bigint NOT NULL, PRIMARY KEY (`id`), KEY `tweet_user_id` (`user_id`), CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`));",
 			"INSERT INTO `users` (`id`,`username`) VALUES (1,'huey'), (2,'zaizee'), (3,'mickey')",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727), (2,1,'purr',1647463727), (3,2,'hiss',1647463727), (4,3,'woof',1647463727)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -561,5 +553,13 @@ var SkippedJoinScripts = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 		},
+	},
+}
+
+var SkippedJoinQueryTests = []QueryTest{
+	{
+		// resolve error: table "xy" does not have column "x"
+		Query:    "select x from xy, uv join ab on x = a and u = -1",
+		Expected: []sql.Row{{}},
 	},
 }
