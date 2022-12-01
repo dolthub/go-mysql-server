@@ -827,6 +827,28 @@ var SpatialInsertQueries = []WriteQueryTest{
 
 var InsertScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/4857
+		Name: "issue 4857: insert cte column alias with table alias qualify panic",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int)",
+			"insert into xy values (0,0), (1,1), (2,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `With a as (
+  With b as (
+    With c as (
+      Select x,y from xy where x < 2
+    )
+    Select sum(x) as x, y from c group by y
+  )
+  Select x, y from b d
+) insert into xy (x,y) select x+5,y+5 from a;`,
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 0}}},
+			},
+		},
+	},
+	{
 		Name: "insert into sparse auto_increment table",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
