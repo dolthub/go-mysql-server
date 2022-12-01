@@ -11,6 +11,35 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+type anyValueBuffer struct {
+	res  interface{}
+	expr sql.Expression
+}
+
+func NewAnyValueBuffer(child sql.Expression) *anyValueBuffer {
+	return &anyValueBuffer{nil, child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (a *anyValueBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := a.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+	a.res = v
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (a *anyValueBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return a.res, nil
+}
+
+// Dispose implements the Disposable interface.
+func (a *anyValueBuffer) Dispose() {
+	expression.Dispose(a.expr)
+}
+
 type sumBuffer struct {
 	isnil bool
 	sum   interface{} // sum is either decimal.Decimal or float64

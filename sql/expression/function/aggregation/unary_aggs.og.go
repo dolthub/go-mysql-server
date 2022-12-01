@@ -10,6 +10,62 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+type AnyValue struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*AnyValue)(nil)
+var _ sql.Aggregation = (*AnyValue)(nil)
+var _ sql.WindowAdaptableExpression = (*AnyValue)(nil)
+
+func NewAnyValue(e sql.Expression) *AnyValue {
+	return &AnyValue{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "AnyValue",
+			description:     "returns the value itself",
+		},
+	}
+}
+
+func (a *AnyValue) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *AnyValue) IsNullable() bool {
+	return true
+}
+
+func (a *AnyValue) String() string {
+	return fmt.Sprintf("ANYVALUE(%s)", a.Child)
+}
+
+func (a *AnyValue) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+	res, err := a.unaryAggBase.WithWindow(window)
+	return &AnyValue{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *AnyValue) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &AnyValue{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *AnyValue) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewAnyValueBuffer(child), nil
+}
+
+func (a *AnyValue) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewAnyValueAgg(child).WithWindow(a.Window())
+}
+
 type Avg struct {
 	unaryAggBase
 }

@@ -211,6 +211,15 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	span, ctx := ctx.Span("validate_group_by")
 	defer span.End()
 
+	// only enforce strict group by when this variable is set
+	var strictGroupBy bool
+	if _, sysVal, ok := sql.SystemVariables.GetGlobal("sql_mode"); ok {
+		strictGroupBy = strings.Contains(sysVal.(string), "ONLY_FULL_GROUP_BY")
+	}
+	if !strictGroupBy {
+		return n, transform.SameTree, nil
+	}
+
 	switch n := n.(type) {
 	case *plan.GroupBy:
 		// Allow the parser use the GroupBy node to eval the aggregation functions
@@ -252,6 +261,7 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 		// cc: https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html
 		// Each part of the SelectExpr must refer to the aggregated columns in some way
 		// TODO: this isn't complete, it's overly restrictive. Dependant columns are fine to reference.
+		// TODO: any columns that have any_value() over them are also fine
 		default:
 			if stringContains(groupBys, expr.String()) {
 				return true
