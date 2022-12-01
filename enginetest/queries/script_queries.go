@@ -1371,11 +1371,11 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "SET GLOBAL sql_mode=(select concat(@@sql_mode, ',ONLY_FULL_GROUP_BY'))",
+				Query:    "SET sql_mode=(select concat(@@sql_mode, ',ONLY_FULL_GROUP_BY'))",
 				Expected: []sql.Row{{}},
 			},
 			{
-				Query: "SELECT @@global.sql_mode",
+				Query: "SELECT @@sql_mode",
 				Expected: []sql.Row{
 					{uint64(135424)},
 				},
@@ -1417,11 +1417,11 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "SET GLOBAL sql_mode=(select replace(@@sql_mode,'ONLY_FULL_GROUP_BY',''));",
+				Query:    "SET sql_mode=(select replace(@@sql_mode,'ONLY_FULL_GROUP_BY',''));",
 				Expected: []sql.Row{{}},
 			},
 			{
-				Query: "SELECT @@global.sql_mode",
+				Query: "SELECT @@sql_mode",
 				Expected: []sql.Row{
 					{uint64(131328)},
 				},
