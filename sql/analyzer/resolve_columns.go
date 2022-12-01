@@ -417,16 +417,8 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 			return true
 		})
 		transform.Inspect(in.Source, func(n sql.Node) bool {
-			switch n := n.(type) {
-			case *plan.ResolvedTable:
-				if !aliasedTables[n] {
-					children = append(children, n)
-				}
-			case *plan.IndexedTableAccess:
-				if !aliasedTables[n] {
-					children = append(children, n.ResolvedTable)
-				}
-			default:
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				children = append(children, resTbl)
 			}
 			return true
 		})
@@ -928,18 +920,9 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 			return true
 		})
 		transform.Inspect(node.Source, func(n sql.Node) bool {
-			switch n := n.(type) {
-			case *plan.ResolvedTable:
-				if !aliasedTables[n] {
-					idx = 0
-					indexSchema(n.Schema())
-				}
-			case *plan.IndexedTableAccess:
-				if !aliasedTables[n] {
-					idx = 0
-					indexSchema(n.ResolvedTable.Schema())
-				}
-			default:
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				idx = 0
+				indexSchema(resTbl.Schema())
 			}
 			return true
 		})
