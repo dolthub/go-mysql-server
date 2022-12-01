@@ -4551,6 +4551,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
+		Query:    `SHOW DATABASES LIKE 'information_schema'`,
+		Expected: []sql.Row{{"information_schema"}},
+	},
+	{
+		Query:    "SHOW DATABASES where `Database` =  'information_schema'",
+		Expected: []sql.Row{{"information_schema"}},
+	},
+	{
 		Query:    `SHOW SCHEMAS`,
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},

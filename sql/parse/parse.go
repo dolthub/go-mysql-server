@@ -662,7 +662,27 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return node, nil
 	case sqlparser.KeywordString(sqlparser.DATABASES), sqlparser.KeywordString(sqlparser.SCHEMAS):
-		return plan.NewShowDatabases(), nil
+		var node sql.Node = plan.NewShowDatabases()
+		var filter sql.Expression
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Database"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+			}
+		}
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		var asOfExpression sql.Expression
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {

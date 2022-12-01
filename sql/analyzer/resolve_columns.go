@@ -410,23 +410,15 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	if in, ok := n.(*plan.InsertInto); ok && in.Source != nil && len(in.OnDupExprs) > 0 {
 		aliasedTables := make(map[sql.Node]bool)
 		transform.Inspect(in.Source, func(n sql.Node) bool {
-			if tblAlias, ok := n.(*plan.TableAlias); ok {
+			if tblAlias, ok := n.(*plan.TableAlias); ok && tblAlias.Resolved() {
 				children = append(children, tblAlias)
 				aliasedTables[tblAlias.Child] = true
 			}
 			return true
 		})
 		transform.Inspect(in.Source, func(n sql.Node) bool {
-			switch n := n.(type) {
-			case *plan.ResolvedTable:
-				if !aliasedTables[n] {
-					children = append(children, n)
-				}
-			case *plan.IndexedTableAccess:
-				if !aliasedTables[n] {
-					children = append(children, n.ResolvedTable)
-				}
-			default:
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				children = append(children, resTbl)
 			}
 			return true
 		})
@@ -920,7 +912,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		aliasedTables := make(map[sql.Node]bool)
 		transform.Inspect(node.Source, func(n sql.Node) bool {
 			// need to reset idx for each table found, as this function assumes only 1 table
-			if tblAlias, ok := n.(*plan.TableAlias); ok {
+			if tblAlias, ok := n.(*plan.TableAlias); ok && tblAlias.Resolved() {
 				idx = 0
 				indexSchema(tblAlias.Schema())
 				aliasedTables[tblAlias.Child] = true
@@ -928,18 +920,9 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 			return true
 		})
 		transform.Inspect(node.Source, func(n sql.Node) bool {
-			switch n := n.(type) {
-			case *plan.ResolvedTable:
-				if !aliasedTables[n] {
-					idx = 0
-					indexSchema(n.Schema())
-				}
-			case *plan.IndexedTableAccess:
-				if !aliasedTables[n] {
-					idx = 0
-					indexSchema(n.ResolvedTable.Schema())
-				}
-			default:
+			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				idx = 0
+				indexSchema(resTbl.Schema())
 			}
 			return true
 		})
