@@ -25,6 +25,36 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `
+			WITH RECURSIVE bus_dst as (
+				SELECT origin as dst FROM bus_routes WHERE origin='New York'
+				UNIONexpl
+				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON concat(bus_dst.dst, 'aa') = concat(bus_routes.origin, 'aa')
+			)
+			SELECT * FROM bus_dst
+			ORDER BY dst`,
+		ExpectedPlan: "Sort(bus_dst.dst ASC)\n" +
+			" └─ SubqueryAlias(bus_dst)\n" +
+			"     └─ RecursiveCTE\n" +
+			"         └─ Union distinct\n" +
+			"             ├─ Project\n" +
+			"             │   ├─ columns: [bus_routes.origin as dst]\n" +
+			"             │   └─ Filter(bus_routes.origin = 'New York')\n" +
+			"             │       └─ IndexedTableAccess(bus_routes)\n" +
+			"             │           ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
+			"             │           ├─ filters: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │           └─ columns: [origin]\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [bus_routes.dst]\n" +
+			"                 └─ HashJoin(concat(bus_dst.dst, 'aa') = concat(bus_routes.origin, 'aa'))\n" +
+			"                     ├─ RecursiveTable(bus_dst)\n" +
+			"                     └─ HashLookup(child: (concat(bus_routes.origin, 'aa')), lookup: (concat(bus_dst.dst, 'aa')))\n" +
+			"                         └─ CachedResults\n" +
+			"                             └─ Table(bus_routes)\n" +
+			"                                 └─ columns: [origin dst]\n" +
+			"",
+	},
+	{
 		Query: `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
 		ExpectedPlan: "Sort(xy.x ASC)\n" +
 			" └─ Filter(NOT((xy.x IN (Project\n" +

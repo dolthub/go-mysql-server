@@ -40,11 +40,32 @@ func NewCachedResults(n sql.Node) *CachedResults {
 	}
 }
 
+// CachedResults tees the child node iterator into an in-memory cache
+// for faster subsequent retrieval. This is usually combined with a
+// HashLookup, whose RowIter defers to a CachedResult child to populate
+// rows in memory on a first iteration. The second RowIter moves the
+// rows from the memory cache to a hash map attached to HashLookup,
+// disposing the CachedResult afterwards.
+//
+// In the special case where we fill a CachedResult on pass one, but pass
+// two never happens, we have to take care not to orphan the cache.
+//
+// When we exhaust the source, but the cache is empty, subsequent calls
+// to RowIter return an ErrEmptyCachedResult error for short-circuiting
+// join trees.
+//
+// When the memory manager cannot accommodate expanding the cache, we
+// fall back to a passthrough iterator.
 type CachedResults struct {
 	UnaryNode
-	id        uint64
-	mutex     sync.Mutex
-	noCache   bool
+	id    uint64
+	mutex sync.Mutex
+	// noCache is set when the memory manager is unable to build
+	// a cache, so we fallback to a passthrough RowIter
+	noCache bool
+	// cacheDone is set when we finalize a cache, and set back
+	// to false when we Dispose to avoid mistakenly reporting
+	// an empty cache.
 	cacheDone bool
 }
 
@@ -57,6 +78,9 @@ func (n *CachedResults) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error
 	} else if n.noCache {
 		return n.UnaryNode.Child.RowIter(ctx, r)
 	} else if n.cacheDone {
+		// Parents of CachedResults should handle the edge case
+		// where the cache is empty, and we return ErrEmptyCachedResult
+		// instead of performing a potentially expensive re-computation.
 		return nil, ErrEmptyCachedResult
 	}
 
@@ -69,6 +93,7 @@ func (n *CachedResults) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error
 }
 
 func (n *CachedResults) Dispose() {
+	n.cacheDone = false
 	cachedResultsGlobalCache.disposeCachedResultsById(n.id)
 }
 
