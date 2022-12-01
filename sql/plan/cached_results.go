@@ -69,6 +69,7 @@ func (n *CachedResults) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error
 }
 
 func (n *CachedResults) Dispose() {
+	n.noCache = true
 	cachedResultsGlobalCache.disposeCachedResultsById(n.id)
 }
 
