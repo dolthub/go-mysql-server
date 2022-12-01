@@ -80,7 +80,6 @@ type joinIter struct {
 func (i *joinIter) loadPrimary(ctx *sql.Context) error {
 	if i.primaryRow == nil {
 		r, err := i.primary.Next(ctx)
-
 		if err != nil {
 			return err
 		}
