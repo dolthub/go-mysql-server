@@ -1375,6 +1375,12 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{}},
 			},
 			{
+				Query: "SELECT @@global.sql_mode",
+				Expected: []sql.Row{
+					{uint64(135424)},
+				},
+			},
+			{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
 				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
@@ -1408,6 +1414,16 @@ var ScriptTests = []ScriptTest{
 					{425},
 					{714},
 					{4277},
+				},
+			},
+			{
+				Query:    "SET GLOBAL sql_mode=(select replace(@@sql_mode,'ONLY_FULL_GROUP_BY',''));",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT @@global.sql_mode",
+				Expected: []sql.Row{
+					{uint64(131328)},
 				},
 			},
 		},
