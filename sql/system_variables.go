@@ -148,7 +148,6 @@ func (sv *globalSystemVariables) GetGlobal(name string) (SystemVariable, interfa
 	if name == "uptime" {
 		sv.sysVarVals[name] = int(time.Now().Sub(serverStartUpTime).Seconds())
 	}
-
 	return v, sv.sysVarVals[name], true
 }
 

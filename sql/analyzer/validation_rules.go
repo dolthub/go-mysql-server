@@ -213,8 +213,19 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 
 	// only enforce strict group by when this variable is set
 	var strictGroupBy bool
-	if _, sysVal, ok := sql.SystemVariables.GetGlobal("sql_mode"); ok {
-		strictGroupBy = strings.Contains(sysVal.(string), "ONLY_FULL_GROUP_BY")
+	if sysVar, sysVal, ok := sql.SystemVariables.GetGlobal("sql_mode"); ok {
+		switch val := sysVal.(type) {
+		case string: // our sysvars are weird; it's string when nobody has modified it
+			strictGroupBy = strings.Contains(val, "ONLY_FULL_GROUP_BY")
+		case uint64:
+			sysValStr, err := sysVar.Type.(sql.SetType).BitsToString(val)
+			if err != nil {
+				return n, transform.SameTree, sql.ErrSystemVariableCodeFail.New("sql_mode")
+			}
+			strictGroupBy = strings.Contains(sysValStr, "ONLY_FULL_GROUP_BY")
+		default:
+			return n, transform.SameTree, sql.ErrSystemVariableCodeFail.New("sql_mode")
+		}
 	}
 	if !strictGroupBy {
 		return n, transform.SameTree, nil
