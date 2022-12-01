@@ -135,12 +135,11 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/4684
 		Name: "Group by with decimal columns",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT column_0, sum(column_1) FROM (values row(1.00,1), row(1.00,3), row(2,2), row(2,5), row(3,9)) a group by 1 order by 1;",
-				Expected: []sql.Row{{"1.00", float64(4)}, {2, float64(7)}, {3, float64(9)}},
+				Expected: []sql.Row{{"1.00", float64(4)}, {"2.00", float64(7)}, {"3.00", float64(9)}},
 			},
 		},
 	},

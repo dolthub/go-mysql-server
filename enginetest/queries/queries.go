@@ -959,8 +959,8 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2, 4},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -969,15 +969,15 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "column_1",
-				Type: sql.Int64,
+				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2, 4},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -986,16 +986,48 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "d",
-				Type: sql.Int64,
+				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
 	{
 		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1.0},
+			{1},
 			{2},
 		},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.00"}, {"2.00"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1.00), row(1.000), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.000"}, {"2.000"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1.000), row(21.00), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.000"}, {"21.000"}, {"2.000"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row('2'), row(2)) a (val);`,
+		Expected: []sql.Row{{"1"}, {"1.00"}, {"2"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
+		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
+	},
+	{
+		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected: []sql.Row{{"1.0"}, {"2.5"}},
+	},
+	{
+		Query:    `SELECT column_0 FROM (values row('1.5',2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected: []sql.Row{{"1"}, {"1.5"}},
+	},
+	{
+		Query:    `SELECT column_0 FROM (values row(1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected: []sql.Row{{"1.0"}, {"1.5"}},
 	},
 	{
 		Query: `SELECT FORMAT(val, 2) FROM
@@ -1196,8 +1228,8 @@ var QueryTests = []QueryTest{
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2, 4},
+			{1, "ab"},
+			{2, "4"},
 		},
 	},
 	{
