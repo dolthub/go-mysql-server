@@ -28,7 +28,7 @@ var PlanTests = []QueryPlanTest{
 		Query: `
 			WITH RECURSIVE bus_dst as (
 				SELECT origin as dst FROM bus_routes WHERE origin='New York'
-				UNIONexpl
+				UNION
 				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON concat(bus_dst.dst, 'aa') = concat(bus_routes.origin, 'aa')
 			)
 			SELECT * FROM bus_dst
