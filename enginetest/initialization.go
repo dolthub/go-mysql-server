@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/require"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -36,6 +37,7 @@ func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context
 	return newContextSetup(harness.NewContextWithClient(client))
 }
 
+// TODO: remove
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
 	return NewContext(harness)
 }
@@ -140,6 +142,7 @@ func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup
 	return RunEngineScripts(ctx, e, setupData, supportsIndexes)
 }
 
+// TODO: rename to RunSetupScripts
 func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, supportsIndexes bool) (*sqle.Engine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
@@ -148,13 +151,14 @@ func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScr
 					continue
 				}
 			}
+			// ctx.GetLogger().Warnf("running query %s\n", s)
 			sch, iter, err := e.Query(ctx, s)
 			if err != nil {
-				return nil, fmt.Errorf("failed query '%s': %w", s, err)
+				return nil, err
 			}
 			_, err = sql.RowIterToRows(ctx, sch, iter)
 			if err != nil {
-				return nil, fmt.Errorf("failed query '%s': %w", s, err)
+				return nil, err
 			}
 		}
 	}
@@ -211,7 +215,7 @@ func MustQueryWithPreBindings(ctx *sql.Context, e *sqle.Engine, q string, bindin
 func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
 	e, err := h.NewEngine(t)
 	if err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	return e
 }
