@@ -261,7 +261,6 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 		// cc: https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html
 		// Each part of the SelectExpr must refer to the aggregated columns in some way
 		// TODO: this isn't complete, it's overly restrictive. Dependant columns are fine to reference.
-		// TODO: any columns that have any_value() over them are also fine
 		default:
 			if stringContains(groupBys, expr.String()) {
 				return true
