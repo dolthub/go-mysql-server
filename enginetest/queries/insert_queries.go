@@ -837,18 +837,6 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: `With a as (
   With b as (
-    With c as (
-      Select x,y from xy where x < 2
-    )
-    Select sum(x) as x, y from c group by y
-  )
-  Select x, y from b d
-) insert into xy (x,y) select x+5,y+5 from a;`,
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 0}}},
-			},
-			{
-				Query: `With a as (
-  With b as (
     Select sum(x) as x, y from xy where x < 2 group by y
   )
   Select * from b d
