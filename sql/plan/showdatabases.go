@@ -24,7 +24,6 @@ import (
 // ShowDatabases is a node that shows the databases.
 type ShowDatabases struct {
 	Catalog sql.Catalog
-
 }
 
 // NewShowDatabases creates a new show databases node.
