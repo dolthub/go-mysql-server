@@ -197,19 +197,19 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select @@global.sql_mode",
+				Query: "select @@global.sql_mode",
 				Expected: []sql.Row{
 					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
 				},
 			},
 			{
-				Query:    "select @@session.sql_mode",
+				Query: "select @@session.sql_mode",
 				Expected: []sql.Row{
 					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
 				},
 			},
 			{
-				Query:    "select any_value(id), team from members group by team",
+				Query: "select any_value(id), team from members group by team",
 				Expected: []sql.Row{
 					{3, "red"},
 					{5, "orange"},
