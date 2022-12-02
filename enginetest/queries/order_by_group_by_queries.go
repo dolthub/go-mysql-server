@@ -219,6 +219,17 @@ var OrderByGroupByScriptTests = []ScriptTest{
 					{8, "purple"},
 				},
 			},
+			{
+				Query: "select any_value(id), any_value(team) from members",
+				Expected: []sql.Row{
+					{3, "red"},
+					{4, "red"},
+					{5, "orange"},
+					{6, "orange"},
+					{7, "orange"},
+					{8, "purple"},
+				},
+			},
 		},
 	},
 	{
