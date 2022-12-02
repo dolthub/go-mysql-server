@@ -26,7 +26,9 @@ func (a *anyValueBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	if err != nil {
 		return err
 	}
-	a.res = v
+	if a.res == nil {
+		a.res = v
+	}
 	return nil
 }
 

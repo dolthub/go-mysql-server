@@ -14,7 +14,10 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
+)
 
 var OrderByGroupByScriptTests = []ScriptTest{
 	{
@@ -213,6 +216,67 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{3, "red"},
 					{5, "orange"},
+					{8, "purple"},
+				},
+			},
+		},
+	},
+	{
+		Name: "group by with strict errors",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query: "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query: "select id, team from members group by team",
+				ExpectedErr: analyzer.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
+		Name: "group by with no strict",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "set sql_mode=(select replace(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query: "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"},
+				},
+			},
+			{
+				// TODO: this should be 3, 5, 8
+				Query: "select id, team from members group by team",
+				Expected: []sql.Row{
+					{4, "red"},
+					{7, "orange"},
 					{8, "purple"},
 				},
 			},
