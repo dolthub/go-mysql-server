@@ -42,9 +42,9 @@ func NewCachedResults(n sql.Node) *CachedResults {
 
 type CachedResults struct {
 	UnaryNode
-	id        uint64
-	mutex     sync.Mutex
-	noCache   bool
+	id      uint64
+	mutex   sync.Mutex
+	noCache bool
 	cacheDone bool
 }
 
