@@ -93,7 +93,11 @@ func (a *Avg) IsNullable() bool {
 }
 
 func (a *Avg) String() string {
-	return fmt.Sprintf("AVG(%s)", a.Child)
+	res := fmt.Sprintf("AVG(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *Avg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -149,7 +153,11 @@ func (a *BitAnd) IsNullable() bool {
 }
 
 func (a *BitAnd) String() string {
-	return fmt.Sprintf("BITAND(%s)", a.Child)
+	res := fmt.Sprintf("BITAND(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *BitAnd) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -205,7 +213,11 @@ func (a *BitOr) IsNullable() bool {
 }
 
 func (a *BitOr) String() string {
-	return fmt.Sprintf("BITOR(%s)", a.Child)
+	res := fmt.Sprintf("BITOR(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *BitOr) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -261,7 +273,11 @@ func (a *BitXor) IsNullable() bool {
 }
 
 func (a *BitXor) String() string {
-	return fmt.Sprintf("BITXOR(%s)", a.Child)
+	res := fmt.Sprintf("BITXOR(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *BitXor) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -317,7 +333,11 @@ func (a *Count) IsNullable() bool {
 }
 
 func (a *Count) String() string {
-	return fmt.Sprintf("COUNT(%s)", a.Child)
+	res := fmt.Sprintf("COUNT(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *Count) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -373,7 +393,11 @@ func (a *First) IsNullable() bool {
 }
 
 func (a *First) String() string {
-	return fmt.Sprintf("FIRST(%s)", a.Child)
+	res := fmt.Sprintf("FIRST(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *First) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -429,7 +453,11 @@ func (a *JsonArray) IsNullable() bool {
 }
 
 func (a *JsonArray) String() string {
-	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
+	res := fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *JsonArray) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -485,7 +513,11 @@ func (a *Last) IsNullable() bool {
 }
 
 func (a *Last) String() string {
-	return fmt.Sprintf("LAST(%s)", a.Child)
+	res := fmt.Sprintf("LAST(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *Last) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -541,7 +573,11 @@ func (a *Max) IsNullable() bool {
 }
 
 func (a *Max) String() string {
-	return fmt.Sprintf("MAX(%s)", a.Child)
+	res := fmt.Sprintf("MAX(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *Max) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -597,7 +633,11 @@ func (a *Min) IsNullable() bool {
 }
 
 func (a *Min) String() string {
-	return fmt.Sprintf("MIN(%s)", a.Child)
+	res := fmt.Sprintf("MIN(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *Min) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -653,7 +693,11 @@ func (a *Sum) IsNullable() bool {
 }
 
 func (a *Sum) String() string {
-	return fmt.Sprintf("SUM(%s)", a.Child)
+	res := fmt.Sprintf("SUM(%s)", a.Child)
+	if a.window != nil {
+		res = res + " " + a.window.String()
+	}
+	return res
 }
 
 func (a *Sum) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {

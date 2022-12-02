@@ -29,7 +29,7 @@ func HashOf(v Row) (uint64, error) {
 	hash := xxhash.New()
 	for _, x := range v {
 		// TODO: probably much faster to do this with a type switch
-		if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
+		if _, err := hash.Write([]byte(fmt.Sprintf("%v,", x))); err != nil {
 			return 0, err
 		}
 	}

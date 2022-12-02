@@ -226,7 +226,7 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 			return 0, err
 		}
 
-		if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", x))); err != nil {
+		if _, err := hash.Write([]byte(fmt.Sprintf("%v,", x))); err != nil {
 			return 0, err
 		}
 		return hash.Sum64(), nil
