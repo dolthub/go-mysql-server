@@ -242,7 +242,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select id, team from members group by team",
+				Query:       "select id, team from members group by team",
 				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
 		},
@@ -256,7 +256,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "set sql_mode=(select replace(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))",
+				Query:    "set sql_mode=(select replace(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))",
 				Expected: []sql.Row{{}},
 			},
 			{
