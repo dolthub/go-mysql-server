@@ -4676,7 +4676,7 @@ var QueryTests = []QueryTest{
 			{"offline_mode", int64(0)},
 			{"pseudo_slave_mode", int64(0)},
 			{"rbr_exec_mode", "STRICT"},
-			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
+			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
 			{"ssl_fips_mode", "OFF"},
 		},
 	},

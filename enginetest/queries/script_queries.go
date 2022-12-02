@@ -1347,40 +1347,6 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{false}, {false}, {false}},
 			},
 			{
-				Query: "SELECT col0, col1 FROM tab1 GROUP by col0 ORDER BY col0;",
-				Expected: []sql.Row{
-					{51, 14},
-					{85, 5},
-					{91, 47},
-				},
-			},
-			{
-				Query: "SELECT col0, floor(col1) FROM tab1 GROUP by col0 ORDER BY col0;",
-				Expected: []sql.Row{
-					{51, 14},
-					{85, 5},
-					{91, 47},
-				},
-			},
-			{
-				Query: "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0 ORDER BY cor0.col1",
-				Expected: []sql.Row{
-					{425},
-					{714},
-					{4277},
-				},
-			},
-			{
-				Query:    "SET sql_mode=(select concat(@@sql_mode, ',ONLY_FULL_GROUP_BY'))",
-				Expected: []sql.Row{{}},
-			},
-			{
-				Query: "SELECT @@sql_mode",
-				Expected: []sql.Row{
-					{uint64(135424)},
-				},
-			},
-			{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
 				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
@@ -1391,40 +1357,6 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
 				ExpectedErr: analyzer.ErrValidationGroupBy,
-			},
-			{
-				Query: "SELECT col0, any_value(col1) FROM tab1 GROUP by col0 ORDER BY col0;",
-				Expected: []sql.Row{
-					{51, 14},
-					{85, 5},
-					{91, 47},
-				},
-			},
-			{
-				Query: "SELECT col0, any_value(floor(col1)) FROM tab1 GROUP by col0 ORDER BY col0;",
-				Expected: []sql.Row{
-					{51, 14},
-					{85, 5},
-					{91, 47},
-				},
-			},
-			{
-				Query: "SELECT any_value(floor(cor0.col1) * ceil(cor0.col0)) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0 ORDER BY cor0.col1",
-				Expected: []sql.Row{
-					{425},
-					{714},
-					{4277},
-				},
-			},
-			{
-				Query:    "SET sql_mode=(select replace(@@sql_mode,'ONLY_FULL_GROUP_BY',''));",
-				Expected: []sql.Row{{}},
-			},
-			{
-				Query: "SELECT @@sql_mode",
-				Expected: []sql.Row{
-					{uint64(131328)},
-				},
 			},
 		},
 	},

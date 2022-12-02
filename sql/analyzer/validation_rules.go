@@ -209,29 +209,16 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 
 // checkSqlMode checks if the option is set for the Session in ctx
 func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
-	// get global var to get type to convert sql.SetType
-	sysVar, _, ok := sql.SystemVariables.GetGlobal("sql_mode")
-	if !ok {
-		return false, sql.ErrUnknownSystemVariable.New("sql_mode")
-	}
 	// session variable overrides global
 	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
 	if err != nil {
 		return false, err
 	}
-
-	switch val := sysVal.(type) {
-	case string: // our sysvars are weird; it's string when nobody has modified it, but uint64 afterwards
-		return strings.Contains(val, option), nil
-	case uint64:
-		sysValStr, err := sysVar.Type.(sql.SetType).BitsToString(val)
-		if err != nil {
-			return false, sql.ErrSystemVariableCodeFail.New("sql_mode", val)
-		}
-		return strings.Contains(sysValStr, "ONLY_FULL_GROUP_BY"), nil
-	default:
+	val, ok := sysVal.(string)
+	if !ok {
 		return false, sql.ErrSystemVariableCodeFail.New("sql_mode", val)
 	}
+	return strings.Contains(val, option), nil
 }
 
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

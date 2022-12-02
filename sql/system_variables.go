@@ -148,7 +148,18 @@ func (sv *globalSystemVariables) GetGlobal(name string) (SystemVariable, interfa
 	if name == "uptime" {
 		sv.sysVarVals[name] = int(time.Now().Sub(serverStartUpTime).Seconds())
 	}
-	return v, sv.sysVarVals[name], true
+	// convert any set types to strings
+	sysVal := sv.sysVarVals[name]
+	if sysType, ok := v.Type.(SetType); ok {
+		if sv, ok := sysVal.(uint64); ok {
+			var err error
+			sysVal, err = sysType.BitsToString(sv)
+			if err != nil {
+				return SystemVariable{}, nil, false
+			}
+		}
+	}
+	return v, sysVal, true
 }
 
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,
