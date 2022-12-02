@@ -188,4 +188,34 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "group by with any_value()",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query:    "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query:    "select any_value(id), team from members group by team",
+				Expected: []sql.Row{
+					{3, "red"},
+					{5, "orange"},
+					{8, "purple"},
+				},
+			},
+		},
+	},
 }
