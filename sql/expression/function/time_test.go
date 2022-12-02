@@ -572,3 +572,36 @@ func TestCurrentTimestamp(t *testing.T) {
 		})
 	}
 }
+
+func TestTime(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewTime(expression.NewGetField(0, sql.LongText, "foo", false))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
+		{"time as string", sql.NewRow(stringDate), "14:15:16", false},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			val, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				if v, ok := val.(sql.Timespan); ok {
+					require.Equal(tt.expected, v.String())
+				} else {
+					require.Equal(tt.expected, val)
+				}
+			}
+		})
+	}
+}

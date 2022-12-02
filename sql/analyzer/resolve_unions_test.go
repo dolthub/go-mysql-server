@@ -83,7 +83,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("1", expression.NewConvert(
-						expression.NewGetField(0, sql.Int64, "1", false), "char")),
+						expression.NewGetField(0, sql.Int64, "1", false), "signed")),
 				},
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
@@ -92,7 +92,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 			), plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("3", expression.NewConvert(
-						expression.NewGetField(0, sql.Int32, "3", false), "char")),
+						expression.NewGetField(0, sql.Int32, "3", false), "signed")),
 				},
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},

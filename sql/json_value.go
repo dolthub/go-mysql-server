@@ -142,7 +142,7 @@ func (doc JSONDocument) Search(ctx *Context) (path string, err error) {
 	panic("not implemented")
 }
 
-var _ driver.Value = JSONDocument{}
+var _ driver.Valuer = JSONDocument{}
 
 // Value implements driver.Valuer for interoperability with other go libraries
 func (doc JSONDocument) Value() (driver.Value, error) {

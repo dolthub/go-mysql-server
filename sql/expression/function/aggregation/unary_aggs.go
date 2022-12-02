@@ -2,7 +2,7 @@ package aggregation
 
 import "github.com/dolthub/go-mysql-server/optgen/cmd/support"
 
-//go:generate optgen -out unary_aggs.og.go -pkg aggregation aggs unary_aggs.go
+//go:generate go run ../../../../optgen/cmd/optgen/main.go -out unary_aggs.og.go -pkg aggregation aggs unary_aggs.go
 
 var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{

@@ -114,6 +114,11 @@ func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJoinQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
+func TestJoinQueriesPrepared(t *testing.T) {
+	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
@@ -188,14 +193,27 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
+
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "DELETE ME",
-			SetUpScript: []string{},
+			Name: "create table as select distinct",
+			SetUpScript: []string{
+				"CREATE TABLE t1 (a int, b varchar(10));",
+				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "create table t (i blob, index (i(3073)));",
-					ExpectedErr: sql.ErrKeyTooLong,
+					Query:    "create table t2 as select distinct b, a from t1;",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+				},
+				{
+					Query: "select * from t2 order by a;",
+					Expected: []sql.Row{
+						{"a", 1},
+						{"b", 2},
+						{"c", 3},
+					},
 				},
 			},
 		},
@@ -207,46 +225,11 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "create table as select distinct",
-	//		SetUpScript: []string{
-	//			"CREATE TABLE t1 (a int, b varchar(10));",
-	//			"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    "create table t2 as select distinct b, a from t1;",
-	//				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
-	//			},
-	//			{
-	//				Query: "select * from t2 order by a;",
-	//				Expected: []sql.Row{
-	//					{"a", 1},
-	//					{"b", 2},
-	//					{"c", 3},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.Analyzer.Debug = true
-	//	engine.Analyzer.Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 func TestUnbuildableIndex(t *testing.T) {

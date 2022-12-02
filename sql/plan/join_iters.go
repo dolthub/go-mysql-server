@@ -185,7 +185,6 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 }
 
 func (i *joinIter) Close(ctx *sql.Context) (err error) {
-	i.Dispose()
 	if i.primary != nil {
 		if err = i.primary.Close(ctx); err != nil {
 			if i.secondary != nil {

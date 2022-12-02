@@ -39,37 +39,36 @@ func TestTimeDiff(t *testing.T) {
 		name     string
 		from     sql.Expression
 		to       sql.Expression
-		expected sql.Timespan
+		expected interface{}
 		err      bool
 	}{
 		{
 			"invalid type text",
 			expression.NewLiteral("hello there", sql.Text),
 			expression.NewConvert(expression.NewLiteral("01:00:00", sql.Text), expression.ConvertToTime),
-			toTimespan(""),
-			true,
+			nil,
+			false,
 		},
-		//TODO: handle Date properly
-		/*{
+		{
 			"invalid type date",
 			expression.NewConvert(expression.NewLiteral("2020-01-03", sql.Text), expression.ConvertToDate),
 			expression.NewConvert(expression.NewLiteral("2020-01-04", sql.Text), expression.ConvertToDate),
-			"",
-			true,
-		},*/
+			toTimespan("-24:00:00"),
+			false,
+		},
 		{
 			"type mismatch 1",
 			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
 			expression.NewConvert(expression.NewLiteral("01:00:00", sql.Text), expression.ConvertToTime),
-			toTimespan(""),
-			true,
+			nil,
+			false,
 		},
 		{
 			"type mismatch 2",
 			expression.NewLiteral("00:00:00.2", sql.Text),
 			expression.NewLiteral("2020-10-10 10:10:10", sql.Text),
-			toTimespan(""),
-			true,
+			nil,
+			false,
 		},
 		{
 			"valid mismatch",

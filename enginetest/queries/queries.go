@@ -645,6 +645,31 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		// https://github.com/dolthub/dolt/issues/4874
+		Query:    "select * from information_schema.columns where column_key in ('invalid_enum_value') and table_name = 'does_not_exist';",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select 0 in ('hi', 'bye'), 1 in ('hi', 'bye');",
+		Expected: []sql.Row{{true, false}},
+	},
+	{
+		Query:    "select count(*) from typestable where e1 in ('hi', 'bye');",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select count(*) from typestable where e1 in ('', 'bye');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(*) from typestable where s1 in ('hi', 'bye');",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select count(*) from typestable where s1 in ('', 'bye');",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query: "SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},
@@ -1710,9 +1735,33 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(3)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"3.00"},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00/3.0) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"1.666667"},
+		},
+	},
+	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(55)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"55.0"},
 		},
 	},
 	{
@@ -1721,6 +1770,22 @@ var QueryTests = []QueryTest{
 				SELECT origin as dst FROM bus_routes WHERE origin='New York'
 				UNION
 				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON bus_dst.dst= bus_routes.origin
+			)
+			SELECT * FROM bus_dst
+			ORDER BY dst`,
+		Expected: []sql.Row{
+			{"Boston"},
+			{"New York"},
+			{"Raleigh"},
+			{"Washington"},
+		},
+	},
+	{
+		Query: `
+			WITH RECURSIVE bus_dst as (
+				SELECT origin as dst FROM bus_routes WHERE origin='New York'
+				UNION
+				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON concat(bus_dst.dst, 'aa') = concat(bus_routes.origin, 'aa')
 			)
 			SELECT * FROM bus_dst
 			ORDER BY dst`,
@@ -4486,6 +4551,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
+		Query:    `SHOW DATABASES LIKE 'information_schema'`,
+		Expected: []sql.Row{{"information_schema"}},
+	},
+	{
+		Query:    "SHOW DATABASES where `Database` =  'information_schema'",
+		Expected: []sql.Row{{"information_schema"}},
+	},
+	{
 		Query:    `SHOW SCHEMAS`,
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
@@ -5136,8 +5209,24 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
+		Query:    "SELECT DATE_ADD(DATE('2018-05-02'), INTERVAL 1 day)",
+		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{sql.Timespan(44054000000)}},
+	},
+	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",
+		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{sql.Timespan(43934000000)}},
 	},
 	{
 		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
@@ -8202,14 +8291,6 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
-	},
-	// mergeUnionSchemas adds convert the decimal value to cast to string, which loses decimal type info.
-	// 				https://github.com/dolthub/dolt/issues/4331
-	{
-		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
-			{"3.00"},
-		},
 	},
 }
 
