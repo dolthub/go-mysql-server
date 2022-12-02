@@ -6211,28 +6211,20 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 	}
 }
 
-func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
-	harness, ok := h.(ClientHarness)
-	if !ok {
-		t.Skip("Cannot run TestTypesOverWire as the harness must implement ClientHarness")
-	}
+func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder server.SessionBuilder) {
 	harness.Setup(setup.MydbData)
 
 	port := getEmptyPort(t)
 	for _, script := range queries.TypeWireTests {
 		t.Run(script.Name, func(t *testing.T) {
+			engine := mustNewEngine(t, harness)
+			defer engine.Close()
+
 			ctx := NewContextWithClient(harness, sql.Client{
 				User:    "root",
 				Address: "localhost",
 			})
-			serverConfig := server.Config{
-				Protocol:       "tcp",
-				Address:        fmt.Sprintf("localhost:%d", port),
-				MaxConnections: 1000,
-			}
 
-			engine := mustNewEngine(t, harness)
-			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -6243,6 +6235,11 @@ func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBui
 				RunQueryWithContext(t, engine, harness, ctx, statement)
 			}
 
+			serverConfig := server.Config{
+				Protocol:       "tcp",
+				Address:        fmt.Sprintf("localhost:%d", port),
+				MaxConnections: 1000,
+			}
 			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
 			require.NoError(t, err)
 			go func() {
