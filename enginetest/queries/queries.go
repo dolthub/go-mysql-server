@@ -1781,6 +1781,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `
+			WITH RECURSIVE bus_dst as (
+				SELECT origin as dst FROM bus_routes WHERE origin='New York'
+				UNION
+				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON concat(bus_dst.dst, 'aa') = concat(bus_routes.origin, 'aa')
+			)
+			SELECT * FROM bus_dst
+			ORDER BY dst`,
+		Expected: []sql.Row{
+			{"Boston"},
+			{"New York"},
+			{"Raleigh"},
+			{"Washington"},
+		},
+	},
+	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},

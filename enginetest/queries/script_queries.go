@@ -174,7 +174,6 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
-
 	{
 		Name: "failed statements data validation for INSERT, UPDATE",
 		SetUpScript: []string{
@@ -2707,6 +2706,53 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "select (case 'a' when e then 42 end) from enums",
 				Expected: []sql.Row{{42}},
+			},
+		},
+	},
+	{
+		Name: "SET and ENUM properly handle integers using UPDATE and DELETE statements",
+		SetUpScript: []string{
+			"CREATE TABLE setenumtest (pk INT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO setenumtest VALUES (1, 1, 1), (2, 1, 1), (3, 3, 1), (4, 1, 3);",
+				Expected: []sql.Row{{sql.NewOkResult(4)}},
+			},
+			{
+				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
+				Expected: []sql.Row{{sql.OkResult{
+					RowsAffected: 1,
+					Info: plan.UpdateInfo{
+						Matched:  1,
+						Updated:  1,
+						Warnings: 0,
+					},
+				}}},
+			},
+			{
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				Expected: []sql.Row{
+					{1, uint16(1), uint64(1)},
+					{2, uint16(2), uint64(2)},
+					{3, uint16(3), uint64(1)},
+					{4, uint16(1), uint64(3)},
+				},
+			},
+			{
+				Query:    "DELETE FROM setenumtest WHERE v1 = 3;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "DELETE FROM setenumtest WHERE v2 = 3;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				Expected: []sql.Row{
+					{1, uint16(1), uint64(1)},
+					{2, uint16(2), uint64(2)},
+				},
 			},
 		},
 	},
