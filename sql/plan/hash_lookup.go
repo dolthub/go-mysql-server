@@ -111,9 +111,8 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 				}
 				n.lookup[key] = append(n.lookup[key], row)
 			}
-			// TODO: After the row cache is consumed and
-			// hashed, it would be nice to dispose it. It
-			// will never be used again.
+			// CachedResult is safe to Dispose after contents are transferred
+			// to |n.lookup|
 			cr.Dispose()
 		}
 	}

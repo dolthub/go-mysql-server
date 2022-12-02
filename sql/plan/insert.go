@@ -92,6 +92,9 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 		Ignore:      ignore,
 	}
 }
+func (ii *InsertInto) Dispose() {
+	disposeNode(ii.Source)
+}
 
 // Schema implements the sql.Node interface.
 // Insert nodes return rows that are inserted. Replaces return a concatenation of the deleted row and the inserted row.
