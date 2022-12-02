@@ -2720,10 +2720,10 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{sql.NewOkResult(4)}},
 			},
 			{
-				Query:    "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
+				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
 				Expected: []sql.Row{{sql.OkResult{
 					RowsAffected: 1,
-					Info:         plan.UpdateInfo{
+					Info: plan.UpdateInfo{
 						Matched:  1,
 						Updated:  1,
 						Warnings: 0,
@@ -2731,7 +2731,7 @@ var ScriptTests = []ScriptTest{
 				}}},
 			},
 			{
-				Query:    "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
 					{1, uint16(1), uint64(1)},
 					{2, uint16(2), uint64(2)},
@@ -2748,7 +2748,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:    "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
 				Expected: []sql.Row{
 					{1, uint16(1), uint64(1)},
 					{2, uint16(2), uint64(2)},
