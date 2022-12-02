@@ -196,7 +196,7 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 					columnKey  string
 					nullable   = "NO"
 					ordinalPos = uint32(i + 1)
-					colType    = col.Type.String()
+					colType    = strings.Split(col.Type.String(), " COLLATE")[0]
 					dataType   = colType
 					srsId      interface{}
 				)

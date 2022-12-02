@@ -149,21 +149,12 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("expression.Case")
 	defer span.End()
 
-	var expr interface{}
-	var err error
-	if c.Expr != nil {
-		expr, err = c.Expr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	t := c.Type()
 
 	for _, b := range c.Branches {
 		var cond sql.Expression
-		if expr != nil {
-			cond = NewEquals(NewLiteral(expr, c.Expr.Type()), b.Cond)
+		if c.Expr != nil {
+			cond = NewEquals(c.Expr, b.Cond)
 		} else {
 			cond = b.Cond
 		}

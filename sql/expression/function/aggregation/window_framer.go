@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-//go:generate optgen -out window_framer.og.go -pkg aggregation framer window_framer.go
+//go:generate go run ../../../../optgen/cmd/optgen/main.go -out window_framer.og.go -pkg aggregation framer window_framer.go
 
 var ErrPartitionNotSet = errors.New("attempted to general a window frame interval before framer partition was set")
 var ErrRangeIntervalTypeMismatch = errors.New("range bound type must match the order by expression type")

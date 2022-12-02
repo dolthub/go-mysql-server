@@ -44,6 +44,9 @@ func TestEnumCompare(t *testing.T) {
 		{[]string{"0", "1", "2"}, Collation_Default, 3, "2", 0},
 		{[]string{"0", "1", "2"}, Collation_Default, 2, "1", 0},
 		{[]string{"0", "1", "2"}, Collation_Default, "3", "2", 0},
+		{[]string{"one", "two"}, Collation_Default, "ten", "twenty", 0},
+		{[]string{"one", "two"}, Collation_Default, "one", "hundred", 1},
+		{[]string{"one", "two"}, Collation_Default, "hundred", "one", -1},
 	}
 
 	for _, test := range tests {

@@ -18,6 +18,7 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"time"
 )
 
 // SystemVariableScope represents the scope of a system variable.
@@ -37,6 +38,9 @@ const (
 	// SystemVariableScope_ResetPersist is used to remove a persisted variable
 	SystemVariableScope_ResetPersist
 )
+
+// serverStartUpTime is needed by uptime status variable
+var serverStartUpTime = time.Now()
 
 // String returns the scope as an uppercase string.
 func (s SystemVariableScope) String() string {
@@ -138,10 +142,14 @@ func (sv *globalSystemVariables) GetGlobal(name string) (SystemVariable, interfa
 	defer sv.mutex.RUnlock()
 	name = strings.ToLower(name)
 	v, ok := systemVars[name]
-	if ok {
-		return v, sv.sysVarVals[name], true
+	if !ok {
+		return SystemVariable{}, nil, false
 	}
-	return SystemVariable{}, nil, false
+	if name == "uptime" {
+		sv.sysVarVals[name] = int(time.Now().Sub(serverStartUpTime).Seconds())
+	}
+
+	return v, sv.sysVarVals[name], true
 }
 
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,
@@ -2714,6 +2722,14 @@ var systemVars = map[string]SystemVariable{
 	},
 	"updatable_views_with_limit": {
 		Name:              "updatable_views_with_limit",
+		Scope:             SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: true,
+		Type:              NewSystemBoolType("updatable_views_with_limit"),
+		Default:           int8(1),
+	},
+	"uptime": {
+		Name:              "uptime",
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: true,

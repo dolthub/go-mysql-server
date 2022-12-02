@@ -83,18 +83,13 @@ func (d *DateAdd) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Eval implements the sql.Expression interface.
 func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := d.Date.Eval(ctx, row)
+	val, err := d.Date.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if date == nil {
+	if val == nil {
 		return nil, nil
-	}
-
-	date, err = sql.Datetime.Convert(date)
-	if err != nil {
-		return nil, err
 	}
 
 	delta, err := d.Interval.EvalDelta(ctx, row)
@@ -106,7 +101,19 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.ValidateTime(delta.Add(date.(time.Time))), nil
+	date, err := sql.Datetime.Convert(val)
+	if err != nil {
+		ctx.Warn(1292, err.Error())
+		return nil, nil
+	}
+
+	// return appropriate type
+	res := sql.ValidateTime(delta.Add(date.(time.Time)))
+	resType := d.Type()
+	if sql.IsText(resType) {
+		return res, nil
+	}
+	return resType.Convert(res)
 }
 
 func (d *DateAdd) String() string {
@@ -184,7 +191,8 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	date, err = sql.Datetime.Convert(date)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, err.Error())
+		return nil, nil
 	}
 
 	delta, err := d.Interval.EvalDelta(ctx, row)
@@ -196,7 +204,13 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.ValidateTime(delta.Sub(date.(time.Time))), nil
+	// return appropriate type
+	res := sql.ValidateTime(delta.Sub(date.(time.Time)))
+	resType := d.Type()
+	if sql.IsText(resType) {
+		return res, nil
+	}
+	return resType.Convert(res)
 }
 
 func (d *DateSub) String() string {

@@ -645,6 +645,31 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		// https://github.com/dolthub/dolt/issues/4874
+		Query:    "select * from information_schema.columns where column_key in ('invalid_enum_value') and table_name = 'does_not_exist';",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select 0 in ('hi', 'bye'), 1 in ('hi', 'bye');",
+		Expected: []sql.Row{{true, false}},
+	},
+	{
+		Query:    "select count(*) from typestable where e1 in ('hi', 'bye');",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select count(*) from typestable where e1 in ('', 'bye');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(*) from typestable where s1 in ('hi', 'bye');",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select count(*) from typestable where s1 in ('', 'bye');",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query: "SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},
@@ -1710,9 +1735,33 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(3)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"3.00"},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00/3.0) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"1.666667"},
+		},
+	},
+	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(55)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"55.0"},
 		},
 	},
 	{
@@ -1721,6 +1770,22 @@ var QueryTests = []QueryTest{
 				SELECT origin as dst FROM bus_routes WHERE origin='New York'
 				UNION
 				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON bus_dst.dst= bus_routes.origin
+			)
+			SELECT * FROM bus_dst
+			ORDER BY dst`,
+		Expected: []sql.Row{
+			{"Boston"},
+			{"New York"},
+			{"Raleigh"},
+			{"Washington"},
+		},
+	},
+	{
+		Query: `
+			WITH RECURSIVE bus_dst as (
+				SELECT origin as dst FROM bus_routes WHERE origin='New York'
+				UNION
+				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON concat(bus_dst.dst, 'aa') = concat(bus_routes.origin, 'aa')
 			)
 			SELECT * FROM bus_dst
 			ORDER BY dst`,
@@ -4486,6 +4551,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
+		Query:    `SHOW DATABASES LIKE 'information_schema'`,
+		Expected: []sql.Row{{"information_schema"}},
+	},
+	{
+		Query:    "SHOW DATABASES where `Database` =  'information_schema'",
+		Expected: []sql.Row{{"information_schema"}},
+	},
+	{
 		Query:    `SHOW SCHEMAS`,
 		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
@@ -5136,8 +5209,24 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
+		Query:    "SELECT DATE_ADD(DATE('2018-05-02'), INTERVAL 1 day)",
+		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{sql.Timespan(44054000000)}},
+	},
+	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",
+		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{sql.Timespan(43934000000)}},
 	},
 	{
 		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
@@ -8203,14 +8292,6 @@ var BrokenQueries = []QueryTest{
 		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
 	},
-	// mergeUnionSchemas adds convert the decimal value to cast to string, which loses decimal type info.
-	// 				https://github.com/dolthub/dolt/issues/4331
-	{
-		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
-			{"3.00"},
-		},
-	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -10172,6 +10253,88 @@ var IndexQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "non-unique indexes on keyless tables",
+		SetUpScript: []string{
+			"create table t (i int, j int, index(i))",
+			"insert into t values (0, 100), (0, 200), (1, 100), (1, 200), (2, 100), (2, 200)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, j from t where i = 0 order by i, j",
+				Expected: []sql.Row{
+					{0, 100},
+					{0, 200},
+				},
+			},
+			{
+				Query: "select i, j from t where i = 1 order by i, j",
+				Expected: []sql.Row{
+					{1, 100},
+					{1, 200},
+				},
+			},
+			{
+				Query: "select i, j from t where i > 0 order by i, j",
+				Expected: []sql.Row{
+					{1, 100},
+					{1, 200},
+					{2, 100},
+					{2, 200},
+				},
+			},
+			{
+				Query: "select i, j from t where i > 0 and i < 2 order by i, j",
+				Expected: []sql.Row{
+					{1, 100},
+					{1, 200},
+				},
+			},
+		},
+	},
+	{
+		Name: "more non-unique indexes on keyless tables",
+		SetUpScript: []string{
+			"create table t (i int, j int, k int, index(i, j))",
+			"insert into t values (0, 0, 123), (0, 1, 456), (1, 0, 123), (1, 1, 456), (2, 0, 123), (2, 1, 456)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, j, k from t where i = 0 order by i, j, k",
+				Expected: []sql.Row{
+					{0, 0, 123},
+					{0, 1, 456},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i = 0 and j = 0 order by i, j, k",
+				Expected: []sql.Row{
+					{0, 0, 123},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i = 1 and (j = 0 or j = 1) order by i, j, k",
+				Expected: []sql.Row{
+					{1, 0, 123},
+					{1, 1, 456},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i > 0 and j > 0 order by i, j, k",
+				Expected: []sql.Row{
+					{1, 1, 456},
+					{2, 1, 456},
+				},
+			},
+			{
+				Query: "select i, j, k from t where i > 0 and i < 2 order by i, j, k",
+				Expected: []sql.Row{
+					{1, 0, 123},
+					{1, 1, 456},
+				},
+			},
+		},
+	},
 }
 
 var IndexPrefixQueries = []ScriptTest{
@@ -11022,7 +11185,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
-	// TODO (james): not sure if collations work for in-memory tables; this test is in dolt_queries.go
+	// TODO (james): collations do not work for in-memory tables; this test is in dolt_queries.go
 	{
 		Name: "inline secondary indexes with collation",
 		SetUpScript: []string{
@@ -11210,7 +11373,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 = 'a'",
 				Expected: []sql.Row{
 					{"Filter(t.v1 = 'a')"},
@@ -11227,7 +11389,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 = 'abc'",
 				Expected: []sql.Row{
 					{"Filter(t.v1 = 'abc')"},
@@ -11242,7 +11403,6 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 = 'abcd'",
 				Expected: []sql.Row{
 					{"Filter(t.v1 = 'abcd')"},
@@ -11260,7 +11420,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
 				Expected: []sql.Row{
 					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
@@ -11278,7 +11437,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
 				Expected: []sql.Row{
 					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
@@ -11295,7 +11453,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
 					{"Update"},
@@ -11322,7 +11479,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "explain delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
 					{"Delete"},
@@ -11335,6 +11491,44 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query:    "select * from t",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name:        "test prefix limits",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table varchar_limit(c varchar(10000), index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table text_limit(c text, index (c(768)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table varbinary_limit(c varbinary(10000), index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table blob_limit(c blob, index (c(3072)))",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table bad(c varchar(10000), index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c text, index (c(769)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c varbinary(10000), index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
+			},
+			{
+				Query:       "create table bad(c blob, index (c(3073)))",
+				ExpectedErr: sql.ErrKeyTooLong,
 			},
 		},
 	},

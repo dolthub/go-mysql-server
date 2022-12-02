@@ -17,11 +17,13 @@ CREATE TABLE `typestable` (
   `bo` tinyint,
   `js` json,
   `bl` blob,
+  `e1` enum('', 'v1', 'v2'),
+  `s1` set('', 'v1', 'v2'),
   PRIMARY KEY (`id`)
 )
 ----
 
 exec
 insert into typestable values
-    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null)
+    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null, '', '')
 ----

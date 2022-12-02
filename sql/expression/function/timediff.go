@@ -71,6 +71,18 @@ func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewTimeDiff(children[0], children[1]), nil
 }
 
+func convToDateOrTime(val interface{}) (interface{}, error) {
+	date, err := sql.Datetime.Convert(val)
+	if err == nil {
+		return date, nil
+	}
+	tim, err := sql.Time.Convert(val)
+	if err == nil {
+		return tim, err
+	}
+	return nil, err
+}
+
 // Eval implements the Expression interface.
 func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	left, err := td.Left.Eval(ctx, row)
@@ -84,29 +96,46 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if left == nil || right == nil {
-		return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
+		return nil, nil
 	}
 
-	if leftDatetimeInt, err := sql.Datetime.Convert(left); err == nil {
-		rightDatetimeInt, err := sql.Datetime.Convert(right)
+	// always convert string types
+	if _, ok := left.(string); ok {
+		left, err = convToDateOrTime(left)
 		if err != nil {
-			return nil, err
+			ctx.Warn(1292, err.Error())
+			return nil, nil
 		}
-		leftDatetime := leftDatetimeInt.(time.Time)
-		rightDatetime := rightDatetimeInt.(time.Time)
+	}
+	if _, ok := right.(string); ok {
+		right, err = convToDateOrTime(right)
+		if err != nil {
+			ctx.Warn(1292, err.Error())
+			return nil, nil
+		}
+	}
+
+	// handle as date
+	if leftDatetime, ok := left.(time.Time); ok {
+		rightDatetime, ok := right.(time.Time)
+		if !ok {
+			return nil, nil
+		}
 		if leftDatetime.Location() != rightDatetime.Location() {
 			rightDatetime = rightDatetime.In(leftDatetime.Location())
 		}
 		return sql.Time.Convert(leftDatetime.Sub(rightDatetime))
-	} else if leftTime, err := sql.Time.ConvertToTimespan(left); err == nil {
-		rightTime, err := sql.Time.ConvertToTimespan(right)
-		if err != nil {
-			return nil, err
+	}
+
+	// handle as time
+	if leftTime, ok := left.(sql.Timespan); ok {
+		rightTime, ok := right.(sql.Timespan)
+		if !ok {
+			return nil, nil
 		}
 		return leftTime.Subtract(rightTime), nil
-	} else {
-		return nil, ErrInvalidArgumentType.New("timediff")
 	}
+	return nil, ErrInvalidArgumentType.New("timediff")
 }
 
 // DateDiff returns expr1 − expr2 expressed as a value in days from one date to the other.

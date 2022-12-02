@@ -305,6 +305,14 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 			return zeroTime, nil
 		}
 		return zeroTime, ErrConvertingToTime.New(v)
+	case Timespan:
+		// when receiving TIME, MySQL fills in date with today
+		nowTimeStr := ctxNowFunc().Format("2006-01-02")
+		nowTime, err := time.Parse("2006-01-02", nowTimeStr)
+		if err != nil {
+			return zeroTime, ErrConvertingToTime.New(v)
+		}
+		return nowTime.Add(value.AsTimeDuration()), nil
 	default:
 		return zeroTime, ErrConvertToSQL.New(t)
 	}

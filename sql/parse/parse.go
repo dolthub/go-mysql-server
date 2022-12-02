@@ -675,7 +675,27 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return node, nil
 	case sqlparser.KeywordString(sqlparser.DATABASES), sqlparser.KeywordString(sqlparser.SCHEMAS):
-		return plan.NewShowDatabases(), nil
+		var node sql.Node = plan.NewShowDatabases()
+		var filter sql.Expression
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Database"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+			}
+		}
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		var asOfExpression sql.Expression
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
@@ -1281,7 +1301,16 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 		}
 		params[i] = expr
 	}
-	return plan.NewCall(c.FuncName, params), nil
+
+	var db sql.Database = nil
+	if !c.ProcName.Qualifier.IsEmpty() {
+		db = sql.UnresolvedDatabase(c.ProcName.Qualifier.String())
+	}
+
+	return plan.NewCall(
+		db,
+		c.ProcName.Name.String(),
+		params), nil
 }
 
 func convertDeclare(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
