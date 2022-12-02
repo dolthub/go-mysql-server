@@ -35,7 +35,7 @@ func (a *anyValueBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	a.res = v
-	
+
 	return nil
 }
 
