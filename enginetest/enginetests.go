@@ -970,7 +970,6 @@ func TestTruncate(t *testing.T, harness Harness) {
 }
 
 func TestScripts(t *testing.T, harness Harness) {
-	sql.InitSystemVariables()
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ScriptTests {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -1001,7 +1000,6 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 }
 
 func TestScriptsPrepared(t *testing.T, harness Harness) {
-	sql.InitSystemVariables()
 	harness.Setup(setup.MydbData)
 	for _, script := range append(queries.ScriptTests, queries.SpatialScriptTests...) {
 		if sh, ok := harness.(SkippingHarness); ok {

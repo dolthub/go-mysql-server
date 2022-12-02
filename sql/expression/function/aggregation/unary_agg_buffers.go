@@ -22,13 +22,20 @@ func NewAnyValueBuffer(child sql.Expression) *anyValueBuffer {
 
 // Update implements the AggregationBuffer interface.
 func (a *anyValueBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	if a.res != nil {
+		return nil
+	}
+
 	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
-	if a.res == nil {
-		a.res = v
+	if v == nil {
+		return nil
 	}
+
+	a.res = v
+	
 	return nil
 }
 
