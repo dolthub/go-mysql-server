@@ -440,7 +440,7 @@ func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {
 		return n.NewBuffer()
 	default:
 		// The semantics for a non-aggregation expression in a group by node is First.
-		// When ONLY_FULL_GROUP_BY is enabled, this is an error, but it's allowed otherwise. 
+		// When ONLY_FULL_GROUP_BY is enabled, this is an error, but it's allowed otherwise.
 		return aggregation.NewFirst(expr).NewBuffer()
 	}
 }
