@@ -92,7 +92,11 @@ func (g *AggGen) genAggStringer(define AggDef) {
 		sqlName = define.SqlName
 	}
 	fmt.Fprintf(g.w, "func (a *%s)  String() string {\n", define.Name)
-	fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s(%%s)\", a.Child)\n", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "    res := fmt.Sprintf(\"%s(%%s)\", a.Child)\n", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "    if a.window != nil {\n")
+	fmt.Fprintf(g.w, "    	res = res + \" - \" + a.window.String()\n")
+	fmt.Fprintf(g.w, "    }\n")
+	fmt.Fprintf(g.w, "    return res\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
