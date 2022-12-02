@@ -200,6 +200,7 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
+	// TODO: this is probably going to have to change
 	if p, ok := e.preparedDataForSession(ctx.Session); ok && p.Query == query {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
 	} else {
@@ -339,6 +340,15 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// TODO: do this is parsed is a prepare node
+	if n, ok := parsed.(*plan.PrepareQuery); ok {
+		analyzedChild, _, err := e.Analyzer.AnalyzePrepared(ctx, n.Child, nil)
+		if err != nil {
+			return nil, err
+		}
+		e.CachePreparedStmt(ctx, analyzedChild, "")
 	}
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
