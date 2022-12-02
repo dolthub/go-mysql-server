@@ -136,6 +136,7 @@ func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup
 		supportsIndexes = true
 	}
 
+	// TODO: remove ths, make it explicit everywhere
 	if len(setupData) == 0 {
 		setupData = setup.MydbData
 	}

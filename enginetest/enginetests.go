@@ -1052,12 +1052,7 @@ func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-func TestUserPrivileges(t *testing.T, h Harness) {
-	harness, ok := h.(ClientHarness)
-	if !ok {
-		t.Skip("Cannot run TestUserPrivileges as the harness must implement ClientHarness")
-	}
-
+func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	for _, script := range queries.UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {
@@ -6453,13 +6448,13 @@ func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 
 func TestBlobs(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.BlobData, setup.MytableData)
-	e := mustNewEngine(t, h)
-	defer e.Close()
 
 	for _, tt := range queries.BlobErrors {
 		runQueryErrorTest(t, h, tt)
 	}
 
+	e := mustNewEngine(t, h)
+	defer e.Close()
 	for _, tt := range queries.BlobQueries {
 		TestQueryWithEngine(t, h, e, tt)
 	}
@@ -6470,9 +6465,6 @@ func TestBlobs(t *testing.T, h Harness) {
 }
 
 func TestIndexes(t *testing.T, h Harness) {
-	e := mustNewEngine(t, h)
-	defer e.Close()
-
 	for _, tt := range queries.IndexQueries {
 		TestScript(t, h, tt)
 	}
