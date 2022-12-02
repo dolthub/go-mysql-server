@@ -272,11 +272,10 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// TODO: this should be 3, 5, 8
 				Query: "select id, team from members group by team",
 				Expected: []sql.Row{
-					{4, "red"},
-					{7, "orange"},
+					{3, "red"},
+					{5, "orange"},
 					{8, "purple"},
 				},
 			},

@@ -420,7 +420,7 @@ func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {
 		return n.NewBuffer()
 	default:
 		// The semantics for a non-aggregation in a group by node is Last.
-		return aggregation.NewLast(expr).NewBuffer()
+		return aggregation.NewFirst(expr).NewBuffer()
 	}
 }
 
