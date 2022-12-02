@@ -56,7 +56,7 @@ func TestAggGen(t *testing.T) {
         func (a *Test)  String() string {
             res := fmt.Sprintf("TEST(%s)", a.Child)
             if a.window != nil {
-                res = res + " - " + a.window.String()
+                res = res + " " + a.window.String()
             }
             return res
         }

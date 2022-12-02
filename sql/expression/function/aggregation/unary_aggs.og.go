@@ -39,7 +39,7 @@ func (a *Avg) IsNullable() bool {
 func (a *Avg) String() string {
 	res := fmt.Sprintf("AVG(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -99,7 +99,7 @@ func (a *BitAnd) IsNullable() bool {
 func (a *BitAnd) String() string {
 	res := fmt.Sprintf("BITAND(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -159,7 +159,7 @@ func (a *BitOr) IsNullable() bool {
 func (a *BitOr) String() string {
 	res := fmt.Sprintf("BITOR(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -219,7 +219,7 @@ func (a *BitXor) IsNullable() bool {
 func (a *BitXor) String() string {
 	res := fmt.Sprintf("BITXOR(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -279,7 +279,7 @@ func (a *Count) IsNullable() bool {
 func (a *Count) String() string {
 	res := fmt.Sprintf("COUNT(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -339,7 +339,7 @@ func (a *First) IsNullable() bool {
 func (a *First) String() string {
 	res := fmt.Sprintf("FIRST(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -399,7 +399,7 @@ func (a *JsonArray) IsNullable() bool {
 func (a *JsonArray) String() string {
 	res := fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -459,7 +459,7 @@ func (a *Last) IsNullable() bool {
 func (a *Last) String() string {
 	res := fmt.Sprintf("LAST(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -519,7 +519,7 @@ func (a *Max) IsNullable() bool {
 func (a *Max) String() string {
 	res := fmt.Sprintf("MAX(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -579,7 +579,7 @@ func (a *Min) IsNullable() bool {
 func (a *Min) String() string {
 	res := fmt.Sprintf("MIN(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
@@ -639,7 +639,7 @@ func (a *Sum) IsNullable() bool {
 func (a *Sum) String() string {
 	res := fmt.Sprintf("SUM(%s)", a.Child)
 	if a.window != nil {
-		res = res + " - " + a.window.String()
+		res = res + " " + a.window.String()
 	}
 	return res
 }
