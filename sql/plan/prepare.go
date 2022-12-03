@@ -21,12 +21,13 @@ import (
 
 // PrepareQuery is a node that prepares the query
 type PrepareQuery struct {
-	UnaryNode
+	Name  string
+	Child sql.Node
 }
 
 // NewPrepareQuery creates a new PrepareQuery node.
-func NewPrepareQuery(child sql.Node) *PrepareQuery {
-	return &PrepareQuery{UnaryNode{child}}
+func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
+	return &PrepareQuery{Name: name, Child: child}
 }
 
 // Schema implements the Node interface.
@@ -49,6 +50,10 @@ func (p *PrepareQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	return sql.RowsToRowIter(newRow), nil
 }
 
+func (p *PrepareQuery) Resolved() bool {
+	return true
+}
+
 // Children implements the Node interface.
 func (p *PrepareQuery) Children() []sql.Node {
 	return nil // TODO: maybe just make it Opaque instead?
@@ -56,11 +61,10 @@ func (p *PrepareQuery) Children() []sql.Node {
 
 // WithChildren implements the Node interface.
 func (p *PrepareQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+	if len(children) > 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}
-
-	return NewPrepareQuery(children[0]), nil
+	return p, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -68,6 +72,6 @@ func (p *PrepareQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return p.Child.CheckPrivileges(ctx, opChecker)
 }
 
-func (p PrepareQuery) String() string {
+func (p *PrepareQuery) String() string {
 	return fmt.Sprintf("Prepare(%s)", p.Child.String())
 }

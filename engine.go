@@ -342,13 +342,12 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		}
 	}
 
-	// TODO: do this is parsed is a prepare node
 	if n, ok := parsed.(*plan.PrepareQuery); ok {
 		analyzedChild, _, err := e.Analyzer.AnalyzePrepared(ctx, n.Child, nil)
 		if err != nil {
 			return nil, err
 		}
-		e.CachePreparedStmt(ctx, analyzedChild, "")
+		e.CachePreparedStmt(ctx, analyzedChild, n.Name)
 	}
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
@@ -529,7 +528,7 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	}
 	switch node.(type) {
 	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+			*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
 			return sql.ErrReadOnly.New()
 		} else if e.IsServerLocked {

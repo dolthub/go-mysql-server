@@ -390,7 +390,8 @@ func convertPrepare(ctx *sql.Context, newStmt sqlparser.Statement, n *sqlparser.
 	if err != nil {
 		return nil, err
 	}
-	return plan.NewPrepareQuery(child), nil
+
+	return plan.NewPrepareQuery(n.Name, child), nil
 }
 
 func convertUse(n *sqlparser.Use) (sql.Node, error) {
