@@ -75,3 +75,51 @@ func (p *PrepareQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 func (p *PrepareQuery) String() string {
 	return fmt.Sprintf("Prepare(%s)", p.Child.String())
 }
+
+// ExecuteQuery is a node that prepares the query
+type ExecuteQuery struct {
+	Name  string
+	Child sql.Node
+}
+
+// NewExecuteQuery executes a prepared statement
+func NewExecuteQuery(name string, child sql.Node) *ExecuteQuery {
+	return &ExecuteQuery{Name: name, Child: child}
+}
+
+// Schema implements the Node interface.
+func (p *ExecuteQuery) Schema() sql.Schema {
+	return sql.OkResultSchema
+}
+
+// RowIter implements the Node interface.
+func (p *ExecuteQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	newRow := sql.NewRow(sql.OkResult{RowsAffected: 0, Info: PrepareInfo{}})
+	return sql.RowsToRowIter(newRow), nil
+}
+
+func (p *ExecuteQuery) Resolved() bool {
+	return true
+}
+
+// Children implements the Node interface.
+func (p *ExecuteQuery) Children() []sql.Node {
+	return nil // TODO: maybe just make it Opaque instead?
+}
+
+// WithChildren implements the Node interface.
+func (p *ExecuteQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) > 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
+	return p, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *ExecuteQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Child.CheckPrivileges(ctx, opChecker)
+}
+
+func (p *ExecuteQuery) String() string {
+	return fmt.Sprintf("Prepare(%s)", p.Child.String())
+}
