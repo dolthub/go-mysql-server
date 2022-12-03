@@ -6083,10 +6083,11 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.CharsetCollationEngineTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := harness.NewContext()
-			ctx.SetCurrentDatabase("mydb")
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+			ctx := harness.NewContext()
+			ctx.SetCurrentDatabase("mydb")
+
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
 					if sh.SkipQueryTest(statement) {
