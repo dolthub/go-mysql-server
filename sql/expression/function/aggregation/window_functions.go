@@ -38,6 +38,58 @@ var _ sql.WindowFunction = (*RowNumber)(nil)
 var _ sql.WindowFunction = (*Lag)(nil)
 var _ sql.WindowFunction = (*Lead)(nil)
 
+type AnyValueAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+}
+
+func NewAnyValueAgg(e sql.Expression) *AnyValueAgg {
+	return &AnyValueAgg{
+		expr: e,
+	}
+}
+
+func (a *AnyValueAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *a
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		na.framer = framer
+	}
+	return &na, nil
+}
+
+func (a *AnyValueAgg) Dispose() {
+	expression.Dispose(a.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (a *AnyValueAgg) DefaultFramer() sql.WindowFramer {
+	if a.framer != nil {
+		return a.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (a *AnyValueAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	a.Dispose()
+	return nil
+}
+
+func (a *AnyValueAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		v, err := a.expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+		return v
+	}
+	return nil
+}
+
 type SumAgg struct {
 	partitionStart, partitionEnd int
 	expr                         sql.Expression

@@ -370,6 +370,9 @@ func (t setType) convertStringToBitField(str string) (uint64, error) {
 	var bitField uint64
 	vals := strings.Split(str, ",")
 	for _, val := range vals {
+		if len(val) == 0 {
+			continue
+		}
 		compareVal := val
 		if t.collation != Collation_binary {
 			compareVal = strings.TrimRight(compareVal, " ")

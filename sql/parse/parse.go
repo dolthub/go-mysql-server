@@ -3442,7 +3442,7 @@ func windowDefToWindow(ctx *sql.Context, def *sqlparser.WindowDef) (*sql.WindowD
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {
 	switch v.Name.Lowered() {
-	case "first", "last", "count", "sum", "avg", "max", "min",
+	case "first", "last", "count", "sum", "any_value", "avg", "max", "min",
 		"count_distinct", "json_arrayagg",
 		"row_number", "percent_rank", "lag", "first_value":
 		return true

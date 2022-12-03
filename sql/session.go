@@ -318,6 +318,15 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		s.systemVars[strings.ToLower(sysVarName)] = sysVar.Default
 		val = sysVar.Default
 	}
+	if sysType, ok := sysVar.Type.(SetType); ok {
+		if sv, ok := val.(uint64); ok {
+			var err error
+			val, err = sysType.BitsToString(sv)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	return val, nil
 }
 
