@@ -316,7 +316,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		newNode, sameNode, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			evalSymbols := symbols
 			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
-				evalSymbols = onDupUpdateSymbols
+				evalSymbols = onDupUpdateSymbols // todo: this should see right?
 			}
 			return qualifyExpression(e, n, evalSymbols)
 		})
@@ -419,6 +419,12 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 		transform.Inspect(in.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
 				children = append(children, resTbl)
+			}
+			return true
+		})
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if subAlias, ok := n.(*plan.SubqueryAlias); ok && !aliasedTables[subAlias] {
+				children = append(children, subAlias)
 			}
 			return true
 		})
@@ -921,6 +927,13 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		})
 		transform.Inspect(node.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				idx = 0
+				indexSchema(resTbl.Schema())
+			}
+			return true
+		})
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.SubqueryAlias); ok && !aliasedTables[resTbl] {
 				idx = 0
 				indexSchema(resTbl.Schema())
 			}

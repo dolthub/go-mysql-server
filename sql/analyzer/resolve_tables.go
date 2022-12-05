@@ -55,6 +55,24 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 			return r, transform.NewTree, err
 		case *plan.InsertInto:
+			if with, ok := p.Source.(*plan.With); ok {
+				newSrc, same, err := resolveCommonTableExpressions(ctx, a, with, scope, sel)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return p, transform.SameTree, nil
+				}
+				newSrc, same, err = resolveSubqueries(ctx, a, newSrc, scope, sel)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same { // todo: don't check this
+					return p, transform.SameTree, nil
+				}
+				return p.WithSource(newSrc), transform.NewTree, nil
+			}
+
 			newSrc, same, err := resolveTables(ctx, a, p.Source, scope, sel)
 			if err != nil {
 				return nil, transform.SameTree, err
