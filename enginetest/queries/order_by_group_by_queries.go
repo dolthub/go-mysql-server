@@ -14,7 +14,10 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
+)
 
 var OrderByGroupByScriptTests = []ScriptTest{
 	{
@@ -135,12 +138,11 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/4684
 		Name: "Group by with decimal columns",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT column_0, sum(column_1) FROM (values row(1.00,1), row(1.00,3), row(2,2), row(2,5), row(3,9)) a group by 1 order by 1;",
-				Expected: []sql.Row{{"1.00", float64(4)}, {2, float64(7)}, {3, float64(9)}},
+				Expected: []sql.Row{{"1.00", float64(4)}, {"2.00", float64(7)}, {"3.00", float64(9)}},
 			},
 		},
 	},
@@ -185,6 +187,107 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				// Test validation for a recursive CTE opaque node
 				Query:       "select * from (with recursive a as (select 1 as c1, 1 as c2 union SELECT AVG(t.val), LAST_VALUE(t.val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) select * from a union select * from a limit 1) as dt;",
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+		},
+	},
+	{
+		Name: "group by with any_value()",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query: "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query: "select any_value(id), team from members group by team",
+				Expected: []sql.Row{
+					{3, "red"},
+					{5, "orange"},
+					{8, "purple"},
+				},
+			},
+			{
+				Query: "select any_value(id), any_value(team) from members",
+				Expected: []sql.Row{
+					{3, "red"},
+					{4, "red"},
+					{5, "orange"},
+					{6, "orange"},
+					{7, "orange"},
+					{8, "purple"},
+				},
+			},
+		},
+	},
+	{
+		Name: "group by with strict errors",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query: "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query:       "select id, team from members group by team",
+				ExpectedErr: analyzer.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
+		Name: "group by with no strict",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode=(select replace(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+				},
+			},
+			{
+				Query: "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"},
+				},
+			},
+			{
+				Query: "select id, team from members group by team",
+				Expected: []sql.Row{
+					{3, "red"},
+					{5, "orange"},
+					{8, "purple"},
+				},
 			},
 		},
 	},

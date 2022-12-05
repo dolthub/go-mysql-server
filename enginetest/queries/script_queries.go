@@ -2756,6 +2756,62 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "identical expressions over different windows should produce different results",
+		SetUpScript: []string{
+			"CREATE TABLE t(a INT, b INT);",
+			"INSERT INTO t(a, b) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b) FROM t ORDER BY 1;",
+				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(4)}, {float64(6)}, {float64(9)}, {float64(15)}},
+			},
+			{
+				Query:    "SELECT SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
+				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(6)}, {float64(10)}, {float64(15)}, {float64(21)}},
+			},
+			{
+				Query: "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b), SUM(b) OVER (ORDER BY b) FROM t;",
+				Expected: []sql.Row{
+					{float64(1), float64(1)},
+					{float64(3), float64(3)},
+					{float64(6), float64(6)},
+					{float64(4), float64(10)},
+					{float64(9), float64(15)},
+					{float64(15), float64(21)},
+				},
+			},
+		},
+	},
+	{
+		Name: "windows without ORDER BY should be treated as RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
+		SetUpScript: []string{
+			"CREATE TABLE t(a INT, b INT);",
+			"INSERT INTO t(a, b) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT SUM(b) OVER (PARTITION BY a) FROM t ORDER BY 1;",
+				Expected: []sql.Row{{float64(6)}, {float64(6)}, {float64(6)}, {float64(15)}, {float64(15)}, {float64(15)}},
+			},
+			{
+				Query:    "SELECT SUM(b) OVER () FROM t ORDER BY 1;",
+				Expected: []sql.Row{{float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}},
+			},
+			{
+				Query: "SELECT SUM(b) OVER (PARTITION BY a), SUM(b) OVER () FROM t;",
+				Expected: []sql.Row{
+					{float64(6), float64(21)},
+					{float64(6), float64(21)},
+					{float64(6), float64(21)},
+					{float64(15), float64(21)},
+					{float64(15), float64(21)},
+					{float64(15), float64(21)},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

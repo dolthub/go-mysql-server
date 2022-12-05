@@ -268,6 +268,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 func floatOrDecimalType(e sql.Expression) sql.Type {
 	var resType sql.Type
 	var decType sql.Type
+	var maxWhole, maxFrac uint8
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
@@ -277,6 +278,19 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 			}
 			if sql.IsDecimal(c.Type()) {
 				decType = c.Type()
+			}
+		case *Literal:
+			if sql.IsNumber(c.Type()) {
+				l, err := c.Eval(nil, nil)
+				if err == nil {
+					p, s := GetPrecisionAndScale(l)
+					if cw := p - s; cw > maxWhole {
+						maxWhole = cw
+					}
+					if s > maxFrac {
+						maxFrac = s
+					}
+				}
 			}
 		}
 		return true
@@ -290,11 +304,10 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 		return decType
 	}
 
-	// using max precision which is 65 and DivScale for scale number.
-	// DivScale will be non-zero number if it is the innermost division operation.
-	defType, derr := sql.CreateDecimalType(65, 30)
+	// defType is defined by evaluating all number literals available
+	defType, derr := sql.CreateDecimalType(maxWhole+maxFrac, maxFrac)
 	if derr != nil {
-		return sql.Float64
+		return sql.MustCreateDecimalType(65, 10)
 	}
 
 	return defType
@@ -310,7 +323,7 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 	}
 
 	if _, ok := val.(decimal.Decimal); !ok {
-		p, s := getPrecisionAndScale(val)
+		p, s := GetPrecisionAndScale(val)
 		dtyp, err := sql.CreateDecimalType(p, s)
 		if err != nil {
 			val = decimal.Zero
@@ -386,7 +399,7 @@ func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d,
 			if err != nil {
 				return 0
 			}
-			_, s := getPrecisionAndScale(lval)
+			_, s := GetPrecisionAndScale(lval)
 			return int32(s)
 		} else {
 			return getScaleOfLeftmostValue(ctx, row, a.Left, d, dScale)
@@ -437,8 +450,8 @@ func GetDecimalPrecisionAndScale(val string) (uint8, uint8) {
 	return uint8(precision), uint8(scale)
 }
 
-// getPrecisionAndScale converts the value to string format and parses it to get the precision and scale.
-func getPrecisionAndScale(val interface{}) (uint8, uint8) {
+// GetPrecisionAndScale converts the value to string format and parses it to get the precision and scale.
+func GetPrecisionAndScale(val interface{}) (uint8, uint8) {
 	var str string
 	switch v := val.(type) {
 	case time.Time:

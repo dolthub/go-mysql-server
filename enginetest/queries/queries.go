@@ -960,16 +960,16 @@ var QueryTests = []QueryTest{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},
-			{2, 4},
+			{2.0, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: sql.Int64,
+				Type: sql.Float64,
 			},
 			{
 				Name: "column_1",
-				Type: sql.Int64,
+				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -977,16 +977,16 @@ var QueryTests = []QueryTest{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},
-			{2, 4},
+			{2.0, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: sql.Int64,
+				Type: sql.Float64,
 			},
 			{
 				Name: "d",
-				Type: sql.Int64,
+				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -994,8 +994,43 @@ var QueryTests = []QueryTest{
 		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
 			{1.0},
-			{2},
+			{2.0},
 		},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.00"}, {"2.00"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1.00), row(1.000), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.000"}, {"2.000"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1.000), row(21.00), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.000"}, {"21.000"}, {"2.000"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row('2'), row(2)) a (val);`,
+		Expected: []sql.Row{{"1"}, {"1.00"}, {"2"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
+		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
+	},
+	{
+		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected: []sql.Row{{"1.0"}, {"2.5"}},
+	},
+	{
+		// The SortFields does not match between prepared and non-prepared nodes.
+		SkipPrepared: true,
+		Query:        `SELECT column_0 FROM (values row('1.5',2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected:     []sql.Row{{"1"}, {"1.5"}},
+	},
+	{
+		// the result on sql shell are '1' and '1.5' but instead it should have decimal values of '1.0' and '1.5'
+		Query:    `SELECT column_0 FROM (values row(1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected: []sql.Row{{float64(1)}, {1.5}},
 	},
 	{
 		Query: `SELECT FORMAT(val, 2) FROM
@@ -1197,7 +1232,7 @@ var QueryTests = []QueryTest{
 			order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},
-			{2, 4},
+			{2.0, "4"},
 		},
 	},
 	{
@@ -4692,7 +4727,7 @@ var QueryTests = []QueryTest{
 			{"offline_mode", int64(0)},
 			{"pseudo_slave_mode", int64(0)},
 			{"rbr_exec_mode", "STRICT"},
-			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
+			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
 			{"ssl_fips_mode", "OFF"},
 		},
 	},

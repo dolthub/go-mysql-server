@@ -3461,12 +3461,19 @@ func windowDefToWindow(ctx *sql.Context, def *sqlparser.WindowDef) (*sql.WindowD
 	if err != nil {
 		return nil, err
 	}
+
+	// According to MySQL documentation at https://dev.mysql.com/doc/refman/8.0/en/window-functions-usage.html
+	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
+	if def.OrderBy == nil && frame == nil {
+		frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
+	}
+
 	return sql.NewWindowDefinition(partitions, sortFields, frame, def.NameRef.Lowered(), def.Name.Lowered()), nil
 }
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {
 	switch v.Name.Lowered() {
-	case "first", "last", "count", "sum", "avg", "max", "min",
+	case "first", "last", "count", "sum", "any_value", "avg", "max", "min",
 		"count_distinct", "json_arrayagg",
 		"row_number", "percent_rank", "lag", "first_value":
 		return true
