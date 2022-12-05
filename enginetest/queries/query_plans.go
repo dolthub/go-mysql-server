@@ -3051,8 +3051,8 @@ inner join pq on true
 	{
 		Query: `SELECT t, n, lag(t, 1, t+1) over (partition by n) FROM bigtable`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n) as lag(t, 1, t+1) over (partition by n)]\n" +
-			" └─ Window(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n))\n" +
+			" ├─ columns: [bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as lag(t, 1, t+1) over (partition by n)]\n" +
+			" └─ Window(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING))\n" +
 			"     └─ Table(bigtable)\n" +
 			"         └─ columns: [t n]\n" +
 			"",
@@ -3060,8 +3060,8 @@ inner join pq on true
 	{
 		Query: `select i, row_number() over (w3) from mytable window w1 as (w2), w2 as (), w3 as (w1)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i, row_number() over () as row_number() over (w3)]\n" +
-			" └─ Window(mytable.i, row_number() over ())\n" +
+			" ├─ columns: [mytable.i, row_number() over ( ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as row_number() over (w3)]\n" +
+			" └─ Window(mytable.i, row_number() over ( ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING))\n" +
 			"     └─ Table(mytable)\n" +
 			"         └─ columns: [i]\n" +
 			"",
@@ -3069,8 +3069,8 @@ inner join pq on true
 	{
 		Query: `select i, row_number() over (w1 partition by s) from mytable window w1 as (order by i asc)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i, row_number() over ( partition by mytable.s order by mytable.i ASC) as row_number() over (w1 partition by s)]\n" +
-			" └─ Window(mytable.i, row_number() over ( partition by mytable.s order by mytable.i ASC))\n" +
+			" ├─ columns: [mytable.i, row_number() over ( partition by mytable.s order by mytable.i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as row_number() over (w1 partition by s)]\n" +
+			" └─ Window(mytable.i, row_number() over ( partition by mytable.s order by mytable.i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING))\n" +
 			"     └─ Table(mytable)\n" +
 			"         └─ columns: [i s]\n" +
 			"",

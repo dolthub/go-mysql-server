@@ -288,7 +288,7 @@ func TestReplaceWindowNames(t *testing.T) {
 									[]sql.Expression{}, nil,
 									plan.NewRangeNPrecedingToCurrentRowFrame(
 										expression.NewInterval(
-											expression.NewLiteral("2:30", sql.LongText),
+											expression.NewLiteral("2:35", sql.LongText),
 											"MINUTE_SECOND",
 										),
 									), "w", "")),

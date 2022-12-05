@@ -3864,7 +3864,9 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("a"),
 					expression.NewAlias("count(i) over ()",
-						expression.NewUnresolvedFunction("count", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""), expression.NewUnresolvedColumn("i")),
+						expression.NewUnresolvedFunction("count", true,
+							sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", ""),
+							expression.NewUnresolvedColumn("i")),
 					),
 				},
 				plan.NewUnresolvedTable("foo", ""),
@@ -3888,7 +3890,7 @@ CREATE TABLE t2
 					expression.NewAlias("row_number() over (partition by y)",
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("y"),
-						}, nil, nil, "", "")),
+						}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", "")),
 					),
 				},
 				plan.NewUnresolvedTable("foo", ""),
@@ -3910,7 +3912,7 @@ CREATE TABLE t2
 						}, nil, "", "")),
 					),
 					expression.NewAlias("max(b) over ()",
-						expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""),
+						expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", ""),
 							expression.NewUnresolvedColumn("b"),
 						),
 					),
@@ -3926,12 +3928,12 @@ CREATE TABLE t2
 					expression.NewAlias("row_number() over (partition by b)",
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("b"),
-						}, nil, nil, "", "")),
+						}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", "")),
 					),
 					expression.NewAlias("max(b) over (partition by b)",
 						expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("b"),
-						}, nil, nil, "", ""),
+						}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", ""),
 							expression.NewUnresolvedColumn("b"),
 						),
 					),
@@ -3947,12 +3949,12 @@ CREATE TABLE t2
 					expression.NewAlias("row_number() over (partition by c)",
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("c"),
-						}, nil, nil, "", "")),
+						}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", "")),
 					),
 					expression.NewAlias("max(b) over (partition by b)",
 						expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("b"),
-						}, nil, nil, "", ""),
+						}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", ""),
 							expression.NewUnresolvedColumn("b"),
 						),
 					),
@@ -3989,7 +3991,7 @@ CREATE TABLE t2
 					expression.NewAlias("count(i) over (partition by y)",
 						expression.NewUnresolvedFunction("count", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("y"),
-						}, nil, nil, "", ""),
+						}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", ""),
 							expression.NewUnresolvedColumn("i"),
 						),
 					),
@@ -4269,7 +4271,7 @@ CREATE TABLE t2
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewAlias("row_number() over (w)",
-							expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w", "")),
+							expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "w", "")),
 						),
 					},
 					plan.NewUnresolvedTable("foo", ""),
@@ -4287,16 +4289,16 @@ CREATE TABLE t2
 							NullOrdering: sql.NullsFirst,
 						},
 					}, nil, "w2", "w1"),
-					"w2": sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", "w2"),
+					"w2": sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", "w2"),
 				},
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("a"),
 						expression.NewAlias("row_number() over (w1)",
-							expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w1", "")),
+							expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "w1", "")),
 						),
 						expression.NewAlias("max(b) over (w2)",
-							expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w2", ""),
+							expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "w2", ""),
 								expression.NewUnresolvedColumn("b"),
 							),
 						),
@@ -4317,7 +4319,7 @@ CREATE TABLE t2
 							NullOrdering: sql.NullsFirst,
 						},
 					}, nil, "w2", "w1"),
-					"w2": sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", "w2"),
+					"w2": sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "", "w2"),
 				}, plan.NewWindow(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("a"),
@@ -4326,10 +4328,10 @@ CREATE TABLE t2
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("y"),
 								},
-								nil, nil, "w1", "")),
+								nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "w1", "")),
 						),
 						expression.NewAlias("max(b) over (w2)",
-							expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w2", ""),
+							expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame(), "w2", ""),
 								expression.NewUnresolvedColumn("b"),
 							),
 						),
