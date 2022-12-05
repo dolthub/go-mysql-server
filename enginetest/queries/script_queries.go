@@ -2772,12 +2772,12 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(6)}, {float64(10)}, {float64(15)}, {float64(21)}},
 			},
 			{
-				Query: "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b), SUM(b) OVER (ORDER BY b) FROM t;",
+				Query: "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b), SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
 				Expected: []sql.Row{
 					{float64(1), float64(1)},
 					{float64(3), float64(3)},
-					{float64(6), float64(6)},
 					{float64(4), float64(10)},
+					{float64(6), float64(6)},
 					{float64(9), float64(15)},
 					{float64(15), float64(21)},
 				},
