@@ -179,7 +179,24 @@ func mergeWindowDefs(def, ref *sql.WindowDefinition) (*sql.WindowDefinition, err
 	var frame sql.WindowFrame
 	switch {
 	case def.Frame != nil && ref.Frame != nil:
-		return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain frame clause")
+		_, isDefDefaultFrame := def.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+		_, isRefDefaultFrame := ref.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+
+		// if both frames are set and one is RowsUnboundedPrecedingToUnboundedFollowingFrame (default),
+		// we should use the other frame
+		if isDefDefaultFrame {
+			frame = ref.Frame
+		} else if isRefDefaultFrame {
+			frame = def.Frame
+		} else {
+			// if both frames have identical string representations, use either one
+			df := def.Frame.String()
+			rf := ref.Frame.String()
+			if df != rf {
+				return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain different frame clauses")
+			}
+			frame = def.Frame
+		}
 	case def.Frame != nil:
 		frame = def.Frame
 	case ref.Frame != nil:
