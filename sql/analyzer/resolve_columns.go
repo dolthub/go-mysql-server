@@ -933,7 +933,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 			return true
 		})
 		transform.Inspect(node.Source, func(n sql.Node) bool {
-			if resTbl, ok := n.(*plan.SubqueryAlias); ok && !aliasedTables[resTbl] {
+			if resTbl, ok := n.(*plan.SubqueryAlias); ok && resTbl.Resolved() && !aliasedTables[resTbl] {
 				idx = 0
 				indexSchema(resTbl.Schema())
 			}
