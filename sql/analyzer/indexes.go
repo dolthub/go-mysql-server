@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"strings"
 )
 
 // indexLookup contains an sql.IndexLookup and all sql.Index that are involved
@@ -258,6 +259,35 @@ func getIndexes(
 		}
 
 		return result, nil
+	case *expression.Like:
+		// TODO: maybe more cases to simplify
+		// TODO: if it's just a plain string (no unescaped % or _), should just be expr.Equal
+		r, ok := e.Right.(*expression.Literal)
+		if !ok {
+			break
+		}
+		val := r.Value()
+		valStr, ok := val.(string)
+		if !ok {
+			break
+		}
+		if len(valStr) == 0 {
+			break
+		}
+		if strings.Count(valStr, "%")-strings.Count(valStr, "\\%") != 1 {
+			break
+		}
+		if strings.Count(valStr, "_")-strings.Count(valStr, "\\_") > 0 {
+			break
+		}
+		if len(valStr) >= 2 && valStr[len(valStr)-2:] == "\\%" {
+			break
+		}
+		if valStr[len(valStr)-1] != '%' {
+			break
+		}
+		newRight := expression.NewLiteral(valStr[:len(valStr)-1], e.Right.Type())
+		return getIndexes(ctx, ia, expression.NewGreaterThanOrEqual(e.Left, newRight), tableAliases)
 	}
 
 	return result, nil
