@@ -211,7 +211,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select any_value(id), team from members group by team",
+				Query: "select any_value(id), team from members group by team order by id",
 				Expected: []sql.Row{
 					{3, "red"},
 					{5, "orange"},
@@ -219,7 +219,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select any_value(id), any_value(team) from members",
+				Query: "select any_value(id), any_value(team) from members order by id",
 				Expected: []sql.Row{
 					{3, "red"},
 					{4, "red"},
@@ -282,7 +282,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select id, team from members group by team",
+				Query: "select id, team from members group by team order by id",
 				Expected: []sql.Row{
 					{3, "red"},
 					{5, "orange"},
