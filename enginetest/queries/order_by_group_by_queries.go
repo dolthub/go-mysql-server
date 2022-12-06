@@ -252,7 +252,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "select id, team from members group by team order by id",
+				Query:       "select id, team from members group by team",
 				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
 		},
