@@ -279,7 +279,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			case *expression.Like:
 				// TODO: maybe more cases to simplify
 				// TODO: if it's just a plain string (no unescaped % or _), should just be expr.Equal
-				val := e.Right.(*expression.Literal).Value()
+				r, ok := e.Right.(*expression.Literal)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+				val := r.Value()
 				valStr, ok := val.(string)
 				if !ok {
 					return e, transform.SameTree, nil
