@@ -211,14 +211,6 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select any_value(id), team from members group by team order by id",
-				Expected: []sql.Row{
-					{3, "red"},
-					{5, "orange"},
-					{8, "purple"},
-				},
-			},
-			{
 				Query: "select any_value(id), any_value(team) from members order by id",
 				Expected: []sql.Row{
 					{3, "red"},
@@ -254,40 +246,6 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query:       "select id, team from members group by team",
 				ExpectedErr: analyzer.ErrValidationGroupBy,
-			},
-		},
-	},
-	{
-		Name: "group by with no strict",
-		SetUpScript: []string{
-			"use mydb;",
-			"create table members (id bigint primary key, team text);",
-			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "set sql_mode=(select replace(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))",
-				Expected: []sql.Row{{}},
-			},
-			{
-				Query: "select @@global.sql_mode",
-				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
-				},
-			},
-			{
-				Query: "select @@session.sql_mode",
-				Expected: []sql.Row{
-					{"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"},
-				},
-			},
-			{
-				Query: "select id, team from members group by team order by id",
-				Expected: []sql.Row{
-					{3, "red"},
-					{5, "orange"},
-					{8, "purple"},
-				},
 			},
 		},
 	},
