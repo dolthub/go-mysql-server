@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -260,43 +258,6 @@ func getIndexes(
 		}
 
 		return result, nil
-	case *expression.Like:
-		// TODO: maybe more cases to simplify
-		r, ok := e.Right.(*expression.Literal)
-		if !ok {
-			break
-		}
-		val := r.Value()
-		valStr, ok := val.(string)
-		if !ok {
-			break
-		}
-		if len(valStr) == 0 {
-			break
-		}
-		if strings.Count(valStr, "_")-strings.Count(valStr, "\\_") > 0 {
-			break
-		}
-		// if there are no wildcards, this is just a plain equals
-		numWild := strings.Count(valStr, "%") - strings.Count(valStr, "\\%")
-		if numWild == 0 {
-			return getIndexes(ctx, ia, expression.NewEquals(e.Left, e.Right), tableAliases)
-		}
-		if len(valStr) >= 2 && valStr[len(valStr)-2:] == "\\%" {
-			break
-		}
-		if valStr[len(valStr)-1] != '%' {
-			break
-		}
-		// TODO: like expression with just a wild card shouldn't even make it here; analyzer rule should just drop filter
-		if len(valStr) == 1 {
-			break
-		}
-		valStr = valStr[:len(valStr)-1]
-		newRightLower := expression.NewLiteral(valStr, e.Right.Type())
-		valStr += string(byte(255))
-		newRightUpper := expression.NewLiteral(valStr, e.Right.Type())
-		return getIndexes(ctx, ia, expression.NewAnd(expression.NewGreaterThanOrEqual(e.Left, newRightLower), expression.NewLessThanOrEqual(e.Left, newRightUpper)), tableAliases)
 	}
 
 	return result, nil
