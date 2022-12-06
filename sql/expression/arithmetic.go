@@ -64,7 +64,7 @@ var _ ArithmeticOp = (*Arithmetic)(nil)
 // Arithmetic expressions include plus, minus and multiplication (+, -, *) operations.
 type Arithmetic struct {
 	BinaryExpression
-	Op string
+	Op  string
 	ops int32
 }
 
