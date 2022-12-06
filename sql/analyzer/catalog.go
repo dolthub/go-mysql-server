@@ -129,8 +129,7 @@ func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
-	db = strings.ToLower(db)
-	if db == "information_schema" {
+	if strings.ToLower(db) == "information_schema" {
 		return c.infoSchema, nil
 	} else if c.MySQLDb.Enabled {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).Database(ctx, db)
