@@ -11427,6 +11427,41 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
+				Query: "select * from t where v1 like 'a'",
+				Expected: []sql.Row{
+					{0, "a", "a"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 like 'a'",
+				Expected: []sql.Row{
+					{"Filtert.v1 LIKE 'a'"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[a, a], [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
+				Query: "select * from t where v1 like 'a%'",
+				Expected: []sql.Row{
+					{0, "a", "a"},
+					{1, "ab", "ab"},
+					{2, "abc", "abc"},
+					{3, "abcde", "abcde"},
+				},
+			},
+			{
+				Query: "explain select * from t where v1 like 'a%'",
+				Expected: []sql.Row{
+					{"Filtert.v1 LIKE 'a%'"},
+					{" └─ IndexedTableAccess(t)"},
+					{"     ├─ index: [t.v1,t.v2]"},
+					{"     ├─ filters: [{[a, ∞), [NULL, ∞)}]"},
+					{"     └─ columns: [i v1 v2]"},
+				},
+			},
+			{
 				Query: "select * from t where v1 = 'abc'",
 				Expected: []sql.Row{
 					{2, "abc", "abc"},
