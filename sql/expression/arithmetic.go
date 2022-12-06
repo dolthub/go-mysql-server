@@ -273,8 +273,8 @@ func isInterval(expr sql.Expression) bool {
 	return ok
 }
 
-// countDivs returns the number of division operators in order on the left child node of the current node.
-// This lets us count how many division operator used one after the other. E.g. 24/3/2/1 will have this structure:
+// countArithmeticOps returns the number of arithmetic operators in order on the left child node of the current node.
+// This lets us count how many arithmetic operators used one after the other
 func countArithmeticOps(e sql.Expression) int32 {
 	if e == nil {
 		return 0
@@ -287,9 +287,8 @@ func countArithmeticOps(e sql.Expression) int32 {
 	return 0
 }
 
-// setDivs will set the innermost node's DivScale to the number counted by countDivs, and the rest of it
-// to 0. This allows us to calculate the first division with the exact precision of the end result. Otherwise,
-// we lose precision at each division since we only add 4 scales at every division operation.
+// setArithmeticOps will set ops number with number counted by countArithmeticOps. This allows
+// us to keep track of whether the expression is the last arithmetic operation.
 func setArithmeticOps(e sql.Expression, opScale int32) {
 	if e == nil {
 		return
@@ -304,9 +303,8 @@ func setArithmeticOps(e sql.Expression, opScale int32) {
 	return
 }
 
-// isOutermostDiv return whether the expression we're currently on is
-// the last division operation of all continuous divisions.
-// E.g. the top 'div' (divided by 1) is the outermost/last division that is calculated:
+// isOutermostArithmeticOp return whether the expression we're currently on is
+// the last arithmetic operation of all continuous arithmetic operations.
 func isOutermostArithmeticOp(e sql.Expression, d, dScale int32) bool {
 	if e == nil {
 		return false

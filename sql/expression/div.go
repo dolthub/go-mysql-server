@@ -372,9 +372,9 @@ func countDivs(e sql.Expression) int32 {
 	return 0
 }
 
-// setDivs will set the innermost node's DivScale to the number counted by countDivs, and the rest of it
-// to 0. This allows us to calculate the first division with the exact precision of the end result. Otherwise,
-// we lose precision at each division since we only add 4 scales at every division operation.
+// setDivs will set each node's DivScale to the number counted by countDivs. This allows us to
+// keep track of whether the current Div expression is the last Div operation, so the result is
+// rounded appropriately.
 func setDivs(e sql.Expression, dScale int32) {
 	if e == nil {
 		return
