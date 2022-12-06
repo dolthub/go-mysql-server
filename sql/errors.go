@@ -178,9 +178,6 @@ var (
 	// ErrProcedureCreateStatementInvalid is returned when a StoredProcedureDatabase returns a CREATE PROCEDURE statement that is invalid.
 	ErrProcedureCreateStatementInvalid = errors.NewKind(`Invalid CREATE PROCEDURE statement: %s`)
 
-	// ErrProcedureDuplicateParameterName is returned when a stored procedure has two (or more) parameters with the same name.
-	ErrProcedureDuplicateParameterName = errors.NewKind("duplicate parameter name `%s` on stored procedure `%s`")
-
 	// ErrProcedureRecursiveCall is returned when a stored procedure has a CALL statement that refers to itself.
 	ErrProcedureRecursiveCall = errors.NewKind("recursive CALL on stored procedure `%s`")
 
@@ -287,14 +284,38 @@ var (
 	// ErrJSONObjectAggNullKey is returned when JSON_OBJECTAGG is run on a table with NULL keys
 	ErrJSONObjectAggNullKey = errors.NewKind("JSON documents may not contain NULL member names")
 
-	// ErrDeclareOrderInvalid is returned when a DECLARE statement is at an invalid location.
-	ErrDeclareOrderInvalid = errors.NewKind("DECLARE may only exist at the beginning of a BEGIN/END block")
+	// ErrDeclareConditionOrderInvalid is returned when a DECLARE ... CONDITION statement is at an invalid location.
+	ErrDeclareConditionOrderInvalid = errors.NewKind("DECLARE ... CONDITION may only exist at the beginning of a BEGIN/END block")
+
+	// ErrDeclareVariableOrderInvalid is returned when a DECLARE statement, for variables, is at an invalid location.
+	ErrDeclareVariableOrderInvalid = errors.NewKind("DECLARE variables may only exist at the beginning of a BEGIN/END block")
+
+	// ErrDeclareCursorOrderInvalid is returned when a DECLARE ... CURSOR statement is at an invalid location.
+	ErrDeclareCursorOrderInvalid = errors.NewKind("DECLARE ... CURSOR may only exist at the beginning of a BEGIN/END block, following all variables and conditions")
 
 	// ErrDeclareConditionNotFound is returned when SIGNAL/RESIGNAL references a non-existent DECLARE CONDITION.
 	ErrDeclareConditionNotFound = errors.NewKind("condition %s does not exist")
 
 	// ErrDeclareConditionDuplicate is returned when a DECLARE CONDITION statement with the same name was declared in the current scope.
 	ErrDeclareConditionDuplicate = errors.NewKind("duplicate condition '%s'")
+
+	// ErrDeclareVariableDuplicate is returned when a DECLARE statement reuses an existing variable name in the current scope.
+	ErrDeclareVariableDuplicate = errors.NewKind("duplicate variable '%s'")
+
+	// ErrDeclareCursorDuplicate is returned when a DECLARE ... CURSOR statement reuses an existing name in the current scope.
+	ErrDeclareCursorDuplicate = errors.NewKind("duplicate cursor '%s'")
+
+	// ErrCursorNotFound is returned when a CURSOR cannot be found.
+	ErrCursorNotFound = errors.NewKind("cursor '%s' does not exist")
+
+	// ErrCursorAlreadyOpen is returned when a CURSOR is already open.
+	ErrCursorAlreadyOpen = errors.NewKind("cursor '%s' is already open")
+
+	// ErrCursorNotOpen is returned when a CURSOR has not yet been opened.
+	ErrCursorNotOpen = errors.NewKind("cursor '%s' is not open")
+
+	// ErrFetchIncorrectCount is returned when a FETCH does not use the correct number of variables.
+	ErrFetchIncorrectCount = errors.NewKind("incorrect number of FETCH variables")
 
 	// ErrSignalOnlySqlState is returned when SIGNAL/RESIGNAL references a DECLARE CONDITION for a MySQL error code.
 	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")

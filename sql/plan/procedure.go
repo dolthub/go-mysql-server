@@ -84,6 +84,8 @@ type Procedure struct {
 	CreatedAt             time.Time
 	ModifiedAt            time.Time
 	ValidationError       error
+	VariableCount         int
+	CursorCount           int
 }
 
 var _ sql.Node = (*Procedure)(nil)
@@ -122,6 +124,7 @@ func NewProcedure(
 		Body:                  body,
 		CreatedAt:             createdAt,
 		ModifiedAt:            modifiedAt,
+		VariableCount:         len(lowercasedParams),
 	}
 }
 
@@ -201,7 +204,7 @@ func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
 					Type:      variadicParam.Type,
 					Variadic:  variadicParam.Variadic,
 				}
-				newParams[i] = expression.NewProcedureParam(paramName)
+				newParams[i] = expression.NewProcedureParam(i, paramName)
 			}
 		}
 	}
@@ -209,6 +212,7 @@ func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
 	newBody.ParamDefinitions = newParamDefinitions
 	newBody.Params = newParams
 	np.Params = newParamDefinitions
+	np.VariableCount = length
 	return &np
 }
 
