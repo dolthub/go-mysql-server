@@ -292,8 +292,11 @@ func getIndexes(
 		if len(valStr) == 1 {
 			break
 		}
-		newRight := expression.NewLiteral(valStr[:len(valStr)-1], e.Right.Type())
-		return getIndexes(ctx, ia, expression.NewGreaterThanOrEqual(e.Left, newRight), tableAliases)
+		valStr = valStr[:len(valStr)-1]
+		newRightLower := expression.NewLiteral(valStr, e.Right.Type())
+		valStr += string(byte(255))
+		newRightUpper := expression.NewLiteral(valStr, e.Right.Type())
+		return getIndexes(ctx, ia, expression.NewAnd(expression.NewGreaterThanOrEqual(e.Left, newRightLower), expression.NewLessThanOrEqual(e.Left, newRightUpper)), tableAliases)
 	}
 
 	return result, nil

@@ -11457,7 +11457,7 @@ var IndexPrefixQueries = []ScriptTest{
 					{"Filtert.v1 LIKE 'a%'"},
 					{" └─ IndexedTableAccess(t)"},
 					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[a, ∞), [NULL, ∞)}]"},
+					{"     ├─ filters: [{[a, aÿ], [NULL, ∞)}]"},
 					{"     └─ columns: [i v1 v2]"},
 				},
 			},
