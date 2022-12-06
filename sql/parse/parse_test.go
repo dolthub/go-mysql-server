@@ -4851,6 +4851,67 @@ CREATE TABLE t2
 			input: `KILL CONNECTION 1`,
 			plan:  plan.NewKill(plan.KillType_Connection, 1),
 		},
+		{
+			input: `CREATE PROCEDURE p1(INOUT a INT, IN b SMALLINT)
+BEGIN
+	DECLARE c BIGINT;
+	DECLARE cur1 CURSOR FOR SELECT 1;
+    OPEN cur1;
+    FETCH cur1 INTO c;
+    CLOSE cur1;
+END;`,
+			plan: plan.NewCreateProcedure(
+				sql.UnresolvedDatabase(""),
+				"p1",
+				"",
+				[]plan.ProcedureParam{
+					{
+						Direction: plan.ProcedureParamDirection_Inout,
+						Name:      "a",
+						Type:      sql.Int32,
+						Variadic:  false,
+					},
+					{
+						Direction: plan.ProcedureParamDirection_In,
+						Name:      "b",
+						Type:      sql.Int16,
+						Variadic:  false,
+					},
+				},
+				time.Now(),
+				time.Now(),
+				plan.ProcedureSecurityContext_Definer,
+				nil,
+				plan.NewBeginEndBlock(
+					plan.NewBlock([]sql.Node{
+						plan.NewDeclareVariables([]string{"c"}, sql.Int64),
+						plan.NewDeclareCursor("cur1", plan.NewProject(
+							[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
+							plan.NewResolvedDualTable(),
+						)),
+						plan.NewOpen("cur1"),
+						plan.NewFetch("cur1", []string{"c"}),
+						plan.NewClose("cur1"),
+					}),
+				),
+				"",
+				`CREATE PROCEDURE p1(INOUT a INT, IN b SMALLINT)
+BEGIN
+	DECLARE c BIGINT;
+	DECLARE cur1 CURSOR FOR SELECT 1;
+    OPEN cur1;
+    FETCH cur1 INTO c;
+    CLOSE cur1;
+END`,
+				`BEGIN
+	DECLARE c BIGINT;
+	DECLARE cur1 CURSOR FOR SELECT 1;
+    OPEN cur1;
+    FETCH cur1 INTO c;
+    CLOSE cur1;
+END`,
+			),
+		},
 	}
 
 	for _, tt := range fixtures {
@@ -4866,6 +4927,9 @@ CREATE TABLE t2
 						require.NoError(err)
 					}
 				}
+			} else if createProcedure, ok := p.(*plan.CreateProcedure); ok {
+				createProcedure.CreatedAt = tt.plan.(*plan.CreateProcedure).CreatedAt
+				createProcedure.ModifiedAt = tt.plan.(*plan.CreateProcedure).ModifiedAt
 			}
 			if !assertNodesEqualWithDiff(t, tt.plan, p) {
 				t.Logf("Unexpected result for query %s", tt.input)

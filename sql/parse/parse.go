@@ -210,6 +210,12 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
 		return convertDeclare(ctx, n)
+	case *sqlparser.FetchCursor:
+		return convertFetch(ctx, n)
+	case *sqlparser.OpenCursor:
+		return convertOpen(ctx, n)
+	case *sqlparser.CloseCursor:
+		return convertClose(ctx, n)
 	case *sqlparser.Kill:
 		return convertKill(ctx, n)
 	case *sqlparser.Signal:
@@ -1026,7 +1032,7 @@ func intoToInto(ctx *sql.Context, into *sqlparser.Into, node sql.Node) (sql.Node
 		if strings.HasPrefix(val.String(), "@") {
 			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
 		} else {
-			vars[i] = expression.NewProcedureParam(val.String())
+			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
 		}
 	}
 	return plan.NewInto(node, vars), nil
@@ -1303,6 +1309,10 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 func convertDeclare(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
 	if d.Condition != nil {
 		return convertDeclareCondition(ctx, d)
+	} else if d.Variables != nil {
+		return convertDeclareVariables(ctx, d)
+	} else if d.Cursor != nil {
+		return convertDeclareCursor(ctx, d)
 	}
 	return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(d))
 }
@@ -1326,6 +1336,40 @@ func convertDeclareCondition(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, 
 		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(d))
 	}
 	return plan.NewDeclareCondition(strings.ToLower(dc.Name), 0, dc.SqlStateValue), nil
+}
+
+func convertDeclareVariables(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
+	dVars := d.Variables
+	names := make([]string, len(dVars.Names))
+	for i, variable := range dVars.Names {
+		names[i] = variable.String()
+	}
+	typ, err := sql.ColumnTypeToType(&dVars.VarType)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewDeclareVariables(names, typ), nil
+}
+
+func convertDeclareCursor(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
+	dCursor := d.Cursor
+	selectStmt, err := convertSelectStatement(ctx, dCursor.SelectStmt)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewDeclareCursor(dCursor.Name, selectStmt), nil
+}
+
+func convertFetch(ctx *sql.Context, fetchCursor *sqlparser.FetchCursor) (sql.Node, error) {
+	return plan.NewFetch(fetchCursor.Name, fetchCursor.Variables), nil
+}
+
+func convertOpen(ctx *sql.Context, openCursor *sqlparser.OpenCursor) (sql.Node, error) {
+	return plan.NewOpen(openCursor.Name), nil
+}
+
+func convertClose(ctx *sql.Context, closeCursor *sqlparser.CloseCursor) (sql.Node, error) {
+	return plan.NewClose(closeCursor.Name), nil
 }
 
 func convertSignal(ctx *sql.Context, s *sqlparser.Signal) (sql.Node, error) {
