@@ -3436,6 +3436,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"50.00000"}},
 	},
 	{
+		Query:    "select 2000.0 * (24.0 * 6.0 * 6.25 * 10.0) / 250000000.0;",
+		Expected: []sql.Row{{"0.0720000000"}},
+	},
+	{
 		Query:    "select 1/2/3/4/5/6;",
 		Expected: []sql.Row{{"0.00138888888888888888"}},
 	},
@@ -8316,7 +8320,6 @@ var BrokenQueries = []QueryTest{
 		Query:    "select i, date_col from datetime_table",
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
-	// Currently, not matching MySQL's information schema for this table
 	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
 	{
 		Query:    "SELECT X'0a'",
@@ -8326,6 +8329,12 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/4931
+		// The current output is "0.07200000000000"
+		Query:    "select 2000.0 / 250000000.0 * (24.0 * 6.0 * 6.25 * 10.0);",
+		Expected: []sql.Row{{"0.0720000000"}},
 	},
 }
 

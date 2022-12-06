@@ -55,6 +55,7 @@ type ArithmeticOp interface {
 	sql.Expression
 	LeftChild() sql.Expression
 	RightChild() sql.Expression
+	SetOpCount(int32)
 	Operator() string
 }
 
@@ -64,21 +65,20 @@ var _ ArithmeticOp = (*Arithmetic)(nil)
 type Arithmetic struct {
 	BinaryExpression
 	Op string
+	ops int32
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
 func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
-	return &Arithmetic{BinaryExpression{Left: left, Right: right}, op}
+	a := &Arithmetic{BinaryExpression{Left: left, Right: right}, op, 0}
+	ops := countArithmeticOps(a)
+	setArithmeticOps(a, ops)
+	return a
 }
 
 // NewPlus creates a new Arithmetic + sql.Expression.
 func NewPlus(left, right sql.Expression) *Arithmetic {
 	return NewArithmetic(left, right, sqlparser.PlusStr)
-}
-
-func NewIncrement(left sql.Expression) *Arithmetic {
-	one := NewLiteral(sql.NumericUnaryValue(left.Type()), left.Type())
-	return NewArithmetic(left, one, sqlparser.PlusStr)
 }
 
 // NewMinus creates a new Arithmetic - sql.Expression.
@@ -101,6 +101,10 @@ func (a *Arithmetic) RightChild() sql.Expression {
 
 func (a *Arithmetic) Operator() string {
 	return a.Op
+}
+
+func (a *Arithmetic) SetOpCount(i int32) {
+	a.ops = i
 }
 
 func (a *Arithmetic) String() string {
@@ -267,6 +271,57 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 func isInterval(expr sql.Expression) bool {
 	_, ok := expr.(*Interval)
 	return ok
+}
+
+// countDivs returns the number of division operators in order on the left child node of the current node.
+// This lets us count how many division operator used one after the other. E.g. 24/3/2/1 will have this structure:
+func countArithmeticOps(e sql.Expression) int32 {
+	if e == nil {
+		return 0
+	}
+
+	if a, ok := e.(ArithmeticOp); ok {
+		return countDivs(a.LeftChild()) + 1
+	}
+
+	return 0
+}
+
+// setDivs will set the innermost node's DivScale to the number counted by countDivs, and the rest of it
+// to 0. This allows us to calculate the first division with the exact precision of the end result. Otherwise,
+// we lose precision at each division since we only add 4 scales at every division operation.
+func setArithmeticOps(e sql.Expression, opScale int32) {
+	if e == nil {
+		return
+	}
+
+	if a, ok := e.(ArithmeticOp); ok {
+		a.SetOpCount(opScale)
+		setDivs(a.LeftChild(), opScale)
+		setDivs(a.RightChild(), opScale)
+	}
+
+	return
+}
+
+// isOutermostDiv return whether the expression we're currently on is
+// the last division operation of all continuous divisions.
+// E.g. the top 'div' (divided by 1) is the outermost/last division that is calculated:
+func isOutermostArithmeticOp(e sql.Expression, d, dScale int32) bool {
+	if e == nil {
+		return false
+	}
+
+	if a, ok := e.(ArithmeticOp); ok {
+		d = d + 1
+		if d == dScale {
+			return true
+		} else {
+			return isOutermostDiv(a.LeftChild(), d, dScale)
+		}
+	}
+
+	return false
 }
 
 // convertValueToType returns given value converted into the given type. If the value is

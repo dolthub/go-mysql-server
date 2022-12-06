@@ -26,9 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var _ ArithmeticOp = (*BitOp)(nil)
-
 // BitOp expressions include BIT -AND, -OR and -XOR (&, | and ^) operations
+// https://dev.mysql.com/doc/refman/8.0/en/bit-functions.html
 type BitOp struct {
 	BinaryExpression
 	Op string
@@ -62,18 +61,6 @@ func NewShiftLeft(left, right sql.Expression) *BitOp {
 // NewShiftRight creates a new BitOp >> sql.Expression.
 func NewShiftRight(left, right sql.Expression) *BitOp {
 	return NewBitOp(left, right, sqlparser.ShiftRightStr)
-}
-
-func (b *BitOp) LeftChild() sql.Expression {
-	return b.Left
-}
-
-func (b *BitOp) RightChild() sql.Expression {
-	return b.Right
-}
-
-func (b *BitOp) Operator() string {
-	return b.Op
 }
 
 func (b *BitOp) String() string {

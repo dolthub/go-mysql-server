@@ -43,7 +43,7 @@ var _ ArithmeticOp = (*Div)(nil)
 // Div expression represents "/" arithmetic operation
 type Div struct {
 	BinaryExpression
-
+	ops int32
 	// divScale is number of continuous division operations; this value will be available of all layers
 	divScale int32
 	// leftmostScale is a length of scale of the leftmost value in continuous division operation
@@ -53,9 +53,11 @@ type Div struct {
 
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
-	a := &Div{BinaryExpression{Left: left, Right: right}, 0, 0, 0}
+	a := &Div{BinaryExpression{Left: left, Right: right}, 0, 0, 0, 0}
 	divs := countDivs(a)
 	setDivs(a, divs)
+	ops := countArithmeticOps(a)
+	setArithmeticOps(a, ops)
 	return a
 }
 
@@ -69,6 +71,10 @@ func (d *Div) RightChild() sql.Expression {
 
 func (d *Div) Operator() string {
 	return sqlparser.DivStr
+}
+
+func (d *Div) SetOpCount(i int32) {
+	d.ops = i
 }
 
 func (d *Div) String() string {
@@ -146,7 +152,10 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if finalScale > sql.DecimalTypeMaxScale {
 				finalScale = sql.DecimalTypeMaxScale
 			}
-			return res.Round(finalScale), nil
+			if isOutermostArithmeticOp(d, 0, d.ops) {
+				return res.Round(finalScale), nil
+			}
+			// TODO : need to pass finalScale if this div is the last div but not the last arithmetic op
 		}
 	}
 
@@ -528,11 +537,14 @@ var _ ArithmeticOp = (*IntDiv)(nil)
 // IntDiv expression represents integer "div" arithmetic operation
 type IntDiv struct {
 	BinaryExpression
+	ops int32
 }
 
 // NewIntDiv creates a new IntDiv 'div' sql.Expression.
 func NewIntDiv(left, right sql.Expression) *IntDiv {
-	a := &IntDiv{BinaryExpression{Left: left, Right: right}}
+	a := &IntDiv{BinaryExpression{Left: left, Right: right}, 0}
+	ops := countArithmeticOps(a)
+	setArithmeticOps(a, ops)
 	return a
 }
 
@@ -546,6 +558,10 @@ func (i *IntDiv) RightChild() sql.Expression {
 
 func (i *IntDiv) Operator() string {
 	return sqlparser.IntDivStr
+}
+
+func (i *IntDiv) SetOpCount(i2 int32) {
+	i.ops = i2
 }
 
 func (i *IntDiv) String() string {
