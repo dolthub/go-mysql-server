@@ -526,17 +526,23 @@ func newCrossJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		right = reflect.TypeOf(j.right).String()
 	}
 
-	span, ctx := ctx.Span("plan.CrossJoin", trace.WithAttributes(attribute.String("left", left), attribute.String("right", right)))
+	span, ctx := ctx.Span("plan.CrossJoin", trace.WithAttributes(
+		attribute.String("left", left),
+		attribute.String("right", right),
+	))
 
-	li, err := j.left.RowIter(ctx, row)
+	l, err := j.left.RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
 	}
 
 	return sql.NewSpanIter(span, &crossJoinIterator{
-		l:  li,
-		rp: j.right,
+		parentRow: row,
+		l:         l,
+		rp:        j.right,
+		rowSize:   len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+		scopeLen:  j.ScopeLen,
 	}), nil
 }
 
@@ -545,6 +551,11 @@ type rowIterProvider interface {
 }
 
 type crossJoinIterator struct {
+	parentRow sql.Row
+
+	rowSize  int
+	scopeLen int
+
 	l  sql.RowIter
 	rp rowIterProvider
 	r  sql.RowIter
@@ -569,7 +580,7 @@ func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			i.leftRow = r
+			i.leftRow = i.parentRow.Append(r)
 		}
 
 		if i.r == nil {
@@ -596,8 +607,14 @@ func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		row = append(row, i.leftRow...)
 		row = append(row, rightRow...)
 
-		return row, nil
+		return i.removeParentRow(row), nil
 	}
+}
+
+func (i *crossJoinIterator) removeParentRow(r sql.Row) sql.Row {
+	copy(r[i.scopeLen:], r[len(i.parentRow):])
+	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
+	return r
 }
 
 func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
