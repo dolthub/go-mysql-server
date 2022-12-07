@@ -22,10 +22,10 @@ var JoinQueryTests = []QueryTest{
 	{
 		Query: `select y, (select 1 where y = 1) is_one from xy join uv on x = v order by y`,
 		Expected: []sql.Row{
-			{1, 1},
-			{1, 1},
 			{0, nil},
 			{0, nil},
+			{1, 1},
+			{1, 1},
 		},
 	},
 	{
