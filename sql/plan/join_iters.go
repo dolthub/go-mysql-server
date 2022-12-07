@@ -202,13 +202,6 @@ func (i *joinIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-func (i *joinIter) Dispose() {
-	if d, ok := i.secondaryProvider.(sql.Disposable); ok {
-		d.Dispose()
-		i.secondaryProvider = nil
-	}
-}
-
 func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
 	leftIter, err := j.left.RowIter(ctx, row)
 	if err != nil {
@@ -236,14 +229,6 @@ type existsIter struct {
 	parentRow sql.Row
 	scopeLen  int
 	rowSize   int
-	dispose   sql.DisposeFunc
-}
-
-func (i *existsIter) Dispose() {
-	if i.dispose != nil {
-		i.dispose()
-		i.dispose = nil
-	}
 }
 
 func (i *existsIter) loadPrimary(ctx *sql.Context) error {
@@ -369,18 +354,10 @@ type fullJoinIter struct {
 	leftRow   sql.Row
 	scopeLen  int
 	rowSize   int
-	dispose   sql.DisposeFunc
 
 	leftDone  bool
 	seenLeft  map[uint64]struct{}
 	seenRight map[uint64]struct{}
-}
-
-func (i *fullJoinIter) Dispose() {
-	if i.dispose != nil {
-		i.dispose()
-		i.dispose = nil
-	}
 }
 
 func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -561,15 +538,6 @@ type crossJoinIterator struct {
 	r  sql.RowIter
 
 	leftRow sql.Row
-
-	dispose sql.DisposeFunc
-}
-
-func (i *crossJoinIterator) Dispose() {
-	if i.dispose != nil {
-		i.dispose()
-		i.dispose = nil
-	}
 }
 
 func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
