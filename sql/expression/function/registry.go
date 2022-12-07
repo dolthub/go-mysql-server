@@ -245,6 +245,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_swapxy", Fn: NewSwapXY},
 	sql.FunctionN{Name: "st_x", Fn: NewSTX},
 	sql.FunctionN{Name: "st_y", Fn: NewSTY},
+	sql.Function2{Name: "strcmp", Fn: NewStrCmp},
 	sql.FunctionN{Name: "substr", Fn: NewSubstring},
 	sql.FunctionN{Name: "substring", Fn: NewSubstring},
 	sql.Function3{Name: "substring_index", Fn: NewSubstringIndex},

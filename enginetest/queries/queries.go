@@ -7903,6 +7903,11 @@ With c as (
 ) select * from c;`,
 		Expected: []sql.Row{{"second row"}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/4478
+		Query:    "SELECT STRCMP('b', 'a');",
+		Expected: []sql.Row{{1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
