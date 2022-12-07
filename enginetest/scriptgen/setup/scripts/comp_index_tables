@@ -70,13 +70,13 @@ INSERT INTO comp_index_t2 VALUES (0,0,33,2,67),(1,0,55,14,32),(2,1,43,13,36),(3,
 ----
 
 exec
-CREATE TABLE comp_index_t3 (pk BIGINT PRIMARY KEY, v BLOB)
+CREATE TABLE comp_index_t3 (pk BIGINT PRIMARY KEY, v1 BLOB, v2 BLOB)
 ----
 
 exec
-create INDEX v_idx on comp_index_t3 (v(3))
+create INDEX v_idx on comp_index_t3 (v1(3))
 ----
 
 exec
-INSERT INTO comp_index_t3 VALUES (0, 'a'), (1, 'ab'), (2, 'abc'), (3, 'abcde')
+INSERT INTO comp_index_t3 VALUES (0, 'a', 'a'), (1, 'ab', 'ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')
 ----

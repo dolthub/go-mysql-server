@@ -5920,19 +5920,31 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: "select * from comp_index_t3 where v = 'a'",
-		ExpectedPlan: "Filter(comp_index_t3.v = 'a')\n" +
+		Query: "select * from comp_index_t3 where v1 = 'a'",
+		ExpectedPlan: "Filter(comp_index_t3.v1 = 'a')\n" +
 			" └─ IndexedTableAccess(comp_index_t3)\n" +
-			"     ├─ index: [comp_index_t3.v]\n" +
+			"     ├─ index: [comp_index_t3.v1]\n" +
 			"     ├─ filters: [{[a, a]}]\n" +
-			"     └─ columns: [pk v]\n",
+			"     └─ columns: [pk v1 v2]\n",
 	},
 	{
-		Query: "select * from comp_index_t3 where v like 'a%'",
-		ExpectedPlan: "Filter((comp_index_t3.v >= 'a') AND (comp_index_t3.v <= 'aÿ'))\n" +
+		Query: "select * from comp_index_t3 where v1 like 'a%'",
+		ExpectedPlan: "Filter((comp_index_t3.v1 >= 'a') AND (comp_index_t3.v1 <= 'aÿ'))\n" +
 			" └─ IndexedTableAccess(comp_index_t3)\n" +
-			"     ├─ index: [comp_index_t3.v]\n" +
+			"     ├─ index: [comp_index_t3.v1]\n" +
 			"     ├─ filters: [{[a, aÿ]}]\n" +
-			"     └─ columns: [pk v]\n",
+			"     └─ columns: [pk v1 v2]\n",
+	},
+	{
+		Query: "select * from comp_index_t3 where v2 = 'a'",
+		ExpectedPlan: "Filter(comp_index_t3.v2 = 'a')\n" +
+			" └─ Table(comp_index_t3)\n" +
+			"     └─ columns: [pk v1 v2]\n",
+	},
+	{
+		Query: "select * from comp_index_t3 where v2 like 'a%'",
+		ExpectedPlan: "Filter((comp_index_t3.v2 >= 'a') AND (comp_index_t3.v2 <= 'aÿ'))\n" +
+			" └─ Table(comp_index_t3)\n" +
+			"     └─ columns: [pk v1 v2]\n",
 	},
 }
