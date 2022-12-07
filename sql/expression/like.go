@@ -33,7 +33,7 @@ func newDefaultLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
 // Like performs pattern matching against two strings.
 type Like struct {
 	BinaryExpression
-	escape sql.Expression
+	Escape sql.Expression
 	pool   *sync.Pool
 	once   sync.Once
 	cached bool
@@ -56,7 +56,7 @@ func NewLike(left, right, escape sql.Expression) sql.Expression {
 
 	return &Like{
 		BinaryExpression: BinaryExpression{left, right},
-		escape:           escape,
+		Escape:           escape,
 		pool:             nil,
 		once:             sync.Once{},
 		cached:           cached,
@@ -149,8 +149,8 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 	}
 
 	var escapeVal interface{}
-	if l.escape != nil {
-		escapeVal, err = l.escape.Eval(ctx, row)
+	if l.Escape != nil {
+		escapeVal, err = l.Escape.Eval(ctx, row)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -183,7 +183,7 @@ func (l *Like) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}
-	return NewLike(children[0], children[1], l.escape), nil
+	return NewLike(children[0], children[1], l.Escape), nil
 }
 
 func patternToGoRegex(pattern string) string {
@@ -383,7 +383,7 @@ func (l LikeMatcher) Match(s string) bool {
 	return false
 }
 
-// String returns the string form of this LIKE expression. If an escape character was provided, it is used instead of
+// String returns the string form of this LIKE expression. If an Escape character was provided, it is used instead of
 // the default.
 func (l LikeMatcher) String() string {
 	sb := strings.Builder{}

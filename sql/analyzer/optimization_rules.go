@@ -282,6 +282,10 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				if !ok {
 					return e, transform.SameTree, nil
 				}
+				// TODO: handle escapes
+				if e.Escape != nil {
+					return e, transform.SameTree, nil
+				}
 				val := r.Value()
 				valStr, ok := val.(string)
 				if !ok {
