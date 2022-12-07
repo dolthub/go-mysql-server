@@ -114,24 +114,6 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	})
 }
 
-// fixSubqueryFieldIndexes tracks join schema reordering that happened after finalizeSubqueries.
-//func fixSubqueryFieldIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-//	// search for subquery and subquery expressions
-//	return transform.Node(n, func(sql.Node) (sql.Node, transform.TreeIdentity, error) {
-//		sqa, ok := n.(*plan.SubqueryAlias)
-//		if !ok {
-//			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-//				sq, ok := e.(*plan.Subquery)
-//				if !ok {
-//					return e, transform.SameTree, nil
-//				}
-//
-//			})
-//		}
-//
-//	}
-//}
-
 // flattenTableAliases transforms TableAlias nodes that contain a SubqueryAlias or TableAlias node as the immediate
 // child so that the top level TableAlias is removed and the nested SubqueryAlias or nested TableAlias is the new top
 // level node, making sure to capture the alias name and transfer it to the new node. The parser doesn't directly

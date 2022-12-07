@@ -95,7 +95,6 @@ var DefaultRules = []Rule{
 // DefaultRules.
 var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
-	//{finalizeSubqueriesId, finalizeSubqueries},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
