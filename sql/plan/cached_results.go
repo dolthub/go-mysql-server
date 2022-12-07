@@ -60,8 +60,8 @@ func NewCachedResults(n sql.Node) *CachedResults {
 // fall back to a passthrough iterator.
 type CachedResults struct {
 	UnaryNode
-	id      uint64
-	mutex   sync.Mutex
+	id    uint64
+	mutex sync.Mutex
 	//noCache is set when the memory manager is unable to build
 	// a cache, so we fallback to a passthrough RowIter
 	noCache bool
