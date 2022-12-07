@@ -95,7 +95,7 @@ var DefaultRules = []Rule{
 // DefaultRules.
 var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
-	{finalizeSubqueriesId, finalizeSubqueries},
+	//{finalizeSubqueriesId, finalizeSubqueries},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
@@ -105,6 +105,7 @@ var OnceAfterDefault = []Rule{
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{pruneColumnsId, pruneColumns},
+	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{replaceSortPkId, replacePkSort},

@@ -25,6 +25,15 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `SELECT a FROM (select i,s FROM mytable) mt (a,b) order by 1;`,
+		ExpectedPlan: "Sort(mt.a ASC)\n" +
+			" └─ SubqueryAlias(mt)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [mytable.i]\n" +
+			"         └─ Table(mytable)\n" +
+			"             └─ columns: [i s]\n",
+	},
+	{
 		Query: `
 			WITH RECURSIVE bus_dst as (
 				SELECT origin as dst FROM bus_routes WHERE origin='New York'
