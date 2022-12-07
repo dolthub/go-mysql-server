@@ -5919,4 +5919,20 @@ var IndexPlanTests = []QueryPlanTest{
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
+	{
+		Query: "select * from comp_index_t3 where v = 'a'",
+		ExpectedPlan: "Filter(comp_index_t3.v = 'a')\n" +
+			" └─ IndexedTableAccess(comp_index_t3)\n" +
+			"     ├─ index: [comp_index_t3.v]\n" +
+			"     ├─ filters: [{[a, a]}]\n" +
+			"     └─ columns: [pk v]\n",
+	},
+	{
+		Query: "select * from comp_index_t3 where v like 'a%'",
+		ExpectedPlan: "Filter((comp_index_t3.v >= 'a') AND (comp_index_t3.v <= 'aÿ'))\n" +
+			" └─ IndexedTableAccess(comp_index_t3)\n" +
+			"     ├─ index: [comp_index_t3.v]\n" +
+			"     ├─ filters: [{[a, aÿ]}]\n" +
+			"     └─ columns: [pk v]\n",
+	},
 }
