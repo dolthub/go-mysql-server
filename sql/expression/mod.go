@@ -29,11 +29,15 @@ var _ ArithmeticOp = (*Mod)(nil)
 // Mod expression represents "%" arithmetic operation
 type Mod struct {
 	BinaryExpression
+	ops int32
 }
 
 // NewMod creates a new Mod sql.Expression.
 func NewMod(left, right sql.Expression) *Mod {
-	return &Mod{BinaryExpression{Left: left, Right: right}}
+	a := &Mod{BinaryExpression{Left: left, Right: right}, 0}
+	ops := countArithmeticOps(a)
+	setArithmeticOps(a, ops)
+	return a
 }
 
 func (m *Mod) LeftChild() sql.Expression {
@@ -46,6 +50,10 @@ func (m *Mod) RightChild() sql.Expression {
 
 func (m *Mod) Operator() string {
 	return sqlparser.ModStr
+}
+
+func (m *Mod) SetOpCount(i int32) {
+	m.ops = i
 }
 
 func (m *Mod) String() string {

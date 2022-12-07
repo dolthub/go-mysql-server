@@ -422,6 +422,12 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 			}
 			return true
 		})
+		transform.Inspect(in.Source, func(n sql.Node) bool {
+			if subAlias, ok := n.(*plan.SubqueryAlias); ok && !aliasedTables[subAlias] {
+				children = append(children, subAlias)
+			}
+			return true
+		})
 	}
 
 	getColumnsInNodes(children, symbols, currentScopeLevel-1)
@@ -921,6 +927,13 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		})
 		transform.Inspect(node.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
+				idx = 0
+				indexSchema(resTbl.Schema())
+			}
+			return true
+		})
+		transform.Inspect(node.Source, func(n sql.Node) bool {
+			if resTbl, ok := n.(*plan.SubqueryAlias); ok && resTbl.Resolved() && !aliasedTables[resTbl] {
 				idx = 0
 				indexSchema(resTbl.Schema())
 			}

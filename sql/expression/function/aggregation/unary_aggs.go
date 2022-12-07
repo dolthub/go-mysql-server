@@ -6,6 +6,11 @@ import "github.com/dolthub/go-mysql-server/optgen/cmd/support"
 
 var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 	{
+		Name:     "AnyValue",
+		Desc:     "returns any single value in the grouped rows",
+		Nullable: true,
+	},
+	{
 		Name:     "Avg",
 		Desc:     "returns the average value of expr in all rows.",
 		Nullable: true,

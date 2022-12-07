@@ -92,7 +92,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
 		Expected: []sql.Row{
-			{1, uint64(0)},
+			{1, ""},
 		},
 	},
 	{
@@ -102,7 +102,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
 		Expected: []sql.Row{
-			{1, uint64(0)},
+			{1, ""},
 		},
 	},
 	{
@@ -112,7 +112,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@session.sql_mode",
 		Expected: []sql.Row{
-			{uint64(0x100000)},
+			{"ANSI"},
 		},
 	},
 	{
@@ -215,7 +215,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{uint64(1)},
+			{"ALLOW_INVALID_DATES"},
 		},
 	},
 	{
@@ -225,7 +225,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{uint64(1)},
+			{"ALLOW_INVALID_DATES"},
 		},
 	},
 	{
@@ -235,7 +235,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{uint64(0b10110000110100000100)},
+			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
 		},
 	},
 	// User variables

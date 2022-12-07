@@ -459,6 +459,69 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	for _, tt := range queries.OrderByGroupByScriptTests {
 		TestScript(t, harness, tt)
 	}
+
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+	RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
+	RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
+
+	var rowIter sql.RowIter
+	var row sql.Row
+	var err error
+	var rowCount int
+
+	// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
+	// group by with any_value()
+	_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
+	require.NoError(t, err)
+	rowCount = 0
+	for {
+		row, err = rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		rowCount++
+		require.NoError(t, err)
+		val := row[0].(int32)
+		team := row[1].(string)
+		switch team {
+		case "red":
+			require.True(t, val == 3 || val == 4)
+		case "orange":
+			require.True(t, val == 5 || val == 6 || val == 7)
+		case "purple":
+			require.True(t, val == 8)
+		default:
+			panic("received non-existent team")
+		}
+	}
+	require.Equal(t, rowCount, 3)
+
+	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
+	require.NoError(t, err)
+	rowCount = 0
+	for {
+		row, err = rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		rowCount++
+		require.NoError(t, err)
+		val := row[0].(int32)
+		team := row[1].(string)
+		switch team {
+		case "red":
+			require.True(t, val == 3 || val == 4)
+		case "orange":
+			require.True(t, val == 5 || val == 6 || val == 7)
+		case "purple":
+			require.True(t, val == 8)
+		default:
+			panic("received non-existent team")
+		}
+	}
+	require.Equal(t, rowCount, 3)
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {
@@ -4162,8 +4225,8 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
 	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows unbounded preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows current row) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w) FROM a WINDOW w as (partition by z order by x rows 2 preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil)

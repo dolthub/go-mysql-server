@@ -233,15 +233,35 @@ func (i *groupByIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	i.done = true
-
+	// special case for any_value
 	var err error
+	onlyAnyValue := true
 	for j, a := range i.selectedExprs {
 		i.buf[j], err = newAggregationBuffer(a)
 		if err != nil {
 			return nil, err
 		}
+		if agg, ok := a.(sql.Aggregation); ok {
+			if _, ok = agg.(*aggregation.AnyValue); !ok {
+				onlyAnyValue = false
+			}
+		}
 	}
+
+	// if no aggregate functions other than any_value, it's just a normal select
+	if onlyAnyValue {
+		row, err := i.child.Next(ctx)
+		if err != nil {
+			i.done = true
+			return nil, err
+		}
+
+		if err := updateBuffers(ctx, i.buf, row); err != nil {
+			return nil, err
+		}
+		return evalBuffers(ctx, i.buf)
+	}
+	i.done = true
 
 	for {
 		row, err := i.child.Next(ctx)
@@ -419,8 +439,9 @@ func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {
 	case sql.Aggregation:
 		return n.NewBuffer()
 	default:
-		// The semantics for a non-aggregation in a group by node is Last.
-		return aggregation.NewLast(expr).NewBuffer()
+		// The semantics for a non-aggregation expression in a group by node is First.
+		// When ONLY_FULL_GROUP_BY is enabled, this is an error, but it's allowed otherwise.
+		return aggregation.NewFirst(expr).NewBuffer()
 	}
 }
 

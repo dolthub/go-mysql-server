@@ -43,7 +43,7 @@ var _ ArithmeticOp = (*Div)(nil)
 // Div expression represents "/" arithmetic operation
 type Div struct {
 	BinaryExpression
-
+	ops int32
 	// divScale is number of continuous division operations; this value will be available of all layers
 	divScale int32
 	// leftmostScale is a length of scale of the leftmost value in continuous division operation
@@ -53,9 +53,11 @@ type Div struct {
 
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
-	a := &Div{BinaryExpression{Left: left, Right: right}, 0, 0, 0}
+	a := &Div{BinaryExpression{Left: left, Right: right}, 0, 0, 0, 0}
 	divs := countDivs(a)
 	setDivs(a, divs)
+	ops := countArithmeticOps(a)
+	setArithmeticOps(a, ops)
 	return a
 }
 
@@ -69,6 +71,10 @@ func (d *Div) RightChild() sql.Expression {
 
 func (d *Div) Operator() string {
 	return sqlparser.DivStr
+}
+
+func (d *Div) SetOpCount(i int32) {
+	d.ops = i
 }
 
 func (d *Div) String() string {
@@ -146,7 +152,10 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if finalScale > sql.DecimalTypeMaxScale {
 				finalScale = sql.DecimalTypeMaxScale
 			}
-			return res.Round(finalScale), nil
+			if isOutermostArithmeticOp(d, 0, d.ops) {
+				return res.Round(finalScale), nil
+			}
+			// TODO : need to pass finalScale if this div is the last div but not the last arithmetic op
 		}
 	}
 
@@ -268,6 +277,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 func floatOrDecimalType(e sql.Expression) sql.Type {
 	var resType sql.Type
 	var decType sql.Type
+	var maxWhole, maxFrac uint8
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
@@ -277,6 +287,19 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 			}
 			if sql.IsDecimal(c.Type()) {
 				decType = c.Type()
+			}
+		case *Literal:
+			if sql.IsNumber(c.Type()) {
+				l, err := c.Eval(nil, nil)
+				if err == nil {
+					p, s := GetPrecisionAndScale(l)
+					if cw := p - s; cw > maxWhole {
+						maxWhole = cw
+					}
+					if s > maxFrac {
+						maxFrac = s
+					}
+				}
 			}
 		}
 		return true
@@ -290,11 +313,10 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 		return decType
 	}
 
-	// using max precision which is 65 and DivScale for scale number.
-	// DivScale will be non-zero number if it is the innermost division operation.
-	defType, derr := sql.CreateDecimalType(65, 30)
+	// defType is defined by evaluating all number literals available
+	defType, derr := sql.CreateDecimalType(maxWhole+maxFrac, maxFrac)
 	if derr != nil {
-		return sql.Float64
+		return sql.MustCreateDecimalType(65, 10)
 	}
 
 	return defType
@@ -310,7 +332,7 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 	}
 
 	if _, ok := val.(decimal.Decimal); !ok {
-		p, s := getPrecisionAndScale(val)
+		p, s := GetPrecisionAndScale(val)
 		dtyp, err := sql.CreateDecimalType(p, s)
 		if err != nil {
 			val = decimal.Zero
@@ -350,9 +372,9 @@ func countDivs(e sql.Expression) int32 {
 	return 0
 }
 
-// setDivs will set the innermost node's DivScale to the number counted by countDivs, and the rest of it
-// to 0. This allows us to calculate the first division with the exact precision of the end result. Otherwise,
-// we lose precision at each division since we only add 4 scales at every division operation.
+// setDivs will set each node's DivScale to the number counted by countDivs. This allows us to
+// keep track of whether the current Div expression is the last Div operation, so the result is
+// rounded appropriately.
 func setDivs(e sql.Expression, dScale int32) {
 	if e == nil {
 		return
@@ -386,7 +408,7 @@ func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d,
 			if err != nil {
 				return 0
 			}
-			_, s := getPrecisionAndScale(lval)
+			_, s := GetPrecisionAndScale(lval)
 			return int32(s)
 		} else {
 			return getScaleOfLeftmostValue(ctx, row, a.Left, d, dScale)
@@ -437,8 +459,8 @@ func GetDecimalPrecisionAndScale(val string) (uint8, uint8) {
 	return uint8(precision), uint8(scale)
 }
 
-// getPrecisionAndScale converts the value to string format and parses it to get the precision and scale.
-func getPrecisionAndScale(val interface{}) (uint8, uint8) {
+// GetPrecisionAndScale converts the value to string format and parses it to get the precision and scale.
+func GetPrecisionAndScale(val interface{}) (uint8, uint8) {
 	var str string
 	switch v := val.(type) {
 	case time.Time:
@@ -515,11 +537,14 @@ var _ ArithmeticOp = (*IntDiv)(nil)
 // IntDiv expression represents integer "div" arithmetic operation
 type IntDiv struct {
 	BinaryExpression
+	ops int32
 }
 
 // NewIntDiv creates a new IntDiv 'div' sql.Expression.
 func NewIntDiv(left, right sql.Expression) *IntDiv {
-	a := &IntDiv{BinaryExpression{Left: left, Right: right}}
+	a := &IntDiv{BinaryExpression{Left: left, Right: right}, 0}
+	ops := countArithmeticOps(a)
+	setArithmeticOps(a, ops)
 	return a
 }
 
@@ -533,6 +558,10 @@ func (i *IntDiv) RightChild() sql.Expression {
 
 func (i *IntDiv) Operator() string {
 	return sqlparser.IntDivStr
+}
+
+func (i *IntDiv) SetOpCount(i2 int32) {
+	i.ops = i2
 }
 
 func (i *IntDiv) String() string {

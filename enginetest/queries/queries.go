@@ -960,16 +960,16 @@ var QueryTests = []QueryTest{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},
-			{2, 4},
+			{2.0, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: sql.Int64,
+				Type: sql.Float64,
 			},
 			{
 				Name: "column_1",
-				Type: sql.Int64,
+				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -977,16 +977,16 @@ var QueryTests = []QueryTest{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},
-			{2, 4},
+			{2.0, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: sql.Int64,
+				Type: sql.Float64,
 			},
 			{
 				Name: "d",
-				Type: sql.Int64,
+				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -994,8 +994,43 @@ var QueryTests = []QueryTest{
 		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
 			{1.0},
-			{2},
+			{2.0},
 		},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.00"}, {"2.00"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1.00), row(1.000), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.000"}, {"2.000"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1.000), row(21.00), row(2), row(2)) a (val);`,
+		Expected: []sql.Row{{"1.000"}, {"21.000"}, {"2.000"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row('2'), row(2)) a (val);`,
+		Expected: []sql.Row{{"1"}, {"1.00"}, {"2"}},
+	},
+	{
+		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
+		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
+	},
+	{
+		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected: []sql.Row{{"1.0"}, {"2.5"}},
+	},
+	{
+		// The SortFields does not match between prepared and non-prepared nodes.
+		SkipPrepared: true,
+		Query:        `SELECT column_0 FROM (values row('1.5',2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected:     []sql.Row{{"1"}, {"1.5"}},
+	},
+	{
+		// the result on sql shell are '1' and '1.5' but instead it should have decimal values of '1.0' and '1.5'
+		Query:    `SELECT column_0 FROM (values row(1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
+		Expected: []sql.Row{{float64(1)}, {1.5}},
 	},
 	{
 		Query: `SELECT FORMAT(val, 2) FROM
@@ -1197,7 +1232,7 @@ var QueryTests = []QueryTest{
 			order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},
-			{2, 4},
+			{2.0, "4"},
 		},
 	},
 	{
@@ -3401,6 +3436,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"50.00000"}},
 	},
 	{
+		Query:    "select 2000.0 * (24.0 * 6.0 * 6.25 * 10.0) / 250000000.0;",
+		Expected: []sql.Row{{"0.0720000000"}},
+	},
+	{
 		Query:    "select 1/2/3/4/5/6;",
 		Expected: []sql.Row{{"0.00138888888888888888"}},
 	},
@@ -4692,7 +4731,7 @@ var QueryTests = []QueryTest{
 			{"offline_mode", int64(0)},
 			{"pseudo_slave_mode", int64(0)},
 			{"rbr_exec_mode", "STRICT"},
-			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
+			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
 			{"ssl_fips_mode", "OFF"},
 		},
 	},
@@ -8281,7 +8320,6 @@ var BrokenQueries = []QueryTest{
 		Query:    "select i, date_col from datetime_table",
 		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
-	// Currently, not matching MySQL's information schema for this table
 	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
 	{
 		Query:    "SELECT X'0a'",
@@ -8291,6 +8329,12 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
 		Expected: []sql.Row{{"2013-08-13"}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/4931
+		// The current output is "0.07200000000000"
+		Query:    "select 2000.0 / 250000000.0 * (24.0 * 6.0 * 6.25 * 10.0);",
+		Expected: []sql.Row{{"0.0720000000"}},
 	},
 }
 

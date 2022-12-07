@@ -207,9 +207,30 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	return n, transform.SameTree, nil
 }
 
+// checkSqlMode checks if the option is set for the Session in ctx
+func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
+	// session variable overrides global
+	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
+	if err != nil {
+		return false, err
+	}
+	val, ok := sysVal.(string)
+	if !ok {
+		return false, sql.ErrSystemVariableCodeFail.New("sql_mode", val)
+	}
+	return strings.Contains(val, option), nil
+}
+
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_group_by")
 	defer span.End()
+
+	// only enforce strict group by when this variable is set
+	if isStrict, err := checkSqlMode(ctx, "ONLY_FULL_GROUP_BY"); err != nil {
+		return n, transform.SameTree, err
+	} else if !isStrict {
+		return n, transform.SameTree, nil
+	}
 
 	switch n := n.(type) {
 	case *plan.GroupBy:
