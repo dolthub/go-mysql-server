@@ -25,6 +25,29 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select y,(select 1 where y = 1) is_one from xy join uv on x = v;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.y, (Project\n" +
+			" │   ├─ columns: [1]\n" +
+			" │   └─ Filter(xy.y = 1)\n" +
+			" │       └─ Table()\n" +
+			" │  ) as is_one]\n" +
+			" └─ LookupJoin(xy.x = uv.v)\n" +
+			"     ├─ Table(uv)\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         └─ index: [xy.x]\n" +
+			"",
+	},
+	{
+		Query: `SELECT a FROM (select i,s FROM mytable) mt (a,b) order by 1;`,
+		ExpectedPlan: "Sort(mt.a ASC)\n" +
+			" └─ SubqueryAlias(mt)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [mytable.i]\n" +
+			"         └─ Table(mytable)\n" +
+			"             └─ columns: [i s]\n",
+	},
+	{
 		Query: `
 			WITH RECURSIVE bus_dst as (
 				SELECT origin as dst FROM bus_routes WHERE origin='New York'

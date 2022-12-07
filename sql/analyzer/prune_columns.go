@@ -141,13 +141,13 @@ func pruneSubqueryColumns(
 
 	// The columns coming from the parent have the subquery alias name as the source. We need to find the real table in
 	// order to prune the subquery correctly. The columns might also have been renamed.
-	tableByCol := make(map[string]string)
+	tableByCol := make(map[string]tableCol)
 	for i, col := range n.Child.Schema() {
 		name := col.Name
 		if len(n.Columns) > 0 {
 			name = n.Columns[i]
 		}
-		tableByCol[name] = col.Source
+		tableByCol[name] = tableCol{table: col.Source, col: col.Name}
 	}
 
 	for col := range parentColumns[n.Name()] {
@@ -155,7 +155,7 @@ func pruneSubqueryColumns(
 		if !ok {
 			return nil, transform.SameTree, fmt.Errorf("this is likely a bug: missing projected column %q on subquery %q", col, n.Name())
 		}
-		columns.add(table, col)
+		columns.add(table.table, table.col)
 	}
 
 	findUsedColumns(columns, n.Child)
@@ -170,10 +170,19 @@ func pruneSubqueryColumns(
 		return nil, transform.SameTree, err
 	}
 
+	same := sameCols && sameSq
+	if len(n.Columns) > 0 {
+		schemaLen := schemaLength(node)
+		if schemaLen != len(n.Columns) {
+			n = n.WithColumns(n.Columns[:schemaLen])
+			same = transform.NewTree
+		}
+	}
+
 	// There is no need to fix the field indexes after pruning here
 	// because the main query will take care of fixing the indexes of all the
 	// nodes in the tree.
-	if sameCols && sameSq {
+	if same {
 		return node, transform.SameTree, err
 	}
 	newn, err := n.WithChildren(node)

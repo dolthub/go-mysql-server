@@ -20,6 +20,15 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query: `select y, (select 1 where y = 1) is_one from xy join uv on x = v order by y`,
+		Expected: []sql.Row{
+			{0, nil},
+			{0, nil},
+			{1, 1},
+			{1, 1},
+		},
+	},
+	{
 		Query:    `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
 		Expected: []sql.Row{{0, 2}, {1, 0}, {3, 3}},
 	},
