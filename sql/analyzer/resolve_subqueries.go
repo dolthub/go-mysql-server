@@ -34,7 +34,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 // finalizeSubqueries runs the final analysis pass on subquery expressions and subquery aliases in the node tree to ensure
 // they are fully resolved and that the plan is ready to be executed. The logic is similar to when subqueries are initially
 // resolved with resolveSubqueries, but with a few important differences:
-//   - finalizeSubqueries processes each subquery once, from the bottom of the plan tree up, and should only be included
+//   - finalizeSubqueries processes each subquery once, finalizing parent before child scopes, and should only be included
 //     when analyzing a root node at the top of the plan.
 //   - resolveSubqueries skips pruneColumns and optimizeJoins for subquery expressions and only runs the OnceBeforeDefault
 //     rule set on subquery aliases.
@@ -46,9 +46,8 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	return finalizeSubqueriesHelper(ctx, a, n, scope, sel)
 }
 
-// finalizeSubqueriesHelper recurses through the specified |node| to find all leaf subqueries and subquery expressions,
-// working it's way from the bottom of the plan up, and runs a final analysis pass on subqueries to ensure they are
-// ready to be executed.
+// finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
+// fixing parent scopes before recursing into child nodes.
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
