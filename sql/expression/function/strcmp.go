@@ -54,24 +54,8 @@ func (s *StrCmp) Type() sql.Type {
 	return sql.Int8
 }
 
-// IsNullable implements the Expression Interface.
-func (s *StrCmp) IsNullable() bool {
-	if sql.IsNull(s.Left) {
-		if sql.IsNull(s.Right) {
-			return true
-		}
-		return s.Right.IsNullable()
-	}
-	return s.Left.IsNullable()
-}
-
 func (s *StrCmp) String() string {
 	return fmt.Sprintf("strcmp(%s, %s)", s.Left, s.Right)
-}
-
-// Children implements the Expression interface.
-func (s *StrCmp) Children() []sql.Expression {
-	return []sql.Expression{s.Left, s.Right}
 }
 
 // WithChildren implements the Expression interface.
@@ -82,12 +66,11 @@ func (s *StrCmp) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return NewStrCmp(children[0], children[1]), nil
 }
 
-// Resolved implements the Expression interface.
-func (s *StrCmp) Resolved() bool {
-	return s.Left.Resolved() && s.Right.Resolved()
-}
-
 func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if s.Left == nil || s.Right == nil {
+		return nil, nil
+	}
+
 	expr1, err := s.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -96,7 +79,7 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr1, err = sql.LongText.Convert(expr1)
+	str1, err := sql.ConvertToString(expr1, sql.LongText)
 	if err != nil {
 		return nil, err
 	}
@@ -109,13 +92,14 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr2, err = sql.LongText.Convert(expr2)
+	str2, err := sql.ConvertToString(expr2, sql.LongText)
 	if err != nil {
 		return nil, err
 	}
 
-	str1 := expr1.(string)
-	str2 := expr2.(string)
+	// STRCMP is case insensitive
+	str1 = strings.ToLower(str1)
+	str2 = strings.ToLower(str2)
 
 	return strings.Compare(str1, str2), nil
 }
