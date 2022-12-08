@@ -52,35 +52,30 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, sqa.Child, scope.newScopeFromSubqueryAlias(sqa), sel)
+			newSqa, same2, err := analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
 
-			newSqa, err := sqa.WithChildren(newNode)
+			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, newSqa.(*plan.SubqueryAlias).Child, scope.newScopeFromSubqueryAlias(sqa), sel)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
 
-			newNode, same2, err := analyzeSubqueryAlias(ctx, a, newSqa.(*plan.SubqueryAlias), scope, sel, true)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
 			if same1 && same2 {
 				return n, transform.SameTree, nil
 			} else {
-				return newNode, transform.NewTree, nil
+				newNode, err = newSqa.WithChildren(newNode)
+				return newNode, transform.NewTree, err
 			}
 		} else {
 			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if sq, ok := e.(*plan.Subquery); ok {
-					newNode, same1, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
+					newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
 					if err != nil {
 						return e, transform.SameTree, err
 					}
-
-					newSq := sq.WithQuery(newNode)
-					newExpression, same2, err := analyzeSubqueryExpression(ctx, a, node, newSq, scope, sel, true)
+					newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.newScopeFromSubqueryExpression(node), sel)
 					if err != nil {
 						return e, transform.SameTree, err
 					}
@@ -88,7 +83,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					if same1 && same2 {
 						return e, transform.SameTree, nil
 					} else {
-						return newExpression, transform.NewTree, nil
+						return newSq.(*plan.Subquery).WithQuery(newExpr), transform.NewTree, nil
 					}
 				} else {
 					return e, transform.SameTree, nil
