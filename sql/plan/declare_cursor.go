@@ -32,6 +32,8 @@ type DeclareCursor struct {
 }
 
 var _ sql.Node = (*DeclareCursor)(nil)
+var _ sql.DebugStringer = (*DeclareCursor)(nil)
+var _ expression.ProcedureReferencable = (*DeclareCursor)(nil)
 
 // NewDeclareCursor returns a new *DeclareCursor node.
 func NewDeclareCursor(name string, selectStatement sql.Node) *DeclareCursor {
@@ -49,6 +51,11 @@ func (d *DeclareCursor) Resolved() bool {
 // String implements the interface sql.Node.
 func (d *DeclareCursor) String() string {
 	return fmt.Sprintf("DECLARE %s CURSOR FOR %s", d.Name, d.Select.String())
+}
+
+// DebugString implements the interface sql.DebugStringer.
+func (d *DeclareCursor) DebugString() string {
+	return fmt.Sprintf("DECLARE %s CURSOR FOR %s", d.Name, sql.DebugString(d.Select))
 }
 
 // Schema implements the interface sql.Node.
@@ -82,8 +89,8 @@ func (d *DeclareCursor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	return &declareCursorIter{d}, nil
 }
 
-// WithParamReference returns a new *DeclareCursor containing the given *expression.ProcedureReference.
-func (d *DeclareCursor) WithParamReference(pRef *expression.ProcedureReference) *DeclareCursor {
+// WithParamReference implements the interface expression.ProcedureReferencable.
+func (d *DeclareCursor) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
 	nd.pRef = pRef
 	return &nd

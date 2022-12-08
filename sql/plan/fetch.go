@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -25,15 +26,17 @@ import (
 
 // Fetch represents the FETCH statement, which handles value acquisition from cursors.
 type Fetch struct {
-	Name      string
-	Variables []string
-	innerSet  *Set
-	id        int
-	pRef      *expression.ProcedureReference
-	sch       sql.Schema
+	Name       string
+	Variables  []string
+	innerSet   *Set
+	id         int
+	handlerIds []int
+	pRef       *expression.ProcedureReference
+	sch        sql.Schema
 }
 
 var _ sql.Node = (*Fetch)(nil)
+var _ expression.ProcedureReferencable = (*Fetch)(nil)
 
 // NewFetch returns a new *Fetch node.
 func NewFetch(name string, variables []string) *Fetch {
@@ -94,7 +97,36 @@ func (f *Fetch) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 // RowIter implements the interface sql.Node.
 func (f *Fetch) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	row, sch, err := f.pRef.FetchCursor(ctx, f.id, f.Name)
-	if err != nil {
+	if err == io.EOF {
+		// Handler IDs are sorted by their position in the call stack, with the first handlers being lower in the stack.
+		//TODO: implement more handlers than just NOT FOUND, for loop should check that handler is applicable
+		for i := len(f.handlerIds) - 1; i >= 0; i-- {
+			handlerId := f.handlerIds[i]
+			returnExitError, stmt, err := f.pRef.GetHandler(handlerId)
+			if err != nil {
+				return nil, err
+			}
+			handlerRowIter, err := stmt.RowIter(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			defer handlerRowIter.Close(ctx)
+			for {
+				_, err := handlerRowIter.Next(ctx)
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					return nil, err
+				}
+			}
+
+			if returnExitError {
+				return nil, BlockExitError(handlerId)
+			} else {
+				return nil, io.EOF
+			}
+		}
+	} else if err != nil {
 		return nil, err
 	}
 	if len(row) != len(f.innerSet.Exprs) {
@@ -114,8 +146,8 @@ func (f *Fetch) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return f.innerSet.RowIter(ctx, row)
 }
 
-// WithParamReference returns a new *Fetch containing the given *expression.ProcedureReference.
-func (f *Fetch) WithParamReference(pRef *expression.ProcedureReference) *Fetch {
+// WithParamReference implements the interface expression.ProcedureReferencable.
+func (f *Fetch) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nf := *f
 	nf.pRef = pRef
 	return &nf
@@ -126,4 +158,33 @@ func (f *Fetch) WithId(id int) *Fetch {
 	nf := *f
 	nf.id = id
 	return &nf
+}
+
+// WithHandlerIds returns a new *Fetch containing the given DeclareHandler ids.
+func (f *Fetch) WithHandlerIds(handlerIds []int) *Fetch {
+	nf := *f
+	nf.handlerIds = handlerIds
+	return &nf
+}
+
+// fetchIter is the sql.RowIter of *Fetch.
+type fetchIter struct {
+	*Fetch
+	rowIter sql.RowIter
+}
+
+var _ sql.RowIter = (*fetchIter)(nil)
+
+// Next implements the interface sql.RowIter.
+func (f *fetchIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := f.rowIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+// Close implements the interface sql.RowIter.
+func (f *fetchIter) Close(ctx *sql.Context) error {
+	return f.rowIter.Close(ctx)
 }
