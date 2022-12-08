@@ -189,8 +189,16 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "prepare stmt from 'select ?'",
-					Expected: []sql.Row{},
+					Query: "prepare stmt from 'select 1'",
+					Expected: []sql.Row{
+						{sql.OkResult{Info: plan.PrepareInfo{}}},
+					},
+				},
+				{
+					Query: "execute stmt",
+					Expected: []sql.Row{
+						{1},
+					},
 				},
 			},
 		},

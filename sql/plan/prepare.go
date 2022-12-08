@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -79,13 +80,13 @@ func (p *PrepareQuery) String() string {
 
 // ExecuteQuery is a node that prepares the query
 type ExecuteQuery struct {
-	Name  string
-	Child sql.Node
+	Name     string
+	BindVars []sql.Node
 }
 
 // NewExecuteQuery executes a prepared statement
-func NewExecuteQuery(name string, child sql.Node) *ExecuteQuery {
-	return &ExecuteQuery{Name: name, Child: child}
+func NewExecuteQuery(name string, bindVars ...sql.Node) *ExecuteQuery {
+	return &ExecuteQuery{Name: name, BindVars: bindVars}
 }
 
 // Schema implements the Node interface.
@@ -118,9 +119,19 @@ func (p *ExecuteQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *ExecuteQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child.CheckPrivileges(ctx, opChecker)
+	return true
+	//return p.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (p *ExecuteQuery) String() string {
-	return fmt.Sprintf("Prepare(%s)", p.Child.String())
+	if len(p.BindVars) == 0 {
+		return fmt.Sprintf("Execute(%s)", p.Name)
+	}
+
+	p.BindVars[0].String()
+	res := make([]string, len(p.BindVars))
+	for i, bv := range p.BindVars {
+		res[i] = bv.String()
+	}
+	return fmt.Sprintf("Execute(%s, %s)", p.Name, strings.Join(res, ","))
 }
