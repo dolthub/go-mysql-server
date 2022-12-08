@@ -202,13 +202,6 @@ func (i *joinIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-func (i *joinIter) Dispose() {
-	if d, ok := i.secondaryProvider.(sql.Disposable); ok {
-		d.Dispose()
-		i.secondaryProvider = nil
-	}
-}
-
 func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
 	leftIter, err := j.left.RowIter(ctx, row)
 	if err != nil {
@@ -236,14 +229,6 @@ type existsIter struct {
 	parentRow sql.Row
 	scopeLen  int
 	rowSize   int
-	dispose   sql.DisposeFunc
-}
-
-func (i *existsIter) Dispose() {
-	if i.dispose != nil {
-		i.dispose()
-		i.dispose = nil
-	}
 }
 
 func (i *existsIter) loadPrimary(ctx *sql.Context) error {
@@ -369,18 +354,10 @@ type fullJoinIter struct {
 	leftRow   sql.Row
 	scopeLen  int
 	rowSize   int
-	dispose   sql.DisposeFunc
 
 	leftDone  bool
 	seenLeft  map[uint64]struct{}
 	seenRight map[uint64]struct{}
-}
-
-func (i *fullJoinIter) Dispose() {
-	if i.dispose != nil {
-		i.dispose()
-		i.dispose = nil
-	}
 }
 
 func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -526,17 +503,23 @@ func newCrossJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		right = reflect.TypeOf(j.right).String()
 	}
 
-	span, ctx := ctx.Span("plan.CrossJoin", trace.WithAttributes(attribute.String("left", left), attribute.String("right", right)))
+	span, ctx := ctx.Span("plan.CrossJoin", trace.WithAttributes(
+		attribute.String("left", left),
+		attribute.String("right", right),
+	))
 
-	li, err := j.left.RowIter(ctx, row)
+	l, err := j.left.RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
 	}
 
 	return sql.NewSpanIter(span, &crossJoinIterator{
-		l:  li,
-		rp: j.right,
+		parentRow: row,
+		l:         l,
+		rp:        j.right,
+		rowSize:   len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+		scopeLen:  j.ScopeLen,
 	}), nil
 }
 
@@ -545,20 +528,16 @@ type rowIterProvider interface {
 }
 
 type crossJoinIterator struct {
+	parentRow sql.Row
+
+	rowSize  int
+	scopeLen int
+
 	l  sql.RowIter
 	rp rowIterProvider
 	r  sql.RowIter
 
 	leftRow sql.Row
-
-	dispose sql.DisposeFunc
-}
-
-func (i *crossJoinIterator) Dispose() {
-	if i.dispose != nil {
-		i.dispose()
-		i.dispose = nil
-	}
 }
 
 func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
@@ -569,7 +548,7 @@ func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			i.leftRow = r
+			i.leftRow = i.parentRow.Append(r)
 		}
 
 		if i.r == nil {
@@ -596,8 +575,14 @@ func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		row = append(row, i.leftRow...)
 		row = append(row, rightRow...)
 
-		return row, nil
+		return i.removeParentRow(row), nil
 	}
+}
+
+func (i *crossJoinIterator) removeParentRow(r sql.Row) sql.Row {
+	copy(r[i.scopeLen:], r[len(i.parentRow):])
+	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
+	return r
 }
 
 func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {

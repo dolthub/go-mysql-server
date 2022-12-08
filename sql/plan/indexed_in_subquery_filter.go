@@ -53,8 +53,16 @@ type IndexedInSubqueryFilter struct {
 	equals   bool
 }
 
+var _ sql.Disposable = (*IndexedInSubqueryFilter)(nil)
+
 func (i *IndexedInSubqueryFilter) Resolved() bool {
 	return i.subquery.Resolved() && i.child.Resolved()
+}
+
+// Dispose implements sql.Disposable. Without this, the subquery member will not be properly disposed, since it's
+// not a child node.
+func (i *IndexedInSubqueryFilter) Dispose() {
+	i.subquery.Dispose()
 }
 
 func (i *IndexedInSubqueryFilter) String() string {

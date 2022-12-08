@@ -75,7 +75,6 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, &projectIter{
 		p:         p.Projections,
 		childIter: i,
-		row:       row,
 	}), nil
 }
 
@@ -146,7 +145,6 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 type projectIter struct {
 	p         []sql.Expression
 	childIter sql.RowIter
-	row       sql.Row
 }
 
 func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {

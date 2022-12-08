@@ -131,6 +131,27 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
+		// test cross join used as projected subquery expression
+		Query:    "select 1 as exprAlias, 2, 3, (select exprAlias + count(*) from one_pk_three_idx a cross join one_pk_three_idx b);",
+		Expected: []sql.Row{{1, 2, 3, 65}},
+	},
+	{
+		// test cross join used in an IndexedInFilter subquery expression
+		Query:    "select pk, v1, v2 from one_pk_three_idx where v1 in (select max(a.v1) from one_pk_three_idx a cross join (select 'foo' from dual) b);",
+		Expected: []sql.Row{{7, 4, 4}},
+	},
+	{
+		// test cross join used as subquery alias
+		Query: "select * from (select a.v1, b.v2 from one_pk_three_idx a cross join one_pk_three_idx b) dt order by 1 desc, 2 desc limit 5;",
+		Expected: []sql.Row{
+			{4, 4},
+			{4, 3},
+			{4, 2},
+			{4, 1},
+			{4, 0},
+		},
+	},
+	{
 		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v2 where b.pk = 0 and a.v2 = 1;",
 		Expected: []sql.Row{
 			{2, 0},
