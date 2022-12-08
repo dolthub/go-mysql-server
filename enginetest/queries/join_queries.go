@@ -20,6 +20,17 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		// sqe index lookup must reference schema of outer scope after
+		// join planning reorders (lookup uv xy)
+		Query: `select y, (select 1 from uv where y = 1 and u = x) is_one from xy join uv on x = v order by y;`,
+		Expected: []sql.Row{
+			{0, nil},
+			{0, nil},
+			{1, 1},
+			{1, 1},
+		},
+	},
+	{
 		Query: `select y, (select 1 where y = 1) is_one from xy join uv on x = v order by y`,
 		Expected: []sql.Row{
 			{0, nil},
