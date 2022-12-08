@@ -64,7 +64,7 @@ type Engine struct {
 	BackgroundThreads *sql.BackgroundThreads
 	IsReadOnly        bool
 	IsServerLocked    bool
-	PreparedData      map[uint32]PreparedData
+	PreparedData      map[uint32]map[string]PreparedData
 	mu                *sync.Mutex
 }
 
@@ -107,7 +107,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsReadOnly:        cfg.IsReadOnly,
 		IsServerLocked:    cfg.IsServerLocked,
-		PreparedData:      make(map[uint32]PreparedData),
+		PreparedData:      make(map[uint32]map[string]PreparedData),
 		mu:                &sync.Mutex{},
 	}
 }
@@ -202,7 +202,7 @@ func (e *Engine) QueryNodeWithBindings(
 
 	// TODO: this is probably going to have to change
 	// if its an execute, match on query name
-	if p, ok := e.preparedDataForSession(ctx.Session); ok && p.Query == query {
+	if p, ok := e.preparedDataForSession(ctx.Session, query); ok && p.Query == query {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
 	} else {
 		analyzed, err = e.analyzeQuery(ctx, query, parsed, bindings)
@@ -276,7 +276,10 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.PreparedData[ctx.Session.ID()] = PreparedData{
+	if _, ok := e.PreparedData[ctx.Session.ID()]; !ok {
+		e.PreparedData[ctx.Session.ID()] = map[string]PreparedData{}
+	}
+	e.PreparedData[ctx.Session.ID()][query] = PreparedData{
 		Query: query,
 		Node:  analyzed,
 	}
@@ -284,29 +287,22 @@ func (e *Engine) CachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query st
 
 // preparedDataForSession returns the prepared data for a given session.
 // Second parameter is false if the session has no prepared data.
-func (e *Engine) preparedDataForSession(sess sql.Session) (PreparedData, bool) {
+func (e *Engine) preparedDataForSession(sess sql.Session, query string) (PreparedData, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	data, ok := e.PreparedData[sess.ID()]
+	data, ok := e.PreparedData[sess.ID()][query]
 	return data, ok
-}
-
-// preparedQuery returns the prepared plan's query string for a given
-// context's session id, or an empty string if the session has no prepared data.
-func (e *Engine) preparedQuery(ctx *sql.Context) string {
-	if data, ok := e.preparedDataForSession(ctx.Session); ok {
-		return data.Query
-	}
-	return ""
 }
 
 // preparedNode returns the pre-analyzed plan for a given
 // context's session id, or nil if the session has no prepared data.
-func (e *Engine) preparedNode(ctx *sql.Context) sql.Node {
+func (e *Engine) preparedNode(ctx *sql.Context, query string) sql.Node {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if data, ok := e.PreparedData[ctx.Session.ID()]; ok {
-		return data.Node
+	if sessData, ok := e.PreparedData[ctx.Session.ID()]; ok {
+		if data, ok := sessData[query]; ok {
+			return data.Node
+		}
 	}
 	return nil
 }
@@ -355,7 +351,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 	// TODO: handle bindvars
 	// just replace execute query node with the one prepared
 	if n, ok := parsed.(*plan.ExecuteQuery); ok {
-		p, hasData := e.preparedDataForSession(ctx.Session)
+		p, hasData := e.preparedDataForSession(ctx.Session, n.Name)
 		if hasData && p.Query == n.Name {
 			parsed = p.Node
 		} else {
@@ -374,7 +370,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, bindings map[string]sql.Expression) (sql.Node, error) {
 	ctx.GetLogger().Tracef("optimizing prepared plan for query: %s", query)
 
-	analyzed := e.preparedNode(ctx)
+	analyzed := e.preparedNode(ctx, query)
 	analyzed, err := analyzer.DeepCopyNode(analyzed)
 	if err != nil {
 		return nil, err

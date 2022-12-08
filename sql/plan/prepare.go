@@ -46,8 +46,7 @@ func (pi PrepareInfo) String() string {
 
 // RowIter implements the Node interface.
 func (p *PrepareQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	newRow := sql.NewRow(sql.OkResult{RowsAffected: 0, Info: PrepareInfo{}})
-	return sql.RowsToRowIter(newRow), nil
+	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{RowsAffected: 0, Info: PrepareInfo{}})), nil
 }
 
 func (p *PrepareQuery) Resolved() bool {
@@ -118,4 +117,50 @@ func (p *ExecuteQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 
 func (p *ExecuteQuery) String() string {
 	panic("ExecuteQuery methods shouldn't be used")
+}
+
+// DeallocateQuery is a node that prepares the query
+type DeallocateQuery struct {
+	Name string
+}
+
+// NewDeallocateQuery executes a prepared statement
+func NewDeallocateQuery(name string) *DeallocateQuery {
+	return &DeallocateQuery{Name: name}
+}
+
+// Schema implements the Node interface.
+func (p *DeallocateQuery) Schema() sql.Schema {
+	return sql.OkResultSchema
+}
+
+// RowIter implements the Node interface.
+func (p *DeallocateQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{})), nil
+}
+
+func (p *DeallocateQuery) Resolved() bool {
+	return true
+}
+
+// Children implements the Node interface.
+func (p *DeallocateQuery) Children() []sql.Node {
+	return nil
+}
+
+// WithChildren implements the Node interface.
+func (p *DeallocateQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) > 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+	}
+	return p, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *DeallocateQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
+func (p *DeallocateQuery) String() string {
+	return fmt.Sprintf("Deallocate(%s)", p.Name)
 }
