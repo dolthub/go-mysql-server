@@ -26,7 +26,7 @@ type Call struct {
 	Name   string
 	Params []sql.Expression
 	proc   *Procedure
-	pRef   *expression.ProcedureParamReference
+	pRef   *expression.ProcedureReference
 }
 
 var _ sql.Node = (*Call)(nil)
@@ -110,8 +110,8 @@ func (c *Call) HasProcedure() bool {
 	return c.proc != nil
 }
 
-// WithParamReference returns a new *Call containing the given *expression.ProcedureParamReference.
-func (c *Call) WithParamReference(pRef *expression.ProcedureParamReference) *Call {
+// WithParamReference returns a new *Call containing the given *expression.ProcedureReference.
+func (c *Call) WithParamReference(pRef *expression.ProcedureReference) *Call {
 	nc := *c
 	nc.pRef = pRef
 	return &nc
@@ -164,7 +164,7 @@ func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 		paramName := c.proc.Params[i].Name
 		paramType := c.proc.Params[i].Type
-		err = c.pRef.Initialize(paramName, paramType, val)
+		err = c.pRef.InitializeVariable(i, paramName, paramType, val)
 		if err != nil {
 			return nil, err
 		}
@@ -208,12 +208,16 @@ func (iter *callIter) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
+	err = iter.call.pRef.CloseAllCursors(ctx)
+	if err != nil {
+		return err
+	}
 
 	// Set all user and system variables from INOUT and OUT params
 	for i, param := range iter.call.proc.Params {
 		if param.Direction == ProcedureParamDirection_Inout ||
-			(param.Direction == ProcedureParamDirection_Out && iter.call.pRef.HasBeenSet(param.Name)) {
-			val, err := iter.call.pRef.Get(param.Name)
+			(param.Direction == ProcedureParamDirection_Out && iter.call.pRef.VariableHasBeenSet(i)) {
+			val, err := iter.call.pRef.GetVariableValue(i, param.Name)
 			if err != nil {
 				return err
 			}
@@ -232,7 +236,7 @@ func (iter *callIter) Close(ctx *sql.Context) error {
 					return err
 				}
 			}
-		} else if param.Direction == ProcedureParamDirection_Out { // HasBeenSet was false
+		} else if param.Direction == ProcedureParamDirection_Out { // VariableHasBeenSet was false
 			// For OUT only, if a var was not set within the procedure body, then we set the vars to nil.
 			// If the var had a value before the call then it is basically removed.
 			switch callParam := iter.call.Params[i].(type) {

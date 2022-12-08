@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -274,6 +276,54 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				}
 
 				return e, transform.SameTree, nil
+			case *expression.Like:
+				// TODO: maybe more cases to simplify
+				r, ok := e.Right.(*expression.Literal)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+				// TODO: handle escapes
+				if e.Escape != nil {
+					return e, transform.SameTree, nil
+				}
+				val := r.Value()
+				valStr, ok := val.(string)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+				if len(valStr) == 0 {
+					return e, transform.SameTree, nil
+				}
+				// if there are single character wildcards, don't simplify
+				if strings.Count(valStr, "_")-strings.Count(valStr, "\\_") > 0 {
+					return e, transform.SameTree, nil
+				}
+				// if there are also no multiple character wildcards, this is just a plain equals
+				numWild := strings.Count(valStr, "%") - strings.Count(valStr, "\\%")
+				if numWild == 0 {
+					return expression.NewEquals(e.Left, e.Right), transform.NewTree, nil
+				}
+				// if there are many multiple character wildcards, don't simplify
+				if numWild != 1 {
+					return e, transform.SameTree, nil
+				}
+				// if the last character is an escaped multiple character wildcard, don't simplify
+				if len(valStr) >= 2 && valStr[len(valStr)-2:] == "\\%" {
+					return e, transform.SameTree, nil
+				}
+				if valStr[len(valStr)-1] != '%' {
+					return e, transform.SameTree, nil
+				}
+				// TODO: like expression with just a wild card shouldn't even make it here; analyzer rule should just drop filter
+				if len(valStr) == 1 {
+					return e, transform.SameTree, nil
+				}
+				valStr = valStr[:len(valStr)-1]
+				newRightLower := expression.NewLiteral(valStr, e.Right.Type())
+				valStr += string(byte(255)) // append largest possible character as upper bound
+				newRightUpper := expression.NewLiteral(valStr, e.Right.Type())
+				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.Left, newRightLower), expression.NewLessThanOrEqual(e.Left, newRightUpper))
+				return newExpr, transform.NewTree, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression:
 				return e, transform.SameTree, nil
 			default:

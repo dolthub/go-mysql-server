@@ -658,6 +658,84 @@ END`,
 		},
 	},
 	{
+		Name: "DECLARE variables, proper nesting support",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(OUT x BIGINT)
+BEGIN
+	DECLARE a INT;
+	DECLARE b MEDIUMINT;
+	DECLARE c VARCHAR(20);
+	SELECT 1, 2, 'a' INTO a, b, c;
+	BEGIN
+		DECLARE b MEDIUMINT;
+		SET a = 4;
+		SET b = 5;
+	END;
+	SET x = a + b;
+	SELECT a, b, c;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(@x);",
+				Expected: []sql.Row{
+					{4, 2, "a"},
+				},
+			},
+			{
+				Query: "SELECT @x;",
+				Expected: []sql.Row{
+					{6},
+				},
+			},
+		},
+	},
+	{
+		Name: "DECLARE multiple variables, same statement",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b, c INT;
+	SELECT 2, 3, 4 INTO a, b, c;
+	SELECT a + b + c;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{9},
+				},
+			},
+		},
+	},
+	{
+		Name: "DECLARE variable shadows parameter",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(INOUT x INT)
+BEGIN
+	DECLARE x INT;
+	SET x = 5;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET @x = 2;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "CALL p1(@x);",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "SELECT @x;",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
+	{
 		Name: "DECLARE CONDITION",
 		SetUpScript: []string{
 			`CREATE PROCEDURE p1(x INT)
@@ -756,14 +834,122 @@ END;`,
 		},
 	},
 	{
+		Name: "FETCH multiple rows",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT;
+	DECLARE cur1 CURSOR FOR SELECT pk FROM t1;
+	DELETE FROM t1;
+    INSERT INTO t1 VALUES (1), (2);
+    OPEN cur1;
+    FETCH cur1 INTO a;
+    FETCH cur1 INTO b;
+    CLOSE cur1;
+    SELECT a, b;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "FETCH with multiple opens and closes",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT;
+	DECLARE cur1 CURSOR FOR SELECT pk FROM t1;
+	DELETE FROM t1;
+    INSERT INTO t1 VALUES (1);
+    OPEN cur1;
+    FETCH cur1 INTO a;
+    CLOSE cur1;
+	UPDATE t1 SET pk = 2;
+    OPEN cur1;
+    FETCH cur1 INTO b;
+    CLOSE cur1;
+    SELECT a, b;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "FETCH captures state at OPEN",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT;
+	DECLARE cur1 CURSOR FOR SELECT pk FROM t1;
+	DELETE FROM t1;
+    INSERT INTO t1 VALUES (1);
+    OPEN cur1;
+	UPDATE t1 SET pk = 2;
+    FETCH cur1 INTO a;
+    CLOSE cur1;
+    OPEN cur1;
+    FETCH cur1 INTO b;
+    CLOSE cur1;
+    SELECT a, b;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "FETCH implicitly closes",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT;
+	DECLARE cur1 CURSOR FOR SELECT pk FROM t1;
+	DELETE FROM t1;
+    INSERT INTO t1 VALUES (4);
+    OPEN cur1;
+    FETCH cur1 INTO a;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
-		ExpectedErr: sql.ErrProcedureDuplicateParameterName,
+		ExpectedErr: sql.ErrDeclareVariableDuplicate,
 	},
 	{
 		Name:        "Duplicate parameter names mixed casing",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, ABC DOUBLE) SELECT abc",
-		ExpectedErr: sql.ErrProcedureDuplicateParameterName,
+		ExpectedErr: sql.ErrDeclareVariableDuplicate,
 	},
 	{
 		Name:        "Invalid parameter type",
@@ -800,7 +986,7 @@ BEGIN
 	SELECT x;
 	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
 END;`,
-				ExpectedErr: sql.ErrDeclareOrderInvalid,
+				ExpectedErr: sql.ErrDeclareConditionOrderInvalid,
 			},
 			{
 				Query: `CREATE PROCEDURE p1(x INT)
@@ -810,7 +996,7 @@ BEGIN
 		DECLARE cond_name CONDITION FOR SQLSTATE '45000';
 	END;
 END;`,
-				ExpectedErr: sql.ErrDeclareOrderInvalid,
+				ExpectedErr: sql.ErrDeclareConditionOrderInvalid,
 			},
 			{
 				Query: `CREATE PROCEDURE p1(x INT)
@@ -819,7 +1005,7 @@ BEGIN
 		DECLARE cond_name CONDITION FOR SQLSTATE '45000';
 	END IF;
 END;`,
-				ExpectedErr: sql.ErrDeclareOrderInvalid,
+				ExpectedErr: sql.ErrDeclareConditionOrderInvalid,
 			},
 			{
 				Query: `CREATE PROCEDURE p1(x INT)
@@ -830,7 +1016,7 @@ BEGIN
 		DECLARE cond_name CONDITION FOR SQLSTATE '45000';
 	END IF;
 END;`,
-				ExpectedErr: sql.ErrDeclareOrderInvalid,
+				ExpectedErr: sql.ErrDeclareConditionOrderInvalid,
 			},
 		},
 	},
@@ -937,6 +1123,157 @@ END;`,
 			{
 				Query:    "CALL fragile();",
 				Expected: []sql.Row{{nil}, {nil}, {nil}, {4}, {5}, {6}},
+			},
+		},
+	},
+	{
+		Name: "DECLARE name duplicate same type",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE PROCEDURE p1()
+BEGIN
+	DECLARE x INT;
+	DECLARE x INT;
+	SELECT 1;
+END;`,
+				ExpectedErr: sql.ErrDeclareVariableDuplicate,
+			},
+		},
+	},
+	{
+		Name: "DECLARE name duplicate different type",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE PROCEDURE p1()
+BEGIN
+	DECLARE x INT;
+	DECLARE x VARCHAR(20);
+	SELECT 1;
+END;`,
+				ExpectedErr: sql.ErrDeclareVariableDuplicate,
+			},
+		},
+	},
+	{
+		Name: "Variable, condition, and cursor in invalid order",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE PROCEDURE p1()
+BEGIN
+	DECLARE var_name INT;
+	DECLARE cur_name CURSOR FOR SELECT 1;
+	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	SELECT 1;
+END;`,
+				ExpectedErr: sql.ErrDeclareConditionOrderInvalid,
+			},
+			{
+				Query: `CREATE PROCEDURE p2()
+BEGIN
+	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	DECLARE cur_name CURSOR FOR SELECT 1;
+	DECLARE var_name INT;
+	SELECT 1;
+END;`,
+				ExpectedErr: sql.ErrDeclareVariableOrderInvalid,
+			},
+			{
+				Query: `CREATE PROCEDURE p3()
+BEGIN
+	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	DECLARE var_name INT;
+	SELECT 1;
+	DECLARE cur_name CURSOR FOR SELECT 1;
+END;`,
+				ExpectedErr: sql.ErrDeclareCursorOrderInvalid,
+			},
+		},
+	},
+	{
+		Name: "FETCH non-existent cursor",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT;
+	FETCH no_cursor INTO a;
+END;`,
+				ExpectedErr: sql.ErrCursorNotFound,
+			},
+		},
+	},
+	{
+		Name: "OPEN non-existent cursor",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE PROCEDURE p1()
+BEGIN
+	OPEN no_cursor;
+END;`,
+				ExpectedErr: sql.ErrCursorNotFound,
+			},
+		},
+	},
+	{
+		Name: "CLOSE non-existent cursor",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE PROCEDURE p1()
+BEGIN
+	CLOSE no_cursor;
+END;`,
+				ExpectedErr: sql.ErrCursorNotFound,
+			},
+		},
+	},
+	{
+		Name: "CLOSE without OPEN",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE cur1 CURSOR FOR SELECT 1;
+    CLOSE cur1;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL p1();",
+				ExpectedErr: sql.ErrCursorNotOpen,
+			},
+		},
+	},
+	{
+		Name: "OPEN repeatedly",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE cur1 CURSOR FOR SELECT 1;
+    OPEN cur1;
+    OPEN cur1;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL p1();",
+				ExpectedErr: sql.ErrCursorAlreadyOpen,
+			},
+		},
+	},
+	{
+		Name: "CLOSE repeatedly",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE cur1 CURSOR FOR SELECT 1;
+    OPEN cur1;
+    CLOSE cur1;
+    CLOSE cur1;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL p1();",
+				ExpectedErr: sql.ErrCursorNotOpen,
 			},
 		},
 	},
