@@ -34,7 +34,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 // finalizeSubqueries runs the final analysis pass on subquery expressions and subquery aliases in the node tree to ensure
 // they are fully resolved and that the plan is ready to be executed. The logic is similar to when subqueries are initially
 // resolved with resolveSubqueries, but with a few important differences:
-//   - finalizeSubqueries processes each subquery once, from the bottom of the plan tree up, and should only be included
+//   - finalizeSubqueries processes each subquery once, finalizing parent before child scopes, and should only be included
 //     when analyzing a root node at the top of the plan.
 //   - resolveSubqueries skips pruneColumns and optimizeJoins for subquery expressions and only runs the OnceBeforeDefault
 //     rule set on subquery aliases.
@@ -46,41 +46,35 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	return finalizeSubqueriesHelper(ctx, a, n, scope, sel)
 }
 
-// finalizeSubqueriesHelper recurses through the specified |node| to find all leaf subqueries and subquery expressions,
-// working it's way from the bottom of the plan up, and runs a final analysis pass on subqueries to ensure they are
-// ready to be executed.
+// finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
+// fixing parent scopes before recursing into child nodes.
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, sqa.Child, scope.newScopeFromSubqueryAlias(sqa), sel)
+			newSqa, same2, err := analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
 
-			newSqa, err := sqa.WithChildren(newNode)
+			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, newSqa.(*plan.SubqueryAlias).Child, scope.newScopeFromSubqueryAlias(sqa), sel)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
 
-			newNode, same2, err := analyzeSubqueryAlias(ctx, a, newSqa.(*plan.SubqueryAlias), scope, sel, true)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
 			if same1 && same2 {
 				return n, transform.SameTree, nil
 			} else {
-				return newNode, transform.NewTree, nil
+				newNode, err = newSqa.WithChildren(newNode)
+				return newNode, transform.NewTree, err
 			}
 		} else {
 			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if sq, ok := e.(*plan.Subquery); ok {
-					newNode, same1, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
+					newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
 					if err != nil {
 						return e, transform.SameTree, err
 					}
-
-					newSq := sq.WithQuery(newNode)
-					newExpression, same2, err := analyzeSubqueryExpression(ctx, a, node, newSq, scope, sel, true)
+					newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.newScopeFromSubqueryExpression(node), sel)
 					if err != nil {
 						return e, transform.SameTree, err
 					}
@@ -88,7 +82,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					if same1 && same2 {
 						return e, transform.SameTree, nil
 					} else {
-						return newExpression, transform.NewTree, nil
+						return newSq.(*plan.Subquery).WithQuery(newExpr), transform.NewTree, nil
 					}
 				} else {
 					return e, transform.SameTree, nil
