@@ -16,8 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -91,47 +89,33 @@ func NewExecuteQuery(name string, bindVars ...sql.Node) *ExecuteQuery {
 
 // Schema implements the Node interface.
 func (p *ExecuteQuery) Schema() sql.Schema {
-	return sql.OkResultSchema
+	panic("ExecuteQuery methods shouldn't be used")
 }
 
 // RowIter implements the Node interface.
 func (p *ExecuteQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	newRow := sql.NewRow(sql.OkResult{RowsAffected: 0, Info: PrepareInfo{}})
-	return sql.RowsToRowIter(newRow), nil
+	panic("ExecuteQuery methods shouldn't be used")
 }
 
 func (p *ExecuteQuery) Resolved() bool {
-	return true
+	panic("ExecuteQuery methods shouldn't be used")
 }
 
 // Children implements the Node interface.
 func (p *ExecuteQuery) Children() []sql.Node {
-	return nil // TODO: maybe just make it Opaque instead?
+	panic("ExecuteQuery methods shouldn't be used")
 }
 
 // WithChildren implements the Node interface.
 func (p *ExecuteQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) > 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
-	}
-	return p, nil
+	panic("ExecuteQuery methods shouldn't be used")
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *ExecuteQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-	//return p.Child.CheckPrivileges(ctx, opChecker)
+	panic("ExecuteQuery methods shouldn't be used")
 }
 
 func (p *ExecuteQuery) String() string {
-	if len(p.BindVars) == 0 {
-		return fmt.Sprintf("Execute(%s)", p.Name)
-	}
-
-	p.BindVars[0].String()
-	res := make([]string, len(p.BindVars))
-	for i, bv := range p.BindVars {
-		res[i] = bv.String()
-	}
-	return fmt.Sprintf("Execute(%s, %s)", p.Name, strings.Join(res, ","))
+	panic("ExecuteQuery methods shouldn't be used")
 }

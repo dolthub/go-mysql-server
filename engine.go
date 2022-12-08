@@ -353,10 +353,13 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 	}
 
 	// TODO: handle bindvars
+	// just replace execute query node with the one prepared
 	if n, ok := parsed.(*plan.ExecuteQuery); ok {
 		p, hasData := e.preparedDataForSession(ctx.Session)
 		if hasData && p.Query == n.Name {
 			parsed = p.Node
+		} else {
+			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
 	}
 

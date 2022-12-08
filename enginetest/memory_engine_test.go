@@ -200,6 +200,10 @@ func TestSingleScript(t *testing.T) {
 						{1},
 					},
 				},
+				{
+					Query:       "execute fakestmt",
+					ExpectedErr: sql.ErrUnknownPreparedStatement,
+				},
 			},
 		},
 	}
