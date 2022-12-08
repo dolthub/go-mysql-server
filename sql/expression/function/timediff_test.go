@@ -126,6 +126,27 @@ func TestTimeDiff(t *testing.T) {
 			toTimespan("-24:00:00"),
 			false,
 		},
+		{
+			"first argument is null",
+			nil,
+			expression.NewLiteral("2008-12-30 00:00:00", sql.Text),
+			nil,
+			false,
+		},
+		{
+			"second argument is null",
+			expression.NewLiteral("2008-12-30 00:00:00", sql.Text),
+			nil,
+			nil,
+			false,
+		},
+		{
+			"both arguments are null",
+			nil,
+			nil,
+			nil,
+			false,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -165,6 +186,9 @@ func TestDateDiff(t *testing.T) {
 		{"text types, format with /", sql.Text, sql.Text, sql.NewRow("2007/12/22", "2007/12/20"), int64(2), nil},
 		{"text types, positive result", sql.Text, sql.Text, sql.NewRow("2007-12-31", "2007-12-29 23:59:59"), int64(2), nil},
 		{"text types, negative result", sql.Text, sql.Text, sql.NewRow("2010-11-02", "2010-11-30 23:59:59"), int64(-28), nil},
+		{"first argument is null", sql.Text, sql.Text, sql.NewRow(nil, "2010-11-02"), nil, nil},
+		{"second argument is null", sql.Text, sql.Text, sql.NewRow("2010-11-02", nil), nil, nil},
+		{"both arguments are null", sql.Text, sql.Text, sql.NewRow(nil, nil), nil, nil},
 	}
 
 	for _, tt := range testCases {
@@ -227,6 +251,10 @@ func TestTimestampDiff(t *testing.T) {
 		{"year", sql.Text, sql.Text, sql.Text, sql.NewRow("YEAR", "2016-09-04 00:00:01", "2021-09-04 00:00:00"), int64(4), false},
 		{"year - ", sql.Text, sql.Text, sql.Text, sql.NewRow("YEAR", "2016-09-04 01:00:01", "2021-09-04 02:00:02"), int64(5), false},
 		{"year - negative", sql.Text, sql.Text, sql.Text, sql.NewRow("SQL_TSI_YEAR", "2016-09-05 00:00:00", "2006-09-04 23:59:59"), int64(-10), false},
+		{"unit is null", sql.Text, sql.Text, sql.Text, sql.NewRow(nil, "2016-09-05 00:00:00", "2006-09-04 23:59:59"), nil, true},
+		{"first timestamp is null", sql.Text, sql.Text, sql.Text, sql.NewRow("YEAR", nil, "2021-09-04 02:00:02"), nil, false},
+		{"second timestamp is null", sql.Text, sql.Text, sql.Text, sql.NewRow("YEAR", "2016-09-04 00:00:01", nil), nil, false},
+		{"both timestamps are null", sql.Text, sql.Text, sql.Text, sql.NewRow("YEAR", nil, nil), nil, false},
 	}
 
 	for _, tt := range testCases {
