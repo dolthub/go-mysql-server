@@ -39,6 +39,19 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ Table(uv)\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             └─ index: [xy.x]\n" +
+		Query: `select * from (select y, (select 1 where y = 1) is_one from xy join uv on x = v) sq order by y`,
+		ExpectedPlan: "Sort(sq.y ASC)\n" +
+			" └─ SubqueryAlias(sq)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [xy.y, (Project\n" +
+			"         │   ├─ columns: [1]\n" +
+			"         │   └─ Filter(xy.y = 1)\n" +
+			"         │       └─ Table()\n" +
+			"         │  ) as is_one]\n" +
+			"         └─ LookupJoin(xy.x = uv.v)\n" +
+			"             ├─ Table(uv)\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 └─ index: [xy.x]\n" +
 			"",
 	},
 	{
