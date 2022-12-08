@@ -104,6 +104,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	var (
 		securityType    string
 		isDeterministic string
+		sqlDataAccess   string
 	)
 
 	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
@@ -119,8 +120,14 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		return nil, err
 	}
 
-	// TODO: get sqlMode
-	//sqlMode, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
+	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
+	if err != nil {
+		return nil, err
+	}
+	sqlMode, ok := sysVal.(string)
+	if !ok {
+
+	}
 
 	showExternalProcedures, err := ctx.GetSessionVariable(ctx, "show_external_procedures")
 	if err != nil {
@@ -137,7 +144,30 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				continue
 			}
 			securityType = "DEFINER"
-			isDeterministic = "" // YES or NO
+			isDeterministic = "NO" // YES or NO
+			sqlDataAccess = "CONTAINS SQL"
+			for _, ch := range procedure.Characteristics {
+				if ch == plan.Characteristic_LanguageSql {
+
+				}
+
+				if ch == plan.Characteristic_Deterministic {
+					isDeterministic = "YES"
+				} else if ch == plan.Characteristic_NotDeterministic {
+					isDeterministic = "NO"
+				}
+
+				if ch == plan.Characteristic_ContainsSql {
+					sqlDataAccess = "CONTAINS SQL"
+				} else if ch == plan.Characteristic_NoSql {
+					sqlDataAccess = "NO SQL"
+				} else if ch == plan.Characteristic_ReadsSqlData {
+					sqlDataAccess = "READS SQL DATA"
+				} else if ch == plan.Characteristic_ModifiesSqlData {
+					sqlDataAccess = "MODIFIES SQL DATA"
+				}
+			}
+
 			if procedure.SecurityContext == plan.ProcedureSecurityContext_Invoker {
 				securityType = "INVOKER"
 			}
@@ -162,12 +192,12 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				"SQL",                           // external_language NOT NULL
 				"SQL",                           // parameter_style NOT NULL
 				isDeterministic,                 // is_deterministic NOT NULL
-				nil,                             // sql_data_access NOT NULL
+				sqlDataAccess,                   // sql_data_access NOT NULL
 				nil,                             // sql_path
 				securityType,                    // security_type NOT NULL
 				procedure.CreatedAt.UTC(),       // created NOT NULL
 				procedure.ModifiedAt.UTC(),      // last_altered NOT NULL
-				nil,                             // sql_mode NOT NULL
+				sqlMode,                         // sql_mode NOT NULL
 				procedure.Comment,               // routine_comment NOT NULL
 				procedure.Definer,               // definer NOT NULL
 				characterSetClient,              // character_set_client NOT NULL
