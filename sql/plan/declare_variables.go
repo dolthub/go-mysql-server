@@ -25,19 +25,22 @@ import (
 
 // DeclareVariables represents the DECLARE statement for local variables.
 type DeclareVariables struct {
-	Names []string
-	Type  sql.Type
-	ids   []int
-	pRef  *expression.ProcedureReference
+	Names      []string
+	Type       sql.Type
+	DefaultVal *sql.ColumnDefaultValue
+	ids        []int
+	pRef       *expression.ProcedureReference
 }
 
 var _ sql.Node = (*DeclareVariables)(nil)
+var _ expression.ProcedureReferencable = (*DeclareVariables)(nil)
 
 // NewDeclareVariables returns a new *DeclareVariables node.
-func NewDeclareVariables(names []string, typ sql.Type) *DeclareVariables {
+func NewDeclareVariables(names []string, typ sql.Type, defaultVal *sql.ColumnDefaultValue) *DeclareVariables {
 	return &DeclareVariables{
-		Names: names,
-		Type:  typ,
+		Names:      names,
+		Type:       typ,
+		DefaultVal: defaultVal,
 	}
 }
 
@@ -73,11 +76,11 @@ func (d *DeclareVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.Privi
 
 // RowIter implements the interface sql.Node.
 func (d *DeclareVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &declareVariablesIter{d}, nil
+	return &declareVariablesIter{d, row}, nil
 }
 
-// WithParamReference returns a new *DeclareVariables containing the given *expression.ProcedureReference.
-func (d *DeclareVariables) WithParamReference(pRef *expression.ProcedureReference) *DeclareVariables {
+// WithParamReference implements the interface expression.ProcedureReferencable.
+func (d *DeclareVariables) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
 	nd.pRef = pRef
 	return &nd
@@ -96,14 +99,19 @@ func (d *DeclareVariables) WithIds(ctx *sql.Context, ids []int) (sql.Node, error
 // declareVariablesIter is the sql.RowIter of *DeclareVariables.
 type declareVariablesIter struct {
 	*DeclareVariables
+	row sql.Row
 }
 
 var _ sql.RowIter = (*declareVariablesIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (d *declareVariablesIter) Next(ctx *sql.Context) (sql.Row, error) {
+	defaultVal, err := d.DefaultVal.Eval(ctx, d.row)
+	if err != nil {
+		return nil, err
+	}
 	for i := range d.ids {
-		if err := d.pRef.InitializeVariable(d.ids[i], d.Names[i], d.Type, nil); err != nil {
+		if err := d.pRef.InitializeVariable(d.ids[i], d.Names[i], d.Type, defaultVal); err != nil {
 			return nil, err
 		}
 	}

@@ -25,6 +25,39 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select y, (select 1 from uv where y = 1 and u = x) is_one from xy join uv on x = v order by y;`,
+		ExpectedPlan: "Sort(xy.y ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.y, (Project\n" +
+			"     │   ├─ columns: [1]\n" +
+			"     │   └─ Filter((xy.y = 1) AND (uv.u = xy.x))\n" +
+			"     │       └─ IndexedTableAccess(uv)\n" +
+			"     │           ├─ index: [uv.u]\n" +
+			"     │           └─ columns: [u]\n" +
+			"     │  ) as is_one]\n" +
+			"     └─ LookupJoin(xy.x = uv.v)\n" +
+			"         ├─ Table(uv)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             └─ index: [xy.x]\n" +
+			"",
+	},
+	{
+		Query: `select * from (select y, (select 1 where y = 1) is_one from xy join uv on x = v) sq order by y`,
+		ExpectedPlan: "Sort(sq.y ASC)\n" +
+			" └─ SubqueryAlias(sq)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [xy.y, (Project\n" +
+			"         │   ├─ columns: [1]\n" +
+			"         │   └─ Filter(xy.y = 1)\n" +
+			"         │       └─ Table()\n" +
+			"         │  ) as is_one]\n" +
+			"         └─ LookupJoin(xy.x = uv.v)\n" +
+			"             ├─ Table(uv)\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 └─ index: [xy.x]\n" +
+			"",
+	},
+	{
 		Query: `select y,(select 1 where y = 1) is_one from xy join uv on x = v;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.y, (Project\n" +
@@ -45,7 +78,8 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Project\n" +
 			"         ├─ columns: [mytable.i]\n" +
 			"         └─ Table(mytable)\n" +
-			"             └─ columns: [i s]\n",
+			"             └─ columns: [i s]\n" +
+			"",
 	},
 	{
 		Query: `
@@ -443,8 +477,7 @@ inner join pq on true
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
+			"         └─ Table(mytable)\n" +
 			"             └─ columns: [i]\n" +
 			"",
 	},
@@ -456,8 +489,7 @@ inner join pq on true
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table(mytable)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
+			"         └─ Table(mytable)\n" +
 			"             └─ columns: [i]\n" +
 			"",
 	},
@@ -2968,9 +3000,10 @@ inner join pq on true
 		AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
-			" └─ Filter((NOT((Filter((mytable.i = mt.i) AND (mytable.i > 2))\n" +
+			" └─ Filter((NOT((Filter(mytable.i = mt.i)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{(2, ∞)}]\n" +
 			"         └─ columns: [i]\n" +
 			"    ) IS NULL)) AND (NOT((Filter(othertable.i2 = mt.i)\n" +
 			"     └─ IndexedTableAccess(othertable)\n" +

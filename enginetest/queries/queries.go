@@ -8776,10 +8776,6 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT * FROM information_schema.partitions",
-		Expected: []sql.Row{},
-	},
-	{
 		Query: `
 				select CONCAT(tbl.table_schema, '.', tbl.table_name) as the_table,
 				       col.column_name, GROUP_CONCAT(kcu.column_name SEPARATOR ',') as pk
@@ -8834,15 +8830,11 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SELECT * FROM information_schema.mysql_firewall_users`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.mysql_firewall_whitelist`,
-		Expected: []sql.Row{},
-	},
-	{
 		Query:    `SELECT * FROM information_schema.optimizer_trace`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * FROM information_schema.partitions",
 		Expected: []sql.Row{},
 	},
 	{
@@ -9248,17 +9240,17 @@ var InfoSchemaScripts = []ScriptTest{
 					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
 				Expected: []sql.Row{
 					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
-						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hi", "", "utf8mb4", "utf8mb4_0900_bin",
-						"utf8mb4_0900_bin"},
+						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"hi", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
-						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "`user`@`%`", "utf8mb4", "utf8mb4_0900_bin",
-						"utf8mb4_0900_bin"},
+						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"", "`user`@`%`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p12", "def", "foo", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
-						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hello", "", "utf8mb4", "utf8mb4_0900_bin",
-						"utf8mb4_0900_bin"},
+						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"hello", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
-						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "", "", "utf8mb4", "utf8mb4_0900_bin",
-						"utf8mb4_0900_bin"},
+						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -10170,7 +10162,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
+					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
 				},
 			},
 		},
@@ -10186,8 +10178,8 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", float64(2), float64(1), float64(3), uint64(3), uint64(0), uint64(3), "[[1.00, 1.00, 0.33],[2.00, 2.00, 0.33],[3.00, 3.00, 0.33]]"},
-					{"mydb", "t", "j", float64(5), float64(4), float64(6), uint64(3), uint64(0), uint64(3), "[[4.00, 4.00, 0.33],[5.00, 5.00, 0.33],[6.00, 6.00, 0.33]]"},
+					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
+					{"mydb", "t", "j", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}},
 				},
 			},
 		},
@@ -10203,7 +10195,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", float64(16.125), float64(1.25), float64(45.25), uint64(4), uint64(0), uint64(4), "[[1.25, 1.25, 0.25],[7.50, 7.50, 0.25],[10.50, 10.50, 0.25],[45.25, 45.25, 0.25]]"},
+					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
 				},
 			},
 		},
@@ -10218,7 +10210,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", float64(0), float64(0), float64(0), uint64(0), uint64(0), uint64(0), "[]"},
+					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{}}}},
 				},
 			},
 		},

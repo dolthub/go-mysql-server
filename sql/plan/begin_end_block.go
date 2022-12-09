@@ -33,7 +33,7 @@ func NewBeginEndBlock(block *Block) *BeginEndBlock {
 var _ sql.Node = (*BeginEndBlock)(nil)
 var _ sql.DebugStringer = (*BeginEndBlock)(nil)
 
-// String implements the sql.Node interface.
+// String implements the interface sql.Node.
 func (b *BeginEndBlock) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("BEGIN .. END")
@@ -45,7 +45,7 @@ func (b *BeginEndBlock) String() string {
 	return p.String()
 }
 
-// DebugString implements the sql.DebugStringer interface.
+// DebugString implements the interface sql.DebugStringer.
 func (b *BeginEndBlock) DebugString() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("BEGIN .. END")
@@ -57,12 +57,25 @@ func (b *BeginEndBlock) DebugString() string {
 	return p.String()
 }
 
-// WithChildren implements the sql.Node interface.
+// WithChildren implements the interface sql.Node.
 func (b *BeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewBeginEndBlock(NewBlock(children)), nil
+	newBeginEndBlock := *b
+	newBlock := *b.Block
+	newBlock.statements = children
+	newBeginEndBlock.Block = &newBlock
+	return &newBeginEndBlock, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (b *BeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return b.Block.CheckPrivileges(ctx, opChecker)
+}
+
+// WithHandlerIds returns a new *BeginEndBlock with the given handler IDs set.
+func (b *BeginEndBlock) WithHandlerIds(ids []int) *BeginEndBlock {
+	newBeginEndBlock := *b
+	newBlock := *b.Block
+	newBlock.validExitHandlerIds = ids
+	newBeginEndBlock.Block = &newBlock
+	return &newBeginEndBlock
 }
