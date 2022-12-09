@@ -97,9 +97,6 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// STRCMP is case insensitive
-	str1 = strings.ToLower(str1)
-	str2 = strings.ToLower(str2)
-
+	// dolt currently defaults to a case sensitive collation which will make STRCMP case sensitive
 	return strings.Compare(str1, str2), nil
 }

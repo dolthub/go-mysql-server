@@ -35,7 +35,6 @@ func TestStrCmp(t *testing.T) {
 		{"first string is smaller", sql.Text, sql.Text, sql.NewRow("a", "b"), int(-1), nil},
 		{"second string is smaller", sql.Text, sql.Text, sql.NewRow("b", "a"), int(1), nil},
 		{"arguments have different types", sql.Int8, sql.Text, sql.NewRow(1, "1"), int(0), nil},
-		{"strcmp is case insensitive", sql.Int8, sql.Text, sql.NewRow("abc123", "ABC123"), int(0), nil},
 		{"first argument is null", sql.Text, sql.Text, sql.NewRow(nil, "a"), nil, nil},
 		{"second argument is null", sql.Text, sql.Text, sql.NewRow("a", nil), nil, nil},
 		{"both arguments are null", sql.Text, sql.Text, sql.NewRow(nil, nil), nil, nil},
