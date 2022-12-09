@@ -64,7 +64,8 @@ type Engine struct {
 	BackgroundThreads *sql.BackgroundThreads
 	IsReadOnly        bool
 	IsServerLocked    bool
-	PreparedData      map[uint32]map[string]PreparedData
+	PreparedData      map[uint32]PreparedData
+	NewPreparedData   map[uint32]map[string]PreparedData
 	mu                *sync.Mutex
 }
 
@@ -107,7 +108,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsReadOnly:        cfg.IsReadOnly,
 		IsServerLocked:    cfg.IsServerLocked,
-		PreparedData:      make(map[uint32]map[string]PreparedData),
+		PreparedData:      make(map[uint32]PreparedData),
+		NewPreparedData:   make(map[uint32]map[string]PreparedData),
 		mu:                &sync.Mutex{},
 	}
 }
@@ -276,10 +278,7 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if _, ok := e.PreparedData[ctx.Session.ID()]; !ok {
-		e.PreparedData[ctx.Session.ID()] = map[string]PreparedData{}
-	}
-	e.PreparedData[ctx.Session.ID()][query] = PreparedData{
+	e.PreparedData[ctx.Session.ID()] = PreparedData{
 		Query: query,
 		Node:  analyzed,
 	}
@@ -290,7 +289,7 @@ func (e *Engine) CachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query st
 func (e *Engine) preparedDataForSession(sess sql.Session, query string) (PreparedData, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	data, ok := e.PreparedData[sess.ID()][query]
+	data, ok := e.PreparedData[sess.ID()]
 	return data, ok
 }
 
@@ -299,10 +298,8 @@ func (e *Engine) preparedDataForSession(sess sql.Session, query string) (Prepare
 func (e *Engine) preparedNode(ctx *sql.Context, query string) sql.Node {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if sessData, ok := e.PreparedData[ctx.Session.ID()]; ok {
-		if data, ok := sessData[query]; ok {
-			return data.Node
-		}
+	if data, ok := e.PreparedData[ctx.Session.ID()]; ok {
+		return data.Node
 	}
 	return nil
 }

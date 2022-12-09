@@ -257,6 +257,28 @@ func TestSingleScript(t *testing.T) {
 	//}
 }
 
+func TestSingleScriptPrepared(t *testing.T) {
+	//t.Skip()
+	var script = queries.ScriptTest{
+		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (2);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO test (pk) VALUES (2);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+		},
+	}
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	enginetest.TestScriptPrepared(t, harness, script)
+}
+
 func TestUnbuildableIndex(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
