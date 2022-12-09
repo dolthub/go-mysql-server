@@ -203,6 +203,8 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	// TODO: this is probably going to have to change
+	// our testing set up, specifically for scripts depends on whether or not the query has been prepared
+	// we sort of expect there to be exactly 1 query prepared/cached
 	// if its an execute, match on query name
 	if p, ok := e.preparedDataForSession(ctx.Session, query); ok && p.Query == query {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, bindings)
@@ -534,7 +536,7 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	}
 	switch node.(type) {
 	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+			*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
 			return sql.ErrReadOnly.New()
 		} else if e.IsServerLocked {
