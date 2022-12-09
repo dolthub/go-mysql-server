@@ -209,13 +209,19 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
-		return convertDeclare(ctx, n)
+		return convertDeclare(ctx, n, query)
 	case *sqlparser.FetchCursor:
 		return convertFetch(ctx, n)
 	case *sqlparser.OpenCursor:
 		return convertOpen(ctx, n)
 	case *sqlparser.CloseCursor:
 		return convertClose(ctx, n)
+	case *sqlparser.Loop:
+		return convertLoop(ctx, n, query)
+	case *sqlparser.Leave:
+		return convertLeave(ctx, n)
+	case *sqlparser.Iterate:
+		return convertIterate(ctx, n)
 	case *sqlparser.Kill:
 		return convertKill(ctx, n)
 	case *sqlparser.Signal:
@@ -1306,13 +1312,15 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 		params), nil
 }
 
-func convertDeclare(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
+func convertDeclare(ctx *sql.Context, d *sqlparser.Declare, query string) (sql.Node, error) {
 	if d.Condition != nil {
 		return convertDeclareCondition(ctx, d)
 	} else if d.Variables != nil {
 		return convertDeclareVariables(ctx, d)
 	} else if d.Cursor != nil {
 		return convertDeclareCursor(ctx, d)
+	} else if d.Handler != nil {
+		return convertDeclareHandler(ctx, d, query)
 	}
 	return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(d))
 }
@@ -1348,7 +1356,11 @@ func convertDeclareVariables(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, 
 	if err != nil {
 		return nil, err
 	}
-	return plan.NewDeclareVariables(names, typ), nil
+	defaultVal, err := convertDefaultExpression(ctx, dVars.VarType.Default)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewDeclareVariables(names, typ, defaultVal), nil
 }
 
 func convertDeclareCursor(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
@@ -1358,6 +1370,31 @@ func convertDeclareCursor(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, err
 		return nil, err
 	}
 	return plan.NewDeclareCursor(dCursor.Name, selectStmt), nil
+}
+
+func convertDeclareHandler(ctx *sql.Context, d *sqlparser.Declare, query string) (sql.Node, error) {
+	dHandler := d.Handler
+	//TODO: support other condition values besides NOT FOUND
+	if len(dHandler.ConditionValues) != 1 || dHandler.ConditionValues[0].ValueType != sqlparser.DeclareHandlerCondition_NotFound {
+		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(d))
+	}
+	stmt, err := convert(ctx, dHandler.Statement, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var action plan.DeclareHandlerAction
+	switch dHandler.Action {
+	case sqlparser.DeclareHandlerAction_Continue:
+		action = plan.DeclareHandlerAction_Continue
+	case sqlparser.DeclareHandlerAction_Exit:
+		action = plan.DeclareHandlerAction_Exit
+	case sqlparser.DeclareHandlerAction_Undo:
+		action = plan.DeclareHandlerAction_Undo
+	default:
+		return nil, fmt.Errorf("unknown DECLARE ... HANDLER action: %v", dHandler.Action)
+	}
+	return plan.NewDeclareHandler(action, stmt)
 }
 
 func convertFetch(ctx *sql.Context, fetchCursor *sqlparser.FetchCursor) (sql.Node, error) {
@@ -1370,6 +1407,22 @@ func convertOpen(ctx *sql.Context, openCursor *sqlparser.OpenCursor) (sql.Node, 
 
 func convertClose(ctx *sql.Context, closeCursor *sqlparser.CloseCursor) (sql.Node, error) {
 	return plan.NewClose(closeCursor.Name), nil
+}
+
+func convertLoop(ctx *sql.Context, loop *sqlparser.Loop, query string) (sql.Node, error) {
+	block, err := convertBlock(ctx, loop.Statements, query)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewLoop(loop.Label, block), nil
+}
+
+func convertLeave(ctx *sql.Context, leave *sqlparser.Leave) (sql.Node, error) {
+	return plan.NewLeave(leave.Label), nil
+}
+
+func convertIterate(ctx *sql.Context, iterate *sqlparser.Iterate) (sql.Node, error) {
+	return plan.NewIterate(iterate.Label), nil
 }
 
 func convertSignal(ctx *sql.Context, s *sqlparser.Signal) (sql.Node, error) {

@@ -22,8 +22,9 @@ import (
 
 // Block represents a collection of statements that should be executed in sequence.
 type Block struct {
-	statements []sql.Node
-	rowIterSch sql.Schema // This is set during RowIter, as the schema is unknown until iterating over the statements.
+	statements          []sql.Node
+	rowIterSch          sql.Schema // This is set during RowIter, as the schema is unknown until iterating over the statements.
+	validExitHandlerIds []int      // This is set by BeginEndBlock, as other blocks should ignore exit handlers
 }
 
 var _ sql.Node = (*Block)(nil)
@@ -80,7 +81,9 @@ func (b *Block) Children() []sql.Node {
 
 // WithChildren implements the sql.Node interface.
 func (b *Block) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewBlock(children), nil
+	nb := *b
+	nb.statements = children
+	return &nb, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -148,6 +151,13 @@ func (b *Block) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil
 		}()
 		if err != nil {
+			if exitHandler, ok := err.(BlockExitError); ok {
+				for _, validExitHandlerId := range b.validExitHandlerIds {
+					if validExitHandlerId == int(exitHandler) {
+						return sql.RowsToRowIter(), nil
+					}
+				}
+			}
 			return nil, err
 		}
 	}
@@ -187,4 +197,13 @@ func (i *blockIter) RepresentingNode() sql.Node {
 // Schema implements the sql.BlockRowIter interface.
 func (i *blockIter) Schema() sql.Schema {
 	return i.sch
+}
+
+type BlockExitError int
+
+var _ error = BlockExitError(0)
+
+// Error implements the error interface.
+func (b BlockExitError) Error() string {
+	return "Block that EXIT handler was declared in could somehow not be found"
 }

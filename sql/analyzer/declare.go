@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -48,30 +49,41 @@ type declarationCursor struct {
 type declarationScope struct {
 	nextVarId  *int
 	nextCurId  *int
+	nextHandId *int
 	parent     *declarationScope
 	conditions map[string]*plan.DeclareCondition
 	variables  map[string]*declarationVariable
 	cursors    map[string]*declarationCursor
+	loops      map[string]struct{}
+
+	//TODO: implement proper handler support
+	handler    *plan.DeclareHandler
+	handlerIds []int
 }
 
 // newDeclarationScope returns a *declarationScope.
 func newDeclarationScope(parent *declarationScope) *declarationScope {
 	var nextVarId *int
 	var nextCurId *int
+	var nextHandId *int
 	if parent != nil {
 		nextVarId = parent.nextVarId
 		nextCurId = parent.nextCurId
+		nextHandId = parent.nextHandId
 	} else {
 		nextVarId = new(int)
 		nextCurId = new(int)
+		nextHandId = new(int)
 	}
 	return &declarationScope{
 		nextVarId:  nextVarId,
 		nextCurId:  nextCurId,
+		nextHandId: nextHandId,
 		parent:     parent,
 		conditions: make(map[string]*plan.DeclareCondition),
 		variables:  make(map[string]*declarationVariable),
 		cursors:    make(map[string]*declarationCursor),
+		loops:      make(map[string]struct{}),
 	}
 }
 
@@ -115,6 +127,27 @@ func (d *declarationScope) AddCursor(name string) (int, error) {
 	}
 	*d.nextCurId++
 	return *d.nextCurId - 1, nil
+}
+
+// AddHandler adds the given handler to the scope. Errors if a duplicate handler exists.
+func (d *declarationScope) AddHandler(handler *plan.DeclareHandler) (int, error) {
+	if d.handler != nil {
+		return 0, sql.ErrDeclareHandlerDuplicate.New()
+	}
+	d.handler = handler
+	d.handlerIds = append(d.handlerIds, *d.nextHandId)
+	*d.nextHandId++
+	return *d.nextHandId - 1, nil
+}
+
+// AddLoop adds a loop with the given label to the current scope.
+func (d *declarationScope) AddLoop(label string) error {
+	lowercaseLabel := strings.ToLower(label)
+	if _, ok := d.loops[lowercaseLabel]; ok {
+		return sql.ErrLoopRedefinition.New(label)
+	}
+	d.loops[lowercaseLabel] = struct{}{}
+	return nil
 }
 
 // GetCondition returns the condition from the scope. If the condition is not found in the current scope, then walks up
@@ -168,6 +201,43 @@ func (d *declarationScope) getCursor(name string) *declarationCursor {
 	return d.parent.getCursor(name)
 }
 
+// GetAllReachableHandlerIds returns all *plan.DeclareHandler IDs that are reachable from the current scope. Handlers are sorted by
+// lowest in the scope's stack.
+func (d *declarationScope) GetAllReachableHandlerIds() []int {
+	return d.getAllReachableHandlerIds()
+}
+
+// getAllReachableHandlerIds is the recursive implementation of GetAllReachableHandlerIds.
+func (d *declarationScope) getAllReachableHandlerIds() []int {
+	if d == nil {
+		return nil
+	}
+	return append(d.parent.getAllReachableHandlerIds(), d.handlerIds...)
+}
+
+// GetCurrentScopeHandlerIds returns all *plan.DeclareHandler IDs that are declared on the current scope.
+func (d *declarationScope) GetCurrentScopeHandlerIds() []int {
+	return append([]int{}, d.handlerIds...)
+}
+
+// HasLoop returns whether the loop exists in the current scope only. Loops that are in scopes above the current one may
+// not be queried.
+func (d *declarationScope) HasLoop(label string) bool {
+	_, ok := d.loops[strings.ToLower(label)]
+	return ok
+}
+
+// RemoveLoop removes a loop with the given label from the current scope.
+func (d *declarationScope) RemoveLoop(label string) error {
+	lowercaseLabel := strings.ToLower(label)
+	if _, ok := d.loops[lowercaseLabel]; !ok {
+		// This should never be hit
+		return fmt.Errorf("loop '%s' could not be found in the current scope for removal", label)
+	}
+	delete(d.loops, lowercaseLabel)
+	return nil
+}
+
 // VariableCount returns the total number of parameters and variables.
 func (d *declarationScope) VariableCount() int {
 	return *d.nextVarId
@@ -176,6 +246,11 @@ func (d *declarationScope) VariableCount() int {
 // CursorCount returns the total number of cursors.
 func (d *declarationScope) CursorCount() int {
 	return *d.nextCurId
+}
+
+// HandlerCount returns the total number of handlers.
+func (d *declarationScope) HandlerCount() int {
+	return *d.nextHandId
 }
 
 // resolveDeclarations handles all Declare nodes, ensuring correct node order and assigning variables and conditions to
@@ -190,7 +265,11 @@ func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Sc
 			ok = true
 		}
 	}
-	if ok {
+	if !ok {
+		if _, ok = node.(*plan.TriggerBeginEndBlock); !ok {
+			return node, transform.SameTree, nil
+		}
+	} else {
 		for _, param := range proc.Params {
 			if _, err := declScope.AddVariable(param.Name, param.Type); err != nil {
 				return nil, transform.SameTree, err
@@ -205,9 +284,11 @@ func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Sc
 	if resolvedProc, ok := resolvedNode.(*plan.Procedure); ok {
 		resolvedProc.VariableCount = declScope.VariableCount()
 		resolvedProc.CursorCount = declScope.CursorCount()
+		resolvedProc.HandlerCount = declScope.HandlerCount()
 	} else if resolvedCProc, ok := resolvedNode.(*plan.CreateProcedure); ok {
 		resolvedCProc.VariableCount = declScope.VariableCount()
 		resolvedCProc.CursorCount = declScope.CursorCount()
+		resolvedCProc.HandlerCount = declScope.HandlerCount()
 	}
 	return resolvedNode, identity, nil
 }
@@ -256,6 +337,21 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					copy(newChildren, children)
 				}
 				newChildren[i] = child.WithId(id)
+			case *plan.DeclareHandler:
+				if lastPosition > declarePosition_Handlers {
+					return nil, transform.SameTree, sql.ErrDeclareHandlerOrderInvalid.New()
+				}
+				lastPosition = declarePosition_Handlers
+				id, err := scope.AddHandler(child)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				same = false
+				if newChildren == nil {
+					newChildren = make([]sql.Node, len(children))
+					copy(newChildren, children)
+				}
+				newChildren[i] = child.WithId(id)
 			case *plan.DeclareVariables:
 				if lastPosition > declarePosition_VariablesConditions {
 					return nil, transform.SameTree, sql.ErrDeclareVariableOrderInvalid.New()
@@ -288,6 +384,8 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				return nil, transform.SameTree, sql.ErrDeclareConditionOrderInvalid.New()
 			case *plan.DeclareCursor:
 				return nil, transform.SameTree, sql.ErrDeclareCursorOrderInvalid.New()
+			case *plan.DeclareHandler:
+				return nil, transform.SameTree, sql.ErrDeclareHandlerOrderInvalid.New()
 			case *plan.DeclareVariables:
 				return nil, transform.SameTree, sql.ErrDeclareVariableOrderInvalid.New()
 			}
@@ -311,7 +409,17 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-		case *plan.BeginEndBlock, *plan.TriggerBeginEndBlock:
+		case *plan.BeginEndBlock:
+			blockScope := newDeclarationScope(scope)
+			newChild, same, err = resolveDeclarationsInner(ctx, a, child, blockScope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if handlerIds := blockScope.GetCurrentScopeHandlerIds(); len(handlerIds) > 0 {
+				newChild = newChild.(*plan.BeginEndBlock).WithHandlerIds(handlerIds)
+				same = transform.NewTree
+			}
+		case *plan.TriggerBeginEndBlock:
 			newChild, same, err = resolveDeclarationsInner(ctx, a, child, newDeclarationScope(scope), sel)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -328,6 +436,29 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				return nil, transform.SameTree, err
 			}
 			same = identity1 && identity2
+		case *plan.Loop:
+			err = scope.AddLoop(c.Label)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			newChild, same, err = resolveDeclarationsInner(ctx, a, child, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			err = scope.RemoveLoop(c.Label)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+		case *plan.Leave:
+			if !scope.HasLoop(c.Label) {
+				return nil, transform.SameTree, sql.ErrLoopLabelNotFound.New("LEAVE", c.Label)
+			}
+			same = transform.SameTree
+		case *plan.Iterate:
+			if !scope.HasLoop(c.Label) {
+				return nil, transform.SameTree, sql.ErrLoopLabelNotFound.New("ITERATE", c.Label)
+			}
+			same = transform.SameTree
 		case *plan.SignalName:
 			condition := scope.GetCondition(c.Name)
 			if condition == nil {
@@ -357,7 +488,7 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			if cursor == nil {
 				return nil, transform.SameTree, sql.ErrCursorNotFound.New(c.Name)
 			}
-			newChild, _, err = resolveProcedureVariables(ctx, scope, c.WithId(cursor.id))
+			newChild, _, err = resolveProcedureVariables(ctx, scope, c.WithId(cursor.id).WithHandlerIds(scope.GetAllReachableHandlerIds()))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

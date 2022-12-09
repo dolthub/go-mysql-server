@@ -31,6 +31,7 @@ type Open struct {
 }
 
 var _ sql.Node = (*Open)(nil)
+var _ expression.ProcedureReferencable = (*Open)(nil)
 
 // NewOpen returns a new *Open node.
 func NewOpen(name string) *Open {
@@ -74,8 +75,8 @@ func (o *Open) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &openIter{o, row}, nil
 }
 
-// WithParamReference returns a new *Open containing the given *expression.ProcedureReference.
-func (o *Open) WithParamReference(pRef *expression.ProcedureReference) *Open {
+// WithParamReference implements the interface expression.ProcedureReferencable.
+func (o *Open) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	no := *o
 	no.pRef = pRef
 	return &no

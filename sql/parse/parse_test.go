@@ -4884,7 +4884,7 @@ END;`,
 				nil,
 				plan.NewBeginEndBlock(
 					plan.NewBlock([]sql.Node{
-						plan.NewDeclareVariables([]string{"c"}, sql.Int64),
+						plan.NewDeclareVariables([]string{"c"}, sql.Int64, nil),
 						plan.NewDeclareCursor("cur1", plan.NewProject(
 							[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
 							plan.NewResolvedDualTable(),

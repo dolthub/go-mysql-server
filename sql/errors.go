@@ -293,6 +293,9 @@ var (
 	// ErrDeclareCursorOrderInvalid is returned when a DECLARE ... CURSOR statement is at an invalid location.
 	ErrDeclareCursorOrderInvalid = errors.NewKind("DECLARE ... CURSOR may only exist at the beginning of a BEGIN/END block, following all variables and conditions")
 
+	// ErrDeclareHandlerOrderInvalid is returned when a DECLARE ... HANDLER statement is at an invalid location.
+	ErrDeclareHandlerOrderInvalid = errors.NewKind("DECLARE ... HANDLER may only exist at the beginning of a BEGIN/END block, following all variables, conditions, and cursors")
+
 	// ErrDeclareConditionNotFound is returned when SIGNAL/RESIGNAL references a non-existent DECLARE CONDITION.
 	ErrDeclareConditionNotFound = errors.NewKind("condition %s does not exist")
 
@@ -304,6 +307,18 @@ var (
 
 	// ErrDeclareCursorDuplicate is returned when a DECLARE ... CURSOR statement reuses an existing name in the current scope.
 	ErrDeclareCursorDuplicate = errors.NewKind("duplicate cursor '%s'")
+
+	// ErrDeclareHandlerDuplicate is returned when a DECLARE ... HANDLER statement has a duplicate in the same block.
+	ErrDeclareHandlerDuplicate = errors.NewKind("duplicate handler declared in the same block")
+
+	// ErrDeclareHandlerUndo is returned when a DECLARE ... HANDLER statement has the UNDO action, which is currently unsupported.
+	ErrDeclareHandlerUndo = errors.NewKind("DECLARE ... HANDLER does not support the UNDO action")
+
+	// ErrLoopRedefinition is returned when a loop with the same label has already been declared in the current block.
+	ErrLoopRedefinition = errors.NewKind("redefining label '%s'")
+
+	// ErrLoopLabelNotFound is returned when a control flow statement references a non-existent loop.
+	ErrLoopLabelNotFound = errors.NewKind("%s with no matching label: '%s'")
 
 	// ErrCursorNotFound is returned when a CURSOR cannot be found.
 	ErrCursorNotFound = errors.NewKind("cursor '%s' does not exist")

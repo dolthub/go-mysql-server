@@ -942,6 +942,95 @@ END;`,
 		},
 	},
 	{
+		Name: "DECLARE HANDLERs exit according to the block they were declared in",
+		SetUpScript: []string{
+			`DROP TABLE IF EXISTS t1;`,
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE outer_declare()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND SET a = 1001;
+    OPEN cur1;
+    BEGIN
+		tloop: LOOP
+			FETCH cur1 INTO b;
+            IF a > 1000 THEN
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+			`CREATE PROCEDURE inner_declare()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND SET a = a + 1;
+    OPEN cur1;
+    BEGIN
+		DECLARE EXIT HANDLER FOR NOT FOUND SET a = 1001;
+		tloop: LOOP
+			FETCH cur1 INTO b;
+            IF a > 1000 THEN
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL outer_declare();",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "CALL inner_declare();",
+				Expected: []sql.Row{
+					{1001},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE loops",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND BEGIN END;
+    OPEN cur1;
+    BEGIN
+		tloop: LOOP
+			FETCH cur1 INTO b;
+			SET a = (a + b) * 10;
+            IF a < 1000 THEN
+				ITERATE tloop;
+			ELSE
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{2230},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
 		ExpectedErr: sql.ErrDeclareVariableDuplicate,

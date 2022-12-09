@@ -31,6 +31,7 @@ type Close struct {
 }
 
 var _ sql.Node = (*Close)(nil)
+var _ expression.ProcedureReferencable = (*Close)(nil)
 
 // NewClose returns a new *Close node.
 func NewClose(name string) *Close {
@@ -74,8 +75,8 @@ func (c *Close) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &closeIter{c}, nil
 }
 
-// WithParamReference returns a new *Close containing the given *expression.ProcedureReference.
-func (c *Close) WithParamReference(pRef *expression.ProcedureReference) *Close {
+// WithParamReference implements the interface expression.ProcedureReferencable.
+func (c *Close) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nc := *c
 	nc.pRef = pRef
 	return &nc

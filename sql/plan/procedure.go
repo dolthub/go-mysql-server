@@ -86,6 +86,7 @@ type Procedure struct {
 	ValidationError       error
 	VariableCount         int
 	CursorCount           int
+	HandlerCount          int
 }
 
 var _ sql.Node = (*Procedure)(nil)
