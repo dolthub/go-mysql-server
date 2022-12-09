@@ -316,6 +316,20 @@ func (e *Engine) preparedNode(ctx *sql.Context, query string) sql.Node {
 	return data.Node
 }
 
+// unpreparedNode returns the pre-analyzed plan for a given
+// context's session id, or nil if the session has no prepared data.
+func (e *Engine) unpreparedNode(ctx *sql.Context, query string) bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if sessData, ok := e.PreparedData[ctx.Session.ID()]; ok {
+		if _, ok = sessData[query]; !ok {
+			return false
+		}
+		delete(e.PreparedData[ctx.Session.ID()], query)
+	}
+	return true
+}
+
 // CloseSession deletes session specific prepared statement data
 func (e *Engine) CloseSession(ctx *sql.Context) {
 	e.mu.Lock()
@@ -348,22 +362,24 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		}
 	}
 
-	// TODO: maybe place these somewhere else
-	if n, ok := parsed.(*plan.PrepareQuery); ok {
+	// TODO: maybe place this somewhere else
+	switch n := parsed.(type) {
+	case *plan.PrepareQuery:
 		analyzedChild, _, err := e.Analyzer.AnalyzePrepared(ctx, n.Child, nil)
 		if err != nil {
 			return nil, err
 		}
 		e.CachePreparedStmt(ctx, analyzedChild, n.Name)
-	}
-
-	// TODO: handle bindvars
-	// just replace execute query node with the one prepared
-	if n, ok := parsed.(*plan.ExecuteQuery); ok {
-		p, hasData := e.preparedDataForSession(ctx.Session, n.Name)
-		if hasData && p.Query == n.Name {
-			parsed = p.Node
-		} else {
+	case *plan.ExecuteQuery:
+		// TODO: handle bindvars
+		// just replace execute query node with the one prepared
+		p := e.preparedNode(ctx, n.Name)
+		if p == nil {
+			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
+		}
+		parsed = p
+	case *plan.DeallocateQuery:
+		if !e.unpreparedNode(ctx, n.Name) {
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
 	}

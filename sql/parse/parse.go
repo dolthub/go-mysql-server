@@ -286,7 +286,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertExecute(ctx, n)
 	case *sqlparser.Deallocate:
 		// TODO: this needs to find the existing prepared statement, and delete it
-		return nil, nil
+		return convertDeallocate(ctx, n)
 	}
 }
 
@@ -407,6 +407,10 @@ func convertPrepare(ctx *sql.Context, newStmt sqlparser.Statement, n *sqlparser.
 
 func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {
 	return plan.NewExecuteQuery(n.Name, nil), nil
+}
+
+func convertDeallocate(ctx *sql.Context, n *sqlparser.Deallocate) (sql.Node, error) {
+	return plan.NewDeallocateQuery(n.Name), nil
 }
 
 func convertUse(n *sqlparser.Use) (sql.Node, error) {
