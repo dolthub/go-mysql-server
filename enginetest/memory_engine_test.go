@@ -183,27 +183,19 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "create table as select distinct",
+			Name: "DELETE ME",
 			SetUpScript: []string{
-				"CREATE TABLE t1 (a int, b varchar(10));",
-				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
+				"create table t (o_id int, attribute longtext, value longtext)",
+				"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "create table t2 as select distinct b, a from t1;",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
-				},
-				{
-					Query: "select * from t2 order by a;",
-					Expected: []sql.Row{
-						{"a", 1},
-						{"b", 2},
-						{"c", 3},
-					},
+					Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
+					ExpectedErr: sql.ErrInvalidOperandColumns,
 				},
 			},
 		},
@@ -215,11 +207,36 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
+		//engine.Analyzer.Debug = true
+		//engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+}
+
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleScriptPrepared(t *testing.T) {
+	//t.Skip()
+	var script = queries.ScriptTest{
+		Name: "DELETE ME",
+		SetUpScript: []string{
+			"create table t (o_id int, attribute longtext, value longtext)",
+			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
+				ExpectedErr: sql.ErrInvalidOperandColumns,
+			},
+		},
+	}
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	engine, err := harness.NewEngine(t)
+	if err != nil {
+		panic(err)
+	}
+	enginetest.TestScriptWithEnginePrepared(t, engine, harness, script)
+	//enginetest.TestScriptWithEngine(t, engine, harness, script)
 }
 
 func TestUnbuildableIndex(t *testing.T) {

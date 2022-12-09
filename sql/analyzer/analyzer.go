@@ -499,6 +499,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules
+		validateOperandsId,
 
 		// OnceAfterAll
 		TrackProcessId:
