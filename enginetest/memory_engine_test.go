@@ -258,7 +258,7 @@ func TestSingleScript(t *testing.T) {
 }
 
 func TestSingleScriptPrepared(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var script = queries.ScriptTest{
 		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
 		SetUpScript: []string{
