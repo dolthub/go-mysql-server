@@ -15,11 +15,13 @@
 package function
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 func TestStrCmp(t *testing.T) {
