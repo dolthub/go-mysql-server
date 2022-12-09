@@ -278,7 +278,7 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CachePreparedStmt(ctx *sql.Context, analyzed sql.Node, query string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if _, ok := e.PreparedData[ctx.Session.ID()]; ok {
+	if _, ok := e.PreparedData[ctx.Session.ID()]; !ok {
 		e.PreparedData[ctx.Session.ID()] = map[string]PreparedData{}
 	}
 	e.PreparedData[ctx.Session.ID()][query] = PreparedData{
