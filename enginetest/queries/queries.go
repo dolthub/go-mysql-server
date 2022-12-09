@@ -1105,6 +1105,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "SELECT TIMEDIFF(null, '2017-11-30 22:59:59');",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT DATEDIFF('2019/12/28', null);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(SECOND, null, '2007-12-31 00:00:00');",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
 		Expected: []sql.Row{
 			{sql.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
