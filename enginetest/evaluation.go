@@ -646,8 +646,8 @@ func AssertErrPreparedWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx
 	_, _, err := runQueryPreparedWithCtx(t, ctx, e, query)
 	require.Error(t, err)
 	if expectedErrKind != nil {
-		orig := sql.CastSQLError(err)
-		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
+		err = sql.UnwrapError(err)
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {
