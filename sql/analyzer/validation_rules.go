@@ -232,31 +232,38 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
-	switch n := n.(type) {
-	case *plan.GroupBy:
-		// Allow the parser use the GroupBy node to eval the aggregation functions
-		// for sql statements that don't make use of the GROUP BY expression.
-		if len(n.GroupByExprs) == 0 {
-			return n, transform.SameTree, nil
-		}
+	var err error
+	var parent sql.Node
+	transform.Inspect(n, func(n sql.Node) bool {
+		if gb, ok := n.(*plan.GroupBy); ok {
+			if _, ok := parent.(*plan.Having); ok {
+				return true
+			}
+			// Allow the parser use the GroupBy node to eval the aggregation functions
+			// for sql statements that don't make use of the GROUP BY expression.
+			if len(gb.GroupByExprs) == 0 {
+				return true
+			}
 
-		var groupBys []string
-		for _, expr := range n.GroupByExprs {
-			groupBys = append(groupBys, expr.String())
-		}
+			var groupBys []string
+			for _, expr := range gb.GroupByExprs {
+				groupBys = append(groupBys, expr.String())
+			}
 
-		for _, expr := range n.SelectedExprs {
-			if _, ok := expr.(sql.Aggregation); !ok {
-				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					return nil, transform.SameTree, ErrValidationGroupBy.New(expr.String())
+			for _, expr := range gb.SelectedExprs {
+				if _, ok := expr.(sql.Aggregation); !ok {
+					if !expressionReferencesOnlyGroupBys(groupBys, expr) {
+						err = ErrValidationGroupBy.New(expr.String())
+						return false
+					}
 				}
 			}
 		}
+		parent = n
+		return true
+	})
 
-		return n, transform.SameTree, nil
-	}
-
-	return n, transform.SameTree, nil
+	return n, transform.SameTree, err
 }
 
 func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {

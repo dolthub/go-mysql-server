@@ -189,13 +189,14 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "DELETE ME",
 			SetUpScript: []string{
-				"create table t (o_id int, attribute longtext, value longtext)",
-				"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+				"create table numbers (val int);",
+				"insert into numbers values (1), (2), (3);",
+				"insert into numbers values (2), (4);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
-					ExpectedErr: sql.ErrInvalidOperandColumns,
+					Query:    "select t1.val as a from numbers as t1 group by 1 having a = t1.val;",
+					Expected: []sql.Row{{1}, {2}, {3}, {4}},
 				},
 			},
 		},
@@ -220,13 +221,14 @@ func TestSingleScriptPrepared(t *testing.T) {
 	var script = queries.ScriptTest{
 		Name: "DELETE ME",
 		SetUpScript: []string{
-			"create table t (o_id int, attribute longtext, value longtext)",
-			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+			"create table numbers (val int);",
+			"insert into numbers values (1), (2), (3);",
+			"insert into numbers values (2), (4);",
 		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
-				ExpectedErr: sql.ErrInvalidOperandColumns,
+				Query:    "select t1.val as a from numbers as t1 group by 1 having a = t1.val;",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
 			},
 		},
 	}
