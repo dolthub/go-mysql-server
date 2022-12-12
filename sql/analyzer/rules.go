@@ -111,9 +111,6 @@ var OnceAfterDefault = []Rule{
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
-	{cacheSubqueryResultsId, cacheSubqueryResults},
-	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-	{applyHashLookupsId, applyHashLookups},
 	{applyHashInId, applyHashIn},
 	{resolveInsertRowsId, resolveInsertRows},
 	{resolvePreparedInsertId, resolvePreparedInsert},
@@ -143,6 +140,9 @@ var DefaultValidationRules = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
+	{cacheSubqueryResultsId, cacheSubqueryResults},
+	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
+	{applyHashLookupsId, applyHashLookups},
 	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},

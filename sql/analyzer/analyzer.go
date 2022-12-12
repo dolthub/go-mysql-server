@@ -393,11 +393,31 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId, optimizeJoinsId, setJoinScopeLenId, applyHashLookupsId, pushdownFiltersId, subqueryIndexesId:
+		case pruneColumnsId,
+			optimizeJoinsId,
+			setJoinScopeLenId,
+			applyHashLookupsId,
+			pushdownFiltersId,
+			subqueryIndexesId:
 			return true
-		case finalizeSubqueriesId:
+		case finalizeSubqueriesId,
+			cacheSubqueryResultsId,
+			cacheSubqueryAliasesInJoinsId,
+			TrackProcessId:
 			// Don't run finalizeSubqueries on subqueries, since calling it on the root of the statement will
 			// recursively handle subqueries from the bottom of the plan up.
+			return false
+		}
+		return sel(id)
+	}
+}
+
+func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case finalizeUnionsId,
+			cacheSubqueryResultsId,
+			cacheSubqueryAliasesInJoinsId:
 			return false
 		}
 		return sel(id)

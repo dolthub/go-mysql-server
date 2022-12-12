@@ -146,7 +146,7 @@ func TestResolveSubqueries(t *testing.T) {
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return finalizeSubqueries.Apply(ctx, a, n, scope, DefaultRuleSelector)
+			return finalizeSubqueries.Apply(ctx, a, n, scope, NewFinalizeNestedSubquerySel(sel))
 		},
 	})
 }

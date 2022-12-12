@@ -191,6 +191,10 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 		newOp = plan.JoinTypeHash
 	case plan.JoinTypeLeftOuter:
 		newOp = plan.JoinTypeLeftOuterHash
+	case plan.JoinTypeSemi:
+		newOp = plan.JoinTypeSemiHash
+	case plan.JoinTypeAnti:
+		newOp = plan.JoinTypeAntiHash
 	default:
 		panic("can only apply hash join to InnerJoin or LeftOuterJoin")
 	}

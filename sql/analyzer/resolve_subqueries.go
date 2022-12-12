@@ -149,7 +149,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 			scope.newScopeFromSubqueryExpression(n), "default-rules", NewFinalizeSubqueryExprSelector(sel))
 	} else {
 		analyzed, _, err = a.analyzeThroughBatch(subqueryCtx, sq.Query,
-			scope.newScopeFromSubqueryExpression(n), "once-after-default", NewResolveSubqueryExprSelector(sel))
+			scope.newScopeFromSubqueryExpression(n), "once-after", NewResolveSubqueryExprSelector(sel))
 	}
 	if err != nil {
 		// We ignore certain errors during non-final passes of the analyzer, deferring them to later analysis passes.
@@ -294,90 +294,86 @@ func isDeterminstic(n sql.Node) bool {
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// No need to inspect for trigger blocks as the Analyzer is recursively invoked on trigger blocks.
-	if n, ok := node.(*plan.TriggerBeginEndBlock); ok {
-		return n, transform.SameTree, nil
+	if !scope.IsEmpty() {
+		return node, transform.SameTree, nil
 	}
 
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			subScope := scope.newScopeFromSubqueryAlias(sqa)
-			if nodeIsCacheable(sqa.Child, len(subScope.Schema())) {
-				return sqa.WithCachedResults(), transform.NewTree, nil
+	return transform.NodeWithOpaque(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *plan.SubqueryAlias:
+			subScope := scope.newScopeFromSubqueryAlias(n)
+			if nodeIsCacheable(n.Child, len(subScope.Schema())) {
+				return n.WithCachedResults(), transform.NewTree, nil
 			}
 			return n, transform.SameTree, nil
-		} else {
-			return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if sq, ok := e.(*plan.Subquery); ok {
-					subScope := scope.newScopeFromSubqueryExpression(n)
-					if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
-						return sq.WithCachedResults(), transform.NewTree, nil
-					}
-				}
-				return e, transform.SameTree, nil
-			})
+		default:
 		}
+
+		return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if sq, ok := e.(*plan.Subquery); ok {
+				subScope := scope.newScopeFromSubqueryExpression(n)
+				if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+					return sq.WithCachedResults(), transform.NewTree, nil
+				}
+			}
+			return e, transform.SameTree, nil
+		})
 	})
 }
 
-// cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
-// will repeatedly execute the subquery, and will insert a *plan.CachedResults
-// node on top of those nodes.
 func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	newNode, sameA, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch nn := c.Node.(type) {
+	var recurse func(n sql.Node, parentCached, inJoin, rootJoinT1 bool) (sql.Node, transform.TreeIdentity, error)
+	recurse = func(n sql.Node, parentCached, inJoin, rootJoinT1 bool) (sql.Node, transform.TreeIdentity, error) {
+		_, isOp := n.(sql.OpaqueNode)
+		var isJoinRoot bool
+		var isCacheableSq bool
+		var isCachedRs bool
+		var sameInsert transform.TreeIdentity
+		switch nn := n.(type) {
 		case *plan.JoinNode:
-			return transform.NodeWithCtx(nn, nil, func(context transform.Context) (sql.Node, transform.TreeIdentity, error) {
-				n := context.Node
-				if context.Parent != nil {
-					if _, ok := context.Parent.(*plan.CachedResults); ok {
-						return n, transform.SameTree, nil
-					}
-				}
-
-				switch nn := n.(type) {
-				case *plan.SubqueryAlias:
-					if nn.CanCacheResults {
-						return plan.NewCachedResults(nn), transform.NewTree, nil
-					}
-				}
-				return n, transform.SameTree, nil
-			})
-		}
-		return c.Node, transform.SameTree, nil
-	})
-	if err != nil {
-		return n, transform.SameTree, err
-	}
-
-	// If the most primary table in the top level join is a CachedResults, remove it.
-	// We only want to do this if we're at the top of the tree.
-	// TODO: Not a perfect indicator of whether we're at the top of the tree...
-	// TODO(max): this should use an in-order top-down search
-	sameD := transform.SameTree
-	if scope.IsEmpty() {
-		selector := func(c transform.Context) bool {
-			j, ok := c.Parent.(*plan.JoinNode)
-			if !ok {
-				return true
+			if !inJoin {
+				isJoinRoot = true
 			}
-			switch {
-			case j.Op.IsRightOuter():
-				// TODO i'm not sure if this is possible, should be transposed
-				return c.ChildNum == 1
-			default:
-				return c.ChildNum == 0
+		case *plan.SubqueryAlias:
+			if nn.CanCacheResults {
+				isCacheableSq = true
+			}
+		case *plan.CachedResults:
+			isCachedRs = true
+		default:
+		}
+
+		doCache := isCacheableSq && inJoin && !parentCached && !rootJoinT1
+		childInJoin := (inJoin || isJoinRoot) && !isOp
+
+		children := n.Children()
+		var newChildren []sql.Node
+		for i, c := range children {
+			rootJoinT1 = i == 0 && isJoinRoot
+			child, same, _ := recurse(c, doCache || isCachedRs, childInJoin, rootJoinT1)
+			if !same {
+				if newChildren == nil {
+					newChildren = make([]sql.Node, len(children))
+					copy(newChildren, children)
+				}
+				newChildren[i] = child
 			}
 		}
-		newNode, sameD, err = transform.NodeWithCtx(newNode, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-			cr, isCR := c.Node.(*plan.CachedResults)
-			if isCR {
-				return cr.UnaryNode.Child, transform.NewTree, nil
-			}
-			return c.Node, transform.SameTree, nil
-		})
+
+		if len(newChildren) == 0 && !doCache && bool(sameInsert) {
+			return n, transform.SameTree, nil
+		}
+
+		ret := n
+		if len(newChildren) > 0 {
+			ret, _ = ret.WithChildren(newChildren...)
+		}
+		if doCache {
+			ret = plan.NewCachedResults(n)
+		}
+		return ret, transform.NewTree, nil
 	}
-	return newNode, sameA && sameD, err
+	return recurse(n, false, false, false)
 }
 
 // TODO(max): join iterators should inline remove parentRow + scope,

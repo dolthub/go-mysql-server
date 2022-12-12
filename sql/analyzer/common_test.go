@@ -116,6 +116,7 @@ var analyzeRules = [][]Rule{
 	OnceBeforeDefault,
 	DefaultRules,
 	OnceAfterDefault,
+	OnceAfterAll,
 }
 
 func getRule(id RuleId) Rule {
