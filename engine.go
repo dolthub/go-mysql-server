@@ -364,12 +364,26 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		}
 		e.CachePreparedStmt(ctx, analyzedChild, n.Name)
 	case *plan.ExecuteQuery:
-		// TODO: handle bindvars
-		// just replace execute query node with the one prepared
+		// replace execute query node with the one prepared
 		p := e.preparedNode(ctx, n.Name)
 		if p == nil {
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
+
+		// count number of bindvars
+		bindCnt := 0
+		transform.InspectExpressions(p, func(e sql.Expression) bool {
+			if _, ok := e.(*expression.BindVar); ok {
+				bindCnt++
+			}
+			return true
+		})
+
+		// number of bindvars provided must match number of bindvars expected
+		if bindCnt != len(n.BindVars) {
+			return nil, sql.ErrInvalidArgument.New(n.Name)
+		}
+
 		parsed = p
 
 		newBindings := map[string]sql.Expression{}

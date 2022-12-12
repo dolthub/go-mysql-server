@@ -247,6 +247,7 @@ var (
 	// ErrUnboundPreparedStatementVariable is returned when a query is executed without a binding for one its variables.
 	ErrUnboundPreparedStatementVariable = errors.NewKind(`unbound variable "%s" in query`)
 
+	// ErrUnknownPreparedStatement is returned when an unknown query is executed.
 	ErrUnknownPreparedStatement = errors.NewKind(`Unknown prepared statement handler (%s) given to EXECUTE`)
 
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
