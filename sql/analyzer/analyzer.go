@@ -441,7 +441,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 		// DefaultValidation
 		validateGroupById,
 
-
 		//validateResolvedId,
 		//validateOrderById,
 
