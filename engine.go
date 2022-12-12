@@ -355,30 +355,12 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		return nil, err
 	}
 
-	if len(bindings) > 0 {
-		parsed, err = plan.ApplyBindings(parsed, bindings)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// TODO: maybe place this somewhere else
 	switch n := parsed.(type) {
 	case *plan.PrepareQuery:
 		analyzedChild, _, err := e.Analyzer.AnalyzePrepared(ctx, n.Child, nil)
 		if err != nil {
 			return nil, err
-		}
-		hasBindVars := false
-		transform.InspectExpressions(analyzedChild, func(e sql.Expression) bool {
-			if _, ok := e.(*expression.BindVar); ok {
-				hasBindVars = true
-				return false
-			}
-			return true
-		})
-		if hasBindVars {
-			return nil, sql.ErrUnsupportedFeature.New("cli prepared statements with bindvars")
 		}
 		e.CachePreparedStmt(ctx, analyzedChild, n.Name)
 	case *plan.ExecuteQuery:
@@ -389,9 +371,23 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
 		parsed = p
+
+		newBindings := map[string]sql.Expression{}
+		for i, binding := range n.BindVars {
+			varName := fmt.Sprintf("v%d", i+1)
+			newBindings[varName] = binding
+		}
+		bindings = newBindings
 	case *plan.DeallocateQuery:
 		if !e.unpreparedNode(ctx, n.Name) {
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
+		}
+	}
+
+	if len(bindings) > 0 {
+		parsed, err = plan.ApplyBindings(parsed, bindings)
+		if err != nil {
+			return nil, err
 		}
 	}
 

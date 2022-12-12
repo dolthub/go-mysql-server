@@ -260,23 +260,14 @@ func TestSingleScript(t *testing.T) {
 func TestSingleScriptPrepared(t *testing.T) {
 	//t.Skip()
 	var script = queries.ScriptTest{
-		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
-		},
+		Name:        "DELETE ME",
+		SetUpScript: []string{},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query:    "INSERT INTO test (pk) VALUES (2);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
-			},
-			{
-				Query:    "alter table test alter v1 drop default ",
-				Expected: []sql.Row{},
-			},
-			{
-				Query: "INSERT INTO test (pk) VALUES (2);",
-				//Expected: []sql.Row{{sql.NewOkResult(1)}},
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				Query: "select 1",
+				Expected: []sql.Row{
+					{1},
+				},
 			},
 		},
 	}

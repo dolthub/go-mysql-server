@@ -79,11 +79,11 @@ func (p *PrepareQuery) String() string {
 // ExecuteQuery is a node that prepares the query
 type ExecuteQuery struct {
 	Name     string
-	BindVars []sql.Node
+	BindVars []sql.Expression
 }
 
 // NewExecuteQuery executes a prepared statement
-func NewExecuteQuery(name string, bindVars ...sql.Node) *ExecuteQuery {
+func NewExecuteQuery(name string, bindVars ...sql.Expression) *ExecuteQuery {
 	return &ExecuteQuery{Name: name, BindVars: bindVars}
 }
 

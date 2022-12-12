@@ -406,7 +406,15 @@ func convertPrepare(ctx *sql.Context, newStmt sqlparser.Statement, n *sqlparser.
 }
 
 func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {
-	return plan.NewExecuteQuery(n.Name, nil), nil
+	exprs := make([]sql.Expression, len(n.VarList))
+	for i, e := range n.VarList {
+		expr, err := ExprToExpression(ctx, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		exprs[i] = expr
+	}
+	return plan.NewExecuteQuery(n.Name, exprs...), nil
 }
 
 func convertDeallocate(ctx *sql.Context, n *sqlparser.Deallocate) (sql.Node, error) {
