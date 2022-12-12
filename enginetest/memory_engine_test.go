@@ -187,22 +187,22 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "DELETE ME",
-			SetUpScript: []string{},
+			Name: "create table as select distinct",
+			SetUpScript: []string{
+				"CREATE TABLE t1 (a int, b varchar(10));",
+				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `SELECT s2, i2, i
-			FROM (SELECT * FROM mytable) mytable
-			RIGHT JOIN
-				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-				 UNION ALL
-				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-			ON i2 = i`,
+					Query:    "create table t2 as select distinct b, a from t1;",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+				},
+				{
+					Query: "select * from t2 order by a;",
 					Expected: []sql.Row{
-						{"third", 1, 1},
-						{"second", 2, 2},
-						{"first", 3, 3},
-						{"not found", 4, nil},
+						{"a", 1},
+						{"b", 2},
+						{"c", 3},
 					},
 				},
 			},
@@ -211,13 +211,12 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.SimpleSetup...)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
-		//engine.Analyzer.Debug = true
-		//engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
@@ -254,7 +253,6 @@ func TestSingleScriptPrepared(t *testing.T) {
 		panic(err)
 	}
 	enginetest.TestScriptWithEnginePrepared(t, engine, harness, script)
-	//enginetest.TestScriptWithEngine(t, engine, harness, script)
 }
 
 func TestUnbuildableIndex(t *testing.T) {
