@@ -187,16 +187,12 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "DELETE ME",
-			SetUpScript: []string{
-				"create table numbers (val int);",
-				"insert into numbers values (1), (2), (3);",
-				"insert into numbers values (2), (4);",
-			},
+			Name:        "DELETE ME",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select t1.val as a from numbers as t1 group by 1 having a = t1.val;",
-					Expected: []sql.Row{{1}, {2}, {3}, {4}},
+					Query:    `SELECT i AS i FROM mytable GROUP BY s ORDER BY 1`,
+					Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 				},
 			},
 		},
@@ -204,6 +200,7 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness.Setup(setup.SimpleSetup...)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
