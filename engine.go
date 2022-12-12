@@ -369,6 +369,17 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		if err != nil {
 			return nil, err
 		}
+		hasBindVars := false
+		transform.InspectExpressions(analyzedChild, func(e sql.Expression) bool {
+			if _, ok := e.(*expression.BindVar); ok {
+				hasBindVars = true
+				return false
+			}
+			return true
+		})
+		if hasBindVars {
+			return nil, sql.ErrUnsupportedFeature.New("cli prepared statements with bindvars")
+		}
 		e.CachePreparedStmt(ctx, analyzedChild, n.Name)
 	case *plan.ExecuteQuery:
 		// TODO: handle bindvars
