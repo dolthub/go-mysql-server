@@ -440,18 +440,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 		// DefaultValidation
 		validateGroupById,
-
-		//validateResolvedId,
-		//validateOrderById,
-
-		//validateSchemaSourceId,
-		//validateIndexCreationId,
-		//validateOperandsId,
-		//validateIntervalUsageId,
-		//validateSubqueryColumnsId,
-		//validateUnionSchemasMatchId,
-		//validateAggregationsId,
-		//validateExplodeUsageId,
+		validateUnionSchemasMatchId,
 
 		// OnceAfterAll
 		TrackProcessId:
