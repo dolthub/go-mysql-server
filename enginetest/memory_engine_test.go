@@ -183,7 +183,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []queries.ScriptTest{
 		{
@@ -191,8 +191,19 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `SELECT i AS i FROM mytable GROUP BY s ORDER BY 1`,
-					Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+					Query: `SELECT s2, i2, i
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+			ON i2 = i`,
+					Expected: []sql.Row{
+						{"third", 1, 1},
+						{"second", 2, 2},
+						{"first", 3, 3},
+						{"not found", 4, nil},
+					},
 				},
 			},
 		},
@@ -214,22 +225,30 @@ func TestSingleScript(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScriptPrepared(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var script = queries.ScriptTest{
-		Name: "DELETE ME",
-		SetUpScript: []string{
-			"create table numbers (val int);",
-			"insert into numbers values (1), (2), (3);",
-			"insert into numbers values (2), (4);",
-		},
+		Name:        "DELETE ME",
+		SetUpScript: []string{},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query:    "select t1.val as a from numbers as t1 group by 1 having a = t1.val;",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Query: `SELECT s2, i2, i
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+			ON i2 = i`,
+				Expected: []sql.Row{
+					{"third", 1, 1},
+					{"second", 2, 2},
+					{"first", 3, 3},
+					{"not found", 4, nil},
+				},
 			},
 		},
 	}
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
