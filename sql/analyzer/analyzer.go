@@ -439,6 +439,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		resolvePreparedInsertId,
 
 		// DefaultValidation
+		validateResolvedId,
 		validateGroupById,
 		validateUnionSchemasMatchId,
 		validateOperandsId,
@@ -491,6 +492,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules
+		validateResolvedId,
 		validateGroupById,
 		validateOperandsId,
 		//validateUnionSchemasMatchId, // TODO: we never validate UnionSchemasMatchId :)
