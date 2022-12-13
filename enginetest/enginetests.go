@@ -4461,6 +4461,15 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedStatements(t *testing.T, harness Harness) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	for _, query := range queries.PreparedScriptTests {
+		TestScript(t, harness, query)
+	}
+}
+
 // Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)

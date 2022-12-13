@@ -3394,6 +3394,142 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 	},
 }
 
+// TODO: do I prepare the prepare script tests??
+var PreparedScriptTests = []ScriptTest{
+	{
+		Name:        "simple select case no bindings",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+			{
+				Query: "prepare s from 'select 1'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute s",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "simple select case one binding",
+		SetUpScript: []string{
+			"set @a = 1",
+			"set @b = 100",
+			"set @c = 'abc'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'select ?'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @abc",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query:       "execute s using @a, @b, @c, @abc",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @a",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "execute s using @b",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				Query: "execute s using @c",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "prepare insert",
+		SetUpScript: []string{
+			"set @a = 123",
+			"set @b = 'abc'",
+			"create table t (i int, j varchar(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'insert into t values (?,?)'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @a, @b",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{123, "hi"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+}
+
 var BrokenScriptTests = []ScriptTest{
 	{
 		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
