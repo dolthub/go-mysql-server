@@ -225,23 +225,22 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
 	cacheable := true
 	sql.Inspect(expr, func(e sql.Expression) bool {
-		if gf, ok := e.(*expression.GetField); ok {
-			if gf.Index() < lowestAllowedIdx {
-				cacheable = false
-				return false
+		switch e := e.(type) {
+		case *expression.GetField:
+			if e.Index() >= lowestAllowedIdx {
+				return true
 			}
-		}
-		if sq, ok := e.(*plan.Subquery); ok {
-			// even if the subquery is not itself cacheable, it may be cacheable within the larger scope we are processing
-			if !nodeIsCacheable(sq.Query, lowestAllowedIdx) {
-				cacheable = false
-				return false
+		case *plan.Subquery:
+			if nodeIsCacheable(e.Query, lowestAllowedIdx) {
+				return true
 			}
-		} else if nd, ok := e.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
-			cacheable = false
-			return false
+		case *deferredColumn:
+		case sql.NonDeterministicExpression:
+		default:
+			return true
 		}
-		return true
+		cacheable = false
+		return false
 	})
 	return cacheable
 }
@@ -332,13 +331,13 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		var isJoinRoot bool
 		var isCacheableSq bool
 		var isCachedRs bool
-		switch nn := n.(type) {
+		switch n := n.(type) {
 		case *plan.JoinNode:
 			if !inJoin {
 				isJoinRoot = true
 			}
 		case *plan.SubqueryAlias:
-			if nn.CanCacheResults {
+			if n.CanCacheResults {
 				isCacheableSq = true
 			}
 		case *plan.CachedResults:

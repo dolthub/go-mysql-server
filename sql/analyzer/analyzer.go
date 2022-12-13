@@ -381,6 +381,7 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 			setJoinScopeLenId,
 			applyHashLookupsId,
 			finalizeSubqueriesId,
+			finalizeSubqueryExprsId,
 			parallelizeId,
 			pushdownFiltersId,
 			subqueryIndexesId:
@@ -400,7 +401,11 @@ func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 			pushdownFiltersId,
 			subqueryIndexesId:
 			return true
-		case finalizeSubqueriesId,
+		case resolveSubqueryExprsId,
+			resolveSubqueriesId,
+			resolveUnionsId,
+			finalizeSubqueriesId,
+			finalizeSubqueryExprsId,
 			cacheSubqueryResultsId,
 			cacheSubqueryAliasesInJoinsId,
 			TrackProcessId:
@@ -415,7 +420,9 @@ func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case finalizeUnionsId,
+		case resolveSubqueryExprsId,
+			resolveSubqueriesId,
+			resolveUnionsId,
 			cacheSubqueryResultsId,
 			cacheSubqueryAliasesInJoinsId:
 			return false
@@ -427,7 +434,10 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case finalizeSubqueriesId:
+		case resolveSubqueryExprsId,
+			resolveSubqueriesId,
+			finalizeSubqueriesId,
+			finalizeSubqueryExprsId:
 			// Don't run finalizeSubqueries on subqueries, since calling it on the root of the statement will
 			// recursively handle subqueries from the bottom of the plan up.
 			return false
@@ -439,6 +449,8 @@ func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	//a.Debug = true
+	//a.Verbose = true
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
 }

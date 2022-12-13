@@ -483,6 +483,10 @@ func (s *Subquery) WithCachedResults() *Subquery {
 	return &ns
 }
 
+func (s *Subquery) CanCacheResults() bool {
+	return s.canCacheResults
+}
+
 // Dispose implements sql.Disposable
 func (s *Subquery) Dispose() {
 	if s.disposeFunc != nil {

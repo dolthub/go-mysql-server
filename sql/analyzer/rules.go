@@ -106,7 +106,6 @@ var OnceAfterDefault = []Rule{
 	{pruneColumnsId, pruneColumns},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
-	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{replaceSortPkId, replacePkSort},
 	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
@@ -142,6 +141,7 @@ var DefaultValidationRules = []Rule{
 var OnceAfterAll = []Rule{
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
+	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{applyHashLookupsId, applyHashLookups},
 	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
