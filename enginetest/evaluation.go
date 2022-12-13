@@ -132,10 +132,7 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 				t.Skip()
 			}
 		}
-		// TODO: why prepare set up queries?
 		RunQueryWithContext(t, e, harness, ctx, statement)
-		//_, _, err := runQueryPreparedWithCtx(t, ctx, e, statement)
-		//require.NoError(t, err)
 		validateEngine(t, ctx, harness, e)
 	}
 
