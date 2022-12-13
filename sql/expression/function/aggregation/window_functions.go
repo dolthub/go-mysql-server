@@ -660,6 +660,46 @@ func (a *LastAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer 
 	return v
 }
 
+type ConstAgg struct {
+	expr sql.Expression
+}
+
+func NewConstAgg(e sql.Expression) *ConstAgg {
+	return &ConstAgg{
+		expr: e,
+	}
+}
+
+func (a *ConstAgg) WithWindow(*sql.WindowDefinition) (sql.WindowFunction, error) {
+	return a, nil
+}
+
+func (a *ConstAgg) Dispose() {
+	expression.Dispose(a.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (a *ConstAgg) DefaultFramer() sql.WindowFramer {
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (a *ConstAgg) StartPartition(*sql.Context, sql.WindowInterval, sql.WindowBuffer) error {
+	a.Dispose()
+	return nil
+}
+
+func (a *ConstAgg) NewSlidingFrameInterval(_, _ sql.WindowInterval) {
+	// nothing to do
+}
+
+func (a *ConstAgg) Compute(ctx *sql.Context, _ sql.WindowInterval, _ sql.WindowBuffer) interface{} {
+	v, err := a.expr.Eval(ctx, nil)
+	if err != nil {
+		return err
+	}
+	return v
+}
+
 type FirstAgg struct {
 	partitionStart, partitionEnd int
 	expr                         sql.Expression

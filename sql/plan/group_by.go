@@ -237,7 +237,7 @@ func (i *groupByIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var err error
 	onlyAnyValue := true
 	for j, a := range i.selectedExprs {
-		i.buf[j], err = newAggregationBuffer(a)
+		i.buf[j], err = newAggregationBuffer(ctx, a)
 		if err != nil {
 			return nil, err
 		}
@@ -353,7 +353,7 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 		if sql.ErrKeyNotFound.Is(err) {
 			b = make([]sql.AggregationBuffer, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				b[j], err = newAggregationBuffer(a)
+				b[j], err = newAggregationBuffer(ctx, a)
 				if err != nil {
 					return err
 				}
@@ -434,11 +434,15 @@ func groupingKey(
 	return hash.Sum64(), nil
 }
 
-func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {
+func newAggregationBuffer(ctx *sql.Context, expr sql.Expression) (sql.AggregationBuffer, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.NewBuffer()
 	default:
+		if _, err := expr.Eval(ctx, nil); err == nil {
+			// if this expr can be statically evaluated, aggregate it as a constant
+			return aggregation.NewConst(expr).NewBuffer()
+		}
 		// The semantics for a non-aggregation expression in a group by node is First.
 		// When ONLY_FULL_GROUP_BY is enabled, this is an error, but it's allowed otherwise.
 		return aggregation.NewFirst(expr).NewBuffer()

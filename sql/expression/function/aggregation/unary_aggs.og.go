@@ -306,6 +306,62 @@ func (a *BitXor) NewWindowFunction() (sql.WindowFunction, error) {
 	return NewBitXorAgg(child).WithWindow(a.Window())
 }
 
+type Const struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*Const)(nil)
+var _ sql.Aggregation = (*Const)(nil)
+var _ sql.WindowAdaptableExpression = (*Const)(nil)
+
+func NewConst(e sql.Expression) *Const {
+	return &Const{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "Const",
+			description:     "returns a constant value regardless of the sequence of elements of an aggregation",
+		},
+	}
+}
+
+func (a *Const) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *Const) IsNullable() bool {
+	return false
+}
+
+func (a *Const) String() string {
+	return fmt.Sprintf("CONST(%s)", a.Child)
+}
+
+func (a *Const) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+	res, err := a.unaryAggBase.WithWindow(window)
+	return &Const{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *Const) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &Const{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *Const) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewConstBuffer(child), nil
+}
+
+func (a *Const) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewConstAgg(child).WithWindow(a.Window())
+}
+
 type Count struct {
 	unaryAggBase
 }

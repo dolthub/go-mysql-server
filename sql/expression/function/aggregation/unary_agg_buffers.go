@@ -166,6 +166,30 @@ func (l *lastBuffer) Dispose() {
 	expression.Dispose(l.expr)
 }
 
+type constBuffer struct {
+	expr sql.Expression
+}
+
+func NewConstBuffer(child sql.Expression) *constBuffer {
+	return &constBuffer{child}
+}
+
+// Update implements the AggregationBuffer interface.
+func (l *constBuffer) Update(*sql.Context, sql.Row) error {
+	// noop
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (l *constBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return l.expr.Eval(ctx, nil)
+}
+
+// Dispose implements the Disposable interface.
+func (l *constBuffer) Dispose() {
+	expression.Dispose(l.expr)
+}
+
 type avgBuffer struct {
 	sum  *sumBuffer // sum is either decimal.Decimal or float64
 	rows int64

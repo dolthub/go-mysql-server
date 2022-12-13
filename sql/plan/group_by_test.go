@@ -157,6 +157,35 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	require.Equal(expected, rows)
 }
 
+func TestGroupByLiterals(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	childSchema := sql.Schema{
+		{Name: "col1", Type: sql.LongText},
+	}
+
+	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema), nil)
+
+	p := NewGroupBy(
+		[]sql.Expression{
+			aggregation.NewConst(expression.NewLiteral(int64(420), sql.Int64)),
+			aggregation.NewCount(expression.NewGetField(0, sql.LongText, "col1", true)),
+		},
+		nil,
+		NewResolvedTable(child, nil, nil),
+	)
+
+	rows, err := sql.NodeToRows(ctx, p)
+	require.NoError(err)
+
+	expected := []sql.Row{
+		{int64(420), int64(0)},
+	}
+
+	require.Equal(expected, rows)
+}
+
 func BenchmarkGroupBy(b *testing.B) {
 	table := benchmarkTable(b)
 

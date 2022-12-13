@@ -31,6 +31,10 @@ var UnaryAggDefs support.GenDefs = []support.AggDef{ // alphabetically sorted
 		RetType: "sql.Uint64",
 	},
 	{
+		Name: "Const",
+		Desc: "returns a constant value regardless of the sequence of elements of an aggregation",
+	},
+	{
 		Name:    "Count",
 		Desc:    "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.",
 		RetType: "sql.Int64",
