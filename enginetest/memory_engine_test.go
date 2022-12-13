@@ -222,6 +222,39 @@ func TestSingleScript(t *testing.T) {
 	}
 }
 
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleScriptPrepared(t *testing.T) {
+	t.Skip()
+	var script = queries.ScriptTest{
+		Name:        "DELETE ME",
+		SetUpScript: []string{},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query: `SELECT s2, i2, i
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+			ON i2 = i`,
+				Expected: []sql.Row{
+					{"third", 1, 1},
+					{"second", 2, 2},
+					{"first", 3, 3},
+					{"not found", 4, nil},
+				},
+			},
+		},
+	}
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness.Setup(setup.SimpleSetup...)
+	engine, err := harness.NewEngine(t)
+	if err != nil {
+		panic(err)
+	}
+	enginetest.TestScriptWithEnginePrepared(t, engine, harness, script)
+}
+
 func TestUnbuildableIndex(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{

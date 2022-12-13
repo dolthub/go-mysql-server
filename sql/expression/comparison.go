@@ -284,6 +284,9 @@ func (e *Equals) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 func (e *Equals) String() string {
+	if e == nil {
+		return ""
+	}
 	return fmt.Sprintf("(%s = %s)", e.Left(), e.Right())
 }
 
