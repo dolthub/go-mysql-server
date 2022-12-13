@@ -645,6 +645,31 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: "select * from ab where b in (select y from xy where y in (select v from uv where v = b));",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 2},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
+		Query: "select * from ab where a in (select y from xy where y in (select v from uv where v = a));",
+		Expected: []sql.Row{
+			{1, 1},
+			{2, 2},
+		},
+	},
+	{
+		Query: "select * from ab where a in (select x from xy where x in (select u from uv where u = a));",
+		Expected: []sql.Row{
+			{1, 2},
+			{2, 2},
+			{0, 2},
+			{3, 1},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/4874
 		Query:    "select * from information_schema.columns where column_key in ('invalid_enum_value') and table_name = 'does_not_exist';",
 		Expected: []sql.Row{},
