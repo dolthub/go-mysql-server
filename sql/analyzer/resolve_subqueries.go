@@ -321,6 +321,10 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 	})
 }
 
+// cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
+// will repeatedly execute the subquery, and will insert a *plan.CachedResults
+// node on top of those nodes. The left child of a join root is an exception
+// that cannot be cached.
 func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var recurse func(n sql.Node, parentCached, inJoin, rootJoinT1 bool) (sql.Node, transform.TreeIdentity, error)
 	recurse = func(n sql.Node, parentCached, inJoin, rootJoinT1 bool) (sql.Node, transform.TreeIdentity, error) {
@@ -328,7 +332,6 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		var isJoinRoot bool
 		var isCacheableSq bool
 		var isCachedRs bool
-		var sameInsert transform.TreeIdentity
 		switch nn := n.(type) {
 		case *plan.JoinNode:
 			if !inJoin {
@@ -360,7 +363,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			}
 		}
 
-		if len(newChildren) == 0 && !doCache && bool(sameInsert) {
+		if len(newChildren) == 0 && !doCache {
 			return n, transform.SameTree, nil
 		}
 
