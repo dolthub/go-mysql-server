@@ -820,7 +820,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "select max(pk),c2 from one_pk group by c1 order by 1",
+		Query:    "select max(pk),c1+1 from one_pk group by c1 order by 1",
 		Expected: []sql.Row{{0, 1}, {1, 11}, {2, 21}, {3, 31}},
 	},
 	{
@@ -5292,11 +5292,11 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
-		Query:    `SELECT i AS i FROM mytable GROUP BY s ORDER BY 1`,
+		Query:    `SELECT i AS i FROM mytable GROUP BY i, s ORDER BY 1`,
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
-		Query:    `SELECT i AS x FROM mytable GROUP BY s ORDER BY x`,
+		Query:    `SELECT i AS x FROM mytable GROUP BY i, s ORDER BY x`,
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
@@ -5350,7 +5350,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"secon"}},
 	},
 	{
-		Query: "SELECT s,  i FROM mytable GROUP BY i ORDER BY SUBSTRING(s, 1, 1) DESC",
+		Query: "SELECT s, i FROM mytable GROUP BY i ORDER BY SUBSTRING(s, 1, 1) DESC",
 		Expected: []sql.Row{
 			{string("third row"), int64(3)},
 			{string("second row"), int64(2)},
@@ -7914,6 +7914,16 @@ With c as (
   ) d   
 ) select * from c;`,
 		Expected: []sql.Row{{"second row"}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/4478
+		Query:    "SELECT STRCMP('b', 'a');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/4478
+		Query:    "SELECT STRCMP((SELECT CONCAT('a', 'b')), (SELECT SUBSTRING('cab', 2, 3)));",
+		Expected: []sql.Row{{0}},
 	},
 }
 

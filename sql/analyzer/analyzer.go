@@ -440,16 +440,9 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 		// DefaultValidation
 		validateResolvedId,
-		validateOrderById,
 		validateGroupById,
-		validateSchemaSourceId,
-		validateIndexCreationId,
-		validateOperandsId,
-		validateIntervalUsageId,
-		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
-		validateAggregationsId,
-		validateExplodeUsageId,
+		validateOperandsId,
 
 		// OnceAfterAll
 		TrackProcessId:
@@ -499,6 +492,10 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules
+		validateResolvedId,
+		validateGroupById,
+		validateOperandsId,
+		//validateUnionSchemasMatchId, // TODO: we never validate UnionSchemasMatchId :)
 
 		// OnceAfterAll
 		TrackProcessId:

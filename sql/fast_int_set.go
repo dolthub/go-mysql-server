@@ -1,3 +1,29 @@
+// Copyright 2022, DoltHub Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// This file incorporates work from the cockroachdb/cockroach Github
+// repository.
+//
+// The incorporated file contents come from cockroachdb/cockroach
+// cockroach/pkg/util/fast_int_set.go @ commit
+// c097a16427f65e9070991f062716d222ea5903fe.
+//
+// The Change Date on the BSL for this revision is 2022-10-01.
+//
+// Portions of this file are covered by the following copyright and permission
+// notice:
+//
 // Copyright 2017 The Cockroach Authors.
 //
 // Use of this software is governed by the Business Source License
