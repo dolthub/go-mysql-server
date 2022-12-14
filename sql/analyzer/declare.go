@@ -494,13 +494,17 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			}
 			same = false
 		case *plan.InsertInto:
-			var newSource sql.Node
-			newSource, same, err = resolveProcedureVariables(ctx, scope, c.Source)
+			newSource, sourceIdentity, err := resolveProcedureChild(ctx, a, c.Source, scope, sel)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			if same == transform.NewTree {
-				newChild = c.WithSource(newSource)
+			newChild, same, err = resolveProcedureChild(ctx, a, c, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if sourceIdentity == transform.NewTree {
+				newChild = newChild.(*plan.InsertInto).WithSource(newSource)
+				same = transform.NewTree
 			}
 		case *plan.Union:
 			// todo(max): IndexedJoins might be missed here
@@ -520,13 +524,9 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				}
 			}
 		default:
-			var identity transform.TreeIdentity
-			newChild, identity, err = resolveProcedureVariables(ctx, scope, c)
+			newChild, same, err = resolveProcedureChild(ctx, a, c, scope, sel)
 			if err != nil {
 				return nil, transform.SameTree, err
-			}
-			if identity == transform.NewTree {
-				same = false
 			}
 		}
 		if !same {
@@ -546,6 +546,26 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		return node, transform.NewTree, nil
 	}
 
+	return node, transform.SameTree, nil
+}
+
+// resolveProcedureChild resolves the expressions that are directly on a child node, along with expressions in the node's children.
+func resolveProcedureChild(ctx *sql.Context, a *Analyzer, node sql.Node, scope *declarationScope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var newChild sql.Node
+	var identity1 transform.TreeIdentity
+	var identity2 transform.TreeIdentity
+	var err error
+	newChild, identity1, err = resolveProcedureVariables(ctx, scope, node)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	newChild, identity2, err = resolveDeclarationsInner(ctx, a, newChild, scope, sel)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	if identity1 == transform.NewTree || identity2 == transform.NewTree {
+		return newChild, transform.NewTree, nil
+	}
 	return node, transform.SameTree, nil
 }
 
