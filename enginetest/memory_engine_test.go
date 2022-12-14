@@ -185,24 +185,30 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "DELETE ME",
-			SetUpScript: []string{},
+			Name: "prepare insert",
+			SetUpScript: []string{
+				"set @a = 123",
+				"set @b = 'abc'",
+				"create table t (i int, j varchar(100))",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "prepare stmt from 'select 1'",
+					Query: "prepare s from 'insert into t values (?,?)'",
 					Expected: []sql.Row{
 						{sql.OkResult{Info: plan.PrepareInfo{}}},
 					},
 				},
 				{
-					Query: "execute stmt",
+					Query: "execute s using @a, @b",
 					Expected: []sql.Row{
-						{1},
+						{sql.OkResult{RowsAffected: 1}},
 					},
 				},
 				{
-					Query:       "execute fakestmt",
-					ExpectedErr: sql.ErrUnknownPreparedStatement,
+					Query: "select * from t order by i",
+					Expected: []sql.Row{
+						{123, "abc"},
+					},
 				},
 			},
 		},
@@ -255,24 +261,6 @@ func TestSingleScript(t *testing.T) {
 	//
 	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
 	//}
-}
-
-func TestSingleScriptPrepared(t *testing.T) {
-	//t.Skip()
-	var script = queries.ScriptTest{
-		Name:        "DELETE ME",
-		SetUpScript: []string{},
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query: "select 1",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-		},
-	}
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	enginetest.TestScriptPrepared(t, harness, script)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.

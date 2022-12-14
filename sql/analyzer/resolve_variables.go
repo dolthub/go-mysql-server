@@ -53,8 +53,9 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 		}
 
 		// Set nodes need to resolve the right-hand side of an expression only
-		if n, ok := n.(*plan.Set); ok {
-			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch nn := n.(type) {
+		case *plan.Set:
+			return transform.NodeExprs(nn, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				sf, ok := e.(*expression.SetField)
 				if !ok {
 					return e, transform.SameTree, nil
@@ -74,6 +75,18 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 				}
 				return e, transform.NewTree, nil
 			})
+		case *plan.InsertInto:
+			newSrc, same, err := transform.NodeExprs(nn.Source, resolveVars)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if !same {
+				newNN, _, err := transform.OneNodeExpressions(nn.WithSource(newSrc), resolveVars)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return newNN, transform.NewTree, nil
+			}
 		}
 
 		return transform.OneNodeExpressions(n, resolveVars)

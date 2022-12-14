@@ -358,7 +358,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 	// TODO: maybe place this somewhere else
 	switch n := parsed.(type) {
 	case *plan.PrepareQuery:
-		analyzedChild, _, err := e.Analyzer.AnalyzePrepared(ctx, n.Child, nil)
+		analyzedChild, err := e.Analyzer.PrepareQuery(ctx, n.Child, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -379,19 +379,44 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 			return true
 		})
 
+		// count separately for InsertInto.Source
+		transform.Inspect(p, func(n sql.Node) bool {
+			if in, ok := n.(*plan.InsertInto); ok {
+				transform.InspectExpressions(in.Source, func(e sql.Expression) bool {
+					if _, ok := e.(*expression.BindVar); ok {
+						bindCnt++
+					}
+					return true
+				})
+				return false
+			}
+			return true
+		})
+
 		// number of bindvars provided must match number of bindvars expected
 		if bindCnt != len(n.BindVars) {
 			return nil, sql.ErrInvalidArgument.New(n.Name)
 		}
-
 		parsed = p
 
-		newBindings := map[string]sql.Expression{}
+		bindings = map[string]sql.Expression{}
 		for i, binding := range n.BindVars {
 			varName := fmt.Sprintf("v%d", i+1)
-			newBindings[varName] = binding
+			bindings[varName] = binding
 		}
-		bindings = newBindings
+
+		if len(bindings) > 0 {
+			parsed, err = plan.ApplyBindings(parsed, bindings)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		analyzed, _, err = e.Analyzer.AnalyzePrepared(ctx, parsed, nil)
+		if err != nil {
+			return nil, err
+		}
+		return analyzed, nil
 	case *plan.DeallocateQuery:
 		if !e.unpreparedNode(ctx, n.Name) {
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)

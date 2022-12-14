@@ -3511,7 +3511,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "select * from t order by i",
 				Expected: []sql.Row{
-					{123, "hi"},
+					{123, "abc"},
 				},
 			},
 			{
