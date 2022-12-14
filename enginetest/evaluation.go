@@ -401,7 +401,7 @@ func runQueryPreparedWithCtx(
 	if err != nil {
 		return nil, nil, err
 	}
-	e.CachePreparedStmt(ctx, prepared, q)
+	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), q, prepared)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
 	if err != nil {
