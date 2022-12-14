@@ -57,13 +57,13 @@ type TemporaryUser struct {
 
 // PreparedDataCache manages all the prepared data for every session for every query for an engine
 type PreparedDataCache struct {
-	Data map[uint32]map[string]sql.Node
+	data map[uint32]map[string]sql.Node
 	mu   *sync.Mutex
 }
 
 func NewPreparedDataCache() *PreparedDataCache {
 	return &PreparedDataCache{
-		Data: make(map[uint32]map[string]sql.Node),
+		data: make(map[uint32]map[string]sql.Node),
 		mu:   &sync.Mutex{},
 	}
 }
@@ -73,31 +73,36 @@ func NewPreparedDataCache() *PreparedDataCache {
 func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sql.Node, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if sessData, ok := p.Data[sessId]; ok {
+	if sessData, ok := p.data[sessId]; ok {
 		data, ok := sessData[query]
 		return data, ok
 	}
 	return nil, false
 }
 
+// GetSessionData returns all the prepared queries for a particular session
+func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]sql.Node {
+	return p.data[sessId]
+}
+
 // CacheStmt saves the prepared node and associates a ctx.SessionId and query to it
 func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, node sql.Node) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.Data[sessId]; !ok {
-		p.Data[sessId] = make(map[string]sql.Node)
+	if _, ok := p.data[sessId]; !ok {
+		p.data[sessId] = make(map[string]sql.Node)
 	}
-	p.Data[sessId][query] = node
+	p.data[sessId][query] = node
 }
 
 // UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
 func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.Data[sessId]; !ok {
+	if _, ok := p.data[sessId]; !ok {
 		return
 	}
-	delete(p.Data[sessId], query)
+	delete(p.data[sessId], query)
 }
 
 // Engine is a SQL engine.
@@ -316,6 +321,7 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CloseSession(ctx *sql.Context) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	delete(e.PreparedDataCache.data, ctx.Session.ID())
 }
 
 // Count number of BindVars in given tree
