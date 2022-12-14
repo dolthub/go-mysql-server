@@ -3392,7 +3392,6 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 	},
 }
 
-// TODO: do I prepare the prepare script tests??
 var PreparedScriptTests = []ScriptTest{
 	{
 		Name:        "simple select case no bindings",

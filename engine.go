@@ -75,7 +75,7 @@ type ColumnWithRawDefault struct {
 
 type PreparedData struct {
 	Node  sql.Node
-	Query string // TODO: delete this?
+	Query string
 }
 
 // New creates a new Engine with custom configuration. To create an Engine with
