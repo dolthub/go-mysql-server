@@ -57,13 +57,13 @@ type TemporaryUser struct {
 
 // PreparedDataCache manages all the prepared data for every session for every query for an engine
 type PreparedDataCache struct {
-	data map[uint32]map[string]sql.Node
+	Data map[uint32]map[string]sql.Node
 	mu   *sync.Mutex
 }
 
 func NewPreparedDataCache() *PreparedDataCache {
 	return &PreparedDataCache{
-		data: make(map[uint32]map[string]sql.Node),
+		Data: make(map[uint32]map[string]sql.Node),
 		mu:   &sync.Mutex{},
 	}
 }
@@ -71,7 +71,9 @@ func NewPreparedDataCache() *PreparedDataCache {
 // GetCachedStmt will retrieve the prepared sql.Node associated with the ctx.SessionId and query if it exists
 // it will return nil, false if the query does not exist
 func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sql.Node, bool) {
-	if sessData, ok := p.data[sessId]; ok {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if sessData, ok := p.Data[sessId]; ok {
 		data, ok := sessData[query]
 		return data, ok
 	}
@@ -82,20 +84,20 @@ func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sql.Node
 func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, node sql.Node) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
-		p.data[sessId] = make(map[string]sql.Node)
+	if _, ok := p.Data[sessId]; !ok {
+		p.Data[sessId] = make(map[string]sql.Node)
 	}
-	p.data[sessId][query] = node
+	p.Data[sessId][query] = node
 }
 
 // UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
 func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
+	if _, ok := p.Data[sessId]; !ok {
 		return
 	}
-	delete(p.data[sessId], query)
+	delete(p.Data[sessId], query)
 }
 
 // Engine is a SQL engine.
@@ -365,7 +367,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, analyzedChild)
 	case *plan.ExecuteQuery:
 		// replace execute query node with the one prepared
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name)
 		if !ok {
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}

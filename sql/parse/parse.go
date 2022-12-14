@@ -274,11 +274,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
 	case *sqlparser.Prepare:
-		newStmt, err := sqlparser.Parse(n.Expr)
-		if err != nil {
-			return nil, err
-		}
-		return convertPrepare(ctx, newStmt, n)
+		return convertPrepare(ctx, n)
 	case *sqlparser.Execute:
 		return convertExecute(ctx, n)
 	case *sqlparser.Deallocate:
@@ -392,8 +388,13 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 	return plan.NewDescribeQuery(explainFmt, child), nil
 }
 
-func convertPrepare(ctx *sql.Context, newStmt sqlparser.Statement, n *sqlparser.Prepare) (sql.Node, error) {
-	child, err := convert(ctx, newStmt, n.Expr)
+func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
+	childStmt, err := sqlparser.Parse(n.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	child, err := convert(ctx, childStmt, n.Expr)
 	if err != nil {
 		return nil, err
 	}
