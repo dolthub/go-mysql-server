@@ -18,7 +18,7 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 var ExternalProcedureTests = []ScriptTest{
 	{
-		Name: "call external stored procedure that does not exist",
+		Name: "Call external stored procedure that does not exist",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CALL procedure_does_not_exist('foo');",
@@ -36,6 +36,30 @@ var ExternalProcedureTests = []ScriptTest{
 			{
 				Query:    "SELECT @outparam;",
 				Expected: []sql.Row{{16}},
+			},
+		},
+	},
+	{
+		Name: "Handle setting uninitialized user variables",
+		SetUpScript: []string{
+			"CALL memory_inout_set_unitialized(@uservar12, @uservar13, @uservar14, @uservar15);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT @uservar12;",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT @uservar13;",
+				Expected: []sql.Row{{uint(5)}},
+			},
+			{
+				Query:    "SELECT @uservar14;",
+				Expected: []sql.Row{{"5"}},
+			},
+			{
+				Query:    "SELECT @uservar15;",
+				Expected: []sql.Row{{0}},
 			},
 		},
 	},
@@ -80,6 +104,11 @@ var ExternalProcedureTests = []ScriptTest{
 				Query: "CALL memory_overloaded_type_test(false, 'hi', 'A', '2020-02-20 12:00:00', 123.456," +
 					"true, 'bye', 'B', '2022-02-02 12:00:00', 654.32);",
 				Expected: []sql.Row{{`aa:false,ba:true,ab:"hi",bb:"bye",ac:[65],bc:[66],ad:2020-02-20,bd:2022-02-02,ae:123.456,be:654.32`}},
+			},
+			{
+				Query: "CALL memory_type_test3(1, 100, 10000, 1000000, 100000000, 3, 300," +
+					"10, 1000, 100000, 10000000, 1000000000, 30, 3000);",
+				Expected: []sql.Row{{uint64(1111114444)}},
 			},
 		},
 	},

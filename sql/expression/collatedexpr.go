@@ -209,6 +209,10 @@ func ResolveCoercibility(leftCollation sql.CollationID, leftCoercibility int, ri
 		return rightCollation, nil
 	} else if leftCollation == rightCollation {
 		return leftCollation, nil
+	} else if leftCollation == sql.Collation_Unspecified {
+		return rightCollation, nil
+	} else if rightCollation == sql.Collation_Unspecified {
+		return leftCollation, nil
 	} else { // Collations are not equal
 		leftCharset := leftCollation.CharacterSet()
 		rightCharset := rightCollation.CharacterSet()
