@@ -29,6 +29,10 @@ var (
 		Name: "a",
 		Type: sql.Int64,
 	}}
+	externalSPSchemaUint = sql.Schema{&sql.Column{
+		Name: "a",
+		Type: sql.Uint64,
+	}}
 	externalSPSchemaText = sql.Schema{&sql.Column{
 		Name: "a",
 		Type: sql.LongText,
@@ -38,6 +42,11 @@ var (
 			Name:     "memory_inout_add",
 			Schema:   nil,
 			Function: inout_add,
+		},
+		{
+			Name:     "memory_inout_set_unitialized",
+			Schema:   nil,
+			Function: inout_set_unitialized,
 		},
 		{
 			Name:     "memory_overloaded_mult",
@@ -63,6 +72,11 @@ var (
 			Name:     "memory_overloaded_type_test",
 			Schema:   externalSPSchemaText,
 			Function: overloaded_type_test2,
+		},
+		{
+			Name:     "memory_type_test3",
+			Schema:   externalSPSchemaUint,
+			Function: type_test3,
 		},
 		{
 			Name:     "memory_inout_bool_byte",
@@ -102,6 +116,14 @@ func inout_add(_ *sql.Context, a *int64, b int64) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
+func inout_set_unitialized(_ *sql.Context, a *int, b *uint, c *string, d *int) (sql.RowIter, error) {
+	*a = 5
+	*b = 5
+	*c = "5"
+	// We intentionally do not set `d` to verify that it is given the zero value
+	return nil, nil
+}
+
 func overloaded_mult1(_ *sql.Context, a int8) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{int64(a)}), nil
 }
@@ -130,6 +152,17 @@ func overloaded_type_test2(
 	return sql.RowsToRowIter(sql.Row{
 		fmt.Sprintf(`aa:%v,ba:%v,ab:"%s",bb:"%s",ac:%v,bc:%v,ad:%s,bd:%s,ae:%s,be:%s`,
 			aa, *ba, ab, *bb, ac, *bc, ad.Format("2006-01-02"), (*bd).Format("2006-01-02"), ae.String(), (*be).String()),
+	}), nil
+}
+
+func type_test3(
+	_ *sql.Context,
+	aa uint8, ab uint16, ac uint, ad uint32, ae uint64, af float32, ag float64,
+	ba *uint8, bb *uint16, bc *uint, bd *uint32, be *uint64, bf *float32, bg *float64,
+) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.Row{
+		uint64(aa) + uint64(ab) + uint64(ac) + uint64(ad) + uint64(ae) + uint64(af) + uint64(ag) +
+			uint64(*ba) + uint64(*bb) + uint64(*bc) + uint64(*bd) + uint64(*be) + uint64(*bf) + uint64(*bg),
 	}), nil
 }
 

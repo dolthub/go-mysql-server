@@ -53,7 +53,9 @@ type IndexedInSubqueryFilter struct {
 	equals   bool
 }
 
+var _ sql.Node = (*IndexedInSubqueryFilter)(nil)
 var _ sql.Disposable = (*IndexedInSubqueryFilter)(nil)
+var _ sql.Expressioner = (*IndexedInSubqueryFilter)(nil)
 
 func (i *IndexedInSubqueryFilter) Resolved() bool {
 	return i.subquery.Resolved() && i.child.Resolved()
@@ -97,6 +99,23 @@ func (i *IndexedInSubqueryFilter) WithChildren(children ...sql.Node) (sql.Node, 
 // CheckPrivileges implements the interface sql.Node.
 func (i *IndexedInSubqueryFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return i.subquery.Query.CheckPrivileges(ctx, opChecker) && i.child.CheckPrivileges(ctx, opChecker)
+}
+
+// Expressions implements the interface sql.Expressioner.
+func (i *IndexedInSubqueryFilter) Expressions() []sql.Expression {
+	return []sql.Expression{i.subquery}
+}
+
+// WithExpressions implements the interface sql.Expressioner.
+func (i *IndexedInSubqueryFilter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidExpressionNumber.New(i, len(exprs), 1)
+	}
+	subquery, ok := exprs[0].(*Subquery)
+	if !ok {
+		return nil, sql.ErrInvalidChildType.New(i, subquery, i.subquery)
+	}
+	return NewIndexedInSubqueryFilter(subquery, i.child, i.padding, i.getField, i.equals), nil
 }
 
 func (i *IndexedInSubqueryFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
