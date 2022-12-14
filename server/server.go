@@ -126,6 +126,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		Listener:   vtListnr,
 		handler:    handler,
 		sessionMgr: sm,
+		Engine:     e,
 	}, unixSocketInUse
 }
 

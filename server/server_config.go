@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"go.opentelemetry.io/otel/trace"
 
+	gms "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -29,6 +30,7 @@ type Server struct {
 	Listener   *mysql.Listener
 	handler    mysql.Handler
 	sessionMgr *SessionManager
+	Engine     *gms.Engine
 }
 
 // Config for the mysql server.
