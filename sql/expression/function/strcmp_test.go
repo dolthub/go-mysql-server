@@ -15,6 +15,7 @@
 package function
 
 import (
+	"github.com/dolthub/vitess/go/sqltypes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,10 +37,13 @@ func TestStrCmp(t *testing.T) {
 		{"equal strings", sql.Text, sql.Text, sql.NewRow("a", "a"), int(0), nil},
 		{"first string is smaller", sql.Text, sql.Text, sql.NewRow("a", "b"), int(-1), nil},
 		{"second string is smaller", sql.Text, sql.Text, sql.NewRow("b", "a"), int(1), nil},
-		{"arguments have different types", sql.Int8, sql.Text, sql.NewRow(1, "1"), int(0), nil},
 		{"first argument is null", sql.Text, sql.Text, sql.NewRow(nil, "a"), nil, nil},
 		{"second argument is null", sql.Text, sql.Text, sql.NewRow("a", nil), nil, nil},
 		{"both arguments are null", sql.Text, sql.Text, sql.NewRow(nil, nil), nil, nil},
+		{"different collations throws error", sql.MustCreateString(sqltypes.Text, 10, 255), sql.MustCreateString(sqltypes.Text, 10, 309), sql.NewRow("a", "a"), nil, sql.ErrCollationIllegalMix},
+		{"first argument is text, second argument is not text", sql.Text, sql.Date, sql.NewRow("a", 2022-11-04), int(1), nil},
+		{"first argument is not text, second argument is text", sql.Int8, sql.Text, sql.NewRow(1, "1"), int(0), nil},
+		{"both arguments are non-text", sql.Int8, sql.Date, sql.NewRow(3, 2017-04-27), int(1), nil},
 	}
 
 	for _, tt := range testCases {

@@ -16,10 +16,9 @@ package function
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // StrCmp compares two strings
@@ -79,11 +78,6 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str1, err := sql.ConvertToString(expr1, sql.LongText)
-	if err != nil {
-		return nil, err
-	}
-
 	expr2, err := s.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -92,11 +86,21 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str2, err := sql.ConvertToString(expr2, sql.LongText)
-	if err != nil {
-		return nil, err
-	}
+	if sql.IsText(s.Left.Type()) && sql.IsText(s.Right.Type()) {
+		st1 := s.Left.Type().(sql.StringType)
+		st2 := s.Right.Type().(sql.StringType)
 
-	// dolt currently defaults to a case sensitive collation which will make STRCMP case sensitive
-	return strings.Compare(str1, str2), nil
+		if st1.Collation() == st2.Collation() {
+			return st1.Compare(expr1, expr2)
+		} else {
+			return nil, sql.ErrCollationIllegalMix.New(st1.Collation(), st2.Collation())
+		}
+	} else if sql.IsText(s.Left.Type()) {
+		return s.Left.Type().Compare(expr1, expr2)
+	} else if sql.IsText(s.Right.Type()) {
+		return s.Right.Type().Compare(expr1, expr2)
+	} else {
+		st := sql.MustCreateString(sqltypes.Text, 10, ctx.GetCollation())
+		return st.Compare(expr1, expr2)
+	}
 }
