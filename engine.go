@@ -82,7 +82,16 @@ func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sql.Node
 
 // GetSessionData returns all the prepared queries for a particular session
 func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]sql.Node {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	return p.data[sessId]
+}
+
+// DeleteSessionData clears a session along with all prepared queries for that session
+func (p *PreparedDataCache) DeleteSessionData(sessId uint32) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.data, sessId)
 }
 
 // CacheStmt saves the prepared node and associates a ctx.SessionId and query to it
@@ -321,7 +330,7 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CloseSession(ctx *sql.Context) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	delete(e.PreparedDataCache.data, ctx.Session.ID())
+	e.PreparedDataCache.DeleteSessionData(ctx.Session.ID())
 }
 
 // Count number of BindVars in given tree
