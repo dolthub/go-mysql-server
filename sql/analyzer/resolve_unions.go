@@ -85,12 +85,12 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		defer cancelFunc()
 
 		// TODO we could detect tree modifications here, skip rebuilding
-		left, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Left(), scope, "default-rules", sel)
+		left, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Left(), scope, "default-rules", NewFinalizeUnionSel(sel))
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		right, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Right(), scope, "default-rules", sel)
+		right, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Right(), scope, "default-rules", NewFinalizeUnionSel(sel))
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

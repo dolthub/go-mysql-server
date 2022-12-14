@@ -76,7 +76,7 @@ func (t *ResolvedTable) String() string {
 
 func (t *ResolvedTable) DebugString() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("Table")
+	pr.WriteNode("Table(%s)", t.Table.Name())
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 	if pt, ok := table.(sql.ProjectedTable); ok {

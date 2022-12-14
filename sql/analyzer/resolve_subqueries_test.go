@@ -146,7 +146,7 @@ func TestResolveSubqueries(t *testing.T) {
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return finalizeSubqueries.Apply(ctx, a, n, scope, DefaultRuleSelector)
+			return finalizeSubqueries.Apply(ctx, a, n, scope, NewFinalizeSubquerySel(sel))
 		},
 	})
 }
@@ -213,44 +213,6 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 								),
 								plan.NewResolvedTable(table2.WithProjections([]string{"i", "y"}), db, nil),
 							),
-						),
-						""),
-				},
-				plan.NewResolvedTable(table, db, nil),
-			),
-		},
-		{
-			name: "columns qualified",
-			node: plan.NewProject(
-				[]sql.Expression{
-					uc("i"),
-					plan.NewSubquery(
-						plan.NewProject(
-							[]sql.Expression{
-								uqc("mytable2", "y"),
-							},
-							plan.NewFilter(
-								gt(
-									uqc("mytable", "x"),
-									uqc("mytable", "i"),
-								),
-								plan.NewUnresolvedTable("mytable2", ""),
-							),
-						),
-						""),
-				},
-				plan.NewResolvedTable(table, db, nil),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					uc("i"),
-					plan.NewSubquery(
-						plan.NewFilter(
-							gt(
-								gf(1, "mytable", "x"),
-								gf(0, "mytable", "i"),
-							),
-							plan.NewResolvedTable(table2.WithProjections([]string{"y"}), db, nil),
 						),
 						""),
 				},
