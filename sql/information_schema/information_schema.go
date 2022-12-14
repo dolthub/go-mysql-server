@@ -921,6 +921,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					//hist.NullCount,     // null_count
 					//hist.DistinctCount, // distinct_count
 					//bucketStrings, // buckets
+					// TODO: missing other key/value pairs in the JSON
 					JSONDocument{Val: map[string]interface{}{"buckets": buckets}}, // histogram
 				})
 			}
@@ -1131,14 +1132,14 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// collation is "A" for ASC ; "D" for DESC ; "NULL" for not sorted
 							collation = "A"
 
-							// TODO : cardinality should be an estimate of the number of unique values in the index.
+							// TODO : cardinality is an estimate of the number of unique values in the index.
 							// it is currently set to total number of rows in the table
-							if st, ok := tbl.(StatisticsTable); ok {
-								cardinality, err = getTotalNumRows(ctx, st)
-								if err != nil {
-									return nil, err
-								}
-							}
+							//if st, ok := tbl.(StatisticsTable); ok {
+							//	cardinality, err = getTotalNumRows(ctx, st)
+							//	if err != nil {
+							//		return nil, err
+							//	}
+							//}
 
 							// if nullable, 'YES'; if not, ''
 							if col.Nullable {
@@ -1158,7 +1159,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								colName,      // column_name
 								collation,    // collation
 								cardinality,  // cardinality
-								nil,          // sub_part
+								nil,          // sub_part - the index prefix
 								nil,          // packed
 								nullable,     // is_nullable	NOT NULL
 								indexType,    // index_type		NOT NULL
@@ -1255,40 +1256,57 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // tablesRowIter implements the sql.RowIter for the information_schema.TABLES table.
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
+	var (
+		tableType      string
+		tableRows      uint64
+		engine         interface{}
+		rowFormat      interface{}
+		tableCollation interface{}
+	)
+
 	for _, db := range cat.AllDatabases(ctx) {
-		tableType := "BASE TABLE"
-		engine := "INNODB"
-		rowFormat := "Dynamic"
 		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
-			engine = "MEMORY"
-			rowFormat = "Fixed"
+		} else {
+			tableType = "BASE TABLE"
+			engine = "InnoDB"
+			rowFormat = "Dynamic"
+			tableCollation = Collation_Default.String()
 		}
 
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			if db.Name() != InformationSchemaDatabaseName {
+				if st, ok := t.(StatisticsTable); ok {
+					tableRows, err = getTotalNumRows(ctx, st)
+					if err != nil {
+						return false, err
+					}
+				}
+			}
+
 			rows = append(rows, Row{
-				"def",                      // table_catalog
-				db.Name(),                  // table_schema
-				t.Name(),                   // table_name
-				tableType,                  // table_type
-				engine,                     // engine
-				10,                         // version (protocol, always 10)
-				rowFormat,                  // row_format
-				nil,                        // table_rows
-				nil,                        // avg_row_length
-				nil,                        // data_length
-				nil,                        // max_data_length
-				nil,                        // max_data_length
-				nil,                        // data_free
-				nil,                        // auto_increment (always nil)
-				y2k,                        // create_time
-				y2k,                        // update_time
-				nil,                        // check_time
-				Collation_Default.String(), // table_collation
-				nil,                        // checksum
-				nil,                        // create_options
-				"",                         // table_comment
+				"def",          // table_catalog
+				db.Name(),      // table_schema
+				t.Name(),       // table_name
+				tableType,      // table_type
+				engine,         // engine
+				10,             // version (protocol, always 10)
+				rowFormat,      // row_format
+				tableRows,      // table_rows
+				0,              // avg_row_length
+				0,              // data_length
+				0,              // max_data_length
+				0,              // max_data_length
+				0,              // data_free
+				nil,            // auto_increment (the next value)
+				y2k,            // create_time
+				y2k,            // update_time
+				nil,            // check_time
+				tableCollation, // table_collation
+				nil,            // checksum
+				"",             // create_options
+				"",             // table_comment
 			})
 
 			return true, nil
@@ -1325,7 +1343,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				Collation_Default.String(), // table_collation
 				nil,                        // checksum
 				nil,                        // create_options
-				"",                         // table_comment
+				"VIEW",                     // table_comment
 			})
 		}
 	}
@@ -1980,7 +1998,7 @@ func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
 }
 
-func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
+func getTotalNumRows(ctx *Context, st StatisticsTable) (uint64, error) {
 	stats, err := st.Statistics(ctx)
 	if err != nil {
 		return 0, err
@@ -1990,14 +2008,7 @@ func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
 		c = stats.RowCount()
 	}
 
-	// cardinality is int64 type, but NumRows return uint64
-	// so casting it to int64 with a check for negative number
-	cardinality := int64(c)
-	if cardinality < 0 {
-		cardinality = int64(0)
-	}
-
-	return cardinality, nil
+	return c, nil
 }
 
 func getColumnNamesFromIndex(idx Index, table Table) []string {

@@ -157,7 +157,7 @@ func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	for _, tt := range queries.InfoSchemaQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
+
 	for _, script := range queries.InfoSchemaScripts {
 		TestScriptPrepared(t, harness, script)
 	}

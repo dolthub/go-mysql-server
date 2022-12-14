@@ -9055,6 +9055,52 @@ var InfoSchemaQueries = []QueryTest{
 		Query:    `SELECT * from information_schema.innodb_virtual`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query: `SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, SEQ_IN_INDEX, 'PRIMARY' AS PK_NAME 
+FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='PRIMARY' ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX;`,
+		Expected: []sql.Row{
+			{"mydb", "fk_tbl", "pk", 1, "PRIMARY"},
+			{"mydb", "mytable", "i", 1, "PRIMARY"},
+		},
+	},
+	//// Issue#1
+	//{
+	//	Query: `SELECT NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, COLLATION, CARDINALITY
+	//FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'mytable' ORDER BY NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX`,
+	//	Expected: []sql.Row{
+	//		{0, "mytable_s", 1, "s", "A", 3},
+	//		{0, "PRIMARY", 1, "i", "A", 3},
+	//		{1, "idx_si", 1, "s", "A", 3},
+	//		{1, "idx_si", 2, "i", "A", 3},
+	//		{1, "mytable_i_s", 1, "i", "A", 3},
+	//		{1, "mytable_i_s", 2, "i", "A", 3},
+	//	},
+	//},
+	{
+		Query: `show columns from fk_tbl from mydb`,
+		Expected: []sql.Row{
+			{"pk", "bigint", "NO", "PRI", "NULL", ""},
+			{"a", "bigint", "YES", "MUL", "NULL", ""},
+			{"b", "varchar(20)", "YES", "", "NULL", ""},
+		},
+	},
+	//// Issue#6 and Issue#7
+	//{
+	//	Query: `SELECT table_catalog, table_schema, table_name, table_type, engine, version, row_format, table_rows, avg_row_length,
+	//data_length, max_data_length, index_length, data_free, auto_increment, table_collation, checksum, create_options, table_comment
+	//FROM information_schema.TABLES t WHERE t.TABLE_SCHEMA = 'information_schema' AND t.TABLE_NAME = 'check_constraints'`,
+	//	Expected: []sql.Row{
+	//		{"def", "information_schema", "CHECK_CONSTRAINTS", "SYSTEM VIEW", nil, 10, nil,
+	//			uint64(0), 0, 0, 0, 0, 0, nil, nil, nil, "", ""},
+	//	},
+	//},
+	// // how to not include datetime
+	//{
+	//	Query: `SHOW TABLE STATUS FROM mydb LIKE 'fk_tbl'`,
+	//	Expected: []sql.Row{
+	//		{"fk_tbl", "InnoDB", "10", "Dynamic", 0, 0, 16384, 0, 16384, 0, nil, "", nil, nil, "utf8mb4_0900_bin", nil, "", ""},
+	//	},
+	//},
 }
 
 var SkippedInfoSchemaQueries = []QueryTest{
@@ -9154,8 +9200,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.statistics where table_name='t'",
 				Expected: []sql.Row{
-					{"def", "mydb", "t", 1, "mydb", "myindex", 1, "test_score", "A", int64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"def", "mydb", "t", 0, "mydb", "PRIMARY", 1, "pk", "A", int64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "t", 1, "mydb", "myindex", 1, "test_score", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "t", 0, "mydb", "PRIMARY", 1, "pk", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},
@@ -9380,6 +9426,177 @@ var InfoSchemaScripts = []ScriptTest{
 					{"stable", "pol", nil, "NO", "polygon", "polygon", "", uint32(0)},
 				},
 			},
+		},
+	},
+	{
+		Name: "information_schema",
+		SetUpScript: []string{
+			`create table bigtable (text varchar(20) primary key, number mediumint, pt point default (POINT(1,1)))`,
+			`insert into bigtable values ('a',4,POINT(1,4)),('b',2,null),('c',0,null),('d',2,POINT(1, 2)),('e',2,POINT(1, 2))`,
+			`create index bigtable_number on bigtable (number)`,
+
+			`CREATE TABLE actor (
+  actor_id smallint unsigned NOT NULL AUTO_INCREMENT,
+  first_name varchar(45) NOT NULL,
+  last_name varchar(45) NOT NULL,
+  last_update timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (actor_id),
+  KEY idx_actor_last_name (last_name)
+)`,
+			`INSERT INTO actor VALUES (1,'PENELOPE','GUINESS','2006-02-15 12:34:33'),(2,'NICK','WAHLBERG','2006-02-15 12:34:33'),(3,'ED','CHASE','2006-02-15 12:34:33')`,
+			`CREATE VIEW myview1 AS SELECT * FROM mytable`,
+			`CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1`,
+		},
+		Assertions: []ScriptTestAssertion{
+			//// Issue#1 and Issue#2
+			//{
+			//	Query: `SELECT * FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'bigtable' ORDER BY INDEX_NAME`,
+			//	Expected: []sql.Row{
+			//		//{"def", "mydb", "bigtable", 1, "mydb", "bigtable_number", 1, "number", "A", 3, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+			//		{"def", "mydb", "bigtable", 0, "mydb", "PRIMARY", 1, "text", "A", 5, nil, nil, "", "BTREE", "", "", "YES", nil},
+			//	},
+			//},
+			{
+				Query: `SELECT table_catalog, table_schema, table_name, table_type, table_comment FROM information_schema.tables WHERE table_schema = 'mydb' and table_type IN ('VIEW') ORDER BY TABLE_NAME;`,
+				Expected: []sql.Row{
+					{"def", "mydb", "myview", "VIEW", "VIEW"},
+					{"def", "mydb", "myview1", "VIEW", "VIEW"},
+					{"def", "mydb", "myview2", "VIEW", "VIEW"},
+				},
+			},
+			//// Issue#4
+			//{
+			//	Query: `SELECT table_catalog, table_schema, table_name, table_type, engine, version, row_format, table_rows, avg_row_length,
+			//data_length, max_data_length, index_length, data_free, auto_increment, table_collation, checksum, create_options, table_comment
+			//FROM information_schema.tables where table_schema = 'mydb' order by table_name`,
+			//	Expected: []sql.Row{
+			//		{"def", "mydb", "actor", "BASE TABLE", "InnoDB", 10, "Dynamic", 3, 5461,
+			//			16384, 0, 16384, 0, 4, "utf8mb4_0900_bin", nil, "", ""},
+			//		{"def", "mydb", "bigtable", "BASE TABLE", "InnoDB", 10, "Dynamic", 5, 3276,
+			//			16384, 0, 0, 0, nil, "utf8mb4_0900_bin", nil, "", ""},
+			//		{"def", "mydb", "fk_tbl", "BASE TABLE", "InnoDB", 10, "Dynamic", 0, 0,
+			//			16384, 0, 16384, 0, nil, "utf8mb4_0900_bin", nil, "", ""},
+			//		{"def", "mydb", "mytable", "BASE TABLE", "InnoDB", 10, "Dynamic", 3, 5461,
+			//			16384, 0, 0, 0, 4, "utf8mb4_0900_bin", nil, "", ""},
+			//		{"def", "mydb", "myview1", "VIEW", nil, nil, nil, nil, nil,
+			//			nil, nil, nil, nil, nil, nil, nil, "", "VIEW"},
+			//		{"def", "mydb", "myview2", "VIEW", nil, nil, nil, nil, nil,
+			//			nil, nil, nil, nil, nil, nil, nil, "", "VIEW"},
+			//	},
+			//},
+			{
+				Query: "SELECT table_rows as count FROM information_schema.TABLES WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='bigtable';",
+				Expected: []sql.Row{
+					{uint64(5)},
+				},
+			},
+			// // Issue#5
+			//{
+			//	Query: "SELECT table_comment as comment,table_rows as rows_count,auto_increment as auto_increment FROM information_schema.tables WHERE TABLE_NAME = 'actor' AND TABLE_SCHEMA = 'mydb';",
+			//	Expected: []sql.Row{
+			//		{"", 3, 4},
+			//	},
+			//},
+			{
+				Query: `SELECT seq_in_index, sub_part, index_name, index_type, CASE non_unique WHEN 0 THEN 'TRUE' ELSE 'FALSE' END AS is_unique, column_name
+	FROM information_schema.statistics WHERE table_schema='mydb' AND table_name='actor' ORDER BY seq_in_index ASC, column_name DESC;`,
+				Expected: []sql.Row{
+					{1, nil, "idx_actor_last_name", "BTREE", "FALSE", "last_name"},
+					{1, nil, "PRIMARY", "BTREE", "TRUE", "actor_id"},
+				},
+			},
+			// Issue#8
+			//{
+			//	Query: `SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='actor' ORDER BY ORDINAL_POSITION`,
+			//	Expected: []sql.Row{
+			//		{"def", "mydb", "actor", "actor_id", uint32(1), nil, "NO", "smallint", nil, nil, 5, 0, nil, nil, nil,
+			//			"smallint unsigned", "PRI", "auto_increment", "select,insert,update,references", "", "", nil},
+			//		{"def", "mydb", "actor", "first_name", uint32(2), nil, "NO", "varchar", 45, 180, nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin",
+			//			"varchar(45)", "", "", "select,insert,update,references", "", "", nil},
+			//		{"def", "mydb", "actor", "last_name", uint32(3), nil, "NO", "varchar", 45, 180, nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin",
+			//			"varchar(45)", "MUL", "", "select,insert,update,references", "", "", nil},
+			//		{"def", "mydb", "actor", "last_update", uint32(4), "CURRENT_TIMESTAMP", "NO", "timestamp", nil, nil, nil, nil, 0, nil, nil,
+			//			"timestamp", "", "DEFAULT_GENERATED on update CURRENT_TIMESTAMP", "select,insert,update,references", "", "", nil},
+			//	},
+			//},
+		},
+	},
+	{
+		Name: "information_schema",
+		SetUpScript: []string{
+			`CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))`,
+			`ALTER TABLE checks ADD CONSTRAINT chk1 CHECK (B > 0)`,
+			`ALTER TABLE checks ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED`,
+			`ALTER TABLE checks ADD CONSTRAINT chk3 CHECK (B > 1)`,
+			`ALTER TABLE checks ADD CONSTRAINT chk4 CHECK (upper(C) = c)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
+FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
+WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
+				Expected: []sql.Row{
+					{"chk1", "(b > 0)", "YES"},
+					{"chk2", "(b > 0)", "NO"},
+					{"chk3", "(b > 1)", "YES"},
+					{"chk4", "(UPPER(c) = c)", "YES"},
+				},
+			},
+			{
+				Query: `select * from information_schema.table_constraints where table_schema = 'mydb' and table_name = 'checks';`,
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "mydb", "checks", "PRIMARY KEY", "YES"},
+					{"def", "mydb", "chk1", "mydb", "checks", "CHECK", "YES"},
+					{"def", "mydb", "chk2", "mydb", "checks", "CHECK", "NO"},
+					{"def", "mydb", "chk3", "mydb", "checks", "CHECK", "YES"},
+					{"def", "mydb", "chk4", "mydb", "checks", "CHECK", "YES"},
+				},
+			},
+			{
+				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
+				Expected: []sql.Row{
+					{"def", "mydb", "chk1", "(b > 0)"},
+					{"def", "mydb", "chk2", "(b > 0)"},
+					{"def", "mydb", "chk3", "(b > 1)"},
+					{"def", "mydb", "chk4", "(UPPER(c) = c)"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema",
+		SetUpScript: []string{
+			`CREATE DEFINER=root@localhost PROCEDURE count_i_from_mytable(OUT total_i INT)
+    READS SQL DATA
+BEGIN
+     SELECT SUM(i)
+     FROM mytable
+     INTO total_i;
+END ;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select specific_name, routine_catalog, routine_schema, routine_name, routine_type, data_type,
+routine_body, external_language, parameter_style, is_deterministic, sql_data_access, security_type, sql_mode, 
+routine_comment, definer, character_set_client, collation_connection, database_collation
+from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
+				Expected: []sql.Row{
+					{"count_i_from_mytable", "def", "mydb", "count_i_from_mytable", "PROCEDURE", "", "SQL", "SQL", "SQL", "NO",
+						"READS SQL DATA", "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"", "`root`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+				},
+			},
+			//// Issue#3
+			//{
+			//	Query: `select routine_definition from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
+			//	Expected: []sql.Row{
+			//		{`BEGIN
+			//    SELECT SUM(i)
+			//    FROM mytable
+			//    INTO total_i;
+			//END`},
+			//	},
+			//},
 		},
 	},
 }
