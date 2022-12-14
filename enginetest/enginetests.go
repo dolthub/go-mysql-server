@@ -4402,6 +4402,25 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			},
 		},
 		{
+			Name: "simple decimal type insert",
+			SetUpScript: []string{
+				"CREATE TABLE test(id int primary key auto_increment, decimal_test DECIMAL(9,2), decimal_test_2 DECIMAL(9,2), decimal_test_3 DECIMAL(9,2))",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "INSERT INTO test(decimal_test, decimal_test_2, decimal_test_3) VALUES (?, ?, ?)",
+					Bindings: map[string]sql.Expression{
+						"v1": expression.NewLiteral(10, sql.Int64),
+						"v2": expression.NewLiteral([]byte("10.5"), sql.MustCreateString(sqltypes.VarBinary, 4, sql.Collation_binary)),
+						"v3": expression.NewLiteral(20.40, sql.Float64),
+					},
+					Expected: []sql.Row{
+						{sql.OkResult{RowsAffected: 1, InsertID: 1}},
+					},
+				},
+			},
+		},
+		{
 			Name: "Insert on duplicate key",
 			SetUpScript: []string{
 				`CREATE TABLE users (
