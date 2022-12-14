@@ -15,7 +15,9 @@
 package expression
 
 import (
+	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -196,12 +198,14 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return d, nil
 	case ConvertToDecimal:
+		val = convertHexBlobToDecimalForNumericContext(val, originType)
 		d, err := sql.InternalDecimalType.Convert(val)
 		if err != nil {
 			return "0", nil
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
+		val = convertHexBlobToDecimalForNumericContext(val, originType)
 		d, err := sql.Float64.Convert(val)
 		if err != nil {
 			return sql.Float64.Zero(), nil
@@ -214,6 +218,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return js, nil
 	case ConvertToSigned:
+		val = convertHexBlobToDecimalForNumericContext(val, originType)
 		num, err := sql.Int64.Convert(val)
 		if err != nil {
 			return sql.Int64.Zero(), nil
@@ -227,6 +232,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return t, nil
 	case ConvertToUnsigned:
+		val = convertHexBlobToDecimalForNumericContext(val, originType)
 		num, err := sql.Uint64.Convert(val)
 		if err != nil {
 			num, err = sql.Int64.Convert(val)
@@ -239,4 +245,19 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 	default:
 		return nil, nil
 	}
+}
+
+// convertHexBlobToDecimalForNumericContext returns numeric value if the value is binary and origin type is blob
+// IF the convertTo type is number type. This applies only for hex LITERAL values parsed it is parsed as
+// BLOB type in the parser but to binary string type.
+// -- other byte arrays of other sql types does not apply here.
+func convertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) interface{} {
+	if bin, isBinary := val.([]byte); isBinary && sql.IsBlobType(originType) {
+		stringVal := hex.EncodeToString(bin)
+		decimalNum, err := strconv.ParseInt(stringVal, 16, 64)
+		if err == nil {
+			val = decimalNum
+		}
+	}
+	return val
 }

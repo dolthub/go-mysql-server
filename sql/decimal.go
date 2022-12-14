@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -241,12 +240,11 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 	case decimal.Decimal:
 		res = value
 	case []uint8:
-		var err error
-		val, err := strconv.ParseUint(hex.EncodeToString(value), 16, 64)
+		val, err := strconv.ParseFloat(string(value[:]), 64)
 		if err != nil {
 			return decimal.NullDecimal{}, err
 		}
-		res = decimal.NewFromBigInt(new(big.Int).SetUint64(val), 0)
+		res = decimal.NewFromFloat(val)
 	case decimal.NullDecimal:
 		// This is the equivalent of passing in a nil
 		if !value.Valid {
