@@ -274,18 +274,14 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
 	case *sqlparser.Prepare:
-		// TODO: this should just return whether or not the statement was prepared
-		// TODO: should probably update the STATUS variable Prepared_stmt_count
 		newStmt, err := sqlparser.Parse(n.Expr)
 		if err != nil {
 			return nil, err
 		}
 		return convertPrepare(ctx, newStmt, n)
 	case *sqlparser.Execute:
-		// TODO: this needs to find the existing prepared statement, fill in the bindvars, and run it
 		return convertExecute(ctx, n)
 	case *sqlparser.Deallocate:
-		// TODO: this needs to find the existing prepared statement, and delete it
 		return convertDeallocate(ctx, n)
 	}
 }
@@ -413,11 +409,6 @@ func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {
 		} else {
 			exprs[i] = expression.NewUnresolvedProcedureParam(e)
 		}
-		//expr, err := ExprToExpression(ctx, e.Expr)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//exprs[i] = expr
 	}
 	return plan.NewExecuteQuery(n.Name, exprs...), nil
 }

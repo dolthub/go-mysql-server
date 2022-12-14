@@ -59,10 +59,12 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 				if !ok {
 					return e, transform.SameTree, nil
 				}
+
 				nr, same, err := transform.Expr(sf.Right, resolveVars)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
+				
 				if same {
 					return e, transform.SameTree, nil
 				}
