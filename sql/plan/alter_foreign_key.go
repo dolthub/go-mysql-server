@@ -317,7 +317,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		SelfCols:   selfCols,
 		RowMapper: ForeignKeyRowMapper{
 			Index:          refTblIndex,
-			Updater:        refTbl.GetForeignKeyUpdater(ctx),
+			Updater:        refTbl.GetForeignKeyEditor(ctx),
 			SourceSch:      tbl.Schema(),
 			IndexPositions: indexPositions,
 			AppendTypes:    appendTypes,

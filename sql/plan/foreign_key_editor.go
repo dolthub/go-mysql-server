@@ -36,7 +36,7 @@ import (
 // "x4", which is in the fourth position (so 3 with zero-based indexed).
 type ChildParentMapping []int
 
-// ForeignKeyRefActionData contains the mapper, editor, and child to parent mapping for processing referential actions.
+// ForeignKeyRefActionData contains the mapper, editIter, and child to parent mapping for processing referential actions.
 type ForeignKeyRefActionData struct {
 	RowMapper          *ForeignKeyRowMapper
 	Editor             *ForeignKeyEditor
@@ -45,17 +45,17 @@ type ForeignKeyRefActionData struct {
 }
 
 // ForeignKeyEditor handles update and delete operations, as they may have referential actions on other tables (such as
-// cascading). If this editor is Cyclical, then that means that following the referential actions will eventually lead
-// back to this same editor. Self-referential foreign keys are inherently cyclical.
+// cascading). If this editIter is Cyclical, then that means that following the referential actions will eventually lead
+// back to this same editIter. Self-referential foreign keys are inherently cyclical.
 type ForeignKeyEditor struct {
 	Schema     sql.Schema
-	Editor     sql.ForeignKeyUpdater
+	Editor     sql.ForeignKeyEditor
 	References []*ForeignKeyReferenceHandler
 	RefActions []ForeignKeyRefActionData
 	Cyclical   bool
 }
 
-// IsInitialized returns whether this editor has been initialized. The given map is used to prevent cycles, as editors
+// IsInitialized returns whether this editIter has been initialized. The given map is used to prevent cycles, as editors
 // will reference themselves if a cycle is formed between foreign keys.
 func (fkEditor *ForeignKeyEditor) IsInitialized(editors map[*ForeignKeyEditor]struct{}) bool {
 	if fkEditor == nil || fkEditor.Editor == nil {
@@ -439,7 +439,7 @@ func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sq
 // mapping from the source columns to the contained index's columns.
 type ForeignKeyRowMapper struct {
 	Index     sql.Index
-	Updater   sql.ForeignKeyUpdater
+	Updater   sql.ForeignKeyEditor
 	SourceSch sql.Schema
 	// IndexPositions hold the mapping between an index's column position and the source row's column position. Given
 	// an index (x1, x2) and a source row (y1, y2, y3) and the relation (x1->y3, x2->y1), this slice would contain
