@@ -240,7 +240,7 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 	case decimal.Decimal:
 		res = value
 	case []uint8:
-		val, err := strconv.ParseFloat(string(value[:]), 64)
+		val, err := strconv.ParseFloat(string(value), 64)
 		if err != nil {
 			return decimal.NullDecimal{}, err
 		}

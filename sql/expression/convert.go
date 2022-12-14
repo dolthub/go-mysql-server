@@ -198,15 +198,21 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return d, nil
 	case ConvertToDecimal:
-		val = convertHexBlobToDecimalForNumericContext(val, originType)
-		d, err := sql.InternalDecimalType.Convert(val)
+		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		if err != nil {
+			return nil, err
+		}
+		d, err := sql.InternalDecimalType.Convert(value)
 		if err != nil {
 			return "0", nil
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
-		val = convertHexBlobToDecimalForNumericContext(val, originType)
-		d, err := sql.Float64.Convert(val)
+		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		if err != nil {
+			return nil, err
+		}
+		d, err := sql.Float64.Convert(value)
 		if err != nil {
 			return sql.Float64.Zero(), nil
 		}
@@ -218,8 +224,11 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return js, nil
 	case ConvertToSigned:
-		val = convertHexBlobToDecimalForNumericContext(val, originType)
-		num, err := sql.Int64.Convert(val)
+		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		if err != nil {
+			return nil, err
+		}
+		num, err := sql.Int64.Convert(value)
 		if err != nil {
 			return sql.Int64.Zero(), nil
 		}
@@ -232,10 +241,13 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return t, nil
 	case ConvertToUnsigned:
-		val = convertHexBlobToDecimalForNumericContext(val, originType)
-		num, err := sql.Uint64.Convert(val)
+		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
-			num, err = sql.Int64.Convert(val)
+			return nil, err
+		}
+		num, err := sql.Uint64.Convert(value)
+		if err != nil {
+			num, err = sql.Int64.Convert(value)
 			if err != nil {
 				return sql.Uint64.Zero(), nil
 			}
@@ -247,17 +259,18 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 	}
 }
 
-// convertHexBlobToDecimalForNumericContext returns numeric value if the value is binary and origin type is blob
-// IF the convertTo type is number type. This applies only for hex LITERAL values parsed it is parsed as
-// BLOB type in the parser but to binary string type.
-// -- other byte arrays of other sql types does not apply here.
-func convertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) interface{} {
+// convertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
+// This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
+// binary string as default, but for numeric context, the value should be a number.
+// Byte arrays of other SQL types are not handled here.
+func convertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) (interface{}, error) {
 	if bin, isBinary := val.([]byte); isBinary && sql.IsBlobType(originType) {
 		stringVal := hex.EncodeToString(bin)
 		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
-		if err == nil {
-			val = decimalNum
+		if err != nil {
+			return nil, errors.NewKind("failed to convert hex blob value to unsigned int").New()
 		}
+		val = decimalNum
 	}
-	return val
+	return val, nil
 }
