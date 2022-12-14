@@ -138,16 +138,16 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 			case *plan.InSubquery:
 				if rt, ok := n.Child.(*plan.ResolvedTable); ok {
 					replacement = getIndexedInSubqueryFilter(ctx, e.Left, e.Right, rt, false, inScope)
-
 				}
 			default:
 			}
 		default:
 		}
 		if replacement != nil {
-			ret, _ = ret.WithChildren(replacement)
+			ret = replacement
 			same = transform.NewTree
 		}
+
 		if same {
 			return n, transform.SameTree, nil
 		}
