@@ -378,15 +378,14 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 		switch id {
 		case
 			// skip recursive finalize rules
-			finalizeSubqueriesId,
-			finalizeSubqueryExprsId:
+			finalizeSubqueriesId:
 			return false
 		}
 		return sel(id)
 	}
 }
 
-func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
+func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
 		case
@@ -396,7 +395,6 @@ func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 			resolveUnionsId,
 			// skip redundant finalize rules
 			finalizeSubqueriesId,
-			finalizeSubqueryExprsId,
 			// skip caching rules, they should only be run once in outer scope
 			cacheSubqueryResultsId,
 			cacheSubqueryAliasesInJoinsId,
@@ -435,8 +433,7 @@ func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 			resolveSubqueryExprsId,
 			resolveSubqueriesId,
 			// skip redundant finalize rules
-			finalizeSubqueriesId,
-			finalizeSubqueryExprsId:
+			finalizeSubqueriesId:
 			return false
 		}
 		return sel(id)

@@ -79,8 +79,6 @@ func (s *Scope) newScopeFromSubqueryAlias(sqa *plan.SubqueryAlias) *Scope {
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
 		if s.currentNodeIsFromSubqueryExpression {
 			sqa.OuterScopeVisibility = true
-		}
-		if sqa.OuterScopeVisibility {
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		}
 	}

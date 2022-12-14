@@ -53,13 +53,17 @@ func (s *aliasScope) new() *aliasScope {
 }
 
 func (s *aliasScope) get(n string) string {
+	return s._get(strings.ToLower(n))
+}
+
+func (s *aliasScope) _get(n string) string {
 	if t, ok := s.aliases[n]; ok {
 		return t
 	}
 	if s.p == nil {
 		return ""
 	}
-	return s.p.get(n)
+	return s.p._get(n)
 }
 
 // applyIndexesForSubqueryComparisons converts a `Filter(id = (SELECT ...),
@@ -85,10 +89,8 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 			case *plan.IndexedTableAccess:
 				target = c.Name()
 			case *plan.RecursiveCte:
-			case *plan.UnresolvedTable:
-				panic("Table not resolved")
 			default:
-				panic(fmt.Sprintf("Unexpected child type of TableAlias: %T", c))
+				fmt.Errorf("unexpected child type of TableAlias: %T", c)
 			}
 		default:
 		}
@@ -172,7 +174,7 @@ func getIndexedInSubqueryFilter(
 		return nil
 	}
 	defer indexes.releaseUsedIndexes()
-	if rt := scope.get(strings.ToLower(gf.Table())); rt != "" {
+	if rt := scope.get(gf.Table()); rt != "" {
 		gf = gf.WithTable(rt)
 	}
 	idx := indexes.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rt.Name(), gf)
