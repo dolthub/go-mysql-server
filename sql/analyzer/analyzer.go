@@ -424,7 +424,8 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 			resolveSubqueriesId,
 			resolveUnionsId,
 			cacheSubqueryResultsId,
-			cacheSubqueryAliasesInJoinsId:
+			cacheSubqueryAliasesInJoinsId,
+			parallelizeId:
 			return false
 		}
 		return sel(id)
@@ -436,10 +437,10 @@ func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 		switch id {
 		case resolveSubqueryExprsId,
 			resolveSubqueriesId,
+			// Don't run finalizeSubqueries on subquery[exprs], since calling it on the root of the statement will
+			// recursively handle subqueries from the bottom of the plan up.
 			finalizeSubqueriesId,
 			finalizeSubqueryExprsId:
-			// Don't run finalizeSubqueries on subqueries, since calling it on the root of the statement will
-			// recursively handle subqueries from the bottom of the plan up.
 			return false
 		}
 		return sel(id)

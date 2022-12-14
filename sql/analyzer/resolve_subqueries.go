@@ -72,6 +72,12 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				if sq, ok := e.(*plan.Subquery); ok {
 					newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
 					if err != nil {
+						if ErrValidationResolved.Is(err) {
+							_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
+							if err != nil {
+								return e, transform.SameTree, err
+							}
+						}
 						return e, transform.SameTree, err
 					}
 					newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.newScopeFromSubqueryExpression(node), sel)

@@ -108,7 +108,7 @@ func litNull() sql.Expression {
 }
 
 // Creates a new top-level scope from the node given
-func newScope(n sql.Node) *Scope {
+func newTestScope(n sql.Node) *Scope {
 	return (*Scope)(nil).newScope(n)
 }
 
