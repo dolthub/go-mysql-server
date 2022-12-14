@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ type PrepareQuery struct {
 	Name  string
 	Child sql.Node
 }
+
+var _ sql.Node = (*PrepareQuery)(nil)
 
 // NewPrepareQuery creates a new PrepareQuery node.
 func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
@@ -82,6 +84,8 @@ type ExecuteQuery struct {
 	BindVars []sql.Expression
 }
 
+var _ sql.Node = (*ExecuteQuery)(nil)
+
 // NewExecuteQuery executes a prepared statement
 func NewExecuteQuery(name string, bindVars ...sql.Expression) *ExecuteQuery {
 	return &ExecuteQuery{Name: name, BindVars: bindVars}
@@ -124,6 +128,8 @@ func (p *ExecuteQuery) String() string {
 type DeallocateQuery struct {
 	Name string
 }
+
+var _ sql.Node = (*DeallocateQuery)(nil)
 
 // NewDeallocateQuery executes a prepared statement
 func NewDeallocateQuery(name string) *DeallocateQuery {
