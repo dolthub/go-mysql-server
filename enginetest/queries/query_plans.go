@@ -305,11 +305,12 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select x, 1 in (select a from ab where exists (select * from uv where a = u)) s from xy`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x, (1 IN (SemiJoin(ab.a = uv.u)\n" +
-			" │   ├─ Table(ab)\n" +
-			" │   │   └─ columns: [a]\n" +
-			" │   └─ Table(uv)\n" +
-			" │       └─ columns: [u v]\n" +
+			" ├─ columns: [xy.x, (1 IN (Project\n" +
+			" │   ├─ columns: [ab.a]\n" +
+			" │   └─ SemiJoin(ab.a = uv.u)\n" +
+			" │       ├─ Table(ab)\n" +
+			" │       └─ Table(uv)\n" +
+			" │           └─ columns: [u v]\n" +
 			" │  )) as s]\n" +
 			" └─ Table(xy)\n" +
 			"",
@@ -3838,13 +3839,14 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias(temp)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1]\n" +
-			"     └─ Filter(1 IN (Union distinct\n" +
-			"         ├─ Project\n" +
-			"         │   ├─ columns: [1]\n" +
-			"         │   └─ Table()\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [2]\n" +
-			"             └─ Table()\n" +
+			"     └─ Filter(1 IN (SubqueryAlias(a)\n" +
+			"         └─ Union distinct\n" +
+			"             ├─ Project\n" +
+			"             │   ├─ columns: [1]\n" +
+			"             │   └─ Table()\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [2]\n" +
+			"                 └─ Table()\n" +
 			"        ))\n" +
 			"         └─ Table()\n" +
 			"",
@@ -4073,13 +4075,14 @@ inner join pq on true
 		ExpectedPlan: "SubqueryAlias(temp)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1]\n" +
-			"     └─ Filter(1 IN (Union distinct\n" +
-			"         ├─ Project\n" +
-			"         │   ├─ columns: [1]\n" +
-			"         │   └─ Table()\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [2]\n" +
-			"             └─ Table()\n" +
+			"     └─ Filter(1 IN (SubqueryAlias(a)\n" +
+			"         └─ Union distinct\n" +
+			"             ├─ Project\n" +
+			"             │   ├─ columns: [1]\n" +
+			"             │   └─ Table()\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [2]\n" +
+			"                 └─ Table()\n" +
 			"        ))\n" +
 			"         └─ Table()\n" +
 			"",

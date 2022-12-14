@@ -96,7 +96,6 @@ const (
 	insertTopNId                  // insertTopN
 	cacheSubqueryResultsId        // cacheSubqueryResults
 	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
-	applyHashLookupsId            // applyHashLookups
 	applyHashInId                 // applyHashIn
 	resolveInsertRowsId           // resolveInsertRows
 	resolvePreparedInsertId       // resolvePreparedInsert

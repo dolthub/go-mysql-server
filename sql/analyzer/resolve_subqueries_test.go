@@ -220,44 +220,6 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 			),
 		},
 		{
-			name: "columns qualified",
-			node: plan.NewProject(
-				[]sql.Expression{
-					uc("i"),
-					plan.NewSubquery(
-						plan.NewProject(
-							[]sql.Expression{
-								uqc("mytable2", "y"),
-							},
-							plan.NewFilter(
-								gt(
-									uqc("mytable", "x"),
-									uqc("mytable", "i"),
-								),
-								plan.NewUnresolvedTable("mytable2", ""),
-							),
-						),
-						""),
-				},
-				plan.NewResolvedTable(table, db, nil),
-			),
-			expected: plan.NewProject(
-				[]sql.Expression{
-					uc("i"),
-					plan.NewSubquery(
-						plan.NewFilter(
-							gt(
-								gf(1, "mytable", "x"),
-								gf(0, "mytable", "i"),
-							),
-							plan.NewResolvedTable(table2.WithProjections([]string{"y"}), db, nil),
-						),
-						""),
-				},
-				plan.NewResolvedTable(table, db, nil),
-			),
-		},
-		{
 			name: "table not found in expression",
 			node: plan.NewProject(
 				[]sql.Expression{

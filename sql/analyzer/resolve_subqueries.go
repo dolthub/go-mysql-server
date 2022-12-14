@@ -157,7 +157,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 			scope.newScopeFromSubqueryExpression(n), "default-rules", NewFinalizeSubqueryExprSelector(sel))
 	} else {
 		analyzed, _, err = a.analyzeThroughBatch(subqueryCtx, sq.Query,
-			scope.newScopeFromSubqueryExpression(n), "once-after", NewResolveSubqueryExprSelector(sel))
+			scope.newScopeFromSubqueryExpression(n), "default-rules", NewResolveSubqueryExprSelector(sel))
 	}
 	if err != nil {
 		// We ignore certain errors during non-final passes of the analyzer, deferring them to later analysis passes.

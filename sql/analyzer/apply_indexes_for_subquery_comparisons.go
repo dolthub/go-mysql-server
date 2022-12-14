@@ -155,29 +155,6 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 	return recurse(n, newScope())
 }
 
-//func applyIndexesForSubqueryComparisons2(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-//	aliases, err := getTableAliases(n, scope)
-//	if err != nil {
-//		return nil, transform.SameTree, err
-//	}
-//
-//	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-//		switch node := node.(type) {
-//		case *plan.Filter:
-//			var replacement sql.Node
-//			if eq, isEqual := node.Expression.(*expression.Equals); isEqual {
-//				replacement = getIndexedInSubqueryFilter(ctx, eq.Left(), eq.Right(), node, true, scope, aliases)
-//			} else if is, isInSubquery := node.Expression.(*plan.InSubquery); isInSubquery {
-//				replacement = getIndexedInSubqueryFilter(ctx, is.Left, is.Right, node, false, scope, aliases)
-//			}
-//			if replacement != nil {
-//				return replacement, transform.NewTree, nil
-//			}
-//		}
-//		return node, transform.SameTree, nil
-//	})
-//}
-
 func getIndexedInSubqueryFilter(
 	ctx *sql.Context,
 	left, right sql.Expression,
@@ -187,7 +164,6 @@ func getIndexedInSubqueryFilter(
 ) sql.Node {
 	gf, isGetField := left.(*expression.GetField)
 	subq, isSubquery := right.(*plan.Subquery)
-	//rt, isResolved := node.Child.(*plan.ResolvedTable)
 	if !isGetField || !isSubquery || !subq.CanCacheResults() {
 		return nil
 	}

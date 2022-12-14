@@ -376,17 +376,10 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		// skip redundant resolve rules
-		case pruneColumnsId,
-			optimizeJoinsId,
-			setJoinScopeLenId,
-			applyHashLookupsId,
+		case
 			// skip recursive finalize rules
 			finalizeSubqueriesId,
-			finalizeSubqueryExprsId,
-			parallelizeId,
-			pushdownFiltersId,
-			subqueryIndexesId:
+			finalizeSubqueryExprsId:
 			return false
 		}
 		return sel(id)
@@ -396,15 +389,9 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId,
-			optimizeJoinsId,
-			setJoinScopeLenId,
-			applyHashLookupsId,
-			pushdownFiltersId,
-			subqueryIndexesId:
-			return true
-		// skip recursive resolve rules
-		case resolveSubqueryExprsId,
+		case
+			// skip recursive resolve rules
+			resolveSubqueryExprsId,
 			resolveSubqueriesId,
 			resolveUnionsId,
 			// skip redundant finalize rules
@@ -424,8 +411,9 @@ func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		// skip recursive resolve rules
-		case resolveSubqueryExprsId,
+		case
+			// skip recursive resolve rules
+			resolveSubqueryExprsId,
 			resolveSubqueriesId,
 			resolveUnionsId,
 			// skip caching rules, they should only be run once in outer scope
@@ -442,10 +430,11 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case resolveSubqueryExprsId,
+		case
+			// skip recursive resolve rules
+			resolveSubqueryExprsId,
 			resolveSubqueriesId,
-			// Don't run finalizeSubqueries on subquery[exprs], since calling it on the root of the statement will
-			// recursively handle subqueries from the bottom of the plan up.
+			// skip redundant finalize rules
 			finalizeSubqueriesId,
 			finalizeSubqueryExprsId:
 			return false
