@@ -464,7 +464,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 	switch id {
 	case
 		// OnceBeforeDefault
-		resolveVariablesId,
 		resolveDatabasesId,
 		resolveTablesId,
 		reresolveTablesId,
