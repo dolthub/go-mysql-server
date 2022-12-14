@@ -420,12 +420,25 @@ func groupingKey(
 	row sql.Row,
 ) (uint64, error) {
 	hash := xxhash.New()
-	for _, expr := range exprs {
+	for i, expr := range exprs {
 		v, err := expr.Eval(ctx, row)
 		if err != nil {
 			return 0, err
 		}
-		_, err = hash.Write(([]byte)(fmt.Sprintf("%v,", v)))
+
+		if i > 0 {
+			// separate each expression in the grouping key with a nil byte
+			if _, err = hash.Write([]byte{0}); err != nil {
+				return 0, err
+			}
+		}
+
+		switch t := expr.Type().(type) {
+		case sql.StringType:
+			err = t.Collation().WriteWeightString(hash, v.(string))
+		default:
+			_, err = fmt.Fprintf(hash, "%v", v)
+		}
 		if err != nil {
 			return 0, err
 		}
