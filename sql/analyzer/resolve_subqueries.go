@@ -73,6 +73,8 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
 					if err != nil {
 						if ErrValidationResolved.Is(err) {
+							// if a parent is unresolved, we want to dig deeper to find the unresolved
+							// child dependency
 							_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
 							if err != nil {
 								return e, transform.SameTree, err
@@ -278,23 +280,6 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 	return cacheable
 }
 
-func isDeterminstic(n sql.Node) bool {
-	res := true
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		if s, ok := e.(*plan.Subquery); ok {
-			if !isDeterminstic(s.Query) {
-				res = false
-			}
-			return false
-		} else if nd, ok := e.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
-			res = false
-			return false
-		}
-		return true
-	})
-	return res
-}
-
 // cacheSubqueryResults determines whether it's safe to cache the results for subqueries (expressions and aliases), and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
@@ -328,7 +313,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 
 // cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
-// node on top of those nodes. The left child of a join root is an exception
+// node on top of those nodes. The left-most child of a join root is an exception
 // that cannot be cached.
 func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var recurse func(n sql.Node, parentCached, inJoin, rootJoinT1 bool) (sql.Node, transform.TreeIdentity, error)

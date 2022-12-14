@@ -27,7 +27,6 @@ import (
 type aliasScope struct {
 	p       *aliasScope
 	aliases map[string]string
-	tables  map[string]NameableNode
 }
 
 func newScope() *aliasScope {
@@ -72,7 +71,6 @@ func (s *aliasScope) get(n string) string {
 // 3. The left hand side is a GetField expression against the Child.
 // 4. The Child is a *plan.ResolvedTable.
 // 5. The referenced field in the Child is indexed.
-
 func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var recurse func(n sql.Node, inScope *aliasScope) (sql.Node, transform.TreeIdentity, error)
 	recurse = func(n sql.Node, inScope *aliasScope) (sql.Node, transform.TreeIdentity, error) {
