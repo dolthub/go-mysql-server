@@ -332,15 +332,15 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *S
 // that cannot be cached.
 func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var recurse func(n sql.Node, parentCached, inJoin, rootJoinT1 bool) (sql.Node, transform.TreeIdentity, error)
-	recurse = func(n sql.Node, parentCached, inJoin, rootJoinT1 bool) (sql.Node, transform.TreeIdentity, error) {
+	recurse = func(n sql.Node, parentCached, inJoin, foundFirstRel bool) (sql.Node, transform.TreeIdentity, error) {
 		_, isOp := n.(sql.OpaqueNode)
-		var isJoinRoot bool
 		var isCacheableSq bool
 		var isCachedRs bool
 		switch n := n.(type) {
 		case *plan.JoinNode:
 			if !inJoin {
-				isJoinRoot = true
+				inJoin = true
+				foundFirstRel = false
 			}
 		case *plan.SubqueryAlias:
 			if n.CanCacheResults {
@@ -351,14 +351,22 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		default:
 		}
 
-		doCache := isCacheableSq && inJoin && !parentCached && !rootJoinT1
-		childInJoin := (inJoin || isJoinRoot) && !isOp
+		doCache := isCacheableSq && inJoin && !parentCached
+		childInJoin := inJoin && !isOp
+
+		if inJoin && !foundFirstRel {
+			switch n.(type) {
+			case sql.Nameable:
+				doCache = false
+				foundFirstRel = true
+			default:
+			}
+		}
 
 		children := n.Children()
 		var newChildren []sql.Node
 		for i, c := range children {
-			rootJoinT1 = i == 0 && isJoinRoot
-			child, same, _ := recurse(c, doCache || isCachedRs, childInJoin, rootJoinT1)
+			child, same, _ := recurse(c, doCache || isCachedRs, childInJoin, foundFirstRel)
 			if !same {
 				if newChildren == nil {
 					newChildren = make([]sql.Node, len(children))

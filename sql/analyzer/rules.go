@@ -142,7 +142,6 @@ var OnceAfterAll = []Rule{
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
-	{applyHashLookupsId, applyHashLookups},
 	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},
