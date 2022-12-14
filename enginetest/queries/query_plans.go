@@ -25,6 +25,65 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select * from ab where a in (select x from xy where x in (select u from uv where u = a));`,
+		ExpectedPlan: "Filter(ab.a IN (Project\n" +
+			" ├─ columns: [xy.x]\n" +
+			" └─ Filter(xy.x IN (Filter(uv.u = ab.a)\n" +
+			"     └─ IndexedTableAccess(uv)\n" +
+			"         ├─ index: [uv.u]\n" +
+			"         └─ columns: [u]\n" +
+			"    ))\n" +
+			"     └─ Table(xy)\n" +
+			"))\n" +
+			" └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `select * from ab where a in (select y from xy where y in (select v from uv where v = a));`,
+		ExpectedPlan: "Filter(ab.a IN (Project\n" +
+			" ├─ columns: [xy.y]\n" +
+			" └─ Filter(xy.y IN (Filter(uv.v = ab.a)\n" +
+			"     └─ Table(uv)\n" +
+			"         └─ columns: [v]\n" +
+			"    ))\n" +
+			"     └─ Table(xy)\n" +
+			"))\n" +
+			" └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `select * from ab where b in (select y from xy where y in (select v from uv where v = b));`,
+		ExpectedPlan: "Filter(ab.b IN (Project\n" +
+			" ├─ columns: [xy.y]\n" +
+			" └─ Filter(xy.y IN (Filter(uv.v = ab.b)\n" +
+			"     └─ Table(uv)\n" +
+			"         └─ columns: [v]\n" +
+			"    ))\n" +
+			"     └─ Table(xy)\n" +
+			"))\n" +
+			" └─ Table(ab)\n" +
+			"",
+	},
+	{
+		Query: `select ab.* from ab join pq on a = p where b = (select y from xy where y in (select v from uv where v = b)) order by a;`,
+		ExpectedPlan: "Sort(ab.a ASC)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [ab.a, ab.b]\n" +
+			"     └─ Filter(ab.b = (Project\n" +
+			"         ├─ columns: [xy.y]\n" +
+			"         └─ Filter(xy.y IN (Filter(uv.v = ab.b)\n" +
+			"             └─ Table(uv)\n" +
+			"                 └─ columns: [v]\n" +
+			"            ))\n" +
+			"             └─ Table(xy)\n" +
+			"        ))\n" +
+			"         └─ LookupJoin(ab.a = pq.p)\n" +
+			"             ├─ Table(pq)\n" +
+			"             └─ IndexedTableAccess(ab)\n" +
+			"                 └─ index: [ab.a]\n" +
+			"",
+	},
+	{
 		Query: `select y, (select 1 from uv where y = 1 and u = x) is_one from xy join uv on x = v order by y;`,
 		ExpectedPlan: "Sort(xy.y ASC)\n" +
 			" └─ Project\n" +
