@@ -254,7 +254,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 func convertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) interface{} {
 	if bin, isBinary := val.([]byte); isBinary && sql.IsBlobType(originType) {
 		stringVal := hex.EncodeToString(bin)
-		decimalNum, err := strconv.ParseInt(stringVal, 16, 64)
+		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
 		if err == nil {
 			val = decimalNum
 		}
