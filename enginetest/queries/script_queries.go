@@ -3394,6 +3394,16 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 
 var PreparedScriptTests = []ScriptTest{
 	{
+		Name:        "prepare a prepare",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "prepare s from 'prepare t from ?'",
+				ExpectedErrStr: "syntax error at position 17 near ':v1'",
+			},
+		},
+	},
+	{
 		Name:        "simple select case no bindings",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
