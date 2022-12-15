@@ -3398,7 +3398,7 @@ var PreparedScriptTests = []ScriptTest{
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "prepare s from 'prepare t from ?'",
+				Query:          "prepare s from 'prepare t from ?'",
 				ExpectedErrStr: "syntax error at position 17 near ':v1'",
 			},
 		},
