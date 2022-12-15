@@ -1044,7 +1044,8 @@ type ExternalStoredProcedureDetails struct {
 	// It is valid to return a nil RowIter if there are no rows to be returned.
 	//
 	// Each parameter, by default, is an IN parameter. If the parameter type is a pointer, e.g. `*int32`, then it
-	// becomes an INOUT parameter. There is no way to set a parameter as an OUT parameter.
+	// becomes an INOUT parameter. INOUT parameters will be given their zero value if the parameter's value is nil.
+	// There is no way to set a parameter as an OUT parameter.
 	//
 	// Values are converted to their nearest type before being passed in, following the conversion rules of their
 	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with

@@ -15,11 +15,56 @@
 package analyzer
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
+
+type aliasScope struct {
+	p       *aliasScope
+	aliases map[string]string
+}
+
+func newScope() *aliasScope {
+	return &aliasScope{
+		aliases: make(map[string]string),
+	}
+}
+func (s *aliasScope) add(a, t string) error {
+	lowerName := strings.ToLower(a)
+	if _, ok := s.aliases[lowerName]; ok && lowerName != plan.DualTableName {
+		return sql.ErrDuplicateAliasOrTable.New(a)
+	}
+	s.aliases[lowerName] = t
+	return nil
+}
+
+func (s *aliasScope) new() *aliasScope {
+	ret := newScope()
+	ret.p = s
+	for k, v := range s.aliases {
+		ret.aliases[k] = v
+	}
+	return ret
+}
+
+func (s *aliasScope) get(n string) string {
+	return s._get(strings.ToLower(n))
+}
+
+func (s *aliasScope) _get(n string) string {
+	if t, ok := s.aliases[n]; ok {
+		return t
+	}
+	if s.p == nil {
+		return ""
+	}
+	return s.p._get(n)
+}
 
 // applyIndexesForSubqueryComparisons converts a `Filter(id = (SELECT ...),
 // Child)` or a `Filter(id in (SELECT ...), Child)` to be iterated lookups on
@@ -31,44 +76,97 @@ import (
 // 4. The Child is a *plan.ResolvedTable.
 // 5. The referenced field in the Child is indexed.
 func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	aliases, err := getTableAliases(n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch node := node.(type) {
-		case *plan.Filter:
-			var replacement sql.Node
-			if eq, isEqual := node.Expression.(*expression.Equals); isEqual {
-				replacement = getIndexedInSubqueryFilter(ctx, eq.Left(), eq.Right(), node, true, scope, aliases)
-			} else if is, isInSubquery := node.Expression.(*plan.InSubquery); isInSubquery {
-				replacement = getIndexedInSubqueryFilter(ctx, is.Left, is.Right, node, false, scope, aliases)
+	var recurse func(n sql.Node, inScope *aliasScope) (sql.Node, transform.TreeIdentity, error)
+	recurse = func(n sql.Node, inScope *aliasScope) (sql.Node, transform.TreeIdentity, error) {
+		var alias, target string
+		var err error
+		switch n := n.(type) {
+		case *plan.TableAlias:
+			alias = n.Name()
+			switch c := n.Child.(type) {
+			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
+				target = c.(sql.Nameable).Name()
+			case *plan.IndexedTableAccess:
+				target = c.Name()
+			case *plan.RecursiveCte:
+			default:
+				fmt.Errorf("unexpected child type of TableAlias: %T", c)
 			}
-			if replacement != nil {
-				return replacement, transform.NewTree, nil
+		default:
+		}
+
+		if alias != "" {
+			err = inScope.add(alias, target)
+			if err != nil {
+				return n, transform.SameTree, err
 			}
 		}
-		return node, transform.SameTree, nil
-	})
+
+		_, isOp := n.(sql.OpaqueNode)
+		outScope := inScope
+		if isOp {
+			outScope = inScope.new()
+		}
+
+		children := n.Children()
+		var newChildren []sql.Node
+		for i, c := range children {
+			child, same, _ := recurse(c, outScope)
+			if !same {
+				if newChildren == nil {
+					newChildren = make([]sql.Node, len(children))
+					copy(newChildren, children)
+				}
+				newChildren[i] = child
+			}
+		}
+
+		ret := n
+		same := transform.SameTree
+		if len(newChildren) > 0 {
+			ret, _ = ret.WithChildren(newChildren...)
+			same = transform.NewTree
+		}
+
+		var replacement sql.Node
+		switch n := ret.(type) {
+		case *plan.Filter:
+			switch e := n.Expression.(type) {
+			case *expression.Equals:
+				if rt, ok := n.Child.(*plan.ResolvedTable); ok {
+					replacement = getIndexedInSubqueryFilter(ctx, e.Left(), e.Right(), rt, true, inScope)
+				}
+			case *plan.InSubquery:
+				if rt, ok := n.Child.(*plan.ResolvedTable); ok {
+					replacement = getIndexedInSubqueryFilter(ctx, e.Left, e.Right, rt, false, inScope)
+				}
+			default:
+			}
+		default:
+		}
+		if replacement != nil {
+			ret = replacement
+			same = transform.NewTree
+		}
+
+		if same {
+			return n, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, nil
+	}
+	return recurse(n, newScope())
 }
 
 func getIndexedInSubqueryFilter(
 	ctx *sql.Context,
 	left, right sql.Expression,
-	node *plan.Filter,
+	rt *plan.ResolvedTable,
 	equals bool,
-	scope *Scope,
-	tableAliases TableAliases,
+	scope *aliasScope,
 ) sql.Node {
 	gf, isGetField := left.(*expression.GetField)
 	subq, isSubquery := right.(*plan.Subquery)
-	rt, isResolved := node.Child.(*plan.ResolvedTable)
-	if !isGetField || !isSubquery || !isResolved {
-		return nil
-	}
-	referencesChildRow := nodeHasGetFieldReferenceBetween(subq.Query, len(scope.Schema()), len(scope.Schema())+len(node.Child.Schema()))
-	if referencesChildRow {
+	if !isGetField || !isSubquery || !subq.CanCacheResults() {
 		return nil
 	}
 	indexes, err := newIndexAnalyzerForNode(ctx, rt)
@@ -76,7 +174,10 @@ func getIndexedInSubqueryFilter(
 		return nil
 	}
 	defer indexes.releaseUsedIndexes()
-	idx := indexes.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rt.Name(), normalizeExpressions(tableAliases, gf)...)
+	if rt := scope.get(gf.Table()); rt != "" {
+		gf = gf.WithTable(rt)
+	}
+	idx := indexes.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rt.Name(), gf)
 	if idx == nil {
 		return nil
 	}
@@ -90,46 +191,5 @@ func getIndexedInSubqueryFilter(
 	if canBuildIndex, err := ita.CanBuildIndex(ctx); err != nil || !canBuildIndex {
 		return nil
 	}
-	return plan.NewIndexedInSubqueryFilter(subq, ita, len(node.Child.Schema()), gf, equals)
-}
-
-// nodeHasGetFieldReferenceBetween returns `true` if the given sql.Node has a
-// GetField expression anywhere within the tree that references an index in the
-// range [low, high).
-func nodeHasGetFieldReferenceBetween(n sql.Node, low, high int) bool {
-	var found bool
-	transform.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(sql.OpaqueNode); ok {
-			return false
-		}
-		if er, ok := n.(sql.Expressioner); ok {
-			for _, e := range er.Expressions() {
-				if expressionHasGetFieldReferenceBetween(e, low, high) {
-					found = true
-					return false
-				}
-			}
-		}
-		// TODO: Descend into *plan.Subquery?
-		_, ok := n.(*plan.IndexedInSubqueryFilter)
-		return !ok
-	})
-	return found
-}
-
-// expressionHasGetFieldReferenceBetween returns `true` if the given sql.Expression
-// has a GetField expression within it that references an index in the range
-// [low, high).
-func expressionHasGetFieldReferenceBetween(e sql.Expression, low, high int) bool {
-	var found bool
-	sql.Inspect(e, func(e sql.Expression) bool {
-		if gf, ok := e.(*expression.GetField); ok {
-			if gf.Index() >= low && gf.Index() < high {
-				found = true
-				return false
-			}
-		}
-		return true
-	})
-	return found
+	return plan.NewIndexedInSubqueryFilter(subq, ita, len(rt.Schema()), gf, equals)
 }

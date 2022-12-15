@@ -18,18 +18,14 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var (
-	boolType      = reflect.TypeOf(bool(false))
-	byteSliceType = reflect.TypeOf([]byte{})
-	intType       = reflect.TypeOf(int(0))
-	uintType      = reflect.TypeOf(uint(0))
-	decimalType   = reflect.TypeOf(decimal.Decimal{})
+	boolType = reflect.TypeOf(bool(false))
+	intType  = reflect.TypeOf(int(0))
+	uintType = reflect.TypeOf(uint(0))
 )
 
 // ExternalProcedure is the sql.Node container for sql.ExternalStoredProcedureDetails.
@@ -160,38 +156,41 @@ func (n *ExternalProcedure) processParam(ctx *sql.Context, funcParamType reflect
 	if funcParamType.Kind() == reflect.Ptr {
 		funcParamCompType = funcParamType.Elem()
 	}
-	// Convert to bool, []byte, int, and uint as they differ from their sql.Type value
-	switch funcParamCompType {
-	case boolType:
-		val := false
-		if exprParamVal.(int8) != 0 {
-			val = true
+	// Convert to bool, int, and uint as they differ from their sql.Type value
+	if exprParamVal != nil {
+		switch funcParamCompType {
+		case boolType:
+			val := false
+			if exprParamVal.(int8) != 0 {
+				val = true
+			}
+			exprParamVal = val
+		case intType:
+			if strconv.IntSize == 32 {
+				exprParamVal = int(exprParamVal.(int32))
+			} else {
+				exprParamVal = int(exprParamVal.(int64))
+			}
+		case uintType:
+			if strconv.IntSize == 32 {
+				exprParamVal = uint(exprParamVal.(uint32))
+			} else {
+				exprParamVal = uint(exprParamVal.(uint64))
+			}
 		}
-		exprParamVal = val
-	case byteSliceType:
-	case intType:
-		if strconv.IntSize == 32 {
-			exprParamVal = int(exprParamVal.(int32))
-		} else {
-			exprParamVal = int(exprParamVal.(int64))
-		}
-	case uintType:
-		if strconv.IntSize == 64 {
-			exprParamVal = int(exprParamVal.(uint32))
-		} else {
-			exprParamVal = int(exprParamVal.(uint64))
-		}
-	case decimalType:
-		exprParamVal = exprParamVal.(decimal.Decimal)
 	}
 
 	if funcParamType.Kind() == reflect.Ptr { // Coincides with INOUT
 		funcParamVal := reflect.New(funcParamType.Elem())
-		funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+		if exprParamVal != nil {
+			funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+		}
 		return funcParamVal, nil
 	} else { // Coincides with IN
 		funcParamVal := reflect.New(funcParamType)
-		funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+		if exprParamVal != nil {
+			funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+		}
 		return funcParamVal.Elem(), nil
 	}
 }

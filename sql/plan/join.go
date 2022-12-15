@@ -47,6 +47,8 @@ const (
 	JoinTypeLeftOuterLookup                 // LeftOuterLookupJoin
 	JoinTypeHash                            // HashJoin
 	JoinTypeLeftOuterHash                   // LeftOuterHashJoin
+	JoinTypeSemiHash                        // SemiHashJoin
+	JoinTypeAntiHash                        // AntiHashJoin
 	JoinTypeNatural                         // NaturalJoin
 )
 
@@ -87,7 +89,9 @@ func (i JoinType) IsDegenerate() bool {
 
 func (i JoinType) IsPartial() bool {
 	return i == JoinTypeSemi ||
-		i == JoinTypeAnti
+		i == JoinTypeAnti ||
+		i == JoinTypeSemiHash ||
+		i == JoinTypeAntiHash
 }
 
 func (i JoinType) IsPlaceholder() bool {

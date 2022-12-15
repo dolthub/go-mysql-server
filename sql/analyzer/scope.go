@@ -39,7 +39,6 @@ type Scope struct {
 
 func (s *Scope) IsEmpty() bool {
 	return s == nil || len(s.nodes) == 0
-
 }
 
 // newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,

@@ -177,6 +177,9 @@ func isParallelizable(node sql.Node) bool {
 		case *plan.JSONTable:
 			parallelizable = false
 			return false
+		case *plan.RecursiveCte:
+			parallelizable = false
+			return false
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
