@@ -373,6 +373,8 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		return nil, err
 	}
 
+	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
+	// along with a new rule that handles analysis
 	switch n := parsed.(type) {
 	case *plan.PrepareQuery:
 		analyzedChild, err := e.Analyzer.PrepareQuery(ctx, n.Child, nil)
