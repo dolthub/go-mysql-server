@@ -350,28 +350,6 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 	return analyzed, nil
 }
 
-// Count number of BindVars in given tree
-func countBindVars(node sql.Node) int {
-	bindCnt := 0
-	bindCntFunc := func(e sql.Expression) bool {
-		if _, ok := e.(*expression.BindVar); ok {
-			bindCnt++
-		}
-		return true
-	}
-	transform.InspectExpressions(node, bindCntFunc)
-
-	// InsertInto.Source not a child of InsertInto, so also need to traverse those
-	transform.Inspect(node, func(n sql.Node) bool {
-		if in, ok := n.(*plan.InsertInto); ok {
-			transform.InspectExpressions(in.Source, bindCntFunc)
-			return false
-		}
-		return true
-	})
-	return bindCnt
-}
-
 func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, bindings map[string]sql.Expression) (sql.Node, error) {
 	ctx.GetLogger().Tracef("optimizing prepared plan for query: %s", query)
 

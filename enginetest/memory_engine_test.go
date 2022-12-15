@@ -183,18 +183,27 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
+
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "create table as select distinct",
-			SetUpScript: []string{},
+			Name: "create table as select distinct",
+			SetUpScript: []string{
+				"CREATE TABLE t1 (a int, b varchar(10));",
+				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
-					Bindings: map[string]sql.Expression{
-						"v1": expression.NewLiteral(1, sql.Int8),
-						"v2": expression.NewLiteral(1, sql.Int8),
+					Query:    "create table t2 as select distinct b, a from t1;",
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+				},
+				{
+					Query: "select * from t2 order by a;",
+					Expected: []sql.Row{
+						{"a", 1},
+						{"b", 2},
+						{"c", 3},
 					},
-					Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
 				},
 			},
 		},
@@ -202,71 +211,38 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData, setup.MytableData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-	//t.Skip()
-	//
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name: "create table as select distinct",
-	//		SetUpScript: []string{
-	//			"CREATE TABLE t1 (a int, b varchar(10));",
-	//			"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
-	//		},
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    "create table t2 as select distinct b, a from t1;",
-	//				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
-	//			},
-	//			{
-	//				Query: "select * from t2 order by a;",
-	//				Expected: []sql.Row{
-	//					{"a", 1},
-	//					{"b", 2},
-	//					{"c", 3},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.Analyzer.Debug = true
-	//	engine.Analyzer.Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScriptPrepared(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var script = queries.ScriptTest{
-		Name: "issue 4857: insert cte column alias with table alias qualify panic",
-		SetUpScript: []string{
-			"create table xy (x int primary key, y int)",
-			"insert into xy values (0,0), (1,1), (2,2)",
-		},
+		Name:        "DELETE ME",
+		SetUpScript: []string{},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query: `With a as (
-  With b as (
-    Select sum(x) as x, y from xy where x < 2 group by y
-  )
-  Select * from b d
-) insert into xy (x,y) select x+9,y+9 from a;`,
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 0}}},
+				Query: `SELECT s2, i2, i
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+			ON i2 = i`,
+				Expected: []sql.Row{
+					{"third", 1, 1},
+					{"second", 2, 2},
+					{"first", 3, 3},
+					{"not found", 4, nil},
+				},
 			},
 		},
 	}
