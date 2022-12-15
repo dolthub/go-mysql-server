@@ -42,7 +42,7 @@ func fixBindings(expr sql.Expression, bindings map[string]sql.Expression) (sql.E
 		val, found := bindings[e.Name]
 		if found {
 			usedBindings[e.Name] = true
-			return val, transform.NewTree, nil, nil
+			return val, transform.NewTree, usedBindings, nil
 		}
 	case *expression.GetField:
 		//TODO: aliases derived from arithmetic
