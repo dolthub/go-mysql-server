@@ -251,25 +251,22 @@ func TestSingleScript(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScriptPrepared(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var script = queries.ScriptTest{
-		Name:        "DELETE ME",
-		SetUpScript: []string{},
+		Name: "issue 4857: insert cte column alias with table alias qualify panic",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int)",
+			"insert into xy values (0,0), (1,1), (2,2)",
+		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query: `SELECT s2, i2, i
-			FROM (SELECT * FROM mytable) mytable
-			RIGHT JOIN
-				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-				 UNION ALL
-				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-			ON i2 = i`,
-				Expected: []sql.Row{
-					{"third", 1, 1},
-					{"second", 2, 2},
-					{"first", 3, 3},
-					{"not found", 4, nil},
-				},
+				Query: `With a as (
+  With b as (
+    Select sum(x) as x, y from xy where x < 2 group by y
+  )
+  Select * from b d
+) insert into xy (x,y) select x+9,y+9 from a;`,
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 0}}},
 			},
 		},
 	}
