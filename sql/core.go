@@ -462,15 +462,13 @@ type ForeignKeyTable interface {
 	// UpdateForeignKey updates the given foreign key constraint. May range from updated table names to setting the
 	// IsResolved boolean.
 	UpdateForeignKey(ctx *Context, fkName string, fk ForeignKeyConstraint) error
-	// GetForeignKeyUpdater returns a ForeignKeyUpdater for this table.
-	GetForeignKeyUpdater(ctx *Context) ForeignKeyUpdater
+	// GetForeignKeyEditor returns a ForeignKeyEditor for this table.
+	GetForeignKeyEditor(ctx *Context) ForeignKeyEditor
 }
 
-// ForeignKeyUpdater is a TableEditor that is addressable via IndexLookup.
-type ForeignKeyUpdater interface {
-	RowInserter
-	RowUpdater
-	RowDeleter
+// ForeignKeyEditor is a TableEditor that is addressable via IndexLookup.
+type ForeignKeyEditor interface {
+	TableEditor
 	IndexAddressable
 }
 
@@ -506,9 +504,14 @@ type PrimaryKeyTable interface {
 	PrimaryKeySchema() PrimaryKeySchema
 }
 
-// TableEditor is the base interface for sub interfaces that can update rows in a table during an INSERT, REPLACE,
-// UPDATE, or DELETE statement.
+// TableEditor is the base interface for sub interfaces that can update rows in a
+// table during an INSERT, REPLACE, UPDATE, or DELETE statement.
 type TableEditor interface {
+	RowReplacer
+	RowUpdater
+}
+
+type EditOpenerCloser interface {
 	// StatementBegin is called before the first operation of a statement. Integrators should mark the state of the data
 	// in some way that it may be returned to in the case of an error.
 	StatementBegin(ctx *Context)
@@ -518,6 +521,11 @@ type TableEditor interface {
 	// StatementComplete is called after the last operation of the statement, indicating that it has successfully completed.
 	// The mark set in StatementBegin may be removed, and a new one should be created on the next StatementBegin.
 	StatementComplete(ctx *Context) error
+}
+
+type AutoIncrementEditor interface {
+	AutoIncrementSetter
+	AutoIncrementGetter
 }
 
 // InsertableTable is a table that can process insertion of new rows.
@@ -530,7 +538,7 @@ type InsertableTable interface {
 
 // RowInserter is an insert cursor that can insert one or more values to a table.
 type RowInserter interface {
-	TableEditor
+	EditOpenerCloser
 	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
 	// for the insert operation, which may involve many rows. After all rows in an operation have been processed, Close
 	// is called.
@@ -549,7 +557,7 @@ type DeletableTable interface {
 
 // RowDeleter is a delete cursor that can delete one or more rows from a table.
 type RowDeleter interface {
-	TableEditor
+	EditOpenerCloser
 	// Delete deletes the given row. Returns ErrDeleteRowNotFound if the row was not found. Delete will be called once for
 	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
 	// Close is called.
@@ -593,25 +601,21 @@ type AutoIncrementSetter interface {
 	Closer
 }
 
+type AutoIncrementGetter interface {
+	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
+	// Close finalizes the set operation, persisting the result.
+	Closer
+}
+
 type Closer interface {
 	Close(*Context) error
 }
 
 // RowReplacer is a combination of RowDeleter and RowInserter.
-// TODO: We can't embed those interfaces because go 1.13 doesn't allow for overlapping interfaces (they both declare
-// Close). Go 1.14 fixes this problem, but we aren't ready to drop support for 1.13 yet.
 type RowReplacer interface {
-	TableEditor
-	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
-	// for the replace operation, which may involve many rows. After all rows in an operation have been processed, Close
-	// is called.
-	Insert(*Context, Row) error
-	// Delete deletes the given row. Returns ErrDeleteRowNotFound if the row was not found. Delete will be called once for
-	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
-	// Close is called.
-	Delete(*Context, Row) error
-	// Closer finalizes the replace operation, persisting the result.
-	Closer
+	EditOpenerCloser
+	RowInserter
+	RowDeleter
 }
 
 // ReplaceableTable allows rows to be replaced through a Delete (if applicable) then Insert.
@@ -632,7 +636,7 @@ type UpdatableTable interface {
 
 // RowUpdater is an update cursor that can update one or more rows in a table.
 type RowUpdater interface {
-	TableEditor
+	EditOpenerCloser
 	// Update the given row. Provides both the old and new rows.
 	Update(ctx *Context, old Row, new Row) error
 	// Closer finalizes the update operation, persisting the result.
