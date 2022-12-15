@@ -342,7 +342,8 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
 		}
 		if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
-			return fmt.Sprint("CURRENT_TIMESTAMP")
+			defStr = strings.Replace(defStr, "NOW", "CURRENT_TIMESTAMP", -1)
+			defStr = strings.TrimSuffix(defStr, "()")
 		}
 		return fmt.Sprint(defStr)
 	}
