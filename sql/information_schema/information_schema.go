@@ -1116,7 +1116,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 					// Create a Row for each column this index refers too.
 					i := 0
-					for _, expr := range index.Expressions() {
+					for j, expr := range index.Expressions() {
 						col := plan.GetColumnFromIndexExpr(expr, tbl)
 						if col != nil {
 							i += 1
@@ -1124,6 +1124,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								collation   string
 								nullable    string
 								cardinality int64
+								subPart     interface{}
 							)
 
 							seqInIndex := i
@@ -1133,13 +1134,10 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							collation = "A"
 
 							// TODO : cardinality is an estimate of the number of unique values in the index.
-							// it is currently set to total number of rows in the table
-							//if st, ok := tbl.(StatisticsTable); ok {
-							//	cardinality, err = getTotalNumRows(ctx, st)
-							//	if err != nil {
-							//		return nil, err
-							//	}
-							//}
+
+							if j < len(index.PrefixLengths()) {
+								subPart = int64(index.PrefixLengths()[j])
+							}
 
 							// if nullable, 'YES'; if not, ''
 							if col.Nullable {
@@ -1147,6 +1145,8 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							} else {
 								nullable = ""
 							}
+
+							// TODO: we currently don't support expression index such as ((i * 20))
 
 							rows = append(rows, Row{
 								"def",        // table_catalog
@@ -1159,7 +1159,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								colName,      // column_name
 								collation,    // collation
 								cardinality,  // cardinality
-								nil,          // sub_part - the index prefix
+								subPart,      // sub_part
 								nil,          // packed
 								nullable,     // is_nullable	NOT NULL
 								indexType,    // index_type		NOT NULL

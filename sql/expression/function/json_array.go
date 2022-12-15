@@ -72,7 +72,7 @@ func (j *JSONArray) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("JSON_ARRAY(%s)", strings.Join(parts, ", "))
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
 // Type implements the Expression interface.

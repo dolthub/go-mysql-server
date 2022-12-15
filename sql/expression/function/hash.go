@@ -193,12 +193,12 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (f *SHA2) FunctionName() string {
-	return "SHA2"
+	return "sha2"
 }
 
 // String implements sql.Expression
 func (f *SHA2) String() string {
-	return fmt.Sprintf("SHA2(%s, %s)", f.Left, f.Right)
+	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.Left, f.Right)
 }
 
 // Type implements sql.Expression

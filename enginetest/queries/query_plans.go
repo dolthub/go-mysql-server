@@ -162,9 +162,9 @@ var PlanTests = []QueryPlanTest{
 			"             │           └─ columns: [origin]\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [bus_routes.dst]\n" +
-			"                 └─ HashJoin(concat(bus_dst.dst, 'aa') = concat(bus_routes.origin, 'aa'))\n" +
+			"                 └─ HashJoin(concat(bus_dst.dst,'aa') = concat(bus_routes.origin,'aa'))\n" +
 			"                     ├─ RecursiveTable(bus_dst)\n" +
-			"                     └─ HashLookup(child: (concat(bus_routes.origin, 'aa')), lookup: (concat(bus_dst.dst, 'aa')))\n" +
+			"                     └─ HashLookup(child: (concat(bus_routes.origin,'aa')), lookup: (concat(bus_dst.dst,'aa')))\n" +
 			"                         └─ CachedResults\n" +
 			"                             └─ Table(bus_routes)\n" +
 			"                                 └─ columns: [origin dst]\n" +
@@ -988,7 +988,7 @@ inner join pq on true
 			"     └─ CachedResults\n" +
 			"         └─ SubqueryAlias(j)\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [one_pk.pk, RAND() as r]\n" +
+			"                 ├─ columns: [one_pk.pk, rand() as r]\n" +
 			"                 └─ Table(one_pk)\n" +
 			"                     └─ columns: [pk]\n" +
 			"",
@@ -1008,7 +1008,7 @@ inner join pq on true
 			"     └─ CachedResults\n" +
 			"         └─ SubqueryAlias(j)\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [one_pk.pk, RAND() as r]\n" +
+			"                 ├─ columns: [one_pk.pk, rand() as r]\n" +
 			"                 └─ Table(one_pk)\n" +
 			"                     └─ columns: [pk]\n" +
 			"",
@@ -1161,7 +1161,7 @@ inner join pq on true
 		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ LookupJoin((mytable.i = othertable.i2) AND (NOT(concat(mytable.s, othertable.s2) IS NULL)))\n" +
+			" └─ LookupJoin((mytable.i = othertable.i2) AND (NOT(concat(mytable.s,othertable.s2) IS NULL)))\n" +
 			"     ├─ Table(othertable)\n" +
 			"     │   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
@@ -1334,7 +1334,7 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')`,
-		ExpectedPlan: "Filter(UPPER(mytable.s) HASH IN ('FIRST ROW', 'SECOND ROW'))\n" +
+		ExpectedPlan: "Filter(upper(mytable.s) HASH IN ('FIRST ROW', 'SECOND ROW'))\n" +
 			" └─ Table(mytable)\n" +
 			"     └─ columns: [i s]\n" +
 			"",
@@ -2175,7 +2175,7 @@ inner join pq on true
 		ExpectedPlan: "Sort(dt1.i ASC)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [dt1.i]\n" +
-			"     └─ LookupJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"     └─ LookupJoin(dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
 			"         ├─ TableAlias(dt2)\n" +
 			"         │   └─ Table(datetime_table)\n" +
 			"         │       └─ columns: [timestamp_col]\n" +
@@ -2194,7 +2194,7 @@ inner join pq on true
 			"     └─ TopN(Limit: [(3 + 0)]; dt1.i ASC)\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [dt1.i]\n" +
-			"             └─ LookupJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"             └─ LookupJoin(dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
 			"                 │   └─ Table(datetime_table)\n" +
 			"                 │       └─ columns: [timestamp_col]\n" +
@@ -2212,7 +2212,7 @@ inner join pq on true
 			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [dt1.i]\n" +
-			"         └─ LookupJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"         └─ LookupJoin(dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
 			"             ├─ TableAlias(dt2)\n" +
 			"             │   └─ Table(datetime_table)\n" +
 			"             │       └─ columns: [timestamp_col]\n" +
@@ -4992,7 +4992,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 	       PV6R5.NUMK2 <> 1
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [rn.id as id, concat(NSPLT.TW55N, 'FDNCN', LQNCX.TW55N) as X37NA, concat(XLZA5.TW55N, 'FDNCN', AFJMD.TW55N) as THWCS, rn.HVHRZ as HVHRZ]\n" +
+			" ├─ columns: [rn.id as id, concat(NSPLT.TW55N,'FDNCN',LQNCX.TW55N) as X37NA, concat(XLZA5.TW55N,'FDNCN',AFJMD.TW55N) as THWCS, rn.HVHRZ as HVHRZ]\n" +
 			" └─ Filter((NOT((PV6R5.FFTBJ = ZYUTC.BRQP2))) OR (NOT((PV6R5.NUMK2 = 1))))\n" +
 			"     └─ InnerJoin(AFJMD.id = ZYUTC.FFTBJ)\n" +
 			"         ├─ InnerJoin(XLZA5.id = ZYUTC.BRQP2)\n" +
@@ -5058,7 +5058,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 	       rn.WNUNU IS NULL AND rn.HHVLX IS NULL
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sn.id as DRIWM, concat(OE56M.TW55N, 'FDNCN', CGFRZ.TW55N) as GRVSE, SKPM6.id as JIEVY, concat(V5SAY.TW55N, 'FDNCN', FQTHF.TW55N) as ENCM3, 1.0 as OHD3R]\n" +
+			" ├─ columns: [sn.id as DRIWM, concat(OE56M.TW55N,'FDNCN',CGFRZ.TW55N) as GRVSE, SKPM6.id as JIEVY, concat(V5SAY.TW55N,'FDNCN',FQTHF.TW55N) as ENCM3, 1.0 as OHD3R]\n" +
 			" └─ Filter(rn.WNUNU IS NULL AND rn.HHVLX IS NULL)\n" +
 			"     └─ InnerJoin(FQTHF.id = SKPM6.FFTBJ)\n" +
 			"         ├─ InnerJoin(V5SAY.id = SKPM6.BRQP2)\n" +

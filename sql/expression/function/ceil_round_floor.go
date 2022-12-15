@@ -58,7 +58,7 @@ func (c *Ceil) Type() sql.Type {
 }
 
 func (c *Ceil) String() string {
-	return fmt.Sprintf("CEIL(%s)", c.Child)
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -136,7 +136,7 @@ func (f *Floor) Type() sql.Type {
 }
 
 func (f *Floor) String() string {
-	return fmt.Sprintf("FLOOR(%s)", f.Child)
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -350,10 +350,10 @@ func (r *Round) IsNullable() bool {
 
 func (r *Round) String() string {
 	if r.Right == nil {
-		return fmt.Sprintf("ROUND(%s, 0)", r.Left.String())
+		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.Left.String())
 	}
 
-	return fmt.Sprintf("ROUND(%s, %s)", r.Left.String(), r.Right.String())
+	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.Left.String(), r.Right.String())
 }
 
 // Resolved implements the Expression interface.

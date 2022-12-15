@@ -15,6 +15,7 @@
 package function
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -51,8 +52,8 @@ func (db *Database) IsNullable() bool {
 	return true
 }
 
-func (*Database) String() string {
-	return "DATABASE()"
+func (db *Database) String() string {
+	return fmt.Sprintf("%s()", db.FunctionName())
 }
 
 // WithChildren implements the Expression interface.

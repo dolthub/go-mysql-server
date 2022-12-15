@@ -82,7 +82,7 @@ func (c *Coalesce) String() string {
 	for i, arg := range c.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("coalesce(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

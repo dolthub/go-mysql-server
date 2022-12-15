@@ -16,7 +16,9 @@ package information_schema
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -187,18 +189,20 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 					}
 				}
 			}
-
+			tableName := t.Name()
 			for i, col := range c.schemaForTable(t, db) {
 				var (
 					charName   interface{}
 					collName   interface{}
 					charMaxLen interface{}
+					charOctetLen interface{}
 					columnKey  string
 					nullable   = "NO"
 					ordinalPos = uint32(i + 1)
 					colType    = strings.Split(col.Type.String(), " COLLATE")[0]
 					dataType   = colType
-					srsId      interface{}
+					datetimePrecision interface{}
+					srsId             interface{}
 				)
 
 				if col.Nullable {
@@ -206,17 +210,25 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 				}
 
 				if sql.IsText(col.Type) {
-					charName = sql.Collation_Default.CharacterSet().String()
-					collName = sql.Collation_Default.String()
+					if sql.IsTextOnly(col.Type) {
+						charName = sql.Collation_Default.CharacterSet().String()
+						collName = sql.Collation_Default.String()
+					}
+
 					if st, ok := col.Type.(sql.StringType); ok {
 						charMaxLen = st.MaxCharacterLength()
+						charOctetLen = st.MaxByteLength()
 					}
-					dataType = strings.TrimSuffix(dataType, fmt.Sprintf("(%v)", charMaxLen))
+				} else if sql.IsEnum(col.Type) || sql.IsSet(col.Type) {
+					charName = sql.Collation_Default.CharacterSet().String()
+					collName = sql.Collation_Default.String()
+					charOctetLen = int64(col.Type.MaxTextResponseByteLength())
+					charMaxLen = int64(col.Type.MaxTextResponseByteLength())/sql.Collation_Default.CharacterSet().MaxLength()
 				}
 
-				if col.Type == sql.Boolean {
-					colType = colType + "(1)"
-				}
+				// The DATA_TYPE value is the type name only with no other information
+				dataType = strings.Split(dataType, "(")[0]
+				dataType = strings.Split(dataType, " ")[0]
 
 				// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 				if col.PrimaryKey {
@@ -237,7 +249,12 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 				}
 
 				numericPrecision, numericScale := getColumnPrecisionAndScale(col)
-				tableName := t.Name()
+				if sql.IsDatetimeType(col.Type) || sql.IsTimestampType(col.Type) {
+					datetimePrecision = 0
+				} else if sql.IsTimespan(col.Type) {
+					// TODO: TIME length not yet supported
+					datetimePrecision = 6
+				}
 
 				columnDefault := getColumnDefault(ctx, col.Default)
 				rows = append(rows, sql.Row{
@@ -250,10 +267,10 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 					nullable,         // is_nullable
 					dataType,         // data_type
 					charMaxLen,       // character_maximum_length
-					nil,              // character_octet_length
+					charOctetLen,     // character_octet_length
 					numericPrecision, // numeric_precision
 					numericScale,     // numeric_scale
-					nil,              // datetime_precision
+					datetimePrecision,// datetime_precision
 					charName,         // character_set_name
 					collName,         // collation_name
 					colType,          // column_type
@@ -324,10 +341,9 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
 			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
 		}
-		return fmt.Sprint(defStr)
-	}
-
-	if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+			return fmt.Sprint("CURRENT_TIMESTAMP")
+		}
 		return fmt.Sprint(defStr)
 	}
 
@@ -342,7 +358,21 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 
 	switch l := v.(type) {
 	case time.Time:
-		v = l.Format("2006-01-02 15:04:05")
+		if sql.IsDateType(cd.Type()) {
+			v = l.Format("2006-01-02")
+		} else {
+			v = l.Format("2006-01-02 15:04:05")
+		}
+	case []uint8:
+		hexStr := hex.EncodeToString(l)
+		v = fmt.Sprintf("0x%s", hexStr)
+	}
+
+	if sql.IsBit(cd.Type()) {
+		if i, ok := v.(uint64); ok {
+			bitStr := strconv.FormatUint(i, 2)
+			v = fmt.Sprintf("b'%s'", bitStr)
+		}
 	}
 
 	return fmt.Sprint(v)
@@ -376,11 +406,13 @@ func (c *ColumnsTable) schemaForTable(t sql.Table, db sql.Database) sql.Schema {
 // getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
 // function should return nil,nil.
 func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
+	var numericScale interface{}
 	switch t := col.Type.(type) {
+	case sql.BitType:
+		return int(t.NumberOfBits()), numericScale
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())
 	case sql.NumberType:
-		var numericScale interface{}
 		switch col.Type.Type() {
 		case sqltypes.Float32, sqltypes.Float64:
 			numericScale = nil

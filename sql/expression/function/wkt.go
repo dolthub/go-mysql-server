@@ -56,7 +56,7 @@ func (p *AsWKT) Type() sql.Type {
 }
 
 func (p *AsWKT) String() string {
-	return fmt.Sprintf("ST_ASWKT(%s)", p.Child.String())
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), p.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -227,7 +227,7 @@ func (g *GeomFromText) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_GEOMFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -655,7 +655,7 @@ func (p *PointFromText) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_POINTFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -707,7 +707,7 @@ func (l *LineFromText) String() string {
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_LINEFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -759,7 +759,7 @@ func (p *PolyFromText) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_POLYFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -811,7 +811,7 @@ func (p *MPointFromText) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_MULTIPOINTFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -863,7 +863,7 @@ func (l *MLineFromText) String() string {
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_MLINEFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -915,7 +915,7 @@ func (p *MPolyFromText) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_MPOLYFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -967,7 +967,7 @@ func (p *GeomCollFromText) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_GEOMCOLLFROMTEXT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

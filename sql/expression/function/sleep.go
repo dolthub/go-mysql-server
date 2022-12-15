@@ -77,7 +77,7 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (s *Sleep) String() string {
-	return fmt.Sprintf("SLEEP(%s)", s.Child)
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child)
 }
 
 // IsNullable implements the Expression interface.

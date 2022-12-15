@@ -65,9 +65,9 @@ func (l *Locate) Type() sql.Type { return sql.Int32 }
 func (l *Locate) String() string {
 	switch len(l.ChildExpressions) {
 	case 2:
-		return fmt.Sprintf("LOCATE(%s, %s)", l.ChildExpressions[0], l.ChildExpressions[1])
+		return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.ChildExpressions[0], l.ChildExpressions[1])
 	case 3:
-		return fmt.Sprintf("LOCATE(%s, %s, %s)", l.ChildExpressions[0], l.ChildExpressions[1], l.ChildExpressions[2])
+		return fmt.Sprintf("%s(%s,%s,%s)", l.FunctionName(), l.ChildExpressions[0], l.ChildExpressions[1], l.ChildExpressions[2])
 	}
 	return ""
 }
@@ -75,9 +75,9 @@ func (l *Locate) String() string {
 func (l *Locate) DebugString() string {
 	switch len(l.ChildExpressions) {
 	case 2:
-		return fmt.Sprintf("LOCATE(%s, %s)", sql.DebugString(l.ChildExpressions[0]), sql.DebugString(l.ChildExpressions[1]))
+		return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), sql.DebugString(l.ChildExpressions[0]), sql.DebugString(l.ChildExpressions[1]))
 	case 3:
-		return fmt.Sprintf("LOCATE(%s, %s, %s)", sql.DebugString(l.ChildExpressions[0]), sql.DebugString(l.ChildExpressions[1]), sql.DebugString(l.ChildExpressions[2]))
+		return fmt.Sprintf("%s(%s,%s,%s)", l.FunctionName(), sql.DebugString(l.ChildExpressions[0]), sql.DebugString(l.ChildExpressions[1]), sql.DebugString(l.ChildExpressions[2]))
 	}
 	return ""
 }

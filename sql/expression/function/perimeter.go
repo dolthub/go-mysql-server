@@ -58,7 +58,7 @@ func (p *Perimeter) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_PERIMETER(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
