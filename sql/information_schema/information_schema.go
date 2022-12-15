@@ -153,7 +153,6 @@ type informationSchemaTable struct {
 	schema  Schema
 	catalog Catalog
 	reader  func(*Context, Catalog) (RowIter, error)
-	editor  TableEditor
 }
 
 type informationSchemaPartition struct {
