@@ -302,7 +302,7 @@ func newInsertIter(
 		ignore:      ignore,
 	}
 
-	var ed sql.TableEditor
+	var ed sql.EditOpenerCloser
 	if replacer != nil {
 		ed = replacer
 	} else {

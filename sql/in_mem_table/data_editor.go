@@ -21,10 +21,7 @@ type DataEditor struct {
 	data *Data
 }
 
-var _ sql.RowInserter = (*DataEditor)(nil)
-var _ sql.RowUpdater = (*DataEditor)(nil)
-var _ sql.RowDeleter = (*DataEditor)(nil)
-var _ sql.RowReplacer = (*DataEditor)(nil)
+var _ sql.TableEditor = (*DataEditor)(nil)
 
 // NewDataEditor returns a new *DataEditor.
 func NewDataEditor(data *Data) *DataEditor {

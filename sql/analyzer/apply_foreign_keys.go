@@ -41,7 +41,7 @@ func applyForeignKeys(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *foreignKeyCache) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	fkChain := foreignKeyChain{
-		fkUpdate: make(map[foreignKeyTableName]sql.ForeignKeyUpdater),
+		fkUpdate: make(map[foreignKeyTableName]sql.ForeignKeyEditor),
 	}
 
 	switch n := n.(type) {
@@ -196,7 +196,7 @@ func getForeignKeyEditor(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable,
 
 // getForeignKeyReferences returns an editor containing only the references for the given table.
 func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyEditor, error) {
-	var updater sql.ForeignKeyUpdater
+	var updater sql.ForeignKeyEditor
 	fks, err := tbl.GetDeclaredForeignKeys(ctx)
 	if err != nil {
 		return nil, err
@@ -409,7 +409,7 @@ type foreignKeyTableName struct {
 // foreignKeyTableUpdater is a foreign key table along with its updater.
 type foreignKeyTableUpdater struct {
 	tbl     sql.ForeignKeyTable
-	updater sql.ForeignKeyUpdater
+	updater sql.ForeignKeyEditor
 }
 
 // foreignKeyCache is a cache of updaters and editors for foreign keys.
@@ -429,7 +429,7 @@ func newForeignKeyCache() *foreignKeyCache {
 // AddUpdater will add the given foreign key table (and updater) to the cache and returns its updater. If it already
 // exists, it is not added, and instead the cached updater is returned. This is so that the same updater is referenced
 // by all foreign key instances.
-func (cache *foreignKeyCache) AddUpdater(ctx *sql.Context, tbl sql.ForeignKeyTable, dbName string, tblName string) (sql.ForeignKeyUpdater, error) {
+func (cache *foreignKeyCache) AddUpdater(ctx *sql.Context, tbl sql.ForeignKeyTable, dbName string, tblName string) (sql.ForeignKeyEditor, error) {
 	fkTableName := foreignKeyTableName{
 		dbName:  strings.ToLower(dbName),
 		tblName: strings.ToLower(tblName),
@@ -439,7 +439,7 @@ func (cache *foreignKeyCache) AddUpdater(ctx *sql.Context, tbl sql.ForeignKeyTab
 	}
 	editor := foreignKeyTableUpdater{
 		tbl:     tbl,
-		updater: tbl.GetForeignKeyUpdater(ctx),
+		updater: tbl.GetForeignKeyEditor(ctx),
 	}
 	cache.updaterCache[fkTableName] = editor
 	return editor.updater, nil
@@ -459,7 +459,7 @@ func (cache *foreignKeyCache) AddEditor(editor *plan.ForeignKeyEditor, dbName st
 }
 
 // GetUpdater returns the given foreign key table updater.
-func (cache *foreignKeyCache) GetUpdater(ctx *sql.Context, a *Analyzer, dbName string, tblName string) (sql.ForeignKeyTable, sql.ForeignKeyUpdater, error) {
+func (cache *foreignKeyCache) GetUpdater(ctx *sql.Context, a *Analyzer, dbName string, tblName string) (sql.ForeignKeyTable, sql.ForeignKeyEditor, error) {
 	fkTableName := foreignKeyTableName{
 		dbName:  strings.ToLower(dbName),
 		tblName: strings.ToLower(tblName),
@@ -477,7 +477,7 @@ func (cache *foreignKeyCache) GetUpdater(ctx *sql.Context, a *Analyzer, dbName s
 	}
 	editor := foreignKeyTableUpdater{
 		tbl:     fkTbl,
-		updater: fkTbl.GetForeignKeyUpdater(ctx),
+		updater: fkTbl.GetForeignKeyEditor(ctx),
 	}
 	cache.updaterCache[fkTableName] = editor
 	return editor.tbl, editor.updater, nil
@@ -520,7 +520,7 @@ func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName 
 type foreignKeyChain struct {
 	fkNames  map[string]struct{}
 	fkTables map[foreignKeyTableName]struct{}
-	fkUpdate map[foreignKeyTableName]sql.ForeignKeyUpdater
+	fkUpdate map[foreignKeyTableName]sql.ForeignKeyEditor
 }
 
 // AddTable returns a new chain with the added table.
@@ -545,7 +545,7 @@ func (chain foreignKeyChain) AddTable(dbName string, tblName string) foreignKeyC
 }
 
 // AddTableUpdater returns a new chain with the added foreign key updater.
-func (chain foreignKeyChain) AddTableUpdater(dbName string, tblName string, fkUpdater sql.ForeignKeyUpdater) foreignKeyChain {
+func (chain foreignKeyChain) AddTableUpdater(dbName string, tblName string, fkUpdater sql.ForeignKeyEditor) foreignKeyChain {
 	chain.fkUpdate[foreignKeyTableName{
 		dbName:  strings.ToLower(dbName),
 		tblName: strings.ToLower(tblName),
@@ -591,8 +591,8 @@ func (chain foreignKeyChain) HasForeignKey(fkName string) bool {
 }
 
 // GetUpdaters returns all foreign key updaters that have been added to the chain.
-func (chain foreignKeyChain) GetUpdaters() []sql.ForeignKeyUpdater {
-	updaters := make([]sql.ForeignKeyUpdater, 0, len(chain.fkUpdate))
+func (chain foreignKeyChain) GetUpdaters() []sql.ForeignKeyEditor {
+	updaters := make([]sql.ForeignKeyEditor, 0, len(chain.fkUpdate))
 	for _, updater := range chain.fkUpdate {
 		updaters = append(updaters, updater)
 	}

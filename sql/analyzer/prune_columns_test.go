@@ -413,7 +413,7 @@ func TestPruneColumns(t *testing.T) {
 		},
 		{
 			name: "Fix indexes in subquery expression",
-			scope: newScope(plan.NewProject(
+			scope: newTestScope(plan.NewProject(
 				[]sql.Expression{
 					gf(0, "t1", "foo"),
 					plan.NewSubquery(
@@ -466,7 +466,7 @@ func TestPruneColumns(t *testing.T) {
 		},
 		{
 			name: "Fix indexes in subquery expression with aliases",
-			scope: newScope(plan.NewProject(
+			scope: newTestScope(plan.NewProject(
 				[]sql.Expression{
 					gf(0, "t1", "foo"),
 					plan.NewSubquery(
