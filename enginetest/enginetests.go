@@ -6088,7 +6088,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 	}
 	qErrTests := []queries.QueryErrorTest{
 		{
-			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
+			Query:          "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
 			ExpectedErrStr: "binding mismatch: unused bindings",
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(int64(2), sql.Int64),

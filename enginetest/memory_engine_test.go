@@ -185,9 +185,8 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "create table as select distinct",
-			SetUpScript: []string{
-			},
+			Name:        "create table as select distinct",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
