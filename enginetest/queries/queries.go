@@ -9547,7 +9547,6 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"def", "mydb", "all_types", "var_char", uint32(32)},
 					{"def", "mydb", "all_types", "var_binary", uint32(33)},
 					{"def", "mydb", "all_types", "some_year", uint32(34)},
-
 				},
 			},
 			{
@@ -9577,7 +9576,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"medium_text", "'abc'", "YES", "mediumtext", "mediumtext", 4194303, 16777215},
 					{"some_point", "point(2,2)", "YES", "point", "point", nil, nil},
 					{"some_polygon", nil, "YES", "polygon", "polygon", nil, nil},
-					{"some_set", "one,two", "YES","set", "set('one','two')", 7, 28},
+					{"some_set", "one,two", "YES", "set", "set('one','two')", 7, 28},
 					{"small_int", "5", "YES", "smallint", "smallint", nil, nil},
 					{"some_text", "'abc'", "YES", "text", "text", 16383, 65535},
 					{"time_6", "11:59:59.000010", "YES", "time", "time(6)", nil, nil},

@@ -159,7 +159,7 @@ var ScriptTests = []ScriptTest{
 					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", "NULL", ""}},
 			},
 			{
-				Query: "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
 				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
 			},
 			{

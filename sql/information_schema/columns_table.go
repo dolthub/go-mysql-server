@@ -192,15 +192,15 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 			tableName := t.Name()
 			for i, col := range c.schemaForTable(t, db) {
 				var (
-					charName   interface{}
-					collName   interface{}
-					charMaxLen interface{}
-					charOctetLen interface{}
-					columnKey  string
-					nullable   = "NO"
-					ordinalPos = uint32(i + 1)
-					colType    = strings.Split(col.Type.String(), " COLLATE")[0]
-					dataType   = colType
+					charName          interface{}
+					collName          interface{}
+					charMaxLen        interface{}
+					charOctetLen      interface{}
+					columnKey         string
+					nullable          = "NO"
+					ordinalPos        = uint32(i + 1)
+					colType           = strings.Split(col.Type.String(), " COLLATE")[0]
+					dataType          = colType
 					datetimePrecision interface{}
 					srsId             interface{}
 				)
@@ -223,7 +223,7 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 					charName = sql.Collation_Default.CharacterSet().String()
 					collName = sql.Collation_Default.String()
 					charOctetLen = int64(col.Type.MaxTextResponseByteLength())
-					charMaxLen = int64(col.Type.MaxTextResponseByteLength())/sql.Collation_Default.CharacterSet().MaxLength()
+					charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / sql.Collation_Default.CharacterSet().MaxLength()
 				}
 
 				// The DATA_TYPE value is the type name only with no other information
@@ -258,28 +258,28 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 
 				columnDefault := getColumnDefault(ctx, col.Default)
 				rows = append(rows, sql.Row{
-					"def",            // table_catalog
-					db.Name(),        // table_schema
-					tableName,        // table_name
-					col.Name,         // column_name
-					ordinalPos,       // ordinal_position
-					columnDefault,    // column_default
-					nullable,         // is_nullable
-					dataType,         // data_type
-					charMaxLen,       // character_maximum_length
-					charOctetLen,     // character_octet_length
-					numericPrecision, // numeric_precision
-					numericScale,     // numeric_scale
-					datetimePrecision,// datetime_precision
-					charName,         // character_set_name
-					collName,         // collation_name
-					colType,          // column_type
-					columnKey,        // column_key
-					col.Extra,        // extra
-					"select",         // privileges
-					col.Comment,      // column_comment
-					"",               // generation_expression
-					srsId,            // srs_id
+					"def",             // table_catalog
+					db.Name(),         // table_schema
+					tableName,         // table_name
+					col.Name,          // column_name
+					ordinalPos,        // ordinal_position
+					columnDefault,     // column_default
+					nullable,          // is_nullable
+					dataType,          // data_type
+					charMaxLen,        // character_maximum_length
+					charOctetLen,      // character_octet_length
+					numericPrecision,  // numeric_precision
+					numericScale,      // numeric_scale
+					datetimePrecision, // datetime_precision
+					charName,          // character_set_name
+					collName,          // collation_name
+					colType,           // column_type
+					columnKey,         // column_key
+					col.Extra,         // extra
+					"select",          // privileges
+					col.Comment,       // column_comment
+					"",                // generation_expression
+					srsId,             // srs_id
 				})
 			}
 			return true, nil
