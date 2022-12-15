@@ -380,6 +380,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 			return nil, err
 		}
 		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, analyzedChild)
+		return parsed, nil
 	case *plan.ExecuteQuery:
 		// replace execute query node with the one prepared
 		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name)
@@ -416,6 +417,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
 		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
+		return parsed, nil
 	}
 
 	if len(bindings) > 0 {
