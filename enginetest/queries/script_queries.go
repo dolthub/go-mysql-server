@@ -3394,12 +3394,16 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 
 var PreparedScriptTests = []ScriptTest{
 	{
-		Name:        "prepare a prepare",
+		Name:        "bad prepare",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "prepare s from 'prepare t from ?'",
 				ExpectedErrStr: "syntax error at position 17 near ':v1'",
+			},
+			{
+				Query:       "prepare s from 'a very real query'",
+				ExpectedErrStr: "syntax error at position 2 near 'a'",
 			},
 		},
 	},
