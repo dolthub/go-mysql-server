@@ -25,7 +25,7 @@ import (
 type tableEditorIter struct {
 	once             *sync.Once
 	onceCtx          *sql.Context
-	editor           sql.TableEditor
+	editIter         sql.EditOpenerCloser
 	inner            sql.RowIter
 	errorEncountered error
 }
@@ -34,10 +34,10 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 
 // NewTableEditorIter returns a new *tableEditorIter by wrapping the given iterator. If the
 // "statement_boundaries" session variable is set to false, then the original iterator is returned.
-func NewTableEditorIter(table sql.TableEditor, wrappedIter sql.RowIter) sql.RowIter {
+func NewTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
 	return &tableEditorIter{
 		once:             &sync.Once{},
-		editor:           table,
+		editIter:         table,
 		inner:            wrappedIter,
 		errorEncountered: nil,
 	}
@@ -46,7 +46,7 @@ func NewTableEditorIter(table sql.TableEditor, wrappedIter sql.RowIter) sql.RowI
 // Next implements the interface sql.RowIter.
 func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	s.once.Do(func() {
-		s.editor.StatementBegin(ctx)
+		s.editIter.StatementBegin(ctx)
 	})
 	row, err := s.inner.Next(ctx)
 	if err != nil && err != io.EOF {
@@ -68,9 +68,9 @@ func (s *tableEditorIter) Close(ctx *sql.Context) error {
 	_, ok := err.(sql.IgnorableError)
 
 	if err != nil && !ok {
-		err = s.editor.DiscardChanges(ctx, s.errorEncountered)
+		err = s.editIter.DiscardChanges(ctx, s.errorEncountered)
 	} else {
-		err = s.editor.StatementComplete(ctx)
+		err = s.editIter.StatementComplete(ctx)
 	}
 	if err != nil {
 		_ = s.inner.Close(ctx)
@@ -81,8 +81,8 @@ func (s *tableEditorIter) Close(ctx *sql.Context) error {
 }
 
 type checkpointingTableEditorIter struct {
-	editor sql.TableEditor
-	inner  sql.RowIter
+	editIter sql.EditOpenerCloser
+	inner    sql.RowIter
 }
 
 var _ sql.RowIter = (*tableEditorIter)(nil)
@@ -92,23 +92,23 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 // after every iter of |wrappedIter|. While SLOW, this functionality ensures
 // correctness for statements that need to rollback individual statements that
 // error such as INSERT IGNORE INTO.
-func NewCheckpointingTableEditorIter(table sql.TableEditor, wrappedIter sql.RowIter) sql.RowIter {
+func NewCheckpointingTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
 	return &checkpointingTableEditorIter{
-		editor: table,
-		inner:  wrappedIter,
+		editIter: table,
+		inner:    wrappedIter,
 	}
 }
 
 func (c checkpointingTableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
-	c.editor.StatementBegin(ctx)
+	c.editIter.StatementBegin(ctx)
 	row, err := c.inner.Next(ctx)
 	if err != nil && err != io.EOF {
-		if dErr := c.editor.DiscardChanges(ctx, err); dErr != nil {
+		if dErr := c.editIter.DiscardChanges(ctx, err); dErr != nil {
 			return nil, dErr
 		}
 		return row, err
 	}
-	if sErr := c.editor.StatementComplete(ctx); sErr != nil {
+	if sErr := c.editIter.StatementComplete(ctx); sErr != nil {
 		return row, sErr
 	}
 	return row, err

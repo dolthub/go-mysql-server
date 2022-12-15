@@ -1202,8 +1202,8 @@ func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 	return nil
 }
 
-// GetForeignKeyUpdater implements sql.ForeignKeyTable.
-func (t *Table) GetForeignKeyUpdater(ctx *sql.Context) sql.ForeignKeyUpdater {
+// GetForeignKeyEditor implements sql.ForeignKeyTable.
+func (t *Table) GetForeignKeyEditor(ctx *sql.Context) sql.ForeignKeyEditor {
 	return t.newTableEditor()
 }
 

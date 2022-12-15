@@ -29,14 +29,7 @@ type tableEditor struct {
 	sch   sql.Schema
 }
 
-var _ sql.TableEditor = (*tableEditor)(nil)
-var _ sql.RowInserter = (*tableEditor)(nil)
-var _ sql.RowUpdater = (*tableEditor)(nil)
-var _ sql.RowDeleter = (*tableEditor)(nil)
-var _ sql.RowReplacer = (*tableEditor)(nil)
-var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
-
-func (t *tableEditor) IndexedAccess(sql.Index) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(index sql.Index) sql.IndexedTable {
 	//TODO implement me
 	panic("implement me")
 }
@@ -45,6 +38,9 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	//TODO implement me
 	panic("implement me")
 }
+
+var _ sql.TableEditor = (*tableEditor)(nil)
+var _ sql.ForeignKeyEditor = (*tableEditor)(nil)
 
 // StatementBegin implements the interface sql.TableEditor.
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
