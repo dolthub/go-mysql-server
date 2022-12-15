@@ -337,7 +337,7 @@ func TestDeepCopyNode(t *testing.T) {
 			cop, err = plan.ApplyBindings(cop, map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, sql.Int64),
 				"v2": expression.NewLiteral("x", sql.Text),
-			})
+			}, map[string]bool{})
 			require.NoError(t, err)
 			require.NotEqual(t, cop, tt.node)
 		})
