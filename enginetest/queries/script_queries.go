@@ -3405,6 +3405,10 @@ var PreparedScriptTests = []ScriptTest{
 				Query:       "prepare s from 'a very real query'",
 				ExpectedErrStr: "syntax error at position 2 near 'a'",
 			},
+			{
+				Query:       "deallocate prepare idontexist",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
 		},
 	},
 	{
