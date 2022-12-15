@@ -36,7 +36,7 @@ import (
 // "x4", which is in the fourth position (so 3 with zero-based indexed).
 type ChildParentMapping []int
 
-// ForeignKeyRefActionData contains the mapper, editIter, and child to parent mapping for processing referential actions.
+// ForeignKeyRefActionData contains the mapper, editor, and child to parent mapping for processing referential actions.
 type ForeignKeyRefActionData struct {
 	RowMapper          *ForeignKeyRowMapper
 	Editor             *ForeignKeyEditor
@@ -45,8 +45,8 @@ type ForeignKeyRefActionData struct {
 }
 
 // ForeignKeyEditor handles update and delete operations, as they may have referential actions on other tables (such as
-// cascading). If this editIter is Cyclical, then that means that following the referential actions will eventually lead
-// back to this same editIter. Self-referential foreign keys are inherently cyclical.
+// cascading). If this editor is Cyclical, then that means that following the referential actions will eventually lead
+// back to this same editor. Self-referential foreign keys are inherently cyclical.
 type ForeignKeyEditor struct {
 	Schema     sql.Schema
 	Editor     sql.ForeignKeyEditor
@@ -55,7 +55,7 @@ type ForeignKeyEditor struct {
 	Cyclical   bool
 }
 
-// IsInitialized returns whether this editIter has been initialized. The given map is used to prevent cycles, as editors
+// IsInitialized returns whether this editor has been initialized. The given map is used to prevent cycles, as editors
 // will reference themselves if a cycle is formed between foreign keys.
 func (fkEditor *ForeignKeyEditor) IsInitialized(editors map[*ForeignKeyEditor]struct{}) bool {
 	if fkEditor == nil || fkEditor.Editor == nil {
