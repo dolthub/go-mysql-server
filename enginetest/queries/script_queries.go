@@ -3402,7 +3402,7 @@ var PreparedScriptTests = []ScriptTest{
 				ExpectedErrStr: "syntax error at position 17 near ':v1'",
 			},
 			{
-				Query:       "prepare s from 'a very real query'",
+				Query:          "prepare s from 'a very real query'",
 				ExpectedErrStr: "syntax error at position 2 near 'a'",
 			},
 			{
