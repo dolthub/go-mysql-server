@@ -602,7 +602,7 @@ type AutoIncrementSetter interface {
 }
 
 type AutoIncrementGetter interface {
-	GetNextAutoIncrementValue(ctx Context, insertVal interface{}) (uint64, error)
+	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
 	// Close finalizes the set operation, persisting the result.
 	Closer
 }
