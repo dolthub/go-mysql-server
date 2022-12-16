@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -113,15 +115,23 @@ func (sq *SubqueryAlias) Opaque() bool {
 
 func (sq SubqueryAlias) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("SubqueryAlias(%s)", sq.name)
-	_ = pr.WriteChildren(sq.Child.String())
+	_ = pr.WriteNode("SubqueryAlias")
+	children := make([]string, 3)
+	children[0] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
+	children[1] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults)
+	children[2] = sq.Child.String()
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
 func (sq SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("SubqueryAlias(%s), outerScopeVisibility = %t, cacheable = %t", sq.name, sq.OuterScopeVisibility, sq.CanCacheResults)
-	_ = pr.WriteChildren(sql.DebugString(sq.Child))
+	_ = pr.WriteNode("SubqueryAlias")
+	children := make([]string, 3)
+	children[0] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
+	children[1] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults)
+	children[2] = sql.DebugString(sq.Child)
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 

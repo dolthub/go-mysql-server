@@ -99,8 +99,9 @@ func TestDescribeQuery(t *testing.T) {
 	expected := []sql.Row{
 		{"Project"},
 		{" ├─ columns: [foo.a, foo.b]"},
-		{" └─ Filter(foo.a = 'foo')"},
-		{"     └─ Table(foo)"},
+		{" └─ Filter"},
+		{"     ├─ (foo.a = 'foo')"},
+		{"     └─ Table"},
 	}
 
 	require.Equal(expected, rows)

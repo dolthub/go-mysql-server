@@ -23,12 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-func TestBitAnd_String(t *testing.T) {
-	assert := require.New(t)
-	m := NewBitAnd(expression.NewGetField(0, sql.Int32, "field", true))
-	assert.Equal("BITAND(field)", m.String())
-}
-
 func TestBitAnd_Eval_Int(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
@@ -105,12 +99,6 @@ func TestBitAnd_Eval_Empty(t *testing.T) {
 	assert.Equal(^uint64(0), v)
 }
 
-func TestBitOr_String(t *testing.T) {
-	assert := require.New(t)
-	m := NewBitOr(expression.NewGetField(0, sql.Int32, "field", true))
-	assert.Equal("BITOR(field)", m.String())
-}
-
 func TestBitOr_Eval_Int(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
@@ -185,12 +173,6 @@ func TestBitOr_Eval_Empty(t *testing.T) {
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(uint64(0), v)
-}
-
-func TestBitXor_String(t *testing.T) {
-	assert := require.New(t)
-	m := NewBitXor(expression.NewGetField(0, sql.Int32, "field", true))
-	assert.Equal("BITXOR(field)", m.String())
 }
 
 func TestBitXor_Eval_Int(t *testing.T) {

@@ -167,6 +167,14 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 // and Table() methods will use these; otherwise, String() and "" are used, respectively. The type and nullability are
 // taken from the expression directly.
 func ExpressionToColumn(e sql.Expression) *sql.Column {
+	if gf, ok := e.(*expression.GetField); ok {
+		return &sql.Column{
+			Name:     gf.Name(),
+			Source:   gf.Table(),
+			Type:     gf.Type(),
+			Nullable: gf.IsNullable(),
+		}
+	}
 	var name string
 	if n, ok := e.(sql.Nameable); ok {
 		name = n.Name()

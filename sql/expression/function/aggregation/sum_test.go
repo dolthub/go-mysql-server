@@ -96,9 +96,6 @@ func TestSumWithDistinct(t *testing.T) {
 	ad := expression.NewDistinctExpression(expression.NewGetField(0, nil, "myfield", false))
 	sum := NewSum(ad)
 
-	// first validate that the expression's name is correct
-	require.Equal("SUM(DISTINCT myfield)", sum.String())
-
 	testCases := []struct {
 		name     string
 		rows     []sql.Row

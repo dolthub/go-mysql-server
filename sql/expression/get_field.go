@@ -137,7 +137,14 @@ func (p *GetField) String() string {
 }
 
 func (p *GetField) DebugString() string {
-	return fmt.Sprintf("[%s.%s, idx=%d, type=%s, nullable=%t]", p.table, p.name, p.fieldIndex, p.fieldType, p.nullable)
+	var notNull string
+	if !p.nullable {
+		notNull = "!null"
+	}
+	if p.table == "" {
+		return fmt.Sprintf("%s:%d%s", p.name, p.fieldIndex, notNull)
+	}
+	return fmt.Sprintf("%s.%s:%d%s", p.table, p.name, p.fieldIndex, notNull)
 }
 
 // WithIndex returns this same GetField with a new index.

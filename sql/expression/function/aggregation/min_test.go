@@ -24,13 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-func TestMin_Name(t *testing.T) {
-	assert := require.New(t)
-
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
-	assert.Equal("MIN(field)", m.String())
-}
-
 func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
@@ -118,8 +111,6 @@ func TestMin_Distinct(t *testing.T) {
 	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
 	b, _ := m.NewBuffer()
 
-	require.Equal(t, "MIN(DISTINCT field)", m.String())
-
 	require.NoError(t, b.Update(ctx, sql.Row{1}))
 	require.NoError(t, b.Update(ctx, sql.Row{1}))
 	require.NoError(t, b.Update(ctx, sql.Row{2}))
@@ -132,8 +123,6 @@ func TestMin_Distinct(t *testing.T) {
 
 	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
 	b, _ = m.NewBuffer()
-
-	require.Equal(t, "MIN(DISTINCT field)", m.String())
 
 	require.NoError(t, b.Update(ctx, sql.Row{1}))
 	require.NoError(t, b.Update(ctx, sql.Row{1}))

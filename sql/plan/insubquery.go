@@ -128,11 +128,19 @@ func (in *InSubquery) WithChildren(children ...sql.Expression) (sql.Expression, 
 }
 
 func (in *InSubquery) String() string {
-	return fmt.Sprintf("(%s IN %s)", in.Left, in.Right)
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("IN")
+	children := []string{fmt.Sprintf("left: %s", in.Left), fmt.Sprintf("right: %s", in.Right)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 func (in *InSubquery) DebugString() string {
-	return fmt.Sprintf("(%s IN %s)", sql.DebugString(in.Left), sql.DebugString(in.Right))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("IN")
+	children := []string{fmt.Sprintf("left: %s", sql.DebugString(in.Left)), fmt.Sprintf("right: %s", sql.DebugString(in.Right))}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // Children implements the Expression interface.

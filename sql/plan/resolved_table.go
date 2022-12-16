@@ -51,32 +51,7 @@ func (*ResolvedTable) Resolved() bool {
 
 func (t *ResolvedTable) String() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("Table(%s)", t.Table.Name())
-	table := seethroughTableWrapper(t)
-	if pt, ok := table.(sql.ProjectedTable); ok {
-		var columns []string
-		for _, c := range pt.Projections() {
-			columns = append(columns, strings.ToLower(c))
-		}
-		if len(columns) > 0 {
-			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
-		}
-	}
-	if ft, ok := table.(sql.FilteredTable); ok {
-		var filters []string
-		for _, f := range ft.Filters() {
-			filters = append(filters, f.String())
-		}
-		if len(filters) > 0 {
-			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
-		}
-	}
-	return pr.String()
-}
-
-func (t *ResolvedTable) DebugString() string {
-	pr := sql.NewTreePrinter()
-	pr.WriteNode("Table(%s)", t.Table.Name())
+	pr.WriteNode("Table")
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 	if pt, ok := table.(sql.ProjectedTable); ok {
@@ -85,7 +60,7 @@ func (t *ResolvedTable) DebugString() string {
 			columns = append(columns, strings.ToLower(c))
 		}
 		if len(columns) > 0 {
-			pr.WriteChildren(fmt.Sprintf("columns: %v", columns))
+			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
 	if ft, ok := table.(sql.FilteredTable); ok {
@@ -94,7 +69,33 @@ func (t *ResolvedTable) DebugString() string {
 			filters = append(filters, f.String())
 		}
 		if len(filters) > 0 {
-			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
+			children = append(children, fmt.Sprintf("filters: %v", filters))
+		}
+	}
+	return pr.String()
+}
+
+func (t *ResolvedTable) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("Table")
+	table := seethroughTableWrapper(t)
+	children := []string{fmt.Sprintf("name: %s", t.Name())}
+	if pt, ok := table.(sql.ProjectedTable); ok {
+		var columns []string
+		for _, c := range pt.Projections() {
+			columns = append(columns, strings.ToLower(c))
+		}
+		if len(columns) > 0 {
+			children = append(children, fmt.Sprintf("columns: %v", columns))
+		}
+	}
+	if ft, ok := table.(sql.FilteredTable); ok {
+		var filters []string
+		for _, f := range ft.Filters() {
+			filters = append(filters, f.String())
+		}
+		if len(filters) > 0 {
+			children = append(children, fmt.Sprintf("filters: %v", filters))
 		}
 	}
 	pr.WriteChildren(children...)

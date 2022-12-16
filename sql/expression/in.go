@@ -128,11 +128,19 @@ func (in *InTuple) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 func (in *InTuple) String() string {
-	return fmt.Sprintf("(%s IN %s)", in.Left(), in.Right())
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("IN")
+	children := []string{fmt.Sprintf("left: %s", in.Left()), fmt.Sprintf("right: %s", in.Right())}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 func (in *InTuple) DebugString() string {
-	return fmt.Sprintf("(%s IN %s)", sql.DebugString(in.Left()), sql.DebugString(in.Right()))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("IN")
+	children := []string{fmt.Sprintf("left: %s", sql.DebugString(in.Left())), fmt.Sprintf("right: %s", sql.DebugString(in.Right()))}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // Children implements the Expression interface.
@@ -301,9 +309,17 @@ func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 }
 
 func (hit *HashInTuple) String() string {
-	return fmt.Sprintf("(%s HASH IN %s)", hit.Left(), hit.Right())
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("HashIn")
+	children := []string{hit.Left().String(), hit.Right().String()}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 func (hit *HashInTuple) DebugString() string {
-	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hit.Left()), sql.DebugString(hit.Right()))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("LessThanOrEqual")
+	children := []string{sql.DebugString(hit.Left()), sql.DebugString(hit.Right())}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }

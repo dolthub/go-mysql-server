@@ -51,7 +51,11 @@ func (a *And) String() string {
 }
 
 func (a *And) DebugString() string {
-	return fmt.Sprintf("(%s AND %s)", sql.DebugString(a.Left), sql.DebugString(a.Right))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("AND")
+	children := []string{sql.DebugString(a.Left), sql.DebugString(a.Right)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // Type implements the Expression interface.
@@ -113,7 +117,11 @@ func (o *Or) String() string {
 }
 
 func (o *Or) DebugString() string {
-	return fmt.Sprintf("%s OR %s", sql.DebugString(o.Left), sql.DebugString(o.Right))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Or")
+	children := []string{sql.DebugString(o.Left), sql.DebugString(o.Right)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // Type implements the Expression interface.

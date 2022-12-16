@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -64,15 +65,23 @@ func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 
 func (n *HashLookup) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("HashLookup(child: %v, lookup: %v)", n.childProjection, n.lookupProjection)
-	_ = pr.WriteChildren(n.UnaryNode.Child.String())
+	_ = pr.WriteNode("HashLookup")
+	children := make([]string, 3)
+	children[0] = fmt.Sprintf("source: %s", n.lookupProjection)
+	children[1] = fmt.Sprintf("target: %s", n.childProjection)
+	children[2] = n.Child.String()
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
 func (n *HashLookup) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("HashLookup(child: %v, lookup: %v)", sql.DebugString(n.childProjection), sql.DebugString(n.lookupProjection))
-	_ = pr.WriteChildren(sql.DebugString(n.UnaryNode.Child))
+	_ = pr.WriteNode("HashLookup")
+	children := make([]string, 3)
+	children[0] = fmt.Sprintf("source: %s", sql.DebugString(n.lookupProjection))
+	children[1] = fmt.Sprintf("target: %s", sql.DebugString(n.childProjection))
+	children[2] = sql.DebugString(n.Child)
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 

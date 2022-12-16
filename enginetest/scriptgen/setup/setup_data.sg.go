@@ -41,6 +41,10 @@ var Comp_index_tablesData = []SetupScript{{
 	`CREATE TABLE comp_index_t3 (pk BIGINT PRIMARY KEY, v1 BLOB, v2 BLOB)`,
 	`create INDEX v_idx on comp_index_t3 (v1(3))`,
 	`INSERT INTO comp_index_t3 VALUES (0, 'a', 'a'), (1, 'ab', 'ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')`,
+	`create table pref_index_t2 (i int primary key, v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5))) collate utf8mb4_0900_ai_ci;`,
+	`create table pref_index_t1 (i int primary key, v1 text, v2 text, unique index (v1(3),v2(5)));`,
+	`create table pref_index_t3 (v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5)));`,
+	`create table pref_index_t4 (i int primary key, v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5)));`,
 }}
 
 var DatetimetableData = []SetupScript{{
