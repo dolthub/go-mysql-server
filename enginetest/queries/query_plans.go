@@ -27,14 +27,14 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select * from ab where a in (select x from xy where x in (select u from uv where u = a));`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ IN\n" +
+			" ├─ InSubquery\n" +
 			" │   ├─ left: ab.a:0!null\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: false\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [xy.x:2!null]\n" +
 			" │           └─ Filter\n" +
-			" │               ├─ IN\n" +
+			" │               ├─ InSubquery\n" +
 			" │               │   ├─ left: xy.x:2!null\n" +
 			" │               │   └─ right: Subquery\n" +
 			" │               │       ├─ cacheable: false\n" +
@@ -57,14 +57,14 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select * from ab where a in (select y from xy where y in (select v from uv where v = a));`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ IN\n" +
+			" ├─ InSubquery\n" +
 			" │   ├─ left: ab.a:0!null\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: false\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [xy.y:3]\n" +
 			" │           └─ Filter\n" +
-			" │               ├─ IN\n" +
+			" │               ├─ InSubquery\n" +
 			" │               │   ├─ left: xy.y:3\n" +
 			" │               │   └─ right: Subquery\n" +
 			" │               │       ├─ cacheable: false\n" +
@@ -84,14 +84,14 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select * from ab where b in (select y from xy where y in (select v from uv where v = b));`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ IN\n" +
+			" ├─ InSubquery\n" +
 			" │   ├─ left: ab.b:1\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: false\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [xy.y:3]\n" +
 			" │           └─ Filter\n" +
-			" │               ├─ IN\n" +
+			" │               ├─ InSubquery\n" +
 			" │               │   ├─ left: xy.y:3\n" +
 			" │               │   └─ right: Subquery\n" +
 			" │               │       ├─ cacheable: false\n" +
@@ -121,7 +121,7 @@ var PlanTests = []QueryPlanTest{
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [xy.y:5]\n" +
 			"         │           └─ Filter\n" +
-			"         │               ├─ IN\n" +
+			"         │               ├─ InSubquery\n" +
 			"         │               │   ├─ left: xy.y:5\n" +
 			"         │               │   └─ right: Subquery\n" +
 			"         │               │       ├─ cacheable: false\n" +
@@ -298,7 +298,7 @@ var PlanTests = []QueryPlanTest{
 		Query: `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
 		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
 			" └─ Filter\n" +
-			"     ├─ (NOT(IN\n" +
+			"     ├─ (NOT(InSubquery\n" +
 			"     │   ├─ left: xy.x:0!null\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -326,7 +326,7 @@ var PlanTests = []QueryPlanTest{
 			"     │                       │           │   ├─ name: ab\n" +
 			"     │                       │           │   └─ columns: [b]\n" +
 			"     │                       │           └─ Filter\n" +
-			"     │                       │               ├─ LessThanOrEqual\n" +
+			"     │                       │               ├─ HashIn\n" +
 			"     │                       │               │   ├─ uv.u:0!null\n" +
 			"     │                       │               │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
 			"     │                       │               └─ IndexedTableAccess\n" +
@@ -537,7 +537,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select x, 1 in (select a from ab where exists (select * from uv where a = u)) s from xy`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x:0!null, IN\n" +
+			" ├─ columns: [xy.x:0!null, InSubquery\n" +
 			" │   ├─ left: 1 (tinyint)\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: true\n" +
@@ -1101,7 +1101,7 @@ inner join pq on true
 	{
 		Query: `SELECT * FROM one_pk_two_idx WHERE v1 IN (1, 2) AND v2 <= 2`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ one_pk_two_idx.v1:1\n" +
 			" │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
 			" └─ IndexedTableAccess\n" +
@@ -1770,7 +1770,7 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i:2!null, selfjoin.i:0!null]\n" +
 			" └─ Filter\n" +
-			"     ├─ IN\n" +
+			"     ├─ InSubquery\n" +
 			"     │   ├─ left: selfjoin.i:0!null\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -2179,7 +2179,7 @@ inner join pq on true
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [s]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (NOT(LessThanOrEqual\n" +
+			"         ├─ (NOT(HashIn\n" +
 			"         │   ├─ a.s:1!null\n" +
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext), 4 (longtext))\n" +
 			"         │  ))\n" +
@@ -2205,7 +2205,7 @@ inner join pq on true
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [s]\n" +
 			"     └─ Filter\n" +
-			"         ├─ LessThanOrEqual\n" +
+			"         ├─ HashIn\n" +
 			"         │   ├─ a.i:0!null\n" +
 			"         │   └─ TUPLE(1 (tinyint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
 			"         └─ TableAlias(a)\n" +
@@ -2220,7 +2220,7 @@ inner join pq on true
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 2, 3, 4)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(1 (tinyint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
 			" └─ IndexedTableAccess\n" +
@@ -2235,7 +2235,7 @@ inner join pq on true
 	{
 		Query: `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(NULL (bigint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
 			" └─ IndexedTableAccess\n" +
@@ -2261,7 +2261,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ UPPER(mytable.s)\n" +
 			" │   └─ TUPLE(FIRST ROW (longtext), SECOND ROW (longtext))\n" +
 			" └─ Table\n" +
@@ -2272,7 +2272,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where cast(i as CHAR) IN ('a', 'b')`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ convert\n" +
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ mytable.i:0!null\n" +
@@ -2285,7 +2285,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where cast(i as CHAR) IN ('1', '2')`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ convert\n" +
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ mytable.i:0!null\n" +
@@ -2298,7 +2298,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where (i > 2) IN (true)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ GreaterThan\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 2 (tinyint)\n" +
@@ -2311,7 +2311,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where (i + 6) IN (7, 8)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ (mytable.i:0!null + 6 (tinyint))\n" +
 			" │   └─ TUPLE(7 (tinyint), 8 (tinyint))\n" +
 			" └─ Table\n" +
@@ -2322,7 +2322,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where (i + 40) IN (7, 8)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ (mytable.i:0!null + 40 (tinyint))\n" +
 			" │   └─ TUPLE(7 (tinyint), 8 (tinyint))\n" +
 			" └─ Table\n" +
@@ -2333,7 +2333,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where (i = 1 | false) IN (true)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 1 (bigint)\n" +
@@ -2346,7 +2346,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable where (i = 1 & false) IN (true)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 0 (bigint)\n" +
@@ -2392,7 +2392,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ mytable.s:1!null\n" +
 			" │   └─ TUPLE(first row (longtext))\n" +
 			" └─ IndexedTableAccess\n" +
@@ -2407,7 +2407,7 @@ inner join pq on true
 	{
 		Query: `SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ mytable.s:1!null\n" +
 			" │   └─ TUPLE(second row (longtext), FIRST ROW (longtext))\n" +
 			" └─ IndexedTableAccess\n" +
@@ -2561,7 +2561,7 @@ inner join pq on true
 			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ CrossJoin\n" +
 			"     ├─ Filter\n" +
-			"     │   ├─ LessThanOrEqual\n" +
+			"     │   ├─ HashIn\n" +
 			"     │   │   ├─ a.i:0!null\n" +
 			"     │   │   └─ TUPLE(2 (tinyint), 432 (smallint), 7 (tinyint))\n" +
 			"     │   └─ TableAlias(a)\n" +
@@ -3165,7 +3165,7 @@ inner join pq on true
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable WHERE mytable.i = othertable.i2)`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ IN\n" +
+			" ├─ InSubquery\n" +
 			" │   ├─ left: mytable.i:0!null\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: false\n" +
@@ -6486,7 +6486,7 @@ inner join pq on true
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ Filter\n" +
-			"         ├─ IN\n" +
+			"         ├─ InSubquery\n" +
 			"         │   ├─ left: 1 (tinyint)\n" +
 			"         │   └─ right: Subquery\n" +
 			"         │       ├─ cacheable: true\n" +
@@ -6828,7 +6828,7 @@ inner join pq on true
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
 			"     └─ Filter\n" +
-			"         ├─ IN\n" +
+			"         ├─ InSubquery\n" +
 			"         │   ├─ left: 1 (tinyint)\n" +
 			"         │   └─ right: Subquery\n" +
 			"         │       ├─ cacheable: true\n" +
@@ -7223,7 +7223,7 @@ With c as (
 			"             │   │   ├─ outerVisibility: false\n" +
 			"             │   │   ├─ cacheable: true\n" +
 			"             │   │   └─ Filter\n" +
-			"             │   │       ├─ LessThanOrEqual\n" +
+			"             │   │       ├─ HashIn\n" +
 			"             │   │       │   ├─ t2.i:0!null\n" +
 			"             │   │       │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
 			"             │   │       └─ TableAlias(t2)\n" +
@@ -7249,7 +7249,7 @@ With c as (
 			"                         ├─ outerVisibility: false\n" +
 			"                         ├─ cacheable: true\n" +
 			"                         └─ Filter\n" +
-			"                             ├─ LessThanOrEqual\n" +
+			"                             ├─ HashIn\n" +
 			"                             │   ├─ t1.i:0!null\n" +
 			"                             │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
 			"                             └─ TableAlias(t1)\n" +
@@ -7522,14 +7522,14 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │   │                  ))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ (NOT(ism.ETPQV:5 IS NULL))\n" +
-			" │       └─ IN\n" +
+			" │       └─ InSubquery\n" +
 			" │           ├─ left: ism.ETPQV:5\n" +
 			" │           └─ right: Subquery\n" +
 			" │               ├─ cacheable: true\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [TIZHK.id:19!null as FWATE]\n" +
 			" │                   └─ Filter\n" +
-			" │                       ├─ (NOT(IN\n" +
+			" │                       ├─ (NOT(InSubquery\n" +
 			" │                       │   ├─ left: NHMXW.id:9!null\n" +
 			" │                       │   └─ right: Subquery\n" +
 			" │                       │       ├─ cacheable: false\n" +
@@ -7606,7 +7606,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 	`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ AND\n" +
-			" │   ├─ IN\n" +
+			" │   ├─ InSubquery\n" +
 			" │   │   ├─ left: TIZHK.id:0!null\n" +
 			" │   │   └─ right: Subquery\n" +
 			" │   │       ├─ cacheable: true\n" +
@@ -7648,7 +7648,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │   │                       └─ TableAlias(aac)\n" +
 			" │   │                           └─ Table\n" +
 			" │   │                               └─ name: TPXBU\n" +
-			" │   └─ (NOT(IN\n" +
+			" │   └─ (NOT(InSubquery\n" +
 			" │       ├─ left: TIZHK.id:0!null\n" +
 			" │       └─ right: Subquery\n" +
 			" │           ├─ cacheable: true\n" +
@@ -7872,14 +7872,14 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │   │          ))\n" +
 			"     │   └─ AND\n" +
 			"     │       ├─ (NOT(ct.NRURT:5 IS NULL))\n" +
-			"     │       └─ IN\n" +
+			"     │       └─ InSubquery\n" +
 			"     │           ├─ left: ct.NRURT:5\n" +
 			"     │           └─ right: Subquery\n" +
 			"     │               ├─ cacheable: true\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [uct.id:45!null as FDL23]\n" +
 			"     │                   └─ Filter\n" +
-			"     │                       ├─ (NOT(IN\n" +
+			"     │                       ├─ (NOT(InSubquery\n" +
 			"     │                       │   ├─ left: I7HCR.id:37!null\n" +
 			"     │                       │   └─ right: Subquery\n" +
 			"     │                       │       ├─ cacheable: false\n" +
@@ -7986,7 +7986,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [YLKSY.id:0!null as FDL23]\n" +
 			"     │           └─ Filter\n" +
-			"     │               ├─ (NOT(IN\n" +
+			"     │               ├─ (NOT(InSubquery\n" +
 			"     │               │   ├─ left: YLKSY.id:0!null\n" +
 			"     │               │   └─ right: Subquery\n" +
 			"     │               │       ├─ cacheable: true\n" +
@@ -8122,7 +8122,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 	`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ AND\n" +
-			" │   ├─ (NOT(IN\n" +
+			" │   ├─ (NOT(InSubquery\n" +
 			" │   │   ├─ left: HU5A5.id:0!null\n" +
 			" │   │   └─ right: Subquery\n" +
 			" │   │       ├─ cacheable: true\n" +
@@ -8388,7 +8388,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │       │                       └─ columns: [id sshpj]\n" +
 			"     │       │   as id]\n" +
 			"     │       └─ Filter\n" +
-			"     │           ├─ (NOT(IN\n" +
+			"     │           ├─ (NOT(InSubquery\n" +
 			"     │           │   ├─ left: S7BYT.SSHPJ:5!null\n" +
 			"     │           │   └─ right: Subquery\n" +
 			"     │           │       ├─ cacheable: false\n" +
@@ -8542,7 +8542,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" └─ Project\n" +
 			"     ├─ columns: [ufc.id:0!null, ufc.T4IBQ:1, ufc.ZH72S:2, ufc.AMYXQ:3, ufc.KTNZ2:4, ufc.HIID2:5, ufc.DN3OQ:6, ufc.VVKNB:7, ufc.SH7TP:8, ufc.SRZZO:9, ufc.QZ6VT:10]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (NOT(IN\n" +
+			"         ├─ (NOT(InSubquery\n" +
 			"         │   ├─ left: ufc.id:0!null\n" +
 			"         │   └─ right: Subquery\n" +
 			"         │       ├─ cacheable: true\n" +
@@ -8597,7 +8597,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" └─ Project\n" +
 			"     ├─ columns: [ufc.id:0!null, ufc.T4IBQ:1, ufc.ZH72S:2, ufc.AMYXQ:3, ufc.KTNZ2:4, ufc.HIID2:5, ufc.DN3OQ:6, ufc.VVKNB:7, ufc.SH7TP:8, ufc.SRZZO:9, ufc.QZ6VT:10]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (NOT(IN\n" +
+			"         ├─ (NOT(InSubquery\n" +
 			"         │   ├─ left: ufc.id:0!null\n" +
 			"         │   └─ right: Subquery\n" +
 			"         │       ├─ cacheable: true\n" +
@@ -8645,7 +8645,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6]\n" +
 			" └─ Filter\n" +
-			"     ├─ (NOT(IN\n" +
+			"     ├─ (NOT(InSubquery\n" +
 			"     │   ├─ left: ums.id:0!null\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -8775,14 +8775,14 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │   │          ))\n" +
 			"     │   └─ AND\n" +
 			"     │       ├─ (NOT(mf.TEUJA:14 IS NULL))\n" +
-			"     │       └─ IN\n" +
+			"     │       └─ InSubquery\n" +
 			"     │           ├─ left: mf.TEUJA:14\n" +
 			"     │           └─ right: Subquery\n" +
 			"     │               ├─ cacheable: true\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [umf.id:79!null as ORB3K]\n" +
 			"     │                   └─ Filter\n" +
-			"     │                       ├─ (NOT(IN\n" +
+			"     │                       ├─ (NOT(InSubquery\n" +
 			"     │                       │   ├─ left: TJ5D2.id:71!null\n" +
 			"     │                       │   └─ right: Subquery\n" +
 			"     │                       │       ├─ cacheable: false\n" +
@@ -8875,7 +8875,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [umf.id:0!null, umf.T4IBQ:1, umf.FGG57:2, umf.SSHPJ:3, umf.NLA6O:4, umf.SFJ6L:5, umf.TJPT7:6, umf.ARN5P:7, umf.SYPKF:8, umf.IVFMK:9, umf.IDE43:10, umf.AZ6SP:11, umf.FSDY2:12, umf.XOSD4:13, umf.HMW4H:14, umf.S76OM:15, umf.vaf:16, umf.ZROH6:17, umf.QCGTS:18, umf.LNFM6:19, umf.TVAWL:20, umf.HDLCL:21, umf.BHHW6:22, umf.FHCYT:23, umf.QZ6VT:24]\n" +
 			" └─ Filter\n" +
-			"     ├─ (NOT(IN\n" +
+			"     ├─ (NOT(InSubquery\n" +
 			"     │   ├─ left: umf.id:0!null\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -9071,7 +9071,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │           │   │   │   │   ├─ cla.id:0!null\n" +
 			" │           │   │   │   │   └─ bs.IXUXU:32\n" +
 			" │           │   │   │   ├─ Filter\n" +
-			" │           │   │   │   │   ├─ LessThanOrEqual\n" +
+			" │           │   │   │   │   ├─ HashIn\n" +
 			" │           │   │   │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			" │           │   │   │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			" │           │   │   │   │   └─ TableAlias(cla)\n" +
@@ -9095,7 +9095,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [KHJJO.BDNYB:24!null as BDNYB, ci.FTQLQ:1!null as TOFPN, ct.M22QN:8!null as M22QN, cec.ADURZ:21!null as ADURZ, cec.NO52D:18!null as NO52D, ct.S3Q3Y:14!null as IDPK7]\n" +
 			" │                   └─ Filter\n" +
-			" │                       ├─ LessThanOrEqual\n" +
+			" │                       ├─ HashIn\n" +
 			" │                       │   ├─ ci.FTQLQ:1!null\n" +
 			" │                       │   └─ TUPLE(SQ1 (longtext))\n" +
 			" │                       └─ InnerJoin\n" +
@@ -9111,7 +9111,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │                           │   │   ├─ ci.id:0!null\n" +
 			" │                           │   │   └─ ct.FZ2R5:6!null\n" +
 			" │                           │   ├─ Filter\n" +
-			" │                           │   │   ├─ LessThanOrEqual\n" +
+			" │                           │   │   ├─ HashIn\n" +
 			" │                           │   │   │   ├─ ci.FTQLQ:1!null\n" +
 			" │                           │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			" │                           │   │   └─ TableAlias(ci)\n" +
@@ -9186,7 +9186,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │               └─ Project\n" +
 			"             │                   ├─ columns: [sn.id:0!null as BDNYB, ci.FTQLQ:23!null as TOFPN, ct.M22QN:13!null as M22QN, cec.ADURZ:31!null as ADURZ, cec.NO52D:28!null as NO52D, ct.S3Q3Y:19!null as IDPK7]\n" +
 			"             │                   └─ Filter\n" +
-			"             │                       ├─ LessThanOrEqual\n" +
+			"             │                       ├─ HashIn\n" +
 			"             │                       │   ├─ ci.FTQLQ:23!null\n" +
 			"             │                       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"             │                       └─ Filter\n" +
@@ -9229,7 +9229,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │                               │   │           └─ Table\n" +
 			"             │                               │   │               └─ name: FLQLP\n" +
 			"             │                               │   └─ Filter\n" +
-			"             │                               │       ├─ LessThanOrEqual\n" +
+			"             │                               │       ├─ HashIn\n" +
 			"             │                               │       │   ├─ ci.FTQLQ:1!null\n" +
 			"             │                               │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"             │                               │       └─ TableAlias(ci)\n" +
@@ -9399,7 +9399,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │           │   │   │   │   ├─ cla.id:0!null\n" +
 			" │           │   │   │   │   └─ bs.IXUXU:32\n" +
 			" │           │   │   │   ├─ Filter\n" +
-			" │           │   │   │   │   ├─ LessThanOrEqual\n" +
+			" │           │   │   │   │   ├─ HashIn\n" +
 			" │           │   │   │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			" │           │   │   │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			" │           │   │   │   │   └─ TableAlias(cla)\n" +
@@ -9423,7 +9423,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [KHJJO.BDNYB:1!null as BDNYB, ci.FTQLQ:16!null as TOFPN, ct.M22QN:6!null as M22QN, cec.ADURZ:24!null as ADURZ, cec.NO52D:21!null as NO52D, ct.S3Q3Y:12!null as IDPK7]\n" +
 			" │                   └─ Filter\n" +
-			" │                       ├─ LessThanOrEqual\n" +
+			" │                       ├─ HashIn\n" +
 			" │                       │   ├─ ci.FTQLQ:16!null\n" +
 			" │                       │   └─ TUPLE(SQ1 (longtext))\n" +
 			" │                       └─ InnerJoin\n" +
@@ -9466,7 +9466,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │                           │   │           └─ Table\n" +
 			" │                           │   │               └─ name: FLQLP\n" +
 			" │                           │   └─ Filter\n" +
-			" │                           │       ├─ LessThanOrEqual\n" +
+			" │                           │       ├─ HashIn\n" +
 			" │                           │       │   ├─ ci.FTQLQ:1!null\n" +
 			" │                           │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			" │                           │       └─ TableAlias(ci)\n" +
@@ -9514,7 +9514,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │               └─ Project\n" +
 			"             │                   ├─ columns: [sn.id:0!null as BDNYB, ci.FTQLQ:23!null as TOFPN, ct.M22QN:13!null as M22QN, cec.ADURZ:31!null as ADURZ, cec.NO52D:28!null as NO52D, ct.S3Q3Y:19!null as IDPK7]\n" +
 			"             │                   └─ Filter\n" +
-			"             │                       ├─ LessThanOrEqual\n" +
+			"             │                       ├─ HashIn\n" +
 			"             │                       │   ├─ ci.FTQLQ:23!null\n" +
 			"             │                       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"             │                       └─ Filter\n" +
@@ -9557,7 +9557,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │                               │   │           └─ Table\n" +
 			"             │                               │   │               └─ name: FLQLP\n" +
 			"             │                               │   └─ Filter\n" +
-			"             │                               │       ├─ LessThanOrEqual\n" +
+			"             │                               │       ├─ HashIn\n" +
 			"             │                               │       │   ├─ ci.FTQLQ:1!null\n" +
 			"             │                               │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"             │                               │       └─ TableAlias(ci)\n" +
@@ -9819,7 +9819,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 	FROM YK2GW
 	WHERE FTQLQ IN ('SQ1')`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ LessThanOrEqual\n" +
+			" ├─ HashIn\n" +
 			" │   ├─ YK2GW.FTQLQ:0!null\n" +
 			" │   └─ TUPLE(SQ1 (longtext))\n" +
 			" └─ IndexedTableAccess\n" +
@@ -9930,7 +9930,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"         │           │           │   ├─ bs.IXUXU:32\n" +
 			"         │           │           │   └─ cla.id:0!null\n" +
 			"         │           │           ├─ Filter\n" +
-			"         │           │           │   ├─ LessThanOrEqual\n" +
+			"         │           │           │   ├─ HashIn\n" +
 			"         │           │           │   │   ├─ cla.FTQLQ:1!null\n" +
 			"         │           │           │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			"         │           │           │   └─ TableAlias(cla)\n" +
@@ -10130,7 +10130,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"                                                     │   │   │   │   ├─ outerVisibility: false\n" +
 			"                                                     │   │   │   │   ├─ cacheable: true\n" +
 			"                                                     │   │   │   │   └─ Filter\n" +
-			"                                                     │   │   │   │       ├─ LessThanOrEqual\n" +
+			"                                                     │   │   │   │       ├─ HashIn\n" +
 			"                                                     │   │   │   │       │   ├─ T4IBQ:1!null\n" +
 			"                                                     │   │   │   │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                                     │   │   │   │       └─ Project\n" +
@@ -10298,7 +10298,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"                                                     │                       │   │           │   │   │   │   │   ├─ bs.IXUXU:32\n" +
 			"                                                     │                       │   │           │   │   │   │   │   └─ cla.id:0!null\n" +
 			"                                                     │                       │   │           │   │   │   │   ├─ Filter\n" +
-			"                                                     │                       │   │           │   │   │   │   │   ├─ LessThanOrEqual\n" +
+			"                                                     │                       │   │           │   │   │   │   │   ├─ HashIn\n" +
 			"                                                     │                       │   │           │   │   │   │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			"                                                     │                       │   │           │   │   │   │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                                     │                       │   │           │   │   │   │   │   └─ TableAlias(cla)\n" +
@@ -10513,7 +10513,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"                                                     │   │   │   │   ├─ outerVisibility: false\n" +
 			"                                                     │   │   │   │   ├─ cacheable: true\n" +
 			"                                                     │   │   │   │   └─ Filter\n" +
-			"                                                     │   │   │   │       ├─ LessThanOrEqual\n" +
+			"                                                     │   │   │   │       ├─ HashIn\n" +
 			"                                                     │   │   │   │       │   ├─ T4IBQ:1!null\n" +
 			"                                                     │   │   │   │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                                     │   │   │   │       └─ Project\n" +
@@ -10687,7 +10687,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"                                                     │                       │   │           │   │   │   │       └─ Table\n" +
 			"                                                     │                       │   │           │   │   │   │           └─ name: THNTS\n" +
 			"                                                     │                       │   │           │   │   │   └─ Filter\n" +
-			"                                                     │                       │   │           │   │   │       ├─ LessThanOrEqual\n" +
+			"                                                     │                       │   │           │   │   │       ├─ HashIn\n" +
 			"                                                     │                       │   │           │   │   │       │   ├─ cla.FTQLQ:1!null\n" +
 			"                                                     │                       │   │           │   │   │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                                     │                       │   │           │   │   │       └─ TableAlias(cla)\n" +
@@ -10868,14 +10868,14 @@ var IntegrationPlanTests = []QueryPlanTest{
 	   FROM E2I7U
 	   ORDER BY id ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [CASE  WHEN E2I7U.FGG57:6 IS NULL THEN 0 (tinyint) WHEN IN\n" +
+			" ├─ columns: [CASE  WHEN E2I7U.FGG57:6 IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
 			" │   ├─ left: E2I7U.id:0!null\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [E2I7U.id:17!null]\n" +
 			" │           └─ Filter\n" +
-			" │               ├─ (NOT(IN\n" +
+			" │               ├─ (NOT(InSubquery\n" +
 			" │               │   ├─ left: E2I7U.id:17!null\n" +
 			" │               │   └─ right: Subquery\n" +
 			" │               │       ├─ cacheable: false\n" +
@@ -11025,7 +11025,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │                       │   │   │   │   │   │   ├─ bs.IXUXU:32\n" +
 			"             │                       │   │   │   │   │   │   └─ cla.id:0!null\n" +
 			"             │                       │   │   │   │   │   ├─ Filter\n" +
-			"             │                       │   │   │   │   │   │   ├─ LessThanOrEqual\n" +
+			"             │                       │   │   │   │   │   │   ├─ HashIn\n" +
 			"             │                       │   │   │   │   │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			"             │                       │   │   │   │   │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			"             │                       │   │   │   │   │   │   └─ TableAlias(cla)\n" +
@@ -11038,7 +11038,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │                       │   │   │   │   │       └─ Table\n" +
 			"             │                       │   │   │   │   │           └─ name: THNTS\n" +
 			"             │                       │   │   │   │   └─ Filter\n" +
-			"             │                       │   │   │   │       ├─ LessThanOrEqual\n" +
+			"             │                       │   │   │   │       ├─ HashIn\n" +
 			"             │                       │   │   │   │       │   ├─ mf.FSDY2:10!null\n" +
 			"             │                       │   │   │   │       │   └─ TUPLE(SRARY (longtext), UBQWG (longtext))\n" +
 			"             │                       │   │   │   │       └─ TableAlias(mf)\n" +
@@ -11219,7 +11219,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │                       │   │   │   │   │   │   ├─ bs.IXUXU:32\n" +
 			"             │                       │   │   │   │   │   │   └─ cla.id:0!null\n" +
 			"             │                       │   │   │   │   │   ├─ Filter\n" +
-			"             │                       │   │   │   │   │   │   ├─ LessThanOrEqual\n" +
+			"             │                       │   │   │   │   │   │   ├─ HashIn\n" +
 			"             │                       │   │   │   │   │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			"             │                       │   │   │   │   │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			"             │                       │   │   │   │   │   │   └─ TableAlias(cla)\n" +
@@ -11232,7 +11232,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │                       │   │   │   │   │       └─ Table\n" +
 			"             │                       │   │   │   │   │           └─ name: THNTS\n" +
 			"             │                       │   │   │   │   └─ Filter\n" +
-			"             │                       │   │   │   │       ├─ LessThanOrEqual\n" +
+			"             │                       │   │   │   │       ├─ HashIn\n" +
 			"             │                       │   │   │   │       │   ├─ mf.FSDY2:10!null\n" +
 			"             │                       │   │   │   │       │   └─ TUPLE(SRARY (longtext), UBQWG (longtext))\n" +
 			"             │                       │   │   │   │       └─ TableAlias(mf)\n" +
@@ -11512,7 +11512,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │   │   │       ├─ AND\n" +
 			"     │   │   │       │   ├─ (NOT(MJR3D.QNI57:12 IS NULL))\n" +
 			"     │   │   │       │   └─ (NOT(MJR3D.BJUF2:4 IS NULL))\n" +
-			"     │   │   │       └─ IN\n" +
+			"     │   │   │       └─ InSubquery\n" +
 			"     │   │   │           ├─ left: sn.id:17!null\n" +
 			"     │   │   │           └─ right: Subquery\n" +
 			"     │   │   │               ├─ cacheable: false\n" +
@@ -11529,7 +11529,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │   │       ├─ AND\n" +
 			"     │   │       │   ├─ (NOT(MJR3D.TDEIU:13 IS NULL))\n" +
 			"     │   │       │   └─ MJR3D.BJUF2:4 IS NULL\n" +
-			"     │   │       └─ IN\n" +
+			"     │   │       └─ InSubquery\n" +
 			"     │   │           ├─ left: sn.id:17!null\n" +
 			"     │   │           └─ right: Subquery\n" +
 			"     │   │               ├─ cacheable: false\n" +
@@ -11546,7 +11546,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │       ├─ AND\n" +
 			"     │       │   ├─ (NOT(MJR3D.TDEIU:13 IS NULL))\n" +
 			"     │       │   └─ (NOT(MJR3D.BJUF2:4 IS NULL))\n" +
-			"     │       └─ IN\n" +
+			"     │       └─ InSubquery\n" +
 			"     │           ├─ left: sn.id:17!null\n" +
 			"     │           └─ right: Subquery\n" +
 			"     │               ├─ cacheable: false\n" +
@@ -11859,7 +11859,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │                       │   │   ├─ cla.id:0!null\n" +
 			"     │                       │   │   └─ bs.IXUXU:32\n" +
 			"     │                       │   ├─ Filter\n" +
-			"     │                       │   │   ├─ LessThanOrEqual\n" +
+			"     │                       │   │   ├─ HashIn\n" +
 			"     │                       │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			"     │                       │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			"     │                       │   │   └─ TableAlias(cla)\n" +
@@ -12035,7 +12035,7 @@ WHERE
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [fs.T4IBQ:0!null as T4IBQ, fs.M6T2N:1 as M6T2N, fs.TUV25:3 as TUV25, fs.BTXC5:2 as YEBDJ]\n" +
 			" └─ Filter\n" +
-			"     ├─ (NOT(IN\n" +
+			"     ├─ (NOT(InSubquery\n" +
 			"     │   ├─ left: TUPLE(fs.T4IBQ:0!null, fs.M6T2N:1, fs.BTXC5:2, fs.TUV25:3)\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -12073,7 +12073,7 @@ WHERE
 			"     │                           │           │   │   │   ├─ cla.id:0!null\n" +
 			"     │                           │           │   │   │   └─ bs.IXUXU:32\n" +
 			"     │                           │           │   │   ├─ Filter\n" +
-			"     │                           │           │   │   │   ├─ LessThanOrEqual\n" +
+			"     │                           │           │   │   │   ├─ HashIn\n" +
 			"     │                           │           │   │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			"     │                           │           │   │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			"     │                           │           │   │   │   └─ TableAlias(cla)\n" +
@@ -12152,7 +12152,7 @@ WHERE
 			"     │                                               │   │   │   └─ AND\n" +
 			"     │                                               │   │   │       ├─ AND\n" +
 			"     │                                               │   │   │       │   ├─ (NOT(MJR3D.QNI57:5 IS NULL))\n" +
-			"     │                                               │   │   │       │   └─ IN\n" +
+			"     │                                               │   │   │       │   └─ InSubquery\n" +
 			"     │                                               │   │   │       │       ├─ left: sn.id:10!null\n" +
 			"     │                                               │   │   │       │       └─ right: Subquery\n" +
 			"     │                                               │   │   │       │           ├─ cacheable: false\n" +
@@ -12169,7 +12169,7 @@ WHERE
 			"     │                                               │   │   └─ AND\n" +
 			"     │                                               │   │       ├─ AND\n" +
 			"     │                                               │   │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"     │                                               │   │       │   └─ IN\n" +
+			"     │                                               │   │       │   └─ InSubquery\n" +
 			"     │                                               │   │       │       ├─ left: sn.id:10!null\n" +
 			"     │                                               │   │       │       └─ right: Subquery\n" +
 			"     │                                               │   │       │           ├─ cacheable: false\n" +
@@ -12186,7 +12186,7 @@ WHERE
 			"     │                                               │   └─ AND\n" +
 			"     │                                               │       ├─ AND\n" +
 			"     │                                               │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"     │                                               │       │   └─ IN\n" +
+			"     │                                               │       │   └─ InSubquery\n" +
 			"     │                                               │       │       ├─ left: sn.id:10!null\n" +
 			"     │                                               │       │       └─ right: Subquery\n" +
 			"     │                                               │       │           ├─ cacheable: false\n" +
@@ -12343,7 +12343,7 @@ WHERE
 			"                 │                       │   │   │   └─ AND\n" +
 			"                 │                       │   │   │       ├─ AND\n" +
 			"                 │                       │   │   │       │   ├─ (NOT(MJR3D.QNI57:5 IS NULL))\n" +
-			"                 │                       │   │   │       │   └─ IN\n" +
+			"                 │                       │   │   │       │   └─ InSubquery\n" +
 			"                 │                       │   │   │       │       ├─ left: sn.id:10!null\n" +
 			"                 │                       │   │   │       │       └─ right: Subquery\n" +
 			"                 │                       │   │   │       │           ├─ cacheable: false\n" +
@@ -12360,7 +12360,7 @@ WHERE
 			"                 │                       │   │   └─ AND\n" +
 			"                 │                       │   │       ├─ AND\n" +
 			"                 │                       │   │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"                 │                       │   │       │   └─ IN\n" +
+			"                 │                       │   │       │   └─ InSubquery\n" +
 			"                 │                       │   │       │       ├─ left: sn.id:10!null\n" +
 			"                 │                       │   │       │       └─ right: Subquery\n" +
 			"                 │                       │   │       │           ├─ cacheable: false\n" +
@@ -12377,7 +12377,7 @@ WHERE
 			"                 │                       │   └─ AND\n" +
 			"                 │                       │       ├─ AND\n" +
 			"                 │                       │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"                 │                       │       │   └─ IN\n" +
+			"                 │                       │       │   └─ InSubquery\n" +
 			"                 │                       │       │       ├─ left: sn.id:10!null\n" +
 			"                 │                       │       │       └─ right: Subquery\n" +
 			"                 │                       │       │           ├─ cacheable: false\n" +
@@ -12488,7 +12488,7 @@ WHERE
 			"                                         │   │   │   ├─ cla.id:0!null\n" +
 			"                                         │   │   │   └─ bs.IXUXU:32\n" +
 			"                                         │   │   ├─ Filter\n" +
-			"                                         │   │   │   ├─ LessThanOrEqual\n" +
+			"                                         │   │   │   ├─ HashIn\n" +
 			"                                         │   │   │   │   ├─ cla.FTQLQ:1!null\n" +
 			"                                         │   │   │   │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                         │   │   │   └─ TableAlias(cla)\n" +
@@ -12665,7 +12665,7 @@ WHERE
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [fs.T4IBQ:0!null as T4IBQ, fs.M6T2N:1 as M6T2N, fs.TUV25:3 as TUV25, fs.BTXC5:2 as YEBDJ]\n" +
 			" └─ Filter\n" +
-			"     ├─ (NOT(IN\n" +
+			"     ├─ (NOT(InSubquery\n" +
 			"     │   ├─ left: TUPLE(fs.T4IBQ:0!null, fs.M6T2N:1, fs.BTXC5:2, fs.TUV25:3)\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -12709,7 +12709,7 @@ WHERE
 			"     │                           │           │   │       └─ Table\n" +
 			"     │                           │           │   │           └─ name: THNTS\n" +
 			"     │                           │           │   └─ Filter\n" +
-			"     │                           │           │       ├─ LessThanOrEqual\n" +
+			"     │                           │           │       ├─ HashIn\n" +
 			"     │                           │           │       │   ├─ cla.FTQLQ:1!null\n" +
 			"     │                           │           │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"     │                           │           │       └─ TableAlias(cla)\n" +
@@ -12782,7 +12782,7 @@ WHERE
 			"     │                                               │   │   │   └─ AND\n" +
 			"     │                                               │   │   │       ├─ AND\n" +
 			"     │                                               │   │   │       │   ├─ (NOT(MJR3D.QNI57:5 IS NULL))\n" +
-			"     │                                               │   │   │       │   └─ IN\n" +
+			"     │                                               │   │   │       │   └─ InSubquery\n" +
 			"     │                                               │   │   │       │       ├─ left: sn.id:10!null\n" +
 			"     │                                               │   │   │       │       └─ right: Subquery\n" +
 			"     │                                               │   │   │       │           ├─ cacheable: false\n" +
@@ -12799,7 +12799,7 @@ WHERE
 			"     │                                               │   │   └─ AND\n" +
 			"     │                                               │   │       ├─ AND\n" +
 			"     │                                               │   │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"     │                                               │   │       │   └─ IN\n" +
+			"     │                                               │   │       │   └─ InSubquery\n" +
 			"     │                                               │   │       │       ├─ left: sn.id:10!null\n" +
 			"     │                                               │   │       │       └─ right: Subquery\n" +
 			"     │                                               │   │       │           ├─ cacheable: false\n" +
@@ -12816,7 +12816,7 @@ WHERE
 			"     │                                               │   └─ AND\n" +
 			"     │                                               │       ├─ AND\n" +
 			"     │                                               │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"     │                                               │       │   └─ IN\n" +
+			"     │                                               │       │   └─ InSubquery\n" +
 			"     │                                               │       │       ├─ left: sn.id:10!null\n" +
 			"     │                                               │       │       └─ right: Subquery\n" +
 			"     │                                               │       │           ├─ cacheable: false\n" +
@@ -12973,7 +12973,7 @@ WHERE
 			"                 │                       │   │   │   └─ AND\n" +
 			"                 │                       │   │   │       ├─ AND\n" +
 			"                 │                       │   │   │       │   ├─ (NOT(MJR3D.QNI57:5 IS NULL))\n" +
-			"                 │                       │   │   │       │   └─ IN\n" +
+			"                 │                       │   │   │       │   └─ InSubquery\n" +
 			"                 │                       │   │   │       │       ├─ left: sn.id:10!null\n" +
 			"                 │                       │   │   │       │       └─ right: Subquery\n" +
 			"                 │                       │   │   │       │           ├─ cacheable: false\n" +
@@ -12990,7 +12990,7 @@ WHERE
 			"                 │                       │   │   └─ AND\n" +
 			"                 │                       │   │       ├─ AND\n" +
 			"                 │                       │   │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"                 │                       │   │       │   └─ IN\n" +
+			"                 │                       │   │       │   └─ InSubquery\n" +
 			"                 │                       │   │       │       ├─ left: sn.id:10!null\n" +
 			"                 │                       │   │       │       └─ right: Subquery\n" +
 			"                 │                       │   │       │           ├─ cacheable: false\n" +
@@ -13007,7 +13007,7 @@ WHERE
 			"                 │                       │   └─ AND\n" +
 			"                 │                       │       ├─ AND\n" +
 			"                 │                       │       │   ├─ (NOT(MJR3D.TDEIU:6 IS NULL))\n" +
-			"                 │                       │       │   └─ IN\n" +
+			"                 │                       │       │   └─ InSubquery\n" +
 			"                 │                       │       │       ├─ left: sn.id:10!null\n" +
 			"                 │                       │       │       └─ right: Subquery\n" +
 			"                 │                       │       │           ├─ cacheable: false\n" +
@@ -13124,7 +13124,7 @@ WHERE
 			"                                         │   │       └─ Table\n" +
 			"                                         │   │           └─ name: THNTS\n" +
 			"                                         │   └─ Filter\n" +
-			"                                         │       ├─ LessThanOrEqual\n" +
+			"                                         │       ├─ HashIn\n" +
 			"                                         │       │   ├─ cla.FTQLQ:1!null\n" +
 			"                                         │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                         │       └─ TableAlias(cla)\n" +
@@ -13414,7 +13414,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"     └─ Project\n" +
 			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
 			"         └─ Filter\n" +
-			"             ├─ IN\n" +
+			"             ├─ InSubquery\n" +
 			"             │   ├─ left: cla.id:0!null\n" +
 			"             │   └─ right: Subquery\n" +
 			"             │       ├─ cacheable: true\n" +
@@ -13422,14 +13422,14 @@ ORDER BY cla.FTQLQ ASC`,
 			"             │           ├─ columns: [bs.IXUXU:32]\n" +
 			"             │           └─ Filter\n" +
 			"             │               ├─ AND\n" +
-			"             │               │   ├─ IN\n" +
+			"             │               │   ├─ InSubquery\n" +
 			"             │               │   │   ├─ left: bs.id:30!null\n" +
 			"             │               │   │   └─ right: Subquery\n" +
 			"             │               │   │       ├─ cacheable: false\n" +
 			"             │               │   │       └─ Table\n" +
 			"             │               │   │           ├─ name: HGMQ6\n" +
 			"             │               │   │           └─ columns: [gxlub]\n" +
-			"             │               │   └─ IN\n" +
+			"             │               │   └─ InSubquery\n" +
 			"             │               │       ├─ left: bs.id:30!null\n" +
 			"             │               │       └─ right: Subquery\n" +
 			"             │               │           ├─ cacheable: false\n" +
@@ -13491,14 +13491,14 @@ ORDER BY cla.FTQLQ ASC`,
 			"     └─ Project\n" +
 			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
 			"         └─ Filter\n" +
-			"             ├─ IN\n" +
+			"             ├─ InSubquery\n" +
 			"             │   ├─ left: cla.id:0!null\n" +
 			"             │   └─ right: Subquery\n" +
 			"             │       ├─ cacheable: true\n" +
 			"             │       └─ Project\n" +
 			"             │           ├─ columns: [bs.IXUXU:32]\n" +
 			"             │           └─ Filter\n" +
-			"             │               ├─ IN\n" +
+			"             │               ├─ InSubquery\n" +
 			"             │               │   ├─ left: bs.id:30!null\n" +
 			"             │               │   └─ right: Subquery\n" +
 			"             │               │       ├─ cacheable: false\n" +

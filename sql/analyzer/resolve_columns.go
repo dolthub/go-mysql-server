@@ -600,7 +600,7 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 }
 
 // validateQualifiedColumn returns true if the table name of the specified column is a valid table name symbol, meaning
-// it is available in s	ome scope of the current statement. If a valid table name symbol can't be found, false is returned.
+// it is available in some scope of the current statement. If a valid table name symbol can't be found, false is returned.
 func validateQualifiedColumn(col column, symbols availableNames) bool {
 	for scopeLevel := range symbols {
 		tables := symbols.tablesAtLevel(scopeLevel)

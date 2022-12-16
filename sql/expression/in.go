@@ -318,7 +318,7 @@ func (hit *HashInTuple) String() string {
 
 func (hit *HashInTuple) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("LessThanOrEqual")
+	_ = pr.WriteNode("HashIn")
 	children := []string{sql.DebugString(hit.Left()), sql.DebugString(hit.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()

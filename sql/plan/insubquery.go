@@ -129,7 +129,7 @@ func (in *InSubquery) WithChildren(children ...sql.Expression) (sql.Expression, 
 
 func (in *InSubquery) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IN")
+	_ = pr.WriteNode("InSubquery")
 	children := []string{fmt.Sprintf("left: %s", in.Left), fmt.Sprintf("right: %s", in.Right)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -137,7 +137,7 @@ func (in *InSubquery) String() string {
 
 func (in *InSubquery) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IN")
+	_ = pr.WriteNode("InSubquery")
 	children := []string{fmt.Sprintf("left: %s", sql.DebugString(in.Left)), fmt.Sprintf("right: %s", sql.DebugString(in.Right))}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
