@@ -11284,29 +11284,9 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 = 'a'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'a')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[a, a], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Query: "select * from t where v1 = 'abc'",
 				Expected: []sql.Row{
 					{2, "abc", "abc"},
-				},
-			},
-			{
-				Query: "explain select * from t where v1 = 'abc'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'abc')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[abc, abc], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
 				},
 			},
 			{
@@ -11314,30 +11294,10 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "explain select * from t where v1 = 'abcd'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'abcd')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Query: "select * from t where v1 > 'a' and v1 < 'abcde'",
 				Expected: []sql.Row{
 					{1, "ab", "ab"},
 					{2, "abc", "abc"},
-				},
-			},
-			{
-				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(a, abcde), [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
 				},
 			},
 			{
@@ -11348,30 +11308,9 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(a, ∞), (NULL, abcde)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
-				},
-			},
-			{
-				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
-				Expected: []sql.Row{
-					{"Update"},
-					{" └─ UpdateSource(SET t.v1 = concat(t.v1,'z'))"},
-					{"     └─ Filter(t.v1 >= 'a')"},
-					{"         └─ IndexedTableAccess(t)"},
-					{"             ├─ index: [t.v1,t.v2]"},
-					{"             └─ filters: [{[a, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{
@@ -11387,16 +11326,6 @@ var IndexPrefixQueries = []ScriptTest{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4}},
-				},
-			},
-			{
-				Query: "explain delete from t where v1 >= 'a'",
-				Expected: []sql.Row{
-					{"Delete"},
-					{" └─ Filter(t.v1 >= 'a')"},
-					{"     └─ IndexedTableAccess(t)"},
-					{"         ├─ index: [t.v1,t.v2]"},
-					{"         └─ filters: [{[a, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{
@@ -11434,29 +11363,9 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 = 'a'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'a')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[a, a], [NULL, ∞)}]"},
-					{"     └─ columns: [v1 v2]"},
-				},
-			},
-			{
 				Query: "select * from t where v1 = 'abc'",
 				Expected: []sql.Row{
 					{"abc", "abc"},
-				},
-			},
-			{
-				Query: "explain select * from t where v1 = 'abc'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'abc')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[abc, abc], [NULL, ∞)}]"},
-					{"     └─ columns: [v1 v2]"},
 				},
 			},
 			{
@@ -11464,30 +11373,10 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "explain select * from t where v1 = 'abcd'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'abcd')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]"},
-					{"     └─ columns: [v1 v2]"},
-				},
-			},
-			{
 				Query: "select * from t where v1 > 'a' and v1 < 'abcde'",
 				Expected: []sql.Row{
 					{"ab", "ab"},
 					{"abc", "abc"},
-				},
-			},
-			{
-				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(a, abcde), [NULL, ∞)}]"},
-					{"     └─ columns: [v1 v2]"},
 				},
 			},
 			{
@@ -11498,30 +11387,9 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(a, ∞), (NULL, abcde)}]"},
-					{"     └─ columns: [v1 v2]"},
-				},
-			},
-			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
-				},
-			},
-			{
-				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
-				Expected: []sql.Row{
-					{"Update"},
-					{" └─ UpdateSource(SET t.v1 = concat(t.v1,'z'))"},
-					{"     └─ Filter(t.v1 >= 'a')"},
-					{"         └─ IndexedTableAccess(t)"},
-					{"             ├─ index: [t.v1,t.v2]"},
-					{"             └─ filters: [{[a, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{
@@ -11537,16 +11405,6 @@ var IndexPrefixQueries = []ScriptTest{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4}},
-				},
-			},
-			{
-				Query: "explain delete from t where v1 >= 'a'",
-				Expected: []sql.Row{
-					{"Delete"},
-					{" └─ Filter(t.v1 >= 'a')"},
-					{"     └─ IndexedTableAccess(t)"},
-					{"         ├─ index: [t.v1,t.v2]"},
-					{"         └─ filters: [{[a, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{
@@ -11588,16 +11446,6 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 = 'A'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'A')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[A, A], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Skip:  true,
 				Query: "select * from t where v1 = 'ABC'",
 				Expected: []sql.Row{
@@ -11605,44 +11453,14 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 = 'ABC'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'ABC')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[ABC, ABC], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Query:    "select * from t where v1 = 'ABCD'",
 				Expected: []sql.Row{},
-			},
-			{
-				Query: "explain select * from t where v1 = 'ABCD'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'ABCD')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[ABCD, ABCD], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
 			},
 			{
 				Skip:  true,
 				Query: "select * from t where v1 > 'A' and v1 < 'ABCDE'",
 				Expected: []sql.Row{
 					{1, "ab", "ab"},
-				},
-			},
-			{
-				Query: "explain select * from t where v1 > 'A' and v1 < 'ABCDE'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'A') AND (t.v1 < 'ABCDE'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(A, ABCDE), [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
 				},
 			},
 			{
@@ -11653,31 +11471,10 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 > 'A' and v2 < 'ABCDE'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'A') AND (t.v2 < 'ABCDE'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(A, ∞), (NULL, ABCDE)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Skip:  true,
 				Query: "update t set v1 = concat(v1, 'Z') where v1 >= 'A'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
-				},
-			},
-			{
-				Query: "explain update t set v1 = concat(v1, 'Z') where v1 >= 'A'",
-				Expected: []sql.Row{
-					{"Update"},
-					{" └─ UpdateSource(SET t.v1 = concat(t.v1,'Z'))"},
-					{"     └─ Filter(t.v1 >= 'A')"},
-					{"         └─ IndexedTableAccess(t)"},
-					{"             ├─ index: [t.v1,t.v2]"},
-					{"             └─ filters: [{[A, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{
@@ -11695,16 +11492,6 @@ var IndexPrefixQueries = []ScriptTest{
 				Query: "delete from t where v1 >= 'A'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4}},
-				},
-			},
-			{
-				Query: "explain delete from t where v1 >= 'A'",
-				Expected: []sql.Row{
-					{"Delete"},
-					{" └─ Filter(t.v1 >= 'A')"},
-					{"     └─ IndexedTableAccess(t)"},
-					{"         ├─ index: [t.v1,t.v2]"},
-					{"         └─ filters: [{[A, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{
@@ -11743,29 +11530,9 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 = 'a'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'a')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[a, a], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Query: "select * from t where v1 = 'abc'",
 				Expected: []sql.Row{
 					{2, "abc", "abc"},
-				},
-			},
-			{
-				Query: "explain select * from t where v1 = 'abc'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'abc')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[abc, abc], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
 				},
 			},
 			{
@@ -11773,30 +11540,10 @@ var IndexPrefixQueries = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "explain select * from t where v1 = 'abcd'",
-				Expected: []sql.Row{
-					{"Filter(t.v1 = 'abcd')"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Query: "select * from t where v1 > 'a' and v1 < 'abcde'",
 				Expected: []sql.Row{
 					{1, "ab", "ab"},
 					{2, "abc", "abc"},
-				},
-			},
-			{
-				Query: "explain select * from t where v1 > 'a' and v1 < 'abcde'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'a') AND (t.v1 < 'abcde'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(a, abcde), [NULL, ∞)}]"},
-					{"     └─ columns: [i v1 v2]"},
 				},
 			},
 			{
@@ -11807,30 +11554,9 @@ var IndexPrefixQueries = []ScriptTest{
 				},
 			},
 			{
-				Query: "explain select * from t where v1 > 'a' and v2 < 'abcde'",
-				Expected: []sql.Row{
-					{"Filter((t.v1 > 'a') AND (t.v2 < 'abcde'))"},
-					{" └─ IndexedTableAccess(t)"},
-					{"     ├─ index: [t.v1,t.v2]"},
-					{"     ├─ filters: [{(a, ∞), (NULL, abcde)}]"},
-					{"     └─ columns: [i v1 v2]"},
-				},
-			},
-			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
-				},
-			},
-			{
-				Query: "explain update t set v1 = concat(v1, 'z') where v1 >= 'a'",
-				Expected: []sql.Row{
-					{"Update"},
-					{" └─ UpdateSource(SET t.v1 = concat(t.v1,'z'))"},
-					{"     └─ Filter(t.v1 >= 'a')"},
-					{"         └─ IndexedTableAccess(t)"},
-					{"             ├─ index: [t.v1,t.v2]"},
-					{"             └─ filters: [{[a, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{
@@ -11846,16 +11572,6 @@ var IndexPrefixQueries = []ScriptTest{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 4}},
-				},
-			},
-			{
-				Query: "explain delete from t where v1 >= 'a'",
-				Expected: []sql.Row{
-					{"Delete"},
-					{" └─ Filter(t.v1 >= 'a')"},
-					{"     └─ IndexedTableAccess(t)"},
-					{"         ├─ index: [t.v1,t.v2]"},
-					{"         └─ filters: [{[a, ∞), [NULL, ∞)}]"},
 				},
 			},
 			{

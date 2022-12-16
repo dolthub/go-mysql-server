@@ -5179,13 +5179,16 @@ func TestPrintTree(t *testing.T) {
 		WHERE foo > qux
 		LIMIT 5
 		OFFSET 2`)
+	fmt.Println(node.String())
 	require.NoError(err)
 	require.Equal(`Limit(5)
  └─ Offset(2)
      └─ Project
          ├─ columns: [t.foo, bar.baz]
-         └─ Filter(foo > qux)
-             └─ InnerJoin(foo = baz)
+         └─ Filter
+             ├─ (foo > qux)
+             └─ InnerJoin
+                 ├─ (foo = baz)
                  ├─ TableAlias(t)
                  │   └─ UnresolvedTable(tbl)
                  └─ UnresolvedTable(bar)

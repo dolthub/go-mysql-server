@@ -273,6 +273,12 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewShowPrivileges(), nil
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
+	case *sqlparser.Prepare:
+		return convertPrepare(ctx, n)
+	case *sqlparser.Execute:
+		return convertExecute(ctx, n)
+	case *sqlparser.Deallocate:
+		return convertDeallocate(ctx, n)
 	}
 }
 
@@ -380,6 +386,36 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 	}
 
 	return plan.NewDescribeQuery(explainFmt, child), nil
+}
+
+func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
+	childStmt, err := sqlparser.Parse(n.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	child, err := convert(ctx, childStmt, n.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewPrepareQuery(n.Name, child), nil
+}
+
+func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {
+	exprs := make([]sql.Expression, len(n.VarList))
+	for i, e := range n.VarList {
+		if strings.HasPrefix(e, "@") {
+			exprs[i] = expression.NewUserVar(strings.TrimPrefix(e, "@"))
+		} else {
+			exprs[i] = expression.NewUnresolvedProcedureParam(e)
+		}
+	}
+	return plan.NewExecuteQuery(n.Name, exprs...), nil
+}
+
+func convertDeallocate(ctx *sql.Context, n *sqlparser.Deallocate) (sql.Node, error) {
+	return plan.NewDeallocateQuery(n.Name), nil
 }
 
 func convertUse(n *sqlparser.Use) (sql.Node, error) {

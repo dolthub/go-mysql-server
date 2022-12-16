@@ -3390,6 +3390,183 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 	},
 }
 
+var PreparedScriptTests = []ScriptTest{
+	{
+		Name:        "bad prepare",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "prepare s from 'prepare t from ?'",
+				ExpectedErrStr: "syntax error at position 17 near ':v1'",
+			},
+			{
+				Query:          "prepare s from 'a very real query'",
+				ExpectedErrStr: "syntax error at position 2 near 'a'",
+			},
+			{
+				Query:       "deallocate prepare idontexist",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name:        "simple select case no bindings",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+			{
+				Query: "prepare s from 'select 1'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute s",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "simple select case one binding",
+		SetUpScript: []string{
+			"set @a = 1",
+			"set @b = 100",
+			"set @c = 'abc'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'select ?'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @abc",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query:       "execute s using @a, @b, @c, @abc",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @a",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "execute s using @b",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				Query: "execute s using @c",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "prepare insert",
+		SetUpScript: []string{
+			"set @a = 123",
+			"set @b = 'abc'",
+			"create table t (i int, j varchar(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'insert into t values (?,?)'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @a, @b",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{123, "abc"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "Complex join query with foreign key constraints",
+		SetUpScript: []string{
+			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
+			"CREATE TABLE `tweet` ( `id` int NOT NULL AUTO_INCREMENT, `user_id` int NOT NULL, `content` text NOT NULL, `timestamp` bigint NOT NULL, PRIMARY KEY (`id`), KEY `tweet_user_id` (`user_id`), CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`));",
+			"INSERT INTO `users` (`id`,`username`) VALUES (1,'huey'), (2,'zaizee'), (3,'mickey');",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727), (2,1,'purr',1647463727), (3,2,'hiss',1647463727), (4,3,'woof',1647463727);",
+			"set @u2 = 'u2';",
+			"set @u3 = 'u3';",
+			"set @u4 = 'u4';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = ?)) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN (?, ?)))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:    "execute s using @u3, @u2, @u4",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+}
+
 var BrokenScriptTests = []ScriptTest{
 	{
 		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",

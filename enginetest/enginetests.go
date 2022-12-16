@@ -311,7 +311,7 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
@@ -320,7 +320,7 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IntegrationPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
@@ -329,7 +329,7 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IndexPlanTests {
-		TestQueryPlanWithEngine(t, harness, e, tt)
+		TestQueryPlanWithEngine(t, harness, e, tt, true)
 	}
 
 	t.Run("no database selected", func(t *testing.T) {
@@ -406,7 +406,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, expectedPlan string) {
+func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expectedPlan string, verbose bool) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, query)
@@ -421,12 +421,18 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, 
 			}
 		}
 
-		assert.Equal(t, expectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+query)
+		var cmp string
+		if verbose {
+			cmp = sql.DebugString(ExtractQueryNode(node))
+		} else {
+			cmp = ExtractQueryNode(node).String()
+		}
+		assert.Equal(t, expectedPlan, cmp, "Unexpected result for query: "+query)
 	})
 
 }
 
-func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest) {
+func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest, verbose bool) {
 	t.Run(tt.Query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, tt.Query)
@@ -441,7 +447,13 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt q
 			}
 		}
 
-		assert.Equal(t, tt.ExpectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
+		var cmp string
+		if verbose {
+			cmp = sql.DebugString(ExtractQueryNode(node))
+		} else {
+			cmp = ExtractQueryNode(node).String()
+		}
+		assert.Equal(t, tt.ExpectedPlan, cmp, "Unexpected result for query: "+tt.Query)
 	})
 }
 
@@ -4480,6 +4492,15 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedStatements(t *testing.T, harness Harness) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	for _, query := range queries.PreparedScriptTests {
+		TestScript(t, harness, query)
+	}
+}
+
 // Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
@@ -6002,7 +6023,6 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, sql.Int8),
-				"v2": expression.NewLiteral(1, sql.Int8),
 			},
 			Expected: []sql.Row{{int64(3)}},
 		},
@@ -6087,6 +6107,16 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 	}
+	qErrTests := []queries.QueryErrorTest{
+		{
+			Query:          "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
+			ExpectedErrStr: "unused binding v2",
+			Bindings: map[string]sql.Expression{
+				"v1": expression.NewLiteral(int64(2), sql.Int64),
+				"v2": expression.NewLiteral(int64(2), sql.Int64),
+			},
+		},
+	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
@@ -6100,6 +6130,17 @@ func TestPrepared(t *testing.T, harness Harness) {
 			_, err := e.PrepareQuery(ctx, tt.Query)
 			require.NoError(t, err)
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+		})
+	}
+
+	for _, tt := range qErrTests {
+		t.Run(fmt.Sprintf("%s", tt.Query), func(t *testing.T) {
+			ctx := NewContext(harness)
+			_, err := e.PrepareQuery(ctx, tt.Query)
+			require.NoError(t, err)
+			ctx = ctx.WithQuery(tt.Query)
+			_, _, err = e.QueryWithBindings(ctx, tt.Query, tt.Bindings)
+			require.Error(t, err)
 		})
 	}
 
