@@ -423,9 +423,15 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 	}
 
 	if len(bindings) > 0 {
-		parsed, err = plan.ApplyBindings(parsed, bindings)
+		var usedBindings map[string]bool
+		parsed, usedBindings, err = plan.ApplyBindings(parsed, bindings)
 		if err != nil {
 			return nil, err
+		}
+		for binding := range bindings {
+			if !usedBindings[binding] {
+				return nil, fmt.Errorf("unused binding %s", binding)
+			}
 		}
 	}
 
@@ -446,9 +452,15 @@ func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, analyzed s
 	}
 
 	if len(bindings) > 0 {
-		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		var usedBindings map[string]bool
+		analyzed, usedBindings, err = plan.ApplyBindings(analyzed, bindings)
 		if err != nil {
 			return nil, err
+		}
+		for binding := range bindings {
+			if !usedBindings[binding] {
+				return nil, fmt.Errorf("unused binding %s", binding)
+			}
 		}
 	}
 	ctx.GetLogger().Tracef("plan before re-opt: %s", analyzed.String())

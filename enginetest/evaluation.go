@@ -386,7 +386,7 @@ func runQueryPreparedWithCtx(
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return n.WithSource(newSource), transform.SameTree, nil
+			return n.WithSource(newSource), transform.NewTree, nil
 		default:
 			return transform.NodeExprs(n, insertBindings)
 		}
