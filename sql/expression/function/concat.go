@@ -68,6 +68,14 @@ func (c *Concat) String() string {
 	return fmt.Sprintf("concat(%s)", strings.Join(args, ", "))
 }
 
+func (c *Concat) DebugString() string {
+	var args = make([]string, len(c.args))
+	for i, arg := range c.args {
+		args[i] = sql.DebugString(arg)
+	}
+	return fmt.Sprintf("concat(%s)", strings.Join(args, ", "))
+}
+
 // WithChildren implements the Expression interface.
 func (*Concat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewConcat(children...)

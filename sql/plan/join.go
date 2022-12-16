@@ -254,23 +254,25 @@ func (j *JoinNode) WithComment(comment string) sql.Node {
 
 func (j *JoinNode) String() string {
 	pr := sql.NewTreePrinter()
-	var filter string
+	var children []string
 	if j.Filter != nil {
-		filter = j.Filter.String()
+		children = append(children, j.Filter.String())
 	}
-	pr.WriteNode("%s%s", j.Op, filter)
-	pr.WriteChildren(j.left.String(), j.right.String())
+	children = append(children, j.left.String(), j.right.String())
+	pr.WriteNode("%s", j.Op)
+	pr.WriteChildren(children...)
 	return pr.String()
 }
 
 func (j *JoinNode) DebugString() string {
 	pr := sql.NewTreePrinter()
-	var filter string
+	var children []string
 	if j.Filter != nil {
-		filter = sql.DebugString(j.Filter)
+		children = append(children, sql.DebugString(j.Filter))
 	}
-	_ = pr.WriteNode("%s%s, comment=%s", j.Op, filter, j.Comment())
-	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
+	children = append(children, sql.DebugString(j.left), sql.DebugString(j.right))
+	pr.WriteNode("%s", j.Op)
+	pr.WriteChildren(children...)
 	return pr.String()
 }
 
