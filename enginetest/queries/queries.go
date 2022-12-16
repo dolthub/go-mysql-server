@@ -9063,19 +9063,6 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 			{"mydb", "mytable", "i", 1, "PRIMARY"},
 		},
 	},
-	//// Issue#1
-	//{
-	//	Query: `SELECT NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, COLLATION, CARDINALITY
-	//FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'mytable' ORDER BY NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX`,
-	//	Expected: []sql.Row{
-	//		{0, "mytable_s", 1, "s", "A", 3},
-	//		{0, "PRIMARY", 1, "i", "A", 3},
-	//		{1, "idx_si", 1, "s", "A", 3},
-	//		{1, "idx_si", 2, "i", "A", 3},
-	//		{1, "mytable_i_s", 1, "i", "A", 3},
-	//		{1, "mytable_i_s", 2, "i", "A", 3},
-	//	},
-	//},
 	{
 		Query: `show columns from fk_tbl from mydb`,
 		Expected: []sql.Row{
@@ -9084,23 +9071,6 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 			{"b", "varchar(20)", "YES", "", "NULL", ""},
 		},
 	},
-	//// Issue#6 and Issue#7
-	//{
-	//	Query: `SELECT table_catalog, table_schema, table_name, table_type, engine, version, row_format, table_rows, avg_row_length,
-	//data_length, max_data_length, index_length, data_free, auto_increment, table_collation, checksum, create_options, table_comment
-	//FROM information_schema.TABLES t WHERE t.TABLE_SCHEMA = 'information_schema' AND t.TABLE_NAME = 'check_constraints'`,
-	//	Expected: []sql.Row{
-	//		{"def", "information_schema", "CHECK_CONSTRAINTS", "SYSTEM VIEW", nil, 10, nil,
-	//			uint64(0), 0, 0, 0, 0, 0, nil, nil, nil, "", ""},
-	//	},
-	//},
-	// // how to not include datetime
-	//{
-	//	Query: `SHOW TABLE STATUS FROM mydb LIKE 'fk_tbl'`,
-	//	Expected: []sql.Row{
-	//		{"fk_tbl", "InnoDB", "10", "Dynamic", 0, 0, 16384, 0, 16384, 0, nil, "", nil, nil, "utf8mb4_0900_bin", nil, "", ""},
-	//	},
-	//},
 }
 
 var SkippedInfoSchemaQueries = []QueryTest{
@@ -9448,12 +9418,13 @@ var InfoSchemaScripts = []ScriptTest{
 					{"c", 1, "c", 3},
 				},
 			},
-			//{
-			//	// TODO: cardinality not supported
-			//	Query: `select index_name, seq_in_index, column_name, cardinality, sub_part from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
-			//	Expected: []sql.Row{{2}, {2}, {2}, {2}, {2}},
-			//	},
-			//},
+			{
+				// TODO: cardinality not supported
+				Skip: true,
+				Query: `select index_name, seq_in_index, column_name, cardinality, sub_part from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
+				Expected: []sql.Row{{2}, {2}, {2}, {2}, {2}},
+				},
+			},
 			{
 				Query: `SELECT seq_in_index, sub_part, index_name, index_type, CASE non_unique WHEN 0 THEN 'TRUE' ELSE 'FALSE' END AS is_unique, column_name
 	FROM information_schema.statistics WHERE table_schema='mydb' AND table_name='ptable' ORDER BY index_name, seq_in_index;`,
@@ -9649,53 +9620,12 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"def", "mydb", "myview2", "VIEW", "VIEW"},
 				},
 			},
-			//// Issue#4
-			//{
-			//	Query: `SELECT table_catalog, table_schema, table_name, table_type, engine, version, row_format, table_rows, avg_row_length,
-			//data_length, max_data_length, index_length, data_free, auto_increment, table_collation, checksum, create_options, table_comment
-			//FROM information_schema.tables where table_schema = 'mydb' order by table_name`,
-			//	Expected: []sql.Row{
-			//		{"def", "mydb", "actor", "BASE TABLE", "InnoDB", 10, "Dynamic", 3, 5461,
-			//			16384, 0, 16384, 0, 4, "utf8mb4_0900_bin", nil, "", ""},
-			//		{"def", "mydb", "bigtable", "BASE TABLE", "InnoDB", 10, "Dynamic", 5, 3276,
-			//			16384, 0, 0, 0, nil, "utf8mb4_0900_bin", nil, "", ""},
-			//		{"def", "mydb", "fk_tbl", "BASE TABLE", "InnoDB", 10, "Dynamic", 0, 0,
-			//			16384, 0, 16384, 0, nil, "utf8mb4_0900_bin", nil, "", ""},
-			//		{"def", "mydb", "mytable", "BASE TABLE", "InnoDB", 10, "Dynamic", 3, 5461,
-			//			16384, 0, 0, 0, 4, "utf8mb4_0900_bin", nil, "", ""},
-			//		{"def", "mydb", "myview1", "VIEW", nil, nil, nil, nil, nil,
-			//			nil, nil, nil, nil, nil, nil, nil, "", "VIEW"},
-			//		{"def", "mydb", "myview2", "VIEW", nil, nil, nil, nil, nil,
-			//			nil, nil, nil, nil, nil, nil, nil, "", "VIEW"},
-			//	},
-			//},
 			{
 				Query: "SELECT table_rows as count FROM information_schema.TABLES WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='bigtable';",
 				Expected: []sql.Row{
 					{uint64(5)},
 				},
 			},
-			// // Issue#5
-			//{
-			//	Query: "SELECT table_comment as comment,table_rows as rows_count,auto_increment as auto_increment FROM information_schema.tables WHERE TABLE_NAME = 'actor' AND TABLE_SCHEMA = 'mydb';",
-			//	Expected: []sql.Row{
-			//		{"", 3, 4},
-			//	},
-			//},
-			// Issue#8
-			//{
-			//	Query: `SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='actor' ORDER BY ORDINAL_POSITION`,
-			//	Expected: []sql.Row{
-			//		{"def", "mydb", "actor", "actor_id", uint32(1), nil, "NO", "smallint", nil, nil, 5, 0, nil, nil, nil,
-			//			"smallint unsigned", "PRI", "auto_increment", "select,insert,update,references", "", "", nil},
-			//		{"def", "mydb", "actor", "first_name", uint32(2), nil, "NO", "varchar", 45, 180, nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin",
-			//			"varchar(45)", "", "", "select,insert,update,references", "", "", nil},
-			//		{"def", "mydb", "actor", "last_name", uint32(3), nil, "NO", "varchar", 45, 180, nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin",
-			//			"varchar(45)", "MUL", "", "select,insert,update,references", "", "", nil},
-			//		{"def", "mydb", "actor", "last_update", uint32(4), "CURRENT_TIMESTAMP", "NO", "timestamp", nil, nil, nil, nil, 0, nil, nil,
-			//			"timestamp", "", "DEFAULT_GENERATED on update CURRENT_TIMESTAMP", "select,insert,update,references", "", "", nil},
-			//	},
-			//},
 		},
 	},
 	{
@@ -9763,17 +9693,6 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 						"", "`root`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
-			//// Issue#3
-			//{
-			//	Query: `select routine_definition from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
-			//	Expected: []sql.Row{
-			//		{`BEGIN
-			//    SELECT SUM(i)
-			//    FROM mytable
-			//    INTO total_i;
-			//END`},
-			//	},
-			//},
 		},
 	},
 }
