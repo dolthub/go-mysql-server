@@ -9529,7 +9529,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"bit_2", "b'10'", "YES", "bit", "bit(2)", nil, nil},
 					{"some_blob", "'abc'", "YES", "blob", "blob", 65535, 65535},
 					{"char_1", "A", "YES", "char", "char(1)", 1, 4},
-					{"some_date", "2022-02-22", "YES", "date", "date", nil, nil},
+					{"some_date", "2022-02-22 00:00:00", "YES", "date", "date", nil, nil},
 					{"date_time", "2022-02-22 22:22:21", "YES", "datetime", "datetime", nil, nil},
 					{"decimal_52", "994.45", "YES", "decimal", "decimal(5,2)", nil, nil},
 					{"some_double", "1.1", "YES", "double", "double", nil, nil},

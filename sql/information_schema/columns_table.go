@@ -366,11 +366,7 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 
 	switch l := v.(type) {
 	case time.Time:
-		if sql.IsDateType(cd.Type()) {
-			v = l.Format("2006-01-02")
-		} else {
-			v = l.Format("2006-01-02 15:04:05")
-		}
+		v = l.Format("2006-01-02 15:04:05")
 	case []uint8:
 		hexStr := hex.EncodeToString(l)
 		v = fmt.Sprintf("0x%s", hexStr)
