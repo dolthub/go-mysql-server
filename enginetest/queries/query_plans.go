@@ -3509,6 +3509,8 @@ inner join pq on true
 			" └─ Offset(100)\n" +
 			"     └─ TopN(Limit: [(100 + 100)]; datetime_table.date_col ASC)\n" +
 			"         └─ Table\n" +
+			"             ├─ name: datetime_table\n" +
+			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -3701,6 +3703,8 @@ inner join pq on true
 			"                 ├─ (dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
 			"                 │   └─ Table\n" +
+			"                 │       ├─ name: datetime_table\n" +
+			"                 │       └─ columns: [timestamp_col]\n" +
 			"                 └─ TableAlias(dt1)\n" +
 			"                     └─ IndexedTableAccess(datetime_table)\n" +
 			"                         ├─ index: [datetime_table.date_col]\n" +
@@ -5489,6 +5493,7 @@ inner join pq on true
 			"                 └─ LookupJoin\n" +
 			"                     ├─ (one_pk.pk = two_pk.pk1)\n" +
 			"                     ├─ Table\n" +
+			"                     │   └─ name: two_pk\n" +
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         └─ index: [one_pk.pk]\n" +
 			"",
@@ -5507,6 +5512,8 @@ inner join pq on true
 			"                     │   ├─ outerVisibility: false\n" +
 			"                     │   ├─ cacheable: true\n" +
 			"                     │   └─ Table\n" +
+			"                     │       ├─ name: two_pk\n" +
+			"                     │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"                     └─ IndexedTableAccess(one_pk)\n" +
 			"                         └─ index: [one_pk.pk]\n" +
 			"",

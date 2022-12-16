@@ -102,6 +102,7 @@ func TestDescribeQuery(t *testing.T) {
 		{" └─ Filter"},
 		{"     ├─ (foo.a = 'foo')"},
 		{"     └─ Table"},
+		{"         └─ name: foo"},
 	}
 
 	require.Equal(expected, rows)

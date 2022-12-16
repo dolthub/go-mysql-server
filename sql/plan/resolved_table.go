@@ -72,6 +72,7 @@ func (t *ResolvedTable) String() string {
 			children = append(children, fmt.Sprintf("filters: %v", filters))
 		}
 	}
+	pr.WriteChildren(children...)
 	return pr.String()
 }
 
