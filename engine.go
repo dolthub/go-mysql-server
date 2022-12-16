@@ -403,9 +403,15 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		}
 
 		if len(bindings) > 0 {
-			parsed, err = plan.ApplyBindings(parsed, bindings)
+			var usedBindings map[string]bool
+			parsed, usedBindings, err = plan.ApplyBindings(parsed, bindings)
 			if err != nil {
 				return nil, err
+			}
+			for binding := range bindings {
+				if !usedBindings[binding] {
+					return nil, fmt.Errorf("unused binding %s", binding)
+				}
 			}
 		}
 
