@@ -32,25 +32,25 @@ import (
 // simply delegates to the child.
 func NewHashLookup(n *CachedResults, childProjection sql.Expression, lookupProjection sql.Expression) *HashLookup {
 	return &HashLookup{
-		UnaryNode:        UnaryNode{n},
-		childProjection:  childProjection,
-		lookupProjection: lookupProjection,
-		mutex:            new(sync.Mutex),
+		UnaryNode: UnaryNode{n},
+		inner:     childProjection,
+		outer:     lookupProjection,
+		mutex:     new(sync.Mutex),
 	}
 }
 
 type HashLookup struct {
 	UnaryNode
-	childProjection  sql.Expression
-	lookupProjection sql.Expression
-	mutex            *sync.Mutex
-	lookup           map[interface{}][]sql.Row
+	inner  sql.Expression
+	outer  sql.Expression
+	mutex  *sync.Mutex
+	lookup map[interface{}][]sql.Row
 }
 
 var _ sql.Expressioner = (*HashLookup)(nil)
 
 func (n *HashLookup) Expressions() []sql.Expression {
-	return []sql.Expression{n.childProjection, n.lookupProjection}
+	return []sql.Expression{n.inner, n.outer}
 }
 
 func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -58,8 +58,8 @@ func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), 2)
 	}
 	ret := *n
-	ret.childProjection = exprs[0]
-	ret.lookupProjection = exprs[1]
+	ret.inner = exprs[0]
+	ret.outer = exprs[1]
 	return &ret, nil
 }
 
@@ -67,8 +67,8 @@ func (n *HashLookup) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup")
 	children := make([]string, 3)
-	children[0] = fmt.Sprintf("source: %s", n.lookupProjection)
-	children[1] = fmt.Sprintf("target: %s", n.childProjection)
+	children[0] = fmt.Sprintf("outer: %s", n.outer)
+	children[1] = fmt.Sprintf("inner: %s", n.inner)
 	children[2] = n.Child.String()
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -78,8 +78,8 @@ func (n *HashLookup) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup")
 	children := make([]string, 3)
-	children[0] = fmt.Sprintf("source: %s", sql.DebugString(n.lookupProjection))
-	children[1] = fmt.Sprintf("target: %s", sql.DebugString(n.childProjection))
+	children[0] = fmt.Sprintf("source: %s", sql.DebugString(n.outer))
+	children[1] = fmt.Sprintf("target: %s", sql.DebugString(n.inner))
 	children[2] = sql.DebugString(n.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -114,7 +114,7 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 			n.lookup = make(map[interface{}][]sql.Row)
 			for _, row := range res {
 				// TODO: Maybe do not put nil stuff in here.
-				key, err := n.getHashKey(ctx, n.childProjection, row)
+				key, err := n.getHashKey(ctx, n.inner, row)
 				if err != nil {
 					return nil, err
 				}
@@ -126,7 +126,7 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 		}
 	}
 	if n.lookup != nil {
-		key, err := n.getHashKey(ctx, n.lookupProjection, r)
+		key, err := n.getHashKey(ctx, n.outer, r)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	key, err = n.lookupProjection.Type().Convert(key)
+	key, err = n.outer.Type().Convert(key)
 	if err != nil {
 		return nil, err
 	}
