@@ -9423,7 +9423,6 @@ var InfoSchemaScripts = []ScriptTest{
 				Skip: true,
 				Query: `select index_name, seq_in_index, column_name, cardinality, sub_part from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
 				Expected: []sql.Row{{2}, {2}, {2}, {2}, {2}},
-				},
 			},
 			{
 				Query: `SELECT seq_in_index, sub_part, index_name, index_type, CASE non_unique WHEN 0 THEN 'TRUE' ELSE 'FALSE' END AS is_unique, column_name
