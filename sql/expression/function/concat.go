@@ -73,7 +73,7 @@ func (c *Concat) DebugString() string {
 	for i, arg := range c.args {
 		args[i] = sql.DebugString(arg)
 	}
-	return fmt.Sprintf("concat(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
