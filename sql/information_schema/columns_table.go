@@ -257,6 +257,13 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 				}
 
 				columnDefault := getColumnDefault(ctx, col.Default)
+
+				extra := col.Extra
+				// If extra is not defined, fill it here.
+				if extra == "" && !col.Default.IsLiteral() {
+					extra = fmt.Sprintf("DEFAULT_GENERATED")
+				}
+
 				rows = append(rows, sql.Row{
 					"def",             // table_catalog
 					db.Name(),         // table_schema
@@ -275,7 +282,7 @@ func (c *ColumnsTable) columnsRowIter(ctx *sql.Context) (sql.RowIter, error) {
 					collName,          // collation_name
 					colType,           // column_type
 					columnKey,         // column_key
-					col.Extra,         // extra
+					extra,             // extra
 					"select",          // privileges
 					col.Comment,       // column_comment
 					"",                // generation_expression

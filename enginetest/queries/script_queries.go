@@ -2185,7 +2185,7 @@ var ScriptTests = []ScriptTest{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"val", "int", "YES", "", "((pk * 2))", ""}, // TODO: MySQL would return (`pk` * 2)
+					{"val", "int", "YES", "", "((pk * 2))", "DEFAULT_GENERATED"}, // TODO: MySQL would return (`pk` * 2)
 				},
 			},
 		},
@@ -2830,7 +2830,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(point(123.456,7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2851,7 +2851,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2872,7 +2872,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2893,7 +2893,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(point(123.456,7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2914,7 +2914,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2935,7 +2935,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
