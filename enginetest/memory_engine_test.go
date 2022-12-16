@@ -840,6 +840,10 @@ func TestPreparedInsert(t *testing.T) {
 	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestPreparedStatements(t *testing.T) {
+	enginetest.TestPreparedStatements(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestCharsetCollationEngine(t *testing.T) {
 	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness())
 }

@@ -386,7 +386,7 @@ func runQueryPreparedWithCtx(
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return n.WithSource(newSource), transform.SameTree, nil
+			return n.WithSource(newSource), transform.NewTree, nil
 		default:
 			return transform.NodeExprs(n, insertBindings)
 		}
@@ -401,7 +401,7 @@ func runQueryPreparedWithCtx(
 	if err != nil {
 		return nil, nil, err
 	}
-	e.CachePreparedStmt(ctx, prepared, q)
+	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), q, prepared)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
 	if err != nil {
