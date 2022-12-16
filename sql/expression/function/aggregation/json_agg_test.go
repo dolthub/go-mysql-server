@@ -23,6 +23,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+func TestJsonArrayAgg_Name(t *testing.T) {
+	assert := require.New(t)
+
+	m := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	assert.Equal("JSON_ARRAYAGG(field)", m.String())
+}
+
 func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
