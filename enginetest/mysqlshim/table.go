@@ -350,7 +350,7 @@ func (t Table) AnalyzeTable(ctx *sql.Context) error {
 }
 
 // GetStatistics implements the interface sql.StatisticsTable.
-func (t Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
+func (t Table) GetStatistics(ctx *sql.Context) (sql.TableStatistics, error) {
 	return nil, nil
 }
 

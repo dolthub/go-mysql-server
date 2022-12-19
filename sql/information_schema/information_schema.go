@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -28,6 +30,21 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+)
+
+func init() {
+	if v, ok := os.LookupEnv(writableFlag); ok && v != "" {
+		WritableInfoSchema = true
+	}
+}
+
+const (
+	// indicates writable information schema tables where supported
+	writableFlag = "GMS_WRITE_INFO_SCHEMA"
+)
+
+var (
+	WritableInfoSchema = false
 )
 
 const (
@@ -886,12 +903,12 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return true, nil
 			}
 
-			stats, err := statsTbl.Statistics(ctx)
+			stats, err := statsTbl.GetStatistics(ctx)
 			if err != nil {
 				return false, err
 			}
 
-			if stats.HistogramMap() == nil {
+			if stats.Histograms == nil {
 				return true, nil
 			}
 
@@ -1471,7 +1488,7 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 }
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
-func NewInformationSchemaDatabase() Database {
+func NewInformationSchemaDatabase(writable bool) Database {
 	isDb := &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
@@ -1873,6 +1890,14 @@ func NewInformationSchemaDatabase() Database {
 			},
 		},
 	}
+
+	if writable || WritableInfoSchema {
+		isDb.tables[StatisticsTableName] = &alterableInfoSchemaTable{
+			informationSchemaTable: isDb.tables[StatisticsTableName].(*informationSchemaTable),
+			writer:                 newStatsEditor,
+		}
+	}
+
 	return isDb
 }
 
@@ -1960,6 +1985,75 @@ func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	return nil
 }
 
+type alterableInfoSchemaTable struct {
+	*informationSchemaTable
+	writer func(Catalog) RowUpdater
+}
+
+var _ UpdatableTable = (*alterableInfoSchemaTable)(nil)
+
+func (ais *alterableInfoSchemaTable) AssignCatalog(cat Catalog) Table {
+	ais.catalog = cat
+	return ais
+}
+
+// Updater implements sql.UpdatableTable
+func (ais *alterableInfoSchemaTable) Updater(_ *Context) RowUpdater {
+	return ais.writer(ais.catalog)
+}
+
+func newStatsEditor(c Catalog) RowUpdater {
+	return &statsEditor{c: c}
+}
+
+type statsEditor struct {
+	c Catalog
+}
+
+var _ RowUpdater = (*statsEditor)(nil)
+
+func (s *statsEditor) StatementBegin(ctx *Context) {}
+
+func (s *statsEditor) DiscardChanges(ctx *Context, errorEncountered error) error { return nil }
+
+func (s *statsEditor) StatementComplete(ctx *Context) error { return nil }
+
+func (s *statsEditor) Update(ctx *Context, old, new Row) error {
+	db, ok := old[1].(string)
+	if !ok {
+		return fmt.Errorf("expected string type databaseName; found type: '%T', value: '%v'", old[1], old[1])
+	}
+	tab, ok := old[2].(string)
+	if !ok {
+		return fmt.Errorf("expected string type tableName; found type: '%T', value: '%v'", old[2], old[2])
+	}
+
+	t, _, err := s.c.Table(ctx, db, tab)
+	if err != nil {
+		return err
+	}
+
+	st, ok := t.(StatisticsTable)
+	if !ok {
+		return fmt.Errorf("table does not support statistics: '%s'", tab)
+	}
+
+	card, ok := new[9].(int64)
+	if !ok {
+		return fmt.Errorf("expeceted integer cardinality; found type: '%T', value: '%s'", new[9], new[9])
+	}
+	stats := &TableStatistics{
+		RowCount:   uint64(card),
+		CreatedAt:  time.Now(),
+		Histograms: make(HistogramMap),
+	}
+	return st.SetStatistics(ctx, stats)
+}
+
+func (s *statsEditor) Close(context *Context) error {
+	return nil
+}
+
 func printTable(name string, tableSchema Schema) string {
 	p := NewTreePrinter()
 	_ = p.WriteNode("Table(%s)", name)
@@ -1981,13 +2075,13 @@ func partitionKey(tableName string) []byte {
 }
 
 func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
-	stats, err := st.Statistics(ctx)
+	stats, err := st.GetStatistics(ctx)
 	if err != nil {
 		return 0, err
 	}
 	var c uint64
 	if stats != nil {
-		c = stats.RowCount()
+		c = stats.RowCount
 	}
 
 	// cardinality is int64 type, but NumRows return uint64

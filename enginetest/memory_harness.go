@@ -134,7 +134,7 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	pro := memory.NewMemoryDBProvider(information_schema.NewInformationSchemaDatabase())
+	pro := memory.NewMemoryDBProvider(information_schema.NewInformationSchemaDatabase(true))
 	return NewEngineWithProviderSetup(t, m, pro, m.setupData)
 }
 

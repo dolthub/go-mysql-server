@@ -83,11 +83,11 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 	if !ok {
 		return 1000, nil
 	}
-	stats, err := tab.Statistics(c.ctx)
+	stats, err := tab.GetStatistics(c.ctx)
 	if err != nil {
 		return float64(0), err
 	}
-	return float64(stats.RowCount()), nil
+	return float64(stats.RowCount), nil
 }
 
 func (c *coster) costValues(v *values) (float64, error) {

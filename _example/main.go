@@ -55,7 +55,7 @@ func main() {
 	engine := sqle.NewDefault(
 		sql.NewDatabaseProvider(
 			createTestDatabase(ctx),
-			information_schema.NewInformationSchemaDatabase(),
+			information_schema.NewInformationSchemaDatabase(false),
 		))
 	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
 	// set up the "mysql" database to allow user creation and user checking when establishing connections. This is set

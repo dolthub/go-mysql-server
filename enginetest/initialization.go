@@ -113,7 +113,7 @@ func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
 func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database) *sqle.Engine {
-	databases = append(databases, information_schema.NewInformationSchemaDatabase())
+	databases = append(databases, information_schema.NewInformationSchemaDatabase(false))
 	provider := harness.NewDatabaseProvider(databases...)
 
 	return NewEngineWithProvider(t, harness, provider)
