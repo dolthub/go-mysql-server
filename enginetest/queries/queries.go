@@ -9530,7 +9530,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "SELECT i FROM myhistorytable AS OF abc",
-		ExpectedErr: sql.ErrInvalidAsOfExpression,
+		ExpectedErr: sql.ErrAsOfNotSupported,
 	},
 	{
 		Query:       "SELECT i FROM myhistorytable AS OF MAX(abc)",
