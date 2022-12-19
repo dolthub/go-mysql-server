@@ -32,7 +32,7 @@ func (r RowCount) Resolved() bool {
 
 // String implements sql.Expression
 func (r RowCount) String() string {
-	return "ROW_COUNT()"
+	return fmt.Sprintf("%s()", r.FunctionName())
 }
 
 // Type implements sql.Expression
@@ -99,7 +99,7 @@ func (r LastInsertId) Resolved() bool {
 
 // String implements sql.Expression
 func (r LastInsertId) String() string {
-	return fmt.Sprintf("LAST_INSERT_ID(%s)", r.Child)
+	return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
 }
 
 // Type implements sql.Expression
@@ -181,7 +181,7 @@ func (r FoundRows) Resolved() bool {
 
 // String implements sql.Expression
 func (r FoundRows) String() string {
-	return "FOUND_ROWS()"
+	return fmt.Sprintf("%s()", r.FunctionName())
 }
 
 // Type implements sql.Expression

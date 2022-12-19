@@ -55,7 +55,7 @@ func (s *StrCmp) Type() sql.Type {
 }
 
 func (s *StrCmp) String() string {
-	return fmt.Sprintf("strcmp(%s, %s)", s.Left, s.Right)
+	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.Left, s.Right)
 }
 
 // WithChildren implements the Expression interface.

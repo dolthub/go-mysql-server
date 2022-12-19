@@ -246,7 +246,7 @@ func (f *Greatest) String() string {
 	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("GREATEST(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -356,7 +356,7 @@ func (f *Least) String() string {
 	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("least(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ", "))
 }
 
 // WithChildren implements the Expression interface.

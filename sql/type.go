@@ -583,6 +583,12 @@ func IsDecimal(t Type) bool {
 	return ok
 }
 
+// IsBit checks if t is a BIT type.
+func IsBit(t Type) bool {
+	_, ok := t.(bitType)
+	return ok
+}
+
 // IsFloat checks if t is float type.
 func IsFloat(t Type) bool {
 	return t == Float32 || t == Float64
@@ -662,10 +668,34 @@ func IsTextOnly(t Type) bool {
 	}
 }
 
+// IsTimespan checks if t is a time (timespan)
+func IsTimespan(t Type) bool {
+	_, ok := t.(timespanType)
+	return ok
+}
+
 // IsTime checks if t is a timestamp, date or datetime
 func IsTime(t Type) bool {
 	_, ok := t.(datetimeType)
 	return ok
+}
+
+// IsDateType checks if t is a date
+func IsDateType(t Type) bool {
+	dt, ok := t.(datetimeType)
+	return ok && dt.baseType == sqltypes.Date
+}
+
+// IsDatetimeType checks if t is a datetime
+func IsDatetimeType(t Type) bool {
+	dt, ok := t.(datetimeType)
+	return ok && dt.baseType == sqltypes.Datetime
+}
+
+// IsTimestampType checks if t is a timestamp
+func IsTimestampType(t Type) bool {
+	dt, ok := t.(datetimeType)
+	return ok && dt.baseType == sqltypes.Timestamp
 }
 
 // IsEnum checks if t is a enum

@@ -282,12 +282,12 @@ var PlanTests = []QueryPlanTest{
 			"                 ├─ columns: [bus_routes.dst:2!null]\n" +
 			"                 └─ HashJoin\n" +
 			"                     ├─ Eq\n" +
-			"                     │   ├─ concat(bus_dst.dst:0!null, aa (longtext))\n" +
-			"                     │   └─ concat(bus_routes.origin:1!null, aa (longtext))\n" +
+			"                     │   ├─ concat(bus_dst.dst:0!null,aa (longtext))\n" +
+			"                     │   └─ concat(bus_routes.origin:1!null,aa (longtext))\n" +
 			"                     ├─ RecursiveTable(bus_dst)\n" +
 			"                     └─ HashLookup\n" +
-			"                         ├─ source: TUPLE(concat(bus_dst.dst:0!null, aa (longtext)))\n" +
-			"                         ├─ target: TUPLE(concat(bus_routes.origin:0!null, aa (longtext)))\n" +
+			"                         ├─ source: TUPLE(concat(bus_dst.dst:0!null,aa (longtext)))\n" +
+			"                         ├─ target: TUPLE(concat(bus_routes.origin:0!null,aa (longtext)))\n" +
 			"                         └─ CachedResults\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: bus_routes\n" +
@@ -1682,7 +1682,7 @@ inner join pq on true
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ cacheable: false\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [one_pk.pk:0!null, RAND() as r]\n" +
+			"                 ├─ columns: [one_pk.pk:0!null, rand() as r]\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk]\n" +
@@ -1717,7 +1717,7 @@ inner join pq on true
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ cacheable: false\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [one_pk.pk:0!null, RAND() as r]\n" +
+			"                 ├─ columns: [one_pk.pk:0!null, rand() as r]\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
 			"                     └─ columns: [pk]\n" +
@@ -1975,7 +1975,7 @@ inner join pq on true
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ mytable.i:2!null\n" +
 			"     │   │   └─ othertable.i2:1!null\n" +
-			"     │   └─ (NOT(concat(mytable.s:3!null, othertable.s2:0!null) IS NULL))\n" +
+			"     │   └─ (NOT(concat(mytable.s:3!null,othertable.s2:0!null) IS NULL))\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: othertable\n" +
 			"     │   └─ columns: [s2 i2]\n" +
@@ -2262,7 +2262,7 @@ inner join pq on true
 		Query: `SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ HashIn\n" +
-			" │   ├─ UPPER(mytable.s)\n" +
+			" │   ├─ upper(mytable.s)\n" +
 			" │   └─ TUPLE(FIRST ROW (longtext), SECOND ROW (longtext))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
@@ -3676,7 +3676,7 @@ inner join pq on true
 			"     └─ LookupJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ dt1.date_col:2\n" +
-			"         │   └─ DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY))\n" +
+			"         │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"         ├─ TableAlias(dt2)\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: datetime_table\n" +
@@ -3700,7 +3700,7 @@ inner join pq on true
 			"         └─ Project\n" +
 			"             ├─ columns: [dt1.i]\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ (dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"                 ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
 			"                 ├─ TableAlias(dt2)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: datetime_table\n" +
@@ -3722,7 +3722,7 @@ inner join pq on true
 			"         └─ LookupJoin\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ dt1.date_col:2\n" +
-			"             │   └─ DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY))\n" +
+			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
 			"             ├─ TableAlias(dt2)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: datetime_table\n" +
@@ -8189,7 +8189,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 	       PV6R5.NUMK2 <> 1
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [rn.id:0!null as id, concat(NSPLT.TW55N:29!null, FDNCN (longtext), LQNCX.TW55N:46!null) as X37NA, concat(XLZA5.TW55N:63!null, FDNCN (longtext), AFJMD.TW55N:80!null) as THWCS, rn.HVHRZ:3!null as HVHRZ]\n" +
+			" ├─ columns: [rn.id:0!null as id, concat(NSPLT.TW55N:29!null,FDNCN (longtext),LQNCX.TW55N:46!null) as X37NA, concat(XLZA5.TW55N:63!null,FDNCN (longtext),AFJMD.TW55N:80!null) as THWCS, rn.HVHRZ:3!null as HVHRZ]\n" +
 			" └─ Filter\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ (NOT(Eq\n" +
@@ -8289,7 +8289,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 	       rn.WNUNU IS NULL AND rn.HHVLX IS NULL
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sn.id:0!null as DRIWM, concat(OE56M.TW55N:29!null, FDNCN (longtext), CGFRZ.TW55N:46!null) as GRVSE, SKPM6.id:10!null as JIEVY, concat(V5SAY.TW55N:63!null, FDNCN (longtext), FQTHF.TW55N:80!null) as ENCM3, 1 (decimal(2,1)) as OHD3R]\n" +
+			" ├─ columns: [sn.id:0!null as DRIWM, concat(OE56M.TW55N:29!null,FDNCN (longtext),CGFRZ.TW55N:46!null) as GRVSE, SKPM6.id:10!null as JIEVY, concat(V5SAY.TW55N:63!null,FDNCN (longtext),FQTHF.TW55N:80!null) as ENCM3, 1 (decimal(2,1)) as OHD3R]\n" +
 			" └─ Filter\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ rn.WNUNU:21 IS NULL\n" +

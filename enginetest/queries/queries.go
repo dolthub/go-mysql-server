@@ -9055,6 +9055,22 @@ var InfoSchemaQueries = []QueryTest{
 		Query:    `SELECT * from information_schema.innodb_virtual`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query: `SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, SEQ_IN_INDEX, 'PRIMARY' AS PK_NAME 
+FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='PRIMARY' ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX;`,
+		Expected: []sql.Row{
+			{"mydb", "fk_tbl", "pk", 1, "PRIMARY"},
+			{"mydb", "mytable", "i", 1, "PRIMARY"},
+		},
+	},
+	{
+		Query: `show columns from fk_tbl from mydb`,
+		Expected: []sql.Row{
+			{"pk", "bigint", "NO", "PRI", "NULL", ""},
+			{"a", "bigint", "YES", "MUL", "NULL", ""},
+			{"b", "varchar(20)", "YES", "", "NULL", ""},
+		},
+	},
 }
 
 var SkippedInfoSchemaQueries = []QueryTest{
@@ -9154,8 +9170,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.statistics where table_name='t'",
 				Expected: []sql.Row{
-					{"def", "mydb", "t", 1, "mydb", "myindex", 1, "test_score", "A", int64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"def", "mydb", "t", 0, "mydb", "PRIMARY", 1, "pk", "A", int64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "t", 1, "mydb", "myindex", 1, "test_score", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "t", 0, "mydb", "PRIMARY", 1, "pk", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},
@@ -9208,11 +9224,11 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
 				Expected: []sql.Row{
 					{"test_table", "pk", nil, "NO"},
-					{"test_table", "col2", "LENGTH('he`Llo')", "YES"},
-					{"test_table", "col3", "GREATEST(pk, 2)", "YES"},
+					{"test_table", "col2", "length('he`Llo')", "YES"},
+					{"test_table", "col3", "greatest(pk,2)", "YES"},
 					{"test_table", "col4", "(5 + 5)", "YES"},
-					{"test_table", "col5", "NOW()", "YES"},
-					{"test_table", "create_time", "NOW(6)", "NO"},
+					{"test_table", "col5", "CURRENT_TIMESTAMP", "YES"},
+					{"test_table", "create_time", "CURRENT_TIMESTAMP(6)", "NO"},
 				},
 			},
 		},
@@ -9360,7 +9376,7 @@ var InfoSchemaScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"ptable", "id", "NO", "int", "int", "PRI"},
 					{"ptable", "id2", "NO", "int", "int", "UNI"},
-					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
+					{"ptable", "col1", "YES", "tinyint", "tinyint", ""},
 				},
 			},
 		},
@@ -9374,10 +9390,306 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'stable'",
 				Expected: []sql.Row{
-					{"stable", "geo", "POINT(2, 5)", "NO", "geometry", "geometry", "", nil},
+					{"stable", "geo", "point(2,5)", "NO", "geometry", "geometry", "", nil},
 					{"stable", "line", nil, "NO", "linestring", "linestring", "", nil},
 					{"stable", "pnt", nil, "YES", "point", "point", "", uint32(4326)},
 					{"stable", "pol", nil, "NO", "polygon", "polygon", "", uint32(0)},
+				},
+			},
+		},
+	},
+	{
+		Name: "column specific tests information_schema.statistics table",
+		SetUpScript: []string{
+			`create table ptable (i int primary key, b blob, c char(10))`,
+			`alter table ptable add unique index (c(3))`,
+			`alter table ptable add unique index (b(4))`,
+			`create index b_and_c on ptable (b(5), c(6))`,
+			`insert into ptable values (0 , ('abc'), 'abc'), (1 , ('bcd'), 'bcdefg'), (2 , null, 'bceff')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select index_name, seq_in_index, column_name, sub_part from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
+				Expected: []sql.Row{
+					{"PRIMARY", 1, "i", nil},
+					{"b", 1, "b", 4},
+					{"b_and_c", 1, "b", 5},
+					{"b_and_c", 2, "c", 6},
+					{"c", 1, "c", 3},
+				},
+			},
+			{
+				// TODO: cardinality not supported
+				Skip:     true,
+				Query:    `select index_name, seq_in_index, column_name, cardinality, sub_part from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
+				Expected: []sql.Row{{2}, {2}, {2}, {2}, {2}},
+			},
+			{
+				Query: `SELECT seq_in_index, sub_part, index_name, index_type, CASE non_unique WHEN 0 THEN 'TRUE' ELSE 'FALSE' END AS is_unique, column_name
+	FROM information_schema.statistics WHERE table_schema='mydb' AND table_name='ptable' ORDER BY index_name, seq_in_index;`,
+				Expected: []sql.Row{
+					{1, nil, "PRIMARY", "BTREE", "TRUE", "i"},
+					{1, 4, "b", "BTREE", "TRUE", "b"},
+					{1, 5, "b_and_c", "BTREE", "FALSE", "b"},
+					{2, 6, "b_and_c", "BTREE", "FALSE", "c"},
+					{1, 3, "c", "BTREE", "TRUE", "c"},
+				},
+			},
+		},
+	},
+	{
+		Name: "column specific tests on information_schema.columns table",
+		SetUpScript: []string{
+			`CREATE TABLE all_types (
+pk int NOT NULL,
+binary_1 binary(1) DEFAULT "1",
+big_int bigint DEFAULT "1",
+bit_2 bit(2) DEFAULT 2,
+some_blob blob DEFAULT ("abc"),
+char_1 char(1) DEFAULT "A",
+some_date date DEFAULT "2022-02-22",
+date_time datetime DEFAULT "2022-02-22 22:22:21",
+decimal_52 decimal(5,2) DEFAULT "994.45",
+some_double double DEFAULT "1.1",
+some_enum enum('s','m','l') DEFAULT "s",
+some_float float DEFAULT "4.4",
+some_geometry geometry srid 4326 DEFAULT (POINT(1, 2)),
+some_int int DEFAULT "3",
+some_json json DEFAULT (JSON_OBJECT("a", 1)),
+line_string linestring DEFAULT (LINESTRING(POINT(0, 0),POINT(1, 2))),
+long_blob longblob DEFAULT ("abc"),
+long_text longtext DEFAULT ("abc"),
+medium_blob mediumblob DEFAULT ("abc"),
+medium_int mediumint DEFAULT "7",
+medium_text mediumtext DEFAULT ("abc"),
+some_point point DEFAULT (POINT(2, 2)),
+some_polygon polygon DEFAULT NULL,
+some_set set('one','two') DEFAULT "one,two",
+small_int smallint DEFAULT "5",
+some_text text DEFAULT ("abc"),
+time_6 time(6) DEFAULT "11:59:59.000010",
+time_stamp timestamp DEFAULT (CURRENT_TIMESTAMP()),
+tiny_blob tinyblob DEFAULT ("abc"),
+tiny_int tinyint DEFAULT "4",
+tiny_text tinytext DEFAULT ("abc"),
+var_char varchar(255) DEFAULT "varchar value",
+var_binary varbinary(255) DEFAULT "11111",
+some_year year DEFAULT "2023",
+PRIMARY KEY (pk)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT table_catalog, table_schema, table_name, column_name, ordinal_position
+FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_types' ORDER BY ORDINAL_POSITION`,
+				Expected: []sql.Row{
+					{"def", "mydb", "all_types", "pk", uint32(1)},
+					{"def", "mydb", "all_types", "binary_1", uint32(2)},
+					{"def", "mydb", "all_types", "big_int", uint32(3)},
+					{"def", "mydb", "all_types", "bit_2", uint32(4)},
+					{"def", "mydb", "all_types", "some_blob", uint32(5)},
+					{"def", "mydb", "all_types", "char_1", uint32(6)},
+					{"def", "mydb", "all_types", "some_date", uint32(7)},
+					{"def", "mydb", "all_types", "date_time", uint32(8)},
+					{"def", "mydb", "all_types", "decimal_52", uint32(9)},
+					{"def", "mydb", "all_types", "some_double", uint32(10)},
+					{"def", "mydb", "all_types", "some_enum", uint32(11)},
+					{"def", "mydb", "all_types", "some_float", uint32(12)},
+					{"def", "mydb", "all_types", "some_geometry", uint32(13)},
+					{"def", "mydb", "all_types", "some_int", uint32(14)},
+					{"def", "mydb", "all_types", "some_json", uint32(15)},
+					{"def", "mydb", "all_types", "line_string", uint32(16)},
+					{"def", "mydb", "all_types", "long_blob", uint32(17)},
+					{"def", "mydb", "all_types", "long_text", uint32(18)},
+					{"def", "mydb", "all_types", "medium_blob", uint32(19)},
+					{"def", "mydb", "all_types", "medium_int", uint32(20)},
+					{"def", "mydb", "all_types", "medium_text", uint32(21)},
+					{"def", "mydb", "all_types", "some_point", uint32(22)},
+					{"def", "mydb", "all_types", "some_polygon", uint32(23)},
+					{"def", "mydb", "all_types", "some_set", uint32(24)},
+					{"def", "mydb", "all_types", "small_int", uint32(25)},
+					{"def", "mydb", "all_types", "some_text", uint32(26)},
+					{"def", "mydb", "all_types", "time_6", uint32(27)},
+					{"def", "mydb", "all_types", "time_stamp", uint32(28)},
+					{"def", "mydb", "all_types", "tiny_blob", uint32(29)},
+					{"def", "mydb", "all_types", "tiny_int", uint32(30)},
+					{"def", "mydb", "all_types", "tiny_text", uint32(31)},
+					{"def", "mydb", "all_types", "var_char", uint32(32)},
+					{"def", "mydb", "all_types", "var_binary", uint32(33)},
+					{"def", "mydb", "all_types", "some_year", uint32(34)},
+				},
+			},
+			{
+				Query: `SELECT column_name, column_default, is_nullable, data_type, column_type, character_maximum_length, character_octet_length
+FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_types' ORDER BY ORDINAL_POSITION`,
+				Expected: []sql.Row{
+					{"pk", nil, "NO", "int", "int", nil, nil},
+					{"binary_1", "0x31", "YES", "binary", "binary(1)", 1, 1},
+					{"big_int", "1", "YES", "bigint", "bigint", nil, nil},
+					{"bit_2", "b'10'", "YES", "bit", "bit(2)", nil, nil},
+					{"some_blob", "'abc'", "YES", "blob", "blob", 65535, 65535},
+					{"char_1", "A", "YES", "char", "char(1)", 1, 4},
+					{"some_date", "2022-02-22 00:00:00", "YES", "date", "date", nil, nil},
+					{"date_time", "2022-02-22 22:22:21", "YES", "datetime", "datetime", nil, nil},
+					{"decimal_52", "994.45", "YES", "decimal", "decimal(5,2)", nil, nil},
+					{"some_double", "1.1", "YES", "double", "double", nil, nil},
+					{"some_enum", "s", "YES", "enum", "enum('s','m','l')", 1, 4},
+					{"some_float", "4.4", "YES", "float", "float", nil, nil},
+					{"some_geometry", "point(1,2)", "YES", "geometry", "geometry", nil, nil},
+					{"some_int", "3", "YES", "int", "int", nil, nil},
+					{"some_json", "json_object('a',1)", "YES", "json", "json", nil, nil},
+					{"line_string", "linestring(point(0,0),point(1,2))", "YES", "linestring", "linestring", nil, nil},
+					{"long_blob", "'abc'", "YES", "longblob", "longblob", 4294967295, 4294967295},
+					{"long_text", "'abc'", "YES", "longtext", "longtext", 1073741823, 4294967295},
+					{"medium_blob", "'abc'", "YES", "mediumblob", "mediumblob", 16777215, 16777215},
+					{"medium_int", "7", "YES", "mediumint", "mediumint", nil, nil},
+					{"medium_text", "'abc'", "YES", "mediumtext", "mediumtext", 4194303, 16777215},
+					{"some_point", "point(2,2)", "YES", "point", "point", nil, nil},
+					{"some_polygon", nil, "YES", "polygon", "polygon", nil, nil},
+					{"some_set", "one,two", "YES", "set", "set('one','two')", 7, 28},
+					{"small_int", "5", "YES", "smallint", "smallint", nil, nil},
+					{"some_text", "'abc'", "YES", "text", "text", 16383, 65535},
+					{"time_6", "11:59:59.000010", "YES", "time", "time(6)", nil, nil},
+					{"time_stamp", "CURRENT_TIMESTAMP", "YES", "timestamp", "timestamp", nil, nil},
+					{"tiny_blob", "'abc'", "YES", "tinyblob", "tinyblob", 255, 255},
+					{"tiny_int", "4", "YES", "tinyint", "tinyint", nil, nil},
+					{"tiny_text", "'abc'", "YES", "tinytext", "tinytext", 63, 255},
+					{"var_char", "varchar value", "YES", "varchar", "varchar(255)", 255, 1020},
+					{"var_binary", "0x3131313131", "YES", "varbinary", "varbinary(255)", 255, 255},
+					{"some_year", "2023", "YES", "year", "year", nil, nil},
+				},
+			},
+			{
+				Query: `SELECT column_name, column_type, numeric_precision, numeric_scale, datetime_precision, character_set_name, collation_name, column_key, extra, column_comment, generation_expression, srs_id
+FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_types' ORDER BY ORDINAL_POSITION`,
+				Expected: []sql.Row{
+					{"pk", "int", 10, 0, nil, nil, nil, "PRI", "", "", "", nil},
+					{"binary_1", "binary(1)", nil, nil, nil, nil, nil, "", "", "", "", nil},
+					{"big_int", "bigint", 19, 0, nil, nil, nil, "", "", "", "", nil},
+					{"bit_2", "bit(2)", 2, nil, nil, nil, nil, "", "", "", "", nil},
+					{"some_blob", "blob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"char_1", "char(1)", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
+					{"some_date", "date", nil, nil, nil, nil, nil, "", "", "", "", nil},
+					{"date_time", "datetime", nil, nil, 0, nil, nil, "", "", "", "", nil},
+					{"decimal_52", "decimal(5,2)", 5, 2, nil, nil, nil, "", "", "", "", nil},
+					{"some_double", "double", 22, nil, nil, nil, nil, "", "", "", "", nil},
+					{"some_enum", "enum('s','m','l')", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
+					{"some_float", "float", 12, nil, nil, nil, nil, "", "", "", "", nil},
+					{"some_geometry", "geometry", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", uint32(4326)},
+					{"some_int", "int", 10, 0, nil, nil, nil, "", "", "", "", nil},
+					{"some_json", "json", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"line_string", "linestring", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"long_blob", "longblob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"long_text", "longtext", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
+					{"medium_blob", "mediumblob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"medium_int", "mediumint", 7, 0, nil, nil, nil, "", "", "", "", nil},
+					{"medium_text", "mediumtext", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
+					{"some_point", "point", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"some_polygon", "polygon", nil, nil, nil, nil, nil, "", "", "", "", nil},
+					{"some_set", "set('one','two')", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
+					{"small_int", "smallint", 5, 0, nil, nil, nil, "", "", "", "", nil},
+					{"some_text", "text", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
+					{"time_6", "time(6)", nil, nil, 6, nil, nil, "", "", "", "", nil},
+					{"time_stamp", "timestamp", nil, nil, 0, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"tiny_blob", "tinyblob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"tiny_int", "tinyint", 3, 0, nil, nil, nil, "", "", "", "", nil},
+					{"tiny_text", "tinytext", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
+					{"var_char", "varchar(255)", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
+					{"var_binary", "varbinary(255)", nil, nil, nil, nil, nil, "", "", "", "", nil},
+					{"some_year", "year", nil, nil, nil, nil, nil, "", "", "", "", nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "column specific tests on information_schema.tables table",
+		SetUpScript: []string{
+			`create table bigtable (text varchar(20) primary key, number mediumint, pt point default (POINT(1,1)))`,
+			`insert into bigtable values ('a',4,POINT(1,4)),('b',2,null),('c',0,null),('d',2,POINT(1, 2)),('e',2,POINT(1, 2))`,
+			`create index bigtable_number on bigtable (number)`,
+			`CREATE VIEW myview1 AS SELECT * FROM mytable`,
+			`CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT table_catalog, table_schema, table_name, table_type, table_comment FROM information_schema.tables WHERE table_schema = 'mydb' and table_type IN ('VIEW') ORDER BY TABLE_NAME;`,
+				Expected: []sql.Row{
+					{"def", "mydb", "myview", "VIEW", "VIEW"},
+					{"def", "mydb", "myview1", "VIEW", "VIEW"},
+					{"def", "mydb", "myview2", "VIEW", "VIEW"},
+				},
+			},
+			{
+				Query: "SELECT table_rows as count FROM information_schema.TABLES WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='bigtable';",
+				Expected: []sql.Row{
+					{uint64(5)},
+				},
+			},
+		},
+	},
+	{
+		Name: "column specific tests on information_schema table and check constraints",
+		SetUpScript: []string{
+			`CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))`,
+			`ALTER TABLE checks ADD CONSTRAINT chk1 CHECK (B > 0)`,
+			`ALTER TABLE checks ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED`,
+			`ALTER TABLE checks ADD CONSTRAINT chk3 CHECK (B > 1)`,
+			`ALTER TABLE checks ADD CONSTRAINT chk4 CHECK (upper(C) = c)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
+FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
+WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
+				Expected: []sql.Row{
+					{"chk1", "(b > 0)", "YES"},
+					{"chk2", "(b > 0)", "NO"},
+					{"chk3", "(b > 1)", "YES"},
+					{"chk4", "(upper(c) = c)", "YES"},
+				},
+			},
+			{
+				Query: `select * from information_schema.table_constraints where table_schema = 'mydb' and table_name = 'checks';`,
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "mydb", "checks", "PRIMARY KEY", "YES"},
+					{"def", "mydb", "chk1", "mydb", "checks", "CHECK", "YES"},
+					{"def", "mydb", "chk2", "mydb", "checks", "CHECK", "NO"},
+					{"def", "mydb", "chk3", "mydb", "checks", "CHECK", "YES"},
+					{"def", "mydb", "chk4", "mydb", "checks", "CHECK", "YES"},
+				},
+			},
+			{
+				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
+				Expected: []sql.Row{
+					{"def", "mydb", "chk1", "(b > 0)"},
+					{"def", "mydb", "chk2", "(b > 0)"},
+					{"def", "mydb", "chk3", "(b > 1)"},
+					{"def", "mydb", "chk4", "(upper(c) = c)"},
+				},
+			},
+		},
+	},
+	{
+		Name: "column specific tests on information_schema.routines table",
+		SetUpScript: []string{
+			`CREATE DEFINER=root@localhost PROCEDURE count_i_from_mytable(OUT total_i INT)
+    READS SQL DATA
+BEGIN
+     SELECT SUM(i)
+     FROM mytable
+     INTO total_i;
+END ;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select specific_name, routine_catalog, routine_schema, routine_name, routine_type, data_type,
+routine_body, external_language, parameter_style, is_deterministic, sql_data_access, security_type, sql_mode, 
+routine_comment, definer, character_set_client, collation_connection, database_collation
+from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
+				Expected: []sql.Row{
+					{"count_i_from_mytable", "def", "mydb", "count_i_from_mytable", "PROCEDURE", "", "SQL", "SQL", "SQL", "NO",
+						"READS SQL DATA", "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"", "`root`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 		},

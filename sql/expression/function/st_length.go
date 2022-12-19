@@ -58,7 +58,7 @@ func (s *STLength) String() string {
 	for i, arg := range s.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_LENGTH(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

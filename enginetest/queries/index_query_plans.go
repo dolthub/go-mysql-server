@@ -102,7 +102,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `update pref_index_t4 set v1 = concat(v1, 'z') where v1 >= 'a'`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t4.v1:1 = concat(pref_index_t4.v1:1, z (longtext)))\n" +
+			"     └─ UpdateSource(SET pref_index_t4.v1:1 = concat(pref_index_t4.v1:1,z (longtext)))\n" +
 			"         └─ Filter\n" +
 			"             ├─ GreaterThanOrEqual\n" +
 			"             │   ├─ pref_index_t4.v1:1\n" +
@@ -216,7 +216,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `update pref_index_t3 set v1 = concat(v1, 'z') where v1 >= 'a'`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t3.v1:0 = concat(pref_index_t3.v1:0, z (longtext)))\n" +
+			"     └─ UpdateSource(SET pref_index_t3.v1:0 = concat(pref_index_t3.v1:0,z (longtext)))\n" +
 			"         └─ Filter\n" +
 			"             ├─ GreaterThanOrEqual\n" +
 			"             │   ├─ pref_index_t3.v1:0\n" +
@@ -330,7 +330,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `update pref_index_t2 set v1 = concat(v1, 'Z') where v1 >= 'A'`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t2.v1:1 = concat(pref_index_t2.v1:1, Z (longtext)))\n" +
+			"     └─ UpdateSource(SET pref_index_t2.v1:1 = concat(pref_index_t2.v1:1,Z (longtext)))\n" +
 			"         └─ Filter\n" +
 			"             ├─ GreaterThanOrEqual\n" +
 			"             │   ├─ pref_index_t2.v1:1\n" +
@@ -459,7 +459,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `update pref_index_t1 set v1 = concat(v1, 'z') where v1 >= 'a'`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t1.v1:1 = concat(pref_index_t1.v1:1, z (longtext)))\n" +
+			"     └─ UpdateSource(SET pref_index_t1.v1:1 = concat(pref_index_t1.v1:1,z (longtext)))\n" +
 			"         └─ Filter\n" +
 			"             ├─ GreaterThanOrEqual\n" +
 			"             │   ├─ pref_index_t1.v1:1\n" +

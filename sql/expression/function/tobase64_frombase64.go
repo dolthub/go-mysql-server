@@ -108,7 +108,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (t *ToBase64) String() string {
-	return fmt.Sprintf("TO_BASE64(%s)", t.Child)
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child)
 }
 
 // IsNullable implements the Expression interface.
@@ -179,7 +179,7 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (t *FromBase64) String() string {
-	return fmt.Sprintf("FROM_BASE64(%s)", t.Child)
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child)
 }
 
 // IsNullable implements the Expression interface.

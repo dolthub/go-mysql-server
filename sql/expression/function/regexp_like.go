@@ -110,7 +110,7 @@ func (r *RegexpLike) String() string {
 	for _, e := range r.Children() {
 		args = append(args, e.String())
 	}
-	return fmt.Sprintf("regexp_like(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
 }
 
 func (r *RegexpLike) compile(ctx *sql.Context) {

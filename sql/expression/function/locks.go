@@ -86,7 +86,7 @@ func (nl *NamedLockFunction) GetLockName(ctx *sql.Context, row sql.Row) (*string
 
 // String implements the fmt.Stringer interface.
 func (nl *NamedLockFunction) String() string {
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(nl.funcName), nl.Child.String())
+	return fmt.Sprintf("%s(%s)", strings.ToLower(nl.funcName), nl.Child.String())
 }
 
 // IsNullable implements the Expression interface.
