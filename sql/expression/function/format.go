@@ -73,7 +73,7 @@ func (f *Format) IsNullable() bool {
 }
 
 func (f *Format) String() string {
-	return fmt.Sprintf("format(%s, %s, %s)", f.NumValue, f.NumDecimalPlaces, f.Locale)
+	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.NumValue, f.NumDecimalPlaces, f.Locale)
 }
 
 // Eval implements the Expression interface.

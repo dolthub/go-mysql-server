@@ -53,12 +53,26 @@ func TestAggGen(t *testing.T) {
             return false
         }
 
-        func (a *Test)  String() string {
-            res := fmt.Sprintf("TEST(%s)", a.Child)
-            if a.window != nil {
-                res = res + " " + a.window.String()
-            }
-            return res
+        func (a *Test) String() string {
+          if a.window != nil {
+            pr := sql.NewTreePrinter()
+            _ = pr.WriteNode("TEST")
+        	    children := []string{a.window.String(), a.Child.String()}
+            pr.WriteChildren(children...)
+            return pr.String()
+          }
+          return fmt.Sprintf("TEST(%s)", a.Child)
+        }
+
+        func (a *Test) DebugString() string {
+          if a.window != nil {
+            pr := sql.NewTreePrinter()
+            _ = pr.WriteNode("TEST")
+        	    children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+            pr.WriteChildren(children...)
+            return pr.String()
+          }
+          return fmt.Sprintf("TEST(%s)", sql.DebugString(a.Child))
         }
 
         func (a *Test) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {

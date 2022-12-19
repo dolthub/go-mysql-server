@@ -161,7 +161,7 @@ func (l *Log) Description() string {
 }
 
 func (l *Log) String() string {
-	return fmt.Sprintf("log(%s, %s)", l.Left, l.Right)
+	return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.Left, l.Right)
 }
 
 // WithChildren implements the Expression interface.

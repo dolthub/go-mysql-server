@@ -162,9 +162,17 @@ func validateTruncate(ctx *sql.Context, db sql.Database, tbl sql.Node) (bool, er
 			if err != nil {
 				return true, err
 			}
-			for _, fk := range fks {
-				if strings.ToLower(fk.ParentTable) == tableName {
-					return false, sql.ErrTruncateReferencedFromForeignKey.New(tableName, fk.Name, tableNameToCheck)
+
+			fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
+			if err != nil {
+				return true, err
+			}
+
+			if fkChecks.(int8) == 1 {
+				for _, fk := range fks {
+					if strings.ToLower(fk.ParentTable) == tableName {
+						return false, sql.ErrTruncateReferencedFromForeignKey.New(tableName, fk.Name, tableNameToCheck)
+					}
 				}
 			}
 		}

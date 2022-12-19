@@ -57,7 +57,7 @@ func (td *TimeDiff) Description() string {
 func (td *TimeDiff) Type() sql.Type { return sql.Time }
 
 func (td *TimeDiff) String() string {
-	return fmt.Sprintf("TIMEDIFF(%s, %s)", td.Left, td.Right)
+	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.Left, td.Right)
 }
 
 // WithChildren implements the Expression interface.

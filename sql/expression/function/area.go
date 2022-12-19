@@ -49,7 +49,7 @@ func (a *Area) Type() sql.Type {
 }
 
 func (a *Area) String() string {
-	return fmt.Sprintf("ST_AREA(%s)", a.Child)
+	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.Child)
 }
 
 // WithChildren implements the Expression interface.

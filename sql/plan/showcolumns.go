@@ -163,6 +163,12 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			defaultVal = "NULL"
 		}
 
+		extra := col.Extra
+		// If extra is not defined, fill it here.
+		if extra == "" && !col.Default.IsLiteral() {
+			extra = fmt.Sprintf("DEFAULT_GENERATED")
+		}
+
 		if s.Full {
 			row = sql.Row{
 				col.Name,
@@ -171,7 +177,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				null,
 				key,
 				defaultVal,
-				col.Extra,
+				extra,
 				"", // Privileges
 				col.Comment,
 			}
@@ -182,7 +188,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				null,
 				key,
 				defaultVal,
-				col.Extra,
+				extra,
 			}
 		}
 

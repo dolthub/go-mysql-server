@@ -40,7 +40,7 @@ func NewUnaryFunc(arg sql.Expression, name string, returnType sql.Type) *UnaryFu
 
 // FunctionName implements sql.FunctionExpression
 func (uf *UnaryFunc) FunctionName() string {
-	return uf.Name
+	return strings.ToLower(uf.Name)
 }
 
 // EvalChild is a convenience function for safely evaluating a child expression
@@ -54,7 +54,7 @@ func (uf *UnaryFunc) EvalChild(ctx *sql.Context, row sql.Row) (interface{}, erro
 
 // String implements the fmt.Stringer interface.
 func (uf *UnaryFunc) String() string {
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(uf.Name), uf.Child.String())
+	return fmt.Sprintf("%s(%s)", uf.FunctionName(), uf.Child.String())
 }
 
 // Type implements the Expression interface.

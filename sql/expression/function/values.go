@@ -59,7 +59,7 @@ func (v *Values) Description() string {
 
 // String implements sql.FunctionExpression.
 func (v *Values) String() string {
-	return fmt.Sprintf("VALUES(%s)", v.Child.String())
+	return fmt.Sprintf("%s(%s)", v.FunctionName(), v.Child.String())
 }
 
 // Type implements sql.FunctionExpression.

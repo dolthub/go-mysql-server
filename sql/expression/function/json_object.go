@@ -22,11 +22,10 @@ import (
 )
 
 // JSON_OBJECT([key, val[, key, val] ...])
-//
+// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-object
+
 // JSONObject Evaluates a (possibly empty) list of key-value pairs and returns a JSON object containing those pairs. An
 // error occurs if any key name is NULL or the number of arguments is odd.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-object
 type JSONObject struct {
 	keyValPairs []sql.Expression
 }
@@ -75,7 +74,7 @@ func (j JSONObject) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("JSON_OBJECT(%s)", strings.Join(parts, ", "))
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
 func (j JSONObject) Type() sql.Type {

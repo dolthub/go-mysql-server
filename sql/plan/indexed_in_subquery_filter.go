@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -69,15 +70,21 @@ func (i *IndexedInSubqueryFilter) Dispose() {
 
 func (i *IndexedInSubqueryFilter) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IndexedInSubqueryFilter(%s IN (%s))", i.getField, i.subquery)
-	_ = pr.WriteChildren(i.child.String())
+	_ = pr.WriteNode("IndexedInSubqueryFilter")
+	children := []string{fmt.Sprintf("field: %s", i.getField), fmt.Sprintf("subquery: %s", i.subquery), i.child.String()}
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
 func (i *IndexedInSubqueryFilter) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IndexedInSubqueryFilter(%s IN (%s))", sql.DebugString(i.getField), sql.DebugString(i.subquery))
-	_ = pr.WriteChildren(sql.DebugString(i.child))
+	_ = pr.WriteNode("IndexedInSubqueryFilter")
+	children := []string{
+		fmt.Sprintf("field: %s", sql.DebugString(i.getField)),
+		fmt.Sprintf("subquery: %s", sql.DebugString(i.subquery)),
+		i.child.String(),
+	}
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 

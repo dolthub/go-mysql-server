@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"io"
 	"unicode/utf8"
 
 	"github.com/cespare/xxhash"
@@ -813,16 +814,15 @@ func (c CollationID) Collation() Collation {
 	return collationArray[c]
 }
 
-// HashToUint returns a hash of the given decoded string based on the collation. Collations take each rune's weight into
-// account, therefore two strings with technically different contents may hash to the same value, as the collation
+// WriteWeightString writes the weights of each codepoint in the string into the given io.Writer.
+// Two strings with technically different contents may generate the same WeightString to the same value, as the collation
 // considers them the same string.
-func (c CollationID) HashToUint(str string) (uint64, error) {
-	hash := xxhash.New()
+func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 	if c == Collation_binary {
 		// Binary strings are almost always malformed due to their usage, therefore we treat them differently
 		_, err := hash.Write(encodings.StringToBytes(str))
 		if err != nil {
-			return 0, err
+			return err
 		}
 	} else {
 		getRuneWeight := collationArray[c].Sorter
@@ -830,7 +830,7 @@ func (c CollationID) HashToUint(str string) (uint64, error) {
 			// All strings (should) have been decoded at this point, so we can rely on Go's internal string encoding
 			runeFromString, strRead := utf8.DecodeRuneInString(str)
 			if strRead == 0 || strRead == utf8.RuneError {
-				return 0, ErrCollationMalformedString.New("hashing")
+				return ErrCollationMalformedString.New("hashing")
 			}
 			runeWeight := getRuneWeight(runeFromString)
 			_, err := hash.Write([]byte{
@@ -840,10 +840,22 @@ func (c CollationID) HashToUint(str string) (uint64, error) {
 				byte(runeWeight >> 24),
 			})
 			if err != nil {
-				return 0, err
+				return err
 			}
 			str = str[strRead:]
 		}
+	}
+	return nil
+}
+
+// HashToUint returns a hash of the given decoded string based on the collation. Collations take each rune's weight into
+// account, therefore two strings with technically different contents may hash to the same value, as the collation
+// considers them the same string.
+func (c CollationID) HashToUint(str string) (uint64, error) {
+	hash := xxhash.New()
+	err := c.WriteWeightString(hash, str)
+	if err != nil {
+		return 0, err
 	}
 	return hash.Sum64(), nil
 }
