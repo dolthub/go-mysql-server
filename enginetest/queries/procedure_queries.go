@@ -1431,6 +1431,24 @@ END;`,
 			},
 		},
 	},
+	{
+		Name: "stored procedure with CTE",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	WITH cte as (SELECT 1234)
+	SELECT * FROM cte;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{1234},
+				},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{

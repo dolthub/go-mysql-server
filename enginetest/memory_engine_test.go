@@ -183,27 +183,14 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
-
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "create table as select distinct",
-			SetUpScript: []string{
-				"CREATE TABLE t1 (a int, b varchar(10));",
-				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
-			},
+			Name:        "DELETE ME",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "create table t2 as select distinct b, a from t1;",
+					Query:    "create procedure p () with t as (select 123) select * from t;",
 					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
-				},
-				{
-					Query: "select * from t2 order by a;",
-					Expected: []sql.Row{
-						{"a", 1},
-						{"b", 2},
-						{"c", 3},
-					},
 				},
 			},
 		},
@@ -215,11 +202,46 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+	//t.Skip()
+	//
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name: "create table as select distinct",
+	//		SetUpScript: []string{
+	//			"CREATE TABLE t1 (a int, b varchar(10));",
+	//			"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
+	//		},
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query:    "create table t2 as select distinct b, a from t1;",
+	//				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+	//			},
+	//			{
+	//				Query: "select * from t2 order by a;",
+	//				Expected: []sql.Row{
+	//					{"a", 1},
+	//					{"b", 2},
+	//					{"c", 3},
+	//				},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	engine.Analyzer.Debug = true
+	//	engine.Analyzer.Verbose = true
+	//
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
