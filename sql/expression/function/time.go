@@ -92,7 +92,7 @@ func (y *Year) Description() string {
 	return "returns the year of the given date."
 }
 
-func (y *Year) String() string { return fmt.Sprintf("YEAR(%s)", y.Child) }
+func (y *Year) String() string { return fmt.Sprintf("%s(%s)", y.FunctionName(), y.Child) }
 
 // Type implements the Expression interface.
 func (y *Year) Type() sql.Type { return sql.Int32 }
@@ -132,7 +132,7 @@ func (m *Month) Description() string {
 	return "returns the month of the given date."
 }
 
-func (m *Month) String() string { return fmt.Sprintf("MONTH(%s)", m.Child) }
+func (m *Month) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
 func (m *Month) Type() sql.Type { return sql.Int32 }
@@ -172,7 +172,7 @@ func (d *Day) Description() string {
 	return "returns the day of the month (0-31)."
 }
 
-func (d *Day) String() string { return fmt.Sprintf("DAY(%s)", d.Child) }
+func (d *Day) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
 
 // Type implements the Expression interface.
 func (d *Day) Type() sql.Type { return sql.Int32 }
@@ -213,7 +213,7 @@ func (d *Weekday) Description() string {
 	return "returns the weekday of the given date."
 }
 
-func (d *Weekday) String() string { return fmt.Sprintf("WEEKDAY(%s)", d.Child) }
+func (d *Weekday) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
 
 // Type implements the Expression interface.
 func (d *Weekday) Type() sql.Type { return sql.Int32 }
@@ -253,7 +253,7 @@ func (h *Hour) Description() string {
 	return "returns the hours of the given date."
 }
 
-func (h *Hour) String() string { return fmt.Sprintf("HOUR(%s)", h.Child) }
+func (h *Hour) String() string { return fmt.Sprintf("%s(%s)", h.FunctionName(), h.Child) }
 
 // Type implements the Expression interface.
 func (h *Hour) Type() sql.Type { return sql.Int32 }
@@ -293,7 +293,7 @@ func (m *Minute) Description() string {
 	return "returns the minutes of the given date."
 }
 
-func (m *Minute) String() string { return fmt.Sprintf("MINUTE(%d)", m.Child) }
+func (m *Minute) String() string { return fmt.Sprintf("%s(%d)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
 func (m *Minute) Type() sql.Type { return sql.Int32 }
@@ -333,7 +333,7 @@ func (s *Second) Description() string {
 	return "returns the seconds of the given date."
 }
 
-func (s *Second) String() string { return fmt.Sprintf("SECOND(%s)", s.Child) }
+func (s *Second) String() string { return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child) }
 
 // Type implements the Expression interface.
 func (s *Second) Type() sql.Type { return sql.Int32 }

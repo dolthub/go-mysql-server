@@ -110,9 +110,21 @@ func (c *Convert) Type() sql.Type {
 	}
 }
 
-// Name implements the Expression interface.
+// String implements the Stringer interface.
 func (c *Convert) String() string {
 	return fmt.Sprintf("convert(%v, %v)", c.Child, c.castToType)
+}
+
+// DebugString implements the Expression interface.
+func (c *Convert) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("convert")
+	children := []string{
+		fmt.Sprintf("type: %v", c.castToType),
+		fmt.Sprintf(sql.DebugString(c.Child)),
+	}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // WithChildren implements the Expression interface.

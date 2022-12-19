@@ -65,8 +65,9 @@ func (w *Window) DebugString() string {
 	for i, expr := range w.SelectExprs {
 		exprs[i] = sql.DebugString(expr)
 	}
-	_ = pr.WriteNode("Window(%s)", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(sql.DebugString(w.Child))
+	_ = pr.WriteNode("Window")
+	exprs = append(exprs, sql.DebugString(w.Child))
+	_ = pr.WriteChildren(exprs...)
 	return pr.String()
 }
 

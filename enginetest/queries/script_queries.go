@@ -128,11 +128,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
-				Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
+				Expected: []sql.Row{{"enum", "enum('x','X','y','Y')"}},
 			},
 		},
 	},
@@ -159,10 +159,8 @@ var ScriptTests = []ScriptTest{
 					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", "NULL", ""}},
 			},
 			{
-				Query: "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{
-					"enum('abc','XYZ')",
-					"enum('abc','XYZ')"}},
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
 			},
 			{
 				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
@@ -1769,8 +1767,8 @@ var ScriptTests = []ScriptTest{
 				Query: "show create table t4",
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
-						"  `a` int DEFAULT (FLOOR(1)),\n" +
-						"  `b` int DEFAULT (coalesce(a, 10))\n" +
+						"  `a` int DEFAULT (floor(1)),\n" +
+						"  `b` int DEFAULT (coalesce(a,10))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -2187,7 +2185,7 @@ var ScriptTests = []ScriptTest{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"val", "int", "YES", "", "((pk * 2))", ""}, // TODO: MySQL would return (`pk` * 2)
+					{"val", "int", "YES", "", "((pk * 2))", "DEFAULT_GENERATED"}, // TODO: MySQL would return (`pk` * 2)
 				},
 			},
 		},
@@ -2828,11 +2826,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2849,11 +2847,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2870,11 +2868,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2891,11 +2889,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2912,11 +2910,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2933,11 +2931,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2962,7 +2960,7 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table tab0",
-				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry SRID 4326 DEFAULT (POINT(1, 1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry SRID 4326 DEFAULT (point(1,1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "INSERT INTO tab0 VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4326))",

@@ -91,12 +91,26 @@ func (g *AggGen) genAggStringer(define AggDef) {
 	if define.SqlName != "" {
 		sqlName = define.SqlName
 	}
-	fmt.Fprintf(g.w, "func (a *%s)  String() string {\n", define.Name)
-	fmt.Fprintf(g.w, "    res := fmt.Sprintf(\"%s(%%s)\", a.Child)\n", strings.ToUpper(sqlName))
-	fmt.Fprintf(g.w, "    if a.window != nil {\n")
-	fmt.Fprintf(g.w, "    	res = res + \" \" + a.window.String()\n")
-	fmt.Fprintf(g.w, "    }\n")
-	fmt.Fprintf(g.w, "    return res\n")
+	fmt.Fprintf(g.w, "func (a *%s) String() string {\n", define.Name)
+	fmt.Fprintf(g.w, "  if a.window != nil {\n")
+	fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
+	fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "    children := []string{a.window.String(), a.Child.String()}\n")
+	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
+	fmt.Fprintf(g.w, "    return pr.String()\n")
+	fmt.Fprintf(g.w, "  }\n")
+	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%s(%%s)\", a.Child)\n", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "}\n\n")
+
+	fmt.Fprintf(g.w, "func (a *%s) DebugString() string {\n", define.Name)
+	fmt.Fprintf(g.w, "  if a.window != nil {\n")
+	fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
+	fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "    children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}\n")
+	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
+	fmt.Fprintf(g.w, "    return pr.String()\n")
+	fmt.Fprintf(g.w, "  }\n")
+	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%s(%%s)\", sql.DebugString(a.Child))\n", strings.ToUpper(sqlName))
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

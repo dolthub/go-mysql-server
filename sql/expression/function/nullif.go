@@ -80,7 +80,7 @@ func (f *NullIf) IsNullable() bool {
 }
 
 func (f *NullIf) String() string {
-	return fmt.Sprintf("nullif(%s, %s)", f.Left, f.Right)
+	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.Left, f.Right)
 }
 
 // WithChildren implements the Expression interface.

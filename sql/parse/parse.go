@@ -2341,6 +2341,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	extra := ""
+
 	if cd.Type.Autoincrement {
 		extra = "auto_increment"
 	}

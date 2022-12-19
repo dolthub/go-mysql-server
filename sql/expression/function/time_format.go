@@ -154,7 +154,7 @@ func (f *TimeFormat) IsNullable() bool {
 }
 
 func (f *TimeFormat) String() string {
-	return fmt.Sprintf("time_format(%s, %s)", f.Left, f.Right)
+	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.Left, f.Right)
 }
 
 // WithChildren implements the Expression interface.

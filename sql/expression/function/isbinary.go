@@ -67,7 +67,7 @@ func (ib *IsBinary) Eval(
 }
 
 func (ib *IsBinary) String() string {
-	return fmt.Sprintf("IS_BINARY(%s)", ib.Child)
+	return fmt.Sprintf("%s(%s)", ib.FunctionName(), ib.Child)
 }
 
 // WithChildren implements the Expression interface.

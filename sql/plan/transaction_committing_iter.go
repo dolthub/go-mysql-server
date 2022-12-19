@@ -54,6 +54,11 @@ func (t *TransactionCommittingNode) String() string {
 	return t.Child().String()
 }
 
+// String implements the sql.Node interface.
+func (t *TransactionCommittingNode) DebugString() string {
+	return sql.DebugString(t.Child())
+}
+
 // RowIter implements the sql.Node interface.
 func (t *TransactionCommittingNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	iter, err := t.Child().RowIter(ctx, row)

@@ -291,7 +291,14 @@ func (e *Equals) String() string {
 }
 
 func (e *Equals) DebugString() string {
-	return fmt.Sprintf("(%s = %s)", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
+	if e == nil {
+		return ""
+	}
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Eq")
+	children := []string{sql.DebugString(e.Left()), sql.DebugString(e.Right())}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // NullSafeEquals is a comparison that checks an expression is equal to
@@ -533,7 +540,11 @@ func (gt *GreaterThan) String() string {
 }
 
 func (gt *GreaterThan) DebugString() string {
-	return fmt.Sprintf("(%s > %s)", sql.DebugString(gt.Left()), sql.DebugString(gt.Right()))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("GreaterThan")
+	children := []string{sql.DebugString(gt.Left()), sql.DebugString(gt.Right())}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // LessThan is a comparison that checks an expression is less than another.
@@ -573,7 +584,11 @@ func (lt *LessThan) String() string {
 }
 
 func (lt *LessThan) DebugString() string {
-	return fmt.Sprintf("(%s < %s)", sql.DebugString(lt.Left()), sql.DebugString(lt.Right()))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("LessThan")
+	children := []string{sql.DebugString(lt.Left()), sql.DebugString(lt.Right())}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -614,7 +629,11 @@ func (gte *GreaterThanOrEqual) String() string {
 }
 
 func (gte *GreaterThanOrEqual) DebugString() string {
-	return fmt.Sprintf("(%s >= %s)", sql.DebugString(gte.Left()), sql.DebugString(gte.Right()))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("GreaterThanOrEqual")
+	children := []string{sql.DebugString(gte.Left()), sql.DebugString(gte.Right())}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
@@ -655,7 +674,11 @@ func (lte *LessThanOrEqual) String() string {
 }
 
 func (lte *LessThanOrEqual) DebugString() string {
-	return fmt.Sprintf("(%s <= %s)", sql.DebugString(lte.Left()), sql.DebugString(lte.Right()))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("LessThanOrEqual")
+	children := []string{sql.DebugString(lte.Left()), sql.DebugString(lte.Right())}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 var (

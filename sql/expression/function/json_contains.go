@@ -100,7 +100,7 @@ func (j *JSONContains) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("JSON_CONTAINS(%s)", strings.Join(parts, ", "))
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
 func (j *JSONContains) Type() sql.Type {
