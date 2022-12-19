@@ -55,7 +55,7 @@ func (g *GeomColl) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("GEOMCOLL(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("geomcoll(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

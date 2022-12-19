@@ -54,7 +54,7 @@ func (p *Dimension) Type() sql.Type {
 }
 
 func (p *Dimension) String() string {
-	return fmt.Sprintf("ST_DIMENSION(%s)", p.Child.String())
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), p.Child.String())
 }
 
 // WithChildren implements the Expression interface.

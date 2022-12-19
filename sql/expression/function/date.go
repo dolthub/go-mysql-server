@@ -117,7 +117,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (d *DateAdd) String() string {
-	return fmt.Sprintf("DATE_ADD(%s, %s)", d.Date, d.Interval)
+	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
 }
 
 // DateSub subtracts an interval from a date.
@@ -214,7 +214,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (d *DateSub) String() string {
-	return fmt.Sprintf("DATE_SUB(%s, %s)", d.Date, d.Interval)
+	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
 }
 
 // TimestampConversion is a shorthand function for CONVERT(expr, TIMESTAMP)
@@ -239,7 +239,7 @@ func (t *TimestampConversion) Resolved() bool {
 }
 
 func (t *TimestampConversion) String() string {
-	return fmt.Sprintf("TIMESTAMP(%s)", t.Date)
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Date)
 }
 
 func (t *TimestampConversion) Type() sql.Type {
@@ -298,7 +298,7 @@ func (t *DatetimeConversion) Resolved() bool {
 }
 
 func (t *DatetimeConversion) String() string {
-	return fmt.Sprintf("DATETIME(%s)", t.Date)
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Date)
 }
 
 func (t *DatetimeConversion) Type() sql.Type {
@@ -422,9 +422,9 @@ func toUnixTimestamp(t time.Time) (interface{}, error) {
 
 func (ut *UnixTimestamp) String() string {
 	if ut.Date != nil {
-		return fmt.Sprintf("UNIX_TIMESTAMP(%s)", ut.Date)
+		return fmt.Sprintf("%s(%s)", ut.FunctionName(), ut.Date)
 	} else {
-		return "UNIX_TIMESTAMP()"
+		return fmt.Sprintf("%s()", ut.FunctionName())
 	}
 }
 

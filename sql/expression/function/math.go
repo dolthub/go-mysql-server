@@ -83,9 +83,9 @@ func (r *Rand) Resolved() bool {
 
 func (r *Rand) String() string {
 	if r.Child != nil {
-		return fmt.Sprintf("RAND(%s)", r.Child)
+		return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
 	}
-	return fmt.Sprintf("RAND()")
+	return fmt.Sprintf("%s()", r.FunctionName())
 }
 
 // WithChildren implements sql.Expression.

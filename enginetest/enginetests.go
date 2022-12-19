@@ -157,7 +157,7 @@ func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	for _, tt := range queries.InfoSchemaQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
+
 	for _, script := range queries.InfoSchemaScripts {
 		TestScriptPrepared(t, harness, script)
 	}
@@ -3326,7 +3326,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		},
 		{
 			Name:            "chk4",
-			CheckExpression: "(UPPER(c) = c)",
+			CheckExpression: "(upper(c) = c)",
 			Enforced:        true,
 		},
 	}
@@ -5021,7 +5021,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		// Assert that the schema of t1 is unchanged
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "MUL", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "MUL", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		// Assert that adding a primary key with an unknown column causes an error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
@@ -5036,7 +5036,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "PRI", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "PRI", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
@@ -5052,7 +5052,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 			{"a1", "a2"},
@@ -5761,10 +5761,10 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "alter table t33 add column v3 datetime default CURRENT_TIMESTAMP()")
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
-			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
-			{"v1_new", "timestamp", "YES", "", "(NOW())", ""},
+			{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
+			{"v1_new", "timestamp", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
-			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", ""},
+			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
 		}, nil, nil)
 
 		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,

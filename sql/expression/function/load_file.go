@@ -47,7 +47,7 @@ func (l *LoadFile) Resolved() bool {
 
 // String implements sql.Expression.
 func (l *LoadFile) String() string {
-	return fmt.Sprintf("LOAD_FILE(%s)", l.fileName)
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.fileName)
 }
 
 // Type implements sql.Expression.

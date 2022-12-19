@@ -147,5 +147,5 @@ func (j *JSONExtract) String() string {
 	for i, c := range children {
 		parts[i] = c.String()
 	}
-	return fmt.Sprintf("JSON_EXTRACT(%s)", strings.Join(parts, ", "))
+	return fmt.Sprintf("json_extract(%s)", strings.Join(parts, ", "))
 }

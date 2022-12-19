@@ -59,7 +59,7 @@ func (c *ConvertTz) Resolved() bool {
 
 // String implements the sql.Expression interface.
 func (c *ConvertTz) String() string {
-	return fmt.Sprintf("CONVERT_TZ(%s, %s, %s)", c.dt, c.fromTz, c.toTz)
+	return fmt.Sprintf("%s(%s,%s,%s)", c.FunctionName(), c.dt, c.fromTz, c.toTz)
 }
 
 // Type implements the sql.Expression interface.
