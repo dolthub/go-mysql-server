@@ -208,6 +208,7 @@ func TestSingleScript(t *testing.T) {
 			},
 		},
 	}
+
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine, err := harness.NewEngine(t)
