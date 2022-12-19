@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // StrCmp compares two strings
@@ -86,21 +85,13 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if sql.IsText(s.Left.Type()) && sql.IsText(s.Right.Type()) {
-		st1 := s.Left.Type().(sql.StringType)
-		st2 := s.Right.Type().(sql.StringType)
-
-		if st1.Collation() == st2.Collation() {
-			return st1.Compare(expr1, expr2)
-		} else {
-			return nil, sql.ErrCollationIllegalMix.New(st1.Collation(), st2.Collation())
-		}
-	} else if sql.IsText(s.Left.Type()) {
-		return s.Left.Type().Compare(expr1, expr2)
-	} else if sql.IsText(s.Right.Type()) {
-		return s.Right.Type().Compare(expr1, expr2)
-	} else {
-		st := sql.MustCreateString(sqltypes.Text, 10, ctx.GetCollation())
-		return st.Compare(expr1, expr2)
+	leftCollation, leftCoercibility := expression.GetCollationViaCoercion(s.Left)
+	rightCollation, rightCoercibility := expression.GetCollationViaCoercion(s.Right)
+	collationPreference, err := expression.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+	if err != nil {
+		return nil, err
 	}
+
+	strType := sql.CreateLongText(collationPreference)
+	return strType.Compare(expr1, expr2)
 }
