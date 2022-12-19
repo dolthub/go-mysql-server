@@ -700,6 +700,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				if err != nil {
 					return nil, err
 				}
+				if col, ok := asOf.(*expression.UnresolvedColumn); ok {
+					asOf = expression.NewLiteral(col.String(), sql.LongText)
+				}
 			}
 		}
 
