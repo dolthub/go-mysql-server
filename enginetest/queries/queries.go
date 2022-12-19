@@ -8407,16 +8407,6 @@ var VersionedQueries = []QueryTest{
 		},
 	},
 	{
-		Query: "SHOW CREATE TABLE myhistorytable as of 2019-01-02",
-		Expected: []sql.Row{
-			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` text NOT NULL,\n" +
-				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-		},
-	},
-	{
 		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-02'",
 		Expected: []sql.Row{
 			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
