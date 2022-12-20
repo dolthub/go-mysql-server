@@ -21,7 +21,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -156,17 +155,9 @@ func inOrderReplanJoin(
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (sql.Node, error) {
-	t, _, err := a.Catalog.Table(ctx, information_schema.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
+	stats, err := a.Catalog.Statistics(ctx)
 	if err != nil {
-		ctx.GetLogger().Warn("statistics table does not implement sql.StatisticReadWriter")
-	}
-	var stats sql.StatisticReadWriter
-	var ok bool
-	if t != nil {
-		stats, ok = t.(sql.StatisticReadWriter)
-		if !ok {
-			ctx.GetLogger().Warn("statistics table does not implement sql.StatisticReadWriter")
-		}
+		return nil, err
 	}
 
 	m := NewMemo(ctx, stats, scope)

@@ -178,9 +178,9 @@ func (ts *TableStatistics) Histogram(colName string) (*Histogram, error) {
 type StatisticsTable interface {
 	Table
 	// DataLength returns the length of the data file (varies by engine).
-	DataLength(ctx *Context) (uint64, error)
-	// Statistics returns the statistics for this table
-	Statistics(ctx *Context) (*TableStatistics, error)
+	DataLength(ctx *Context) (float64, error)
+	// Cardinality returns the statistics for this table
+	Cardinality(ctx *Context) (float64, error)
 }
 
 // CatalogTable is a Table that depends on a Catalog.
@@ -191,16 +191,24 @@ type CatalogTable interface {
 	AssignCatalog(cat Catalog) Table
 }
 
-type StatisticReadWriter interface {
+type StatsReader interface {
 	CatalogTable
-
 	Hist(ctx *Context, db, table string) (HistogramMap, error)
-	Card(ctx *Context, db, table string) (uint64, error)
+	Card(ctx *Context, db, table string) (float64, error)
+}
+
+type StatsWriter interface {
+	CatalogTable
 	Analyze(ctx *Context, db, table string) error
 }
 
-type StatisticUpdater interface {
-	SetCard(xtx *Context, db, table string, card uint64)
+type StatsReadWriter interface {
+	StatsReader
+	StatsWriter
+}
+
+type StatsUpdater interface {
+	SetCard(xtx *Context, db, table string, card float64)
 }
 
 type DbTable struct {

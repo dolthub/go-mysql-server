@@ -15,10 +15,7 @@
 package analyzer
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -132,16 +129,11 @@ func resolveAnalyzeTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 			newTables[i] = t
 		}
 
-		st, _, err := a.Catalog.Table(ctx, information_schema.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
+		stats, err := a.Catalog.Statistics(ctx)
 		if err != nil {
 			return n, transform.SameTree, err
 		}
 
-		s, ok := st.(sql.StatisticReadWriter)
-		if !ok {
-			err := fmt.Errorf("statistics table is not an sql.StatisticsReadWriter; cannot refresh statistics")
-			return n, transform.SameTree, err
-		}
-		return at.WithDb(db).WithTables(newTables).WithStats(s), transform.NewTree, nil
+		return at.WithDb(db).WithTables(newTables).WithStats(stats), transform.NewTree, nil
 	})
 }

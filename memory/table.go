@@ -236,16 +236,16 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}, nil
 }
 
-func (t *Table) numRows(ctx *sql.Context) (uint64, error) {
-	var count uint64 = 0
+func (t *Table) numRows(ctx *sql.Context) (float64, error) {
+	var count float64 = 0
 	for _, rows := range t.partitions {
-		count += uint64(len(rows))
+		count += float64(len(rows))
 	}
 
 	return count, nil
 }
 
-func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
+func (t *Table) DataLength(ctx *sql.Context) (float64, error) {
 	var numBytesPerRow uint64 = 0
 	for _, col := range t.schema.Schema {
 		switch n := col.Type.(type) {
@@ -279,7 +279,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 		return 0, err
 	}
 
-	return numBytesPerRow * numRows, nil
+	return float64(numBytesPerRow) * numRows, nil
 }
 
 // AnalyzeTable implements the sql.StatisticsTable interface.
@@ -303,17 +303,8 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 	return nil
 }
 
-func (t *Table) Statistics(ctx *sql.Context) (*sql.TableStatistics, error) {
-	if t.tableStats == nil {
-		numRows, err := t.numRows(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &sql.TableStatistics{
-			RowCount: numRows,
-		}, nil
-	}
-	return t.tableStats, nil
+func (t *Table) Cardinality(ctx *sql.Context) (float64, error) {
+	return t.numRows(ctx)
 }
 
 func NewPartition(key []byte) *Partition {

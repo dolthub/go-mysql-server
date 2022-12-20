@@ -900,7 +900,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	statsTbl := st.(StatisticReadWriter)
+	statsTbl := st.(StatsReadWriter)
 	for _, db := range c.AllDatabases(ctx) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 
@@ -1276,7 +1276,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	var (
 		tableType      string
-		tableRows      uint64
+		tableRows      float64
 		engine         interface{}
 		rowFormat      interface{}
 		tableCollation interface{}
@@ -1296,7 +1296,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
-					tableRows, err = getTotalNumRows(ctx, st)
+					tableRows, err = st.Cardinality(ctx)
 					if err != nil {
 						return false, err
 					}
@@ -1304,27 +1304,27 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			}
 
 			rows = append(rows, Row{
-				"def",          // table_catalog
-				db.Name(),      // table_schema
-				t.Name(),       // table_name
-				tableType,      // table_type
-				engine,         // engine
-				10,             // version (protocol, always 10)
-				rowFormat,      // row_format
-				tableRows,      // table_rows
-				0,              // avg_row_length
-				0,              // data_length
-				0,              // max_data_length
-				0,              // max_data_length
-				0,              // data_free
-				nil,            // auto_increment (the next value)
-				y2k,            // create_time
-				y2k,            // update_time
-				nil,            // check_time
-				tableCollation, // table_collation
-				nil,            // checksum
-				"",             // create_options
-				"",             // table_comment
+				"def",             // table_catalog
+				db.Name(),         // table_schema
+				t.Name(),          // table_name
+				tableType,         // table_type
+				engine,            // engine
+				10,                // version (protocol, always 10)
+				rowFormat,         // row_format
+				uint64(tableRows), // table_rows
+				0,                 // avg_row_length
+				0,                 // data_length
+				0,                 // max_data_length
+				0,                 // max_data_length
+				0,                 // data_free
+				nil,               // auto_increment (the next value)
+				y2k,               // create_time
+				y2k,               // update_time
+				nil,               // check_time
+				tableCollation,    // table_collation
+				nil,               // checksum
+				"",                // create_options
+				"",                // table_comment
 			})
 
 			return true, nil
@@ -1507,7 +1507,7 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 }
 func NewWritableInformationSchemaDatabase() Database {
 	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
-	db.tables[StatisticsTableName] = newWritableStatsTable(db.tables[StatisticsTableName].(*informationSchemaTable))
+	db.tables[StatisticsTableName] = newUpdatableStatsTable()
 	return db
 }
 
@@ -1915,6 +1915,8 @@ func NewInformationSchemaDatabase() Database {
 		},
 	}
 
+	isDb.tables[StatisticsTableName] = NewDefaultStats()
+
 	return isDb
 }
 
@@ -2002,71 +2004,27 @@ func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	return nil
 }
 
-func newWritableStatsTable(t *informationSchemaTable) *writableStatsTable {
-	return &writableStatsTable{
-		informationSchemaTable: t,
-		stats:                  make(map[DbTable]*TableStatistics),
+func newUpdatableStatsTable() *updatableStatsTable {
+	return &updatableStatsTable{
+		defaultStatsTable: NewDefaultStats(),
 	}
 }
 
-type writableStatsTable struct {
-	*informationSchemaTable
-	stats map[DbTable]*TableStatistics
+type updatableStatsTable struct {
+	*defaultStatsTable
 }
 
-func (ais *writableStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
-	if s, ok := ais.stats[DbTable{db, table}]; ok {
-		return s.Histograms, nil
-	} else {
-		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
-		return nil, err
-	}
-}
+var _ UpdatableTable = (*updatableStatsTable)(nil)
+var _ StatsReadWriter = (*updatableStatsTable)(nil)
 
-func (ais *writableStatsTable) Card(ctx *Context, db, table string) (uint64, error) {
-	if s, ok := ais.stats[DbTable{db, table}]; ok {
-		return s.RowCount, nil
-	} else {
-		err := fmt.Errorf("cardinality not found for table '%s.%s'", db, table)
-		return 0, err
-	}
-}
-
-func (ais *writableStatsTable) Analyze(ctx *Context, db, table string) error {
-	tableStats := &TableStatistics{
-		CreatedAt: time.Now(),
-	}
-
-	t, _, err := ais.catalog.Table(ctx, db, table)
-	if err != nil {
-		return err
-	}
-	histMap, err := NewHistogramMapFromTable(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	tableStats.Histograms = histMap
-	for _, v := range histMap {
-		tableStats.RowCount = v.Count + v.NullCount
-		break
-	}
-
-	ais.stats[DbTable{db, table}] = tableStats
-	return nil
-}
-
-var _ UpdatableTable = (*writableStatsTable)(nil)
-var _ StatisticReadWriter = (*writableStatsTable)(nil)
-
-func (ais *writableStatsTable) AssignCatalog(cat Catalog) Table {
-	ais.catalog = cat
-	return ais
+func (t *updatableStatsTable) AssignCatalog(cat Catalog) Table {
+	t.catalog = cat
+	return t
 }
 
 // Updater implements sql.UpdatableTable
-func (ais *writableStatsTable) Updater(_ *Context) RowUpdater {
-	return newStatsEditor(ais.catalog, ais.stats)
+func (t *updatableStatsTable) Updater(_ *Context) RowUpdater {
+	return newStatsEditor(t.catalog, t.stats)
 }
 
 func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
@@ -2118,6 +2076,79 @@ func (s *statsEditor) Close(context *Context) error {
 	return nil
 }
 
+func NewDefaultStats() *defaultStatsTable {
+	return &defaultStatsTable{
+		informationSchemaTable: &informationSchemaTable{
+			name:   StatisticsTableName,
+			schema: statisticsSchema,
+			reader: statisticsRowIter,
+		},
+		stats: make(map[DbTable]*TableStatistics),
+	}
+}
+
+type defaultStatsTable struct {
+	*informationSchemaTable
+	stats map[DbTable]*TableStatistics
+}
+
+var _ StatsReadWriter = (*defaultStatsTable)(nil)
+
+func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
+	n.catalog = cat
+	return n
+}
+
+func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
+	if s, ok := n.stats[DbTable{db, table}]; ok {
+		return s.Histograms, nil
+	} else {
+		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
+		return nil, err
+	}
+}
+
+func (n *defaultStatsTable) Card(ctx *Context, db, table string) (float64, error) {
+	s, ok := n.stats[DbTable{Db: db, Table: table}]
+	if ok {
+		return float64(s.RowCount), nil
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return 0, err
+	}
+	st, ok := t.(StatisticsTable)
+	if !ok {
+		return 0, nil
+	}
+	return st.Cardinality(ctx)
+}
+
+func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
+	tableStats := &TableStatistics{
+		CreatedAt: time.Now(),
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return err
+	}
+	histMap, err := NewHistogramMapFromTable(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	tableStats.Histograms = histMap
+	for _, v := range histMap {
+		tableStats.RowCount = v.Count + v.NullCount
+		break
+	}
+
+	n.stats[DbTable{Db: db, Table: table}] = tableStats
+	return nil
+}
+
 func printTable(name string, tableSchema Schema) string {
 	p := NewTreePrinter()
 	_ = p.WriteNode("Table(%s)", name)
@@ -2136,19 +2167,6 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
-}
-
-func getTotalNumRows(ctx *Context, st StatisticsTable) (uint64, error) {
-	stats, err := st.Statistics(ctx)
-	if err != nil {
-		return 0, err
-	}
-	var c uint64
-	if stats != nil {
-		c = stats.RowCount
-	}
-
-	return c, nil
 }
 
 func getColumnNamesFromIndex(idx Index, table Table) []string {

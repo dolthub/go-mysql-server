@@ -10,7 +10,7 @@ import (
 
 type AnalyzeTable struct {
 	Db     string
-	Stats  sql.StatisticReadWriter
+	Stats  sql.StatsReadWriter
 	Tables []sql.DbTable
 }
 
@@ -35,7 +35,7 @@ func (n *AnalyzeTable) Schema() sql.Schema {
 
 func (n *AnalyzeTable) WithCatalog(cat sql.Catalog) *AnalyzeTable {
 	ret := *n
-	ret.Stats = ret.Stats.AssignCatalog(cat).(sql.StatisticReadWriter)
+	ret.Stats = ret.Stats.AssignCatalog(cat).(sql.StatsReadWriter)
 	return &ret
 }
 
@@ -49,7 +49,7 @@ func (n *AnalyzeTable) WithDb(db string) *AnalyzeTable {
 	return n
 }
 
-func (n *AnalyzeTable) WithStats(stats sql.StatisticReadWriter) *AnalyzeTable {
+func (n *AnalyzeTable) WithStats(stats sql.StatsReadWriter) *AnalyzeTable {
 	n.Stats = stats
 	return n
 }
@@ -102,7 +102,7 @@ func (n *AnalyzeTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 type analyzeTableIter struct {
 	idx    int
 	tables []sql.DbTable
-	stats  sql.StatisticReadWriter
+	stats  sql.StatsReadWriter
 }
 
 var _ sql.RowIter = &analyzeTableIter{}

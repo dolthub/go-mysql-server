@@ -126,3 +126,7 @@ func (c *Catalog) LockTable(ctx *sql.Context, table string) {}
 func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	return nil
 }
+
+func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
+	return nil, nil
+}

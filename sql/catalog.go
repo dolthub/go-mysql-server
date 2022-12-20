@@ -48,4 +48,6 @@ type Catalog interface {
 
 	// UnlockTables unlocks all tables locked by the session id given
 	UnlockTables(ctx *Context, id uint32) error
+
+	Statistics(ctx *Context) (StatsReadWriter, error)
 }

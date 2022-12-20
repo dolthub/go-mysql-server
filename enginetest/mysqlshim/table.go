@@ -331,7 +331,7 @@ func (t Table) Close(ctx *sql.Context) error {
 }
 
 // DataLength implements the interface sql.StatisticsTable.
-func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
+func (t Table) DataLength(ctx *sql.Context) (float64, error) {
 	// SELECT * FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'sys') AND (TABLE_NAME = 'test');
 	rows, err := t.db.shim.QueryRows(t.db.name, fmt.Sprintf("SELECT COUNT(*) FROM `%s`;", t.name))
 	if err != nil {
@@ -341,17 +341,12 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return rowCount.(uint64), nil
+	return float64(rowCount.(uint64)), nil
 }
 
-// CalculateStatistics implements the interface sql.StatisticsTable.
-func (t Table) AnalyzeTable(ctx *sql.Context) error {
-	return nil
-}
-
-// Statistics implements the interface sql.StatisticsTable.
-func (t Table) Statistics(_ *sql.Context) (*sql.TableStatistics, error) {
-	return &sql.TableStatistics{}, nil
+// Cardinality implements the interface sql.StatisticsTable.
+func (t Table) Cardinality(ctx *sql.Context) (float64, error) {
+	return 0, nil
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.

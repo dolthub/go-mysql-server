@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
+
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -291,6 +293,18 @@ func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunctio
 	}
 
 	return nil, sql.ErrTableFunctionNotFound.New(name)
+}
+
+func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
+	t, _, err := c.Table(ctx, information_schema.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
+	if err != nil {
+		return nil, err
+	}
+	stats, ok := t.(sql.StatsReadWriter)
+	if !ok {
+		return nil, fmt.Errorf("information_schema.statistics does not implement sql.StatsReadWriter")
+	}
+	return stats.AssignCatalog(c).(sql.StatsReadWriter), nil
 }
 
 func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {
