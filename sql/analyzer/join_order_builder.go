@@ -172,8 +172,6 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet) {
 		return j.populateSubgraph(n.Child)
 	case *plan.CachedResults:
 		return j.populateSubgraph(n.Child)
-	case *plan.Exchange:
-		return j.populateSubgraph(n.Child)
 	default:
 		panic(fmt.Sprintf("expected Nameable node, found: %T", n))
 	}
