@@ -218,6 +218,8 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 		switch tn := n.(type) {
 		case *plan.QueryProcess:
 			n = tn.Child()
+		case *plan.StartTransaction:
+			n = tn.Child
 		case *plan.TransactionCommittingNode:
 			n = tn.Child()
 		default:
@@ -283,19 +285,6 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !scope.IsEmpty() {
-		return node, transform.SameTree, nil
-	}
-
-	containsRecursiveCte := false
-	transform.Inspect(node, func(node sql.Node) bool {
-		if _, ok := node.(*plan.RecursiveCte); ok {
-			containsRecursiveCte = true
-			return false
-		}
-		return true
-	})
-
-	if containsRecursiveCte {
 		return node, transform.SameTree, nil
 	}
 
