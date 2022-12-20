@@ -26,7 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -469,27 +468,26 @@ func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) 
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
-			database, err := e.Analyzer.Catalog.Database(ctx, transactionDatabase)
+			_, err := e.Analyzer.Catalog.Database(ctx, transactionDatabase)
 			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
 			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
+				ctx.GetLogger().Tracef("not starting transaction because of database not found for %s", transactionDatabase)
 				return nil
 			} else if err != nil {
 				return err
 			}
 
-			if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
-				database = privilegedDatabase.Unwrap()
-			}
-			ts, ok := ctx.Session.(sql.TransactionSession)
-			if ok {
-				ctx.SetTransactionDatabase(transactionDatabase)
-				tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
-				if err != nil {
-					return err
-				}
+			ctx.SetTransactionDatabase(transactionDatabase)
+		}
 
-				ctx.SetTransaction(tx)
+		ts, ok := ctx.Session.(sql.TransactionSession)
+		if ok {
+			tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
+			if err != nil {
+				return err
 			}
+
+			ctx.SetTransaction(tx)
 		}
 	}
 
