@@ -444,16 +444,6 @@ func TestAnalyzer(t *testing.T) {
 				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
 			},
 		},
-		{
-			name:  "show create table as of, naked literal",
-			query: "SHOW CREATE TABLE foo AS OF abc123",
-			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
-				_, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
-				asOf := expression.NewLiteral("abc123", sql.LongText)
-				require.NoError(t, err)
-				return plan.NewShowCreateTableWithAsOf(plan.NewUnresolvedTableAsOf("foo", "", asOf), false, asOf)
-			},
-		},
 	}
 
 	harness := enginetest.NewDefaultMemoryHarness()
