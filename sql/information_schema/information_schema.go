@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -30,21 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-)
-
-func init() {
-	if v, ok := os.LookupEnv(writableFlag); ok && v != "" {
-		WritableInfoSchema = true
-	}
-}
-
-const (
-	// indicates writable information schema tables where supported
-	writableFlag = "GMS_WRITE_INFO_SCHEMA"
-)
-
-var (
-	WritableInfoSchema = false
 )
 
 const (
@@ -896,11 +880,10 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // columnStatisticsRowIter implements the sql.RowIter for the information_schema.COLUMN_STATISTICS table.
 func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	st, _, err := c.Table(ctx, InformationSchemaDatabaseName, StatisticsTableName)
+	statsTbl, err := c.Statistics(ctx)
 	if err != nil {
 		return nil, err
 	}
-	statsTbl := st.(StatsReadWriter)
 	for _, db := range c.AllDatabases(ctx) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 
@@ -1671,11 +1654,6 @@ func NewInformationSchemaDatabase() Database {
 				name:   SchemataExtensionsTableName,
 				schema: schemataExtensionsTableName,
 				reader: emptyRowIter,
-			},
-			StatisticsTableName: &informationSchemaTable{
-				name:   StatisticsTableName,
-				schema: statisticsSchema,
-				reader: statisticsRowIter,
 			},
 			StGeometryColumnsTableName: &informationSchemaTable{
 				name:   StGeometryColumnsTableName,

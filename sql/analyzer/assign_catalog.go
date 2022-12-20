@@ -78,8 +78,6 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, transform.NewTree, nil
-		case *plan.AnalyzeTable:
-			return node.WithCatalog(a.Catalog), transform.NewTree, nil
 		case *plan.ResolvedTable:
 			ct, ok := node.Table.(sql.CatalogTable)
 			if ok {
