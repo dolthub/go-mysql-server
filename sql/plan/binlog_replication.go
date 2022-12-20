@@ -20,6 +20,14 @@ import (
 	"strings"
 )
 
+// TODO: Move this out to a better package
+// TODO: error out if sql-server is not running!
+type BinlogReplicaController interface {
+	StartReplica(ctx *sql.Context) error
+	StopReplica(ctx *sql.Context) error
+	SetReplicationOptions(ctx *sql.Context, options []ReplicationOption) error
+}
+
 type ReplicationOption struct {
 	Name  string
 	Value string
@@ -32,18 +40,28 @@ func NewReplicationOption(name string, value string) ReplicationOption {
 	}
 }
 
+type BinlogReplicaControllerCommand interface {
+	WithBinlogReplicaController(handler BinlogReplicaController)
+}
+
 // ChangeReplicationSource is the plan node for the "CHANGE REPLICATION SOURCE TO" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ChangeReplicationSource struct {
-	Options []ReplicationOption
+	Options        []ReplicationOption
+	replicaHandler BinlogReplicaController // TODO: Could type embed something that does this for all the replication types
 }
 
 var _ sql.Node = (*ChangeReplicationSource)(nil)
+var _ BinlogReplicaControllerCommand = (*ChangeReplicationSource)(nil)
 
 func NewChangeReplicationSource(options []ReplicationOption) *ChangeReplicationSource {
 	return &ChangeReplicationSource{
 		Options: options,
 	}
+}
+
+func (c *ChangeReplicationSource) WithBinlogReplicaController(handler BinlogReplicaController) {
+	c.replicaHandler = handler
 }
 
 func (c *ChangeReplicationSource) Resolved() bool {
@@ -72,8 +90,13 @@ func (c *ChangeReplicationSource) Children() []sql.Node {
 	return nil
 }
 
-func (c *ChangeReplicationSource) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("replication statements not supported")
+func (c *ChangeReplicationSource) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	if c.replicaHandler == nil {
+		return nil, fmt.Errorf("no replication handler available")
+	}
+
+	err := c.replicaHandler.SetReplicationOptions(ctx, c.Options)
+	return sql.RowsToRowIter(), err
 }
 
 func (c *ChangeReplicationSource) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -92,12 +115,19 @@ func (c *ChangeReplicationSource) CheckPrivileges(_ *sql.Context, _ sql.Privileg
 
 // StartReplica is a plan node for the "START REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/start-replica.html
-type StartReplica struct{}
+type StartReplica struct {
+	replicaHandler BinlogReplicaController
+}
 
 var _ sql.Node = (*StartReplica)(nil)
+var _ BinlogReplicaControllerCommand = (*StartReplica)(nil)
 
 func NewStartReplica() *StartReplica {
 	return &StartReplica{}
+}
+
+func (s *StartReplica) WithBinlogReplicaController(handler BinlogReplicaController) {
+	s.replicaHandler = handler
 }
 
 func (s *StartReplica) Resolved() bool {
@@ -116,8 +146,13 @@ func (s *StartReplica) Children() []sql.Node {
 	return nil
 }
 
-func (s *StartReplica) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("replication statements not supported")
+func (s *StartReplica) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	if s.replicaHandler == nil {
+		return nil, fmt.Errorf("no replication handler available")
+	}
+
+	err := s.replicaHandler.StartReplica(ctx)
+	return sql.RowsToRowIter(), err
 }
 
 func (s *StartReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -129,19 +164,26 @@ func (s *StartReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newNode, nil
 }
 
-func (s StartReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
+func (s *StartReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
 	// TODO: implement privilege checks
 	return true
 }
 
 // StopReplica is the plan node for the "STOP REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/stop-replica.html
-type StopReplica struct{}
+type StopReplica struct {
+	replicaHandler BinlogReplicaController
+}
 
 var _ sql.Node = (*StopReplica)(nil)
+var _ BinlogReplicaControllerCommand = (*StopReplica)(nil)
 
 func NewStopReplica() *StopReplica {
 	return &StopReplica{}
+}
+
+func (s *StopReplica) WithBinlogReplicaController(handler BinlogReplicaController) {
+	s.replicaHandler = handler
 }
 
 func (s *StopReplica) Resolved() bool {
@@ -160,8 +202,13 @@ func (s *StopReplica) Children() []sql.Node {
 	return nil
 }
 
-func (s *StopReplica) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("replication statements not supported")
+func (s *StopReplica) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	if s.replicaHandler == nil {
+		return nil, fmt.Errorf("no replication handler available")
+	}
+
+	err := s.replicaHandler.StopReplica(ctx)
+	return sql.RowsToRowIter(), err
 }
 
 func (s *StopReplica) WithChildren(children ...sql.Node) (sql.Node, error) {

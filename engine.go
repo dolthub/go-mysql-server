@@ -57,15 +57,16 @@ type TemporaryUser struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Analyzer          *analyzer.Analyzer
-	LS                *sql.LockSubsystem
-	ProcessList       sql.ProcessList
-	MemoryManager     *sql.MemoryManager
-	BackgroundThreads *sql.BackgroundThreads
-	IsReadOnly        bool
-	IsServerLocked    bool
-	PreparedData      map[uint32]PreparedData
-	mu                *sync.Mutex
+	Analyzer                *analyzer.Analyzer
+	LS                      *sql.LockSubsystem
+	ProcessList             sql.ProcessList
+	MemoryManager           *sql.MemoryManager
+	BackgroundThreads       *sql.BackgroundThreads
+	IsReadOnly              bool
+	IsServerLocked          bool
+	PreparedData            map[uint32]PreparedData
+	BinlogReplicaController plan.BinlogReplicaController
+	mu                      *sync.Mutex
 }
 
 type ColumnWithRawDefault struct {
@@ -178,6 +179,11 @@ func (e *Engine) QueryNodeWithBindings(
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+
+	// TODO: This isn't the right place for this, but hacking it in here for now...
+	if nn, ok := parsed.(plan.BinlogReplicaControllerCommand); ok {
+		nn.WithBinlogReplicaController(e.BinlogReplicaController)
 	}
 
 	// Before we begin a transaction, we need to know if the database being operated on is not the one
