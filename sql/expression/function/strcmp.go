@@ -16,7 +16,6 @@ package function
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -79,11 +78,6 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str1, err := sql.ConvertToString(expr1, sql.LongText)
-	if err != nil {
-		return nil, err
-	}
-
 	expr2, err := s.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -92,11 +86,13 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str2, err := sql.ConvertToString(expr2, sql.LongText)
+	leftCollation, leftCoercibility := expression.GetCollationViaCoercion(s.Left)
+	rightCollation, rightCoercibility := expression.GetCollationViaCoercion(s.Right)
+	collationPreference, err := expression.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 	if err != nil {
 		return nil, err
 	}
 
-	// dolt currently defaults to a case sensitive collation which will make STRCMP case sensitive
-	return strings.Compare(str1, str2), nil
+	strType := sql.CreateLongText(collationPreference)
+	return strType.Compare(expr1, expr2)
 }
