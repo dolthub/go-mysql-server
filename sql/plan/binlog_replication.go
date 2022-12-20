@@ -16,17 +16,67 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
+	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // TODO: Move this out to a better package
 // TODO: error out if sql-server is not running!
+
+// BinlogReplicaController allows callers to control a binlog replica. Providers built on go-mysql-server may optionally
+// implement this interface and use it when constructing a SQL engine in order to receive callbacks when replication
+// statements (e.g. START REPLICA, SHOW REPLICA STATUS) are being handled.
 type BinlogReplicaController interface {
+	// StartReplica tells the binlog replica controller to start up replication processes for the current replication
+	// configuration. An error is returned if replication was unable to be started. Note the error response only signals
+	// whether there was a problem with the initial replication start up. Replication could fail after being started up
+	// successfully with no error response returned.
 	StartReplica(ctx *sql.Context) error
+
+	// StopReplica tells the binlog replica controller to stop all replication processes. An error is returned if there
+	// were any problems stopping replication. If no replication processes were running, no error is returned.
 	StopReplica(ctx *sql.Context) error
+
+	// SetReplicationOptions configures the binlog replica controller with the specified options. The replica controller
+	// must store this configuration. If any errors are encountered processing and storing the configuration options, an
+	// error is returned.
 	SetReplicationOptions(ctx *sql.Context, options []ReplicationOption) error
+
+	// GetReplicaStatus returns the current status of the replica, or nil if no replication processes are running. If
+	// any problems are encountered assembling the replica's status, an error is returned.
+	GetReplicaStatus(ctx *sql.Context) (*ReplicaStatus, error)
 }
+
+// ReplicaStatus stores the status of a single binlog replica and is returned by `SHOW REPLICA STATUS`.
+// https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
+type ReplicaStatus struct {
+	SourceHost            string
+	SourceUser            string
+	SourcePort            uint
+	ReplicaIoRunning      string
+	ReplicaSqlRunning     string
+	LastSqlErrNumber      string // Alias for LastErrNumber
+	LastSqlError          string // Alias for LastError
+	LastIoErrNumber       string
+	LastIoError           string
+	SourceServerId        string
+	SourceServerUuid      string
+	LastSqlErrorTimestamp time.Time
+	LastIoErrorTimestamp  time.Time
+	RetrievedGtidSet      string
+	ExecutedGtidSet       string
+	AutoPosition          bool
+}
+
+const (
+	ReplicaIoNotRunning  = "No"
+	ReplicaIoConnecting  = "Connecting"
+	ReplicaIoRunning     = "Yes"
+	ReplicaSqlNotRunning = "No"
+	ReplicaSqlRunning    = "Yes"
+)
 
 type ReplicationOption struct {
 	Name  string
@@ -41,14 +91,14 @@ func NewReplicationOption(name string, value string) ReplicationOption {
 }
 
 type BinlogReplicaControllerCommand interface {
-	WithBinlogReplicaController(handler BinlogReplicaController)
+	WithBinlogReplicaController(controller BinlogReplicaController)
 }
 
 // ChangeReplicationSource is the plan node for the "CHANGE REPLICATION SOURCE TO" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ChangeReplicationSource struct {
-	Options        []ReplicationOption
-	replicaHandler BinlogReplicaController // TODO: Could type embed something that does this for all the replication types
+	Options           []ReplicationOption
+	replicaController BinlogReplicaController // TODO: Could type embed something that does this for all the replication types
 }
 
 var _ sql.Node = (*ChangeReplicationSource)(nil)
@@ -60,8 +110,8 @@ func NewChangeReplicationSource(options []ReplicationOption) *ChangeReplicationS
 	}
 }
 
-func (c *ChangeReplicationSource) WithBinlogReplicaController(handler BinlogReplicaController) {
-	c.replicaHandler = handler
+func (c *ChangeReplicationSource) WithBinlogReplicaController(controller BinlogReplicaController) {
+	c.replicaController = controller
 }
 
 func (c *ChangeReplicationSource) Resolved() bool {
@@ -91,11 +141,11 @@ func (c *ChangeReplicationSource) Children() []sql.Node {
 }
 
 func (c *ChangeReplicationSource) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	if c.replicaHandler == nil {
-		return nil, fmt.Errorf("no replication handler available")
+	if c.replicaController == nil {
+		return nil, fmt.Errorf("no replication controller available")
 	}
 
-	err := c.replicaHandler.SetReplicationOptions(ctx, c.Options)
+	err := c.replicaController.SetReplicationOptions(ctx, c.Options)
 	return sql.RowsToRowIter(), err
 }
 
@@ -116,7 +166,7 @@ func (c *ChangeReplicationSource) CheckPrivileges(_ *sql.Context, _ sql.Privileg
 // StartReplica is a plan node for the "START REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/start-replica.html
 type StartReplica struct {
-	replicaHandler BinlogReplicaController
+	replicaController BinlogReplicaController
 }
 
 var _ sql.Node = (*StartReplica)(nil)
@@ -126,8 +176,8 @@ func NewStartReplica() *StartReplica {
 	return &StartReplica{}
 }
 
-func (s *StartReplica) WithBinlogReplicaController(handler BinlogReplicaController) {
-	s.replicaHandler = handler
+func (s *StartReplica) WithBinlogReplicaController(controller BinlogReplicaController) {
+	s.replicaController = controller
 }
 
 func (s *StartReplica) Resolved() bool {
@@ -147,11 +197,11 @@ func (s *StartReplica) Children() []sql.Node {
 }
 
 func (s *StartReplica) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	if s.replicaHandler == nil {
-		return nil, fmt.Errorf("no replication handler available")
+	if s.replicaController == nil {
+		return nil, fmt.Errorf("no replication controller available")
 	}
 
-	err := s.replicaHandler.StartReplica(ctx)
+	err := s.replicaController.StartReplica(ctx)
 	return sql.RowsToRowIter(), err
 }
 
@@ -172,7 +222,7 @@ func (s *StartReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperation
 // StopReplica is the plan node for the "STOP REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/stop-replica.html
 type StopReplica struct {
-	replicaHandler BinlogReplicaController
+	replicaController BinlogReplicaController
 }
 
 var _ sql.Node = (*StopReplica)(nil)
@@ -182,8 +232,8 @@ func NewStopReplica() *StopReplica {
 	return &StopReplica{}
 }
 
-func (s *StopReplica) WithBinlogReplicaController(handler BinlogReplicaController) {
-	s.replicaHandler = handler
+func (s *StopReplica) WithBinlogReplicaController(controller BinlogReplicaController) {
+	s.replicaController = controller
 }
 
 func (s *StopReplica) Resolved() bool {
@@ -203,11 +253,11 @@ func (s *StopReplica) Children() []sql.Node {
 }
 
 func (s *StopReplica) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	if s.replicaHandler == nil {
-		return nil, fmt.Errorf("no replication handler available")
+	if s.replicaController == nil {
+		return nil, fmt.Errorf("no replication controller available")
 	}
 
-	err := s.replicaHandler.StopReplica(ctx)
+	err := s.replicaController.StopReplica(ctx)
 	return sql.RowsToRowIter(), err
 }
 

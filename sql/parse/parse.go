@@ -866,6 +866,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
+	case "replica status":
+		return plan.NewShowReplicaStatus(), nil
+
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
