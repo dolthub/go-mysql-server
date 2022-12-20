@@ -184,8 +184,38 @@ type StatisticsTable interface {
 	// Integrators can ignore this hook and implement their own method of keeping statistics up to date, at the
 	// cost of potentially stale statistics.
 	AnalyzeTable(ctx *Context) error
-	// GetStatistics returns the statistics for this table
-	GetStatistics(ctx *Context) (*TableStatistics, error)
-	// SetStatistics updates the statistics for this table
-	SetStatistics(ctx *Context, ts *TableStatistics) error
+	// Statistics returns the statistics for this table
+	Statistics(ctx *Context) (*TableStatistics, error)
+}
+
+// CatalogTable is a Table that depends on a Catalog.
+type CatalogTable interface {
+	Table
+
+	// AssignCatalog assigns a Catalog to the table.
+	AssignCatalog(cat Catalog) Table
+}
+
+type StatisticReadWriter interface {
+	CatalogTable
+
+	Hist(ctx *Context, db, table string) (HistogramMap, error)
+	Card(ctx *Context, db, table string) (uint64, error)
+	Analyze(ctx *Context, db, table string) error
+}
+
+type StatisticUpdater interface {
+	SetCard(xtx *Context, db, table string, card uint64)
+}
+
+type DbTable struct {
+	Db    string
+	Table string
+}
+
+func (dt *DbTable) String() string {
+	if dt.Db == "" {
+		return dt.Table
+	}
+	return fmt.Sprintf("%s.%s", dt.Db, dt.Table)
 }

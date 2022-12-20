@@ -349,14 +349,9 @@ func (t Table) AnalyzeTable(ctx *sql.Context) error {
 	return nil
 }
 
-// GetStatistics implements the interface sql.StatisticsTable.
-func (t Table) GetStatistics(_ *sql.Context) (*sql.TableStatistics, error) {
+// Statistics implements the interface sql.StatisticsTable.
+func (t Table) Statistics(_ *sql.Context) (*sql.TableStatistics, error) {
 	return &sql.TableStatistics{}, nil
-}
-
-// SetStatistics implements the interface sql.StatisticsTable.
-func (t Table) SetStatistics(_ *sql.Context, _ *sql.TableStatistics) error {
-	panic("unimplemented")
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.

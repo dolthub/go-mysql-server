@@ -17,6 +17,7 @@ package analyzer
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -231,7 +232,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)
 
-	provider := sql.NewDatabaseProvider(db)
+	provider := sql.NewDatabaseProvider(db, information_schema.NewInformationSchemaDatabase())
 	a := withoutProcessTracking(NewDefault(provider))
 
 	ctx := sql.NewContext(context.Background())

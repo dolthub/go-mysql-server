@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"regexp"
 	"strings"
 
@@ -156,7 +157,20 @@ func inOrderReplanJoin(
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (sql.Node, error) {
-	m := NewMemo(ctx, scope)
+	t, _, err := a.Catalog.Table(ctx, information_schema.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
+	if err != nil {
+		ctx.GetLogger().Warn("statistics table does not implement sql.StatisticReadWriter")
+	}
+	var stats sql.StatisticReadWriter
+	var ok bool
+	if t != nil {
+		stats, ok = t.(sql.StatisticReadWriter)
+		if !ok {
+			ctx.GetLogger().Warn("statistics table does not implement sql.StatisticReadWriter")
+		}
+	}
+
+	m := NewMemo(ctx, stats, scope)
 
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)

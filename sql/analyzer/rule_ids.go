@@ -28,6 +28,7 @@ const (
 	validateDropConstraintId                    // validateDropConstraint
 	loadCheckConstraintsId                      // loadCheckConstraints
 	assignCatalogId                             // assignCatalog
+	resolveAnalyzeTablesId                      //resolveAnalyzeTables
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
 	setViewTargetSchemaId                       // setViewTargetSchema

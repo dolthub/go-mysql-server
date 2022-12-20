@@ -89,7 +89,7 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		var numRows uint64 = 0
 		var dataLength uint64 = 0
 		if st, ok := table.(sql.StatisticsTable); ok {
-			stats, err := st.GetStatistics(ctx)
+			stats, err := st.Statistics(ctx)
 			if err != nil {
 				return nil, err
 			}

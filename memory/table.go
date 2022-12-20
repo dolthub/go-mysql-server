@@ -303,7 +303,7 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 	return nil
 }
 
-func (t *Table) GetStatistics(ctx *sql.Context) (*sql.TableStatistics, error) {
+func (t *Table) Statistics(ctx *sql.Context) (*sql.TableStatistics, error) {
 	if t.tableStats == nil {
 		numRows, err := t.numRows(ctx)
 		if err != nil {
@@ -314,11 +314,6 @@ func (t *Table) GetStatistics(ctx *sql.Context) (*sql.TableStatistics, error) {
 		}, nil
 	}
 	return t.tableStats, nil
-}
-
-func (t *Table) SetStatistics(ctx *sql.Context, stats *sql.TableStatistics) error {
-	t.tableStats = stats
-	return nil
 }
 
 func NewPartition(key []byte) *Partition {

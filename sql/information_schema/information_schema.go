@@ -896,19 +896,20 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // columnStatisticsRowIter implements the sql.RowIter for the information_schema.COLUMN_STATISTICS table.
 func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
+	st, _, err := c.Table(ctx, InformationSchemaDatabaseName, StatisticsTableName)
+	if err != nil {
+		return nil, err
+	}
+	statsTbl := st.(StatisticReadWriter)
 	for _, db := range c.AllDatabases(ctx) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-			statsTbl, ok := t.(StatisticsTable)
-			if !ok {
+
+			tableHist, err := statsTbl.Hist(ctx, db.Name(), t.Name())
+			if err != nil {
 				return true, nil
 			}
 
-			stats, err := statsTbl.GetStatistics(ctx)
-			if err != nil {
-				return false, err
-			}
-
-			if stats.Histograms == nil {
+			if tableHist == nil {
 				return true, nil
 			}
 
@@ -917,9 +918,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					continue
 				}
 
-				hist, err := stats.Histogram(col.Name)
-				if err != nil {
-					return false, err
+				hist, ok := tableHist[col.Name]
+				if !ok {
+					return false, fmt.Errorf("column histogram not found: %s", col.Name)
 				}
 
 				buckets := make([]interface{}, len(hist.Buckets))
@@ -928,9 +929,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				rows = append(rows, Row{
-					db.Name(),       // table_schema
-					statsTbl.Name(), // table_name
-					col.Name,        // column_name
+					db.Name(), // table_schema
+					t.Name(),  // table_name
+					col.Name,  // column_name
 					//hist.Mean,          // mean
 					//hist.Min,           // min
 					//hist.Max,           // max
@@ -1504,9 +1505,14 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
+func NewWritableInformationSchemaDatabase() Database {
+	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
+	db.tables[StatisticsTableName] = newWritableStatsTable(db.tables[StatisticsTableName].(*informationSchemaTable))
+	return db
+}
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
-func NewInformationSchemaDatabase(writable bool) Database {
+func NewInformationSchemaDatabase() Database {
 	isDb := &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
@@ -1909,13 +1915,6 @@ func NewInformationSchemaDatabase(writable bool) Database {
 		},
 	}
 
-	if writable || WritableInfoSchema {
-		isDb.tables[StatisticsTableName] = &alterableInfoSchemaTable{
-			informationSchemaTable: isDb.tables[StatisticsTableName].(*informationSchemaTable),
-			writer:                 newStatsEditor,
-		}
-	}
-
 	return isDb
 }
 
@@ -2003,29 +2002,80 @@ func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	return nil
 }
 
-type alterableInfoSchemaTable struct {
-	*informationSchemaTable
-	writer func(Catalog) RowUpdater
+func newWritableStatsTable(t *informationSchemaTable) *writableStatsTable {
+	return &writableStatsTable{
+		informationSchemaTable: t,
+		stats:                  make(map[DbTable]*TableStatistics),
+	}
 }
 
-var _ UpdatableTable = (*alterableInfoSchemaTable)(nil)
+type writableStatsTable struct {
+	*informationSchemaTable
+	stats map[DbTable]*TableStatistics
+}
 
-func (ais *alterableInfoSchemaTable) AssignCatalog(cat Catalog) Table {
+func (ais *writableStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
+	if s, ok := ais.stats[DbTable{db, table}]; ok {
+		return s.Histograms, nil
+	} else {
+		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
+		return nil, err
+	}
+}
+
+func (ais *writableStatsTable) Card(ctx *Context, db, table string) (uint64, error) {
+	if s, ok := ais.stats[DbTable{db, table}]; ok {
+		return s.RowCount, nil
+	} else {
+		err := fmt.Errorf("cardinality not found for table '%s.%s'", db, table)
+		return 0, err
+	}
+}
+
+func (ais *writableStatsTable) Analyze(ctx *Context, db, table string) error {
+	tableStats := &TableStatistics{
+		CreatedAt: time.Now(),
+	}
+
+	t, _, err := ais.catalog.Table(ctx, db, table)
+	if err != nil {
+		return err
+	}
+	histMap, err := NewHistogramMapFromTable(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	tableStats.Histograms = histMap
+	for _, v := range histMap {
+		tableStats.RowCount = v.Count + v.NullCount
+		break
+	}
+
+	ais.stats[DbTable{db, table}] = tableStats
+	return nil
+}
+
+var _ UpdatableTable = (*writableStatsTable)(nil)
+var _ StatisticReadWriter = (*writableStatsTable)(nil)
+
+func (ais *writableStatsTable) AssignCatalog(cat Catalog) Table {
 	ais.catalog = cat
 	return ais
 }
 
 // Updater implements sql.UpdatableTable
-func (ais *alterableInfoSchemaTable) Updater(_ *Context) RowUpdater {
-	return ais.writer(ais.catalog)
+func (ais *writableStatsTable) Updater(_ *Context) RowUpdater {
+	return newStatsEditor(ais.catalog, ais.stats)
 }
 
-func newStatsEditor(c Catalog) RowUpdater {
-	return &statsEditor{c: c}
+func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
+	return &statsEditor{c: c, s: stats}
 }
 
 type statsEditor struct {
 	c Catalog
+	s map[DbTable]*TableStatistics
 }
 
 var _ RowUpdater = (*statsEditor)(nil)
@@ -2041,19 +2091,14 @@ func (s *statsEditor) Update(ctx *Context, old, new Row) error {
 	if !ok {
 		return fmt.Errorf("expected string type databaseName; found type: '%T', value: '%v'", old[1], old[1])
 	}
-	tab, ok := old[2].(string)
+	table, ok := old[2].(string)
 	if !ok {
 		return fmt.Errorf("expected string type tableName; found type: '%T', value: '%v'", old[2], old[2])
 	}
 
-	t, _, err := s.c.Table(ctx, db, tab)
+	_, _, err := s.c.Table(ctx, db, table)
 	if err != nil {
 		return err
-	}
-
-	st, ok := t.(StatisticsTable)
-	if !ok {
-		return fmt.Errorf("table does not support statistics: '%s'", tab)
 	}
 
 	card, ok := new[9].(int64)
@@ -2065,7 +2110,8 @@ func (s *statsEditor) Update(ctx *Context, old, new Row) error {
 		CreatedAt:  time.Now(),
 		Histograms: make(HistogramMap),
 	}
-	return st.SetStatistics(ctx, stats)
+	s.s[DbTable{db, table}] = stats
+	return nil
 }
 
 func (s *statsEditor) Close(context *Context) error {
@@ -2093,7 +2139,7 @@ func partitionKey(tableName string) []byte {
 }
 
 func getTotalNumRows(ctx *Context, st StatisticsTable) (uint64, error) {
-	stats, err := st.GetStatistics(ctx)
+	stats, err := st.Statistics(ctx)
 	if err != nil {
 		return 0, err
 	}
