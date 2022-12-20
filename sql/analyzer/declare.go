@@ -608,7 +608,6 @@ func resolveProcedureVariables(ctx *sql.Context, scope *declarationScope, n sql.
 		}
 	}
 
-	// TODO: just add a special case for plan.With
 	if w, ok := n.(*plan.With); ok {
 		cteSame := transform.SameTree
 		for i, cte := range w.CTEs {

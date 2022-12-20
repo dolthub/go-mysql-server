@@ -169,7 +169,6 @@ func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	// TODO: shouldn't declared variables be in scope?
 	newProc, _, err := analyzeProcedureBodies(ctx, a, proc, true, nil, sel)
 	if err != nil {
 		return nil, transform.SameTree, err
