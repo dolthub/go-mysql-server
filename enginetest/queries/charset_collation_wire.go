@@ -521,6 +521,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 	{
 		Name: "STRCMP() function",
 		Queries: []CharsetCollationWireTestQuery{
+			// TODO: returning different results from MySQL
 			/*{
 				// collation with the lowest coercibility is used
 				Query: "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, 'a')",
