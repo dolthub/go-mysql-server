@@ -9831,8 +9831,12 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
+		Query:       "SHOW CREATE TABLE myhistorytable as of abc",
+		ExpectedErr: sql.ErrAsOfNotSupported,
+	},
+	{
 		Query:       "SELECT i FROM myhistorytable AS OF abc",
-		ExpectedErr: sql.ErrInvalidAsOfExpression,
+		ExpectedErr: sql.ErrAsOfNotSupported,
 	},
 	{
 		Query:       "SELECT i FROM myhistorytable AS OF MAX(abc)",
