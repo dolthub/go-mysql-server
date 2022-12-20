@@ -942,6 +942,160 @@ END;`,
 		},
 	},
 	{
+		Name: "DECLARE HANDLERs exit according to the block they were declared in",
+		SetUpScript: []string{
+			`DROP TABLE IF EXISTS t1;`,
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE outer_declare()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND SET a = 1001;
+    OPEN cur1;
+    BEGIN
+		tloop: LOOP
+			FETCH cur1 INTO b;
+            IF a > 1000 THEN
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+			`CREATE PROCEDURE inner_declare()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND SET a = a + 1;
+    OPEN cur1;
+    BEGIN
+		DECLARE EXIT HANDLER FOR NOT FOUND SET a = 1001;
+		tloop: LOOP
+			FETCH cur1 INTO b;
+            IF a > 1000 THEN
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL outer_declare();",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "CALL inner_declare();",
+				Expected: []sql.Row{
+					{1001},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE loops",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND BEGIN END;
+    OPEN cur1;
+    BEGIN
+		tloop: LOOP
+			FETCH cur1 INTO b;
+			SET a = (a + b) * 10;
+            IF a < 1000 THEN
+				ITERATE tloop;
+			ELSE
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{2230},
+				},
+			},
+		},
+	},
+	{
+		Name: "Handle setting an uninitialized user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(INOUT param VARCHAR(10))
+BEGIN
+	SELECT param;
+	SET param = '5';
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(@uservar4);",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "SELECT @uservar4;",
+				Expected: []sql.Row{
+					{"5"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Dolt Issue #4980",
+		SetUpScript: []string{
+			`CREATE TABLE person_cal_entries (id VARCHAR(36) PRIMARY KEY, cal_entry_id_fk VARCHAR(36), person_id_fk VARCHAR(36));`,
+			`CREATE TABLE personnel (id VARCHAR(36) PRIMARY KEY, event_id VARCHAR(36));`,
+			`CREATE TABLE season_participants (person_id_fk VARCHAR(36), season_id_fk VARCHAR(36));`,
+			`CREATE TABLE cal_entries (id VARCHAR(36) PRIMARY KEY, season_id_fk VARCHAR(36));`,
+			`INSERT INTO personnel VALUES ('6140e23e-7b9b-11ed-a1eb-0242ac120002', 'c546abc4-7b9b-11ed-a1eb-0242ac120002');`,
+			`INSERT INTO season_participants VALUES ('6140e23e-7b9b-11ed-a1eb-0242ac120002', '46d7041e-7b9b-11ed-a1eb-0242ac120002');`,
+			`INSERT INTO cal_entries VALUES ('cb8ba301-6c27-4bf8-b99b-617082d72621', '46d7041e-7b9b-11ed-a1eb-0242ac120002');`,
+			`CREATE PROCEDURE create_cal_entries_for_event(IN event_id VARCHAR(36))
+BEGIN
+    INSERT INTO person_cal_entries (id, cal_entry_id_fk, person_id_fk)
+    SELECT 'd17cb898-7b9b-11ed-a1eb-0242ac120002' as id, event_id as cal_entry_id_fk, id as person_id_fk
+    FROM personnel
+    WHERE id IN (
+        SELECT person_id_fk
+        FROM season_participants
+        WHERE season_id_fk = (
+            SELECT season_id_fk
+            FROM cal_entries
+            WHERE id = event_id
+        )
+    );
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call create_cal_entries_for_event('cb8ba301-6c27-4bf8-b99b-617082d72621');",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM person_cal_entries;",
+				Expected: []sql.Row{
+					{"d17cb898-7b9b-11ed-a1eb-0242ac120002", "cb8ba301-6c27-4bf8-b99b-617082d72621", "6140e23e-7b9b-11ed-a1eb-0242ac120002"},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
 		ExpectedErr: sql.ErrDeclareVariableDuplicate,

@@ -45,7 +45,7 @@ func (i *IsIPv4) Description() string {
 }
 
 func (i *IsIPv4) String() string {
-	return fmt.Sprintf("IS_IPV4(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *IsIPv4) Type() sql.Type { return sql.Boolean }
@@ -107,7 +107,7 @@ func (i *IsIPv6) Description() string {
 }
 
 func (i *IsIPv6) String() string {
-	return fmt.Sprintf("IS_IPV6(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *IsIPv6) Type() sql.Type { return sql.Boolean }
@@ -169,7 +169,7 @@ func (i *IsIPv4Compat) Description() string {
 }
 
 func (i *IsIPv4Compat) String() string {
-	return fmt.Sprintf("IS_IPV4_COMPAT(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *IsIPv4Compat) Type() sql.Type { return sql.Boolean }
@@ -235,7 +235,7 @@ func (i *IsIPv4Mapped) Description() string {
 }
 
 func (i *IsIPv4Mapped) String() string {
-	return fmt.Sprintf("IS_IPV4_MAPPED(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *IsIPv4Mapped) Type() sql.Type { return sql.Boolean }

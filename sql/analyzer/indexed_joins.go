@@ -120,7 +120,7 @@ func inOrderReplanJoin(
 	if reorder {
 		ret, err := replanJoin(ctx, j, a, scope)
 		if err != nil {
-			return nil, transform.SameTree, err
+			return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 		}
 		if isUpdate {
 			ret = plan.NewProject(expression.SchemaToGetFields(n.Schema()), ret)

@@ -247,6 +247,9 @@ var (
 	// ErrUnboundPreparedStatementVariable is returned when a query is executed without a binding for one its variables.
 	ErrUnboundPreparedStatementVariable = errors.NewKind(`unbound variable "%s" in query`)
 
+	// ErrUnknownPreparedStatement is returned when an unknown query is executed.
+	ErrUnknownPreparedStatement = errors.NewKind(`Unknown prepared statement handler (%s) given to EXECUTE`)
+
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 
@@ -293,6 +296,9 @@ var (
 	// ErrDeclareCursorOrderInvalid is returned when a DECLARE ... CURSOR statement is at an invalid location.
 	ErrDeclareCursorOrderInvalid = errors.NewKind("DECLARE ... CURSOR may only exist at the beginning of a BEGIN/END block, following all variables and conditions")
 
+	// ErrDeclareHandlerOrderInvalid is returned when a DECLARE ... HANDLER statement is at an invalid location.
+	ErrDeclareHandlerOrderInvalid = errors.NewKind("DECLARE ... HANDLER may only exist at the beginning of a BEGIN/END block, following all variables, conditions, and cursors")
+
 	// ErrDeclareConditionNotFound is returned when SIGNAL/RESIGNAL references a non-existent DECLARE CONDITION.
 	ErrDeclareConditionNotFound = errors.NewKind("condition %s does not exist")
 
@@ -304,6 +310,18 @@ var (
 
 	// ErrDeclareCursorDuplicate is returned when a DECLARE ... CURSOR statement reuses an existing name in the current scope.
 	ErrDeclareCursorDuplicate = errors.NewKind("duplicate cursor '%s'")
+
+	// ErrDeclareHandlerDuplicate is returned when a DECLARE ... HANDLER statement has a duplicate in the same block.
+	ErrDeclareHandlerDuplicate = errors.NewKind("duplicate handler declared in the same block")
+
+	// ErrDeclareHandlerUndo is returned when a DECLARE ... HANDLER statement has the UNDO action, which is currently unsupported.
+	ErrDeclareHandlerUndo = errors.NewKind("DECLARE ... HANDLER does not support the UNDO action")
+
+	// ErrLoopRedefinition is returned when a loop with the same label has already been declared in the current block.
+	ErrLoopRedefinition = errors.NewKind("redefining label '%s'")
+
+	// ErrLoopLabelNotFound is returned when a control flow statement references a non-existent loop.
+	ErrLoopLabelNotFound = errors.NewKind("%s with no matching label: '%s'")
 
 	// ErrCursorNotFound is returned when a CURSOR cannot be found.
 	ErrCursorNotFound = errors.NewKind("cursor '%s' does not exist")

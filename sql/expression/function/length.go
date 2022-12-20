@@ -89,16 +89,16 @@ func (l *Length) Type() sql.Type { return sql.Int32 }
 
 func (l *Length) String() string {
 	if l.CountType == NumBytes {
-		return fmt.Sprintf("LENGTH(%s)", l.Child)
+		return fmt.Sprintf("length(%s)", l.Child)
 	}
-	return fmt.Sprintf("CHAR_LENGTH(%s)", l.Child)
+	return fmt.Sprintf("char_length(%s)", l.Child)
 }
 
 func (l *Length) DebugString() string {
 	if l.CountType == NumBytes {
-		return fmt.Sprintf("LENGTH(%s)", sql.DebugString(l.Child))
+		return fmt.Sprintf("length(%s)", sql.DebugString(l.Child))
 	}
-	return fmt.Sprintf("CHAR_LENGTH(%s)", sql.DebugString(l.Child))
+	return fmt.Sprintf("char_length(%s)", sql.DebugString(l.Child))
 }
 
 // Eval implements the sql.Expression interface.

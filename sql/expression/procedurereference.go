@@ -23,8 +23,9 @@ import (
 
 // ProcedureReference contains the state for a single CALL statement of a stored procedure.
 type ProcedureReference struct {
-	idToParam  []*procedureParamReferenceValue
-	idToCursor []*procedureCursorReferenceValue
+	idToParam   []*procedureParamReferenceValue
+	idToCursor  []*procedureCursorReferenceValue
+	idToHandler []*procedureHandlerReferenceValue
 }
 type procedureParamReferenceValue struct {
 	ID         int
@@ -38,6 +39,17 @@ type procedureCursorReferenceValue struct {
 	Name       string
 	SelectStmt sql.Node
 	RowIter    sql.RowIter
+}
+type procedureHandlerReferenceValue struct {
+	ID     int
+	Stmt   sql.Node
+	IsExit bool
+	//TODO: support more than just NOT FOUND
+}
+
+// ProcedureReferencable indicates that a sql.Node takes a *ProcedureReference returns a new copy with the reference set.
+type ProcedureReferencable interface {
+	WithParamReference(pRef *ProcedureReference) sql.Node
 }
 
 // InitializeVariable sets the initial value for the variable.
@@ -63,6 +75,15 @@ func (ppr *ProcedureReference) InitializeCursor(id int, name string, selectStmt 
 		Name:       name,
 		SelectStmt: selectStmt,
 		RowIter:    nil,
+	}
+}
+
+// InitializeHandler sets the given handler's statement.
+func (ppr *ProcedureReference) InitializeHandler(id int, stmt sql.Node, returnsExitError bool) {
+	ppr.idToHandler[id] = &procedureHandlerReferenceValue{
+		ID:     id,
+		Stmt:   stmt,
+		IsExit: returnsExitError,
 	}
 }
 
@@ -104,6 +125,16 @@ func (ppr *ProcedureReference) VariableHasBeenSet(id int) bool {
 		return false
 	}
 	return ppr.idToParam[id].HasBeenSet
+}
+
+// GetHandler returns a boolean indicating if the handler represents an EXIT handler, and a sql.Node containing the
+// logic to execute for this handler. Returns error if an invalid ID is given.
+func (ppr *ProcedureReference) GetHandler(id int) (bool, sql.Node, error) {
+	if id >= len(ppr.idToHandler) {
+		return false, nil, fmt.Errorf("cannot find a handler matching the ID: %d", id)
+	}
+	handler := ppr.idToHandler[id]
+	return handler.IsExit, handler.Stmt, nil
 }
 
 // OpenCursor sets the designated cursor to open.
@@ -162,10 +193,11 @@ func (ppr *ProcedureReference) CloseAllCursors(ctx *sql.Context) error {
 	return err
 }
 
-func NewProcedureParamReference(variableCount int, cursorCount int) *ProcedureReference {
+func NewProcedureReference(variableCount int, cursorCount int, handlerCount int) *ProcedureReference {
 	return &ProcedureReference{
-		idToParam:  make([]*procedureParamReferenceValue, variableCount),
-		idToCursor: make([]*procedureCursorReferenceValue, cursorCount),
+		idToParam:   make([]*procedureParamReferenceValue, variableCount),
+		idToCursor:  make([]*procedureCursorReferenceValue, cursorCount),
+		idToHandler: make([]*procedureHandlerReferenceValue, handlerCount),
 	}
 }
 

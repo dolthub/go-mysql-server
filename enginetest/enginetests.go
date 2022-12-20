@@ -164,7 +164,7 @@ func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	for _, tt := range queries.InfoSchemaQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
+
 	for _, script := range queries.InfoSchemaScripts {
 		TestScriptPrepared(t, harness, script)
 	}
@@ -326,7 +326,7 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
@@ -335,7 +335,7 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IntegrationPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
@@ -344,7 +344,7 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IndexPlanTests {
-		TestQueryPlanWithEngine(t, harness, e, tt)
+		TestQueryPlanWithEngine(t, harness, e, tt, true)
 	}
 
 	t.Run("no database selected", func(t *testing.T) {
@@ -416,7 +416,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, expectedPlan string) {
+func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expectedPlan string, verbose bool) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, query)
@@ -431,12 +431,18 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, 
 			}
 		}
 
-		assert.Equal(t, expectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+query)
+		var cmp string
+		if verbose {
+			cmp = sql.DebugString(ExtractQueryNode(node))
+		} else {
+			cmp = ExtractQueryNode(node).String()
+		}
+		assert.Equal(t, expectedPlan, cmp, "Unexpected result for query: "+query)
 	})
 
 }
 
-func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest) {
+func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest, verbose bool) {
 	t.Run(tt.Query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, tt.Query)
@@ -451,7 +457,13 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt q
 			}
 		}
 
-		assert.Equal(t, tt.ExpectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
+		var cmp string
+		if verbose {
+			cmp = sql.DebugString(ExtractQueryNode(node))
+		} else {
+			cmp = ExtractQueryNode(node).String()
+		}
+		assert.Equal(t, tt.ExpectedPlan, cmp, "Unexpected result for query: "+tt.Query)
 	})
 }
 
@@ -3315,7 +3327,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		},
 		{
 			Name:            "chk4",
-			CheckExpression: "(UPPER(c) = c)",
+			CheckExpression: "(upper(c) = c)",
 			Enforced:        true,
 		},
 	}
@@ -4403,6 +4415,25 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			},
 		},
 		{
+			Name: "simple decimal type insert",
+			SetUpScript: []string{
+				"CREATE TABLE test(id int primary key auto_increment, decimal_test DECIMAL(9,2), decimal_test_2 DECIMAL(9,2), decimal_test_3 DECIMAL(9,2))",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "INSERT INTO test(decimal_test, decimal_test_2, decimal_test_3) VALUES (?, ?, ?)",
+					Bindings: map[string]sql.Expression{
+						"v1": expression.NewLiteral(10, sql.Int64),
+						"v2": expression.NewLiteral([]byte("10.5"), sql.MustCreateString(sqltypes.VarBinary, 4, sql.Collation_binary)),
+						"v3": expression.NewLiteral(20.40, sql.Float64),
+					},
+					Expected: []sql.Row{
+						{sql.OkResult{RowsAffected: 1, InsertID: 1}},
+					},
+				},
+			},
+		},
+		{
 			Name: "Insert on duplicate key",
 			SetUpScript: []string{
 				`CREATE TABLE users (
@@ -4462,6 +4493,16 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedStatements(t *testing.T, harness Harness) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	for _, query := range queries.PreparedScriptTests {
+		TestScript(t, harness, query)
+	}
+}
+
+// Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	for _, tt := range queries.ShowTableStatusQueries {
@@ -4980,7 +5021,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		// Assert that the schema of t1 is unchanged
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "MUL", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "MUL", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		// Assert that adding a primary key with an unknown column causes an error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
@@ -4995,7 +5036,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "PRI", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "PRI", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
@@ -5011,7 +5052,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 			{"a1", "a2"},
@@ -5720,10 +5761,10 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "alter table t33 add column v3 datetime default CURRENT_TIMESTAMP()")
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
-			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
-			{"v1_new", "timestamp", "YES", "", "(NOW())", ""},
+			{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
+			{"v1_new", "timestamp", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
-			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", ""},
+			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
 		}, nil, nil)
 
 		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
@@ -5982,7 +6023,6 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, sql.Int8),
-				"v2": expression.NewLiteral(1, sql.Int8),
 			},
 			Expected: []sql.Row{{int64(3)}},
 		},
@@ -6067,6 +6107,16 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 	}
+	qErrTests := []queries.QueryErrorTest{
+		{
+			Query:          "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
+			ExpectedErrStr: "unused binding v2",
+			Bindings: map[string]sql.Expression{
+				"v1": expression.NewLiteral(int64(2), sql.Int64),
+				"v2": expression.NewLiteral(int64(2), sql.Int64),
+			},
+		},
+	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
@@ -6080,6 +6130,17 @@ func TestPrepared(t *testing.T, harness Harness) {
 			_, err := e.PrepareQuery(ctx, tt.Query)
 			require.NoError(t, err)
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+		})
+	}
+
+	for _, tt := range qErrTests {
+		t.Run(fmt.Sprintf("%s", tt.Query), func(t *testing.T) {
+			ctx := NewContext(harness)
+			_, err := e.PrepareQuery(ctx, tt.Query)
+			require.NoError(t, err)
+			ctx = ctx.WithQuery(tt.Query)
+			_, _, err = e.QueryWithBindings(ctx, tt.Query, tt.Bindings)
+			require.Error(t, err)
 		})
 	}
 

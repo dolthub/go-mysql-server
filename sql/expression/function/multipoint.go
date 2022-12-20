@@ -58,7 +58,7 @@ func (l *MultiPoint) String() string {
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("MULTIPOINT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

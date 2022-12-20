@@ -232,31 +232,48 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
-	switch n := n.(type) {
-	case *plan.GroupBy:
+	var err error
+	var parent sql.Node
+	transform.Inspect(n, func(n sql.Node) bool {
+		defer func() {
+			parent = n
+		}()
+
+		gb, ok := n.(*plan.GroupBy)
+		if !ok {
+			return true
+		}
+
+		switch parent.(type) {
+		case *plan.Having, *plan.Project, *plan.Sort:
+			// TODO: these shouldn't be skipped; you can group by primary key without problem b/c only one value
+			// https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html#:~:text=The%20query%20is%20valid%20if%20name%20is%20a%20primary%20key
+			return true
+		}
+
 		// Allow the parser use the GroupBy node to eval the aggregation functions
 		// for sql statements that don't make use of the GROUP BY expression.
-		if len(n.GroupByExprs) == 0 {
-			return n, transform.SameTree, nil
+		if len(gb.GroupByExprs) == 0 {
+			return true
 		}
 
 		var groupBys []string
-		for _, expr := range n.GroupByExprs {
+		for _, expr := range gb.GroupByExprs {
 			groupBys = append(groupBys, expr.String())
 		}
 
-		for _, expr := range n.SelectedExprs {
+		for _, expr := range gb.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					return nil, transform.SameTree, ErrValidationGroupBy.New(expr.String())
+					err = ErrValidationGroupBy.New(expr.String())
+					return false
 				}
 			}
 		}
+		return true
+	})
 
-		return n, transform.SameTree, nil
-	}
-
-	return n, transform.SameTree, nil
+	return n, transform.SameTree, err
 }
 
 func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {

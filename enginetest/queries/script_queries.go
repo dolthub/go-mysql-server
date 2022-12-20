@@ -128,11 +128,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum('abc','XYZ')", "enum('abc','XYZ')"}},
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
-				Expected: []sql.Row{{"enum('x','X','y','Y')", "enum('x','X','y','Y')"}},
+				Expected: []sql.Row{{"enum", "enum('x','X','y','Y')"}},
 			},
 		},
 	},
@@ -159,10 +159,8 @@ var ScriptTests = []ScriptTest{
 					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", "NULL", ""}},
 			},
 			{
-				Query: "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{
-					"enum('abc','XYZ')",
-					"enum('abc','XYZ')"}},
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
 			},
 			{
 				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
@@ -1769,8 +1767,8 @@ var ScriptTests = []ScriptTest{
 				Query: "show create table t4",
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
-						"  `a` int DEFAULT (FLOOR(1)),\n" +
-						"  `b` int DEFAULT (coalesce(a, 10))\n" +
+						"  `a` int DEFAULT (floor(1)),\n" +
+						"  `b` int DEFAULT (coalesce(a,10))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -2187,7 +2185,7 @@ var ScriptTests = []ScriptTest{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"val", "int", "YES", "", "((pk * 2))", ""}, // TODO: MySQL would return (`pk` * 2)
+					{"val", "int", "YES", "", "((pk * 2))", "DEFAULT_GENERATED"}, // TODO: MySQL would return (`pk` * 2)
 				},
 			},
 		},
@@ -2828,11 +2826,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2849,11 +2847,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2870,11 +2868,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2891,11 +2889,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POINT(123.456, 7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POINT(123.456, 7.89))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2912,11 +2910,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (LINESTRING(POINT(1, 2),POINT(3, 4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(LINESTRING(POINT(1, 2),POINT(3, 4)))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2933,11 +2931,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(POLYGON(LINESTRING(POINT(0, 0),POINT(1, 1),POINT(2, 2),POINT(0, 0))))", ""}},
+				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -2962,7 +2960,7 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table tab0",
-				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry SRID 4326 DEFAULT (POINT(1, 1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry SRID 4326 DEFAULT (point(1,1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "INSERT INTO tab0 VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4326))",
@@ -3387,6 +3385,183 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{2},
 				},
+			},
+		},
+	},
+}
+
+var PreparedScriptTests = []ScriptTest{
+	{
+		Name:        "bad prepare",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "prepare s from 'prepare t from ?'",
+				ExpectedErrStr: "syntax error at position 17 near ':v1'",
+			},
+			{
+				Query:          "prepare s from 'a very real query'",
+				ExpectedErrStr: "syntax error at position 2 near 'a'",
+			},
+			{
+				Query:       "deallocate prepare idontexist",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name:        "simple select case no bindings",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+			{
+				Query: "prepare s from 'select 1'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute s",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "simple select case one binding",
+		SetUpScript: []string{
+			"set @a = 1",
+			"set @b = 100",
+			"set @c = 'abc'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'select ?'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:       "execute s",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @abc",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query:       "execute s using @a, @b, @c, @abc",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @a",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "execute s using @b",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				Query: "execute s using @c",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "prepare insert",
+		SetUpScript: []string{
+			"set @a = 123",
+			"set @b = 'abc'",
+			"create table t (i int, j varchar(100))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'insert into t values (?,?)'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "execute s using @a, @b",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{123, "abc"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{sql.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute s using @a",
+				ExpectedErr: sql.ErrUnknownPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "Complex join query with foreign key constraints",
+		SetUpScript: []string{
+			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
+			"CREATE TABLE `tweet` ( `id` int NOT NULL AUTO_INCREMENT, `user_id` int NOT NULL, `content` text NOT NULL, `timestamp` bigint NOT NULL, PRIMARY KEY (`id`), KEY `tweet_user_id` (`user_id`), CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`));",
+			"INSERT INTO `users` (`id`,`username`) VALUES (1,'huey'), (2,'zaizee'), (3,'mickey');",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727), (2,1,'purr',1647463727), (3,2,'hiss',1647463727), (4,3,'woof',1647463727);",
+			"set @u2 = 'u2';",
+			"set @u3 = 'u3';",
+			"set @u4 = 'u4';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = ?)) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN (?, ?)))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC'",
+				Expected: []sql.Row{
+					{sql.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:    "execute s using @u3, @u2, @u4",
+				Expected: []sql.Row{},
 			},
 		},
 	},

@@ -209,13 +209,19 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
-		return convertDeclare(ctx, n)
+		return convertDeclare(ctx, n, query)
 	case *sqlparser.FetchCursor:
 		return convertFetch(ctx, n)
 	case *sqlparser.OpenCursor:
 		return convertOpen(ctx, n)
 	case *sqlparser.CloseCursor:
 		return convertClose(ctx, n)
+	case *sqlparser.Loop:
+		return convertLoop(ctx, n, query)
+	case *sqlparser.Leave:
+		return convertLeave(ctx, n)
+	case *sqlparser.Iterate:
+		return convertIterate(ctx, n)
 	case *sqlparser.Kill:
 		return convertKill(ctx, n)
 	case *sqlparser.Signal:
@@ -267,6 +273,12 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewShowPrivileges(), nil
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
+	case *sqlparser.Prepare:
+		return convertPrepare(ctx, n)
+	case *sqlparser.Execute:
+		return convertExecute(ctx, n)
+	case *sqlparser.Deallocate:
+		return convertDeallocate(ctx, n)
 	}
 }
 
@@ -376,6 +388,36 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 	return plan.NewDescribeQuery(explainFmt, child), nil
 }
 
+func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
+	childStmt, err := sqlparser.Parse(n.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	child, err := convert(ctx, childStmt, n.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewPrepareQuery(n.Name, child), nil
+}
+
+func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {
+	exprs := make([]sql.Expression, len(n.VarList))
+	for i, e := range n.VarList {
+		if strings.HasPrefix(e, "@") {
+			exprs[i] = expression.NewUserVar(strings.TrimPrefix(e, "@"))
+		} else {
+			exprs[i] = expression.NewUnresolvedProcedureParam(e)
+		}
+	}
+	return plan.NewExecuteQuery(n.Name, exprs...), nil
+}
+
+func convertDeallocate(ctx *sql.Context, n *sqlparser.Deallocate) (sql.Node, error) {
+	return plan.NewDeallocateQuery(n.Name), nil
+}
+
 func convertUse(n *sqlparser.Use) (sql.Node, error) {
 	name := n.DBName.String()
 	return plan.NewUse(sql.UnresolvedDatabase(name)), nil
@@ -460,11 +502,11 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "create table", "create view":
 		var asOfExpression sql.Expression
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			expr, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
 			if err != nil {
 				return nil, err
 			}
-			asOfExpression = expression
+			asOfExpression = expr
 		}
 		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
 		return plan.NewShowCreateTableWithAsOf(table, showType == "create view", asOfExpression), nil
@@ -1306,13 +1348,15 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 		params), nil
 }
 
-func convertDeclare(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
+func convertDeclare(ctx *sql.Context, d *sqlparser.Declare, query string) (sql.Node, error) {
 	if d.Condition != nil {
 		return convertDeclareCondition(ctx, d)
 	} else if d.Variables != nil {
 		return convertDeclareVariables(ctx, d)
 	} else if d.Cursor != nil {
 		return convertDeclareCursor(ctx, d)
+	} else if d.Handler != nil {
+		return convertDeclareHandler(ctx, d, query)
 	}
 	return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(d))
 }
@@ -1348,7 +1392,11 @@ func convertDeclareVariables(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, 
 	if err != nil {
 		return nil, err
 	}
-	return plan.NewDeclareVariables(names, typ), nil
+	defaultVal, err := convertDefaultExpression(ctx, dVars.VarType.Default)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewDeclareVariables(names, typ, defaultVal), nil
 }
 
 func convertDeclareCursor(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
@@ -1358,6 +1406,31 @@ func convertDeclareCursor(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, err
 		return nil, err
 	}
 	return plan.NewDeclareCursor(dCursor.Name, selectStmt), nil
+}
+
+func convertDeclareHandler(ctx *sql.Context, d *sqlparser.Declare, query string) (sql.Node, error) {
+	dHandler := d.Handler
+	//TODO: support other condition values besides NOT FOUND
+	if len(dHandler.ConditionValues) != 1 || dHandler.ConditionValues[0].ValueType != sqlparser.DeclareHandlerCondition_NotFound {
+		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(d))
+	}
+	stmt, err := convert(ctx, dHandler.Statement, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var action plan.DeclareHandlerAction
+	switch dHandler.Action {
+	case sqlparser.DeclareHandlerAction_Continue:
+		action = plan.DeclareHandlerAction_Continue
+	case sqlparser.DeclareHandlerAction_Exit:
+		action = plan.DeclareHandlerAction_Exit
+	case sqlparser.DeclareHandlerAction_Undo:
+		action = plan.DeclareHandlerAction_Undo
+	default:
+		return nil, fmt.Errorf("unknown DECLARE ... HANDLER action: %v", dHandler.Action)
+	}
+	return plan.NewDeclareHandler(action, stmt)
 }
 
 func convertFetch(ctx *sql.Context, fetchCursor *sqlparser.FetchCursor) (sql.Node, error) {
@@ -1370,6 +1443,22 @@ func convertOpen(ctx *sql.Context, openCursor *sqlparser.OpenCursor) (sql.Node, 
 
 func convertClose(ctx *sql.Context, closeCursor *sqlparser.CloseCursor) (sql.Node, error) {
 	return plan.NewClose(closeCursor.Name), nil
+}
+
+func convertLoop(ctx *sql.Context, loop *sqlparser.Loop, query string) (sql.Node, error) {
+	block, err := convertBlock(ctx, loop.Statements, query)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewLoop(loop.Label, block), nil
+}
+
+func convertLeave(ctx *sql.Context, leave *sqlparser.Leave) (sql.Node, error) {
+	return plan.NewLeave(leave.Label), nil
+}
+
+func convertIterate(ctx *sql.Context, iterate *sqlparser.Iterate) (sql.Node, error) {
+	return plan.NewIterate(iterate.Label), nil
 }
 
 func convertSignal(ctx *sql.Context, s *sqlparser.Signal) (sql.Node, error) {
@@ -2249,6 +2338,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	extra := ""
+
 	if cd.Type.Autoincrement {
 		extra = "auto_increment"
 	}

@@ -49,7 +49,7 @@ type ForeignKeyRefActionData struct {
 // back to this same editor. Self-referential foreign keys are inherently cyclical.
 type ForeignKeyEditor struct {
 	Schema     sql.Schema
-	Editor     sql.ForeignKeyUpdater
+	Editor     sql.ForeignKeyEditor
 	References []*ForeignKeyReferenceHandler
 	RefActions []ForeignKeyRefActionData
 	Cyclical   bool
@@ -439,7 +439,7 @@ func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sq
 // mapping from the source columns to the contained index's columns.
 type ForeignKeyRowMapper struct {
 	Index     sql.Index
-	Updater   sql.ForeignKeyUpdater
+	Updater   sql.ForeignKeyEditor
 	SourceSch sql.Schema
 	// IndexPositions hold the mapping between an index's column position and the source row's column position. Given
 	// an index (x1, x2) and a source row (y1, y2, y3) and the relation (x1->y3, x2->y1), this slice would contain

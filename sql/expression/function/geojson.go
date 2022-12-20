@@ -47,7 +47,7 @@ func (g *AsGeoJSON) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_ASGEOJSON(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

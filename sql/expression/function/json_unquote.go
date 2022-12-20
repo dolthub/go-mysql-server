@@ -53,7 +53,7 @@ func (js *JSONUnquote) IsUnsupported() bool {
 }
 
 func (js *JSONUnquote) String() string {
-	return fmt.Sprintf("JSON_UNQUOTE(%s)", js.Child)
+	return fmt.Sprintf("%s(%s)", js.FunctionName(), js.Child)
 }
 
 // Type implements the Expression interface.

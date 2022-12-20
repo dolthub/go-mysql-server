@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -64,6 +65,14 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 			}
 			treeIdentity = transform.NewTree
 		}
+		// special case for AsOf's that use naked identifiers; they are interpreted as UnresolvedColumn
+		if st, ok := n.(*plan.ShowTables); ok {
+			if col, ok := st.AsOf.(*expression.UnresolvedColumn); ok {
+				st.AsOf = expression.NewLiteral(col.String(), sql.LongText)
+				treeIdentity = transform.NewTree
+			}
+		}
+
 		return n, treeIdentity, nil
 	})
 }

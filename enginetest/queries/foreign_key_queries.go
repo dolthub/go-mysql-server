@@ -1226,12 +1226,20 @@ var ForeignKeyTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:       "TRUNCATE parent;",
+				ExpectedErr: sql.ErrTruncateReferencedFromForeignKey,
+			},
+			{
 				Query:       "DROP TABLE parent;",
 				ExpectedErr: sql.ErrForeignKeyDropTable,
 			},
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=0;",
 				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "TRUNCATE parent;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
 				Query:    "DROP TABLE parent;",

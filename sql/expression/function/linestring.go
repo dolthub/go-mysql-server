@@ -58,7 +58,7 @@ func (l *LineString) String() string {
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("LINESTRING(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

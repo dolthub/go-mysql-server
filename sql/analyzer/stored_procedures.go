@@ -319,7 +319,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	if procedure.HasVariadicParameter() {
 		procedure = procedure.ExtendVariadic(ctx, len(call.Params))
 	}
-	pRef := expression.NewProcedureParamReference(procedure.VariableCount, procedure.CursorCount)
+	pRef := expression.NewProcedureReference(procedure.VariableCount, procedure.CursorCount, procedure.HandlerCount)
 	call = call.WithParamReference(pRef)
 
 	var procParamTransformFunc transform.ExprFunc
@@ -374,15 +374,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			}
 			node, err := n.WithChildren(newLeft, newRight)
 			return node, transform.NewTree, err
-		case *plan.DeclareVariables:
-			return n.WithParamReference(pRef), transform.NewTree, nil
-		case *plan.DeclareCursor:
-			return n.WithParamReference(pRef), transform.NewTree, nil
-		case *plan.Open:
-			return n.WithParamReference(pRef), transform.NewTree, nil
-		case *plan.Close:
-			return n.WithParamReference(pRef), transform.NewTree, nil
-		case *plan.Fetch:
+		case expression.ProcedureReferencable:
 			return n.WithParamReference(pRef), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil

@@ -29,13 +29,13 @@ type NoArgFunc struct {
 
 // FunctionName implements sql.FunctionExpression
 func (fn NoArgFunc) FunctionName() string {
-	return fn.Name
+	return strings.ToLower(fn.Name)
 }
 
 // Type implements the Expression interface.
 func (fn NoArgFunc) Type() sql.Type { return fn.SQLType }
 
-func (fn NoArgFunc) String() string { return strings.ToUpper(fn.Name) + "()" }
+func (fn NoArgFunc) String() string { return fn.FunctionName() + "()" }
 
 // IsNullable implements the Expression interface.
 func (fn NoArgFunc) IsNullable() bool { return false }

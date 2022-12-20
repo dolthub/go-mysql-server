@@ -376,28 +376,49 @@ func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId,
-			optimizeJoinsId,
-			setJoinScopeLenId,
-			applyHashLookupsId,
-			finalizeSubqueriesId,
-			parallelizeId,
-			pushdownFiltersId,
-			subqueryIndexesId:
+		case
+			// skip recursive finalize rules
+			finalizeSubqueriesId:
 			return false
 		}
 		return sel(id)
 	}
 }
 
-func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
+func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case pruneColumnsId, optimizeJoinsId, setJoinScopeLenId, applyHashLookupsId, pushdownFiltersId, subqueryIndexesId:
-			return true
-		case finalizeSubqueriesId:
-			// Don't run finalizeSubqueries on subqueries, since calling it on the root of the statement will
-			// recursively handle subqueries from the bottom of the plan up.
+		case
+			// skip recursive resolve rules
+			resolveSubqueryExprsId,
+			resolveSubqueriesId,
+			resolveUnionsId,
+			// skip redundant finalize rules
+			finalizeSubqueriesId,
+			// skip caching rules, they should only be run once in outer scope
+			cacheSubqueryResultsId,
+			cacheSubqueryAliasesInJoinsId,
+			inSubqueryIndexesId,
+			TrackProcessId:
+			return false
+		}
+		return sel(id)
+	}
+}
+
+func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case
+			// skip recursive resolve rules
+			resolveSubqueryExprsId,
+			resolveSubqueriesId,
+			resolveUnionsId,
+			// skip caching rules, they should only be run once in outer scope
+			cacheSubqueryResultsId,
+			cacheSubqueryAliasesInJoinsId,
+			inSubqueryIndexesId,
+			parallelizeId:
 			return false
 		}
 		return sel(id)
@@ -407,9 +428,12 @@ func NewFinalizeNestedSubquerySel(sel RuleSelector) RuleSelector {
 func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case finalizeSubqueriesId:
-			// Don't run finalizeSubqueries on subqueries, since calling it on the root of the statement will
-			// recursively handle subqueries from the bottom of the plan up.
+		case
+			// skip recursive resolve rules
+			resolveSubqueryExprsId,
+			resolveSubqueriesId,
+			// skip redundant finalize rules
+			finalizeSubqueriesId:
 			return false
 		}
 		return sel(id)
@@ -440,16 +464,9 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 		// DefaultValidation
 		validateResolvedId,
-		validateOrderById,
 		validateGroupById,
-		validateSchemaSourceId,
-		validateIndexCreationId,
-		validateOperandsId,
-		validateIntervalUsageId,
-		validateSubqueryColumnsId,
 		validateUnionSchemasMatchId,
-		validateAggregationsId,
-		validateExplodeUsageId,
+		validateOperandsId,
 
 		// OnceAfterAll
 		TrackProcessId:
@@ -499,6 +516,10 @@ func postPrepareRuleSelector(id RuleId) bool {
 		resolvePreparedInsertId,
 
 		// DefaultValidationRules
+		validateResolvedId,
+		validateGroupById,
+		validateOperandsId,
+		//validateUnionSchemasMatchId, // TODO: we never validate UnionSchemasMatchId :)
 
 		// OnceAfterAll
 		TrackProcessId:

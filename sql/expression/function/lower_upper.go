@@ -65,7 +65,7 @@ func (l *Lower) Eval(
 }
 
 func (l *Lower) String() string {
-	return fmt.Sprintf("LOWER(%s)", l.Child)
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -125,7 +125,7 @@ func (u *Upper) Eval(
 }
 
 func (u *Upper) String() string {
-	return fmt.Sprintf("UPPER(%s)", u.Child)
+	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.Child)
 }
 
 // WithChildren implements the Expression interface.

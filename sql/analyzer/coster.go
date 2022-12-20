@@ -121,6 +121,10 @@ func (c *coster) costFullOuterJoin(n *fullOuterJoin) (float64, error) {
 }
 
 func (c *coster) costHashJoin(n *hashJoin) (float64, error) {
+	if n.op.IsPartial() {
+		l, err := c.costPartial(n.left, n.right)
+		return l * 0.9, err
+	}
 	l := n.left.cost
 	r := n.right.cost
 	buildProbe := r / 2
@@ -162,26 +166,19 @@ func lookupMultiplier(l *lookup, filterCnt int) float64 {
 }
 
 func (c *coster) costAntiJoin(n *antiJoin) (float64, error) {
-	l, err := c.costRel(n.left.best)
-	if err != nil {
-		return float64(0), nil
-	}
-	r, err := c.costRel(n.right.best)
-	if err != nil {
-		return float64(0), nil
-	}
-	if r > l {
-		return r, nil
-	}
-	return l, nil
+	return c.costPartial(n.left, n.right)
 }
 
 func (c *coster) costSemiJoin(n *semiJoin) (float64, error) {
-	l, err := c.costRel(n.left.best)
+	return c.costPartial(n.left, n.right)
+}
+
+func (c *coster) costPartial(left, right *exprGroup) (float64, error) {
+	l, err := c.costRel(left.best)
 	if err != nil {
 		return float64(0), nil
 	}
-	r, err := c.costRel(n.right.best)
+	r, err := c.costRel(right.best)
 	if err != nil {
 		return float64(0), nil
 	}

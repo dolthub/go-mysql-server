@@ -4884,7 +4884,7 @@ END;`,
 				nil,
 				plan.NewBeginEndBlock(
 					plan.NewBlock([]sql.Node{
-						plan.NewDeclareVariables([]string{"c"}, sql.Int64),
+						plan.NewDeclareVariables([]string{"c"}, sql.Int64, nil),
 						plan.NewDeclareCursor("cur1", plan.NewProject(
 							[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
 							plan.NewResolvedDualTable(),
@@ -5179,13 +5179,16 @@ func TestPrintTree(t *testing.T) {
 		WHERE foo > qux
 		LIMIT 5
 		OFFSET 2`)
+	fmt.Println(node.String())
 	require.NoError(err)
 	require.Equal(`Limit(5)
  └─ Offset(2)
      └─ Project
          ├─ columns: [t.foo, bar.baz]
-         └─ Filter(foo > qux)
-             └─ InnerJoin(foo = baz)
+         └─ Filter
+             ├─ (foo > qux)
+             └─ InnerJoin
+                 ├─ (foo = baz)
                  ├─ TableAlias(t)
                  │   └─ UnresolvedTable(tbl)
                  └─ UnresolvedTable(bar)

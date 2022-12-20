@@ -301,7 +301,7 @@ func TestQualifyColumns(t *testing.T) {
 		},
 		{
 			name: "qualify in subquery expression",
-			scope: newScope(plan.NewProject(
+			scope: newTestScope(plan.NewProject(
 				[]sql.Expression{
 					uc("i"),
 					plan.NewSubquery(
@@ -348,7 +348,7 @@ func TestQualifyColumns(t *testing.T) {
 		},
 		{
 			name: "qualify in subquery expression, already qualified",
-			scope: newScope(plan.NewProject(
+			scope: newTestScope(plan.NewProject(
 				[]sql.Expression{
 					uc("i"),
 					plan.NewSubquery(
@@ -567,7 +567,7 @@ func TestResolveColumns(t *testing.T) {
 		},
 		{
 			name: "resolve deferred columns in subquery expressions",
-			scope: newScope(plan.NewProject(
+			scope: newTestScope(plan.NewProject(
 				[]sql.Expression{
 					uc("i"),
 					plan.NewSubquery(

@@ -97,10 +97,7 @@ func (srn *StripRowNode) String() string {
 }
 
 func (srn *StripRowNode) DebugString() string {
-	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("StripRowNode(%d)", srn.numCols)
-	_ = tp.WriteChildren(sql.DebugString(srn.Child))
-	return tp.String()
+	return sql.DebugString(srn.Child)
 }
 
 func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -427,11 +424,19 @@ func (s *Subquery) IsNullable() bool {
 }
 
 func (s *Subquery) String() string {
-	return fmt.Sprintf("(%s)", s.Query)
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Subquery")
+	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults), s.Query.String()}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 func (s *Subquery) DebugString() string {
-	return fmt.Sprintf("(%s), cacheable = %t", sql.DebugString(s.Query), s.canCacheResults)
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Subquery")
+	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults), sql.DebugString(s.Query)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // Resolved implements the Expression interface.
@@ -481,6 +486,10 @@ func (s *Subquery) WithCachedResults() *Subquery {
 	ns := *s
 	ns.canCacheResults = true
 	return &ns
+}
+
+func (s *Subquery) CanCacheResults() bool {
+	return s.canCacheResults
 }
 
 // Dispose implements sql.Disposable

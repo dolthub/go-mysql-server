@@ -54,7 +54,7 @@ func (s *SwapXY) Type() sql.Type {
 }
 
 func (s *SwapXY) String() string {
-	return fmt.Sprintf("ST_SWAPXY(%s)", s.Child.String())
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String())
 }
 
 // WithChildren implements the Expression interface.

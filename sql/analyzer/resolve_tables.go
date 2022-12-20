@@ -105,6 +105,11 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 				return nil, err
 			}
 
+			// special case for AsOf's that use naked identifiers; they are interpreted as UnresolvedColumns
+			if col, ok := asOfExpr.(*expression.UnresolvedColumn); ok {
+				asOfExpr = expression.NewLiteral(col.String(), sql.LongText)
+			}
+
 			if !asOfExpr.Resolved() {
 				return nil, sql.ErrInvalidAsOfExpression.New(asOfExpr.String())
 			}

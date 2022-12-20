@@ -68,7 +68,7 @@ func (f *ConcatWithSeparator) String() string {
 	for i, arg := range f.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("concat_ws(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

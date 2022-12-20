@@ -110,7 +110,7 @@ func (s *Soundex) code(c rune) rune {
 }
 
 func (s *Soundex) String() string {
-	return fmt.Sprintf("SOUNDEX(%s)", s.Child)
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child)
 }
 
 // WithChildren implements the Expression interface.

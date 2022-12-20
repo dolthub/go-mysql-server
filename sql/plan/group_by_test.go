@@ -17,6 +17,7 @@ package plan
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -155,6 +156,86 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	}
 
 	require.Equal(expected, rows)
+}
+
+func TestGroupByCollations(t *testing.T) {
+	tString := sql.MustCreateString(query.Type_VARCHAR, 255, sql.Collation_utf8mb4_0900_ai_ci)
+	tEnum := sql.MustCreateEnumType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
+	tSet := sql.MustCreateSetType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
+
+	var testCases = []struct {
+		Type  sql.Type
+		Value func(t *testing.T, v string) any
+	}{
+		{
+			Type:  tString,
+			Value: func(t *testing.T, v string) any { return v },
+		},
+		{
+			Type: tEnum,
+			Value: func(t *testing.T, v string) any {
+				conv, err := tEnum.Convert(v)
+				require.NoError(t, err)
+				return conv
+			},
+		},
+		{
+			Type: tSet,
+			Value: func(t *testing.T, v string) any {
+				conv, err := tSet.Convert(v)
+				require.NoError(t, err)
+				return conv
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Type.String(), func(t *testing.T) {
+			require := require.New(t)
+			ctx := sql.NewEmptyContext()
+
+			childSchema := sql.Schema{
+				{Name: "col1", Type: tc.Type},
+				{Name: "col2", Type: sql.Int64},
+			}
+
+			child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema), nil)
+
+			rows := []sql.Row{
+				sql.NewRow(tc.Value(t, "col1_1"), int64(1111)),
+				sql.NewRow(tc.Value(t, "Col1_1"), int64(1111)),
+				sql.NewRow(tc.Value(t, "col1_2"), int64(4444)),
+				sql.NewRow(tc.Value(t, "col1_1"), int64(1111)),
+				sql.NewRow(tc.Value(t, "Col1_2"), int64(4444)),
+			}
+
+			for _, r := range rows {
+				require.NoError(child.Insert(sql.NewEmptyContext(), r))
+			}
+
+			p := NewGroupBy(
+				[]sql.Expression{
+					aggregation.NewSum(
+						expression.NewGetFieldWithTable(1, sql.Int64, "test", "col2", false),
+					),
+				},
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, tc.Type, "test", "col1", false),
+				},
+				NewResolvedTable(child, nil, nil),
+			)
+
+			rows, err := sql.NodeToRows(ctx, p)
+			require.NoError(err)
+
+			expected := []sql.Row{
+				{float64(3333)},
+				{float64(8888)},
+			}
+
+			require.Equal(expected, rows)
+		})
+	}
 }
 
 func BenchmarkGroupBy(b *testing.B) {

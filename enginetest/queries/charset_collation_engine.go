@@ -607,6 +607,36 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		},
 	},
 	{
+		Name: "STRCMP() function",
+		Queries: []CharsetCollationEngineTestQuery{
+			// TODO: returning different results from MySQL
+			/*{
+				// collation with the lowest coercibility is used
+				Query: "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, 'a')",
+				Expected: []sql.Row{
+					{int(0)},
+				},
+			},
+			{
+				// same coercibility, both unicode
+				Query:   "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, _utf8mb4'a' COLLATE utf8mb4_0900_as_cs)",
+				ErrKind: sql.ErrCollationIllegalMix,
+			},
+			{
+				// same coercibility, both not unicode
+				Query:   "SELECT STRCMP(_latin1'A' COLLATE latin1_general_ci, _latin1'a' COLLATE latin1_german1_ci)",
+				ErrKind: sql.ErrCollationIllegalMix,
+			},*/
+			{
+				// same coercibility, one unicode and one not unicode
+				Query: "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, _latin1'b' COLLATE latin1_general_cs)",
+				Expected: []sql.Row{
+					{int(-1)},
+				},
+			},
+		},
+	},
+	{
 		Name: "LENGTH() function",
 		Queries: []CharsetCollationEngineTestQuery{
 			{

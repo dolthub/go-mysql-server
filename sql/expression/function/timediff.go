@@ -56,11 +56,8 @@ func (td *TimeDiff) Description() string {
 // Type implements the Expression interface.
 func (td *TimeDiff) Type() sql.Type { return sql.Time }
 
-// IsNullable implements the Expression interface.
-func (td *TimeDiff) IsNullable() bool { return false }
-
 func (td *TimeDiff) String() string {
-	return fmt.Sprintf("TIMEDIFF(%s, %s)", td.Left, td.Right)
+	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.Left, td.Right)
 }
 
 // WithChildren implements the Expression interface.
@@ -85,6 +82,10 @@ func convToDateOrTime(val interface{}) (interface{}, error) {
 
 // Eval implements the Expression interface.
 func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if td.Left == nil || td.Right == nil {
+		return nil, nil
+	}
+
 	left, err := td.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -165,21 +166,6 @@ func (d *DateDiff) Description() string {
 	return "gets difference between two dates in result of days."
 }
 
-// Children implements the sql.Expression interface.
-func (d *DateDiff) Children() []sql.Expression {
-	return []sql.Expression{d.Left, d.Right}
-}
-
-// Resolved implements the sql.Expression interface.
-func (d *DateDiff) Resolved() bool {
-	return d.Left.Resolved() && d.Right.Resolved()
-}
-
-// IsNullable implements the sql.Expression interface.
-func (d *DateDiff) IsNullable() bool {
-	return d.Left.IsNullable() && d.Right.IsNullable()
-}
-
 // Type implements the sql.Expression interface.
 func (d *DateDiff) Type() sql.Type { return sql.Int64 }
 
@@ -193,6 +179,10 @@ func (d *DateDiff) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 // Eval implements the sql.Expression interface.
 func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if d.Left == nil || d.Right == nil {
+		return nil, nil
+	}
+
 	expr1, err := d.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -289,6 +279,13 @@ func (t *TimestampDiff) WithChildren(children ...sql.Expression) (sql.Expression
 
 // Eval implements the sql.Expression interface.
 func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if t.unit == nil {
+		return nil, errors.NewKind("unit cannot be null").New(t.unit)
+	}
+	if t.expr1 == nil || t.expr2 == nil {
+		return nil, nil
+	}
+
 	expr1, err := t.expr1.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -320,7 +317,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 	if unit == nil {
-		return nil, nil
+		return nil, errors.NewKind("unit cannot be null").New(unit)
 	}
 
 	unit = strings.TrimPrefix(strings.ToLower(unit.(string)), "sql_tsi_")

@@ -69,7 +69,7 @@ func (u UUIDFunc) Description() string {
 }
 
 func (u UUIDFunc) String() string {
-	return "UUID()"
+	return fmt.Sprintf("%s()", u.FunctionName())
 }
 
 func (u UUIDFunc) Type() sql.Type {
@@ -135,7 +135,7 @@ func (u IsUUID) Description() string {
 }
 
 func (u IsUUID) String() string {
-	return fmt.Sprintf("IS_UUID(%s)", u.child)
+	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.child)
 }
 
 func (u IsUUID) Type() sql.Type {

@@ -23,7 +23,7 @@ func NewAnyValue(e sql.Expression) *AnyValue {
 		unaryAggBase{
 			UnaryExpression: expression.UnaryExpression{Child: e},
 			functionName:    "AnyValue",
-			description:     "returns the value itself",
+			description:     "returns any single value in the grouped rows",
 		},
 	}
 }
@@ -37,7 +37,25 @@ func (a *AnyValue) IsNullable() bool {
 }
 
 func (a *AnyValue) String() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("ANYVALUE")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
 	return fmt.Sprintf("ANYVALUE(%s)", a.Child)
+}
+
+func (a *AnyValue) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("ANYVALUE")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("ANYVALUE(%s)", sql.DebugString(a.Child))
 }
 
 func (a *AnyValue) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -93,11 +111,25 @@ func (a *Avg) IsNullable() bool {
 }
 
 func (a *Avg) String() string {
-	res := fmt.Sprintf("AVG(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("AVG")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("AVG(%s)", a.Child)
+}
+
+func (a *Avg) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("AVG")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("AVG(%s)", sql.DebugString(a.Child))
 }
 
 func (a *Avg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -153,11 +185,25 @@ func (a *BitAnd) IsNullable() bool {
 }
 
 func (a *BitAnd) String() string {
-	res := fmt.Sprintf("BITAND(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("BITAND")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("BITAND(%s)", a.Child)
+}
+
+func (a *BitAnd) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("BITAND")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("BITAND(%s)", sql.DebugString(a.Child))
 }
 
 func (a *BitAnd) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -213,11 +259,25 @@ func (a *BitOr) IsNullable() bool {
 }
 
 func (a *BitOr) String() string {
-	res := fmt.Sprintf("BITOR(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("BITOR")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("BITOR(%s)", a.Child)
+}
+
+func (a *BitOr) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("BITOR")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("BITOR(%s)", sql.DebugString(a.Child))
 }
 
 func (a *BitOr) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -273,11 +333,25 @@ func (a *BitXor) IsNullable() bool {
 }
 
 func (a *BitXor) String() string {
-	res := fmt.Sprintf("BITXOR(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("BITXOR")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("BITXOR(%s)", a.Child)
+}
+
+func (a *BitXor) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("BITXOR")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("BITXOR(%s)", sql.DebugString(a.Child))
 }
 
 func (a *BitXor) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -333,11 +407,25 @@ func (a *Count) IsNullable() bool {
 }
 
 func (a *Count) String() string {
-	res := fmt.Sprintf("COUNT(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("COUNT")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("COUNT(%s)", a.Child)
+}
+
+func (a *Count) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("COUNT")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("COUNT(%s)", sql.DebugString(a.Child))
 }
 
 func (a *Count) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -393,11 +481,25 @@ func (a *First) IsNullable() bool {
 }
 
 func (a *First) String() string {
-	res := fmt.Sprintf("FIRST(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("FIRST")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("FIRST(%s)", a.Child)
+}
+
+func (a *First) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("FIRST")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("FIRST(%s)", sql.DebugString(a.Child))
 }
 
 func (a *First) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -453,11 +555,25 @@ func (a *JsonArray) IsNullable() bool {
 }
 
 func (a *JsonArray) String() string {
-	res := fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("JSON_ARRAYAGG")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
+}
+
+func (a *JsonArray) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("JSON_ARRAYAGG")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("JSON_ARRAYAGG(%s)", sql.DebugString(a.Child))
 }
 
 func (a *JsonArray) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -513,11 +629,25 @@ func (a *Last) IsNullable() bool {
 }
 
 func (a *Last) String() string {
-	res := fmt.Sprintf("LAST(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("LAST")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("LAST(%s)", a.Child)
+}
+
+func (a *Last) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("LAST")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("LAST(%s)", sql.DebugString(a.Child))
 }
 
 func (a *Last) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -573,11 +703,25 @@ func (a *Max) IsNullable() bool {
 }
 
 func (a *Max) String() string {
-	res := fmt.Sprintf("MAX(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("MAX")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("MAX(%s)", a.Child)
+}
+
+func (a *Max) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("MAX")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("MAX(%s)", sql.DebugString(a.Child))
 }
 
 func (a *Max) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -633,11 +777,25 @@ func (a *Min) IsNullable() bool {
 }
 
 func (a *Min) String() string {
-	res := fmt.Sprintf("MIN(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("MIN")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("MIN(%s)", a.Child)
+}
+
+func (a *Min) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("MIN")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("MIN(%s)", sql.DebugString(a.Child))
 }
 
 func (a *Min) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
@@ -693,11 +851,25 @@ func (a *Sum) IsNullable() bool {
 }
 
 func (a *Sum) String() string {
-	res := fmt.Sprintf("SUM(%s)", a.Child)
 	if a.window != nil {
-		res = res + " " + a.window.String()
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("SUM")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
 	}
-	return res
+	return fmt.Sprintf("SUM(%s)", a.Child)
+}
+
+func (a *Sum) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("SUM")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("SUM(%s)", sql.DebugString(a.Child))
 }
 
 func (a *Sum) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
