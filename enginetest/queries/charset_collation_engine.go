@@ -618,7 +618,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				// same coercibility, both unicode
-				Query:   "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, _utf8mb4'a' COLLATE utf8mb4_0900_as_ci)",
+				Query:   "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, _utf8mb4'a' COLLATE utf8mb4_0900_as_cs)",
 				ErrKind: sql.ErrCollationIllegalMix,
 			},
 			{

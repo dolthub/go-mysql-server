@@ -39,19 +39,16 @@ func TestStrCmp(t *testing.T) {
 		{"first argument is null", sql.Text, sql.Text, sql.NewRow(nil, "a"), nil, nil},
 		{"second argument is null", sql.Text, sql.Text, sql.NewRow("a", nil), nil, nil},
 		{"both arguments are null", sql.Text, sql.Text, sql.NewRow(nil, nil), nil, nil},
-		//{"different collations throws error", sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_0900_ai_ci), sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_0900_bin), sql.NewRow("a", "a"), nil, nil},
 		{"first argument is text, second argument is not text", sql.Text, sql.Date, sql.NewRow("a", 2022-11-04), int(1), nil},
 		{"first argument is not text, second argument is text", sql.Int8, sql.Text, sql.NewRow(1, "1"), int(0), nil},
 		{"both arguments are non-text, different types", sql.Int8, sql.Date, sql.NewRow(3, 2007), int(1), nil},
 		{"type coercion, equal arguments", sql.Int8, sql.Int8, sql.NewRow(1, 1), int(0), nil},
 		{"type coercion, first argument is smaller", sql.Int8, sql.Int8, sql.NewRow(0, 1), int(-1), nil},
 		{"type coercion, second argument is smaller", sql.Int8, sql.Int8, sql.NewRow(1, 0), int(1), nil},
-		// collations haven't been implemented yet
-		// {"same character set, both case sensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_as_cs), sql.CreateTinyText(sql.Collation_utf8mb4_cs_0900_as_cs), sql.NewRow("a", "a"), nil, sql.ErrCollationIllegalMix},
 		// ResolveCoercibility not returning error
+		// {"same character set, both case sensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_as_cs), sql.CreateTinyText(sql.Collation_utf8mb4_cs_0900_as_cs), sql.NewRow("a", "a"), nil, sql.ErrCollationIllegalMix},
 		// {"same character set, both case insensitive", sql.CreateTinyText(sql.Collation_latin1_general_ci), sql.CreateTinyText(sql.Collation_latin1_german1_ci), sql.NewRow("a", "a"), nil, sql.ErrCollationIllegalMix},
-		// collations haven't been implemented yet
-		// {"different character sets, both case sensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_as_cs), sql.CreateTinyText(sql.Collation_latin1_general_cs), sql.NewRow("a", "a"), nil, nil},
+		{"different character sets, both case sensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_as_cs), sql.CreateTinyText(sql.Collation_latin1_general_cs), sql.NewRow("a", "a"), int(0), nil},
 		{"different character sets, both case insensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_ai_ci), sql.CreateTinyText(sql.Collation_latin1_general_ci), sql.NewRow("a", "a"), int(0), nil},
 		{"different character sets, one case sensitive, one case insensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_ai_ci), sql.CreateTinyText(sql.Collation_latin1_general_cs), sql.NewRow("a", "a"), int(0), nil},
 	}
