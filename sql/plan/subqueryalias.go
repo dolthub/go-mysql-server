@@ -52,7 +52,6 @@ func (sq *SubqueryAlias) Name() string { return sq.name }
 
 // Schema implements the Node interface.
 func (sq *SubqueryAlias) Schema() sql.Schema {
-	// TODO: do something else if child is a project??
 	childSchema := sq.Child.Schema()
 	schema := make(sql.Schema, len(childSchema))
 	for i, col := range childSchema {
