@@ -41,17 +41,17 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		return node, transform.SameTree, nil
 	}
 
-	var oldCtes map[string]sql.Node
-	defer func() {
-		for k, v := range oldCtes {
-			ctes[k] = v
-		}
-	}()
 	with, ok := node.(*plan.With)
 	if ok {
+		// restore CTEs that are overwritten for parent scope
+		var overwrittenCtes map[string]sql.Node
+		defer func() {
+			for k, v := range overwrittenCtes {
+				ctes[k] = v
+			}
+		}()
 		var err error
-		// TODO: strip with needs to restore any CTEs it REPLACES after
-		node, oldCtes, err = stripWith(ctx, a, scope, with, ctes, sel)
+		node, overwrittenCtes, err = stripWith(ctx, a, scope, with, ctes, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
