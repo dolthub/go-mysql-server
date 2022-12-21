@@ -28,7 +28,6 @@ type DeclareCursor struct {
 	Name   string
 	Select sql.Node
 	pRef   *expression.ProcedureReference
-	id     int
 }
 
 var _ sql.Node = (*DeclareCursor)(nil)
@@ -96,13 +95,6 @@ func (d *DeclareCursor) WithParamReference(pRef *expression.ProcedureReference) 
 	return &nd
 }
 
-// WithId returns a new *DeclareCursor containing the given id.
-func (d *DeclareCursor) WithId(id int) *DeclareCursor {
-	nd := *d
-	nd.id = id
-	return &nd
-}
-
 // declareCursorIter is the sql.RowIter of *DeclareCursor.
 type declareCursorIter struct {
 	*DeclareCursor
@@ -112,7 +104,7 @@ var _ sql.RowIter = (*declareCursorIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (d *declareCursorIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.pRef.InitializeCursor(d.id, d.Name, d.Select)
+	d.pRef.InitializeCursor(d.Name, d.Select)
 	return nil, io.EOF
 }
 

@@ -1096,6 +1096,39 @@ END`,
 		},
 	},
 	{
+		Name: "HANDLERs ignore variables declared after them",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE dvar BIGINT DEFAULT 1;
+	DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+    OPEN cur1;
+	BEGIN
+		DECLARE EXIT HANDLER FOR NOT FOUND SET dvar = 10;
+		BEGIN
+			DECLARE dvar BIGINT DEFAULT 2;
+			BEGIN
+				DECLARE dvar BIGINT DEFAULT 3;
+				LOOP
+					FETCH cur1 INTO dvar; # Handler is triggered here, but should only set the first "dvar"
+				END LOOP;
+            END;
+		END;
+    END;
+    SELECT dvar;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
 		ExpectedErr: sql.ErrDeclareVariableDuplicate,
@@ -1428,6 +1461,78 @@ END;`,
 			{
 				Query:       "CALL p1();",
 				ExpectedErr: sql.ErrCursorNotOpen,
+			},
+		},
+	},
+	{
+		Name: "With CTE using variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE v1 INT DEFAULT 1234;
+	WITH cte as (SELECT v1)
+	SELECT * FROM cte;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{1234},
+				},
+			},
+		},
+	},
+	{
+		Name: "With CTE using parameter",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(v1 int)
+BEGIN
+	WITH cte as (SELECT v1)
+	SELECT * FROM cte;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(1234);",
+				Expected: []sql.Row{
+					{1234},
+				},
+			},
+		},
+	},
+	{
+		Name: "Dolt Issue #4480",
+		SetUpScript: []string{
+			"create table p1 (row_id int primary key, pred int, actual int)",
+			"create table p2 (row_id int primary key, pred int, actual int)",
+			"insert into p1 values (0, 0, 0), (1, 0, 1), (2, 1, 0), (3, 1, 1)",
+			"insert into p2 values (0, 0, 0), (1, 0, 1), (2, 1, 0), (3, 1, 1)",
+			`CREATE PROCEDURE computeSummary(c VARCHAR(200)) 
+BEGIN
+	with t as (
+		select
+			case
+				when p1.pred = p2.actual then 1
+			else 0
+			end as correct,
+			p1.actual
+			from p1
+			join p2
+			on p1.row_id = p2.row_id
+	)
+	select
+		sum(correct)/count(*),
+		count(*) as row_num
+		from t;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL computeSummary('i am not used');",
+				Expected: []sql.Row{
+					{"0.5000", 4},
+				},
 			},
 		},
 	},

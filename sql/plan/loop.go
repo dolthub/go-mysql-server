@@ -30,6 +30,7 @@ type Loop struct {
 
 var _ sql.Node = (*Loop)(nil)
 var _ sql.DebugStringer = (*Loop)(nil)
+var _ RepresentsLabeledBlock = (*Loop)(nil)
 
 // NewLoop returns a new *Loop node.
 func NewLoop(label string, block *Block) *Loop {
@@ -95,6 +96,16 @@ func (l *Loop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		row:           row,
 		loopIteration: 0,
 	}, nil
+}
+
+// GetBlockLabel implements the interface RepresentsLabeledBlock.
+func (l *Loop) GetBlockLabel(ctx *sql.Context) string {
+	return l.Label
+}
+
+// RepresentsLoop implements the interface RepresentsLabeledBlock.
+func (l *Loop) RepresentsLoop() bool {
+	return true
 }
 
 // loopIter is the sql.RowIter of *Loop.

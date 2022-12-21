@@ -130,7 +130,7 @@ func resolveExternalStoredProcedure(_ *sql.Context, externalProcedure sql.Extern
 				Type:      sqlType,
 				Variadic:  paramIsVariadic,
 			}
-			paramReferences[i] = expression.NewProcedureParam(i, paramName)
+			paramReferences[i] = expression.NewProcedureParam(paramName)
 		} else if sqlType, ok = externalStoredProcedurePointerTypes[funcParamType]; ok {
 			paramDefinitions[i] = plan.ProcedureParam{
 				Direction: plan.ProcedureParamDirection_Inout,
@@ -138,7 +138,7 @@ func resolveExternalStoredProcedure(_ *sql.Context, externalProcedure sql.Extern
 				Type:      sqlType,
 				Variadic:  paramIsVariadic,
 			}
-			paramReferences[i] = expression.NewProcedureParam(i, paramName)
+			paramReferences[i] = expression.NewProcedureParam(paramName)
 		} else {
 			return nil, sql.ErrExternalProcedureInvalidParamType.New(funcParamType.String())
 		}
