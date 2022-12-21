@@ -502,11 +502,11 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "create table", "create view":
 		var asOfExpression sql.Expression
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			expr, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
 			if err != nil {
 				return nil, err
 			}
-			asOfExpression = expression
+			asOfExpression = expr
 		}
 		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
 		return plan.NewShowCreateTableWithAsOf(table, showType == "create view", asOfExpression), nil

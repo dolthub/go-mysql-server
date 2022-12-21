@@ -571,7 +571,7 @@ func resolveProcedureChild(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 
 // resolveProcedureVariables resolves all named parameters and declared variables in a node.
 func resolveProcedureVariables(ctx *sql.Context, scope *declarationScope, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	exprFunc := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "" {
@@ -606,5 +606,32 @@ func resolveProcedureVariables(ctx *sql.Context, scope *declarationScope, n sql.
 		default:
 			return e, transform.SameTree, nil
 		}
-	})
+	}
+
+	if w, ok := n.(*plan.With); ok {
+		cteSame := transform.SameTree
+		for i, cte := range w.CTEs {
+			newChild, same, err := resolveProcedureVariables(ctx, scope, cte.Subquery.Child)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				continue
+			}
+			cteSame = transform.NewTree
+			newSubquery, err := cte.Subquery.WithChildren(newChild)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			w.CTEs[i].Subquery = newSubquery.(*plan.SubqueryAlias)
+		}
+		newW, same, err := transform.NodeExprs(w, exprFunc)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		return newW, cteSame && same, nil
+	}
+
+	return transform.NodeExprs(n, exprFunc)
 }

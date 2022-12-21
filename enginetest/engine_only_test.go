@@ -435,6 +435,15 @@ func TestAnalyzer(t *testing.T) {
 				return plan.NewShowTables(db, false, timestamp)
 			},
 		},
+		{
+			name:  "show tables as of, naked literal",
+			query: "SHOW TABLES AS OF abc123",
+			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
+				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
+				require.NoError(t, err)
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+			},
+		},
 	}
 
 	harness := enginetest.NewDefaultMemoryHarness()
