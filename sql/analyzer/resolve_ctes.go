@@ -27,12 +27,14 @@ const maxCteDepth = 5
 // resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 // tree with the subqueries defined in the CTEs.
 func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	_, ok := n.(*plan.With)
-	if !ok {
-		return n, transform.SameTree, nil
-	}
+	// TODO: recurse bottom up for all with nodes
+	res, same, err := transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if _, ok := n.(*plan.With); !ok {
+			return n, transform.SameTree, nil
+		}
+		return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), 0, sel)
+	})
 
-	res, same, err := resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), 0, sel)
 	return res, same, err
 }
 
