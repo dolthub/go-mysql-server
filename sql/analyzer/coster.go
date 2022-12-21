@@ -82,7 +82,7 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 	}
 
 	db := c.ctx.GetCurrentDatabase()
-	card, err := c.s.Card(c.ctx, db, t.Name())
+	card, err := c.s.RowCount(c.ctx, db, t.Name())
 	if err != nil {
 		// TODO: better estimates for derived tables
 		return float64(1000), nil

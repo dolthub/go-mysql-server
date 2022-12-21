@@ -1279,7 +1279,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
-					tableRows, err = st.Cardinality(ctx)
+					tableRows, err = st.RowCount(ctx)
 					if err != nil {
 						return false, err
 					}
@@ -1488,7 +1488,8 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
-func NewWritableInformationSchemaDatabase() Database {
+
+func NewUpdatableInformationSchemaDatabase() Database {
 	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
 	db.tables[StatisticsTableName] = newUpdatableStatsTable()
 	return db
@@ -1982,12 +1983,93 @@ func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	return nil
 }
 
+func NewDefaultStats() *defaultStatsTable {
+	return &defaultStatsTable{
+		informationSchemaTable: &informationSchemaTable{
+			name:   StatisticsTableName,
+			schema: statisticsSchema,
+			reader: statisticsRowIter,
+		},
+		stats: make(catalogStatistics),
+	}
+}
+
+// catalogStatistics holds TableStatistics keyed by table and database
+type catalogStatistics map[DbTable]*TableStatistics
+
+// defaultStatsTable is a statistics table implementation
+// with a cache to save ANALYZE results. RowCount defers to
+// the underlying table in the absence of a cached statistic.
+type defaultStatsTable struct {
+	*informationSchemaTable
+	stats catalogStatistics
+}
+
+var _ StatsReadWriter = (*defaultStatsTable)(nil)
+
+func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
+	n.catalog = cat
+	return n
+}
+
+func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
+	if s, ok := n.stats[DbTable{db, table}]; ok {
+		return s.Histograms, nil
+	} else {
+		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
+		return nil, err
+	}
+}
+
+func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (float64, error) {
+	s, ok := n.stats[DbTable{Db: db, Table: table}]
+	if ok {
+		return float64(s.RowCount), nil
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return 0, err
+	}
+	st, ok := t.(StatisticsTable)
+	if !ok {
+		return 0, nil
+	}
+	return st.RowCount(ctx)
+}
+
+func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
+	tableStats := &TableStatistics{
+		CreatedAt: time.Now(),
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return err
+	}
+	histMap, err := NewHistogramMapFromTable(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	tableStats.Histograms = histMap
+	for _, v := range histMap {
+		tableStats.RowCount = v.Count + v.NullCount
+		break
+	}
+
+	n.stats[DbTable{Db: db, Table: table}] = tableStats
+	return nil
+}
+
 func newUpdatableStatsTable() *updatableStatsTable {
 	return &updatableStatsTable{
 		defaultStatsTable: NewDefaultStats(),
 	}
 }
 
+// updatableStatsTable provides a statistics table that can
+// be edited with UPDATE statements.
 type updatableStatsTable struct {
 	*defaultStatsTable
 }
@@ -1995,6 +2077,7 @@ type updatableStatsTable struct {
 var _ UpdatableTable = (*updatableStatsTable)(nil)
 var _ StatsReadWriter = (*updatableStatsTable)(nil)
 
+// AssignCatalog implements sql.CatalogTable
 func (t *updatableStatsTable) AssignCatalog(cat Catalog) Table {
 	t.catalog = cat
 	return t
@@ -2016,12 +2099,16 @@ type statsEditor struct {
 
 var _ RowUpdater = (*statsEditor)(nil)
 
+// StatementBegin implements sql.RowUpdater
 func (s *statsEditor) StatementBegin(ctx *Context) {}
 
+// DiscardChanges implements sql.RowUpdater
 func (s *statsEditor) DiscardChanges(ctx *Context, errorEncountered error) error { return nil }
 
+// StatementComplete implements sql.RowUpdater
 func (s *statsEditor) StatementComplete(ctx *Context) error { return nil }
 
+// Update implements sql.RowUpdater
 func (s *statsEditor) Update(ctx *Context, old, new Row) error {
 	db, ok := old[1].(string)
 	if !ok {
@@ -2051,79 +2138,6 @@ func (s *statsEditor) Update(ctx *Context, old, new Row) error {
 }
 
 func (s *statsEditor) Close(context *Context) error {
-	return nil
-}
-
-func NewDefaultStats() *defaultStatsTable {
-	return &defaultStatsTable{
-		informationSchemaTable: &informationSchemaTable{
-			name:   StatisticsTableName,
-			schema: statisticsSchema,
-			reader: statisticsRowIter,
-		},
-		stats: make(map[DbTable]*TableStatistics),
-	}
-}
-
-type defaultStatsTable struct {
-	*informationSchemaTable
-	stats map[DbTable]*TableStatistics
-}
-
-var _ StatsReadWriter = (*defaultStatsTable)(nil)
-
-func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
-	n.catalog = cat
-	return n
-}
-
-func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
-	if s, ok := n.stats[DbTable{db, table}]; ok {
-		return s.Histograms, nil
-	} else {
-		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
-		return nil, err
-	}
-}
-
-func (n *defaultStatsTable) Card(ctx *Context, db, table string) (float64, error) {
-	s, ok := n.stats[DbTable{Db: db, Table: table}]
-	if ok {
-		return float64(s.RowCount), nil
-	}
-
-	t, _, err := n.catalog.Table(ctx, db, table)
-	if err != nil {
-		return 0, err
-	}
-	st, ok := t.(StatisticsTable)
-	if !ok {
-		return 0, nil
-	}
-	return st.Cardinality(ctx)
-}
-
-func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
-	tableStats := &TableStatistics{
-		CreatedAt: time.Now(),
-	}
-
-	t, _, err := n.catalog.Table(ctx, db, table)
-	if err != nil {
-		return err
-	}
-	histMap, err := NewHistogramMapFromTable(ctx, t)
-	if err != nil {
-		return err
-	}
-
-	tableStats.Histograms = histMap
-	for _, v := range histMap {
-		tableStats.RowCount = v.Count + v.NullCount
-		break
-	}
-
-	n.stats[DbTable{Db: db, Table: table}] = tableStats
 	return nil
 }
 

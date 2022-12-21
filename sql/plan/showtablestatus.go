@@ -90,7 +90,7 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		var dataLength float64 = 0
 
 		if st, ok := table.(sql.StatisticsTable); ok {
-			numRows, err = st.Cardinality(ctx)
+			numRows, err = st.RowCount(ctx)
 			if err != nil {
 				return nil, err
 			}

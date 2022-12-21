@@ -345,7 +345,7 @@ func (t Table) DataLength(ctx *sql.Context) (float64, error) {
 }
 
 // Cardinality implements the interface sql.StatisticsTable.
-func (t Table) Cardinality(ctx *sql.Context) (float64, error) {
+func (t Table) RowCount(ctx *sql.Context) (float64, error) {
 	return 0, nil
 }
 

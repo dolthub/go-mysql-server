@@ -179,8 +179,8 @@ type StatisticsTable interface {
 	Table
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (float64, error)
-	// Cardinality returns the statistics for this table
-	Cardinality(ctx *Context) (float64, error)
+	// RowCount returns the statistics for this table
+	RowCount(ctx *Context) (float64, error)
 }
 
 // CatalogTable is a Table that depends on a Catalog.
@@ -193,8 +193,10 @@ type CatalogTable interface {
 
 type StatsReader interface {
 	CatalogTable
+	// Hist returns a HistogramMap providing statistics for a table's columns
 	Hist(ctx *Context, db, table string) (HistogramMap, error)
-	Card(ctx *Context, db, table string) (float64, error)
+	// RowCount returns a table's row count
+	RowCount(ctx *Context, db, table string) (float64, error)
 }
 
 type StatsWriter interface {
@@ -205,10 +207,6 @@ type StatsWriter interface {
 type StatsReadWriter interface {
 	StatsReader
 	StatsWriter
-}
-
-type StatsUpdater interface {
-	SetCard(xtx *Context, db, table string, card float64)
 }
 
 type DbTable struct {

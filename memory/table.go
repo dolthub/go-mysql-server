@@ -303,7 +303,7 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 	return nil
 }
 
-func (t *Table) Cardinality(ctx *sql.Context) (float64, error) {
+func (t *Table) RowCount(ctx *sql.Context) (float64, error) {
 	return t.numRows(ctx)
 }
 
