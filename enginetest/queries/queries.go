@@ -1657,16 +1657,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "with cte(x) as (select 0) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
-		Expected: []sql.Row{
-			{},
-		},
+		Query:    "with cte(x) as (select 0) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
+		Expected: []sql.Row{},
 	},
 	{
-		Query: "with cte(x) as (with cte(x) as (select 0) select x from cte) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
-		Expected: []sql.Row{
-			{},
-		},
+		Query:    "with cte(x) as (with cte(x) as (select 0) select x from cte) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
+		Expected: []sql.Row{},
 	},
 	{
 		Query: "with a as (select 1), b as (select * from a) select * from b;",
