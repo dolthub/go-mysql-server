@@ -15,12 +15,16 @@
 package plan
 
 import (
+	"io"
+
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // BeginEndBlock represents a BEGIN/END block.
 type BeginEndBlock struct {
 	*Block
+	pRef *expression.ProcedureReference
 }
 
 // NewBeginEndBlock creates a new *BeginEndBlock node.
@@ -32,6 +36,9 @@ func NewBeginEndBlock(block *Block) *BeginEndBlock {
 
 var _ sql.Node = (*BeginEndBlock)(nil)
 var _ sql.DebugStringer = (*BeginEndBlock)(nil)
+var _ expression.ProcedureReferencable = (*BeginEndBlock)(nil)
+var _ RepresentsLabeledBlock = (*BeginEndBlock)(nil)
+var _ RepresentsScope = (*BeginEndBlock)(nil)
 
 // String implements the interface sql.Node.
 func (b *BeginEndBlock) String() string {
@@ -71,11 +78,71 @@ func (b *BeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	return b.Block.CheckPrivileges(ctx, opChecker)
 }
 
-// WithHandlerIds returns a new *BeginEndBlock with the given handler IDs set.
-func (b *BeginEndBlock) WithHandlerIds(ids []int) *BeginEndBlock {
-	newBeginEndBlock := *b
-	newBlock := *b.Block
-	newBlock.validExitHandlerIds = ids
-	newBeginEndBlock.Block = &newBlock
-	return &newBeginEndBlock
+// WithParamReference implements the interface expression.ProcedureReferencable.
+func (b *BeginEndBlock) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
+	nb := *b
+	nb.pRef = pRef
+	return &nb
+}
+
+// implementsRepresentsScope implements the interface RepresentsScope.
+func (b *BeginEndBlock) implementsRepresentsScope() {}
+
+// GetBlockLabel implements the interface RepresentsLabeledBlock.
+func (b *BeginEndBlock) GetBlockLabel(ctx *sql.Context) string {
+	//TODO: implement labels for BEGIN ... END
+	return ""
+}
+
+// RepresentsLoop implements the interface RepresentsLabeledBlock.
+func (b *BeginEndBlock) RepresentsLoop() bool {
+	return false
+}
+
+// RowIter implements the interface sql.Node.
+func (b *BeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	b.pRef.PushScope()
+	//TODO: check for label errors
+	rowIter, err := b.Block.RowIter(ctx, row)
+	if err != nil {
+		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
+			err = nil
+		}
+		if nErr := b.pRef.PopScope(ctx); err == nil && nErr != nil {
+			err = nErr
+		}
+		return sql.RowsToRowIter(), err
+	}
+	return &beginEndIter{
+		BeginEndBlock: b,
+		rowIter:       rowIter,
+	}, nil
+}
+
+// beginEndIter is the sql.RowIter of *BeginEndBlock.
+type beginEndIter struct {
+	*BeginEndBlock
+	rowIter sql.RowIter
+}
+
+var _ sql.RowIter = (*beginEndIter)(nil)
+
+// Next implements the interface sql.RowIter.
+func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := b.rowIter.Next(ctx)
+	if err != nil {
+		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
+			err = io.EOF
+		}
+		if nErr := b.pRef.PopScope(ctx); nErr != nil && err == io.EOF {
+			err = nErr
+		}
+		return nil, err
+	}
+	return row, nil
+}
+
+// Close implements the interface sql.RowIter.
+func (b *beginEndIter) Close(ctx *sql.Context) error {
+	return b.rowIter.Close(ctx)
 }

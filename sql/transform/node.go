@@ -88,6 +88,22 @@ func NodeExprs(node sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
 	})
 }
 
+// NodeExprsWithNodeWithOpaque applies a transformation function to all expressions
+// on the given tree from the bottom up, including through opaque nodes.
+func NodeExprsWithNodeWithOpaque(node sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
+	return NodeWithOpaque(node, func(n sql.Node) (sql.Node, TreeIdentity, error) {
+		return OneNodeExprsWithNode(n, f)
+	})
+}
+
+// NodeExprsWithOpaque applies a transformation function to all expressions
+// on the given plan tree from the bottom up, including through opaque nodes.
+func NodeExprsWithOpaque(node sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
+	return NodeExprsWithNodeWithOpaque(node, func(n sql.Node, e sql.Expression) (sql.Expression, TreeIdentity, error) {
+		return f(e)
+	})
+}
+
 // OneNodeExprsWithNode applies a transformation function to all expressions
 // on the specified node. It does not traverse the children of the specified node.
 func OneNodeExprsWithNode(n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {

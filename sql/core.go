@@ -78,6 +78,17 @@ type Expression2 interface {
 	Type2() Type2
 }
 
+// ExpressionWithNodes is an expression that contains nodes as children.
+type ExpressionWithNodes interface {
+	Expression
+	// NodeChildren returns all node children.
+	NodeChildren() []Node
+	// WithNodeChildren returns a copy of the expression with its node children replaced. It will return an error if the
+	// number of children is different than the current number of children. They must be given in the same order as they
+	// are returned by NodeChildren.
+	WithNodeChildren(children ...Node) (ExpressionWithNodes, error)
+}
+
 // UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
 type UnsupportedFunctionStub interface {
 	IsUnsupported() bool
@@ -253,6 +264,19 @@ type Node2 interface {
 type RowIterTypeSelector interface {
 	RowIter
 	IsNode2() bool
+}
+
+// DisjointedChildrenNode is a Node that contains multiple, disjointed groupings of child nodes. This is a highly
+// specialized node that will not be applicable to the majority, as most nodes will return all children in the Children
+// function.
+type DisjointedChildrenNode interface {
+	Node
+	// DisjointedChildren returns multiple groupings of child nodes, with each group being unrelated to the other groups.
+	DisjointedChildren() [][]Node
+	// WithDisjointedChildren returns a copy of the node with all child groups replaced.
+	// Returns an error if the number of children in each group is different than the current number of children in each
+	// group. They must be given in the same order as they are returned by DisjointedChildren.
+	WithDisjointedChildren(children [][]Node) (Node, error)
 }
 
 // CommentedNode allows comments to be set and retrieved on it

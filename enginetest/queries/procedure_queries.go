@@ -1096,6 +1096,39 @@ END`,
 		},
 	},
 	{
+		Name: "HANDLERs ignore variables declared after them",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE dvar BIGINT DEFAULT 1;
+	DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+    OPEN cur1;
+	BEGIN
+		DECLARE EXIT HANDLER FOR NOT FOUND SET dvar = 10;
+		BEGIN
+			DECLARE dvar BIGINT DEFAULT 2;
+			BEGIN
+				DECLARE dvar BIGINT DEFAULT 3;
+				LOOP
+					FETCH cur1 INTO dvar; # Handler is triggered here, but should only set the first "dvar"
+				END LOOP;
+            END;
+		END;
+    END;
+    SELECT dvar;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
 		ExpectedErr: sql.ErrDeclareVariableDuplicate,
@@ -1432,11 +1465,12 @@ END;`,
 		},
 	},
 	{
-		Name: "stored procedure with CTE",
+		Name: "With CTE using variable",
 		SetUpScript: []string{
 			`CREATE PROCEDURE p1()
 BEGIN
-	WITH cte as (SELECT 1234)
+	DECLARE v1 INT DEFAULT 1234;
+	WITH cte as (SELECT v1)
 	SELECT * FROM cte;
 END;`,
 		},
@@ -1450,11 +1484,11 @@ END;`,
 		},
 	},
 	{
-		Name: "stored procedure with CTE and argument",
+		Name: "With CTE using parameter",
 		SetUpScript: []string{
-			`CREATE PROCEDURE p1(i int)
+			`CREATE PROCEDURE p1(v1 int)
 BEGIN
-	WITH cte as (SELECT i)
+	WITH cte as (SELECT v1)
 	SELECT * FROM cte;
 END;`,
 		},
@@ -1468,7 +1502,7 @@ END;`,
 		},
 	},
 	{
-		Name: "more complicated stored procedure from dolt issue: #4480",
+		Name: "Dolt Issue #4480",
 		SetUpScript: []string{
 			"create table p1 (row_id int primary key, pred int, actual int)",
 			"create table p2 (row_id int primary key, pred int, actual int)",

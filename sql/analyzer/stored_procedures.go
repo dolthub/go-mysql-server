@@ -129,8 +129,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 	for i, child := range children {
 		var newChild sql.Node
 		switch child := child.(type) {
-		// Anything that may represent a collection of statements should go here
-		case *plan.Procedure, *plan.BeginEndBlock, *plan.Block, *plan.IfElseBlock, *plan.IfConditional:
+		case plan.RepresentsBlock:
 			newChild, _, err = analyzeProcedureBodies(ctx, a, child, skipCall, scope, sel)
 		case *plan.Call:
 			if skipCall {
@@ -319,7 +318,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	if procedure.HasVariadicParameter() {
 		procedure = procedure.ExtendVariadic(ctx, len(call.Params))
 	}
-	pRef := expression.NewProcedureReference(procedure.VariableCount, procedure.CursorCount, procedure.HandlerCount)
+	pRef := expression.NewProcedureReference()
 	call = call.WithParamReference(pRef)
 
 	var procParamTransformFunc transform.ExprFunc
@@ -327,70 +326,68 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		switch expr := e.(type) {
 		case *expression.ProcedureParam:
 			return expr.WithParamReference(pRef), transform.NewTree, nil
-		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
-			newQuery, same, err := transform.NodeExprs(expr.Query, procParamTransformFunc)
-			if err != nil {
-				return nil, transform.SameTree, err
+		case sql.ExpressionWithNodes:
+			children := expr.NodeChildren()
+			var newChildren []sql.Node
+			for i, child := range children {
+				newChild, same, err := transform.NodeExprsWithOpaque(child, procParamTransformFunc)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same == transform.NewTree {
+					if newChildren == nil {
+						newChildren = make([]sql.Node, len(children))
+						copy(newChildren, children)
+					}
+					newChildren[i] = newChild
+				}
 			}
-			if same {
-				return expr, transform.SameTree, nil
+			if len(newChildren) > 0 {
+				newExpr, err := expr.WithNodeChildren(newChildren...)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return newExpr, transform.NewTree, nil
 			}
-			ne := *expr
-			ne.Query = newQuery
-			return &ne, transform.NewTree, nil
+			return e, transform.SameTree, nil
 		default:
 			return e, transform.SameTree, nil
 		}
 	}
-	transformedProcedure, _, err := transform.NodeExprs(procedure, procParamTransformFunc)
+	transformedProcedure, _, err := transform.NodeExprsWithOpaque(procedure, procParamTransformFunc)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 	// Some nodes do not expose all of their children, so we need to handle them here.
-	transformedProcedure, _, err = transform.Node(transformedProcedure, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	transformedProcedure, _, err = transform.NodeWithOpaque(transformedProcedure, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
-		case *plan.InsertInto:
-			newSource, same, err := transform.Node(n.Source, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-				return transform.NodeExprs(n, procParamTransformFunc)
-			})
-			if err != nil {
-				return nil, transform.SameTree, err
+		case sql.DisjointedChildrenNode:
+			same := transform.SameTree
+			disjointedChildGroups := n.DisjointedChildren()
+			newDisjointedChildGroups := make([][]sql.Node, len(disjointedChildGroups))
+			for groupIdx, disjointedChildGroup := range disjointedChildGroups {
+				newDisjointedChildGroups[groupIdx] = make([]sql.Node, len(disjointedChildGroup))
+				for childIdx, disjointedChild := range disjointedChildGroup {
+					var childIdentity transform.TreeIdentity
+					if newDisjointedChildGroups[groupIdx][childIdx], childIdentity, err = transform.NodeExprsWithOpaque(disjointedChild, procParamTransformFunc); err != nil {
+						return nil, transform.SameTree, err
+					} else if childIdentity == transform.NewTree {
+						same = childIdentity
+					}
+				}
 			}
-			if same {
-				return n, transform.SameTree, nil
+			if same == transform.NewTree {
+				if newChild, err := n.WithDisjointedChildren(newDisjointedChildGroups); err != nil {
+					return nil, transform.SameTree, err
+				} else {
+					return newChild, transform.NewTree, nil
+				}
 			}
-			return n.WithSource(newSource), transform.NewTree, nil
-		case *plan.Union:
-			newLeft, sameL, err := transform.NodeExprs(n.Left(), procParamTransformFunc)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			newRight, sameR, err := transform.NodeExprs(n.Right(), procParamTransformFunc)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			if sameL && sameR {
-				return n, transform.SameTree, nil
-			}
-			node, err := n.WithChildren(newLeft, newRight)
-			return node, transform.NewTree, err
+			return n, transform.SameTree, nil
 		case expression.ProcedureReferencable:
 			return n.WithParamReference(pRef), transform.NewTree, nil
-		case *plan.SubqueryAlias:
-			newChild, same, err := transform.NodeExprs(n.Child, procParamTransformFunc)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			if same {
-				return n, transform.SameTree, nil
-			}
-			node, err := n.WithChildren(newChild)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return node, transform.NewTree, nil
 		default:
-			return n, transform.SameTree, nil
+			return transform.NodeExprsWithOpaque(n, procParamTransformFunc)
 		}
 	})
 	if err != nil {

@@ -53,6 +53,7 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 }
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
+var _ sql.ExpressionWithNodes = (*Subquery)(nil)
 
 type StripRowNode struct {
 	UnaryNode
@@ -468,6 +469,19 @@ func (s *Subquery) WithChildren(children ...sql.Expression) (sql.Expression, err
 // Children implements the Expression interface.
 func (s *Subquery) Children() []sql.Expression {
 	return nil
+}
+
+// NodeChildren implements the sql.ExpressionWithNodes interface.
+func (s *Subquery) NodeChildren() []sql.Node {
+	return []sql.Node{s.Query}
+}
+
+// WithNodeChildren implements the sql.ExpressionWithNodes interface.
+func (s *Subquery) WithNodeChildren(children ...sql.Node) (sql.ExpressionWithNodes, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
+	}
+	return s.WithQuery(children[0]), nil
 }
 
 // WithQuery returns the subquery with the query node changed.

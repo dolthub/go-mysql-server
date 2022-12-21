@@ -30,6 +30,8 @@ type TriggerBeginEndBlock struct {
 
 var _ sql.Node = (*TriggerBeginEndBlock)(nil)
 var _ sql.DebugStringer = (*TriggerBeginEndBlock)(nil)
+var _ RepresentsLabeledBlock = (*TriggerBeginEndBlock)(nil)
+var _ RepresentsScope = (*TriggerBeginEndBlock)(nil)
 
 // NewTriggerBeginEndBlock creates a new *TriggerBeginEndBlock node.
 func NewTriggerBeginEndBlock(block *BeginEndBlock) *TriggerBeginEndBlock {

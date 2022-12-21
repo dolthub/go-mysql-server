@@ -79,6 +79,7 @@ type InsertInto struct {
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
 var _ sql.Expressioner = (*InsertInto)(nil)
+var _ sql.DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
@@ -695,6 +696,25 @@ func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 		return opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert))
 	}
+}
+
+// DisjointedChildren implements the interface sql.DisjointedChildrenNode.
+func (ii *InsertInto) DisjointedChildren() [][]sql.Node {
+	return [][]sql.Node{
+		{ii.Destination},
+		{ii.Source},
+	}
+}
+
+// WithDisjointedChildren implements the interface sql.DisjointedChildrenNode.
+func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
+	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 2)
+	}
+	np := *ii
+	np.Destination = children[0][0]
+	np.Source = children[1][0]
+	return &np, nil
 }
 
 // WithSource sets the source node for this insert, which is analyzed separately
