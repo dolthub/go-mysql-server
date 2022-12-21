@@ -125,7 +125,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 	children := node.Children()
 	newChildren := make([]sql.Node, len(children))
 	var err error
-	procSel := NewProcRuleSelector(sel)
+	procSel := NewSkipPruneRuleSelector(sel)
 	for i, child := range children {
 		var newChild sql.Node
 		switch child := child.(type) {
@@ -376,19 +376,6 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			return node, transform.NewTree, err
 		case expression.ProcedureReferencable:
 			return n.WithParamReference(pRef), transform.NewTree, nil
-		case *plan.SubqueryAlias:
-			newChild, same, err := transform.NodeExprs(n.Child, procParamTransformFunc)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			if same {
-				return n, transform.SameTree, nil
-			}
-			node, err := n.WithChildren(newChild)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return node, transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

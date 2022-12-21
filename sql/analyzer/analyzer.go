@@ -364,11 +364,9 @@ func DefaultRuleSelector(id RuleId) bool {
 	return true
 }
 
-func NewProcRuleSelector(sel RuleSelector) RuleSelector {
+func NewSkipPruneRuleSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
-		switch id {
-		case pruneTablesId,
-			optimizeJoinsId:
+		if id == pruneTablesId {
 			return false
 		}
 		return sel(id)
