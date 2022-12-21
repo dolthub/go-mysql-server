@@ -31,8 +31,6 @@ import (
 )
 
 const (
-	// InformationSchemaDatabaseName is the name of the information schema database.
-	InformationSchemaDatabaseName = "information_schema"
 	// AdministrableRoleAuthorizationsTableName is the name of the ADMINISTRABLE_ROLE_AUTHORIZATIONS table.
 	AdministrableRoleAuthorizationsTableName = "administrable_role_authorizations"
 	// ApplicableRolesTableName is the name of the APPLICABLE_ROLES table.
@@ -1533,17 +1531,21 @@ func NewInformationSchemaDatabase() Database {
 				schema: columnStatisticsSchema,
 				reader: columnStatisticsRowIter,
 			},
-
+			ColumnsTableName: &ColumnsTable{
+				name:    ColumnsTableName,
+				schema:  columnsSchema,
+				rowIter: columnsRowIter,
+			},
 			ColumnsExtensionsTableName: &informationSchemaTable{
 				name:   ColumnsExtensionsTableName,
 				schema: columnsExtensionsSchema,
 				reader: emptyRowIter,
 			},
-			ConnectionControlFailedLoginAttemptsTableName: &informationSchemaTable{
-				name:   ConnectionControlFailedLoginAttemptsTableName,
-				schema: connectionControlFailedLoginAttemptsSchema,
-				reader: emptyRowIter,
-			},
+			//ConnectionControlFailedLoginAttemptsTableName: &informationSchemaTable{
+			//	name:   ConnectionControlFailedLoginAttemptsTableName,
+			//	schema: connectionControlFailedLoginAttemptsSchema,
+			//	reader: emptyRowIter,
+			//},
 			EnabledRolesTablesName: &informationSchemaTable{
 				name:   EnabledRolesTablesName,
 				schema: enabledRolesSchema,

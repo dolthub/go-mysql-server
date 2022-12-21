@@ -241,6 +241,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.DropRole:
 		return plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...)), nil
 	case *sqlparser.GrantPrivilege:
+		if n.PrivilegeLevel.Database == sql.InformationSchemaDatabaseName {
+			return nil, sql.ErrDatabaseAccessDeniedForUser.New(ctx.Session.Client().User, n.PrivilegeLevel.Database)
+		}
 		return convertGrantPrivilege(ctx, n)
 	case *sqlparser.GrantRole:
 		return plan.NewGrantRole(
@@ -255,6 +258,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			n.WithGrantOption,
 		), nil
 	case *sqlparser.RevokePrivilege:
+		if n.PrivilegeLevel.Database == sql.InformationSchemaDatabaseName {
+			return nil, sql.ErrDatabaseAccessDeniedForUser.New(ctx.Session.Client().User, n.PrivilegeLevel.Database)
+		}
 		return plan.NewRevoke(
 			convertPrivilege(n.Privileges...),
 			convertObjectType(n.ObjectType),
