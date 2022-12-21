@@ -1259,7 +1259,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	var (
 		tableType      string
-		tableRows      float64
+		tableRows      uint64
 		engine         interface{}
 		rowFormat      interface{}
 		tableCollation interface{}
@@ -1287,27 +1287,27 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			}
 
 			rows = append(rows, Row{
-				"def",             // table_catalog
-				db.Name(),         // table_schema
-				t.Name(),          // table_name
-				tableType,         // table_type
-				engine,            // engine
-				10,                // version (protocol, always 10)
-				rowFormat,         // row_format
-				uint64(tableRows), // table_rows
-				0,                 // avg_row_length
-				0,                 // data_length
-				0,                 // max_data_length
-				0,                 // max_data_length
-				0,                 // data_free
-				nil,               // auto_increment (the next value)
-				y2k,               // create_time
-				y2k,               // update_time
-				nil,               // check_time
-				tableCollation,    // table_collation
-				nil,               // checksum
-				"",                // create_options
-				"",                // table_comment
+				"def",          // table_catalog
+				db.Name(),      // table_schema
+				t.Name(),       // table_name
+				tableType,      // table_type
+				engine,         // engine
+				10,             // version (protocol, always 10)
+				rowFormat,      // row_format
+				tableRows,      // table_rows
+				0,              // avg_row_length
+				0,              // data_length
+				0,              // max_data_length
+				0,              // max_data_length
+				0,              // data_free
+				nil,            // auto_increment (the next value)
+				y2k,            // create_time
+				y2k,            // update_time
+				nil,            // check_time
+				tableCollation, // table_collation
+				nil,            // checksum
+				"",             // create_options
+				"",             // table_comment
 			})
 
 			return true, nil
@@ -2021,10 +2021,10 @@ func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, 
 	}
 }
 
-func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (float64, error) {
+func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, error) {
 	s, ok := n.stats[DbTable{Db: db, Table: table}]
 	if ok {
-		return float64(s.RowCount), nil
+		return s.RowCount, nil
 	}
 
 	t, _, err := n.catalog.Table(ctx, db, table)

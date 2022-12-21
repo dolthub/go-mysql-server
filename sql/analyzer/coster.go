@@ -87,7 +87,7 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 		// TODO: better estimates for derived tables
 		return float64(1000), nil
 	}
-	return card, nil
+	return float64(card), nil
 }
 
 func (c *coster) costValues(v *values) (float64, error) {

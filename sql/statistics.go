@@ -178,9 +178,9 @@ func (ts *TableStatistics) Histogram(colName string) (*Histogram, error) {
 type StatisticsTable interface {
 	Table
 	// DataLength returns the length of the data file (varies by engine).
-	DataLength(ctx *Context) (float64, error)
+	DataLength(ctx *Context) (uint64, error)
 	// RowCount returns the statistics for this table
-	RowCount(ctx *Context) (float64, error)
+	RowCount(ctx *Context) (uint64, error)
 }
 
 // CatalogTable is a Table that depends on a Catalog.
@@ -196,7 +196,7 @@ type StatsReader interface {
 	// Hist returns a HistogramMap providing statistics for a table's columns
 	Hist(ctx *Context, db, table string) (HistogramMap, error)
 	// RowCount returns a table's row count
-	RowCount(ctx *Context, db, table string) (float64, error)
+	RowCount(ctx *Context, db, table string) (uint64, error)
 }
 
 type StatsWriter interface {

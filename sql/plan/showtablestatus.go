@@ -86,8 +86,8 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			return nil, err
 		}
 
-		var numRows float64 = 0
-		var dataLength float64 = 0
+		var numRows uint64
+		var dataLength uint64
 
 		if st, ok := table.(sql.StatisticsTable); ok {
 			numRows, err = st.RowCount(ctx)
@@ -127,10 +127,10 @@ func (s *ShowTableStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 }
 
 // cc here: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html
-func tableToStatusRow(table string, numRows float64, dataLength float64, collation sql.CollationID) sql.Row {
+func tableToStatusRow(table string, numRows uint64, dataLength uint64, collation sql.CollationID) sql.Row {
 	var avgLength float64 = 0
 	if numRows > 0 {
-		avgLength = dataLength / numRows
+		avgLength = float64(dataLength) / float64(numRows)
 	}
 	return sql.NewRow(
 		table,    // Name
@@ -140,9 +140,9 @@ func tableToStatusRow(table string, numRows float64, dataLength float64, collati
 		// version used in MySQL 5.7.
 		"10",               // Version
 		"Fixed",            // Row_format
-		uint64(numRows),    // Rows
+		numRows,            // Rows
 		uint64(avgLength),  // Avg_row_length
-		uint64(dataLength), // Data_length
+		dataLength,         // Data_length
 		uint64(0),          // Max_data_length (Unused for InnoDB)
 		int64(0),           // Index_length
 		int64(0),           // Data_free

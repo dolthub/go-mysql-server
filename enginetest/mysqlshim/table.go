@@ -331,7 +331,7 @@ func (t Table) Close(ctx *sql.Context) error {
 }
 
 // DataLength implements the interface sql.StatisticsTable.
-func (t Table) DataLength(ctx *sql.Context) (float64, error) {
+func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	// SELECT * FROM information_schema.TABLES WHERE (TABLE_SCHEMA = 'sys') AND (TABLE_NAME = 'test');
 	rows, err := t.db.shim.QueryRows(t.db.name, fmt.Sprintf("SELECT COUNT(*) FROM `%s`;", t.name))
 	if err != nil {
@@ -341,11 +341,11 @@ func (t Table) DataLength(ctx *sql.Context) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return float64(rowCount.(uint64)), nil
+	return rowCount.(uint64), nil
 }
 
 // Cardinality implements the interface sql.StatisticsTable.
-func (t Table) RowCount(ctx *sql.Context) (float64, error) {
+func (t Table) RowCount(ctx *sql.Context) (uint64, error) {
 	return 0, nil
 }
 
