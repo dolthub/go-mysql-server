@@ -1339,7 +1339,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
-		Name: "information_schema.columns table 'privileges' column",
+		Name: "information_schema.columns table 'privileges' column gets correct values",
 		SetUpScript: []string{
 			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, c VARCHAR(20), p POINT default (POINT(1,1)))",
@@ -1364,19 +1364,6 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query:    "SELECT column_name, privileges FROM information_schema.columns where table_schema = 'mydb' and table_name = 'test'",
 				Expected: []sql.Row{{"pk", "insert"}, {"c", "insert"}, {"p", "insert"}},
 			},
-			// // TODO: column privileges not supported yet.
-			//{
-			//	User:     "root",
-			//	Host:     "localhost",
-			//	Query:    "grant references (`a`) on mydb.checks TO tester@localhost;",
-			//	Expected: []sql.Row{{sql.NewOkResult(0)}},
-			//},
-			//{
-			//	User:     "tester",
-			//	Host:     "localhost",
-			//	Query:    "SELECT column_name, privileges FROM information_schema.columns where table_schema = 'mydb' and table_name = 'checks'",
-			//	Expected: []sql.Row{{"a", "references"}},
-			//},
 			{
 				User:     "root",
 				Host:     "localhost",
@@ -1416,7 +1403,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
-		Name: "information_schema.columns table 'privileges' column",
+		Name: "information_schema shows tables with privileges only",
 		SetUpScript: []string{
 			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, c VARCHAR(20), p POINT default (POINT(1,1)))",
@@ -1429,19 +1416,6 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query:    "SELECT count(*) FROM information_schema.statistics where table_schema = 'mydb';",
 				Expected: []sql.Row{{0}},
 			},
-			// // TODO: column privileges not supported yet.
-			//{
-			//	User:     "root",
-			//	Host:     "localhost",
-			//	Query:    "grant references (`c`) on mydb.test TO tester@localhost;",
-			//	Expected: []sql.Row{{sql.NewOkResult(0)}},
-			//},
-			//{
-			//	User:     "tester",
-			//	Host:     "localhost",
-			//	Query:    "SELECT table_name, column_name, index_name FROM information_schema.statistics where table_schema = 'mydb';",
-			//	Expected: []sql.Row{{"test", "pk", "PRIMARY"}},
-			//},
 			{
 				User:     "root",
 				Host:     "localhost",
