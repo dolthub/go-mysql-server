@@ -15,9 +15,8 @@
 package mysql_db
 
 import (
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
 )
 
 // PrivilegedDatabaseProvider is a wrapper around a normal sql.DatabaseProvider that takes a context's client's
@@ -43,13 +42,14 @@ func NewPrivilegedDatabaseProvider(grantTables *MySQLDb, p sql.DatabaseProvider)
 
 // Database implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
-	if strings.ToLower(name) != sql.InformationSchemaDatabaseName {
+
+	if lowName := strings.ToLower(name); lowName != sql.InformationSchemaDatabaseName {
 		privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
 		// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
 		if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
 			return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), name)
 		}
-		if strings.ToLower(name) == "mysql" {
+		if lowName == "mysql" {
 			return pdp.grantTables, nil
 		}
 	}
