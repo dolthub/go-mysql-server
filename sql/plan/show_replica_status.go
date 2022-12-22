@@ -19,8 +19,10 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 )
 
-// TODO: Consider an embeddable type
+// ShowReplicaStatus is the plan node for the "SHOW REPLICA STATUS" statement.
+// https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
+	// TODO: Consider an embeddable type for this
 	replicaController BinlogReplicaController
 }
 
@@ -45,24 +47,61 @@ func (s *ShowReplicaStatus) String() string {
 
 func (s *ShowReplicaStatus) Schema() sql.Schema {
 	return sql.Schema{
+		{Name: "Replica_IO_State", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_Host", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Source_User", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Source_Port", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Replica_IO_Running", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Replica_SQL_Running", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_IO_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_IO_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_SQL_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_SQL_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Source_Server_Id", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Source_UUID", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_IO_Error_Timestamp", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Last_SQL_Error_Timestamp", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Retrieved_Gtid_Set", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Executed_Gtid_Set", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Auto_Position", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: "Source_User", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_Port", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Connect_Retry", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_Log_File", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Read_Source_Log_Pos", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Relay_Log_File", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Relay_Log_Pos", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Relay_Source_Log_File", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Replica_IO_Running", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replica_SQL_Running", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replicate_Do_DB", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replicate_Ignore_DB", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replicate_Do_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replicate_Ignore_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replicate_Wild_Do_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replicate_Wild_Ignore_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Last_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Skip_Counter", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Exec_Source_Log_Pos", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Relay_Log_Space", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Until_Condition", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Until_Log_File", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Until_Log_Pos", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_Allowed", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_CA_File", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_CA_Path", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_Cert", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_Cipher", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_CRL_File", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_CRL_Path", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_Key", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_SSL_Verify_Server_Cert", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Seconds_Behind_Source", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_IO_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_IO_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_SQL_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_SQL_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Replicate_Ignore_Server_Ids", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_Server_Id", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_UUID", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_Info_File", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "SQL_Delay", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "SQL_Remaining_Delay", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Replica_SQL_Running_State", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_Retry_Count", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_Bind", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_IO_Error_Timestamp", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_SQL_Error_Timestamp", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Retrieved_Gtid_Set", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Executed_Gtid_Set", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Auto_Position", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Replicate_Rewrite_DB", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 	}
 }
 
@@ -84,24 +123,61 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 	}
 
 	row = sql.Row{
-		status.SourceHost,
-		status.SourceUser,
-		status.SourcePort,
-		status.ReplicaIoRunning,
-		status.ReplicaSqlRunning,
-		status.LastSqlErrNumber,
-		status.LastSqlError,
-		status.LastIoErrNumber,
-		status.LastIoError,
-		status.LastSqlErrNumber,
-		status.LastSqlError,
-		status.SourceServerId,
-		status.SourceServerUuid,
-		status.LastSqlErrorTimestamp,
-		status.LastIoErrorTimestamp,
-		status.RetrievedGtidSet,
-		status.ExecutedGtidSet,
-		status.AutoPosition,
+		"",                           // Replica_IO_State
+		status.SourceHost,            // Source_Host
+		status.SourceUser,            // Source_User
+		status.SourcePort,            // Source_Port
+		-1,                           // Connect_Retry // TODO: default to 60s
+		"INVALID",                    // Source_Log_File
+		0,                            // Read_Source_Log_Pos
+		nil,                          // Relay_Log_File
+		nil,                          // Relay_Log_Pos
+		"INVALID",                    // Relay_Source_Log_File
+		status.ReplicaIoRunning,      // Replica_IO_Running
+		status.ReplicaSqlRunning,     // Replica_SQL_Running
+		nil,                          // Replicate_Do_DB
+		nil,                          // Replicate_Ignore_DB
+		nil,                          // Replicate_Do_Table
+		nil,                          // Replicate_Ignore_Table
+		nil,                          // Replicate_Wild_Do_Table
+		nil,                          // Replicate_Wild_Ignore_Table
+		status.LastSqlErrNumber,      // Last_Errno
+		status.LastSqlError,          // Last_Error
+		nil,                          // Skip_Counter
+		0,                            // Exec_Source_Log_Pos
+		nil,                          // Relay_Log_Space
+		"None",                       //Until_Condition
+		nil,                          // Until_Log_File
+		nil,                          // Until_Log_Pos
+		"Ignored",                    // Source_SSL_Allowed
+		nil,                          // Source_SSL_CA_File
+		nil,                          // Source_SSL_CA_Path
+		nil,                          // Source_SSL_Cert
+		nil,                          // Source_SSL_Cipher
+		nil,                          // Source_SSL_CRL_File
+		nil,                          // Source_SSL_CRL_Path
+		nil,                          // Source_SSL_Key
+		nil,                          // Source_SSL_Verify_Server_Cert
+		0,                            // Seconds_Behind_Source
+		status.LastIoErrNumber,       // Last_IO_Errno
+		status.LastIoError,           // Last_IO_Error
+		status.LastSqlErrNumber,      // Last_SQL_Errno
+		status.LastSqlError,          // Last_SQL_Error
+		nil,                          // Replicate_Ignore_Server_Ids
+		status.SourceServerId,        // Source_Server_Id
+		status.SourceServerUuid,      // Source_UUID
+		nil,                          // Source_Info_File
+		0,                            // SQL_Delay
+		0,                            // SQL_Remaining_Delay
+		nil,                          // Replica_SQL_Running_State
+		0,                            // Source_Retry_Count
+		nil,                          // Source_Bind
+		status.LastSqlErrorTimestamp, // Last_IO_Error_Timestamp
+		status.LastIoErrorTimestamp,  // Last_SQL_Error_Timestamp
+		status.RetrievedGtidSet,      // Retrieved_Gtid_Set
+		status.ExecutedGtidSet,       // Executed_Gtid_Set
+		status.AutoPosition,          // Auto_Position
+		nil,                          // Replicate_Rewrite_DB
 	}
 
 	return sql.RowsToRowIter(row), nil
