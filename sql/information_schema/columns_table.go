@@ -404,10 +404,7 @@ func getCurrentPrivSetMapForColumn(privs []sql.PrivilegeType, privSetMap map[str
 		switch pt {
 		// columns can have 'select', 'insert', 'update', 'references' privileges only.
 		case sql.PrivilegeType_Select, sql.PrivilegeType_Insert, sql.PrivilegeType_Update, sql.PrivilegeType_References:
-			priv := strings.ToLower(pt.String())
-			if _, ok := curPrivSetMap[priv]; !ok {
-				curPrivSetMap[priv] = struct{}{}
-			}
+			curPrivSetMap[strings.ToLower(pt.String())] = struct{}{}
 		}
 	}
 	return curPrivSetMap

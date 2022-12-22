@@ -241,9 +241,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.DropRole:
 		return plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...)), nil
 	case *sqlparser.GrantPrivilege:
-		if n.PrivilegeLevel.Database == sql.InformationSchemaDatabaseName {
-			return nil, sql.ErrDatabaseAccessDeniedForUser.New(ctx.Session.Client().User, n.PrivilegeLevel.Database)
-		}
 		return convertGrantPrivilege(ctx, n)
 	case *sqlparser.GrantRole:
 		return plan.NewGrantRole(
@@ -258,15 +255,13 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			n.WithGrantOption,
 		), nil
 	case *sqlparser.RevokePrivilege:
-		if n.PrivilegeLevel.Database == sql.InformationSchemaDatabaseName {
-			return nil, sql.ErrDatabaseAccessDeniedForUser.New(ctx.Session.Client().User, n.PrivilegeLevel.Database)
-		}
 		return plan.NewRevoke(
 			convertPrivilege(n.Privileges...),
 			convertObjectType(n.ObjectType),
 			convertPrivilegeLevel(n.PrivilegeLevel),
 			convertAccountName(n.From...),
-		), nil
+			ctx.Session.Client().User,
+		)
 	case *sqlparser.RevokeAllPrivileges:
 		return plan.NewRevokeAll(convertAccountName(n.From...)), nil
 	case *sqlparser.RevokeRole:
@@ -2703,7 +2698,8 @@ func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan
 		convertAccountName(n.To...),
 		n.WithGrantOption,
 		gau,
-	), nil
+		ctx.Session.Client().User,
+	)
 }
 
 func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGrants, error) {

@@ -1349,7 +1349,7 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:     "tester",
 				Host:     "localhost",
-				Query:    "SELECT count(*) FROM information_schema.columns where table_schema = 'mydb' and table_name = 'test';",
+				Query:    "SELECT count(*) FROM inFORmation_ScHeMa.columns where table_schema = 'mydb' and table_name = 'test';",
 				Expected: []sql.Row{{0}},
 			},
 			{
