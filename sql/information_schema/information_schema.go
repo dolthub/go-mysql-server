@@ -31,8 +31,6 @@ import (
 )
 
 const (
-	// InformationSchemaDatabaseName is the name of the information schema database.
-	InformationSchemaDatabaseName = "information_schema"
 	// AdministrableRoleAuthorizationsTableName is the name of the ADMINISTRABLE_ROLE_AUTHORIZATIONS table.
 	AdministrableRoleAuthorizationsTableName = "administrable_role_authorizations"
 	// ApplicableRolesTableName is the name of the APPLICABLE_ROLES table.
@@ -53,8 +51,6 @@ const (
 	ColumnsTableName = "columns"
 	// ColumnsExtensionsTableName is the name of the COLUMN_EXTENSIONS table.
 	ColumnsExtensionsTableName = "columns_extensions"
-	// ConnectionControlFailedLoginAttemptsTableName is the name of the CONNECTION_CONTROL_FAILED_LOGIN_ATTEMPTS.
-	ConnectionControlFailedLoginAttemptsTableName = "connection_control_failed_login_attempts"
 	// EnabledRolesTablesName is the name of the ENABLED_ROLES table.
 	EnabledRolesTablesName = "enabled_roles"
 	// EnginesTableName is the name of the ENGINES table
@@ -273,12 +269,6 @@ var columnsExtensionsSchema = Schema{
 	{Name: "COLUMN_NAME", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 	{Name: "ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
-}
-
-// TODO: is this table deprecated?? not available on mysql.
-var connectionControlFailedLoginAttemptsSchema = Schema{
-	{Name: "USERHOST", Type: LongText, Default: nil, Nullable: false, Source: ConnectionControlFailedLoginAttemptsTableName},
-	{Name: "FAILED_ATTEMPTS", Type: Uint64, Default: nil, Nullable: false, Source: ConnectionControlFailedLoginAttemptsTableName},
 }
 
 var enabledRolesSchema = Schema{
@@ -1533,15 +1523,14 @@ func NewInformationSchemaDatabase() Database {
 				schema: columnStatisticsSchema,
 				reader: columnStatisticsRowIter,
 			},
-
+			ColumnsTableName: &ColumnsTable{
+				name:    ColumnsTableName,
+				schema:  columnsSchema,
+				rowIter: columnsRowIter,
+			},
 			ColumnsExtensionsTableName: &informationSchemaTable{
 				name:   ColumnsExtensionsTableName,
 				schema: columnsExtensionsSchema,
-				reader: emptyRowIter,
-			},
-			ConnectionControlFailedLoginAttemptsTableName: &informationSchemaTable{
-				name:   ConnectionControlFailedLoginAttemptsTableName,
-				schema: connectionControlFailedLoginAttemptsSchema,
 				reader: emptyRowIter,
 			},
 			EnabledRolesTablesName: &informationSchemaTable{
