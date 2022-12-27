@@ -114,6 +114,7 @@ func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
 		return c.provider.HasDatabase(ctx, db)
 	}
 }
+
 // UseDatabase returns the database with the given name, and switches the working set.
 func (c *Catalog) UseDatabase(ctx *sql.Context, db string) (sql.Database, error) {
 	if c.MySQLDb.Enabled {
@@ -122,7 +123,6 @@ func (c *Catalog) UseDatabase(ctx *sql.Context, db string) (sql.Database, error)
 		return c.provider.UseDatabase(ctx, db)
 	}
 }
-
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
