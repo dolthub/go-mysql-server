@@ -60,6 +60,25 @@ func (d memoryDBProvider) Database(_ *sql.Context, name string) (sql.Database, e
 	return nil, sql.ErrDatabaseNotFound.New(name + similar)
 }
 
+// UseDatabase returns the Database with the given name if it exists.
+func (d memoryDBProvider) UseDatabase(_ *sql.Context, name string) (sql.Database, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	db, ok := d.dbs[strings.ToLower(name)]
+	if ok {
+		return db, nil
+	}
+
+	names := make([]string, 0, len(d.dbs))
+	for n := range d.dbs {
+		names = append(names, n)
+	}
+
+	similar := similartext.Find(names, name)
+	return nil, sql.ErrDatabaseNotFound.New(name + similar)
+}
+
 // HasDatabase returns the Database with the given name if it exists.
 func (d memoryDBProvider) HasDatabase(_ *sql.Context, name string) bool {
 	d.mu.RLock()

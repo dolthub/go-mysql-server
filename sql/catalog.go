@@ -24,6 +24,9 @@ type Catalog interface {
 	// Database returns the database with the name given, case-insensitive, or an error if it doesn't exist
 	Database(ctx *Context, db string) (Database, error)
 
+	// UseDatabase returns the database with the name given, case-insensitive, or an error if it doesn't exist
+	UseDatabase(ctx *Context, db string) (Database, error)
+
 	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
 	CreateDatabase(ctx *Context, dbName string, collation CollationID) error
 

@@ -43,7 +43,6 @@ func NewPrivilegedDatabaseProvider(grantTables *MySQLDb, p sql.DatabaseProvider)
 
 // Database implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
-
 	if lowName := strings.ToLower(name); lowName != sql.InformationSchemaDatabaseName {
 		privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
 		// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
@@ -55,6 +54,25 @@ func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (s
 		}
 	}
 	db, err := pdp.provider.Database(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return NewPrivilegedDatabase(pdp.grantTables, db), nil
+}
+
+// UseDatabase implements the interface sql.DatabaseProvider.
+func (pdp PrivilegedDatabaseProvider) UseDatabase(ctx *sql.Context, name string) (sql.Database, error) {
+	if lowName := strings.ToLower(name); lowName != sql.InformationSchemaDatabaseName {
+		privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
+		// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
+		if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
+			return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), name)
+		}
+		if lowName == "mysql" {
+			return pdp.grantTables, nil
+		}
+	}
+	db, err := pdp.provider.UseDatabase(ctx, name)
 	if err != nil {
 		return nil, err
 	}

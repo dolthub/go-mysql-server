@@ -668,6 +668,9 @@ type DatabaseProvider interface {
 	// Database gets a Database from the provider.
 	Database(ctx *Context, name string) (Database, error)
 
+	// UseDatabase gets a Database from the provider, and uses it's working set
+	UseDatabase(ctx *Context, name string) (Database, error)
+
 	// HasDatabase checks if the Database exists in the provider.
 	HasDatabase(ctx *Context, name string) bool
 
