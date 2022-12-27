@@ -61,22 +61,8 @@ func (d memoryDBProvider) Database(_ *sql.Context, name string) (sql.Database, e
 }
 
 // UseDatabase returns the Database with the given name if it exists.
-func (d memoryDBProvider) UseDatabase(_ *sql.Context, name string) (sql.Database, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	db, ok := d.dbs[strings.ToLower(name)]
-	if ok {
-		return db, nil
-	}
-
-	names := make([]string, 0, len(d.dbs))
-	for n := range d.dbs {
-		names = append(names, n)
-	}
-
-	similar := similartext.Find(names, name)
-	return nil, sql.ErrDatabaseNotFound.New(name + similar)
+func (d memoryDBProvider) UseDatabase(ctx *sql.Context, name string) (sql.Database, error) {
+	return d.Database(ctx, name)
 }
 
 // HasDatabase returns the Database with the given name if it exists.

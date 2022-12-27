@@ -76,6 +76,11 @@ func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
 	return c.provider.Database(ctx, db)
 }
 
+// UseDatabase returns the database with the given name.
+func (c *Catalog) UseDatabase(ctx *sql.Context, db string) (sql.Database, error) {
+	return c.Database(ctx, db)
+}
+
 // Table returns the table in the given database with the given name.
 func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, sql.Database, error) {
 	db, err := c.Database(ctx, dbName)

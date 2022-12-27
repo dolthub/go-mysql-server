@@ -62,21 +62,7 @@ func (d databaseProvider) Database(ctx *Context, name string) (Database, error) 
 
 // UseDatabase returns the Database with the given name if it exists.
 func (d databaseProvider) UseDatabase(ctx *Context, name string) (Database, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	db, ok := d.dbs[strings.ToLower(name)]
-	if ok {
-		return db, nil
-	}
-
-	names := make([]string, 0, len(d.dbs))
-	for n := range d.dbs {
-		names = append(names, n)
-	}
-
-	similar := similartext.Find(names, name)
-	return nil, ErrDatabaseNotFound.New(name + similar)
+	return d.Database(ctx, name)
 }
 
 // HasDatabase returns the Database with the given name if it exists.

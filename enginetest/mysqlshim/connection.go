@@ -58,10 +58,7 @@ func (m *MySQLShim) Database(ctx *sql.Context, name string) (sql.Database, error
 
 // UseDatabase implements the interface sql.MutableDatabaseProvider.
 func (m *MySQLShim) UseDatabase(ctx *sql.Context, name string) (sql.Database, error) {
-	if dbName, ok := m.databases[strings.ToLower(name)]; ok {
-		return Database{m, dbName}, nil
-	}
-	return nil, sql.ErrDatabaseNotFound.New(name)
+	return m.Database(ctx, name)
 }
 
 // HasDatabase implements the interface sql.MutableDatabaseProvider.
