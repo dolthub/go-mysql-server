@@ -846,6 +846,18 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "INSERT zero date DATETIME NOT NULL is valid",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (dt datetime not null)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t1 (dt) VALUES ('0001-01-01 00:00:00');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
 		Name: "insert into sparse auto_increment table",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
