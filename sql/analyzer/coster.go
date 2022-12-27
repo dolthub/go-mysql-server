@@ -23,6 +23,7 @@ import (
 
 type coster struct {
 	ctx *sql.Context
+	s   sql.StatsReadWriter
 }
 
 func (c *coster) costRel(n relExpr) (float64, error) {
@@ -79,15 +80,14 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 	if w, ok := t.(sql.TableWrapper); ok {
 		t = w.Underlying()
 	}
-	tab, ok := t.(sql.StatisticsTable)
-	if !ok {
-		return 1000, nil
-	}
-	stats, err := tab.Statistics(c.ctx)
+
+	db := c.ctx.GetCurrentDatabase()
+	card, err := c.s.RowCount(c.ctx, db, t.Name())
 	if err != nil {
-		return float64(0), err
+		// TODO: better estimates for derived tables
+		return float64(1000), nil
 	}
-	return float64(stats.RowCount()), nil
+	return float64(card), nil
 }
 
 func (c *coster) costValues(v *values) (float64, error) {

@@ -33,42 +33,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// TableStatistics holds the table statistics for in-memory tables
-type TableStatistics struct {
-	rowCount     uint64
-	nullCount    uint64
-	createdAt    time.Time
-	histogramMap sql.HistogramMap
-}
-
-var _ sql.TableStatistics = &TableStatistics{}
-
-func (ts *TableStatistics) CreatedAt() time.Time {
-	return ts.createdAt
-}
-
-func (ts *TableStatistics) RowCount() uint64 {
-	return ts.rowCount
-}
-
-func (ts *TableStatistics) NullCount() uint64 {
-	return ts.nullCount
-}
-
-func (ts *TableStatistics) Histogram(colName string) (*sql.Histogram, error) {
-	if res, ok := ts.histogramMap[colName]; ok {
-		return res, nil
-	}
-	return &sql.Histogram{}, fmt.Errorf("column %s not found", colName)
-}
-
-func (ts *TableStatistics) HistogramMap() sql.HistogramMap {
-	if len(ts.histogramMap) == 0 {
-		return nil
-	}
-	return ts.histogramMap
-}
-
 // Table represents an in-memory database table.
 type Table struct {
 	// Schema and related info
@@ -100,7 +64,7 @@ type Table struct {
 	autoIncVal uint64
 	autoColIdx int
 
-	tableStats *TableStatistics
+	tableStats *sql.TableStatistics
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -273,7 +237,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 }
 
 func (t *Table) numRows(ctx *sql.Context) (uint64, error) {
-	var count uint64 = 0
+	var count uint64
 	for _, rows := range t.partitions {
 		count += uint64(len(rows))
 	}
@@ -282,7 +246,7 @@ func (t *Table) numRows(ctx *sql.Context) (uint64, error) {
 }
 
 func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
-	var numBytesPerRow uint64 = 0
+	var numBytesPerRow uint64
 	for _, col := range t.schema.Schema {
 		switch n := col.Type.(type) {
 		case sql.NumberType:
@@ -321,8 +285,8 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 // AnalyzeTable implements the sql.StatisticsTable interface.
 func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 	// initialize histogram map
-	t.tableStats = &TableStatistics{
-		createdAt: time.Now(),
+	t.tableStats = &sql.TableStatistics{
+		CreatedAt: time.Now(),
 	}
 
 	histMap, err := sql.NewHistogramMapFromTable(ctx, t)
@@ -330,26 +294,17 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 		return err
 	}
 
-	t.tableStats.histogramMap = histMap
+	t.tableStats.Histograms = histMap
 	for _, v := range histMap {
-		t.tableStats.rowCount = v.Count + v.NullCount
+		t.tableStats.RowCount = v.Count + v.NullCount
 		break
 	}
 
 	return nil
 }
 
-func (t *Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
-	if t.tableStats == nil {
-		numRows, err := t.numRows(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &TableStatistics{
-			rowCount: numRows,
-		}, nil
-	}
-	return t.tableStats, nil
+func (t *Table) RowCount(ctx *sql.Context) (uint64, error) {
+	return t.numRows(ctx)
 }
 
 func NewPartition(key []byte) *Partition {

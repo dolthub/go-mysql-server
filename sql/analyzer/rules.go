@@ -41,6 +41,7 @@ var OnceBeforeDefault = []Rule{
 	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
 	{resolveCreateLikeId, resolveCreateLike},
+	{resolveAnalyzeTablesId, resolveAnalyzeTables},
 	{assignCatalogId, assignCatalog},
 	{parseColumnDefaultsId, parseColumnDefaults},
 	{resolveDropConstraintId, resolveDropConstraint},

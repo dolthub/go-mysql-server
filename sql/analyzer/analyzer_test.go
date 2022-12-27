@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -231,7 +232,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)
 
-	provider := sql.NewDatabaseProvider(db)
+	provider := sql.NewDatabaseProvider(db, information_schema.NewInformationSchemaDatabase())
 	a := withoutProcessTracking(NewDefault(provider))
 
 	ctx := sql.NewContext(context.Background())

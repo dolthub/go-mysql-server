@@ -46,10 +46,10 @@ type Memo struct {
 	tableProps *tableProps
 }
 
-func NewMemo(ctx *sql.Context, s *Scope) *Memo {
+func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope) *Memo {
 	return &Memo{
 		ctx:        ctx,
-		c:          &coster{ctx: ctx},
+		c:          &coster{ctx: ctx, s: stats},
 		scope:      s,
 		scopeLen:   len(s.Schema()),
 		tableProps: newTableProps(),

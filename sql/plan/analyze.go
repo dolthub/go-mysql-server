@@ -5,13 +5,13 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type AnalyzeTable struct {
-	tbls []sql.Node
+	Db     string
+	Stats  sql.StatsReadWriter
+	Tables []sql.DbTable
 }
 
 var analyzeSchema = sql.Schema{
@@ -21,9 +21,9 @@ var analyzeSchema = sql.Schema{
 	{Name: "Msg_text", Type: sql.LongText},
 }
 
-func NewAnalyze(tbls []sql.Node) *AnalyzeTable {
+func NewAnalyze(names []sql.DbTable) *AnalyzeTable {
 	return &AnalyzeTable{
-		tbls: tbls,
+		Tables: names,
 	}
 }
 
@@ -33,94 +33,54 @@ func (n *AnalyzeTable) Schema() sql.Schema {
 	return analyzeSchema
 }
 
+func (n *AnalyzeTable) WithCatalog(cat sql.Catalog) *AnalyzeTable {
+	ret := *n
+	ret.Stats = ret.Stats.AssignCatalog(cat).(sql.StatsReadWriter)
+	return &ret
+}
+
+func (n *AnalyzeTable) WithTables(tables []sql.DbTable) *AnalyzeTable {
+	n.Tables = tables
+	return n
+}
+
+func (n *AnalyzeTable) WithDb(db string) *AnalyzeTable {
+	n.Db = db
+	return n
+}
+
+func (n *AnalyzeTable) WithStats(stats sql.StatsReadWriter) *AnalyzeTable {
+	n.Stats = stats
+	return n
+}
+
 // String implements the interface sql.Node.
 func (n *AnalyzeTable) String() string {
-	tblNames := make([]string, len(n.tbls))
-	for i, tbl := range n.tbls {
-		switch resTbl := tbl.(type) {
-		case *ResolvedTable:
-			tblNames[i] = resTbl.Name()
-		case *UnresolvedTable:
-			tblNames[i] = resTbl.Name()
-		case *Exchange:
-			tblNames[i] = resTbl.Child.String()
-		}
+	tblNames := make([]string, len(n.Tables))
+	for i, t := range n.Tables {
+		tblNames[i] = t.String()
 	}
 	return fmt.Sprintf("AnalyzeTable table %s", strings.Join(tblNames, ", "))
 }
 
 // Resolved implements the Resolvable interface.
 func (n *AnalyzeTable) Resolved() bool {
-	for _, tbl := range n.tbls {
-		if !tbl.Resolved() {
-			return false
-		}
-	}
-	return true
+	return n.Stats != nil
 }
 
 // Children implements the interface sql.Node.
 func (n *AnalyzeTable) Children() []sql.Node {
-	return n.tbls
+	return nil
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *AnalyzeTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	// Deep copy children
-	newChildren := make([]sql.Node, len(children))
-	copy(newChildren, children)
-
-	nn := *n
-	nn.tbls = newChildren
-	return &nn, nil
+func (n *AnalyzeTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+	return n, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (n *AnalyzeTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
-}
-
-type analyzeTableIter struct {
-	idx  int
-	tbls []sql.Node
-}
-
-var _ sql.RowIter = &analyzeTableIter{}
-
-func (itr *analyzeTableIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if itr.idx >= len(itr.tbls) {
-		return nil, io.EOF
-	}
-
-	// find resolved table
-	var resTbl *ResolvedTable
-	transform.Inspect(itr.tbls[itr.idx], func(n sql.Node) bool {
-		if t, ok := n.(*ResolvedTable); ok {
-			resTbl = t
-			return false
-		}
-		return true
-	})
-
-	var statsTbl sql.StatisticsTable
-	if wrappedTbl, ok := resTbl.Table.(sql.TableWrapper); ok {
-		statsTbl = wrappedTbl.Underlying().(sql.StatisticsTable)
-	} else {
-		statsTbl = resTbl.Table.(sql.StatisticsTable)
-	}
-
-	msgType := "status"
-	msgText := "OK"
-	if err := statsTbl.AnalyzeTable(ctx); err != nil {
-		msgType = "Error"
-		msgText = err.Error()
-	}
-	itr.idx++
-	return sql.Row{statsTbl.Name(), "analyze", msgType, msgText}, nil
-}
-
-func (itr *analyzeTableIter) Close(ctx *sql.Context) error {
-	return nil
 }
 
 // RowIter implements the interface sql.Node.
@@ -133,7 +93,38 @@ func (n *AnalyzeTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	}
 
 	return &analyzeTableIter{
-		idx:  0,
-		tbls: n.tbls,
+		idx:    0,
+		tables: n.Tables,
+		stats:  n.Stats,
 	}, nil
+}
+
+type analyzeTableIter struct {
+	idx    int
+	tables []sql.DbTable
+	stats  sql.StatsReadWriter
+}
+
+var _ sql.RowIter = &analyzeTableIter{}
+
+func (itr *analyzeTableIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if itr.idx >= len(itr.tables) {
+		return nil, io.EOF
+	}
+
+	t := itr.tables[itr.idx]
+
+	msgType := "status"
+	msgText := "OK"
+	err := itr.stats.Analyze(ctx, t.Db, t.Table)
+	if err != nil {
+		msgType = "Error"
+		msgText = err.Error()
+	}
+	itr.idx++
+	return sql.Row{t.Table, "analyze", msgType, msgText}, nil
+}
+
+func (itr *analyzeTableIter) Close(ctx *sql.Context) error {
+	return nil
 }
