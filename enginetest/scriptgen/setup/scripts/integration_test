@@ -905,11 +905,11 @@ create table FBPKL (
 ----
 
 exec
-update information_schema.statistics set cardinality = 78301 where table_name = 'TPXBU' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 123867 where table_name = 'TPXBU' and table_schema = 'mydb';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1802 where table_name = 'THNTS' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 2498 where table_name = 'THNTS' and table_schema = 'mydb';
 ----
 
 exec
@@ -917,7 +917,7 @@ update information_schema.statistics set cardinality = 3 where table_name = 'JMR
 ----
 
 exec
-update information_schema.statistics set cardinality = 1802 where table_name = 'YK2GW' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 2498 where table_name = 'YK2GW' and table_schema = 'mydb';
 ----
 
 exec
@@ -929,7 +929,7 @@ update information_schema.statistics set cardinality = 34 where table_name = 'HU
 ----
 
 exec
-update information_schema.statistics set cardinality = 208 where table_name = 'EPZU6' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 213 where table_name = 'EPZU6' and table_schema = 'mydb';
 ----
 
 exec
@@ -941,11 +941,11 @@ update information_schema.statistics set cardinality = 0 where table_name = 'SZW
 ----
 
 exec
-update information_schema.statistics set cardinality = 274 where table_name = 'SFEGG' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 380 where table_name = 'SFEGG' and table_schema = 'mydb';
 ----
 
 exec
-update information_schema.statistics set cardinality = 376 where table_name = 'JDLNA' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 399 where table_name = 'JDLNA' and table_schema = 'mydb';
 ----
 
 exec
@@ -957,7 +957,7 @@ update information_schema.statistics set cardinality = 5148 where table_name = '
 ----
 
 exec
-update information_schema.statistics set cardinality = 10686 where table_name = 'FLQLP' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 14781 where table_name = 'FLQLP' and table_schema = 'mydb';
 ----
 
 exec
@@ -969,7 +969,7 @@ update information_schema.statistics set cardinality = 6 where table_name = 'JJG
 ----
 
 exec
-update information_schema.statistics set cardinality = 1797761 where table_name = 'AMYXQ' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 4786678 where table_name = 'AMYXQ' and table_schema = 'mydb';
 ----
 
 exec
@@ -977,7 +977,7 @@ update information_schema.statistics set cardinality = 5 where table_name = 'XGS
 ----
 
 exec
-update information_schema.statistics set cardinality = 1957 where table_name = 'WE72E' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 3181 where table_name = 'WE72E' and table_schema = 'mydb';
 ----
 
 exec
@@ -985,7 +985,7 @@ update information_schema.statistics set cardinality = 0 where table_name = 'FCB
 ----
 
 exec
-update information_schema.statistics set cardinality = 222 where table_name = 'RLOHD' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 226 where table_name = 'RLOHD' and table_schema = 'mydb';
 ----
 
 exec
@@ -993,7 +993,7 @@ update information_schema.statistics set cardinality = 10 where table_name = 'T5
 ----
 
 exec
-update information_schema.statistics set cardinality = 422 where table_name = 'HDDVB' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 1112 where table_name = 'HDDVB' and table_schema = 'mydb';
 ----
 
 exec
@@ -1037,11 +1037,11 @@ update information_schema.statistics set cardinality = 70 where table_name = 'TA
 ----
 
 exec
-update information_schema.statistics set cardinality = 155822 where table_name = 'HGMQ6' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 511969 where table_name = 'HGMQ6' and table_schema = 'mydb';
 ----
 
 exec
-update information_schema.statistics set cardinality = 160728 where table_name = 'SEQS3' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 535843 where table_name = 'SEQS3' and table_schema = 'mydb';
 ----
 
 exec
@@ -1049,7 +1049,7 @@ update information_schema.statistics set cardinality = 3936 where table_name = '
 ----
 
 exec
-update information_schema.statistics set cardinality = 2654 where table_name = 'E2I7U' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 3842 where table_name = 'E2I7U' and table_schema = 'mydb';
 ----
 
 exec
@@ -1057,11 +1057,7 @@ update information_schema.statistics set cardinality = 291 where table_name = 'A
 ----
 
 exec
-update information_schema.statistics set cardinality = 4527 where table_name = 'FEIOE' and table_schema = 'mydb';
-----
-
-exec
-update information_schema.statistics set cardinality = 4527 where table_name = 'FEIOE' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 6367 where table_name = 'FEIOE' and table_schema = 'mydb';
 ----
 
 exec
@@ -1089,11 +1085,15 @@ update information_schema.statistics set cardinality = 3 where table_name = 'TTG
 ----
 
 exec
-update information_schema.statistics set cardinality = 21487 where table_name = 'QYWQD' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 70692 where table_name = 'QYWQD' and table_schema = 'mydb';
 ----
 
 exec
-update information_schema.statistics set cardinality = 6692 where table_name = 'NOXN3' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 0 where table_name = 'run_metadata' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 11813 where table_name = 'NOXN3' and table_schema = 'mydb';
 ----
 
 exec
@@ -1105,11 +1105,11 @@ update information_schema.statistics set cardinality = 16 where table_name = 'TP
 ----
 
 exec
-update information_schema.statistics set cardinality = 16947 where table_name = 'OUBDL' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 18395 where table_name = 'OUBDL' and table_schema = 'mydb';
 ----
 
 exec
-update information_schema.statistics set cardinality = 62632845 where table_name = 'SISUT' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 103907130 where table_name = 'SISUT' and table_schema = 'mydb';
 ----
 
 exec
@@ -1117,7 +1117,7 @@ update information_schema.statistics set cardinality = 39091 where table_name = 
 ----
 
 exec
-update information_schema.statistics set cardinality = 7791096 where table_name = 'NZKPM' and table_schema = 'mydb';
+update information_schema.statistics set cardinality = 18779716 where table_name = 'NZKPM' and table_schema = 'mydb';
 ----
 
 exec
