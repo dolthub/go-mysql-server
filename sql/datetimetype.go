@@ -49,7 +49,7 @@ var (
 	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
 
 	// datetimeTypeMinDatetime is the minimum representable Datetime/Date value.
-	datetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+	datetimeTypeMinDatetime = time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// datetimeTypeMaxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
 	datetimeTypeMaxTimestamp = time.Unix(math.MaxInt32, 999999000)
@@ -192,11 +192,11 @@ func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
 
 	switch t.baseType {
 	case sqltypes.Date:
-		if res.Year() < 1000 || res.Year() > 9999 {
+		if res.Year() < 0 || res.Year() > 9999 {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(DateLayout), t.String())
 		}
 	case sqltypes.Datetime:
-		if res.Year() < 1000 || res.Year() > 9999 {
+		if res.Year() < 0 || res.Year() > 9999 {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:

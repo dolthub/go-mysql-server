@@ -75,6 +75,10 @@ func getUnaliasedTableName(node sql.Node) string {
 func getTable(node sql.Node) sql.Table {
 	var table sql.Table
 	transform.Inspect(node, func(node sql.Node) bool {
+		if table != nil {
+			return false
+		}
+
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			table = n.Table
