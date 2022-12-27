@@ -296,7 +296,7 @@ func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunctio
 }
 
 func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
-	t, _, err := c.Table(ctx, information_schema.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
+	t, _, err := c.Table(ctx, sql.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
 	if err != nil {
 		return nil, err
 	}
