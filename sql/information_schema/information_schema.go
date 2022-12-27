@@ -2002,7 +2002,7 @@ func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
 }
 
 func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
-	if s, ok := n.stats[DbTable{db, table}]; ok {
+	if s, ok := n.stats[NewDbTable(db, table)]; ok {
 		return s.Histograms, nil
 	} else {
 		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
@@ -2011,7 +2011,7 @@ func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, 
 }
 
 func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, error) {
-	s, ok := n.stats[DbTable{Db: db, Table: table}]
+	s, ok := n.stats[NewDbTable(db, table)]
 	if ok {
 		return s.RowCount, nil
 	}
@@ -2047,7 +2047,7 @@ func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
 		break
 	}
 
-	n.stats[DbTable{Db: db, Table: table}] = tableStats
+	n.stats[NewDbTable(db, table)] = tableStats
 	return nil
 }
 
@@ -2081,6 +2081,8 @@ func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
 	return &statsEditor{c: c, s: stats}
 }
 
+// statsEditor is an internal-only object used to mock table
+// statistics for testing.
 type statsEditor struct {
 	c Catalog
 	s map[DbTable]*TableStatistics
@@ -2089,13 +2091,15 @@ type statsEditor struct {
 var _ RowUpdater = (*statsEditor)(nil)
 
 // StatementBegin implements sql.RowUpdater
-func (s *statsEditor) StatementBegin(ctx *Context) {}
+func (s *statsEditor) StatementBegin(_ *Context) {}
 
 // DiscardChanges implements sql.RowUpdater
-func (s *statsEditor) DiscardChanges(ctx *Context, errorEncountered error) error { return nil }
+func (s *statsEditor) DiscardChanges(_ *Context, _ error) error {
+	return fmt.Errorf("discarding statsEditor changes not supported")
+}
 
 // StatementComplete implements sql.RowUpdater
-func (s *statsEditor) StatementComplete(ctx *Context) error { return nil }
+func (s *statsEditor) StatementComplete(_ *Context) error { return nil }
 
 // Update implements sql.RowUpdater
 func (s *statsEditor) Update(ctx *Context, old, new Row) error {
@@ -2122,7 +2126,7 @@ func (s *statsEditor) Update(ctx *Context, old, new Row) error {
 		CreatedAt:  time.Now(),
 		Histograms: make(HistogramMap),
 	}
-	s.s[DbTable{db, table}] = stats
+	s.s[NewDbTable(db, table)] = stats
 	return nil
 }
 

@@ -179,16 +179,8 @@ type StatisticsTable interface {
 	Table
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (uint64, error)
-	// RowCount returns the statistics for this table
+	// RowCount returns the row count for this table
 	RowCount(ctx *Context) (uint64, error)
-}
-
-// CatalogTable is a Table that depends on a Catalog.
-type CatalogTable interface {
-	Table
-
-	// AssignCatalog assigns a Catalog to the table.
-	AssignCatalog(cat Catalog) Table
 }
 
 type StatsReader interface {
@@ -207,16 +199,4 @@ type StatsWriter interface {
 type StatsReadWriter interface {
 	StatsReader
 	StatsWriter
-}
-
-type DbTable struct {
-	Db    string
-	Table string
-}
-
-func (dt *DbTable) String() string {
-	if dt.Db == "" {
-		return dt.Table
-	}
-	return fmt.Sprintf("%s.%s", dt.Db, dt.Table)
 }

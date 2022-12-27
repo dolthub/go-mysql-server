@@ -1,1 +1,0 @@
-package information_schema

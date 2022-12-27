@@ -92,7 +92,8 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 	})
 }
 
-// assignCatalog sets the catalog in the required nodes.
+// resolveAnalyzeTables verifies analyze node target tables exist, and provides
+// access to the statistics table.
 func resolveAnalyzeTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_analyze_tables")
 	defer span.End()
