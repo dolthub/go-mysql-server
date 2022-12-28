@@ -14,6 +14,11 @@
 
 package sql
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Catalog interface {
 	// AllDatabases returns all databases known to this catalog
 	AllDatabases(ctx *Context) []Database
@@ -51,4 +56,31 @@ type Catalog interface {
 
 	// UnlockTables unlocks all tables locked by the session id given
 	UnlockTables(ctx *Context, id uint32) error
+
+	// Statistics returns a StatsReadWriter for saving and updating table statistics
+	Statistics(ctx *Context) (StatsReadWriter, error)
+}
+
+// CatalogTable is a Table that depends on a Catalog.
+type CatalogTable interface {
+	Table
+
+	// AssignCatalog assigns a Catalog to the table.
+	AssignCatalog(cat Catalog) Table
+}
+
+func NewDbTable(db, table string) DbTable {
+	return DbTable{Db: strings.ToLower(db), Table: strings.ToLower(table)}
+}
+
+type DbTable struct {
+	Db    string
+	Table string
+}
+
+func (dt *DbTable) String() string {
+	if dt.Db == "" {
+		return dt.Table
+	}
+	return fmt.Sprintf("%s.%s", dt.Db, dt.Table)
 }

@@ -166,12 +166,12 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t datetimeType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	res, err := ConvertToTime(v, t)
 	if err != nil {
 		return nil, err
-	}
-	if res.IsZero() {
-		return nil, nil
 	}
 	return res, nil
 }

@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"io"
 	"math"
 	"sort"
@@ -156,16 +157,20 @@ func NewHistogramMapFromTable(ctx *Context, t Table) (HistogramMap, error) {
 }
 
 // TableStatistics provides access to statistical information about the values stored in a table
-type TableStatistics interface {
-	// CreatedAt returns the time at which the current statistics for this table were generated.
-	CreatedAt() time.Time
+type TableStatistics struct {
 	// RowCount returns the number of rows in this table.
-	RowCount() uint64
-	// Histogram returns the histogram for the column in this table
-	Histogram(colName string) (*Histogram, error)
-	// HistogramMap returns a map from all column names to their associated histograms.
-	// A nil HistogramMap indicates that this table hasn't been analyzed.
-	HistogramMap() HistogramMap
+	RowCount uint64
+	// CreatedAt returns the time at which the current statistics for this table were generated.
+	CreatedAt time.Time
+	// Histograms returns a map from all column names to their associated histograms.
+	Histograms HistogramMap
+}
+
+func (ts *TableStatistics) Histogram(colName string) (*Histogram, error) {
+	if res, ok := ts.Histograms[colName]; ok {
+		return res, nil
+	}
+	return &Histogram{}, fmt.Errorf("column %s not found", colName)
 }
 
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
@@ -174,11 +179,24 @@ type StatisticsTable interface {
 	Table
 	// DataLength returns the length of the data file (varies by engine).
 	DataLength(ctx *Context) (uint64, error)
-	// AnalyzeTable is a hook to update any cached or persisted statistics for this table.
-	// It may be triggered by an analyze table statement, or automatically when the engine decides it is necessary.
-	// Integrators can ignore this hook and implement their own method of keeping statistics up to date, at the
-	// cost of potentially stale statistics.
-	AnalyzeTable(ctx *Context) error
-	// Statistics returns the statistics for this table
-	Statistics(ctx *Context) (TableStatistics, error)
+	// RowCount returns the row count for this table
+	RowCount(ctx *Context) (uint64, error)
+}
+
+type StatsReader interface {
+	CatalogTable
+	// Hist returns a HistogramMap providing statistics for a table's columns
+	Hist(ctx *Context, db, table string) (HistogramMap, error)
+	// RowCount returns a table's row count
+	RowCount(ctx *Context, db, table string) (uint64, error)
+}
+
+type StatsWriter interface {
+	CatalogTable
+	Analyze(ctx *Context, db, table string) error
+}
+
+type StatsReadWriter interface {
+	StatsReader
+	StatsWriter
 }

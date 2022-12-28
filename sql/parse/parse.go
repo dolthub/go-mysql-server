@@ -284,11 +284,11 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 }
 
 func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.Node, error) {
-	tables := make([]sql.Node, len(n.Tables))
+	names := make([]sql.DbTable, len(n.Tables))
 	for i, table := range n.Tables {
-		tables[i] = tableNameToUnresolvedTable(table)
+		names[i] = sql.DbTable{Db: table.Qualifier.String(), Table: table.Name.String()}
 	}
-	return plan.NewAnalyze(tables), nil
+	return plan.NewAnalyze(names), nil
 }
 
 func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {
