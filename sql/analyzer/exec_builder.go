@@ -203,6 +203,67 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
+func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	var ret sql.Node
+	var err error
+
+	// need keyExprs for whole range for every dimension
+	cets := i.idx.ColumnExpressionTypes()
+	ranges := make(sql.Range, len(cets))
+	for i, cet := range cets {
+		ranges[i] = sql.AllRangeColumnExpr(cet.Type)
+	}
+
+	l := sql.IndexLookup{Index: i.idx, Ranges: sql.RangeCollection{ranges}}
+
+	if err != nil {
+		return nil, err
+	}
+	switch n := children[0].(type) {
+	case *plan.ResolvedTable:
+		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
+	case *plan.TableAlias:
+		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
+		ret = plan.NewTableAlias(n.Name(), ret)
+	default:
+		panic("unexpected indexScan child")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func (b *ExecBuilder) buildMergeJoin(j *mergeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	inner, err := b.buildIndexScan(j.innerScan, input, children[0])
+	if err != nil {
+		return nil, err
+	}
+	outer, err := b.buildIndexScan(j.outerScan, input, children[1])
+	if err != nil {
+		return nil, err
+	}
+	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	if err != nil {
+		return nil, err
+	}
+
+	var newOp plan.JoinType
+	switch j.op {
+	case plan.JoinTypeInner:
+		newOp = plan.JoinTypeMerge
+	case plan.JoinTypeLeftOuter:
+		newOp = plan.JoinTypeLeftOuterMerge
+	case plan.JoinTypeSemi:
+		newOp = plan.JoinTypeSemiMerge
+	case plan.JoinTypeAnti:
+		newOp = plan.JoinTypeAntiMerge
+	default:
+		return nil, fmt.Errorf("can only apply hash join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
+	}
+	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+}
+
 func (b *ExecBuilder) buildSubqueryAlias(r *subqueryAlias, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	return r.table, nil
 }

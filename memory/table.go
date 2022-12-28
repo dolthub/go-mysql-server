@@ -987,6 +987,7 @@ func (t *FilteredTable) Projections() []string {
 // for range lookups.
 type IndexedTable struct {
 	*Table
+	Idx *Index
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
@@ -1002,8 +1003,46 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
 }
 
-func (t *Table) IndexedAccess(sql.Index) sql.IndexedTable {
-	return &IndexedTable{Table: t}
+// PartitionRows implements the sql.PartitionRows interface.
+func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	filters := t.filters
+	if r, ok := partition.(*rangePartition); ok {
+		// index lookup is currently a single filter applied to a full table scan
+		filters = append(t.filters, r.rang)
+	}
+
+	rows, ok := t.partitions[string(partition.Key())]
+	if !ok {
+		return nil, sql.ErrPartitionNotFound.New(partition.Key())
+	}
+	// The slice could be altered by other operations taking place during iteration (such as deletion or insertion), so
+	// make a copy of the values as they exist when execution begins.
+	rowsCopy := make([]sql.Row, len(rows))
+	copy(rowsCopy, rows)
+
+	if t.Idx != nil {
+		sf := make(sql.SortFields, len(t.Idx.Exprs))
+		for i, e := range t.Idx.Exprs {
+			sf[i] = sql.SortField{Column: e}
+		}
+		sorter := &expression.Sorter{
+			SortFields: sf,
+			Rows:       rowsCopy,
+			LastError:  nil,
+			Ctx:        ctx,
+		}
+		sort.Stable(sorter)
+	}
+
+	return &tableIter{
+		rows:    rowsCopy,
+		columns: t.columns,
+		filters: filters,
+	}, nil
+}
+
+func (t *Table) IndexedAccess(i sql.Index) sql.IndexedTable {
+	return &IndexedTable{Table: t, Idx: i.(*Index)}
 }
 
 // WithProjections implements sql.ProjectedTable

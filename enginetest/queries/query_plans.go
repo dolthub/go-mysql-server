@@ -25,6 +25,82 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a`,
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ xy.y:3\n" +
+			" │   └─ ab.a:0!null\n" +
+			" ├─ IndexedTableAccess\n" +
+			" │   ├─ index: [ab.a]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ columns: [a b]\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: ab\n" +
+			" │       └─ projections: [0 1]\n" +
+			" └─ IndexedTableAccess\n" +
+			"     ├─ index: [xy.y]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ projections: [0 1]\n" +
+			"",
+	},
+	{
+		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s`,
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ xy.y:3\n" +
+			" │   └─ rs.s:1\n" +
+			" ├─ IndexedTableAccess\n" +
+			" │   ├─ index: [rs.s]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ columns: [r s]\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: rs\n" +
+			" │       └─ projections: [0 1]\n" +
+			" └─ IndexedTableAccess\n" +
+			"     ├─ index: [xy.y]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ projections: [0 1]\n" +
+			"",
+	},
+	{
+		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+10 = s`,
+		ExpectedPlan: "HashJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ (xy.y:3 + 10 (tinyint))\n" +
+			" │   └─ rs.s:1\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: rs\n" +
+			" │   └─ columns: [r s]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ source: TUPLE(rs.s:1)\n" +
+			"     ├─ target: TUPLE((xy.y:1 + 10 (tinyint)))\n" +
+			"     └─ CachedResults\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on 10 = s+y`,
+		ExpectedPlan: "InnerJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ 10 (tinyint)\n" +
+			" │   └─ (rs.s:1 + xy.y:3)\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: rs\n" +
+			" │   └─ columns: [r s]\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
 		Query: `select * from ab where a in (select x from xy where x in (select u from uv where u = a));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ InSubquery\n" +
@@ -308,40 +384,40 @@ var PlanTests = []QueryPlanTest{
 			"     │               ├─ outerVisibility: true\n" +
 			"     │               ├─ cacheable: false\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [cte2.u:2!null, cte2.v:3]\n" +
+			"     │                   ├─ columns: [cte2.u:3!null, cte2.v:4]\n" +
 			"     │                   └─ HashJoin\n" +
 			"     │                       ├─ Eq\n" +
-			"     │                       │   ├─ cte2.u:2!null\n" +
-			"     │                       │   └─ ab.b:4\n" +
-			"     │                       ├─ SubqueryAlias\n" +
-			"     │                       │   ├─ outerVisibility: false\n" +
-			"     │                       │   ├─ cacheable: false\n" +
-			"     │                       │   └─ Project\n" +
-			"     │                       │       ├─ columns: [uv.u:1!null, uv.v:2]\n" +
-			"     │                       │       └─ LookupJoin\n" +
-			"     │                       │           ├─ Eq\n" +
-			"     │                       │           │   ├─ uv.u:1!null\n" +
-			"     │                       │           │   └─ ab.b:0\n" +
-			"     │                       │           ├─ Table\n" +
-			"     │                       │           │   ├─ name: ab\n" +
-			"     │                       │           │   └─ columns: [b]\n" +
-			"     │                       │           └─ Filter\n" +
-			"     │                       │               ├─ HashIn\n" +
-			"     │                       │               │   ├─ uv.u:0!null\n" +
-			"     │                       │               │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
-			"     │                       │               └─ IndexedTableAccess\n" +
-			"     │                       │                   ├─ index: [uv.u]\n" +
-			"     │                       │                   ├─ columns: [u v]\n" +
-			"     │                       │                   └─ Table\n" +
-			"     │                       │                       ├─ name: uv\n" +
-			"     │                       │                       └─ projections: [0 1]\n" +
+			"     │                       │   ├─ cte2.u:3!null\n" +
+			"     │                       │   └─ ab.b:2\n" +
+			"     │                       ├─ Table\n" +
+			"     │                       │   ├─ name: ab\n" +
+			"     │                       │   └─ columns: [b]\n" +
 			"     │                       └─ HashLookup\n" +
-			"     │                           ├─ source: TUPLE(cte2.u:2!null)\n" +
-			"     │                           ├─ target: TUPLE(ab.b:2)\n" +
+			"     │                           ├─ source: TUPLE(ab.b:2)\n" +
+			"     │                           ├─ target: TUPLE(cte2.u:2!null)\n" +
 			"     │                           └─ CachedResults\n" +
-			"     │                               └─ Table\n" +
-			"     │                                   ├─ name: ab\n" +
-			"     │                                   └─ columns: [b]\n" +
+			"     │                               └─ SubqueryAlias\n" +
+			"     │                                   ├─ outerVisibility: false\n" +
+			"     │                                   ├─ cacheable: false\n" +
+			"     │                                   └─ Project\n" +
+			"     │                                       ├─ columns: [uv.u:1!null, uv.v:2]\n" +
+			"     │                                       └─ LookupJoin\n" +
+			"     │                                           ├─ Eq\n" +
+			"     │                                           │   ├─ uv.u:1!null\n" +
+			"     │                                           │   └─ ab.b:0\n" +
+			"     │                                           ├─ Table\n" +
+			"     │                                           │   ├─ name: ab\n" +
+			"     │                                           │   └─ columns: [b]\n" +
+			"     │                                           └─ Filter\n" +
+			"     │                                               ├─ HashIn\n" +
+			"     │                                               │   ├─ uv.u:0!null\n" +
+			"     │                                               │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
+			"     │                                               └─ IndexedTableAccess\n" +
+			"     │                                                   ├─ index: [uv.u]\n" +
+			"     │                                                   ├─ columns: [u v]\n" +
+			"     │                                                   └─ Table\n" +
+			"     │                                                       ├─ name: uv\n" +
+			"     │                                                       └─ projections: [0 1]\n" +
 			"     │  ))\n" +
 			"     └─ Table\n" +
 			"         └─ name: xy\n" +
@@ -377,39 +453,38 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select x from xy join uv on y = v join ab on y = b and u = -1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x:1!null]\n" +
+			" ├─ columns: [xy.x:3!null]\n" +
 			" └─ HashJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ xy.y:2\n" +
-			"     │   └─ uv.v:4\n" +
-			"     ├─ HashJoin\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ xy.y:2\n" +
-			"     │   │   └─ ab.b:0\n" +
-			"     │   ├─ Table\n" +
-			"     │   │   ├─ name: ab\n" +
-			"     │   │   └─ columns: [b]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ source: TUPLE(ab.b:0)\n" +
-			"     │       ├─ target: TUPLE(xy.y:1)\n" +
-			"     │       └─ CachedResults\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: xy\n" +
-			"     │               └─ columns: [x y]\n" +
+			"     │   ├─ xy.y:4\n" +
+			"     │   └─ ab.b:0\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: ab\n" +
+			"     │   └─ columns: [b]\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ source: TUPLE(xy.y:2)\n" +
-			"         ├─ target: TUPLE(uv.v:1)\n" +
+			"         ├─ source: TUPLE(ab.b:0)\n" +
+			"         ├─ target: TUPLE(xy.y:3)\n" +
 			"         └─ CachedResults\n" +
-			"             └─ Filter\n" +
+			"             └─ LookupJoin\n" +
 			"                 ├─ Eq\n" +
-			"                 │   ├─ uv.u:0!null\n" +
-			"                 │   └─ -1 (tinyint)\n" +
+			"                 │   ├─ xy.y:4\n" +
+			"                 │   └─ uv.v:2\n" +
+			"                 ├─ Filter\n" +
+			"                 │   ├─ Eq\n" +
+			"                 │   │   ├─ uv.u:0!null\n" +
+			"                 │   │   └─ -1 (tinyint)\n" +
+			"                 │   └─ IndexedTableAccess\n" +
+			"                 │       ├─ index: [uv.u]\n" +
+			"                 │       ├─ static: [{[-1, -1]}]\n" +
+			"                 │       ├─ columns: [u v]\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: uv\n" +
+			"                 │           └─ projections: [0 1]\n" +
 			"                 └─ IndexedTableAccess\n" +
-			"                     ├─ index: [uv.u]\n" +
-			"                     ├─ static: [{[-1, -1]}]\n" +
-			"                     ├─ columns: [u v]\n" +
+			"                     ├─ index: [xy.y]\n" +
+			"                     ├─ columns: [x y]\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: uv\n" +
+			"                         ├─ name: xy\n" +
 			"                         └─ projections: [0 1]\n" +
 			"",
 	},
@@ -8658,25 +8733,24 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             ├─ Eq\n" +
 			"             │   ├─ cla.FTQLQ:29!null\n" +
 			"             │   └─ ufc.T4IBQ:1\n" +
-			"             ├─ HashJoin\n" +
+			"             ├─ MergeJoin\n" +
 			"             │   ├─ Eq\n" +
 			"             │   │   ├─ nd.ZH72S:18\n" +
 			"             │   │   └─ ufc.ZH72S:2\n" +
 			"             │   ├─ TableAlias(ufc)\n" +
-			"             │   │   └─ Table\n" +
-			"             │   │       └─ name: SISUT\n" +
-			"             │   └─ HashLookup\n" +
-			"             │       ├─ source: TUPLE(ufc.ZH72S:2)\n" +
-			"             │       ├─ target: TUPLE(nd.ZH72S:7)\n" +
-			"             │       └─ CachedResults\n" +
-			"             │           └─ Filter\n" +
-			"             │               ├─ (NOT(nd.ZH72S:7 IS NULL))\n" +
-			"             │               └─ TableAlias(nd)\n" +
-			"             │                   └─ IndexedTableAccess\n" +
-			"             │                       ├─ index: [E2I7U.ZH72S]\n" +
-			"             │                       ├─ static: [{(NULL, ∞)}]\n" +
-			"             │                       └─ Table\n" +
-			"             │                           └─ name: E2I7U\n" +
+			"             │   │   └─ IndexedTableAccess\n" +
+			"             │   │       ├─ index: [SISUT.ZH72S]\n" +
+			"             │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   │       └─ Table\n" +
+			"             │   │           └─ name: SISUT\n" +
+			"             │   └─ Filter\n" +
+			"             │       ├─ (NOT(nd.ZH72S:7 IS NULL))\n" +
+			"             │       └─ TableAlias(nd)\n" +
+			"             │           └─ IndexedTableAccess\n" +
+			"             │               ├─ index: [E2I7U.ZH72S]\n" +
+			"             │               ├─ static: [{[NULL, ∞)}]\n" +
+			"             │               └─ Table\n" +
+			"             │                   └─ name: E2I7U\n" +
 			"             └─ TableAlias(cla)\n" +
 			"                 └─ IndexedTableAccess\n" +
 			"                     ├─ index: [YK2GW.FTQLQ]\n" +

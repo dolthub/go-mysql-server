@@ -134,6 +134,23 @@ func (r *hashJoin) joinPrivate() *joinBase {
 	return r.joinBase
 }
 
+type mergeJoin struct {
+	*joinBase
+	innerScan *indexScan
+	outerScan *indexScan
+}
+
+var _ relExpr = (*mergeJoin)(nil)
+var _ joinRel = (*mergeJoin)(nil)
+
+func (r *mergeJoin) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *mergeJoin) joinPrivate() *joinBase {
+	return r.joinBase
+}
+
 type fullOuterJoin struct {
 	*joinBase
 }
@@ -363,6 +380,8 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("concatJoin %d %d", r.left.id, r.right.id)
 	case *hashJoin:
 		return fmt.Sprintf("hashJoin %d %d", r.left.id, r.right.id)
+	case *mergeJoin:
+		return fmt.Sprintf("mergeJoin %d %d", r.left.id, r.right.id)
 	case *fullOuterJoin:
 		return fmt.Sprintf("fullOuterJoin %d %d", r.left.id, r.right.id)
 	case *tableScan:
@@ -402,6 +421,8 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		return b.buildConcatJoin(r, input, children...)
 	case *hashJoin:
 		return b.buildHashJoin(r, input, children...)
+	case *mergeJoin:
+		return b.buildMergeJoin(r, input, children...)
 	case *fullOuterJoin:
 		return b.buildFullOuterJoin(r, input, children...)
 	case *tableScan:

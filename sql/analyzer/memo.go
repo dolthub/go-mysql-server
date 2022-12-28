@@ -121,14 +121,14 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 func (m *Memo) updateBest(grp *exprGroup, n relExpr, cost float64) {
 	if m.orderHint != nil {
 		if m.orderHint.obeysOrder(n) {
-			if !grp.hintSatisfied {
+			if !grp.orderSatisfied {
 				grp.best = n
 				grp.cost = cost
-				grp.hintSatisfied = true
+				grp.orderSatisfied = true
 				return
 			}
 			grp.updateBest(n, cost)
-		} else if grp.best == nil || !grp.hintSatisfied {
+		} else if grp.best == nil || !grp.orderSatisfied {
 			grp.updateBest(n, cost)
 		}
 		return
@@ -291,15 +291,17 @@ func (p *tableProps) getId(n string) (GroupId, bool) {
 // exprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type exprGroup struct {
-	id            GroupId
-	m             *Memo
-	first         relExpr
-	best          relExpr
-	cost          float64
-	done          bool
-	hintSatisfied bool
-
+	m        *Memo
 	relProps *relProps
+	first    relExpr
+	best     relExpr
+
+	id GroupId
+
+	cost           float64
+	done           bool
+	orderSatisfied bool
+	opHint         plan.JoinType
 }
 
 func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
@@ -313,6 +315,15 @@ func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
 	rel.setGroup(grp)
 	grp.relProps = newRelProps(rel)
 	return grp
+}
+
+func (e *exprGroup) obeysOpHint(n relExpr) bool {
+	switch n := n.(type) {
+	case joinRel:
+		return n.joinPrivate().op == e.opHint
+	default:
+		return true
+	}
 }
 
 // prepend adds a new plan to an expression group at the beginning of
@@ -334,7 +345,7 @@ func (e *exprGroup) children() []*exprGroup {
 }
 
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
-	if e.best == nil || grpCost <= e.cost {
+	if e.best == nil || grpCost <= e.cost || (!e.obeysOpHint(e.best) && e.obeysOpHint(n)) {
 		e.best = n
 		e.cost = grpCost
 	}
@@ -487,6 +498,13 @@ type lookup struct {
 	parent *joinBase
 }
 
+type indexScan struct {
+	source string
+	idx    sql.Index
+
+	parent *joinBase
+}
+
 var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
 		Name:   "crossJoin",
@@ -528,6 +546,14 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		JoinAttrs: [][2]string{
 			{"innerAttrs", "[]sql.Expression"},
 			{"outerAttrs", "[]sql.Expression"},
+		},
+	},
+	{
+		Name:   "mergeJoin",
+		IsJoin: true,
+		JoinAttrs: [][2]string{
+			{"innerScan", "*indexScan"},
+			{"outerScan", "*indexScan"},
 		},
 	},
 	{

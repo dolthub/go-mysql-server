@@ -20,6 +20,22 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query:    "select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a order by 1, 3",
+		Expected: []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
+	},
+	{
+		Query:    "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = r order by 1, 3",
+		Expected: []sql.Row{{0, 0, 1, 0}, {1, 0, 2, 1}, {2, 0, 0, 2}},
+	},
+	{
+		Query:    "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+10 = s order by 1, 3",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on 10 = s+y order by 1, 3",
+		Expected: []sql.Row{},
+	},
+	{
 		Query: "select ab.* from ab join pq on a = p where b = (select y from xy where y in (select v from uv where v = b)) order by a;",
 		Expected: []sql.Row{
 			{0, 2},

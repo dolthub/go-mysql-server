@@ -1,5 +1,5 @@
 exec
-CREATE table xy (x int primary key, y int);
+CREATE table xy (x int primary key, y int, index y_idx(y));
 ----
 
 exec
@@ -16,6 +16,10 @@ CREATE table pq (p int primary key, q int);
 
 exec
 CREATE table mn (m int primary key, n int);
+----
+
+exec
+create table rs (r int primary key, s int, index s_idx(s));
 ----
 
 exec
@@ -56,4 +60,19 @@ insert into mn values
   (3,1),
   (4,2),
   (5,3);
+----
+
+exec
+insert into rs values
+  (0,0),
+  (1,0),
+  (2,0);
+----
+
+exec
+update information_schema.statistics set cardinality = 1000000000 where table_name = 'ab';
+----
+
+exec
+update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs'
 ----
