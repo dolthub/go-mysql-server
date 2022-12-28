@@ -32,10 +32,10 @@ import (
 
 type memoryHarness struct {
 	engine  *sqle.Engine
-	harness enginetest.Harness
+	harness enginetest.VersionedDBHarness
 }
 
-func NewMemoryHarness(harness enginetest.Harness) *memoryHarness {
+func NewMemoryHarness(harness enginetest.VersionedDBHarness) *memoryHarness {
 	return &memoryHarness{
 		harness: harness,
 	}
@@ -46,8 +46,8 @@ func (h *memoryHarness) EngineStr() string {
 }
 
 func (h *memoryHarness) Init() error {
-	db := h.harness.NewDatabase("mydb")
-	pro := memory.NewMemoryDBProvider(db)
+	dbs := h.harness.NewDatabases("mydb")
+	pro := memory.NewDBProvider(dbs...)
 	h.engine = sqle.NewDefault(pro)
 	return nil
 }

@@ -62,7 +62,7 @@ type CachedResults struct {
 	UnaryNode
 	id    uint64
 	mutex sync.Mutex
-	// noCache is set when the memory manager is unable to build
+	//noCache is set when the memory manager is unable to build
 	// a cache, so we fallback to a passthrough RowIter
 	noCache bool
 	// finalized is set when we exhaust the child iter, and subsequent

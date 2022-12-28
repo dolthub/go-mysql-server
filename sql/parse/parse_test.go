@@ -3426,31 +3426,31 @@ CREATE TABLE t2
 		},
 		{
 			input: "BEGIN",
-			plan:  plan.NewStartTransaction("", sql.ReadWrite),
+			plan:  plan.NewStartTransaction(sql.ReadWrite),
 		},
 		{
 			input: "START TRANSACTION",
-			plan:  plan.NewStartTransaction("", sql.ReadWrite),
+			plan:  plan.NewStartTransaction(sql.ReadWrite),
 		},
 		{
 			input: "COMMIT",
-			plan:  plan.NewCommit(""),
+			plan:  plan.NewCommit(),
 		},
 		{
 			input: `ROLLBACK`,
-			plan:  plan.NewRollback(""),
+			plan:  plan.NewRollback(),
 		},
 		{
 			input: "SAVEPOINT abc",
-			plan:  plan.NewCreateSavepoint("", "abc"),
+			plan:  plan.NewCreateSavepoint("abc"),
 		},
 		{
 			input: "ROLLBACK TO SAVEPOINT abc",
-			plan:  plan.NewRollbackSavepoint("", "abc"),
+			plan:  plan.NewRollbackSavepoint("abc"),
 		},
 		{
 			input: "RELEASE SAVEPOINT abc",
-			plan:  plan.NewReleaseSavepoint("", "abc"),
+			plan:  plan.NewReleaseSavepoint("abc"),
 		},
 		{
 			input: "SHOW CREATE TABLE `mytable`",
