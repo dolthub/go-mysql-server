@@ -1817,33 +1817,38 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 
 // initializeViewsForVersionedViewsTests creates the test views used by the TestVersionedViews and
 // TestVersionedViewsPrepared functions.
-func initializeViewsForVersionedViewsTests(t *testing.T, harness Harness, e *sqle.Engine) {
+func initializeViewsForVersionedViewsTests(t *testing.T, harness VersionedDBHarness, e *sqle.Engine) {
 	require := require.New(t)
 
 	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	sch, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// nested views
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// views with unions
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// views with subqueries
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// views with a subquery alias
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 }
 
 func TestVersionedViews(t *testing.T, harness VersionedDBHarness) {
