@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -98,13 +99,6 @@ func NewBaseSession() *sql.BaseSession {
 	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
 }
 
-// NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
-// full harness but want to run your own tests on DBs you create.
-// TODO: remove
-func NewEngineWithDbs(t *testing.T, harness Harness) *sqle.Engine {
-	return NewEngineWithProvider(t, harness, harness.NewDatabaseProvider())
-}
-
 // NewEngineWithProvider returns a new engine with the specified provider
 func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
@@ -114,8 +108,12 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	} else {
 		a = analyzer.NewDefault(provider)
 	}
+
 	// All tests will run with all privileges on the built-in root account
 	a.Catalog.MySQLDb.AddRootAccount()
+	// Almost no tests require an information schema that can be updated, but test setup makes it difficult to not
+	// provide everywhere
+	a.Catalog.InfoSchema = information_schema.NewUpdatableInformationSchemaDatabase()
 
 	engine := sqle.New(a, new(sqle.Config))
 
