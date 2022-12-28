@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/vitess/go/sqltypes"
 )
 
@@ -23,7 +24,7 @@ import (
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
 	// TODO: Consider an embeddable type for this
-	replicaController BinlogReplicaController
+	replicaController binlogreplication.BinlogReplicaController
 }
 
 var _ sql.Node = (*ShowReplicaStatus)(nil)
@@ -33,7 +34,7 @@ func NewShowReplicaStatus() *ShowReplicaStatus {
 	return &ShowReplicaStatus{}
 }
 
-func (s *ShowReplicaStatus) WithBinlogReplicaController(controller BinlogReplicaController) {
+func (s *ShowReplicaStatus) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
 	s.replicaController = controller
 }
 

@@ -31,6 +31,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -449,9 +450,9 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 }
 
 func convertChangeReplicationSource(n *sqlparser.ChangeReplicationSource) (sql.Node, error) {
-	convertedOptions := make([]plan.ReplicationOption, 0, len(n.Options))
+	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
 	for _, option := range n.Options {
-		convertedOptions = append(convertedOptions, plan.NewReplicationOption(option.Name, option.Value))
+		convertedOptions = append(convertedOptions, binlogreplication.NewReplicationOption(option.Name, option.Value))
 	}
 	return plan.NewChangeReplicationSource(convertedOptions), nil
 }
