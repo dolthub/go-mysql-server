@@ -144,7 +144,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
 				continue
 			}
-			
+
 			parsedProcedure, err := parse.Parse(ctx, procedure.CreateProcedureString)
 			if err != nil {
 				return nil, err

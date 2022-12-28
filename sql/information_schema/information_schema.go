@@ -1113,16 +1113,16 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					}
 
 					rows = append(rows, Row{
-						"def", 				 // constraint_catalog
-						db.Name(),			 // constraint_schema
-						fk.Name, 			 // constraint_name
-						"def", 				 // unique_constraint_catalog
-						referencedSchema, 	 // unique_constraint_schema
-						uniqueConstName,	 // unique_constraint_name
-						"NONE", 			 // match_option
-						onUpdate, 			 // update_rule
-						onDelete, 			 // delete_rule
-						tbl.Name(), 		 // table_name
+						"def",               // constraint_catalog
+						db.Name(),           // constraint_schema
+						fk.Name,             // constraint_name
+						"def",               // unique_constraint_catalog
+						referencedSchema,    // unique_constraint_schema
+						uniqueConstName,     // unique_constraint_name
+						"NONE",              // match_option
+						onUpdate,            // update_rule
+						onDelete,            // delete_rule
+						tbl.Name(),          // table_name
 						referencedTableName, // referenced_table_name
 					})
 				}
