@@ -19,11 +19,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // constructJoinPlan finds an optimal table ordering and access plan
@@ -156,7 +155,12 @@ func inOrderReplanJoin(
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (sql.Node, error) {
-	m := NewMemo(ctx, scope)
+	stats, err := a.Catalog.Statistics(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	m := NewMemo(ctx, stats, scope)
 
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)

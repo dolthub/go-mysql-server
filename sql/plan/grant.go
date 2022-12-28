@@ -38,7 +38,10 @@ var _ sql.Node = (*Grant)(nil)
 var _ sql.Databaser = (*Grant)(nil)
 
 // NewGrant returns a new Grant node.
-func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, withGrant bool, as *GrantUserAssumption) *Grant {
+func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, withGrant bool, as *GrantUserAssumption, granter string) (*Grant, error) {
+	if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
+		return nil, sql.ErrDatabaseAccessDeniedForUser.New(granter, level.Database)
+	}
 	return &Grant{
 		Privileges:      privileges,
 		ObjectType:      objType,
@@ -47,7 +50,7 @@ func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level
 		WithGrantOption: withGrant,
 		As:              as,
 		MySQLDb:         db,
-	}
+	}, nil
 }
 
 // Schema implements the interface sql.Node.

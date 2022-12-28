@@ -45,6 +45,9 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	if plan.IsDualTable(getTable(n)) {
 		return n, transform.SameTree, nil
 	}
+	if rt := getResolvedTable(n); rt != nil && rt.Database.Name() == sql.InformationSchemaDatabaseName {
+		return n, transform.SameTree, nil
+	}
 	if !n.CheckPrivileges(ctx, a.Catalog.MySQLDb) {
 		return nil, transform.SameTree, sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))
 	}

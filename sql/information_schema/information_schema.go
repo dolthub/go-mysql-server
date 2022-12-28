@@ -20,6 +20,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -31,8 +32,6 @@ import (
 )
 
 const (
-	// InformationSchemaDatabaseName is the name of the information schema database.
-	InformationSchemaDatabaseName = "information_schema"
 	// AdministrableRoleAuthorizationsTableName is the name of the ADMINISTRABLE_ROLE_AUTHORIZATIONS table.
 	AdministrableRoleAuthorizationsTableName = "administrable_role_authorizations"
 	// ApplicableRolesTableName is the name of the APPLICABLE_ROLES table.
@@ -53,8 +52,6 @@ const (
 	ColumnsTableName = "columns"
 	// ColumnsExtensionsTableName is the name of the COLUMN_EXTENSIONS table.
 	ColumnsExtensionsTableName = "columns_extensions"
-	// ConnectionControlFailedLoginAttemptsTableName is the name of the CONNECTION_CONTROL_FAILED_LOGIN_ATTEMPTS.
-	ConnectionControlFailedLoginAttemptsTableName = "connection_control_failed_login_attempts"
 	// EnabledRolesTablesName is the name of the ENABLED_ROLES table.
 	EnabledRolesTablesName = "enabled_roles"
 	// EnginesTableName is the name of the ENGINES table
@@ -273,12 +270,6 @@ var columnsExtensionsSchema = Schema{
 	{Name: "COLUMN_NAME", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 	{Name: "ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
-}
-
-// TODO: is this table deprecated?? not available on mysql.
-var connectionControlFailedLoginAttemptsSchema = Schema{
-	{Name: "USERHOST", Type: LongText, Default: nil, Nullable: false, Source: ConnectionControlFailedLoginAttemptsTableName},
-	{Name: "FAILED_ATTEMPTS", Type: Uint64, Default: nil, Nullable: false, Source: ConnectionControlFailedLoginAttemptsTableName},
 }
 
 var enabledRolesSchema = Schema{
@@ -879,19 +870,19 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // columnStatisticsRowIter implements the sql.RowIter for the information_schema.COLUMN_STATISTICS table.
 func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
+	statsTbl, err := c.Statistics(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for _, db := range c.AllDatabases(ctx) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-			statsTbl, ok := t.(StatisticsTable)
-			if !ok {
+
+			tableHist, err := statsTbl.Hist(ctx, db.Name(), t.Name())
+			if err != nil {
 				return true, nil
 			}
 
-			stats, err := statsTbl.Statistics(ctx)
-			if err != nil {
-				return false, err
-			}
-
-			if stats.HistogramMap() == nil {
+			if tableHist == nil {
 				return true, nil
 			}
 
@@ -900,9 +891,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					continue
 				}
 
-				hist, err := stats.Histogram(col.Name)
-				if err != nil {
-					return false, err
+				hist, ok := tableHist[col.Name]
+				if !ok {
+					return false, fmt.Errorf("column histogram not found: %s", col.Name)
 				}
 
 				buckets := make([]interface{}, len(hist.Buckets))
@@ -911,9 +902,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				rows = append(rows, Row{
-					db.Name(),       // table_schema
-					statsTbl.Name(), // table_name
-					col.Name,        // column_name
+					db.Name(), // table_schema
+					t.Name(),  // table_name
+					col.Name,  // column_name
 					//hist.Mean,          // mean
 					//hist.Min,           // min
 					//hist.Max,           // max
@@ -1278,7 +1269,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
-					tableRows, err = getTotalNumRows(ctx, st)
+					tableRows, err = st.RowCount(ctx)
 					if err != nil {
 						return false, err
 					}
@@ -1488,6 +1479,12 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
+func NewUpdatableInformationSchemaDatabase() Database {
+	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
+	db.tables[StatisticsTableName] = newUpdatableStatsTable()
+	return db
+}
+
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase() Database {
 	isDb := &informationSchemaDatabase{
@@ -1533,15 +1530,14 @@ func NewInformationSchemaDatabase() Database {
 				schema: columnStatisticsSchema,
 				reader: columnStatisticsRowIter,
 			},
-
+			ColumnsTableName: &ColumnsTable{
+				name:    ColumnsTableName,
+				schema:  columnsSchema,
+				rowIter: columnsRowIter,
+			},
 			ColumnsExtensionsTableName: &informationSchemaTable{
 				name:   ColumnsExtensionsTableName,
 				schema: columnsExtensionsSchema,
-				reader: emptyRowIter,
-			},
-			ConnectionControlFailedLoginAttemptsTableName: &informationSchemaTable{
-				name:   ConnectionControlFailedLoginAttemptsTableName,
-				schema: connectionControlFailedLoginAttemptsSchema,
 				reader: emptyRowIter,
 			},
 			EnabledRolesTablesName: &informationSchemaTable{
@@ -1648,11 +1644,6 @@ func NewInformationSchemaDatabase() Database {
 				name:   SchemataExtensionsTableName,
 				schema: schemataExtensionsTableName,
 				reader: emptyRowIter,
-			},
-			StatisticsTableName: &informationSchemaTable{
-				name:   StatisticsTableName,
-				schema: statisticsSchema,
-				reader: statisticsRowIter,
 			},
 			StGeometryColumnsTableName: &informationSchemaTable{
 				name:   StGeometryColumnsTableName,
@@ -1891,6 +1882,9 @@ func NewInformationSchemaDatabase() Database {
 			},
 		},
 	}
+
+	isDb.tables[StatisticsTableName] = NewDefaultStats()
+
 	return isDb
 }
 
@@ -1978,6 +1972,168 @@ func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	return nil
 }
 
+func NewDefaultStats() *defaultStatsTable {
+	return &defaultStatsTable{
+		informationSchemaTable: &informationSchemaTable{
+			name:   StatisticsTableName,
+			schema: statisticsSchema,
+			reader: statisticsRowIter,
+		},
+		stats: make(catalogStatistics),
+	}
+}
+
+// catalogStatistics holds TableStatistics keyed by table and database
+type catalogStatistics map[DbTable]*TableStatistics
+
+// defaultStatsTable is a statistics table implementation
+// with a cache to save ANALYZE results. RowCount defers to
+// the underlying table in the absence of a cached statistic.
+type defaultStatsTable struct {
+	*informationSchemaTable
+	stats catalogStatistics
+}
+
+var _ StatsReadWriter = (*defaultStatsTable)(nil)
+
+func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
+	n.catalog = cat
+	return n
+}
+
+func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
+	if s, ok := n.stats[NewDbTable(db, table)]; ok {
+		return s.Histograms, nil
+	} else {
+		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
+		return nil, err
+	}
+}
+
+func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, error) {
+	s, ok := n.stats[NewDbTable(db, table)]
+	if ok {
+		return s.RowCount, nil
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return 0, err
+	}
+	st, ok := t.(StatisticsTable)
+	if !ok {
+		return 0, nil
+	}
+	return st.RowCount(ctx)
+}
+
+func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
+	tableStats := &TableStatistics{
+		CreatedAt: time.Now(),
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return err
+	}
+	histMap, err := NewHistogramMapFromTable(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	tableStats.Histograms = histMap
+	for _, v := range histMap {
+		tableStats.RowCount = v.Count + v.NullCount
+		break
+	}
+
+	n.stats[NewDbTable(db, table)] = tableStats
+	return nil
+}
+
+func newUpdatableStatsTable() *updatableStatsTable {
+	return &updatableStatsTable{
+		defaultStatsTable: NewDefaultStats(),
+	}
+}
+
+// updatableStatsTable provides a statistics table that can
+// be edited with UPDATE statements.
+type updatableStatsTable struct {
+	*defaultStatsTable
+}
+
+var _ UpdatableTable = (*updatableStatsTable)(nil)
+var _ StatsReadWriter = (*updatableStatsTable)(nil)
+
+// AssignCatalog implements sql.CatalogTable
+func (t *updatableStatsTable) AssignCatalog(cat Catalog) Table {
+	t.catalog = cat
+	return t
+}
+
+// Updater implements sql.UpdatableTable
+func (t *updatableStatsTable) Updater(_ *Context) RowUpdater {
+	return newStatsEditor(t.catalog, t.stats)
+}
+
+func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
+	return &statsEditor{c: c, s: stats}
+}
+
+// statsEditor is an internal-only object used to mock table
+// statistics for testing.
+type statsEditor struct {
+	c Catalog
+	s map[DbTable]*TableStatistics
+}
+
+var _ RowUpdater = (*statsEditor)(nil)
+
+// StatementBegin implements sql.RowUpdater
+func (s *statsEditor) StatementBegin(_ *Context) {}
+
+// DiscardChanges implements sql.RowUpdater
+func (s *statsEditor) DiscardChanges(_ *Context, _ error) error {
+	return fmt.Errorf("discarding statsEditor changes not supported")
+}
+
+// StatementComplete implements sql.RowUpdater
+func (s *statsEditor) StatementComplete(_ *Context) error { return nil }
+
+// Update implements sql.RowUpdater
+func (s *statsEditor) Update(ctx *Context, old, new Row) error {
+	db, ok := old[1].(string)
+	if !ok {
+		return fmt.Errorf("expected string type databaseName; found type: '%T', value: '%v'", old[1], old[1])
+	}
+	table, ok := old[2].(string)
+	if !ok {
+		return fmt.Errorf("expected string type tableName; found type: '%T', value: '%v'", old[2], old[2])
+	}
+
+	_, _, err := s.c.Table(ctx, db, table)
+	if err != nil {
+		return err
+	}
+
+	card, ok := new[9].(int64)
+	if !ok {
+		return fmt.Errorf("expeceted integer cardinality; found type: '%T', value: '%s'", new[9], new[9])
+	}
+	stats := &TableStatistics{
+		RowCount:   uint64(card),
+		CreatedAt:  time.Now(),
+		Histograms: make(HistogramMap),
+	}
+	s.s[NewDbTable(db, table)] = stats
+	return nil
+}
+
+func (s *statsEditor) Close(context *Context) error {
+	return nil
+}
+
 func printTable(name string, tableSchema Schema) string {
 	p := NewTreePrinter()
 	_ = p.WriteNode("Table(%s)", name)
@@ -1996,19 +2152,6 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
-}
-
-func getTotalNumRows(ctx *Context, st StatisticsTable) (uint64, error) {
-	stats, err := st.Statistics(ctx)
-	if err != nil {
-		return 0, err
-	}
-	var c uint64
-	if stats != nil {
-		c = stats.RowCount()
-	}
-
-	return c, nil
 }
 
 func getColumnNamesFromIndex(idx Index, table Table) []string {

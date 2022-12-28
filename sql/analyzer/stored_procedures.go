@@ -125,7 +125,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 	children := node.Children()
 	newChildren := make([]sql.Node, len(children))
 	var err error
-	procSel := NewSkipPruneRuleSelector(sel)
+	procSel := NewProcRuleSelector(sel)
 	for i, child := range children {
 		var newChild sql.Node
 		switch child := child.(type) {

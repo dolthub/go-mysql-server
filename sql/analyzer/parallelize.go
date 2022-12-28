@@ -27,13 +27,13 @@ import (
 
 func init() {
 	// check for single-threaded feature flag
-	if v, ok := os.LookupEnv(singleThreadedFeatureFlag); ok && v != "" {
+	if v, ok := os.LookupEnv(singleThreadFlag); ok && v != "" {
 		SingleThreadFeatureFlag = true
 	}
 }
 
 const (
-	singleThreadedFeatureFlag = "SINGLE_THREAD_FEATURE_FLAG"
+	singleThreadFlag = "GMS_SINGLE_THREAD"
 )
 
 var (

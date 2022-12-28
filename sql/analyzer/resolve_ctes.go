@@ -27,13 +27,13 @@ const maxCteDepth = 5
 // resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 // tree with the subqueries defined in the CTEs.
 func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// TODO: recurse bottom up for all with nodes?
 	_, ok := n.(*plan.With)
 	if !ok {
 		return n, transform.SameTree, nil
 	}
 
-	res, same, err := resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), 0, sel)
-	return res, same, err
+	return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), 0, sel)
 }
 
 func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, depth int, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -43,8 +43,15 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 
 	with, ok := node.(*plan.With)
 	if ok {
+		// restore CTEs that are overwritten for parent scope
+		var overwrittenCtes map[string]sql.Node
+		defer func() {
+			for k, v := range overwrittenCtes {
+				ctes[k] = v
+			}
+		}()
 		var err error
-		node, err = stripWith(ctx, a, scope, with, ctes, sel)
+		node, overwrittenCtes, err = stripWith(ctx, a, scope, with, ctes, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -138,15 +145,16 @@ func stripWith(
 	n sql.Node,
 	ctes map[string]sql.Node,
 	sel RuleSelector,
-) (sql.Node, error) {
+) (sql.Node, map[string]sql.Node, error) {
 	with, ok := n.(*plan.With)
 	if !ok {
-		return n, nil
+		return n, nil, nil
 	}
 
+	replacedCtes := map[string]sql.Node{}
 	for _, cte := range with.CTEs {
-		cteName := cte.Subquery.Name()
 		subquery := cte.Subquery
+		cteName := strings.ToLower(subquery.Name())
 
 		if len(cte.Columns) > 0 {
 			// We don't validate the number of columns in the CTE schema until later,
@@ -158,7 +166,7 @@ func stripWith(
 			// TODO maybe split into a separate rule
 			rCte, err := convertUnionToRecursiveCTE(subquery)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			var ret sql.Node
 
@@ -170,15 +178,18 @@ func stripWith(
 				ret = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, ret).WithColumns(rCte.Columns)
 			}
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-			ctes[strings.ToLower(cteName)] = ret
+			ctes[cteName] = ret
 		} else {
-			ctes[strings.ToLower(cteName)] = subquery
+			if oldCte, ok := ctes[cteName]; ok {
+				replacedCtes[cteName] = oldCte
+			}
+			ctes[cteName] = subquery
 		}
 	}
 
-	return with.Child, nil
+	return with.Child, replacedCtes, nil
 }
 
 // schemaLength returns the length of a node's schema without actually accessing it. Useful when a node isn't yet

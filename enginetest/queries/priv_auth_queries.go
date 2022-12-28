@@ -1338,6 +1338,98 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "information_schema.columns table 'privileges' column gets correct values",
+		SetUpScript: []string{
+			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, c VARCHAR(20), p POINT default (POINT(1,1)))",
+			"CREATE USER tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT count(*) FROM inFORmation_ScHeMa.columns where table_schema = 'mydb' and table_name = 'test';",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT INSERT ON mydb.test TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT column_name, privileges FROM information_schema.columns where table_schema = 'mydb' and table_name = 'test'",
+				Expected: []sql.Row{{"pk", "insert"}, {"c", "insert"}, {"p", "insert"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mydb.* TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT column_name, privileges FROM information_schema.columns where table_schema = 'mydb' and table_name = 'test'",
+				Expected: []sql.Row{{"pk", "insert,select"}, {"c", "insert,select"}, {"p", "insert,select"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT UPDATE ON mydb.checks TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select table_name, column_name, privileges from information_schema.columns where table_schema = 'mydb' and table_name = 'checks';",
+				Expected: []sql.Row{{"checks", "a", "select,update"}, {"checks", "b", "select,update"}, {"checks", "c", "select,update"}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT count(*) FROM information_schema.columns where table_schema = 'information_schema' and table_name = 'columns'",
+				Expected: []sql.Row{{22}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "select table_name, column_name, privileges from information_schema.columns where table_schema = 'mydb' and table_name = 'checks';",
+				Expected: []sql.Row{{"checks", "a", "insert,references,select,update"}, {"checks", "b", "insert,references,select,update"}, {"checks", "c", "insert,references,select,update"}},
+			},
+		},
+	},
+	{
+		Name: "information_schema shows tables with privileges only",
+		SetUpScript: []string{
+			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, c VARCHAR(20), p POINT default (POINT(1,1)))",
+			"CREATE USER tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT count(*) FROM information_schema.statistics where table_schema = 'mydb';",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT INSERT ON mydb.checks TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select table_name, column_name, index_name from information_schema.statistics where table_schema = 'mydb';",
+				Expected: []sql.Row{{"checks", "a", "PRIMARY"}},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins

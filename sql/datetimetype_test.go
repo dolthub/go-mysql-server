@@ -206,10 +206,11 @@ func TestDatetimeConvert(t *testing.T) {
 		{Timestamp, "20100603121212", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
 		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC).UTC().String(), time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC), false},
 
-		{Date, time.Date(500, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
+		{Date, "0000-01-01 00:00:00", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{Date, "0500-01-01 00:00:00", time.Date(500, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, time.Date(10000, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
 		{Date, "", nil, true},
-		{Date, "500-01-01", nil, true},
+		{Date, "0500-01-01", time.Date(500, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, "10000-01-01", nil, true},
 		{Date, int(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, int8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
@@ -225,7 +226,8 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, float64(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Date, []byte{0}, nil, true},
 
-		{Datetime, time.Date(500, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
+		{Datetime, "0500-01-01 01:01:01", time.Date(500, 1, 1, 1, 1, 1, 0, time.UTC), false},
+		{Datetime, "0000-01-01 00:00:00", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Datetime, time.Date(10000, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
 		{Datetime, int(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Datetime, int8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
@@ -242,6 +244,8 @@ func TestDatetimeConvert(t *testing.T) {
 		{Datetime, []byte{0}, nil, true},
 
 		{Timestamp, time.Date(1960, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
+		{Timestamp, "1970-01-01 00:00:00", nil, true},
+		{Timestamp, "1970-01-01 00:00:01", time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC), false},
 		{Timestamp, time.Date(2040, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
 		{Timestamp, int(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{Timestamp, int8(0), time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},

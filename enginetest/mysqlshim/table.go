@@ -344,14 +344,9 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return rowCount.(uint64), nil
 }
 
-// CalculateStatistics implements the interface sql.StatisticsTable.
-func (t Table) AnalyzeTable(ctx *sql.Context) error {
-	return nil
-}
-
-// GetStatistics implements the interface sql.StatisticsTable.
-func (t Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
-	return nil, nil
+// Cardinality implements the interface sql.StatisticsTable.
+func (t Table) RowCount(ctx *sql.Context) (uint64, error) {
+	return 0, nil
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.
