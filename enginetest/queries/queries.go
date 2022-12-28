@@ -9159,6 +9159,12 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 			{"b", "varchar(20)", "YES", "", "NULL", ""},
 		},
 	},
+	{
+		Query: "SELECT * FROM information_schema.referential_constraints where CONSTRAINT_SCHEMA = 'mydb'",
+		Expected: []sql.Row{
+			{"def", "mydb", "fk1", "def", "mydb", nil, "NONE", "NO ACTION", "CASCADE", "fk_tbl", "mytable"},
+		},
+	},
 }
 
 var SkippedInfoSchemaQueries = []QueryTest{
@@ -9200,11 +9206,13 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "information_schema.key_column_usage works with composite foreign keys",
+		Name: "information_schema.key_column_usage works with composite foreign and primary keys",
 		SetUpScript: []string{
 			"CREATE TABLE ptable (pk int primary key, test_score int, height int)",
 			"CREATE INDEX myindex on ptable(test_score, height)",
 			"CREATE TABLE ptable2 (pk int primary key, test_score2 int, height2 int, CONSTRAINT fkr FOREIGN KEY (test_score2, height2) REFERENCES ptable(test_score,height));",
+
+			"CREATE TABLE atable (pk int, test_score int, height int, PRIMARY KEY (pk, test_score))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -9215,19 +9223,29 @@ var InfoSchemaScripts = []ScriptTest{
 					{"def", "mydb", "fkr", "def", "mydb", "ptable2", "height2", 2, 2, "mydb", "ptable", "height"},
 				},
 			},
+			{
+				Query: "SELECT * FROM information_schema.key_column_usage where table_name='atable' ORDER BY constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "def", "mydb", "atable", "pk", 1, nil, nil, nil, nil},
+					{"def", "mydb", "PRIMARY", "def", "mydb", "atable", "test_score", 2, nil, nil, nil, nil},
+				},
+			},
 		},
 	},
 	{
-		Name: "information_schema.key_column_usage works with composite primary keys",
+		Name: "information_schema.key_column_usage works with foreign key across different databases",
 		SetUpScript: []string{
-			"CREATE TABLE ptable (pk int, test_score int, height int, PRIMARY KEY (pk, test_score))",
+			"CREATE TABLE mydb_table (i int primary key, height int)",
+			"CREATE DATABASE otherdb",
+			"USE otherdb",
+			"CREATE TABLE otherdb_table (a int primary key, weight int)",
+			"alter table otherdb_table add constraint fk_across_dbs foreign key (a) references mydb.mydb_table(i)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.key_column_usage where table_name='ptable' ORDER BY constraint_name",
+				Query: "SELECT * FROM information_schema.key_column_usage where constraint_name = 'fk_across_dbs'",
 				Expected: []sql.Row{
-					{"def", "mydb", "PRIMARY", "def", "mydb", "ptable", "pk", 1, nil, nil, nil, nil},
-					{"def", "mydb", "PRIMARY", "def", "mydb", "ptable", "test_score", 2, nil, nil, nil, nil},
+					{"def", "otherdb", "fk_across_dbs", "def", "otherdb", "otherdb_table", "a", 1, 1, "mydb", "mydb_table", "i"},
 				},
 			},
 		},
@@ -9243,6 +9261,17 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "SELECT trigger_name, event_object_table, definer FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_name = 'trigger1'",
 				Expected: []sql.Row{
 					{"trigger1", "aa", "`dolt`@`localhost`"},
+				},
+			},
+			{
+				Query: `SELECT trigger_catalog, trigger_schema, trigger_name, event_manipulation, event_object_catalog,
+event_object_schema, event_object_table, action_order, action_condition, action_statement, action_orientation, action_timing,
+action_reference_old_table, action_reference_new_table, action_reference_old_row, action_reference_new_row, sql_mode, definer,
+character_set_client, collation_connection, database_collation
+FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb' and trigger_name = 'trigger1'`,
+				Expected: []sql.Row{
+					{"def", "mydb", "trigger1", "INSERT", "def", "mydb", "aa", 1, nil, "SET NEW.x = NEW.x + 1", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
+						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "`dolt`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -9716,13 +9745,19 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 		},
 	},
 	{
-		Name: "column specific tests on information_schema table and check constraints",
+		Name: "column specific tests on information_schema table, check and referential constraints",
 		SetUpScript: []string{
 			`CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))`,
 			`ALTER TABLE checks ADD CONSTRAINT chk1 CHECK (B > 0)`,
 			`ALTER TABLE checks ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED`,
 			`ALTER TABLE checks ADD CONSTRAINT chk3 CHECK (B > 1)`,
 			`ALTER TABLE checks ADD CONSTRAINT chk4 CHECK (upper(C) = c)`,
+
+			`create table ptable (i int primary key, b blob, c char(10))`,
+			`alter table ptable add index (c(3))`,
+			`alter table ptable add unique index (b(4))`,
+			`create index b_and_c on ptable (b(5), c(6))`,
+			`ALTER TABLE ptable ADD CONSTRAINT ptable_checks FOREIGN KEY (i) REFERENCES checks(a)`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -9755,6 +9790,14 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 					{"def", "mydb", "chk4", "(upper(c) = c)"},
 				},
 			},
+			{
+				Query: `select * from information_schema.table_constraints where table_schema = 'mydb' and table_name = 'ptable';`,
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "mydb", "ptable", "PRIMARY KEY", "YES"},
+					{"def", "mydb", "b", "mydb", "ptable", "UNIQUE", "YES"},
+					{"def", "mydb", "ptable_checks", "mydb", "ptable", "FOREIGN KEY", "YES"},
+				},
+			},
 		},
 	},
 	{
@@ -9778,6 +9821,81 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 					{"count_i_from_mytable", "def", "mydb", "count_i_from_mytable", "PROCEDURE", "", "SQL", "SQL", "SQL", "NO",
 						"READS SQL DATA", "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
 						"", "`root`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: `select routine_definition from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
+				Expected: []sql.Row{
+					{"BEGIN\n     SELECT SUM(i)\n     FROM mytable\n     INTO total_i;\nEND"},
+				},
+			},
+		},
+	},
+	{
+		Name: "column specific tests on information_schema.tables table",
+		SetUpScript: []string{
+			`create table bigtable (text varchar(20) primary key, number mediumint, pt point default (POINT(1,1)))`,
+			`insert into bigtable values ('a',4,POINT(1,4)),('b',2,null),('c',0,null),('d',2,POINT(1, 2)),('e',2,POINT(1, 2))`,
+			`create index bigtable_number on bigtable (number)`,
+			`CREATE TABLE names (actor_id smallint PRIMARY KEY AUTO_INCREMENT, first_name varchar(45) NOT NULL);`,
+			`INSERT INTO names (first_name) VALUES ('PENELOPE'), ('NICK'), ('JUNE');`,
+			`CREATE VIEW myview1 AS SELECT * FROM myview WHERE i = 1`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// TODO: index_length and data_free columns are not supported yet
+				Query: `SELECT table_name,table_rows,avg_row_length,data_length,max_data_length,index_length,data_free
+				FROM information_schema.tables where table_schema = 'mydb' order by table_name`,
+				Expected: []sql.Row{
+					{"bigtable", uint64(5), uint64(108), uint64(540), 0, 0, 0},
+					{"fk_tbl", uint64(0), uint64(88), uint64(0), 0, 0, 0},
+					{"mytable", uint64(3), uint64(88), uint64(264), 0, 0, 0},
+					{"myview", nil, nil, nil, nil, nil, nil},
+					{"myview1", nil, nil, nil, nil, nil, nil},
+					{"names", uint64(3), uint64(188), uint64(564), 0, 0, 0},
+				},
+			},
+			{
+				Query: `SELECT table_catalog, table_schema, table_name, table_type, engine, version, row_format, table_rows,
+				auto_increment, table_collation, checksum, create_options, table_comment
+				FROM information_schema.tables where table_schema = 'mydb' order by table_name`,
+				Expected: []sql.Row{
+					{"def", "mydb", "bigtable", "BASE TABLE", "InnoDB", 10, "Dynamic", uint64(5), nil, "utf8mb4_0900_bin", nil, "", ""},
+					{"def", "mydb", "fk_tbl", "BASE TABLE", "InnoDB", 10, "Dynamic", uint64(0), nil, "utf8mb4_0900_bin", nil, "", ""},
+					{"def", "mydb", "mytable", "BASE TABLE", "InnoDB", 10, "Dynamic", uint64(3), nil, "utf8mb4_0900_bin", nil, "", ""},
+					{"def", "mydb", "myview", "VIEW", nil, nil, nil, nil, nil, nil, nil, nil, "VIEW"},
+					{"def", "mydb", "myview1", "VIEW", nil, nil, nil, nil, nil, nil, nil, nil, "VIEW"},
+					{"def", "mydb", "names", "BASE TABLE", "InnoDB", 10, "Dynamic", uint64(3), uint64(4), "utf8mb4_0900_bin", nil, "", ""},
+				},
+			},
+			{
+				Query: "SELECT table_comment,table_rows,auto_increment FROM information_schema.tables WHERE TABLE_NAME = 'names' AND TABLE_SCHEMA = 'mydb';",
+				Expected: []sql.Row{
+					{"", uint64(3), uint64(4)},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.referential_constraints works with primary, non-unique and unique keys",
+		SetUpScript: []string{
+			"CREATE TABLE mydb_table (i int primary key, height int, weight int)",
+			"CREATE INDEX h on mydb_TABLE(height)",
+			"CREATE UNIQUE INDEX w on mydb_TABLE(weight)",
+			"CREATE DATABASE otherdb",
+			"USE otherdb",
+			"CREATE TABLE otherdb_table (a int primary key, height int, weight int)",
+			"alter table otherdb_table add constraint fk_across_dbs_ref_pk foreign key (a) references mydb.mydb_table(i)",
+			"alter table otherdb_table add constraint fk_across_dbs_key foreign key (a) references mydb.mydb_table(height)",
+			"alter table otherdb_table add constraint fk_across_dbs_unique foreign key (a) references mydb.mydb_table(weight)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.referential_constraints where constraint_schema = 'otherdb'",
+				Expected: []sql.Row{
+					{"def", "otherdb", "fk_across_dbs_ref_pk", "def", "mydb", "PRIMARY", "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
+					{"def", "otherdb", "fk_across_dbs_key", "def", "mydb", nil, "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
+					{"def", "otherdb", "fk_across_dbs_unique", "def", "mydb", "w", "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
 				},
 			},
 		},
