@@ -150,8 +150,8 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if isOutermostDiv(d, 0, d.divScale) {
 		if res, ok := result.(decimal.Decimal); ok {
 			finalScale := d.divScale*int32(divPrecisionIncrement) + d.leftmostScale
-			if finalScale > sql.DecimalTypeMaxScale {
-				finalScale = sql.DecimalTypeMaxScale
+			if finalScale > types.DecimalTypeMaxScale {
+				finalScale = types.DecimalTypeMaxScale
 			}
 			if isOutermostArithmeticOp(d, 0, d.ops) {
 				return res.Round(finalScale), nil
@@ -315,9 +315,9 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 	}
 
 	// defType is defined by evaluating all number literals available
-	defType, derr := sql.CreateDecimalType(maxWhole+maxFrac, maxFrac)
+	defType, derr := types.CreateDecimalType(maxWhole+maxFrac, maxFrac)
 	if derr != nil {
-		return sql.MustCreateDecimalType(65, 10)
+		return types.MustCreateDecimalType(65, 10)
 	}
 
 	return defType
@@ -334,7 +334,7 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 
 	if _, ok := val.(decimal.Decimal); !ok {
 		p, s := GetPrecisionAndScale(val)
-		dtyp, err := sql.CreateDecimalType(p, s)
+		dtyp, err := types.CreateDecimalType(p, s)
 		if err != nil {
 			val = decimal.Zero
 		}
@@ -605,7 +605,7 @@ func (i *IntDiv) Type() sql.Type {
 	}
 
 	// using max precision which is 65.
-	defType := sql.MustCreateDecimalType(65, 0)
+	defType := types.MustCreateDecimalType(65, 0)
 	return defType
 }
 

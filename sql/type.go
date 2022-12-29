@@ -151,6 +151,32 @@ type EnumType interface {
 	Values() []string
 }
 
+// DecimalType represents the DECIMAL type.
+// https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
+// The type of the returned value is decimal.Decimal.
+type DecimalType interface {
+	Type
+	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
+	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
+	// decimal.NullDecimal.
+	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
+	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
+	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
+	// BoundsCheck rounds and validates a decimal
+	BoundsCheck(v decimal.Decimal) (decimal.Decimal, error)
+	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
+	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
+	ExclusiveUpperBound() decimal.Decimal
+	// MaximumScale returns the maximum scale allowed for the current precision.
+	MaximumScale() uint8
+	// Precision returns the base-10 precision of the type, which is the total number of digits. For example, a
+	// precision of 3 means that 999, 99.9, 9.99, and .999 are all valid maximums (depending on the scale).
+	Precision() uint8
+	// Scale returns the scale, or number of digits after the decimal, that may be held.
+	// This will always be less than or equal to the precision.
+	Scale() uint8
+}
+
 type Type2 interface {
 	Type
 
@@ -248,7 +274,7 @@ func ApproximateTypeFromValue(val interface{}) Type {
 		if len(str) > 66 {
 			return types.Float64
 		} else if dotIdx == -1 {
-			typ, err := CreateDecimalType(uint8(len(str)), 0)
+			typ, err := types.CreateDecimalType(uint8(len(str)), 0)
 			if err != nil {
 				return types.Float64
 			}
@@ -256,7 +282,7 @@ func ApproximateTypeFromValue(val interface{}) Type {
 		} else {
 			precision := uint8(len(str) - 1)
 			scale := uint8(len(str) - dotIdx - 1)
-			typ, err := CreateDecimalType(precision, scale)
+			typ, err := types.CreateDecimalType(precision, scale)
 			if err != nil {
 				return types.Float64
 			}
@@ -338,7 +364,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 				return nil, err
 			}
 		}
-		return CreateColumnDecimalType(uint8(precision), uint8(scale))
+		return types.CreateColumnDecimalType(uint8(precision), uint8(scale))
 	case "bit":
 		length := int64(1)
 		if ct.Length != nil {

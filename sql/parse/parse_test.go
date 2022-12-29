@@ -2049,7 +2049,7 @@ CREATE TABLE t2
 		{
 			input: `INSERT INTO test (decimal_col) VALUES (11981.5923291839784651)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
-				expression.NewLiteral(decimal.RequireFromString("11981.5923291839784651"), sql.MustCreateDecimalType(21, 16)),
+				expression.NewLiteral(decimal.RequireFromString("11981.5923291839784651"), types.MustCreateDecimalType(21, 16)),
 			}}), false, []string{"decimal_col"}, []sql.Expression{}, false),
 		},
 		{
@@ -2770,8 +2770,8 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("1.0 * a + 2.0 * b",
 						expression.NewPlus(
-							expression.NewMult(expression.NewLiteral(decimal.RequireFromString("1.0"), sql.MustCreateDecimalType(2, 1)), expression.NewUnresolvedColumn("a")),
-							expression.NewMult(expression.NewLiteral(decimal.RequireFromString("2.0"), sql.MustCreateDecimalType(2, 1)), expression.NewUnresolvedColumn("b")),
+							expression.NewMult(expression.NewLiteral(decimal.RequireFromString("1.0"), types.MustCreateDecimalType(2, 1)), expression.NewUnresolvedColumn("a")),
+							expression.NewMult(expression.NewLiteral(decimal.RequireFromString("2.0"), types.MustCreateDecimalType(2, 1)), expression.NewUnresolvedColumn("b")),
 						),
 					),
 				},
@@ -5259,23 +5259,23 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"DECIMAL",
-			sql.MustCreateColumnDecimalType(10, 0),
+			types.MustCreateColumnDecimalType(10, 0),
 		},
 		{
 			"DECIMAL(22)",
-			sql.MustCreateColumnDecimalType(22, 0),
+			types.MustCreateColumnDecimalType(22, 0),
 		},
 		{
 			"DECIMAL(55, 13)",
-			sql.MustCreateColumnDecimalType(55, 13),
+			types.MustCreateColumnDecimalType(55, 13),
 		},
 		{
 			"DEC(34, 2)",
-			sql.MustCreateColumnDecimalType(34, 2),
+			types.MustCreateColumnDecimalType(34, 2),
 		},
 		{
 			"FIXED(4, 4)",
-			sql.MustCreateColumnDecimalType(4, 4),
+			types.MustCreateColumnDecimalType(4, 4),
 		},
 		{
 			"BIT(31)",

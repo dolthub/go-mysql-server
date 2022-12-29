@@ -601,8 +601,8 @@ func TestSchemaToFields(t *testing.T) {
 		// Floating Point and Decimal Types
 		{Name: "float32", Type: types.Float32},
 		{Name: "float64", Type: types.Float64},
-		{Name: "decimal10_0", Type: sql.MustCreateDecimalType(10, 0)},
-		{Name: "decimal60_30", Type: sql.MustCreateDecimalType(60, 30)},
+		{Name: "decimal10_0", Type: types.MustCreateDecimalType(10, 0)},
+		{Name: "decimal60_30", Type: types.MustCreateDecimalType(60, 30)},
 
 		// Char, Binary, and Bit Types
 		{Name: "varchar50", Type: types.MustCreateString(sqltypes.VarChar, 50, sql.Collation_Default)},

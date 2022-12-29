@@ -69,11 +69,11 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 			return types.Float32
 		}
 		if types.IsDecimal(left) || types.IsDecimal(right) {
-			return sql.MustCreateDecimalType(65, 10)
+			return types.MustCreateDecimalType(65, 10)
 		}
 		if left == types.Uint64 && types.IsSigned(right) ||
 			right == types.Uint64 && types.IsSigned(left) {
-			return sql.MustCreateDecimalType(65, 10)
+			return types.MustCreateDecimalType(65, 10)
 		}
 		if !types.IsSigned(left) && !types.IsSigned(right) {
 			return types.Uint64

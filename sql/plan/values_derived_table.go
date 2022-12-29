@@ -203,7 +203,7 @@ func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
 		if et.Scale() > frac {
 			frac = et.Scale()
 		}
-		return sql.MustCreateDecimalType(whole+frac, frac)
+		return types.MustCreateDecimalType(whole+frac, frac)
 	} else if types.IsDecimal(e.Type()) {
 		return e.Type()
 	}

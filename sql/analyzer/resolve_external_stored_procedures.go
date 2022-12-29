@@ -52,7 +52,7 @@ var (
 		reflect.TypeOf(string("")):        types.LongText,
 		reflect.TypeOf([]byte{}):          types.LongBlob,
 		reflect.TypeOf(time.Time{}):       types.Datetime,
-		reflect.TypeOf(decimal.Decimal{}): sql.InternalDecimalType,
+		reflect.TypeOf(decimal.Decimal{}): types.InternalDecimalType,
 	}
 	// externalStoredProcedurePointerTypes maps a pointer type to a sql.Type for external stored procedures.
 	externalStoredProcedurePointerTypes = map[reflect.Type]sql.Type{
@@ -72,7 +72,7 @@ var (
 		reflect.TypeOf((*string)(nil)):          types.LongText,
 		reflect.TypeOf((*[]byte)(nil)):          types.LongBlob,
 		reflect.TypeOf((*time.Time)(nil)):       types.Datetime,
-		reflect.TypeOf((*decimal.Decimal)(nil)): sql.InternalDecimalType,
+		reflect.TypeOf((*decimal.Decimal)(nil)): types.InternalDecimalType,
 	}
 )
 

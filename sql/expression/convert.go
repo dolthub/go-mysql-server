@@ -95,7 +95,7 @@ func (c *Convert) Type() sql.Type {
 		return types.Datetime
 	case ConvertToDecimal:
 		//TODO: these values are completely arbitrary, we need to get the given precision/scale and store it
-		return sql.MustCreateDecimalType(65, 10)
+		return types.MustCreateDecimalType(65, 10)
 	case ConvertToDouble, ConvertToReal:
 		return types.Float64
 	case ConvertToJSON:
@@ -215,7 +215,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		d, err := sql.InternalDecimalType.Convert(value)
+		d, err := types.InternalDecimalType.Convert(value)
 		if err != nil {
 			return "0", nil
 		}

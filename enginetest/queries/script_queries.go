@@ -1691,7 +1691,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "INSERT INTO small_test VALUES (12.1);",
-				ExpectedErr: sql.ErrConvertToDecimalLimit,
+				ExpectedErr: types.ErrConvertToDecimalLimit,
 			},
 		},
 	},

@@ -226,11 +226,11 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(c, t)
 		case v.Type() == sqltypes.Decimal:
-			v, err := sql.InternalDecimalType.Convert(string(v.ToBytes()))
+			v, err := types.InternalDecimalType.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
-			res[k] = expression.NewLiteral(v, sql.InternalDecimalType)
+			res[k] = expression.NewLiteral(v, types.InternalDecimalType)
 		case v.Type() == sqltypes.Bit:
 			t := sql.MustCreateBitType(sql.BitTypeMaxBits)
 			v, err := t.Convert(v.ToBytes())

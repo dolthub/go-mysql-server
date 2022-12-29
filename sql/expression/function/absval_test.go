@@ -28,7 +28,7 @@ import (
 func TestAbsValue(t *testing.T) {
 	type toTypeFunc func(float64) interface{}
 
-	decimal1616 := sql.MustCreateDecimalType(16, 16)
+	decimal1616 := types.MustCreateDecimalType(16, 16)
 
 	toInt64 := func(x float64) interface{} { return int64(x) }
 	toInt32 := func(x float64) interface{} { return int32(x) }

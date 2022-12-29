@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -44,32 +44,6 @@ var (
 	decimalValueType = reflect.TypeOf(decimal.Decimal{})
 )
 
-// DecimalType represents the DECIMAL type.
-// https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
-// The type of the returned value is decimal.Decimal.
-type DecimalType interface {
-	Type
-	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
-	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
-	// decimal.NullDecimal.
-	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
-	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
-	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
-	// BoundsCheck rounds and validates a decimal
-	BoundsCheck(v decimal.Decimal) (decimal.Decimal, error)
-	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
-	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
-	ExclusiveUpperBound() decimal.Decimal
-	// MaximumScale returns the maximum scale allowed for the current precision.
-	MaximumScale() uint8
-	// Precision returns the base-10 precision of the type, which is the total number of digits. For example, a
-	// precision of 3 means that 999, 99.9, 9.99, and .999 are all valid maximums (depending on the scale).
-	Precision() uint8
-	// Scale returns the scale, or number of digits after the decimal, that may be held.
-	// This will always be less than or equal to the precision.
-	Scale() uint8
-}
-
 type DecimalType_ struct {
 	exclusiveUpperBound decimal.Decimal
 	definesColumn       bool
@@ -79,7 +53,7 @@ type DecimalType_ struct {
 
 // InternalDecimalType is a special DecimalType that is used internally for Decimal comparisons. Not intended for usage
 // from integrators.
-var InternalDecimalType DecimalType = DecimalType_{
+var InternalDecimalType sql.DecimalType = DecimalType_{
 	exclusiveUpperBound: decimal.New(1, int32(65)),
 	definesColumn:       false,
 	precision:           95,
@@ -87,19 +61,19 @@ var InternalDecimalType DecimalType = DecimalType_{
 }
 
 // CreateDecimalType creates a DecimalType for NON-TABLE-COLUMN.
-func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
+func CreateDecimalType(precision uint8, scale uint8) (sql.DecimalType, error) {
 	return createDecimalType(precision, scale, false)
 }
 
 // CreateColumnDecimalType creates a DecimalType for VALID-TABLE-COLUMN. Creating a decimal type for a column ensures that
 // when operating on instances of this type, the result will be restricted to the defined precision and scale.
-func CreateColumnDecimalType(precision uint8, scale uint8) (DecimalType, error) {
+func CreateColumnDecimalType(precision uint8, scale uint8) (sql.DecimalType, error) {
 	return createDecimalType(precision, scale, true)
 }
 
 // createDecimalType creates a DecimalType using given precision, scale
 // and whether this type defines a valid table column.
-func createDecimalType(precision uint8, scale uint8, definesColumn bool) (DecimalType, error) {
+func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.DecimalType, error) {
 	if scale > DecimalTypeMaxScale {
 		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
 	}
@@ -122,7 +96,7 @@ func createDecimalType(precision uint8, scale uint8, definesColumn bool) (Decima
 }
 
 // MustCreateDecimalType is the same as CreateDecimalType except it panics on errors and for NON-TABLE-COLUMN.
-func MustCreateDecimalType(precision uint8, scale uint8) DecimalType {
+func MustCreateDecimalType(precision uint8, scale uint8) sql.DecimalType {
 	dt, err := CreateDecimalType(precision, scale)
 	if err != nil {
 		panic(err)
@@ -131,7 +105,7 @@ func MustCreateDecimalType(precision uint8, scale uint8) DecimalType {
 }
 
 // MustCreateColumnDecimalType is the same as CreateDecimalType except it panics on errors and for VALID-TABLE-COLUMN.
-func MustCreateColumnDecimalType(precision uint8, scale uint8) DecimalType {
+func MustCreateColumnDecimalType(precision uint8, scale uint8) sql.DecimalType {
 	dt, err := CreateColumnDecimalType(precision, scale)
 	if err != nil {
 		panic(err)
@@ -146,7 +120,7 @@ func (t DecimalType_) Type() query.Type {
 
 // Compare implements Type interface.
 func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := CompareNulls(a, b); hasNulls {
+	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -252,7 +226,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 			return decimal.NullDecimal{}, nil
 		}
 		res = value.Decimal
-	case JSONDocument:
+	case sql.JSONDocument:
 		return t.ConvertToNullDecimal(value.Val)
 	default:
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
@@ -284,7 +258,7 @@ func (t DecimalType_) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t DecimalType_) Equals(otherType Type) bool {
+func (t DecimalType_) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(DecimalType_); ok {
 		return t.precision == ot.precision && t.scale == ot.scale
 	}
@@ -304,7 +278,7 @@ func (t DecimalType_) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t DecimalType_) Promote() Type {
+func (t DecimalType_) Promote() sql.Type {
 	if t.definesColumn {
 		return MustCreateColumnDecimalType(DecimalTypeMaxPrecision, t.scale)
 	}
@@ -312,7 +286,7 @@ func (t DecimalType_) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t DecimalType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -326,10 +300,10 @@ func (t DecimalType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 	// own precision and scale.
 	var val []byte
 	if t.definesColumn {
-		val = types.AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
+		val = AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
 	} else {
 		decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
-		val = types.AppendAndSliceString(dest, decStr)
+		val = AppendAndSliceString(dest, decStr)
 	}
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil

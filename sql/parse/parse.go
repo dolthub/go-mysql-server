@@ -3647,7 +3647,7 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 			floatVal := fmt.Sprintf("%v", val)
 			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
-				dt, err := sql.CreateDecimalType(p, s)
+				dt, err := types.CreateDecimalType(p, s)
 				if err != nil {
 					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}

@@ -161,7 +161,7 @@ func TestCaseType(t *testing.T) {
 		}
 	}
 
-	decimalType := sql.MustCreateDecimalType(65, 10)
+	decimalType := types.MustCreateDecimalType(65, 10)
 
 	testCases := []struct {
 		name string
