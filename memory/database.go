@@ -319,13 +319,13 @@ func (d *BaseDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID)
 	return nil
 }
 
-func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement string) error {
+func (d *Database) CreateView(ctx *sql.Context, name string, createViewStmt string) error {
 	_, ok := d.views[name]
 	if ok {
 		return sql.ErrExistingView.New(name)
 	}
 
-	d.views[name] = selectStatement
+	d.views[name] = createViewStmt
 	return nil
 }
 
@@ -344,7 +344,7 @@ func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	for name, def := range d.views {
 		views = append(views, sql.ViewDefinition{
 			Name:           name,
-			TextDefinition: def,
+			CreateViewStatement: def,
 		})
 	}
 	return views, nil

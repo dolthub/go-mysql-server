@@ -33,16 +33,16 @@ func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 
 	db.AddTable("db", table)
 
-	subqueryAlias := NewSubqueryAlias("myview", "select i",
+	subqueryAlias := NewSubqueryAlias("myview", "select i from mytable",
 		NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
 			},
-			NewUnresolvedTable("dual", ""),
+			NewUnresolvedTable(table.Name(), ""),
 		),
 	)
 
-	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace)
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
 
 	return createView
 }
@@ -58,7 +58,7 @@ func TestCreateViewWithRegistry(t *testing.T) {
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(err)
 
-	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
+	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition, createView.CreateViewString)
 	actualView, ok := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
 	require.True(ok)
 	require.Equal(expectedView, actualView)
@@ -95,7 +95,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	require.Equal(t, expectedView, view)
 
 	// This is kind of nonsensical, but we just want to see if it gets stored correctly
-	subqueryAlias := NewSubqueryAlias("myview", "select i + 1",
+	subqueryAlias := NewSubqueryAlias("myview", "select i + 1 from mytable",
 		NewProject(
 			[]sql.Expression{
 				expression.NewArithmetic(
@@ -104,11 +104,11 @@ func TestReplaceExistingViewNative(t *testing.T) {
 					"+",
 				),
 			},
-			NewUnresolvedTable("dual", ""),
+			NewUnresolvedTable("mytable", ""),
 		),
 	)
 
-	createView = NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true)
+	createView = NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true, "CREATE VIEW myview AS SELECT i + 1 FROM mytable", "", "", "")
 	_, err = createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
@@ -161,7 +161,7 @@ func TestReplaceExistingViewWithRegistry(t *testing.T) {
 
 	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false)
 
-	view := sql.NewView(createView.Name, nil, "")
+	view := sql.NewView(createView.Name, nil, "", "")
 	viewReg := sql.NewViewRegistry()
 	err := viewReg.Register(createView.database.Name(), view)
 	require.NoError(err)

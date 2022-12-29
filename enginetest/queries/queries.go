@@ -9253,8 +9253,9 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "information_schema.triggers create trigger definer defined",
 		SetUpScript: []string{
-			"CREATE TABLE aa (x INT PRIMARY KEY)",
+			"CREATE TABLE aa (x INT PRIMARY KEY, y INT)",
 			"CREATE DEFINER=`dolt`@`localhost` TRIGGER trigger1 BEFORE INSERT ON aa FOR EACH ROW SET NEW.x = NEW.x + 1",
+			"CREATE TRIGGER trigger2 BEFORE INSERT ON aa FOR EACH ROW SET NEW.y = NEW.y + 2",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -9268,10 +9269,12 @@ var InfoSchemaScripts = []ScriptTest{
 event_object_schema, event_object_table, action_order, action_condition, action_statement, action_orientation, action_timing,
 action_reference_old_table, action_reference_new_table, action_reference_old_row, action_reference_new_row, sql_mode, definer,
 character_set_client, collation_connection, database_collation
-FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb' and trigger_name = 'trigger1'`,
+FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"def", "mydb", "trigger1", "INSERT", "def", "mydb", "aa", 1, nil, "SET NEW.x = NEW.x + 1", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
 						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "`dolt`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"def", "mydb", "trigger2", "INSERT", "def", "mydb", "aa", 2, nil, "SET NEW.y = NEW.y + 2", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
+						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "`root`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -9896,6 +9899,23 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 					{"def", "otherdb", "fk_across_dbs_ref_pk", "def", "mydb", "PRIMARY", "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
 					{"def", "otherdb", "fk_across_dbs_key", "def", "mydb", nil, "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
 					{"def", "otherdb", "fk_across_dbs_unique", "def", "mydb", "w", "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.views has definer and security information",
+		SetUpScript: []string{
+			"create view myview1 as select count(*) from mytable;",
+			"CREATE ALGORITHM=TEMPTABLE DEFINER=UserName@localhost SQL SECURITY INVOKER VIEW myview2 AS SELECT * FROM myview WHERE i > 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from information_schema.views where table_schema = 'mydb' order by table_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+					{"def", "mydb", "myview1", "select count(*) from mytable", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+					{"def", "mydb", "myview2", "SELECT * FROM myview WHERE i > 1", "NONE", "NO", "`UserName`@`localhost`", "INVOKER", "utf8mb4", "utf8mb4_0900_bin"},
 				},
 			},
 		},

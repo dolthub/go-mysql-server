@@ -55,7 +55,7 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 			"myview",
 			"SELECT * FROM mytable",
 			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView())
+		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
@@ -83,7 +83,7 @@ func NewSession(harness Harness) *sql.Context {
 			"myview",
 			"SELECT * FROM mytable",
 			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView())
+		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 

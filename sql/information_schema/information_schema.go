@@ -1588,26 +1588,66 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // viewsRowIter implements the sql.RowIter for the information_schema.VIEWS table.
 func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
+	privSet, _ := ctx.GetPrivilegeSet()
+	hasGlobalShowViewPriv := privSet.Has(PrivilegeType_ShowView)
 	for _, db := range catalog.AllDatabases(ctx) {
 		dbName := db.Name()
+		privDbSet := privSet.Database(dbName)
+		hasDbShowViewPriv := privDbSet.Has(PrivilegeType_ShowView)
 
 		views, err := viewsInDatabase(ctx, db)
 		if err != nil {
 			return nil, err
 		}
 
+		charset := Collation_Default.CharacterSet().String()
+		collation := Collation_Default.String()
+
 		for _, view := range views {
+			privTblSet := privDbSet.Table(view.Name)
+			if !hasGlobalShowViewPriv && !hasDbShowViewPriv && !privTblSet.Has(PrivilegeType_ShowView) {
+				continue
+			}
+			parsedView, err := parse.Parse(ctx, view.CreateViewStatement)
+			if err != nil {
+				return nil, err
+			}
+			viewPlan, ok := parsedView.(*plan.CreateView)
+			if !ok {
+				return nil, ErrTriggerCreateStatementInvalid.New(view.CreateViewStatement)
+			}
+
+			viewDef := viewPlan.Definition.TextDefinition
+			definer := viewPlan.Definer
+
+			// TODO: WITH CHECK OPTION is not supported yet.
+			checkOpt := viewPlan.CheckOpt
+			if checkOpt == "" {
+				checkOpt = "NONE"
+			}
+
+			isUpdatable := "YES"
+			// TODO: this function call should be done at CREATE VIEW time, not here
+			if !plan.GetIsUpdatableFromCreateView(viewPlan) {
+				isUpdatable = "NO"
+			}
+
+			securityType := viewPlan.Security
+			if securityType == "" {
+				securityType = "DEFINER"
+			}
+
 			rows = append(rows, Row{
-				"def",
-				dbName,
-				view.Name,
-				view.TextDefinition,
-				"NONE",
-				"YES",
-				"",
-				"DEFINER",
-				Collation_Default.CharacterSet().String(),
-				Collation_Default.String(),
+				"def", 		  // table_catalog
+				dbName, 	  // table_schema
+				view.Name,    // table_name
+				viewDef,      // view_definition
+				checkOpt, 	  // check_option
+				isUpdatable,  // is_updatable
+				definer, 	  // definer
+				securityType, // security_type
+				charset, 	  // character_set_client
+				collation,	  // collation_connection
 			})
 		}
 	}
@@ -2331,7 +2371,7 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
 		views = append(views, ViewDefinition{
 			Name:           view.Name(),
-			TextDefinition: view.TextDefinition(),
+			CreateViewStatement: view.CreateStatement(),
 		})
 	}
 

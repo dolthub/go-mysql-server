@@ -56,18 +56,21 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 				maybeVdb = privilegedDatabase.Unwrap()
 			}
 			if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {
-				viewDef, ok, err := vdb.GetView(ctx, viewName)
+				createViewStmt, ok, err := vdb.GetView(ctx, viewName)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 
 				if ok {
-					query, err := parse.Parse(ctx, viewDef)
+					query, err := parse.Parse(ctx, createViewStmt)
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
+					cv, ok := query.(*plan.CreateView)
+					if ok {
 
-					view = plan.NewSubqueryAlias(viewName, viewDef, query).AsView()
+						view = plan.NewSubqueryAlias(viewName, cv.Definition.TextDefinition, cv.Definition).AsView(createViewStmt)
+					}
 				}
 			}
 		}

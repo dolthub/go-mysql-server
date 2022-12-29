@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -52,9 +53,9 @@ var viewDefinitionWithAsOf = plan.NewSubqueryAlias(
 
 func TestResolveViews(t *testing.T) {
 	// Initialize views and DB
-	view := sql.NewView(viewDefinition.Name(), viewDefinition, viewDefinition.TextDefinition)
-	viewWithUnion := sql.NewView(viewDefinitionWithUnion.Name(), viewDefinitionWithUnion, viewDefinitionWithUnion.TextDefinition)
-	viewWithAsOf := sql.NewView(viewDefinitionWithAsOf.Name(), viewDefinitionWithAsOf, viewDefinitionWithAsOf.TextDefinition)
+	view := sql.NewView(viewDefinition.Name(), viewDefinition, viewDefinition.TextDefinition, getCreateViewStr(viewDefinition.Name(), viewDefinition.TextDefinition))
+	viewWithUnion := sql.NewView(viewDefinitionWithUnion.Name(), viewDefinitionWithUnion, viewDefinitionWithUnion.TextDefinition, getCreateViewStr(viewDefinitionWithUnion.Name(), viewDefinitionWithUnion.TextDefinition))
+	viewWithAsOf := sql.NewView(viewDefinitionWithAsOf.Name(), viewDefinitionWithAsOf, viewDefinitionWithAsOf.TextDefinition, getCreateViewStr(viewDefinitionWithAsOf.Name(), viewDefinitionWithAsOf.TextDefinition))
 
 	db := memory.NewDatabase("mydb")
 	viewReg := sql.NewViewRegistry()
@@ -104,4 +105,8 @@ func TestResolveViews(t *testing.T) {
 	analyzed, _, err = f.Apply(ctx, a, notAnalyzedAsOf, nil, DefaultRuleSelector)
 	require.Error(t, err)
 	require.True(t, sql.ErrIncompatibleAsOf.Is(err), "wrong error type")
+}
+
+func getCreateViewStr(name, def string) string {
+	return fmt.Sprintf("CREATE VIEW %s AS %s", name, def)
 }

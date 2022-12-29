@@ -953,21 +953,21 @@ type TemporaryTableCreator interface {
 
 // ViewDefinition is the named textual definition of a view
 type ViewDefinition struct {
-	Name           string
-	TextDefinition string
+	Name                string
+	CreateViewStatement string
 }
 
 // ViewDatabase is implemented by databases that persist view definitions
 type ViewDatabase interface {
-	// CreateView persists the definition a view with the name and select statement given. If a view with that name
+	// CreateView persists the definition a view with the name and create view statement given. If a view with that name
 	// already exists, should return ErrExistingView
-	CreateView(ctx *Context, name string, selectStatement string) error
+	CreateView(ctx *Context, name string, createViewStmt string) error
 
 	// DropView deletes the view named from persistent storage. If the view doesn't exist, should return
 	// ErrViewDoesNotExist
 	DropView(ctx *Context, name string) error
 
-	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
+	// GetView returns the textual create view statement of the view with the name given, or false if it doesn't exist.
 	GetView(ctx *Context, viewName string) (string, bool, error)
 
 	// AllViews returns the definitions of all views in the database

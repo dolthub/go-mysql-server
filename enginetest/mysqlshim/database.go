@@ -185,8 +185,8 @@ func (d Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 }
 
 // CreateView implements the interface sql.ViewDatabase.
-func (d Database) CreateView(ctx *sql.Context, name string, selectStatement string) error {
-	return d.shim.Exec(d.name, fmt.Sprintf("CREATE VIEW `%s` AS %s;", name, selectStatement))
+func (d Database) CreateView(ctx *sql.Context, name string, createViewStmt string) error {
+	return d.shim.Exec(d.name, createViewStmt)
 }
 
 // DropView implements the interface sql.ViewDatabase.
@@ -203,7 +203,7 @@ func (d Database) GetView(ctx *sql.Context, viewName string) (string, bool, erro
 	lowerName := strings.ToLower(viewName)
 	for _, view := range views {
 		if lowerName == strings.ToLower(view.Name) {
-			return view.TextDefinition, true, nil
+			return view.CreateViewStatement, true, nil
 		}
 	}
 	return "", false, nil
@@ -223,10 +223,9 @@ func (d Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 			return nil, err
 		}
 		viewStatement := viewStatementRow[0][1].(string)
-		viewStatement = viewStatement[strings.Index(viewStatement, " AS ")+4:] // not the best but works for now
 		viewDefinitions[i] = sql.ViewDefinition{
 			Name:           viewName,
-			TextDefinition: viewStatement,
+			CreateViewStatement: viewStatement,
 		}
 	}
 	return viewDefinitions, nil
