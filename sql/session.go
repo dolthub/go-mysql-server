@@ -788,6 +788,13 @@ func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
 	return fn()
 }
 
+func Now() time.Time {
+	ctxNowFuncMutex.Lock()
+	defer ctxNowFuncMutex.Unlock()
+
+	return ctxNowFunc()
+}
+
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default
 // value will be used.

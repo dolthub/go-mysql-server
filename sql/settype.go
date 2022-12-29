@@ -130,7 +130,7 @@ func MustCreateSetType(values []string, collation CollationID) SetType {
 
 // Compare implements Type interface.
 func (t setType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

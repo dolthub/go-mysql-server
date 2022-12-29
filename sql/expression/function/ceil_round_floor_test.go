@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -65,14 +66,14 @@ func TestCeil(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsFloat(tt.rowType):
-				require.True(sql.IsFloat(f.Type()))
+			case types.IsFloat(tt.rowType):
+				require.True(types.IsFloat(f.Type()))
 				require.False(f.IsNullable())
-			case sql.IsInteger(tt.rowType):
-				require.True(sql.IsInteger(f.Type()))
+			case types.IsInteger(tt.rowType):
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			default:
-				require.True(sql.IsInteger(f.Type()))
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			}
 		})
@@ -120,14 +121,14 @@ func TestFloor(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsFloat(tt.rowType):
-				require.True(sql.IsFloat(f.Type()))
+			case types.IsFloat(tt.rowType):
+				require.True(types.IsFloat(f.Type()))
 				require.False(f.IsNullable())
-			case sql.IsInteger(tt.rowType):
-				require.True(sql.IsInteger(f.Type()))
+			case types.IsInteger(tt.rowType):
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			default:
-				require.True(sql.IsInteger(f.Type()))
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			}
 		})
@@ -251,14 +252,14 @@ func TestRound(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsFloat(tt.xType):
-				require.True(sql.IsFloat(f.Type()))
+			case types.IsFloat(tt.xType):
+				require.True(types.IsFloat(f.Type()))
 				require.False(f.IsNullable())
-			case sql.IsInteger(tt.xType):
-				require.True(sql.IsInteger(f.Type()))
+			case types.IsInteger(tt.xType):
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			default:
-				require.True(sql.IsInteger(f.Type()))
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			}
 		})

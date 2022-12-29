@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -89,9 +90,9 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToChar, ConvertToNChar:
 		return sql.LongText
 	case ConvertToDate:
-		return sql.Date
+		return types.Date
 	case ConvertToDatetime:
-		return sql.Datetime
+		return types.Datetime
 	case ConvertToDecimal:
 		//TODO: these values are completely arbitrary, we need to get the given precision/scale and store it
 		return sql.MustCreateDecimalType(65, 10)
@@ -169,7 +170,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, nil
 		}
-		if sql.IsTextOnly(originType) {
+		if types.IsTextOnly(originType) {
 			// For string types we need to re-encode the string as we want the binary representation of the character set
 			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(b.([]byte))
@@ -192,7 +193,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, err := sql.Date.Convert(val)
+		d, err := types.Date.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +205,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, err := sql.Datetime.Convert(val)
+		d, err := types.Datetime.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -276,7 +277,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 // binary string as default, but for numeric context, the value should be a number.
 // Byte arrays of other SQL types are not handled here.
 func convertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) (interface{}, error) {
-	if bin, isBinary := val.([]byte); isBinary && sql.IsBlobType(originType) {
+	if bin, isBinary := val.([]byte); isBinary && types.IsBlobType(originType) {
 		stringVal := hex.EncodeToString(bin)
 		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
 		if err != nil {

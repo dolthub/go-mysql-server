@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -97,7 +98,7 @@ func compEval(
 			}
 
 		case string:
-			if sql.IsTextOnly(returnType) && (i == 0 || cmp(t, selectedString)) {
+			if types.IsTextOnly(returnType) && (i == 0 || cmp(t, selectedString)) {
 				selectedString = t
 			}
 
@@ -129,7 +130,7 @@ func compEval(
 		return int64(selectedNum), nil
 	case sql.LongText:
 		return selectedString, nil
-	case sql.Datetime:
+	case types.Datetime:
 		return selectedTime, nil
 	}
 
@@ -153,19 +154,19 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 			return nil, nil
 		}
 		argType := arg.Type()
-		if sql.IsTuple(argType) {
+		if types.IsTuple(argType) {
 			return nil, sql.ErrInvalidType.New("tuple")
-		} else if sql.IsNumber(argType) {
+		} else if types.IsNumber(argType) {
 			allString = false
 			allDatetime = false
-			if sql.IsFloat(argType) {
+			if types.IsFloat(argType) {
 				allString = false
 				allInt = false
 			}
-		} else if sql.IsText(argType) {
+		} else if types.IsText(argType) {
 			allInt = false
 			allDatetime = false
-		} else if sql.IsTime(argType) {
+		} else if types.IsTime(argType) {
 			allString = false
 			allInt = false
 		} else if sql.IsDeferredType(argType) {
@@ -183,7 +184,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 	} else if allInt {
 		return sql.Int64, nil
 	} else if allDatetime {
-		return sql.Datetime, nil
+		return types.Datetime, nil
 	} else {
 		return sql.Float64, nil
 	}

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/cespare/xxhash"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -217,7 +218,7 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 	}
 
 	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
-	if sql.IsTextOnly(t) {
+	if types.IsTextOnly(t) {
 		if str, ok := i.(string); ok {
 			return t.(sql.StringType).Collation().HashToUint(str)
 		} else {
@@ -287,13 +288,13 @@ func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 
 	// If a value can't be converted to an enum or set type, truncate it to a value that is guaranteed
 	// to not match any enum value.
-	if sql.IsEnum(t) || sql.IsSet(t) {
+	if types.IsEnum(t) || types.IsSet(t) {
 		return nil, nil
 	}
 
 	// Values for numeric and string types are automatically coerced. For all other types, if they
 	// don't convert cleanly, it's an error.
-	if err != nil && !(sql.IsNumber(t) || sql.IsTextOnly(t)) {
+	if err != nil && !(types.IsNumber(t) || types.IsTextOnly(t)) {
 		return nil, err
 	}
 

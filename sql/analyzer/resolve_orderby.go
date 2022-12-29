@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -333,7 +334,7 @@ func resolveSortFields(a *Analyzer, sfs sql.SortFields, schema sql.Schema) (sql.
 }
 
 func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.SortField, transform.TreeIdentity, error) {
-	if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
+	if lit, ok := f.Column.(*expression.Literal); ok && types.IsNumber(f.Column.Type()) {
 		v, err := lit.Eval(nil, nil)
 		if err != nil {
 			return sql.SortField{}, transform.SameTree, err

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -141,7 +142,7 @@ func ApproximateTypeFromValue(val interface{}) Type {
 	case Timespan, time.Duration:
 		return Time
 	case time.Time:
-		return Datetime
+		return types.Datetime
 	case float32:
 		return Float32
 	case float64:
@@ -194,50 +195,6 @@ func ApproximateTypeFromValue(val interface{}) Type {
 	default:
 		return LongText
 	}
-}
-
-// AreComparable returns whether the given types are either the same or similar enough that values can meaningfully be
-// compared across all permutations. Int8 and Int64 are comparable types, where as VarChar and Int64 are not. In the case
-// of the latter example, not all possible values of a VarChar are comparable to an Int64, while this is true for the
-// former example.
-func AreComparable(types ...Type) bool {
-	if len(types) <= 1 {
-		return true
-	}
-	typeNums := make([]int, len(types))
-	for i, typ := range types {
-		switch typ.Type() {
-		case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16,
-			sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
-			sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64,
-			sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64,
-			sqltypes.Decimal, sqltypes.Bit, sqltypes.Year:
-			typeNums[i] = 1
-		case sqltypes.Timestamp, sqltypes.Date, sqltypes.Datetime:
-			typeNums[i] = 2
-		case sqltypes.Time:
-			typeNums[i] = 3
-		case sqltypes.Text, sqltypes.Blob, sqltypes.VarChar,
-			sqltypes.VarBinary, sqltypes.Char, sqltypes.Binary:
-			typeNums[i] = 4
-		case sqltypes.Enum:
-			typeNums[i] = 5
-		case sqltypes.Set:
-			typeNums[i] = 6
-		case sqltypes.Geometry:
-			typeNums[i] = 7
-		case sqltypes.TypeJSON:
-			typeNums[i] = 8
-		default:
-			return false
-		}
-	}
-	for i := 1; i < len(typeNums); i++ {
-		if typeNums[i-1] != typeNums[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // ColumnTypeToType gets the column type using the column definition.
@@ -436,7 +393,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "year":
 		return Year, nil
 	case "date":
-		return Date, nil
+		return types.Date, nil
 	case "time":
 		if ct.Length != nil {
 			length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
@@ -454,9 +411,9 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return Time, nil
 	case "timestamp":
-		return Timestamp, nil
+		return types.Timestamp, nil
 	case "datetime":
-		return Datetime, nil
+		return types.Datetime, nil
 	case "enum":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
@@ -557,172 +514,6 @@ func ConvertToBool(v interface{}) (bool, error) {
 	}
 }
 
-// IsBlobType checks if t is BLOB
-func IsBlobType(t Type) bool {
-	switch t.Type() {
-	case sqltypes.Blob:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsBinaryType checks if t is BINARY, VARBINARY, or BLOB
-func IsBinaryType(t Type) bool {
-	switch t.Type() {
-	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsDecimal checks if t is a DECIMAL type.
-func IsDecimal(t Type) bool {
-	_, ok := t.(decimalType)
-	return ok
-}
-
-// IsBit checks if t is a BIT type.
-func IsBit(t Type) bool {
-	_, ok := t.(bitType)
-	return ok
-}
-
-// IsFloat checks if t is float type.
-func IsFloat(t Type) bool {
-	return t == Float32 || t == Float64
-}
-
-// IsInteger checks if t is an integer type.
-func IsInteger(t Type) bool {
-	return IsSigned(t) || IsUnsigned(t)
-}
-
-// IsJSON returns true if the specified type is a JSON type.
-func IsJSON(t Type) bool {
-	_, ok := t.(jsonType)
-	return ok
-}
-
-// IsGeometry returns true if the specified type is a Geometry type.
-func IsGeometry(t Type) bool {
-	switch t.(type) {
-	case GeometryType, PointType, LineStringType, PolygonType:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsNull returns true if expression is nil or is Null Type, otherwise false.
-func IsNull(ex Expression) bool {
-	return ex == nil || ex.Type() == Null
-}
-
-// IsNumber checks if t is a number type
-func IsNumber(t Type) bool {
-	switch t.(type) {
-	case numberTypeImpl, decimalType, bitType, yearType, systemBoolType:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsSigned checks if t is a signed type.
-func IsSigned(t Type) bool {
-	// systemBoolType is Int8
-	if _, ok := t.(systemBoolType); ok {
-		return true
-	}
-	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
-}
-
-// IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
-func IsText(t Type) bool {
-	_, ok := t.(stringType)
-	return ok
-}
-
-// IsTextBlob checks if t is one of the TEXTs or BLOBs.
-func IsTextBlob(t Type) bool {
-	switch t.Type() {
-	case sqltypes.Text, sqltypes.Blob:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsTextOnly checks if t is CHAR, VARCHAR, or one of the TEXTs.
-func IsTextOnly(t Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Type() {
-	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsTimespan checks if t is a time (timespan)
-func IsTimespan(t Type) bool {
-	_, ok := t.(timespanType)
-	return ok
-}
-
-// IsTime checks if t is a timestamp, date or datetime
-func IsTime(t Type) bool {
-	_, ok := t.(datetimeType)
-	return ok
-}
-
-// IsDateType checks if t is a date
-func IsDateType(t Type) bool {
-	dt, ok := t.(datetimeType)
-	return ok && dt.baseType == sqltypes.Date
-}
-
-// IsDatetimeType checks if t is a datetime
-func IsDatetimeType(t Type) bool {
-	dt, ok := t.(datetimeType)
-	return ok && dt.baseType == sqltypes.Datetime
-}
-
-// IsTimestampType checks if t is a timestamp
-func IsTimestampType(t Type) bool {
-	dt, ok := t.(datetimeType)
-	return ok && dt.baseType == sqltypes.Timestamp
-}
-
-// IsEnum checks if t is a enum
-func IsEnum(t Type) bool {
-	_, ok := t.(enumType)
-	return ok
-}
-
-// IsEnum checks if t is a set
-func IsSet(t Type) bool {
-	_, ok := t.(setType)
-	return ok
-}
-
-// IsTuple checks if t is a tuple type.
-// Note that TupleType instances with just 1 value are not considered
-// as a tuple, but a parenthesized value.
-func IsTuple(t Type) bool {
-	v, ok := t.(TupleType)
-	return ok && len(v) > 1
-}
-
-// IsUnsigned checks if t is an unsigned type.
-func IsUnsigned(t Type) bool {
-	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
-}
-
 // NumColumns returns the number of columns in a type. This is one for all
 // types, except tuples.
 func NumColumns(t Type) int {
@@ -768,10 +559,10 @@ func ErrIfMismatchedColumnsInTuple(t1, t2 Type) error {
 	return nil
 }
 
-// compareNulls compares two values, and returns true if either is null.
+// CompareNulls compares two values, and returns true if either is null.
 // The returned integer represents the ordering, with a rule that states nulls
 // as being ordered before non-nulls.
-func compareNulls(a interface{}, b interface{}) (bool, int) {
+func CompareNulls(a interface{}, b interface{}) (bool, int) {
 	aIsNull := a == nil
 	bIsNull := b == nil
 	if aIsNull && bIsNull {

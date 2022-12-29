@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -66,7 +67,7 @@ func TestMax_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Timestamp, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Timestamp, "field", true))
 	b, _ := m.NewBuffer()
 
 	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2008-01-02 15:04:05")

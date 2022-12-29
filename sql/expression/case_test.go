@@ -17,6 +17,7 @@ package expression
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
@@ -234,13 +235,13 @@ func TestCaseType(t *testing.T) {
 		},
 		{
 			"date and date stays date",
-			caseExpr(NewLiteral("2020-04-07", sql.Date), NewLiteral("2020-04-07", sql.Date)),
-			sql.Date,
+			caseExpr(NewLiteral("2020-04-07", types.Date), NewLiteral("2020-04-07", types.Date)),
+			types.Date,
 		},
 		{
 			"date and timestamp becomes datetime",
-			caseExpr(NewLiteral("2020-04-07", sql.Date), NewLiteral("2020-04-07T00:00:00Z", sql.Timestamp)),
-			sql.Datetime,
+			caseExpr(NewLiteral("2020-04-07", types.Date), NewLiteral("2020-04-07T00:00:00Z", types.Timestamp)),
+			types.Datetime,
 		},
 	}
 

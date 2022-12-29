@@ -22,6 +22,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -259,7 +260,7 @@ func (t stringType) Length() int64 {
 
 // Compare implements Type interface.
 func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -271,7 +272,7 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if IsBinaryType(t) {
+		if types.IsBinaryType(t) {
 			as = encodings.BytesToString(ai.([]byte))
 		} else {
 			as = ai.(string)
@@ -282,7 +283,7 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if IsBinaryType(t) {
+		if types.IsBinaryType(t) {
 			bs = encodings.BytesToString(bi.([]byte))
 		} else {
 			bs = bi.(string)
@@ -330,7 +331,7 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 		return nil, err
 	}
 
-	if IsBinaryType(t) {
+	if types.IsBinaryType(t) {
 		return []byte(val), nil
 	}
 	return val, nil
@@ -492,7 +493,7 @@ func (t stringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Valu
 	}
 
 	var val []byte
-	if IsBinaryType(t) {
+	if types.IsBinaryType(t) {
 		v, err := t.Convert(v)
 		if err != nil {
 			return sqltypes.Value{}, err
@@ -571,7 +572,7 @@ func (t stringType) Type() query.Type {
 
 // ValueType implements Type interface.
 func (t stringType) ValueType() reflect.Type {
-	if IsBinaryType(t) {
+	if types.IsBinaryType(t) {
 		return byteValueType
 	}
 	return stringValueType
@@ -609,7 +610,8 @@ func (t stringType) MaxByteLength() int64 {
 	return t.maxByteLength
 }
 
-func appendAndSliceString(buffer []byte, addition string) (slice []byte) {
+// TODO: move me
+func AppendAndSliceString(buffer []byte, addition string) (slice []byte) {
 	stop := len(buffer)
 	buffer = append(buffer, addition...)
 	slice = buffer[stop:]

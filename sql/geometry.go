@@ -382,7 +382,7 @@ func writeCount(buf []byte, count uint32) {
 
 // Compare implements Type interface.
 func (t GeometryType) Compare(a any, b any) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

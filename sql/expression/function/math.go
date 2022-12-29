@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -123,7 +124,7 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var seed int64
-	if sql.IsNumber(r.Child.Type()) {
+	if types.IsNumber(r.Child.Type()) {
 		e, err = sql.Int64.Convert(e)
 		if err == nil {
 			seed = e.(int64)

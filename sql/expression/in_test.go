@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -157,12 +158,12 @@ func TestInTuple(t *testing.T) {
 		},
 		{
 			name: "date on right side; non-dates on left",
-			left: expression.NewLiteral(time.Now(), sql.Datetime),
+			left: expression.NewLiteral(time.Now(), types.Datetime),
 			right: expression.NewTuple(
 				expression.NewLiteral("hi", sql.TinyText),
 				expression.NewLiteral("bye", sql.TinyText),
 			),
-			err:    sql.ErrConvertingToTime,
+			err:    types.ErrConvertingToTime,
 			row:    nil,
 			result: false,
 		}}
@@ -523,12 +524,12 @@ func TestHashInTuple(t *testing.T) {
 		},
 		{
 			name: "date on right side; non-dates on left",
-			left: expression.NewLiteral(time.Now(), sql.Datetime),
+			left: expression.NewLiteral(time.Now(), types.Datetime),
 			right: expression.NewTuple(
 				expression.NewLiteral("hi", sql.TinyText),
 				expression.NewLiteral("bye", sql.TinyText),
 			),
-			staticErr: sql.ErrConvertingToTime,
+			staticErr: types.ErrConvertingToTime,
 			row:       nil,
 			result:    false,
 		},

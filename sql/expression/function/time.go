@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -49,9 +50,9 @@ func getDate(ctx *sql.Context,
 		return nil, nil
 	}
 
-	date, err := sql.Datetime.ConvertWithoutRangeCheck(val)
+	date, err := types.Datetime.ConvertWithoutRangeCheck(val)
 	if err != nil {
-		date = sql.Datetime.Zero().(time.Time)
+		date = types.Datetime.Zero().(time.Time)
 	}
 
 	return date, nil
@@ -459,7 +460,7 @@ func NewYearWeek(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	yw := &YearWeek{date: args[0]}
-	if len(args) > 1 && args[1].Resolved() && sql.IsInteger(args[1].Type()) {
+	if len(args) > 1 && args[1].Resolved() && types.IsInteger(args[1].Type()) {
 		yw.mode = args[1]
 	} else if len(args) > 1 && expression.IsBindVar(args[1]) {
 		yw.mode = args[1]
@@ -556,7 +557,7 @@ func NewWeek(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	w := &Week{date: args[0]}
-	if len(args) > 1 && args[1].Resolved() && sql.IsInteger(args[1].Type()) {
+	if len(args) > 1 && args[1].Resolved() && types.IsInteger(args[1].Type()) {
 		w.mode = args[1]
 	} else {
 		w.mode = expression.NewLiteral(0, sql.Int64)
@@ -836,7 +837,7 @@ func (n *Now) Description() string {
 
 // Type implements the sql.Expression interface.
 func (n *Now) Type() sql.Type {
-	return sql.Datetime
+	return types.Datetime
 }
 
 func (n *Now) String() string {
@@ -929,7 +930,7 @@ func (ut *UTCTimestamp) Description() string {
 
 // Type implements the sql.Expression interface.
 func (ut *UTCTimestamp) Type() sql.Type {
-	return sql.Datetime
+	return types.Datetime
 }
 
 func (ut *UTCTimestamp) String() string {
@@ -986,7 +987,7 @@ func NewDate(date sql.Expression) sql.Expression {
 func (d *Date) String() string { return fmt.Sprintf("DATE(%s)", d.Child) }
 
 // Type implements the Expression interface.
-func (d *Date) Type() sql.Type { return sql.Date }
+func (d *Date) Type() sql.Type { return types.Date }
 
 // Eval implements the Expression interface.
 func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -1036,7 +1037,7 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interfac
 		return nil, nil
 	}
 
-	return sql.Datetime.Convert(val)
+	return types.Datetime.Convert(val)
 }
 
 // String implements the fmt.Stringer interface.
@@ -1295,7 +1296,7 @@ func (c *CurrTimestamp) String() string {
 	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.args[0].String())
 }
 
-func (c *CurrTimestamp) Type() sql.Type { return sql.Datetime }
+func (c *CurrTimestamp) Type() sql.Type { return types.Datetime }
 
 func (c *CurrTimestamp) IsNullable() bool {
 	for _, arg := range c.args {
@@ -1422,7 +1423,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to date
-	date, err := sql.Datetime.ConvertWithoutRangeCheck(v)
+	date, err := types.Datetime.ConvertWithoutRangeCheck(v)
 	if err == nil {
 		h, m, s := date.Clock()
 		us := date.Nanosecond() / 1000

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/lestrrat-go/strftime"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -144,8 +145,8 @@ func (f *TimeFormat) Type() sql.Type {
 
 // IsNullable implements the Expression interface.
 func (f *TimeFormat) IsNullable() bool {
-	if sql.IsNull(f.Left) {
-		if sql.IsNull(f.Right) {
+	if types.IsNull(f.Left) {
+		if types.IsNull(f.Right) {
 			return true
 		}
 		return f.Right.IsNullable()

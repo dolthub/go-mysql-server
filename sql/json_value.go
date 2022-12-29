@@ -362,7 +362,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func compareJSON(a, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(b, a); hasNulls {
+	if hasNulls, res := CompareNulls(b, a); hasNulls {
 		return res, nil
 	}
 

@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowTableStatus returns the status of the tables in a database.
@@ -53,9 +54,9 @@ var showTableStatusSchema = sql.Schema{
 	{Name: "Index_length", Type: sql.Int64},
 	{Name: "Data_free", Type: sql.Int64},
 	{Name: "Auto_increment", Type: sql.Int64},
-	{Name: "Create_time", Type: sql.Datetime, Nullable: true},
-	{Name: "Update_time", Type: sql.Datetime, Nullable: true},
-	{Name: "Check_time", Type: sql.Datetime, Nullable: true},
+	{Name: "Create_time", Type: types.Datetime, Nullable: true},
+	{Name: "Update_time", Type: types.Datetime, Nullable: true},
+	{Name: "Check_time", Type: types.Datetime, Nullable: true},
 	{Name: "Collation", Type: sql.LongText},
 	{Name: "Checksum", Type: sql.LongText, Nullable: true},
 	{Name: "Create_options", Type: sql.LongText, Nullable: true},

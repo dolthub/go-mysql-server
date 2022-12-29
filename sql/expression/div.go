@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
@@ -102,7 +103,7 @@ func (d *Div) Type() sql.Type {
 		return lTyp
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+	if types.IsText(lTyp) || types.IsText(rTyp) {
 		return sql.Float64
 	}
 
@@ -189,16 +190,16 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // should be preserved.
 func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := d.Type()
-	lIsTimeType := sql.IsTime(d.Left.Type())
-	rIsTimeType := sql.IsTime(d.Right.Type())
+	lIsTimeType := types.IsTime(d.Left.Type())
+	rIsTimeType := types.IsTime(d.Right.Type())
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
 		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
 		right = convertToDecimalValue(right, rIsTimeType)
@@ -281,15 +282,15 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
-			if sql.IsFloat(c.Type()) {
+			if types.IsFloat(c.Type()) {
 				resType = sql.Float64
 				return false
 			}
-			if sql.IsDecimal(c.Type()) {
+			if types.IsDecimal(c.Type()) {
 				decType = c.Type()
 			}
 		case *Literal:
-			if sql.IsNumber(c.Type()) {
+			if types.IsNumber(c.Type()) {
 				l, err := c.Eval(nil, nil)
 				if err == nil {
 					p, s := GetPrecisionAndScale(l)
@@ -589,17 +590,17 @@ func (i *IntDiv) Type() sql.Type {
 		return lTyp
 	}
 
-	if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
+	if types.IsTime(lTyp) && types.IsTime(rTyp) {
 		return sql.Int64
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+	if types.IsText(lTyp) || types.IsText(rTyp) {
 		return sql.Float64
 	}
 
-	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
+	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
 		return sql.Uint64
-	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
+	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
 		return sql.Int64
 	}
 
@@ -658,16 +659,16 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 // should be preserved.
 func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := i.Type()
-	lIsTimeType := sql.IsTime(i.Left.Type())
-	rIsTimeType := sql.IsTime(i.Right.Type())
+	lIsTimeType := types.IsTime(i.Left.Type())
+	rIsTimeType := types.IsTime(i.Right.Type())
 
-	if sql.IsInteger(typ) || sql.IsFloat(typ) {
+	if types.IsInteger(typ) || types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
 		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if sql.IsInteger(typ) || sql.IsFloat(typ) {
+	if types.IsInteger(typ) || types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
 		right = convertToDecimalValue(right, rIsTimeType)

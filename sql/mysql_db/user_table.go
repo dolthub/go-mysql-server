@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 )
@@ -173,7 +174,7 @@ func init() {
 		Nullable: true,
 	}
 	timestamp_nullable_default_nil := &sql.Column{
-		Type:     sql.Timestamp,
+		Type:     types.Timestamp,
 		Default:  nil,
 		Nullable: true,
 	}

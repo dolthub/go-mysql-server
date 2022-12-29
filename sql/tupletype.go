@@ -35,7 +35,7 @@ func CreateTuple(types ...Type) Type {
 }
 
 func (t TupleType) Compare(a, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

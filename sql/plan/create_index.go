@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -142,7 +143,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 
 	for _, e := range exprs {
-		if sql.IsBlobType(e.Type()) || sql.IsJSON(e.Type()) {
+		if types.IsBlobType(e.Type()) || types.IsJSON(e.Type()) {
 			return nil, ErrExprTypeNotIndexable.New(e, e.Type())
 		}
 	}

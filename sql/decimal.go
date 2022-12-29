@@ -145,7 +145,7 @@ func (t decimalType) Type() query.Type {
 
 // Compare implements Type interface.
 func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -325,10 +325,10 @@ func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 	// own precision and scale.
 	var val []byte
 	if t.definesColumn {
-		val = appendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
+		val = AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
 	} else {
 		decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
-		val = appendAndSliceString(dest, decStr)
+		val = AppendAndSliceString(dest, decStr)
 	}
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil

@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -160,7 +161,7 @@ func TestWeekYearFormatting(t *testing.T) {
 
 func TestDateFormatEval(t *testing.T) {
 	dt := time.Date(2020, 2, 3, 4, 5, 6, 7000, time.UTC)
-	dateLit := expression.NewLiteral(dt, sql.Datetime)
+	dateLit := expression.NewLiteral(dt, types.Datetime)
 	format := expression.NewLiteral("%Y-%m-%d %H:%i:%s.%f", sql.Text)
 	nullLiteral := expression.NewLiteral(nil, sql.Null)
 

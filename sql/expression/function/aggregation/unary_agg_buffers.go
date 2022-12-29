@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/mitchellh/hashstructure"
 	"github.com/shopspring/decimal"
 
@@ -78,7 +79,7 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 func (m *sumBuffer) PerformSum(v interface{}) {
 	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
-	if s, isStr := v.(string); isStr && sql.IsDecimal(m.expr.Type()) {
+	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type()) {
 		val, err := m.expr.Type().Convert(s)
 		if err == nil {
 			v = val

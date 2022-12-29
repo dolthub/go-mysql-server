@@ -17,6 +17,7 @@ package analyzer
 import (
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -166,20 +167,20 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 // If neither sql.Type represent number, then converted to string. Otherwise, we try to get
 // the appropriate type to avoid any precision loss.
 func getConvertToType(l, r sql.Type) string {
-	if !sql.IsNumber(l) || !sql.IsNumber(r) {
+	if !types.IsNumber(l) || !types.IsNumber(r) {
 		return expression.ConvertToChar
 	}
 
-	if sql.IsDecimal(l) || sql.IsDecimal(r) {
+	if types.IsDecimal(l) || types.IsDecimal(r) {
 		return expression.ConvertToDecimal
 	}
-	if sql.IsUnsigned(l) && sql.IsUnsigned(r) {
+	if types.IsUnsigned(l) && types.IsUnsigned(r) {
 		return expression.ConvertToUnsigned
 	}
-	if sql.IsSigned(l) && sql.IsSigned(r) {
+	if types.IsSigned(l) && types.IsSigned(r) {
 		return expression.ConvertToSigned
 	}
-	if sql.IsInteger(l) && sql.IsInteger(r) {
+	if types.IsInteger(l) && types.IsInteger(r) {
 		return expression.ConvertToSigned
 	}
 

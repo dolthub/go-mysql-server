@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -62,7 +63,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var strBytes []byte
-	if sql.IsTextOnly(t.Child.Type()) {
+	if types.IsTextOnly(t.Child.Type()) {
 		val, err = t.Child.Type().Convert(val)
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))

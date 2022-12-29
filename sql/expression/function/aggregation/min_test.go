@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -67,7 +68,7 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Timestamp, "field", true))
+	m := NewMin(expression.NewGetField(0, types.Timestamp, "field", true))
 	b, _ := m.NewBuffer()
 
 	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2006-01-02 15:04:05")

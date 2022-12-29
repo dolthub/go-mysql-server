@@ -24,6 +24,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
@@ -3071,12 +3072,12 @@ func getInt64Literal(ctx *sql.Context, expr sqlparser.Expr, errStr string) (*exp
 
 	switch e := e.(type) {
 	case *expression.Literal:
-		if !sql.IsInteger(e.Type()) {
+		if !types.IsInteger(e.Type()) {
 			return nil, sql.ErrUnsupportedFeature.New(errStr)
 		}
 	}
 	nl, ok := e.(*expression.Literal)
-	if !ok || !sql.IsInteger(nl.Type()) {
+	if !ok || !types.IsInteger(nl.Type()) {
 		return nil, sql.ErrUnsupportedFeature.New(errStr)
 	} else {
 		i64, err := sql.Int64.Convert(nl.Value())
@@ -3165,7 +3166,7 @@ func selectToSelectionNode(
 		agglen := int64(len(selectExprs))
 		for i, ge := range groupingExprs {
 			// if GROUP BY index
-			if l, ok := ge.(*expression.Literal); ok && sql.IsNumber(l.Type()) {
+			if l, ok := ge.(*expression.Literal); ok && types.IsNumber(l.Type()) {
 				if i64, err := sql.Int64.Convert(l.Value()); err == nil {
 					if idx, ok := i64.(int64); ok && idx > 0 && idx <= agglen {
 						aggexpr := selectExprs[idx-1]
@@ -3903,7 +3904,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := expr.(*expression.Literal); !ok || !sql.IsText(expr.Type()) {
+			if _, ok := expr.(*expression.Literal); !ok || !types.IsText(expr.Type()) {
 				return nil, sql.ErrCharSetIntroducer.New()
 			}
 			literal, err := expr.Eval(ctx, nil)

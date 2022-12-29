@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ShowCreateTrigger struct {
@@ -36,7 +37,7 @@ var showCreateTriggerSchema = sql.Schema{
 	&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
 	&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
 	&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Created", Type: sql.Datetime, Nullable: false},
+	&sql.Column{Name: "Created", Type: types.Datetime, Nullable: false},
 }
 
 // NewShowCreateTrigger creates a new ShowCreateTrigger node for SHOW CREATE TRIGGER statements.

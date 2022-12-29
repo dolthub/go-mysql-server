@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -297,20 +298,20 @@ var eventsSchema = Schema{
 	{Name: "EVENT_BODY", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: EventsTableName},
 	{Name: "EVENT_DEFINITION", Type: LongText, Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "EVENT_TYPE", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 9), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, LongText, false), Nullable: false, Source: EventsTableName},
-	{Name: "EXECUTE_AT", Type: Datetime, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "EXECUTE_AT", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "INTERVAL_VALUE", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "INTERVAL_FIELD", Type: MustCreateEnumType([]string{
 		"YEAR", "QUARTER", "MONTH", "DAY", "HOUR", "MINUTE", "WEEK", "SECOND", "MICROSECOND", "YEAR_MONTH",
 		"DAY_HOUR", "DAY_MINUTE", "DAY_SECOND", "HOUR_MINUTE", "HOUR_SECOND", "MINUTE_SECOND",
 		"DAY_MICROSECOND", "HOUR_MICROSECOND", "MINUTE_MICROSECOND", "SECOND_MICROSECOND"}, Collation_Default), Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "SQL_MODE", Type: sqlModeSetType, Default: nil, Nullable: false, Source: EventsTableName},
-	{Name: "STARTS", Type: Datetime, Default: nil, Nullable: true, Source: EventsTableName},
-	{Name: "ENDS", Type: Datetime, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "STARTS", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "ENDS", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "STATUS", Type: MustCreateEnumType([]string{"ENABLED", "DISABLED", "SLAVESIDE_DISABLED"}, Collation_Default), Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "ON_COMPLETION", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 12), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 12), false), Nullable: false, Source: EventsTableName},
-	{Name: "CREATED", Type: Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
-	{Name: "LAST_ALTERED", Type: Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
-	{Name: "LAST_EXECUTED", Type: Datetime, Default: nil, Nullable: true, Source: EventsTableName},
+	{Name: "CREATED", Type: types.Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "LAST_ALTERED", Type: types.Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
+	{Name: "LAST_EXECUTED", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "EVENT_COMMENT", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "ORIGINATOR", Type: Uint32, Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "CHARACTER_SET_CLIENT", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: EventsTableName},
@@ -423,9 +424,9 @@ var partitionsSchema = Schema{
 	{Name: "MAX_DATA_LENGTH", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "INDEX_LENGTH", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "DATA_FREE", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
-	{Name: "CREATE_TIME", Type: Timestamp, Default: nil, Nullable: false, Source: PartitionsTableName},
-	{Name: "UPDATE_TIME", Type: Datetime, Default: nil, Nullable: true, Source: PartitionsTableName},
-	{Name: "CHECK_TIME", Type: Datetime, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "CREATE_TIME", Type: types.Timestamp, Default: nil, Nullable: false, Source: PartitionsTableName},
+	{Name: "UPDATE_TIME", Type: types.Datetime, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "CHECK_TIME", Type: types.Datetime, Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "CHECKSUM", Type: Int64, Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "PARTITION_COMMENT", Type: Text, Default: nil, Nullable: false, Source: PartitionsTableName},
 	{Name: "NODEGROUP", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: PartitionsTableName},
@@ -564,8 +565,8 @@ var routinesSchema = Schema{
 	{Name: "SQL_DATA_ACCESS", Type: MustCreateEnumType([]string{"CONTAINS SQL", "NO SQL", "READS SQL DATA", "MODIFIES SQL DATA"}, Collation_Default), Default: nil, Nullable: false, Source: RoutinesTableName},
 	{Name: "SQL_PATH", Type: MustCreateBinary(sqltypes.Binary, 0), Default: nil, Nullable: true, Source: RoutinesTableName},
 	{Name: "SECURITY_TYPE", Type: MustCreateEnumType([]string{"DEFAULT", "INVOKER", "DEFINER"}, Collation_Default), Default: nil, Nullable: false, Source: RoutinesTableName},
-	{Name: "CREATED", Type: Timestamp, Default: nil, Nullable: false, Source: RoutinesTableName},
-	{Name: "LAST_ALTERED", Type: Timestamp, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "CREATED", Type: types.Timestamp, Default: nil, Nullable: false, Source: RoutinesTableName},
+	{Name: "LAST_ALTERED", Type: types.Timestamp, Default: nil, Nullable: false, Source: RoutinesTableName},
 	{Name: "SQL_MODE", Type: sqlModeSetType, Default: nil, Nullable: false, Source: RoutinesTableName},
 	{Name: "ROUTINE_COMMENT", Type: Text, Default: nil, Nullable: false, Source: RoutinesTableName},
 	{Name: "DEFINER", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 288), Default: nil, Nullable: false, Source: RoutinesTableName},
@@ -687,9 +688,9 @@ var tablesSchema = Schema{
 	{Name: "INDEX_LENGTH", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "DATA_FREE", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "AUTO_INCREMENT", Type: Uint64, Default: nil, Nullable: true, Source: TablesTableName},
-	{Name: "CREATE_TIME", Type: Timestamp, Default: nil, Nullable: false, Source: TablesTableName},
-	{Name: "UPDATE_TIME", Type: Datetime, Default: nil, Nullable: true, Source: TablesTableName},
-	{Name: "CHECK_TIME", Type: Datetime, Default: nil, Nullable: true, Source: TablesTableName},
+	{Name: "CREATE_TIME", Type: types.Timestamp, Default: nil, Nullable: false, Source: TablesTableName},
+	{Name: "UPDATE_TIME", Type: types.Datetime, Default: nil, Nullable: true, Source: TablesTableName},
+	{Name: "CHECK_TIME", Type: types.Datetime, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "TABLE_COLLATION", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "CHECKSUM", Type: Int64, Default: nil, Nullable: true, Source: TablesTableName},
 	{Name: "CREATE_OPTIONS", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: TablesTableName},
@@ -738,7 +739,7 @@ var triggersSchema = Schema{
 	{Name: "ACTION_REFERENCE_NEW_TABLE", Type: MustCreateBinary(sqltypes.Binary, 0), Default: nil, Nullable: true, Source: TriggersTableName},
 	{Name: "ACTION_REFERENCE_OLD_ROW", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: TriggersTableName},
 	{Name: "ACTION_REFERENCE_NEW_ROW", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: TriggersTableName},
-	{Name: "CREATED", Type: Timestamp, Default: nil, Nullable: false, Source: TriggersTableName},
+	{Name: "CREATED", Type: types.Timestamp, Default: nil, Nullable: false, Source: TriggersTableName},
 	{Name: "SQL_MODE", Type: sqlModeSetType, Default: nil, Nullable: false, Source: TriggersTableName},
 	{Name: "DEFINER", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 288), Default: nil, Nullable: false, Source: TriggersTableName},
 	{Name: "CHARACTER_SET_CLIENT", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TriggersTableName},
@@ -1265,7 +1266,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			tableCollation = Collation_Default.String()
 		}
 
-		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
+		y2k, _ := types.Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {

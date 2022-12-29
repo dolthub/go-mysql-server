@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -39,9 +40,9 @@ func TestStrCmp(t *testing.T) {
 		{"first argument is null", sql.Text, sql.Text, sql.NewRow(nil, "a"), nil, nil},
 		{"second argument is null", sql.Text, sql.Text, sql.NewRow("a", nil), nil, nil},
 		{"both arguments are null", sql.Text, sql.Text, sql.NewRow(nil, nil), nil, nil},
-		{"first argument is text, second argument is not text", sql.Text, sql.Date, sql.NewRow("a", 2022), int(1), nil},
+		{"first argument is text, second argument is not text", sql.Text, types.Date, sql.NewRow("a", 2022), int(1), nil},
 		{"first argument is not text, second argument is text", sql.Int8, sql.Text, sql.NewRow(1, "1"), int(0), nil},
-		{"both arguments are non-text, different types", sql.Int8, sql.Date, sql.NewRow(3, 2007), int(1), nil},
+		{"both arguments are non-text, different types", sql.Int8, types.Date, sql.NewRow(3, 2007), int(1), nil},
 		{"type coercion, equal arguments", sql.Int8, sql.Int8, sql.NewRow(1, 1), int(0), nil},
 		{"type coercion, first argument is smaller", sql.Int8, sql.Int8, sql.NewRow(0, 1), int(-1), nil},
 		{"type coercion, second argument is smaller", sql.Int8, sql.Int8, sql.NewRow(1, 0), int(1), nil},

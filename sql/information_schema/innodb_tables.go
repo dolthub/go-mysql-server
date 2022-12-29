@@ -15,6 +15,7 @@
 package information_schema
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	. "github.com/dolthub/go-mysql-server/sql"
@@ -323,10 +324,10 @@ var innoDBMetricsSchema = Schema{
 	{Name: "max_count_reset", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: true, Source: InnoDBMetricsName},
 	{Name: "min_count_reset", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: true, Source: InnoDBMetricsName},
 	{Name: "avg_count_reset", Type: Float32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Float32, false), Nullable: true, Source: InnoDBMetricsName},
-	{Name: "time_enabled", Type: Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Datetime, false), Nullable: true, Source: InnoDBMetricsName},
-	{Name: "time_disabled", Type: Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Datetime, false), Nullable: true, Source: InnoDBMetricsName},
+	{Name: "time_enabled", Type: types.Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Datetime, false), Nullable: true, Source: InnoDBMetricsName},
+	{Name: "time_disabled", Type: types.Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Datetime, false), Nullable: true, Source: InnoDBMetricsName},
 	{Name: "time_elapsed", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: true, Source: InnoDBMetricsName},
-	{Name: "time_reset", Type: Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Datetime, false), Nullable: true, Source: InnoDBMetricsName},
+	{Name: "time_reset", Type: types.Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Datetime, false), Nullable: true, Source: InnoDBMetricsName},
 	{Name: "status", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
 	{Name: "type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
 	{Name: "comment", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
@@ -401,9 +402,9 @@ var innoDBTempTableSchema = Schema{
 var innoDBTrxSchema = Schema{
 	{Name: "trx_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_state", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 13), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 13), false), Nullable: false, Source: InnoDBTrxName},
-	{Name: "trx_started", Type: Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `"0000-00-00 00:00:00"`, Datetime, false), Nullable: false, Source: InnoDBTrxName},
+	{Name: "trx_started", Type: types.Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `"0000-00-00 00:00:00"`, types.Datetime, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_requested_lock_id", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 105), Default: nil, Nullable: true, Source: InnoDBTrxName},
-	{Name: "trx_wait_started", Type: Datetime, Default: nil, Nullable: true, Source: InnoDBTrxName},
+	{Name: "trx_wait_started", Type: types.Datetime, Default: nil, Nullable: true, Source: InnoDBTrxName},
 	{Name: "trx_weight", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_mysql_thread_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_query", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBTrxName},

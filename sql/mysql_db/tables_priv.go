@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -255,8 +256,8 @@ func init() {
 		Nullable: false,
 	}
 	timestamp_not_null_default_epoch := &sql.Column{
-		Type:     sql.Timestamp,
-		Default:  mustDefault(expression.NewLiteral(time.Unix(1, 0).UTC(), sql.Timestamp), sql.Timestamp, true, false),
+		Type:     types.Timestamp,
+		Default:  mustDefault(expression.NewLiteral(time.Unix(1, 0).UTC(), types.Timestamp), types.Timestamp, true, false),
 		Nullable: false,
 	}
 	varchar288_utf8_bin_not_null_default_empty := &sql.Column{

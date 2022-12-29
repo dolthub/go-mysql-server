@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -205,7 +206,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	var v interface{}
 	var vs string
-	if sql.IsBlobType(retType) {
+	if types.IsBlobType(retType) {
 		v, err = sql.Blob.Convert(evalRow[0])
 		if err != nil {
 			return err

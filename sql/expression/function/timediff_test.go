@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -58,7 +59,7 @@ func TestTimeDiff(t *testing.T) {
 		},
 		{
 			"type mismatch 1",
-			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
+			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), types.Timestamp),
 			expression.NewConvert(expression.NewLiteral("01:00:00", sql.Text), expression.ConvertToTime),
 			nil,
 			false,
@@ -72,22 +73,22 @@ func TestTimeDiff(t *testing.T) {
 		},
 		{
 			"valid mismatch",
-			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), sql.Timestamp),
-			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Datetime),
+			expression.NewLiteral(time.Date(2008, time.December, 29, 1, 1, 1, 2, time.Local), types.Timestamp),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), types.Datetime),
 			toTimespan("-24:00:00"),
 			false,
 		},
 		{
 			"timestamp types 1",
-			expression.NewLiteral(time.Date(2018, time.May, 2, 0, 0, 0, 0, time.Local), sql.Timestamp),
-			expression.NewLiteral(time.Date(2018, time.May, 2, 0, 0, 1, 0, time.Local), sql.Timestamp),
+			expression.NewLiteral(time.Date(2018, time.May, 2, 0, 0, 0, 0, time.Local), types.Timestamp),
+			expression.NewLiteral(time.Date(2018, time.May, 2, 0, 0, 1, 0, time.Local), types.Timestamp),
 			toTimespan("-00:00:01"),
 			false,
 		},
 		{
 			"timestamp types 2",
-			expression.NewLiteral(time.Date(2008, time.December, 31, 23, 59, 59, 1, time.Local), sql.Timestamp),
-			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), sql.Timestamp),
+			expression.NewLiteral(time.Date(2008, time.December, 31, 23, 59, 59, 1, time.Local), types.Timestamp),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 1, 1, 1, 2, time.Local), types.Timestamp),
 			toTimespan("46:58:57.999999"),
 			false,
 		},
@@ -107,8 +108,8 @@ func TestTimeDiff(t *testing.T) {
 		},
 		{
 			"datetime types",
-			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local), sql.Datetime),
-			expression.NewLiteral(time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local), sql.Datetime),
+			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.Local), types.Datetime),
+			expression.NewLiteral(time.Date(2008, time.December, 30, 0, 0, 0, 0, time.Local), types.Datetime),
 			toTimespan("-24:00:00"),
 			false,
 		},
@@ -121,7 +122,7 @@ func TestTimeDiff(t *testing.T) {
 		},
 		{
 			"datetime string mix types",
-			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.UTC), sql.Datetime),
+			expression.NewLiteral(time.Date(2008, time.December, 29, 0, 0, 0, 0, time.UTC), types.Datetime),
 			expression.NewLiteral("2008-12-30 00:00:00", sql.Text),
 			toTimespan("-24:00:00"),
 			false,
@@ -174,7 +175,7 @@ func TestDateDiff(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"time and text types, ", sql.Datetime, sql.Text, sql.NewRow(dt, "2019-12-28"), int64(3), nil},
+		{"time and text types, ", types.Datetime, sql.Text, sql.NewRow(dt, "2019-12-28"), int64(3), nil},
 		{"text types, diff day, less than 24 hours time diff", sql.Text, sql.Text, sql.NewRow("2007-12-31 23:58:59", "2007-12-30 23:59:59"), int64(1), nil},
 		{"text types, same day, 23:59:59 time diff", sql.Text, sql.Text, sql.NewRow("2007-12-30 23:59:59", "2007-12-30 00:00:00"), int64(0), nil},
 		{"text types, diff day, 1 min time diff", sql.Text, sql.Text, sql.NewRow("2007-12-31 00:00:59", "2007-12-30 23:59:59"), int64(1), nil},
@@ -223,7 +224,7 @@ func TestTimestampDiff(t *testing.T) {
 	}{
 		{"invalid unit", sql.Text, sql.Text, sql.Text, sql.NewRow("MILLISECOND", "2007-12-30 23:59:59", "2007-12-31 00:00:00"), nil, true},
 		{"microsecond", sql.Text, sql.Text, sql.Text, sql.NewRow("MICROSECOND", "2007-12-30 23:59:59", "2007-12-31 00:00:00"), int64(1000000), false},
-		{"microsecond - small number", sql.Text, sql.Datetime, sql.Datetime, sql.NewRow("MICROSECOND",
+		{"microsecond - small number", sql.Text, types.Datetime, types.Datetime, sql.NewRow("MICROSECOND",
 			time.Date(2017, 11, 12, 16, 16, 25, 2*int(time.Microsecond), time.Local),
 			time.Date(2017, 11, 12, 16, 16, 25, 333*int(time.Microsecond), time.Local)), int64(331), false},
 		{"microsecond - negative", sql.Text, sql.Text, sql.Text, sql.NewRow("SQL_TSI_MICROSECOND", "2017-11-12 16:16:25.000022 +0000 UTC", "2017-11-12 16:16:25.000000 +0000 UTC"), int64(-22), false},

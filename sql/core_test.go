@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -46,8 +47,8 @@ var conditions = []struct {
 	{false, "0", sql.LongText},
 	{false, "foo", sql.LongText},
 	{false, "0.5", sql.LongText},
-	{false, time.Duration(0), sql.Timestamp},
-	{true, time.Duration(1), sql.Timestamp},
+	{false, time.Duration(0), types.Timestamp},
+	{true, time.Duration(1), types.Timestamp},
 	{false, false, sql.Boolean},
 	{true, true, sql.Boolean},
 }

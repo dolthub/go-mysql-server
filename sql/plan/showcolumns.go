@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -124,7 +125,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	for i, col := range schema {
 		var row sql.Row
 		var collation interface{}
-		if sql.IsTextOnly(col.Type) {
+		if types.IsTextOnly(col.Type) {
 			collation = sql.Collation_Default.String()
 		}
 

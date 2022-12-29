@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -973,7 +974,7 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 	}
 
 	// Some column types can only have a NULL for a literal default, must be an expression otherwise
-	isLiteralRestrictedType := sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)
+	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
 	if isLiteralRestrictedType && newDefault.IsLiteral() {
 		lit, err := newDefault.Expression.Eval(ctx, nil)
 		if err != nil {

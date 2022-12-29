@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pmezard/go-difflib/difflib"
@@ -72,11 +73,11 @@ func TestParse(t *testing.T) {
 						Nullable: true,
 					}, {
 						Name:     "c",
-						Type:     sql.Date,
+						Type:     types.Date,
 						Nullable: true,
 					}, {
 						Name:     "d",
-						Type:     sql.Timestamp,
+						Type:     types.Timestamp,
 						Nullable: true,
 					}, {
 						Name:     "e",
@@ -88,7 +89,7 @@ func TestParse(t *testing.T) {
 						Nullable: false,
 					}, {
 						Name:     "g",
-						Type:     sql.Datetime,
+						Type:     types.Datetime,
 						Nullable: true,
 					}, {
 						Name:     "h",
@@ -5338,7 +5339,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"DATE",
-			sql.Date,
+			types.Date,
 		},
 		{
 			"TIME",
@@ -5346,11 +5347,11 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"TIMESTAMP",
-			sql.Timestamp,
+			types.Timestamp,
 		},
 		{
 			"DATETIME",
-			sql.Datetime,
+			types.Datetime,
 		},
 	}
 

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -309,7 +310,7 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		return e, nil
 	}
 
-	if sql.IsTextOnly(e.Type()) {
+	if types.IsTextOnly(e.Type()) {
 		txt, err := e.Eval(ctx, nil)
 		if err != nil {
 			return nil, err

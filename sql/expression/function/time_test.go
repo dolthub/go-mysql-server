@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -501,7 +502,7 @@ func TestDate(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), sql.Date.Zero().(time.Time).Format("2006-01-02"), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), types.Date.Zero().(time.Time).Format("2006-01-02"), false},
 		{"date as string", sql.NewRow(stringDate), "2007-01-02", false},
 		{"date as time", sql.NewRow(time.Now().UTC()), time.Now().UTC().Format("2006-01-02"), false},
 	}

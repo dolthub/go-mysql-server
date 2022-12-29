@@ -77,7 +77,7 @@ func (t bitType) MaxTextResponseByteLength() uint32 {
 
 // Compare implements Type interface.
 func (t bitType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

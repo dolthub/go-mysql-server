@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -93,7 +94,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
-				if !sql.IsInteger(e.Type()) {
+				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
 				}
@@ -119,7 +120,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
-				if !sql.IsInteger(e.Type()) {
+				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
 				}

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
@@ -47,7 +48,7 @@ func ContainsImpreciseComparison(e sql.Expression) bool {
 			left, right := cmp.Left().Type(), cmp.Right().Type()
 
 			// integer comparisons are exact
-			if sql.IsInteger(left) && sql.IsInteger(right) {
+			if types.IsInteger(left) && types.IsInteger(right) {
 				return true
 			}
 
@@ -124,7 +125,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 			return 0, err
 		}
 	}
-	if sql.IsTextOnly(compareType) {
+	if types.IsTextOnly(compareType) {
 		leftCollation, leftCoercibility := GetCollationViaCoercion(c.Left())
 		rightCollation, rightCoercibility := GetCollationViaCoercion(c.Right())
 		collationPreference, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
@@ -156,20 +157,20 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	leftType := c.Left().Type()
 	rightType := c.Right().Type()
-	if sql.IsTuple(leftType) && sql.IsTuple(rightType) {
+	if types.IsTuple(leftType) && types.IsTuple(rightType) {
 		return left, right, c.Left().Type(), nil
 	}
 
-	if sql.IsTime(leftType) || sql.IsTime(rightType) {
+	if types.IsTime(leftType) || types.IsTime(rightType) {
 		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 
-		return l, r, sql.Datetime, nil
+		return l, r, types.Datetime, nil
 	}
 
-	if sql.IsBinaryType(leftType) || sql.IsBinaryType(rightType) {
+	if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {
 		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
 		if err != nil {
 			return nil, nil, nil, err
@@ -177,22 +178,22 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return l, r, sql.LongBlob, nil
 	}
 
-	if sql.IsNumber(leftType) || sql.IsNumber(rightType) {
-		if sql.IsDecimal(leftType) || sql.IsDecimal(rightType) {
+	if types.IsNumber(leftType) || types.IsNumber(rightType) {
+		if types.IsDecimal(leftType) || types.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type
 			l, r, err := convertLeftAndRight(left, right, ConvertToDecimal)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
-			if sql.IsDecimal(leftType) {
+			if types.IsDecimal(leftType) {
 				return l, r, leftType, nil
 			} else {
 				return l, r, rightType, nil
 			}
 		}
 
-		if sql.IsFloat(leftType) || sql.IsFloat(rightType) {
+		if types.IsFloat(leftType) || types.IsFloat(rightType) {
 			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
 			if err != nil {
 				return nil, nil, nil, err
@@ -201,7 +202,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return l, r, sql.Float64, nil
 		}
 
-		if sql.IsSigned(leftType) || sql.IsSigned(rightType) {
+		if types.IsSigned(leftType) || types.IsSigned(rightType) {
 			l, r, err := convertLeftAndRight(left, right, ConvertToSigned)
 			if err != nil {
 				return nil, nil, nil, err
@@ -399,7 +400,7 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 
 // Eval implements the Expression interface.
 func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if sql.IsText(re.Right().Type()) {
+	if types.IsText(re.Right().Type()) {
 		return re.compareRegexp(ctx, row)
 	}
 

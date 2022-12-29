@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ShowTriggers struct {
@@ -34,7 +35,7 @@ var showTriggersSchema = sql.Schema{
 	&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
 	&sql.Column{Name: "Statement", Type: sql.LongText, Nullable: false},
 	&sql.Column{Name: "Timing", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Created", Type: sql.Datetime, Nullable: false},
+	&sql.Column{Name: "Created", Type: types.Datetime, Nullable: false},
 	&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
 	&sql.Column{Name: "Definer", Type: sql.LongText, Nullable: false},
 	&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},

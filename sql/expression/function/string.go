@@ -23,6 +23,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -120,7 +121,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch val := arg.(type) {
 	case string:
 		childType := h.Child.Type()
-		if sql.IsTextOnly(childType) {
+		if types.IsTextOnly(childType) {
 			// For string types we need to re-encode the internal string so that we get the correct hex output
 			encoder := childType.(sql.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(encodings.StringToBytes(val))

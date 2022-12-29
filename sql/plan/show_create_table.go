@@ -19,6 +19,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -268,7 +269,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		if col.Default != nil {
 			// TODO : string literals should have character set introducer
 			defStr := col.Default.String()
-			if defStr != "NULL" && col.Default.IsLiteral() && !sql.IsTime(col.Default.Type()) && !sql.IsText(col.Default.Type()) {
+			if defStr != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {
 				v, err := col.Default.Eval(ctx, nil)
 				if err != nil {
 					return "", err

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 
@@ -81,7 +82,7 @@ func (m *Mod) Type() sql.Type {
 		return lTyp
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+	if types.IsText(lTyp) || types.IsText(rTyp) {
 		return sql.Float64
 	}
 
@@ -134,16 +135,16 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 
 func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := m.Type()
-	lIsTimeType := sql.IsTime(m.Left.Type())
-	rIsTimeType := sql.IsTime(m.Right.Type())
+	lIsTimeType := types.IsTime(m.Left.Type())
+	rIsTimeType := types.IsTime(m.Right.Type())
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
 		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
 		right = convertToDecimalValue(right, rIsTimeType)

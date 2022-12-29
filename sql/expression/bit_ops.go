@@ -21,6 +21,7 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -87,13 +88,13 @@ func (b *BitOp) Type() sql.Type {
 		return lTyp
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
+	if types.IsText(lTyp) || types.IsText(rTyp) {
 		return sql.Float64
 	}
 
-	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
+	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
 		return sql.Uint64
-	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
+	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
 		return sql.Int64
 	}
 
@@ -161,8 +162,8 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := b.Type()
 
-	left = convertValueToType(ctx, typ, left, sql.IsTime(b.Left.Type()))
-	right = convertValueToType(ctx, typ, right, sql.IsTime(b.Right.Type()))
+	left = convertValueToType(ctx, typ, left, types.IsTime(b.Left.Type()))
+	right = convertValueToType(ctx, typ, right, types.IsTime(b.Right.Type()))
 
 	return left, right, nil
 }

@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -50,7 +51,7 @@ var (
 		reflect.TypeOf(bool(false)):       sql.Int8,
 		reflect.TypeOf(string("")):        sql.LongText,
 		reflect.TypeOf([]byte{}):          sql.LongBlob,
-		reflect.TypeOf(time.Time{}):       sql.Datetime,
+		reflect.TypeOf(time.Time{}):       types.Datetime,
 		reflect.TypeOf(decimal.Decimal{}): sql.InternalDecimalType,
 	}
 	// externalStoredProcedurePointerTypes maps a pointer type to a sql.Type for external stored procedures.
@@ -70,7 +71,7 @@ var (
 		reflect.TypeOf((*bool)(nil)):            sql.Int8,
 		reflect.TypeOf((*string)(nil)):          sql.LongText,
 		reflect.TypeOf((*[]byte)(nil)):          sql.LongBlob,
-		reflect.TypeOf((*time.Time)(nil)):       sql.Datetime,
+		reflect.TypeOf((*time.Time)(nil)):       types.Datetime,
 		reflect.TypeOf((*decimal.Decimal)(nil)): sql.InternalDecimalType,
 	}
 )

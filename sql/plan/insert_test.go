@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
@@ -51,7 +52,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 		},
 		{
 			name:      "inserting a string into a datetime results in 0 time",
-			colType:   sql.Datetime,
+			colType:   types.Datetime,
 			value:     "dadasd",
 			valueType: sql.Text,
 			expected:  time.Unix(-62167219200, 0).UTC(),

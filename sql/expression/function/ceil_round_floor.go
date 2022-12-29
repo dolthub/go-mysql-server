@@ -20,6 +20,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -51,7 +52,7 @@ func (c *Ceil) Description() string {
 // Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
 	childType := c.Child.Type()
-	if sql.IsNumber(childType) {
+	if types.IsNumber(childType) {
 		return childType
 	}
 	return sql.Int32
@@ -82,7 +83,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// non number type will be caught here
-	if !sql.IsNumber(c.Child.Type()) {
+	if !types.IsNumber(c.Child.Type()) {
 		child, err = sql.Float64.Convert(child)
 		if err != nil {
 			return int32(0), nil
@@ -129,7 +130,7 @@ func (f *Floor) Description() string {
 // Type implements the Expression interface.
 func (f *Floor) Type() sql.Type {
 	childType := f.Child.Type()
-	if sql.IsNumber(childType) {
+	if types.IsNumber(childType) {
 		return childType
 	}
 	return sql.Int32
@@ -160,7 +161,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// non number type will be caught here
-	if !sql.IsNumber(f.Child.Type()) {
+	if !types.IsNumber(f.Child.Type()) {
 		child, err = sql.Float64.Convert(child)
 		if err != nil {
 			return int32(0), nil
@@ -288,12 +289,12 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	if sql.IsText(r.Left.Type()) {
+	if types.IsText(r.Left.Type()) {
 		xVal, err = sql.Float64.Convert(xVal)
 		if err != nil {
 			return int32(0), nil
 		}
-	} else if !sql.IsNumber(r.Left.Type()) {
+	} else if !types.IsNumber(r.Left.Type()) {
 		xVal, err = sql.Float64.Convert(xVal)
 		if err != nil {
 			return int32(0), nil
@@ -364,7 +365,7 @@ func (r *Round) Resolved() bool {
 // Type implements the Expression interface.
 func (r *Round) Type() sql.Type {
 	leftChildType := r.Left.Type()
-	if sql.IsNumber(leftChildType) {
+	if types.IsNumber(leftChildType) {
 		return leftChildType
 	}
 	return sql.Int32

@@ -128,7 +128,7 @@ func (t jsonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 		return sqltypes.NULL, err
 	}
 
-	val := appendAndSliceString(dest, s)
+	val := AppendAndSliceString(dest, s)
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }

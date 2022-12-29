@@ -79,7 +79,7 @@ type Timespan int64
 
 // Compare implements Type interface.
 func (t timespanType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -268,7 +268,7 @@ func (t timespanType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 		return sqltypes.Value{}, err
 	}
 
-	val := appendAndSliceString(dest, ti.String())
+	val := AppendAndSliceString(dest, ti.String())
 
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,9 +80,9 @@ func assertResultType(t *testing.T, expectedType sql.Type, result interface{}) {
 	case float32:
 		assert.Equal(t, expectedType, sql.Float32)
 	case string:
-		assert.True(t, sql.IsText(expectedType))
+		assert.True(t, types.IsText(expectedType))
 	case time.Time:
-		assert.Equal(t, expectedType, sql.Datetime)
+		assert.Equal(t, expectedType, types.Datetime)
 	case bool:
 		assert.Equal(t, expectedType, sql.Boolean)
 	case []byte:
@@ -316,7 +317,7 @@ func toLiteralExpression(input interface{}) *expression.Literal {
 	case string:
 		return expression.NewLiteral(val, sql.Text)
 	case time.Time:
-		return expression.NewLiteral(val, sql.Datetime)
+		return expression.NewLiteral(val, types.Datetime)
 	case []byte:
 		return expression.NewLiteral(string(val), sql.Blob)
 	default:

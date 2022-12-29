@@ -45,7 +45,7 @@ type yearType struct{}
 
 // Compare implements Type interface.
 func (t yearType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
