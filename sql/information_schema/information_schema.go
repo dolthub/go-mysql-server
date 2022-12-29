@@ -1638,16 +1638,16 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			}
 
 			rows = append(rows, Row{
-				"def", 		  // table_catalog
-				dbName, 	  // table_schema
+				"def",        // table_catalog
+				dbName,       // table_schema
 				view.Name,    // table_name
 				viewDef,      // view_definition
-				checkOpt, 	  // check_option
+				checkOpt,     // check_option
 				isUpdatable,  // is_updatable
-				definer, 	  // definer
+				definer,      // definer
 				securityType, // security_type
-				charset, 	  // character_set_client
-				collation,	  // collation_connection
+				charset,      // character_set_client
+				collation,    // collation_connection
 			})
 		}
 	}
@@ -2370,7 +2370,7 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 
 	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
 		views = append(views, ViewDefinition{
-			Name:           view.Name(),
+			Name:                view.Name(),
 			CreateViewStatement: view.CreateStatement(),
 		})
 	}

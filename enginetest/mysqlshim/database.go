@@ -224,7 +224,7 @@ func (d Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 		}
 		viewStatement := viewStatementRow[0][1].(string)
 		viewDefinitions[i] = sql.ViewDefinition{
-			Name:           viewName,
+			Name:                viewName,
 			CreateViewStatement: viewStatement,
 		}
 	}

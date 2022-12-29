@@ -9911,7 +9911,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from information_schema.views where table_schema = 'mydb' order by table_name",
+				Query: "select * from information_schema.views where table_schema = 'mydb' order by table_name",
 				Expected: []sql.Row{
 					{"def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
 					{"def", "mydb", "myview1", "select count(*) from mytable", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},

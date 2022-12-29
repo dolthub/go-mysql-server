@@ -343,7 +343,7 @@ func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	var views []sql.ViewDefinition
 	for name, def := range d.views {
 		views = append(views, sql.ViewDefinition{
-			Name:           name,
+			Name:                name,
 			CreateViewStatement: def,
 		})
 	}

@@ -30,16 +30,16 @@ import (
 // explicit columns specified by the query, if any.
 type CreateView struct {
 	UnaryNode
-	database   sql.Database
-	Name       string
-	Columns    []string
-	IsReplace  bool
-	Definition *SubqueryAlias
+	database         sql.Database
+	Name             string
+	Columns          []string
+	IsReplace        bool
+	Definition       *SubqueryAlias
 	CreateViewString string
-	Algorithm  string
-	Definer    string
-	Security   string
-	CheckOpt   string
+	Algorithm        string
+	Definer          string
+	Security         string
+	CheckOpt         string
 }
 
 // NewCreateView creates a CreateView node with the specified parameters,
@@ -53,16 +53,16 @@ func NewCreateView(
 	createViewStr, algorithm, definer, security string,
 ) *CreateView {
 	return &CreateView{
-		UnaryNode:  UnaryNode{Child: definition},
-		database:   database,
-		Name:       name,
-		Columns:    columns,
-		IsReplace:  isReplace,
-		Definition: definition,
+		UnaryNode:        UnaryNode{Child: definition},
+		database:         database,
+		Name:             name,
+		Columns:          columns,
+		IsReplace:        isReplace,
+		Definition:       definition,
 		CreateViewString: createViewStr,
-		Algorithm:  algorithm,
-		Definer:	definer,
-		Security:   security,
+		Algorithm:        algorithm,
+		Definer:          definer,
+		Security:         security,
 	}
 }
 
