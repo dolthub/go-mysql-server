@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,20 +27,20 @@ import (
 func TestTuple(t *testing.T) {
 	require := require.New(t)
 
-	typ := CreateTuple(types.Int32, types.LongText, types.Int64)
+	typ := CreateTuple(Int32, LongText, Int64)
 	_, err := typ.Convert("foo")
 	require.Error(err)
-	require.True(ErrNotTuple.Is(err))
+	require.True(sql.ErrNotTuple.Is(err))
 
 	_, err = typ.Convert([]interface{}{1, 2})
 	require.Error(err)
-	require.True(ErrInvalidColumnNumber.Is(err))
+	require.True(sql.ErrInvalidColumnNumber.Is(err))
 
 	conVal, err := typ.Convert([]interface{}{1, 2, 3})
 	require.NoError(err)
 	assert.Equal(t, []interface{}{int32(1), "2", int64(3)}, conVal)
 
-	_, err = typ.SQL(NewEmptyContext(), nil, nil)
+	_, err = typ.SQL(sql.NewEmptyContext(), nil, nil)
 	require.Error(err)
 
 	require.Equal(sqltypes.Expression, typ.Type())

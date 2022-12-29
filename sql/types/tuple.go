@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,30 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 var tupleValueType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 
-type TupleType []Type
+type TupleType []sql.Type
 
-var _ Type = TupleType{nil}
+var _ sql.Type = TupleType{nil}
 
 // CreateTuple returns a new tuple type with the given element types.
-func CreateTuple(types ...Type) Type {
+func CreateTuple(types ...sql.Type) sql.Type {
 	return TupleType(types)
 }
 
 func (t TupleType) Compare(a, b interface{}) (int, error) {
-	if hasNulls, res := CompareNulls(a, b); hasNulls {
+	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -71,7 +72,7 @@ func (t TupleType) Convert(v interface{}) (interface{}, error) {
 	}
 	if vals, ok := v.([]interface{}); ok {
 		if len(vals) != len(t) {
-			return nil, ErrInvalidColumnNumber.New(len(t), len(vals))
+			return nil, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
 		}
 
 		var result = make([]interface{}, len(t))
@@ -85,7 +86,7 @@ func (t TupleType) Convert(v interface{}) (interface{}, error) {
 
 		return result, nil
 	}
-	return nil, ErrNotTuple.New(v)
+	return nil, sql.ErrNotTuple.New(v)
 }
 
 func (t TupleType) MustConvert(v interface{}) interface{} {
@@ -97,7 +98,7 @@ func (t TupleType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t TupleType) Equals(otherType Type) bool {
+func (t TupleType) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(TupleType); ok && len(t) == len(ot) {
 		for i, tupType := range t {
 			if !tupType.Equals(ot[i]) {
@@ -115,11 +116,11 @@ func (t TupleType) MaxTextResponseByteLength() uint32 {
 	return 0
 }
 
-func (t TupleType) Promote() Type {
+func (t TupleType) Promote() sql.Type {
 	return t
 }
 
-func (t TupleType) SQL(*Context, []byte, interface{}) (sqltypes.Value, error) {
+func (t TupleType) SQL(*sql.Context, []byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 

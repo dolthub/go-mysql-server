@@ -305,9 +305,9 @@ func TypesEqual(a, b Type) bool {
 			}
 		}
 		return aSetType.collation == bSetType.collation
-	case TupleType:
-		if tupA, ok := a.(TupleType); ok {
-			if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
+	case types.TupleType:
+		if tupA, ok := a.(types.TupleType); ok {
+			if tupB, ok := b.(types.TupleType); ok && len(tupA) == len(tupB) {
 				for i := range tupA {
 					if !TypesEqual(tupA[i], tupB[i]) {
 						return false

@@ -20,6 +20,7 @@ import (
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const cteRecursionLimit = 1000
@@ -206,7 +207,7 @@ func (r *RecursiveCte) Type() sql.Type {
 	for i, c := range cols {
 		ts[i] = c.Type
 	}
-	return sql.CreateTuple(ts...)
+	return types.CreateTuple(ts...)
 }
 
 // IsNullable implements sql.Node

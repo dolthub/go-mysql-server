@@ -36,7 +36,7 @@ func TestTuple(t *testing.T) {
 
 	require.False(tup.IsNullable())
 	require.True(tup.Resolved())
-	require.Equal(sql.CreateTuple(types.Int64, types.Float64, types.LongText), tup.Type())
+	require.Equal(types.CreateTuple(types.Int64, types.Float64, types.LongText), tup.Type())
 
 	result, err := tup.Eval(ctx, nil)
 	require.NoError(err)
@@ -61,7 +61,7 @@ func TestTuple(t *testing.T) {
 
 	require.False(tup.IsNullable())
 	require.True(tup.Resolved())
-	require.Equal(sql.CreateTuple(types.LongText, types.LongText), tup.Type())
+	require.Equal(types.CreateTuple(types.LongText, types.LongText), tup.Type())
 
 	result, err = tup.Eval(ctx, sql.NewRow("foo"))
 	require.NoError(err)

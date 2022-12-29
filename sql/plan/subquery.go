@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -454,7 +455,7 @@ func (s *Subquery) Type() sql.Type {
 	for i, c := range qs {
 		ts[i] = c.Type
 	}
-	return sql.CreateTuple(ts...)
+	return types.CreateTuple(ts...)
 }
 
 // WithChildren implements the Expression interface.

@@ -176,7 +176,7 @@ func IsSet(t sql.Type) bool {
 // Note that TupleType instances with just 1 value are not considered
 // as a tuple, but a parenthesized value.
 func IsTuple(t sql.Type) bool {
-	v, ok := t.(sql.TupleType)
+	v, ok := t.(TupleType)
 	return ok && len(v) > 1
 }
 
