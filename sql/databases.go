@@ -19,6 +19,11 @@ import (
 	"time"
 )
 
+const (
+	// InformationSchemaDatabaseName is the name of the information schema database.
+	InformationSchemaDatabaseName = "information_schema"
+)
+
 // DatabaseProvider is the fundamental interface to integrate with the engine. It provides access to all databases in
 // a given backend. A DatabaseProvider is provided to the Catalog when the engine is initialized.
 type DatabaseProvider interface {
@@ -237,8 +242,9 @@ type ViewDatabase interface {
 
 // ViewDefinition is the named textual definition of a view
 type ViewDefinition struct {
-	Name           string
-	TextDefinition string
+	Name                string
+	TextDefinition      string
+	CreateViewStatement string
 }
 
 // GetTableInsensitive implements a case-insensitive map lookup for tables keyed off of the table name.
