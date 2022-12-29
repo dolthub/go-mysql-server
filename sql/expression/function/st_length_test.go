@@ -28,7 +28,7 @@ import (
 func TestSTLength(t *testing.T) {
 	t.Run("select unit length", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTLength(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}}}, sql.LineStringType{}))
+		f, err := NewSTLength(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}}}, types.LineStringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -38,7 +38,7 @@ func TestSTLength(t *testing.T) {
 
 	t.Run("select sqrt 2", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTLength(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, sql.LineStringType{}))
+		f, err := NewSTLength(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -48,7 +48,7 @@ func TestSTLength(t *testing.T) {
 
 	t.Run("select perimeter of unit square", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTLength(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}, sql.LineStringType{}))
+		f, err := NewSTLength(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}, types.LineStringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -58,7 +58,7 @@ func TestSTLength(t *testing.T) {
 
 	t.Run("select length of some line", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTLength(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: -1, Y: -1}, {X: -1, Y: 1.23}, {X: 55, Y: 12}}}, sql.LineStringType{}))
+		f, err := NewSTLength(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: -1, Y: -1}, {X: -1, Y: 1.23}, {X: 55, Y: 12}}}, types.LineStringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -77,7 +77,7 @@ func TestSTLength(t *testing.T) {
 
 	t.Run("select length of wrong spatial type", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTLength(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}))
+		f, err := NewSTLength(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}))
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)

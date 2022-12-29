@@ -68,7 +68,7 @@ func (s *STLength) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 // calculateLength sums up the line segements formed from a LineString
-func calculateLength(l sql.LineString) float64 {
+func calculateLength(l types.LineString) float64 {
 	var length float64
 	for i := 0; i < len(l.Points)-1; i++ {
 		p1 := l.Points[i]
@@ -92,11 +92,11 @@ func (s *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Return nil if argument is geometry typ, but not linestring
-	var l sql.LineString
+	var l types.LineString
 	switch v := v1.(type) {
-	case sql.LineString:
+	case types.LineString:
 		l = v
-	case sql.Point, sql.Polygon:
+	case types.Point, types.Polygon:
 		return nil, nil
 	default:
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())

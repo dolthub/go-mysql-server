@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
-	"gopkg.in/src-d/go-errors.v1"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // MultiPolygonType represents the MULTIPOLYGON type.
@@ -43,8 +43,8 @@ var (
 	multipolygonValueType = reflect.TypeOf(MultiPolygon{})
 )
 
-var _ Type = MultiPolygonType{}
-var _ SpatialColumnType = MultiPolygonType{}
+var _ sql.Type = MultiPolygonType{}
+var _ sql.SpatialColumnType = MultiPolygonType{}
 var _ GeometryValue = MultiPolygon{}
 
 // Compare implements Type interface.
@@ -59,8 +59,8 @@ func (t MultiPolygonType) Convert(v interface{}) (interface{}, error) {
 		return nil, nil
 	case []byte:
 		mpoly, err := GeometryType{}.Convert(buf)
-		if ErrInvalidGISData.Is(err) {
-			return nil, ErrInvalidGISData.New("MultiPolygon.Convert")
+		if sql.ErrInvalidGISData.Is(err) {
+			return nil, sql.ErrInvalidGISData.New("MultiPolygon.Convert")
 		}
 		return mpoly, err
 	case string:
@@ -71,12 +71,12 @@ func (t MultiPolygonType) Convert(v interface{}) (interface{}, error) {
 		}
 		return buf, nil
 	default:
-		return nil, ErrSpatialTypeConversion.New()
+		return nil, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
 // Equals implements the Type interface.
-func (t MultiPolygonType) Equals(otherType Type) bool {
+func (t MultiPolygonType) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(MultiPolygonType)
 	return ok
 }
@@ -87,12 +87,12 @@ func (t MultiPolygonType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t MultiPolygonType) Promote() Type {
+func (t MultiPolygonType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t MultiPolygonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t MultiPolygonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -133,7 +133,7 @@ func (t MultiPolygonType) GetSpatialTypeSRID() (uint32, bool) {
 }
 
 // SetSRID implements SpatialColumnType interface.
-func (t MultiPolygonType) SetSRID(v uint32) Type {
+func (t MultiPolygonType) SetSRID(v uint32) sql.Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
@@ -150,7 +150,7 @@ func (t MultiPolygonType) MatchSRID(v interface{}) error {
 	} else if t.SRID == val.SRID {
 		return nil
 	}
-	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
+	return sql.ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
 
 // implementsGeometryValue implements GeometryValue interface.
@@ -183,7 +183,7 @@ func (p MultiPolygon) Serialize() (buf []byte) {
 			numPoints += len(l.Points)
 		}
 	}
-	buf = allocateBuffer(numPoints, numCounts+1, len(p.Polygons))
+	buf = AllocateGeoTypeBuffer(numPoints, numCounts+1, len(p.Polygons))
 	WriteEWKBHeader(buf, p.SRID, WKBMultiPolyID)
 	p.WriteData(buf[EWKBHeaderSize:])
 	return
@@ -191,7 +191,7 @@ func (p MultiPolygon) Serialize() (buf []byte) {
 
 // WriteData implements GeometryValue interface.
 func (p MultiPolygon) WriteData(buf []byte) int {
-	writeCount(buf, uint32(len(p.Polygons)))
+	WriteCount(buf, uint32(len(p.Polygons)))
 	buf = buf[CountSize:]
 	count := CountSize
 	for _, p := range p.Polygons {

@@ -33,7 +33,7 @@ func TestPoint(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 1, Y: 2}, v)
+		require.Equal(types.Point{X: 1, Y: 2}, v)
 	})
 
 	t.Run("create valid point with floats", func(t *testing.T) {
@@ -44,7 +44,7 @@ func TestPoint(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 123.456, Y: 789}, v)
+		require.Equal(types.Point{X: 123.456, Y: 789}, v)
 	})
 
 	t.Run("create valid point with null x", func(t *testing.T) {

@@ -27,8 +27,8 @@ import (
 func TestArea(t *testing.T) {
 	t.Run("select area of right triangle", func(t *testing.T) {
 		require := require.New(t)
-		polygon := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}
-		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		polygon := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(0.5, v)
@@ -36,8 +36,8 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of unit square", func(t *testing.T) {
 		require := require.New(t)
-		polygon := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
-		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		polygon := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(1.0, v)
@@ -45,8 +45,8 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of some shape", func(t *testing.T) {
 		require := require.New(t)
-		polygon := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3.2, Y: 4.5}, {X: -12.2, Y: 23}, {X: 55, Y: 88}, {X: 33, Y: 255.123}, {X: 17, Y: 2}, {X: 1, Y: 2}}}}}
-		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		polygon := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 2}, {X: 3.2, Y: 4.5}, {X: -12.2, Y: 23}, {X: 55, Y: 88}, {X: 33, Y: 255.123}, {X: 17, Y: 2}, {X: 1, Y: 2}}}}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(2338.337, v) // we round
@@ -54,10 +54,10 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of right triangle with a hole", func(t *testing.T) {
 		require := require.New(t)
-		line1 := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
-		line2 := sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: 2}, {X: 2, Y: 1}, {X: 1, Y: 1}}}
-		polygon := sql.Polygon{Lines: []sql.LineString{line1, line2}}
-		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		line1 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
+		line2 := types.LineString{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: 2}, {X: 2, Y: 1}, {X: 1, Y: 1}}}
+		polygon := types.Polygon{Lines: []types.LineString{line1, line2}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(4.0, v)
@@ -65,10 +65,10 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of right triangle with many holes", func(t *testing.T) {
 		require := require.New(t)
-		line1 := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
-		line2 := sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: 2}, {X: 2, Y: 1}, {X: 1, Y: 1}}}
-		polygon := sql.Polygon{Lines: []sql.LineString{line1, line2, line2, line2}}
-		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		line1 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
+		line2 := types.LineString{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: 2}, {X: 2, Y: 1}, {X: 1, Y: 1}}}
+		polygon := types.Polygon{Lines: []types.LineString{line1, line2, line2, line2}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(3.0, v)
@@ -76,9 +76,9 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of right triangle hole", func(t *testing.T) {
 		require := require.New(t)
-		line1 := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
-		polygon := sql.Polygon{Lines: []sql.LineString{line1, line1}}
-		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		line1 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
+		polygon := types.Polygon{Lines: []types.LineString{line1, line1}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(0.0, v)
@@ -86,9 +86,9 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of polygon that intersects itself", func(t *testing.T) {
 		require := require.New(t)
-		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: -10, Y: 10}, {X: 10, Y: 10}, {X: 0, Y: 0}}}
-		polygon := sql.Polygon{Lines: []sql.LineString{line}}
-		f := NewArea(expression.NewLiteral(polygon, sql.PolygonType{}))
+		line := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: -10, Y: 10}, {X: 10, Y: 10}, {X: 0, Y: 0}}}
+		polygon := types.Polygon{Lines: []types.LineString{line}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(95.0, v)

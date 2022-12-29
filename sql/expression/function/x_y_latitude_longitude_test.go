@@ -27,7 +27,7 @@ import (
 func TestSTX(t *testing.T) {
 	t.Run("select int x value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewSTX(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -37,7 +37,7 @@ func TestSTX(t *testing.T) {
 
 	t.Run("select float x value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 123.456, Y: 78.9}, sql.PointType{}))
+		f, err := NewSTX(expression.NewLiteral(types.Point{X: 123.456, Y: 78.9}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -47,35 +47,35 @@ func TestSTX(t *testing.T) {
 
 	t.Run("replace x value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTX(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(123.456, types.Float64))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 123.456, Y: 0}, v)
+		require.Equal(types.Point{X: 123.456, Y: 0}, v)
 	})
 
 	t.Run("replace x value with valid string", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTX(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-123.456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: -123.456, Y: 0}, v)
+		require.Equal(types.Point{X: -123.456, Y: 0}, v)
 	})
 
 	t.Run("replace x value with negative float", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTX(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-123.456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: -123.456, Y: 0}, v)
+		require.Equal(types.Point{X: -123.456, Y: 0}, v)
 	})
 
 	t.Run("non-point provided", func(t *testing.T) {
@@ -89,7 +89,7 @@ func TestSTX(t *testing.T) {
 
 	t.Run("check return type with one argument", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewSTX(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -102,7 +102,7 @@ func TestSTX(t *testing.T) {
 
 	t.Run("check return type with two arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTX(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(123.456, types.Float64))
 		require.NoError(err)
 
@@ -118,7 +118,7 @@ func TestSTX(t *testing.T) {
 func TestSTY(t *testing.T) {
 	t.Run("select int y value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewSTY(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -128,7 +128,7 @@ func TestSTY(t *testing.T) {
 
 	t.Run("select float y value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 123.456, Y: 78.9}, sql.PointType{}))
+		f, err := NewSTY(expression.NewLiteral(types.Point{X: 123.456, Y: 78.9}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -138,35 +138,35 @@ func TestSTY(t *testing.T) {
 
 	t.Run("replace y value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTY(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(123.456, types.Float64))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 0, Y: 123.456}, v)
+		require.Equal(types.Point{X: 0, Y: 123.456}, v)
 	})
 
 	t.Run("replace y value with valid string", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTY(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-123.456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 0, Y: -123.456}, v)
+		require.Equal(types.Point{X: 0, Y: -123.456}, v)
 	})
 
 	t.Run("replace y value with negative float", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTY(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-123.456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 0, Y: -123.456}, v)
+		require.Equal(types.Point{X: 0, Y: -123.456}, v)
 	})
 
 	t.Run("non-point provided", func(t *testing.T) {
@@ -180,7 +180,7 @@ func TestSTY(t *testing.T) {
 
 	t.Run("check return type with one argument", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewSTY(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -193,12 +193,12 @@ func TestSTY(t *testing.T) {
 
 	t.Run("check return type with two arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewSTY(expression.NewLiteral(types.Point{X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(123.456, types.Float64))
 		require.NoError(err)
 
 		typ := f.Type()
-		_, ok := typ.(sql.PointType)
+		_, ok := typ.(types.PointType)
 		require.True(ok)
 	})
 }
@@ -206,7 +206,7 @@ func TestSTY(t *testing.T) {
 func TestLongitude(t *testing.T) {
 	t.Run("select longitude value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -216,35 +216,35 @@ func TestLongitude(t *testing.T) {
 
 	t.Run("replace longitude value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(123.456, types.Float64))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: 4326, X: 123.456, Y: 0}, v)
+		require.Equal(types.Point{SRID: 4326, X: 123.456, Y: 0}, v)
 	})
 
 	t.Run("replace x value with valid string", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-123.456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: 4326, X: -123.456, Y: 0}, v)
+		require.Equal(types.Point{SRID: 4326, X: -123.456, Y: 0}, v)
 	})
 
 	t.Run("replace x value with negative float", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-123.456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: 4326, X: -123.456, Y: 0}, v)
+		require.Equal(types.Point{SRID: 4326, X: -123.456, Y: 0}, v)
 	})
 
 	t.Run("null point", func(t *testing.T) {
@@ -259,7 +259,7 @@ func TestLongitude(t *testing.T) {
 
 	t.Run("replace with null value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(nil, sql.Null))
 		require.NoError(err)
 
@@ -270,7 +270,7 @@ func TestLongitude(t *testing.T) {
 
 	t.Run("replace x value with out of range coordinate", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(999, types.Blob))
 		require.NoError(err)
 
@@ -289,7 +289,7 @@ func TestLongitude(t *testing.T) {
 
 	t.Run("check return type with one argument", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -302,7 +302,7 @@ func TestLongitude(t *testing.T) {
 
 	t.Run("check return type with two arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(123.456, types.Float64))
 		require.NoError(err)
 
@@ -318,7 +318,7 @@ func TestLongitude(t *testing.T) {
 func TestLatitude(t *testing.T) {
 	t.Run("select latitude value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -328,35 +328,35 @@ func TestLatitude(t *testing.T) {
 
 	t.Run("replace latitude value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(12.3456, types.Float64))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: 4326, X: 0, Y: 12.3456}, v)
+		require.Equal(types.Point{SRID: 4326, X: 0, Y: 12.3456}, v)
 	})
 
 	t.Run("replace y value with valid string", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-12.3456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: 4326, X: 0, Y: -12.3456}, v)
+		require.Equal(types.Point{SRID: 4326, X: 0, Y: -12.3456}, v)
 	})
 
 	t.Run("replace y value with negative float", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral("-12.3456", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: 4326, X: 0, Y: -12.3456}, v)
+		require.Equal(types.Point{SRID: 4326, X: 0, Y: -12.3456}, v)
 	})
 
 	t.Run("null point", func(t *testing.T) {
@@ -371,7 +371,7 @@ func TestLatitude(t *testing.T) {
 
 	t.Run("replace with null value", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(nil, sql.Null))
 		require.NoError(err)
 
@@ -382,7 +382,7 @@ func TestLatitude(t *testing.T) {
 
 	t.Run("replace y value with out of range coordinate", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(999, types.Blob))
 		require.NoError(err)
 
@@ -401,7 +401,7 @@ func TestLatitude(t *testing.T) {
 
 	t.Run("check return type with one argument", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -414,7 +414,7 @@ func TestLatitude(t *testing.T) {
 
 	t.Run("check return type with two arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
 			expression.NewLiteral(12.3456, types.Float64))
 		require.NoError(err)
 

@@ -28,7 +28,7 @@ import (
 func TestAsWKB(t *testing.T) {
 	t.Run("convert point", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		f := NewAsWKB(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
@@ -38,7 +38,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert point with negative floats", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.Point{X: -123.45, Y: 678.9}, sql.PointType{}))
+		f := NewAsWKB(expression.NewLiteral(types.Point{X: -123.45, Y: 678.9}, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("0101000000CDCCCCCCCCDC5EC03333333333378540")
@@ -48,7 +48,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert linestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.LineStringType{}))
+		f := NewAsWKB(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
@@ -58,7 +58,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, sql.PolygonType{}))
+		f := NewAsWKB(expression.NewLiteral(types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
@@ -68,7 +68,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert multipoint", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.MultiPointType{}))
+		f := NewAsWKB(expression.NewLiteral(types.MultiPoint{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
@@ -78,7 +78,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert multilinestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 2, Y: 2}}}}}, sql.MultiLineStringType{}))
+		f := NewAsWKB(expression.NewLiteral(types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 2, Y: 2}}}}}, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("01050000000100000001020000000300000000000000000000000000000000000000000000000000F03F000000000000F03F00000000000000400000000000000040")
@@ -88,9 +88,9 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
-		poly := sql.Polygon{Lines: []sql.LineString{line}}
-		f := NewAsWKB(expression.NewLiteral(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, sql.MultiPolygonType{}))
+		line := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
+		poly := types.Polygon{Lines: []types.LineString{line}}
+		f := NewAsWKB(expression.NewLiteral(types.MultiPolygon{Polygons: []types.Polygon{poly}}, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("0106000000010000000103000000010000000400000000000000000000000000000000000000000000000000F03F0000000000000000000000000000F03F000000000000F03F00000000000000000000000000000000")
@@ -100,7 +100,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert empty geometrycollection", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.GeomColl{}, sql.GeomCollType{}))
+		f := NewAsWKB(expression.NewLiteral(types.GeomColl{}, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("010700000000000000")
@@ -110,14 +110,14 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert geometrycollection", func(t *testing.T) {
 		require := require.New(t)
-		point := sql.Point{X: 1, Y: 2}
-		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
-		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
-		mpoint := sql.MultiPoint{Points: []sql.Point{point, point}}
-		mline := sql.MultiLineString{Lines: []sql.LineString{line, line}}
-		mpoly := sql.MultiPolygon{Polygons: []sql.Polygon{poly, poly}}
-		gColl := sql.GeomColl{}
-		g := sql.GeomColl{Geoms: []sql.GeometryValue{
+		point := types.Point{X: 1, Y: 2}
+		line := types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		mpoint := types.MultiPoint{Points: []types.Point{point, point}}
+		mline := types.MultiLineString{Lines: []types.LineString{line, line}}
+		mpoly := types.MultiPolygon{Polygons: []types.Polygon{poly, poly}}
+		gColl := types.GeomColl{}
+		g := types.GeomColl{Geoms: []types.GeometryValue{
 			point,
 			line,
 			poly,
@@ -126,7 +126,7 @@ func TestAsWKB(t *testing.T) {
 			mpoly,
 			gColl,
 		}}
-		f := NewAsWKB(expression.NewLiteral(g, sql.GeomCollType{}))
+		f := NewAsWKB(expression.NewLiteral(g, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("0107000000070000000101000000000000000000F03F0000000000000040010200000002000000000000000000F03F0000000000000040000000000000084000000000000010400103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000000000000000000000104000000020000000101000000000000000000F03F00000000000000400101000000000000000000F03F0000000000000040010500000002000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040010200000002000000000000000000F03F0000000000000040000000000000084000000000000010400106000000020000000103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000000000000000000000103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000010700000000000000")
@@ -151,7 +151,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("check return type", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		f := NewAsWKB(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -172,7 +172,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 1, Y: 2}, v)
+		require.Equal(types.Point{X: 1, Y: 2}, v)
 	})
 
 	t.Run("convert point in big endian", func(t *testing.T) {
@@ -184,7 +184,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 1, Y: 2}, v)
+		require.Equal(types.Point{X: 1, Y: 2}, v)
 	})
 
 	t.Run("convert point bad point", func(t *testing.T) {
@@ -207,7 +207,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: -123.45, Y: 678.9}, v)
+		require.Equal(types.Point{X: -123.45, Y: 678.9}, v)
 	})
 
 	t.Run("convert linestring in little endian", func(t *testing.T) {
@@ -219,7 +219,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
+		require.Equal(types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("convert polygon in little endian", func(t *testing.T) {
@@ -231,7 +231,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
+		require.Equal(types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("convert multipoint in little endian", func(t *testing.T) {
@@ -243,7 +243,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
+		require.Equal(types.MultiPoint{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("convert multilinestring in little endian", func(t *testing.T) {
@@ -255,7 +255,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, {Points: []sql.Point{{X: 5, Y: 6}, {X: 7, Y: 8}}}}}, v)
+		require.Equal(types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, {Points: []types.Point{{X: 5, Y: 6}, {X: 7, Y: 8}}}}}, v)
 	})
 
 	t.Run("convert multipolygon in little endian", func(t *testing.T) {
@@ -267,9 +267,9 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
-		poly := sql.Polygon{Lines: []sql.LineString{line}}
-		require.Equal(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, v)
+		line := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
+		poly := types.Polygon{Lines: []types.LineString{line}}
+		require.Equal(types.MultiPolygon{Polygons: []types.Polygon{poly}}, v)
 	})
 
 	t.Run("convert empty geometry collection in little endian", func(t *testing.T) {
@@ -281,7 +281,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.GeomColl{Geoms: []sql.GeometryValue{}}, v)
+		require.Equal(types.GeomColl{Geoms: []types.GeometryValue{}}, v)
 	})
 
 	t.Run("convert empty geometry collection in little endian", func(t *testing.T) {
@@ -293,14 +293,14 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		point := sql.Point{X: 1, Y: 2}
-		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
-		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
-		mpoint := sql.MultiPoint{Points: []sql.Point{point, point}}
-		mline := sql.MultiLineString{Lines: []sql.LineString{line, line}}
-		mpoly := sql.MultiPolygon{Polygons: []sql.Polygon{poly, poly}}
-		gColl := sql.GeomColl{Geoms: []sql.GeometryValue{}}
-		g := sql.GeomColl{Geoms: []sql.GeometryValue{
+		point := types.Point{X: 1, Y: 2}
+		line := types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		mpoint := types.MultiPoint{Points: []types.Point{point, point}}
+		mline := types.MultiLineString{Lines: []types.LineString{line, line}}
+		mpoly := types.MultiPolygon{Polygons: []types.Polygon{poly, poly}}
+		gColl := types.GeomColl{Geoms: []types.GeometryValue{}}
+		g := types.GeomColl{Geoms: []types.GeometryValue{
 			point,
 			line,
 			poly,
@@ -322,7 +322,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: sql.CartesianSRID, X: 1, Y: 2}, v)
+		require.Equal(types.Point{SRID: types.CartesianSRID, X: 1, Y: 2}, v)
 	})
 
 	t.Run("convert point with srid valid 4326", func(t *testing.T) {
@@ -330,12 +330,12 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32))
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}, v)
+		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, v)
 	})
 
 	t.Run("convert point with invalid srid 1234", func(t *testing.T) {
@@ -355,13 +355,13 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
 			expression.NewLiteral("axis-order=srid-defined", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}, v)
+		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, v)
 	})
 
 	t.Run("convert point with srid 4326 axis long-lat", func(t *testing.T) {
@@ -369,13 +369,13 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
 			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, v)
+		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, v)
 	})
 
 	t.Run("convert point with srid 4326 axis long-lat", func(t *testing.T) {
@@ -383,13 +383,13 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
 			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, v)
+		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, v)
 	})
 
 	t.Run("convert linestring with valid srid 4326", func(t *testing.T) {
@@ -397,12 +397,12 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32))
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.LineString{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}, {SRID: sql.GeoSpatialSRID, X: 3, Y: 4}}}, v)
+		require.Equal(types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("convert linestring with invalid srid 2222", func(t *testing.T) {
@@ -422,13 +422,13 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
 			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.LineString{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
+		require.Equal(types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}}}, v)
 	})
 
 	t.Run("convert polygon with valid srid 4326", func(t *testing.T) {
@@ -436,12 +436,12 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32))
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+		require.Equal(types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 1}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("convert polygon with invalid srid 2", func(t *testing.T) {
@@ -461,13 +461,13 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
 			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: []sql.LineString{{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}, {SRID: sql.GeoSpatialSRID, X: 1, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+		require.Equal(types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 1}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("convert multipoint with valid srid 4326", func(t *testing.T) {
@@ -475,12 +475,12 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32))
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}, {SRID: sql.GeoSpatialSRID, X: 3, Y: 4}}}, v)
+		require.Equal(types.MultiPoint{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("convert multipoint with invalid srid 2222", func(t *testing.T) {
@@ -500,13 +500,13 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(sql.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
 			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: []sql.Point{{SRID: sql.GeoSpatialSRID, X: 2, Y: 1}, {SRID: sql.GeoSpatialSRID, X: 4, Y: 3}}}, v)
+		require.Equal(types.MultiPoint{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}}}, v)
 	})
 
 	t.Run("convert null", func(t *testing.T) {

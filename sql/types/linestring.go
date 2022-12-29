@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
-	"gopkg.in/src-d/go-errors.v1"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -37,13 +36,11 @@ type LineString struct {
 	Points []Point
 }
 
-var _ Type = LineStringType{}
-var _ SpatialColumnType = LineStringType{}
+var _ sql.Type = LineStringType{}
+var _ sql.SpatialColumnType = LineStringType{}
 var _ GeometryValue = LineString{}
 
 var (
-	ErrNotLineString = errors.NewKind("value of type %T is not a linestring")
-
 	lineStringValueType = reflect.TypeOf(LineString{})
 )
 
@@ -59,8 +56,8 @@ func (t LineStringType) Convert(v interface{}) (interface{}, error) {
 		return nil, nil
 	case []byte:
 		line, err := GeometryType{}.Convert(buf)
-		if ErrInvalidGISData.Is(err) {
-			return nil, ErrInvalidGISData.New("LineStringType.Convert")
+		if sql.ErrInvalidGISData.Is(err) {
+			return nil, sql.ErrInvalidGISData.New("LineStringType.Convert")
 		}
 		return line, err
 	case string:
@@ -71,12 +68,12 @@ func (t LineStringType) Convert(v interface{}) (interface{}, error) {
 		}
 		return buf, nil
 	default:
-		return nil, ErrSpatialTypeConversion.New()
+		return nil, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
 // Equals implements the Type interface.
-func (t LineStringType) Equals(otherType Type) bool {
+func (t LineStringType) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(LineStringType)
 	return ok
 }
@@ -87,12 +84,12 @@ func (t LineStringType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t LineStringType) Promote() Type {
+func (t LineStringType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t LineStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t LineStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -133,7 +130,7 @@ func (t LineStringType) GetSpatialTypeSRID() (uint32, bool) {
 }
 
 // SetSRID implements SpatialColumnType interface.
-func (t LineStringType) SetSRID(v uint32) Type {
+func (t LineStringType) SetSRID(v uint32) sql.Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
@@ -143,14 +140,14 @@ func (t LineStringType) SetSRID(v uint32) Type {
 func (t LineStringType) MatchSRID(v interface{}) error {
 	val, ok := v.(LineString)
 	if !ok {
-		return ErrNotLineString.New(v)
+		return sql.ErrNotLineString.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil
 	} else if t.SRID == val.SRID {
 		return nil
 	}
-	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
+	return sql.ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
 
 // implementsGeometryValue implements GeometryValue interface.
@@ -175,7 +172,7 @@ func (l LineString) SetSRID(srid uint32) GeometryValue {
 
 // Serialize implements GeometryValue interface.
 func (l LineString) Serialize() (buf []byte) {
-	buf = allocateBuffer(len(l.Points), 1, 0)
+	buf = AllocateGeoTypeBuffer(len(l.Points), 1, 0)
 	WriteEWKBHeader(buf, l.SRID, WKBLineID)
 	l.WriteData(buf[EWKBHeaderSize:])
 	return
@@ -183,7 +180,7 @@ func (l LineString) Serialize() (buf []byte) {
 
 // WriteData implements GeometryValue interface.
 func (l LineString) WriteData(buf []byte) int {
-	writeCount(buf, uint32(len(l.Points)))
+	WriteCount(buf, uint32(len(l.Points)))
 	buf = buf[CountSize:]
 	for _, p := range l.Points {
 		p.WriteData(buf)

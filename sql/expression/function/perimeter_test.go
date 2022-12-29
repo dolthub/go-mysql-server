@@ -28,8 +28,8 @@ import (
 func TestPerimeter(t *testing.T) {
 	t.Run("select perimeter of right triangle", func(t *testing.T) {
 		require := require.New(t)
-		polygon := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}
-		f, err := NewPerimeter(expression.NewLiteral(polygon, sql.PolygonType{}))
+		polygon := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}
+		f, err := NewPerimeter(expression.NewLiteral(polygon, types.PolygonType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -39,8 +39,8 @@ func TestPerimeter(t *testing.T) {
 
 	t.Run("select perimeter of unit square", func(t *testing.T) {
 		require := require.New(t)
-		polygon := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
-		f, err := NewPerimeter(expression.NewLiteral(polygon, sql.PolygonType{}))
+		polygon := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		f, err := NewPerimeter(expression.NewLiteral(polygon, types.PolygonType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -50,8 +50,8 @@ func TestPerimeter(t *testing.T) {
 
 	t.Run("select perimeter of some shape", func(t *testing.T) {
 		require := require.New(t)
-		polygon := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3.2, Y: 4.5}, {X: -12.2, Y: 23}, {X: 55, Y: 88}, {X: 33, Y: 255.123}, {X: 17, Y: 2}, {X: 1, Y: 2}}}}}
-		f, err := NewPerimeter(expression.NewLiteral(polygon, sql.PolygonType{}))
+		polygon := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 2}, {X: 3.2, Y: 4.5}, {X: -12.2, Y: 23}, {X: 55, Y: 88}, {X: 33, Y: 255.123}, {X: 17, Y: 2}, {X: 1, Y: 2}}}}}
+		f, err := NewPerimeter(expression.NewLiteral(polygon, types.PolygonType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -61,10 +61,10 @@ func TestPerimeter(t *testing.T) {
 
 	t.Run("select perimeter of triangle with hole", func(t *testing.T) {
 		require := require.New(t)
-		line1 := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
-		line2 := sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: 2}, {X: 2, Y: 1}, {X: 1, Y: 1}}}
-		polygon := sql.Polygon{Lines: []sql.LineString{line1, line2}}
-		f, err := NewPerimeter(expression.NewLiteral(polygon, sql.PolygonType{}))
+		line1 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 3}, {X: 3, Y: 0}, {X: 0, Y: 0}}}
+		line2 := types.LineString{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: 2}, {X: 2, Y: 1}, {X: 1, Y: 1}}}
+		polygon := types.Polygon{Lines: []types.LineString{line1, line2}}
+		f, err := NewPerimeter(expression.NewLiteral(polygon, types.PolygonType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

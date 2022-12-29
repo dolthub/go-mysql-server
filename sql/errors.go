@@ -713,6 +713,8 @@ var (
 	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
 	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")
 	ErrTooLargeForSet    = errors.NewKind(`value "%v" is too large for this set`)
+	ErrNotPoint = errors.NewKind("value of type %T is not a point")
+	ErrNotLineString = errors.NewKind("value of type %T is not a linestring")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

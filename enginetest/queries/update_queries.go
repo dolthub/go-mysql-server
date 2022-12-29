@@ -447,21 +447,21 @@ var SpatialUpdateTests = []WriteQueryTest{
 		WriteQuery:          "UPDATE point_table SET p = point(123.456,789);",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
-		ExpectedSelect:      []sql.Row{{int64(5), sql.Point{X: 123.456, Y: 789}}},
+		ExpectedSelect:      []sql.Row{{int64(5), types.Point{X: 123.456, Y: 789}}},
 	},
 	{
 		WriteQuery:          "UPDATE line_table SET l = linestring(point(1.2,3.4),point(5.6,7.8));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{int64(0), sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
+		ExpectedSelect:      []sql.Row{{int64(0), types.LineString{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), types.LineString{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
 	},
 	{
 		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
 		ExpectedSelect: []sql.Row{
-			{int64(0), sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
-			{int64(1), sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
+			{int64(0), types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
+			{int64(1), types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
 		},
 	},
 }

@@ -61,7 +61,7 @@ func (p *Point) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *Point) Type() sql.Type {
-	return sql.PointType{}
+	return types.PointType{}
 }
 
 func (p *Point) String() string {
@@ -108,5 +108,5 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return sql.Point{X: _x.(float64), Y: _y.(float64)}, nil
+	return types.Point{X: _x.(float64), Y: _y.(float64)}, nil
 }

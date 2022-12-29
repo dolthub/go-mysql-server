@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,23 +27,23 @@ import (
 func TestLineString(t *testing.T) {
 	t.Run("create valid linestring with points", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLineString(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}),
-			expression.NewLiteral(sql.Point{X: 3, Y: 4}, sql.PointType{}),
-			expression.NewLiteral(sql.Point{X: 5, Y: 6}, sql.PointType{}),
+		f, err := NewLineString(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}),
+			expression.NewLiteral(types.Point{X: 3, Y: 4}, types.PointType{}),
+			expression.NewLiteral(types.Point{X: 5, Y: 6}, types.PointType{}),
 		)
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}, v)
+		require.Equal(types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}, v)
 	})
 }
 
 func TestNewLineString(t *testing.T) {
 	require := require.New(t)
-	_, err := NewLineString(expression.NewLiteral(nil, sql.PointType{}),
-		expression.NewLiteral(nil, sql.PointType{}),
-		expression.NewLiteral(nil, sql.PointType{}),
+	_, err := NewLineString(expression.NewLiteral(nil, types.PointType{}),
+		expression.NewLiteral(nil, types.PointType{}),
+		expression.NewLiteral(nil, types.PointType{}),
 	)
 	require.NoError(err)
 }

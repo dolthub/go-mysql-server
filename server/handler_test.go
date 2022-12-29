@@ -581,10 +581,10 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "json", Type: sql.JSON},
 
 		// Geometry Types
-		{Name: "geometry", Type: sql.GeometryType{}},
-		{Name: "point", Type: sql.PointType{}},
-		{Name: "polygon", Type: sql.PolygonType{}},
-		{Name: "linestring", Type: sql.LineStringType{}},
+		{Name: "geometry", Type: types.GeometryType{}},
+		{Name: "point", Type: types.PointType{}},
+		{Name: "polygon", Type: types.PolygonType{}},
+		{Name: "linestring", Type: types.LineStringType{}},
 
 		// Integer Types
 		{Name: "uint8", Type: types.Uint8},

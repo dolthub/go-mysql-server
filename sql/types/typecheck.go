@@ -70,7 +70,7 @@ func IsJSON(t sql.Type) bool {
 // IsGeometry returns true if the specified type is a Geometry type.
 func IsGeometry(t sql.Type) bool {
 	switch t.(type) {
-	case sql.GeometryType, sql.PointType, sql.LineStringType, sql.PolygonType:
+	case GeometryType, PointType, LineStringType, PolygonType:
 		return true
 	default:
 		return false

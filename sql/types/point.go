@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"encoding/binary"
 	"math"
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // PointType represents the POINT type.
@@ -39,13 +39,11 @@ type Point struct {
 	Y    float64
 }
 
-var _ Type = PointType{}
-var _ SpatialColumnType = PointType{}
+var _ sql.Type = PointType{}
+var _ sql.SpatialColumnType = PointType{}
 var _ GeometryValue = Point{}
 
 var (
-	ErrNotPoint = errors.NewKind("value of type %T is not a point")
-
 	pointValueType = reflect.TypeOf(Point{})
 )
 
@@ -70,7 +68,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 		}
 		// Throw error if not marked as point
 		if geomType != WKBPointID {
-			return nil, ErrInvalidGISData.New("PointType.Convert")
+			return nil, sql.ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
 		point, _, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
@@ -86,12 +84,12 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 		}
 		return val, nil
 	default:
-		return nil, ErrSpatialTypeConversion.New()
+		return nil, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
 // Equals implements the Type interface.
-func (t PointType) Equals(otherType Type) bool {
+func (t PointType) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(PointType)
 	return ok
 }
@@ -102,12 +100,12 @@ func (t PointType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t PointType) Promote() Type {
+func (t PointType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t PointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -148,7 +146,7 @@ func (t PointType) GetSpatialTypeSRID() (uint32, bool) {
 }
 
 // SetSRID implements SpatialColumnType interface.
-func (t PointType) SetSRID(v uint32) Type {
+func (t PointType) SetSRID(v uint32) sql.Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
@@ -158,14 +156,14 @@ func (t PointType) SetSRID(v uint32) Type {
 func (t PointType) MatchSRID(v interface{}) error {
 	val, ok := v.(Point)
 	if !ok {
-		return ErrNotPoint.New(v)
+		return sql.ErrNotPoint.New(v)
 	}
 	if !t.DefinedSRID {
 		return nil
 	} else if t.SRID == val.SRID {
 		return nil
 	}
-	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
+	return sql.ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
 
 // implementsGeometryValue implements GeometryValue interface.
@@ -187,7 +185,7 @@ func (p Point) SetSRID(srid uint32) GeometryValue {
 
 // Serialize implements GeometryValue interface.
 func (p Point) Serialize() (buf []byte) {
-	buf = allocateBuffer(1, 0, 0)
+	buf = AllocateGeoTypeBuffer(1, 0, 0)
 	WriteEWKBHeader(buf, p.SRID, WKBPointID)
 	p.WriteData(buf[EWKBHeaderSize:])
 	return

@@ -88,7 +88,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// If just one argument, return SRID
 	if len(s.ChildExpressions) == 1 {
 		switch g := g.(type) {
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return g.GetSRID(), nil
 		default:
 			return nil, sql.ErrIllegalGISValue.New(g)
@@ -116,7 +116,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Create new geometry object with matching SRID
 	switch g := g.(type) {
-	case sql.GeometryValue:
+	case types.GeometryValue:
 		return g.SetSRID(srid), nil
 	default:
 		return nil, sql.ErrIllegalGISValue.New(g)

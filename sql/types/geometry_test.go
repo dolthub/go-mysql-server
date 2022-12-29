@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -37,46 +38,46 @@ func TestSpatialTypeMatchSRID(t *testing.T) {
 		Gx1y0 = Point{GeoSpatialSRID, 1, 0}
 	)
 	tests := []struct {
-		typeVal  SpatialColumnType
+		typeVal  sql.SpatialColumnType
 		objVal   interface{}
 		expected *errors.Kind
 	}{
 		{PointType{CartesianSRID, false}, Cx1y2, nil},
 		{PointType{CartesianSRID, false}, Gx1y2, nil},
-		{PointType{GeoSpatialSRID, true}, Cx1y2, ErrNotMatchingSRID},
-		{PointType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, ErrNotPoint},
-		{PointType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, ErrNotPoint},
+		{PointType{GeoSpatialSRID, true}, Cx1y2, sql.ErrNotMatchingSRID},
+		{PointType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, sql.ErrNotPoint},
+		{PointType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, sql.ErrNotPoint},
 
 		{LineStringType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, nil},
 		// MySQL checks only the container's SRID value, so the objects inside can have any SRID value.
 		// For example, LineStringType column with 4326 allows LineString object with 4326 containing Points with 0 and 4326 SRID values.
 		{LineStringType{CartesianSRID, false}, LineString{GeoSpatialSRID, []Point{Cx1y2, Gx2y3}}, nil},
-		{LineStringType{CartesianSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, ErrNotMatchingSRID},
-		{LineStringType{GeoSpatialSRID, true}, Gx2y3, ErrNotLineString},
-		{LineStringType{GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []LineString{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, ErrNotLineString},
+		{LineStringType{CartesianSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, sql.ErrNotMatchingSRID},
+		{LineStringType{GeoSpatialSRID, true}, Gx2y3, sql.ErrNotLineString},
+		{LineStringType{GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []LineString{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, sql.ErrNotLineString},
 
 		{PolygonType{CartesianSRID, true}, Polygon{CartesianSRID, []LineString{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, nil},
 		{PolygonType{CartesianSRID, false}, Polygon{GeoSpatialSRID, []LineString{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, nil},
-		{PolygonType{CartesianSRID, true}, Polygon{GeoSpatialSRID, []LineString{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, ErrNotMatchingSRID},
+		{PolygonType{CartesianSRID, true}, Polygon{GeoSpatialSRID, []LineString{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, sql.ErrNotMatchingSRID},
 		{PolygonType{GeoSpatialSRID, true}, Gx2y3, ErrNotPolygon},
 		{PolygonType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, ErrNotPolygon},
 
 		{GeometryType{CartesianSRID, false}, Cx1y2, nil},
 		{GeometryType{CartesianSRID, false}, Gx1y2, nil},
 		{GeometryType{GeoSpatialSRID, true}, Gx1y2, nil},
-		{GeometryType{GeoSpatialSRID, true}, Cx1y2, ErrNotMatchingSRID},
+		{GeometryType{GeoSpatialSRID, true}, Cx1y2, sql.ErrNotMatchingSRID},
 		{GeometryType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}, nil},
-		{GeometryType{GeoSpatialSRID, true}, LineString{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}, ErrNotMatchingSRID},
+		{GeometryType{GeoSpatialSRID, true}, LineString{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}, sql.ErrNotMatchingSRID},
 		{GeometryType{GeoSpatialSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, nil},
-		{GeometryType{CartesianSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, ErrNotMatchingSRID},
+		{GeometryType{CartesianSRID, true}, LineString{GeoSpatialSRID, []Point{Cx1y2, Cx2y3}}, sql.ErrNotMatchingSRID},
 		{GeometryType{GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []LineString{{GeoSpatialSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Gx0y0}}}}, nil},
 		{GeometryType{GeoSpatialSRID, true}, Polygon{GeoSpatialSRID, []LineString{{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Cx0y0}}}}, nil},
-		{GeometryType{CartesianSRID, true}, Polygon{GeoSpatialSRID, []LineString{{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Cx0y0}}}}, ErrNotMatchingSRID},
+		{GeometryType{CartesianSRID, true}, Polygon{GeoSpatialSRID, []LineString{{CartesianSRID, []Point{Gx0y0, Gx0y1, Gx1y0, Cx0y0}}}}, sql.ErrNotMatchingSRID},
 	}
 
 	for _, test := range tests {
 		s, d := test.typeVal.GetSpatialTypeSRID()
-		g, _ := test.typeVal.(Type)
+		g, _ := test.typeVal.(sql.Type)
 		t.Run(fmt.Sprintf("%s %v %v match %v", g.String(), s, d, test.objVal), func(t *testing.T) {
 			err := test.typeVal.MatchSRID(test.objVal)
 			if test.expected == nil {

@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -36,8 +37,8 @@ type GeomColl struct {
 	Geoms []GeometryValue
 }
 
-var _ Type = GeomCollType{}
-var _ SpatialColumnType = GeomCollType{}
+var _ sql.Type = GeomCollType{}
+var _ sql.SpatialColumnType = GeomCollType{}
 var _ GeometryValue = GeomColl{}
 
 var (
@@ -67,7 +68,7 @@ func (t GeomCollType) Convert(v interface{}) (interface{}, error) {
 		}
 		// Throw error if not marked as geometry collection
 		if geomType != WKBGeomCollID {
-			return nil, ErrInvalidGISData.New("GeomCollType.Convert")
+			return nil, sql.ErrInvalidGISData.New("GeomCollType.Convert")
 		}
 		// Parse data section
 		geom, _, err := DeserializeGeomColl(val[EWKBHeaderSize:], isBig, srid)
@@ -83,12 +84,12 @@ func (t GeomCollType) Convert(v interface{}) (interface{}, error) {
 		}
 		return val, nil
 	default:
-		return nil, ErrSpatialTypeConversion.New()
+		return nil, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
 // Equals implements the Type interface.
-func (t GeomCollType) Equals(otherType Type) bool {
+func (t GeomCollType) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(GeomCollType)
 	return ok
 }
@@ -99,12 +100,12 @@ func (t GeomCollType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t GeomCollType) Promote() Type {
+func (t GeomCollType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t GeomCollType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t GeomCollType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -145,7 +146,7 @@ func (t GeomCollType) GetSpatialTypeSRID() (uint32, bool) {
 }
 
 // SetSRID implements SpatialColumnType interface.
-func (t GeomCollType) SetSRID(v uint32) Type {
+func (t GeomCollType) SetSRID(v uint32) sql.Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
@@ -162,7 +163,7 @@ func (t GeomCollType) MatchSRID(v interface{}) error {
 	} else if t.SRID == val.SRID {
 		return nil
 	}
-	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
+	return sql.ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
 
 // implementsGeometryValue implements GeometryValue interface.
@@ -239,7 +240,7 @@ func (g GeomColl) CalculateSize() (numPoints int, numCounts int, numHeaders int)
 // TODO: actually count all points to allocate
 func (g GeomColl) Serialize() (buf []byte) {
 	numPoints, numCounts, numHeaders := g.CalculateSize()
-	buf = allocateBuffer(numPoints, numCounts+1, numHeaders)
+	buf = AllocateGeoTypeBuffer(numPoints, numCounts+1, numHeaders)
 	WriteEWKBHeader(buf, g.SRID, WKBGeomCollID)
 	g.WriteData(buf[EWKBHeaderSize:])
 	return
@@ -247,7 +248,7 @@ func (g GeomColl) Serialize() (buf []byte) {
 
 // WriteData implements GeometryValue interface.
 func (g GeomColl) WriteData(buf []byte) int {
-	writeCount(buf, uint32(len(g.Geoms)))
+	WriteCount(buf, uint32(len(g.Geoms)))
 	buf = buf[CountSize:]
 	count := CountSize
 	for _, geom := range g.Geoms {

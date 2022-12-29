@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
-	"gopkg.in/src-d/go-errors.v1"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // MultiPointType represents the MULTIPOINT type.
@@ -37,8 +37,8 @@ type MultiPoint struct {
 	Points []Point
 }
 
-var _ Type = MultiPointType{}
-var _ SpatialColumnType = MultiPointType{}
+var _ sql.Type = MultiPointType{}
+var _ sql.SpatialColumnType = MultiPointType{}
 var _ GeometryValue = MultiPoint{}
 
 var (
@@ -64,7 +64,7 @@ func (t MultiPointType) Convert(v interface{}) (interface{}, error) {
 		}
 		// TODO: is this even possible?
 		if _, ok := multipoint.(MultiPoint); !ok {
-			return nil, ErrInvalidGISData.New("MultiPointType.Convert")
+			return nil, sql.ErrInvalidGISData.New("MultiPointType.Convert")
 		}
 		return multipoint, nil
 	case string:
@@ -75,12 +75,12 @@ func (t MultiPointType) Convert(v interface{}) (interface{}, error) {
 		}
 		return buf, nil
 	default:
-		return nil, ErrSpatialTypeConversion.New()
+		return nil, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
 // Equals implements the Type interface.
-func (t MultiPointType) Equals(otherType Type) bool {
+func (t MultiPointType) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(MultiPointType)
 	return ok
 }
@@ -91,12 +91,12 @@ func (t MultiPointType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t MultiPointType) Promote() Type {
+func (t MultiPointType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t MultiPointType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t MultiPointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -137,7 +137,7 @@ func (t MultiPointType) GetSpatialTypeSRID() (uint32, bool) {
 }
 
 // SetSRID implements SpatialColumnType interface.
-func (t MultiPointType) SetSRID(v uint32) Type {
+func (t MultiPointType) SetSRID(v uint32) sql.Type {
 	t.SRID = v
 	t.DefinedSRID = true
 	return t
@@ -154,7 +154,7 @@ func (t MultiPointType) MatchSRID(v interface{}) error {
 	} else if t.SRID == val.SRID {
 		return nil
 	}
-	return ErrNotMatchingSRID.New(val.SRID, t.SRID)
+	return sql.ErrNotMatchingSRID.New(val.SRID, t.SRID)
 }
 
 // implementsGeometryValue implements GeometryValue interface.
@@ -179,7 +179,7 @@ func (p MultiPoint) SetSRID(srid uint32) GeometryValue {
 
 // Serialize implements GeometryValue interface.
 func (p MultiPoint) Serialize() (buf []byte) {
-	buf = allocateBuffer(len(p.Points), 1, len(p.Points))
+	buf = AllocateGeoTypeBuffer(len(p.Points), 1, len(p.Points))
 	WriteEWKBHeader(buf, p.SRID, WKBMultiPointID)
 	p.WriteData(buf[EWKBHeaderSize:])
 	return
@@ -187,7 +187,7 @@ func (p MultiPoint) Serialize() (buf []byte) {
 
 // WriteData implements GeometryValue interface.
 func (p MultiPoint) WriteData(buf []byte) int {
-	writeCount(buf, uint32(len(p.Points)))
+	WriteCount(buf, uint32(len(p.Points)))
 	buf = buf[CountSize:]
 	for _, point := range p.Points {
 		WriteWKBHeader(buf, WKBPointID)

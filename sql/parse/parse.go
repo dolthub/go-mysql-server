@@ -2350,7 +2350,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		if sErr != nil {
 			return nil, sErr
 		}
-		if uint32(sridVal) != sql.CartesianSRID && uint32(sridVal) != sql.GeoSpatialSRID {
+		if uint32(sridVal) != types.CartesianSRID && uint32(sridVal) != types.GeoSpatialSRID {
 			return nil, sql.ErrUnsupportedFeature.New("unsupported SRID value")
 		}
 		if s, ok := internalTyp.(sql.SpatialColumnType); ok {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // SwapXY is a function that returns a spatial type with their X and Y values swapped
@@ -80,7 +81,7 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch v := val.(type) {
-	case sql.GeometryValue:
+	case types.GeometryValue:
 		return v.Swap(), nil
 	default:
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())

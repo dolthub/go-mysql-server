@@ -81,7 +81,7 @@ func (p *Perimeter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Argument must be a polygon
-	poly, ok := v1.(sql.Polygon)
+	poly, ok := v1.(types.Polygon)
 	if !ok {
 		return nil, sql.ErrInvalidArgument.New(p.FunctionName())
 	}

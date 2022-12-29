@@ -181,7 +181,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case []byte:
 		return hexForString(string(val)), nil
 
-	case sql.GeometryValue:
+	case types.GeometryValue:
 		return hexForString(string(val.Serialize())), nil
 
 	default:

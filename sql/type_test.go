@@ -23,23 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsGeometry(t *testing.T) {
-	assert.True(t, types.IsGeometry(GeometryType{}))
-	assert.True(t, types.IsGeometry(PointType{}))
-	assert.True(t, types.IsGeometry(LineStringType{}))
-	assert.True(t, types.IsGeometry(PolygonType{}))
-	assert.False(t, types.IsGeometry(types.StringType_{}))
-	assert.False(t, types.IsGeometry(JSON))
-	assert.False(t, types.IsGeometry(types.Blob))
-}
-
-func TestIsJSON(t *testing.T) {
-	assert.True(t, types.IsJSON(JSON))
-	assert.False(t, types.IsJSON(types.Blob))
-	assert.False(t, types.IsJSON(types.NumberTypeImpl_{}))
-	assert.False(t, types.IsJSON(types.StringType_{}))
-}
-
 func TestFloatCovert(t *testing.T) {
 	tests := []struct {
 		length   string

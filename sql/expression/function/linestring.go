@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -50,7 +51,7 @@ func (l *LineString) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *LineString) Type() sql.Type {
-	return sql.LineStringType{}
+	return types.LineStringType{}
 }
 
 func (l *LineString) String() string {
@@ -69,7 +70,7 @@ func (l *LineString) WithChildren(children ...sql.Expression) (sql.Expression, e
 // Eval implements the sql.Expression interface.
 func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of points
-	var points = make([]sql.Point, len(l.ChildExpressions))
+	var points = make([]types.Point, len(l.ChildExpressions))
 
 	// Go through each argument
 	for i, arg := range l.ChildExpressions {
@@ -80,14 +81,14 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		// Must be of type point, throw error otherwise
 		switch v := val.(type) {
-		case sql.Point:
+		case types.Point:
 			points[i] = v
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.LineString{Points: points}, nil
+	return types.LineString{Points: points}, nil
 }
