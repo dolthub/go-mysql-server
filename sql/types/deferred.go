@@ -1,4 +1,4 @@
-// Copyright 2022 DoltHub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
-
-// DeferredType is a placeholder for prepared statements
-// that is replaced by the BindVar type on re-analysis.
-type DeferredType interface {
-	Type
-	IsDeferred() bool
-	Name() string
-}
 
 type deferredType struct {
 	bindVar string
 }
 
-var _ DeferredType = (*deferredType)(nil)
+var _ sql.DeferredType = (*deferredType)(nil)
 
-func NewDeferredType(name string) Type {
+func NewDeferredType(name string) sql.Type {
 	return &deferredType{bindVar: name}
 }
 
-func (t deferredType) Equals(otherType Type) bool {
+func (t deferredType) Equals(otherType sql.Type) bool {
 	return false
 }
 
@@ -53,7 +45,7 @@ func (t deferredType) Compare(a interface{}, b interface{}) (int, error) {
 // Convert implements Type interface.
 func (t deferredType) Convert(v interface{}) (interface{}, error) {
 	if v != nil {
-		return nil, types.ErrValueNotNil.New(v)
+		return nil, ErrValueNotNil.New(v)
 	}
 
 	return nil, nil
@@ -75,12 +67,12 @@ func (t deferredType) MustConvert(v interface{}) interface{} {
 }
 
 // Promote implements the Type interface.
-func (t deferredType) Promote() Type {
+func (t deferredType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t deferredType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t deferredType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil
 }
 
@@ -112,7 +104,7 @@ func (t deferredType) Name() string {
 	return t.bindVar
 }
 
-func IsDeferredType(t Type) bool {
-	_, ok := t.(DeferredType)
+func IsDeferredType(t sql.Type) bool {
+	_, ok := t.(sql.DeferredType)
 	return ok
 }

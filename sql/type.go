@@ -88,8 +88,17 @@ type Type interface {
 	fmt.Stringer
 }
 
+// NullType represents the type of NULL values
 type NullType interface {
 	Type
+}
+
+// DeferredType is a placeholder for prepared statements
+// that is replaced by the BindVar type on re-analysis.
+type DeferredType interface {
+	Type
+	IsDeferred() bool
+	Name() string
 }
 
 // NumberType represents all integer and floating point types.

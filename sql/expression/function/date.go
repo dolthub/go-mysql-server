@@ -570,7 +570,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	}
 
 	// handle dynamic input type
-	if sql.IsDeferredType(inputType) {
+	if types.IsDeferredType(inputType) {
 		if isYmdInterval && !isHmsInterval {
 			// if interval contains only date components, result is Date
 			return types.Date

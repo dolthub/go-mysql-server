@@ -132,7 +132,7 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 				if reflect.DeepEqual(ls[i].Type, rs[i].Type) {
 					continue
 				}
-				if sql.IsDeferredType(ls[i].Type) || sql.IsDeferredType(rs[i].Type) {
+				if types.IsDeferredType(ls[i].Type) || types.IsDeferredType(rs[i].Type) {
 					continue
 				}
 				hasdiff = true

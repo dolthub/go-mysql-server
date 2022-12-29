@@ -169,7 +169,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 		} else if types.IsTime(argType) {
 			allString = false
 			allInt = false
-		} else if sql.IsDeferredType(argType) {
+		} else if types.IsDeferredType(argType) {
 			return argType, nil
 		} else if argType == types.Null {
 			// When a Null is present the return will always be Null

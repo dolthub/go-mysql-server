@@ -95,11 +95,11 @@ func (d *Div) IsNullable() bool {
 func (d *Div) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := d.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := d.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
@@ -582,11 +582,11 @@ func (i *IntDiv) IsNullable() bool {
 func (i *IntDiv) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := i.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := i.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 

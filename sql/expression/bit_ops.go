@@ -80,11 +80,11 @@ func (b *BitOp) IsNullable() bool {
 // Type returns the greatest type for given operation.
 func (b *BitOp) Type() sql.Type {
 	rTyp := b.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := b.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 

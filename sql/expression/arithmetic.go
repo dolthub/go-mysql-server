@@ -129,11 +129,11 @@ func (a *Arithmetic) IsNullable() bool {
 func (a *Arithmetic) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := a.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := a.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
