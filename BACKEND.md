@@ -65,11 +65,11 @@ written. Such integrators should implement their own `sql.Session`
 implementation, and probably should embed `sql.BaseSession` in it to
 make that easier.
 
-For backends that want transactional semantics for their queries must
-also implement `sql.TransactionSession` in their session object and
-provide a corresponding `sql.Transaction` implementation. The details
-of doing so are necessarily very specific to a particuarl backend and
-are beyond the scope of this guide.
+Backends that want transactional semantics for their queries must also
+implement `sql.TransactionSession` in their session object and provide
+a corresponding `sql.Transaction` implementation. The details of doing
+so are necessarily very specific to a particular backend and are
+beyond the scope of this guide.
 
 ## Native indexes
 
@@ -83,8 +83,8 @@ declare which indexes their tables support and provide a means of
 returning a subset of the rows. The job of your `sql.Index`
 implementation is to accept or reject combinations of `sql.Range`
 expressions that it can support, which will be used by the engine to
-construct a `sql.IndexLookup` struct to provide to your `sql.Indexed`
-table implementation.
+construct a `sql.IndexLookup` struct to provide to your
+`sql.IndexedTable` implementation.
 
 ## Custom index driver implementation
 
