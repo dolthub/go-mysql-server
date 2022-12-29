@@ -1,9 +1,6 @@
 # Dolthub Inc. Contributing Guidelines
 
 Dolthub Inc. projects accept contributions via GitHub pull requests.
-This document outlines some of the conventions on development
-workflow, commit message formatting, contact points, and other
-resources to make it easier to get your contribution accepted.
 
 ## Support Channel
 
@@ -15,7 +12,9 @@ server](https://discord.com/invite/RFwfYpu).
 
 Pull Requests (PRs) are the exclusive way to contribute code to
 go-mysql-server. We also welcome new issues with steps to reproduce a
-problem.
+problem. We may transfer issues that also affect
+[Dolt](https://github.com/dolthub/dolt) to that repo, since it is our
+primary backlog.
 
 - PRs should include tests.
 - If the PR is a bug fix, it should include a new unit test that fails

@@ -23,10 +23,14 @@ library, tool, query, SQL syntax, SQL function, etc. that works with
 MySQL should also work with **go-mysql-server**. If you find a gap in
 functionality, please file an issue.
 
+For full MySQL compatibility documentation, see the [Dolt
+docs](https://docs.dolthub.com/sql-reference/sql-support) on this
+topic.
+
 ## Scope of this project
 
 - SQL server and engine to query your data sources.
-- In-memory database implementation suitable for use in tests.
+- In-memory database backend implementation suitable for use in tests.
 - Interfaces you can use to implement new backends to query your own
   data sources.
 - With a few caveats and using a full database implementation, a
@@ -137,12 +141,16 @@ The in-memory database implementation included with this package is
 intended for use in tests. It has specific limitations that we know
 of:
 
-- Not threadsafe. To avoid concurrency issues, limit DDL and DML
-  statements (`CREATE TABLE`, `INSERT`, etc.) to a single goroutine.
-- No transaction support. Statements like `START TRANSACTION`,
-  `ROLLBACK`, and `COMMIT` are no-ops.
-- Non-performant index implementation. Indexed lookups and joins
-  perform full table scans on the underlying tables.
+- [Not
+  threadsafe](https://github.com/dolthub/go-mysql-server/issues/1306). To
+  avoid concurrency issues, limit DDL and DML statements (`CREATE
+  TABLE`, `INSERT`, etc.) to a single goroutine.
+- [No transaction
+  support](https://github.com/dolthub/go-mysql-server/issues/1506). Statements
+  like `START TRANSACTION`, `ROLLBACK`, and `COMMIT` are no-ops.
+- [Non-performant index
+  implementation](https://github.com/dolthub/go-mysql-server/issues/1347). Indexed
+  lookups and joins perform full table scans on the underlying tables.
 
 ## Custom backend implementations
 
