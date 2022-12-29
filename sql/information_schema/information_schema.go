@@ -131,7 +131,7 @@ const (
 	ViewsTableName = "views"
 )
 
-var sqlModeSetType = MustCreateSetType([]string{
+var sqlModeSetType = types.MustCreateSetType([]string{
 	"REAL_AS_FLOAT", "PIPES_AS_CONCAT", "ANSI_QUOTES", "IGNORE_SPACE", "NOT_USED", "ONLY_FULL_GROUP_BY",
 	"NO_UNSIGNED_SUBTRACTION", "NO_DIR_IN_CREATE", "NOT_USED_9", "NOT_USED_10", "NOT_USED_11", "NOT_USED_12",
 	"NOT_USED_13", "NOT_USED_14", "NOT_USED_15", "NOT_USED_16", "NOT_USED_17", "NOT_USED_18", "ANSI",
@@ -510,7 +510,7 @@ var roleColumnGrantsSchema = Schema{
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 64), Default: nil, Nullable: false, Source: RoleColumnGrantsTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 64), Default: nil, Nullable: false, Source: RoleColumnGrantsTableName},
 	{Name: "COLUMN_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 64), Default: nil, Nullable: false, Source: RoleColumnGrantsTableName},
-	{Name: "PRIVILEGE_TYPE", Type: MustCreateSetType([]string{"Select", "Insert", "Update", "References"}, Collation_Default), Default: nil, Nullable: false, Source: RoleColumnGrantsTableName},
+	{Name: "PRIVILEGE_TYPE", Type: types.MustCreateSetType([]string{"Select", "Insert", "Update", "References"}, Collation_Default), Default: nil, Nullable: false, Source: RoleColumnGrantsTableName},
 	{Name: "IS_GRANTABLE", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: RoleColumnGrantsTableName},
 }
 
@@ -525,7 +525,7 @@ var roleRoutineGrantsSchema = Schema{
 	{Name: "ROUTINE_CATALOG", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: RoleRoutineGrantsTableName},
 	{Name: "ROUTINE_SCHEMA", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 64), Default: nil, Nullable: false, Source: RoleRoutineGrantsTableName},
 	{Name: "ROUTINE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 64), Default: nil, Nullable: false, Source: RoleRoutineGrantsTableName},
-	{Name: "PRIVILEGE_TYPE", Type: MustCreateSetType([]string{"Execute", "Alter Routine", "Grant"}, Collation_Default), Default: nil, Nullable: false, Source: RoleRoutineGrantsTableName},
+	{Name: "PRIVILEGE_TYPE", Type: types.MustCreateSetType([]string{"Execute", "Alter Routine", "Grant"}, Collation_Default), Default: nil, Nullable: false, Source: RoleRoutineGrantsTableName},
 	{Name: "IS_GRANTABLE", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: RoleRoutineGrantsTableName},
 }
 
@@ -537,7 +537,7 @@ var roleTableGrantsSchema = Schema{
 	{Name: "TABLE_CATALOG", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 64), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 64), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
-	{Name: "PRIVILEGE_TYPE", Type: MustCreateSetType([]string{"Select", "Insert", "Update", "Delete", "Create", "Drop", "Grant", "References", "Index", "Alter", "Create View", "Show view", "Trigger"}, Collation_Default), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
+	{Name: "PRIVILEGE_TYPE", Type: types.MustCreateSetType([]string{"Select", "Insert", "Update", "Delete", "Create", "Drop", "Grant", "References", "Index", "Alter", "Create View", "Show view", "Trigger"}, Collation_Default), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
 	{Name: "IS_GRANTABLE", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
 }
 

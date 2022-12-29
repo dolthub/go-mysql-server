@@ -619,7 +619,7 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "year", Type: sql.Year},
 
 		// Set and Enum Types
-		{Name: "set", Type: sql.MustCreateSetType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
+		{Name: "set", Type: types.MustCreateSetType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
 		{Name: "enum", Type: sql.MustCreateEnumType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
 	}
 

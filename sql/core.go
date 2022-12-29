@@ -19,6 +19,8 @@ import (
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Expression is a combination of one or more SQL expressions.
@@ -291,9 +293,9 @@ func TypesEqual(a, b Type) bool {
 			}
 		}
 		return aEnumType.collation == bEnumType.collation
-	case SetType_:
+	case types.SetType_:
 		aSetType := at
-		bSetType := b.(SetType_)
+		bSetType := b.(types.SetType_)
 		if len(aSetType.bitToVal) != len(bSetType.bitToVal) {
 			return false
 		}

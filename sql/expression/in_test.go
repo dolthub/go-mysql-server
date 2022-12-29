@@ -30,7 +30,7 @@ import (
 
 var testEnumType = sql.MustCreateEnumType([]string{"", "one", "two"}, sql.Collation_Default)
 
-var testSetType = sql.MustCreateSetType([]string{"", "one", "two"}, sql.Collation_Default)
+var testSetType = types.MustCreateSetType([]string{"", "one", "two"}, sql.Collation_Default)
 
 func TestInTuple(t *testing.T) {
 	testCases := []struct {

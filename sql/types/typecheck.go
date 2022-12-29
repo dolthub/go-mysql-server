@@ -168,7 +168,7 @@ func IsEnum(t sql.Type) bool {
 
 // IsEnum checks if t is a set
 func IsSet(t sql.Type) bool {
-	_, ok := t.(sql.SetType_)
+	_, ok := t.(SetType_)
 	return ok
 }
 

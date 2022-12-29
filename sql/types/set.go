@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
@@ -23,13 +23,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
-	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 const (
@@ -38,43 +36,21 @@ const (
 )
 
 var (
-	ErrConvertingToSet   = errors.NewKind("value %v is not valid for this set")
-	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
-	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")
-	ErrTooLargeForSet    = errors.NewKind(`value "%v" is too large for this set`)
-
 	setValueType = reflect.TypeOf(uint64(0))
 )
 
-// Comments with three slashes were taken directly from the linked documentation.
-
-// SetType represents the SET type.
-// https://dev.mysql.com/doc/refman/8.0/en/set.html
-// The type of the returned value is uint64.
-type SetType interface {
-	Type
-	CharacterSet() CharacterSetID
-	Collation() CollationID
-	// NumberOfElements returns the number of elements in this set.
-	NumberOfElements() uint16
-	// BitsToString takes a previously-converted value and returns it as a string.
-	BitsToString(bits uint64) (string, error)
-	// Values returns all of the set's values in ascending order according to their corresponding bit value.
-	Values() []string
-}
-
 type SetType_ struct {
-	collation             CollationID
+	collation             sql.CollationID
 	hashedValToBit        map[uint64]uint64
 	bitToVal              map[uint64]string
 	maxResponseByteLength uint32
 }
 
-var _ SetType = SetType_{}
-var _ TypeWithCollation = SetType_{}
+var _ sql.SetType = SetType_{}
+var _ sql.TypeWithCollation = SetType_{}
 
 // CreateSetType creates a SetType.
-func CreateSetType(values []string, collation CollationID) (SetType, error) {
+func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, error) {
 	if len(values) == 0 {
 		return nil, fmt.Errorf("number of values may not be zero")
 	}
@@ -92,7 +68,7 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 		if strings.Contains(value, ",") {
 			return nil, fmt.Errorf("values cannot contain a comma")
 		}
-		if collation != Collation_binary {
+		if collation != sql.Collation_binary {
 			// Trailing spaces are automatically deleted from SET member values in the table definition when a table is created.
 			value = strings.TrimRight(value, " ")
 		}
@@ -102,7 +78,7 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 			return nil, err
 		}
 		if _, ok := hashedValToBit[hashedVal]; ok {
-			return nil, ErrDuplicateEntrySet.New(value)
+			return nil, sql.ErrDuplicateEntrySet.New(value)
 		}
 		bit := uint64(1 << uint64(i))
 		hashedValToBit[hashedVal] = bit
@@ -121,7 +97,7 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 }
 
 // MustCreateSetType is the same as CreateSetType except it panics on errors.
-func MustCreateSetType(values []string, collation CollationID) SetType {
+func MustCreateSetType(values []string, collation sql.CollationID) sql.SetType {
 	et, err := CreateSetType(values, collation)
 	if err != nil {
 		panic(err)
@@ -131,7 +107,7 @@ func MustCreateSetType(values []string, collation CollationID) SetType {
 
 // Compare implements Type interface.
 func (t SetType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := CompareNulls(a, b); hasNulls {
+	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -201,7 +177,7 @@ func (t SetType_) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(string(value))
 	}
 
-	return uint64(0), ErrConvertingToSet.New(v)
+	return uint64(0), sql.ErrConvertingToSet.New(v)
 }
 
 // MaxTextResponseByteLength implements the Type interface
@@ -219,7 +195,7 @@ func (t SetType_) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t SetType_) Equals(otherType Type) bool {
+func (t SetType_) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(SetType_); ok && t.collation.Equals(ot.collation) && len(t.bitToVal) == len(ot.bitToVal) {
 		for bit, val := range t.bitToVal {
 			if ot.bitToVal[bit] != val {
@@ -232,12 +208,12 @@ func (t SetType_) Equals(otherType Type) bool {
 }
 
 // Promote implements the Type interface.
-func (t SetType_) Promote() Type {
+func (t SetType_) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t SetType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t SetType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -245,20 +221,20 @@ func (t SetType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	value, err := t.BitsToString(convertedValue.(uint64))
+	value, err := t.bitsToString(convertedValue.(uint64))
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
 
 	resultCharset := ctx.GetCharacterSetResults()
-	if resultCharset == CharacterSet_Unspecified || resultCharset == CharacterSet_binary {
+	if resultCharset == sql.CharacterSet_Unspecified || resultCharset == sql.CharacterSet_binary {
 		resultCharset = t.collation.CharacterSet()
 	}
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
-		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
 	}
-	val := types.AppendAndSliceBytes(dest, encodedBytes)
+	val := AppendAndSliceBytes(dest, encodedBytes)
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
@@ -266,10 +242,10 @@ func (t SetType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 // String implements Type interface.
 func (t SetType_) String() string {
 	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
-	if t.CharacterSet() != Collation_Default.CharacterSet() {
+	if t.CharacterSet() != sql.Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
-	if !t.collation.Equals(Collation_Default) {
+	if !t.collation.Equals(sql.Collation_Default) {
 		s += " COLLATE " + t.collation.String()
 	}
 	return s
@@ -291,12 +267,12 @@ func (t SetType_) Zero() interface{} {
 }
 
 // CharacterSet implements SetType interface.
-func (t SetType_) CharacterSet() CharacterSetID {
+func (t SetType_) CharacterSet() sql.CharacterSetID {
 	return t.collation.CharacterSet()
 }
 
 // Collation implements SetType interface.
-func (t SetType_) Collation() CollationID {
+func (t SetType_) Collation() sql.CollationID {
 	return t.collation
 }
 
@@ -306,7 +282,7 @@ func (t SetType_) NumberOfElements() uint16 {
 }
 
 // BitsToString implements SetType interface.
-func (t SetType_) BitsToString(v uint64) (string, error) {
+func (t SetType_) bitsToString(v uint64) (string, error) {
 	return t.convertBitFieldToString(v)
 }
 
@@ -322,7 +298,7 @@ func (t SetType_) Values() []string {
 }
 
 // WithNewCollation implements TypeWithCollation interface.
-func (t SetType_) WithNewCollation(collation CollationID) (Type, error) {
+func (t SetType_) WithNewCollation(collation sql.CollationID) (sql.Type, error) {
 	return CreateSetType(t.Values(), collation)
 }
 
@@ -343,14 +319,14 @@ func (t SetType_) convertBitFieldToString(bitField uint64) (string, error) {
 	bitEdge := 64 - bits.LeadingZeros64(bitField)
 	writeCommas := false
 	if bitEdge > len(t.bitToVal) {
-		return "", ErrTooLargeForSet.New(bitField)
+		return "", sql.ErrTooLargeForSet.New(bitField)
 	}
 	for i := 0; i < bitEdge; i++ {
 		bit := uint64(1 << uint64(i))
 		if bit&bitField != 0 {
 			val, ok := t.bitToVal[bit]
 			if !ok {
-				return "", ErrInvalidSetValue.New(bitField)
+				return "", sql.ErrInvalidSetValue.New(bitField)
 			}
 			if writeCommas {
 				strBuilder.WriteByte(',')
@@ -375,7 +351,7 @@ func (t SetType_) convertStringToBitField(str string) (uint64, error) {
 			continue
 		}
 		compareVal := val
-		if t.collation != Collation_binary {
+		if t.collation != sql.Collation_binary {
 			compareVal = strings.TrimRight(compareVal, " ")
 		}
 		hashedVal, err := t.collation.HashToUint(compareVal)
@@ -396,7 +372,7 @@ func (t SetType_) convertStringToBitField(str string) (uint64, error) {
 				continue
 			}
 		}
-		return 0, ErrInvalidSetValue.New(val)
+		return 0, sql.ErrInvalidSetValue.New(val)
 	}
 	return bitField, nil
 }

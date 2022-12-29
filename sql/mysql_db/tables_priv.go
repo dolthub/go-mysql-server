@@ -223,8 +223,8 @@ func init() {
 	char32_utf8_bin := types.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
 	char64_utf8_bin := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
 	char255_ascii_general_ci := types.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
-	set_ColumnPrivs_utf8_general_ci := sql.MustCreateSetType([]string{"Select", "Insert", "Update", "References"}, sql.Collation_utf8_general_ci)
-	set_TablePrivs_utf8_general_ci := sql.MustCreateSetType([]string{
+	set_ColumnPrivs_utf8_general_ci := types.MustCreateSetType([]string{"Select", "Insert", "Update", "References"}, sql.Collation_utf8_general_ci)
+	set_TablePrivs_utf8_general_ci := types.MustCreateSetType([]string{
 		"Select", "Insert", "Update", "Delete", "Create", "Drop", "Grant",
 		"References", "Index", "Alter", "Create View", "Show view", "Trigger"}, sql.Collation_utf8_general_ci)
 	varchar288_utf8_bin := types.MustCreateString(sqltypes.VarChar, 288, sql.Collation_utf8_bin)

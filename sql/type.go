@@ -119,6 +119,21 @@ type TimeType interface {
 	MicrosecondsToTimespan(v int64) types.Timespan
 }
 
+// SetType represents the SET type.
+// https://dev.mysql.com/doc/refman/8.0/en/set.html
+// The type of the returned value is uint64.
+type SetType interface {
+	Type
+	CharacterSet() CharacterSetID
+	Collation() CollationID
+	// NumberOfElements returns the number of elements in this set.
+	NumberOfElements() uint16
+	// BitsToString takes a previously-converted value and returns it as a string.
+	BitsToString(bits uint64) (string, error)
+	// Values returns all of the set's values in ascending order according to their corresponding bit value.
+	Values() []string
+}
+
 type Type2 interface {
 	Type
 
@@ -470,7 +485,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateSetType(ct.EnumValues, collation)
+		return types.CreateSetType(ct.EnumValues, collation)
 	case "json":
 		return JSON, nil
 	case "geometry":

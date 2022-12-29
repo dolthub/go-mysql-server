@@ -33,7 +33,7 @@ var _ SystemVariableType = systemSetType{}
 
 // NewSystemSetType returns a new systemSetType.
 func NewSystemSetType(varName string, values ...string) SystemVariableType {
-	return systemSetType{MustCreateSetType(values, Collation_Default), varName}
+	return systemSetType{types.MustCreateSetType(values, Collation_Default), varName}
 }
 
 // Compare implements Type interface.

@@ -162,7 +162,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 func TestGroupByCollations(t *testing.T) {
 	tString := types.MustCreateString(query.Type_VARCHAR, 255, sql.Collation_utf8mb4_0900_ai_ci)
 	tEnum := sql.MustCreateEnumType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
-	tSet := sql.MustCreateSetType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
+	tSet := types.MustCreateSetType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
 
 	var testCases = []struct {
 		Type  sql.Type
