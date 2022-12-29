@@ -107,7 +107,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 		),
 	)
 
-	createView = NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true, "CREATE VIEW myview AS SELECT i + 1 FROM mytable"	, "", "", "")
+	createView = NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true, "CREATE VIEW myview AS SELECT i + 1 FROM mytable", "", "", "")
 	_, err = createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
