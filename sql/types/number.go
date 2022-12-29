@@ -143,7 +143,7 @@ func NumericUnaryValue(t sql.Type) interface{} {
 
 // Compare implements Type interface.
 func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

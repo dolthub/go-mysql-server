@@ -259,7 +259,7 @@ func (t StringType_) Length() int64 {
 
 // Compare implements Type interface.
 func (t StringType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

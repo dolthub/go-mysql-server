@@ -1265,7 +1265,7 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 		default:
 			return nil, fmt.Errorf("unknown procedure parameter direction: `%s`", string(param.Direction))
 		}
-		internalTyp, err := sql.ColumnTypeToType(&param.Type)
+		internalTyp, err := types.ColumnTypeToType(&param.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -1390,7 +1390,7 @@ func convertDeclareVariables(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, 
 	for i, variable := range dVars.Names {
 		names[i] = variable.String()
 	}
-	typ, err := sql.ColumnTypeToType(&dVars.VarType)
+	typ, err := types.ColumnTypeToType(&dVars.VarType)
 	if err != nil {
 		return nil, err
 	}
@@ -2306,7 +2306,7 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceIn
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
 func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinition) (*sql.Column, error) {
-	internalTyp, err := sql.ColumnTypeToType(&cd.Type)
+	internalTyp, err := types.ColumnTypeToType(&cd.Type)
 	if err != nil {
 		return nil, err
 	}

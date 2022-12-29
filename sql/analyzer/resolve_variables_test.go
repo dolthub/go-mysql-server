@@ -147,7 +147,7 @@ func TestResolveColumnsSession(t *testing.T) {
 	require := require.New(t)
 
 	fooBarValue := int64(42)
-	fooBarType := sql.ApproximateTypeFromValue(fooBarValue)
+	fooBarType := types.ApproximateTypeFromValue(fooBarValue)
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 	err := ctx.SetUserVariable(ctx, "foo_bar", fooBarValue)

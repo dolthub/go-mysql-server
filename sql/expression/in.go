@@ -55,7 +55,7 @@ func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
 // Eval implements the Expression interface.
 func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := in.Left().Type().Promote()
-	leftElems := sql.NumColumns(typ)
+	leftElems := types.NumColumns(typ)
 	left, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -79,8 +79,8 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch right := in.Right().(type) {
 	case Tuple:
 		for _, el := range right {
-			if sql.NumColumns(el.Type()) != leftElems {
-				return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
+			if types.NumColumns(el.Type()) != leftElems {
+				return nil, sql.ErrInvalidOperandColumns.New(leftElems, types.NumColumns(el.Type()))
 			}
 		}
 
@@ -186,10 +186,10 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 
 	elements := make(map[uint64]sql.Expression)
 	hasNull := false
-	lColumnCount := sql.NumColumns(lType)
+	lColumnCount := types.NumColumns(lType)
 
 	for _, el := range right {
-		rColumnCount := sql.NumColumns(el.Type())
+		rColumnCount := types.NumColumns(el.Type())
 		if rColumnCount != lColumnCount {
 			return nil, false, sql.ErrInvalidOperandColumns.New(lColumnCount, rColumnCount)
 		}
@@ -248,7 +248,7 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	leftElems := sql.NumColumns(hit.Left().Type().Promote())
+	leftElems := types.NumColumns(hit.Left().Type().Promote())
 
 	leftVal, err := hit.Left().Eval(ctx, row)
 	if err != nil {
@@ -269,8 +269,8 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return false, nil
 	}
 
-	if sql.NumColumns(right.Type().Promote()) != leftElems {
-		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type().Promote()))
+	if types.NumColumns(right.Type().Promote()) != leftElems {
+		return nil, sql.ErrInvalidOperandColumns.New(leftElems, types.NumColumns(right.Type().Promote()))
 	}
 
 	return true, nil

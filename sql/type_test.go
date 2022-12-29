@@ -64,7 +64,7 @@ func TestFloatCovert(t *testing.T) {
 				Scale:  scale,
 				Length: precision,
 			}
-			res, err := ColumnTypeToType(ct)
+			res, err := types.ColumnTypeToType(ct)
 			if test.err {
 				assert.Error(t, err)
 			} else {
@@ -106,7 +106,7 @@ func TestColumnTypeToType_Time(t *testing.T) {
 				Type:   "TIME",
 				Length: precision,
 			}
-			res, err := ColumnTypeToType(ct)
+			res, err := types.ColumnTypeToType(ct)
 			if test.err {
 				assert.Error(t, err)
 			} else {

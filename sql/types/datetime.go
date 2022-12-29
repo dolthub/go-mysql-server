@@ -111,7 +111,7 @@ func MustCreateDatetimeType(baseType query.Type) sql.DatetimeType {
 
 // Compare implements Type interface.
 func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

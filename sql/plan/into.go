@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -98,7 +99,7 @@ func (i *Into) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				return nil, err
 			}
 		case *expression.ProcedureParam:
-			err = variable.Set(rowValues[j], sql.ApproximateTypeFromValue(rowValues[j]))
+			err = variable.Set(rowValues[j], types.ApproximateTypeFromValue(rowValues[j]))
 			if err != nil {
 				return nil, err
 			}

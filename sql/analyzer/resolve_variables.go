@@ -294,7 +294,7 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 			if !ok {
 				return nil, sql.ErrUnknownSystemVariable.New(varName)
 			}
-			return expression.NewLiteral(value, sql.ApproximateTypeFromValue(value)), nil
+			return expression.NewLiteral(value, types.ApproximateTypeFromValue(value)), nil
 		case sqlparser.SetScope_Persist:
 			return nil, sql.ErrUnsupportedFeature.New("PERSIST")
 		case sqlparser.SetScope_PersistOnly:

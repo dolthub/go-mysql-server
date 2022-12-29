@@ -61,7 +61,7 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if v == nil {
 		return false, nil
 	} else {
-		boolVal, err = sql.ConvertToBool(v)
+		boolVal, err = types.ConvertToBool(v)
 		if err != nil {
 			return nil, err
 		}

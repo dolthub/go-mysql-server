@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/oliveagle/jsonpath"
 )
 
@@ -362,7 +363,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func compareJSON(a, b interface{}) (int, error) {
-	if hasNulls, res := CompareNulls(b, a); hasNulls {
+	if hasNulls, res := types.CompareNulls(b, a); hasNulls {
 		return res, nil
 	}
 

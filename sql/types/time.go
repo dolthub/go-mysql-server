@@ -58,7 +58,7 @@ type Timespan int64
 
 // Compare implements Type interface.
 func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

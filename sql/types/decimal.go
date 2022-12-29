@@ -120,7 +120,7 @@ func (t DecimalType_) Type() query.Type {
 
 // Compare implements Type interface.
 func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 

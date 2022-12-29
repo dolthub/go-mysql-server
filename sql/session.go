@@ -376,7 +376,7 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 	if !ok {
 		return types.Null, nil, nil
 	}
-	return ApproximateTypeFromValue(val), val, nil
+	return types.ApproximateTypeFromValue(val), val, nil
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).

@@ -38,7 +38,7 @@ type YearType_ struct{}
 
 // Compare implements Type interface.
 func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
