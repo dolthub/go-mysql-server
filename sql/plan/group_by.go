@@ -433,10 +433,10 @@ func groupingKey(
 			}
 		}
 
-		switch t := expr.Type().(type) {
-		case sql.StringType:
+		t, isStringType := expr.Type().(sql.StringType)
+		if isStringType && v != nil {
 			err = t.Collation().WriteWeightString(hash, v.(string))
-		default:
+		} else {
 			_, err = fmt.Fprintf(hash, "%v", v)
 		}
 		if err != nil {
