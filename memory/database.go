@@ -319,6 +319,8 @@ func (d *BaseDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID)
 	return nil
 }
 
+// CreateView persists the definition a view with the name and create view statement given. If a view with that name
+// already exists, should return ErrExistingView
 func (d *Database) CreateView(ctx *sql.Context, name string, createViewStmt string) error {
 	_, ok := d.views[name]
 	if ok {
@@ -329,6 +331,7 @@ func (d *Database) CreateView(ctx *sql.Context, name string, createViewStmt stri
 	return nil
 }
 
+// DropView deletes the view named from persistent storage. If the view doesn't exist, should return ErrViewDoesNotExist
 func (d *Database) DropView(ctx *sql.Context, name string) error {
 	_, ok := d.views[name]
 	if !ok {
@@ -339,6 +342,7 @@ func (d *Database) DropView(ctx *sql.Context, name string) error {
 	return nil
 }
 
+// AllViews returns the definitions of all views in the database
 func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	var views []sql.ViewDefinition
 	for name, def := range d.views {
@@ -350,6 +354,7 @@ func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	return views, nil
 }
 
+// GetView returns the textual create view statement of the view with the name given, or false if it doesn't exist.
 func (d *Database) GetView(ctx *sql.Context, viewName string) (string, bool, error) {
 	viewDef, ok := d.views[viewName]
 	return viewDef, ok, nil

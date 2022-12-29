@@ -4652,6 +4652,7 @@ CREATE TABLE t2
 					),
 				),
 				false,
+				"CREATE VIEW v AS SELECT * FROM foo", "", "", "",
 			),
 		},
 		{
@@ -4671,6 +4672,7 @@ CREATE TABLE t2
 					),
 				),
 				false,
+				"CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b", "", "", "",
 			),
 		},
 		{
@@ -4687,6 +4689,7 @@ CREATE TABLE t2
 					),
 				),
 				true,
+				"CREATE OR REPLACE VIEW v AS SELECT * FROM foo", "", "", "",
 			),
 		},
 		{
