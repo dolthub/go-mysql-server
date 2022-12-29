@@ -1797,7 +1797,7 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 	vdb, ok := db.(sql.ViewDatabase)
 	require.True(t, ok, "expected sql.ViewDatabase")
 
-	err = vdb.CreateView(ctx, "recursiveView", "create view recursiveView AS select * from recursiveView")
+	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView", "create view recursiveView AS select * from recursiveView")
 	require.NoError(t, err)
 
 	AssertErr(t, e, harness, "select * from recursiveView", analyzer.ErrMaxAnalysisIters)

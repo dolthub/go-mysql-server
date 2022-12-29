@@ -10487,117 +10487,117 @@ var ViewTests = []QueryTest{
 }
 
 var VersionedViewTests = []QueryTest{
-	{
-		Query: "SELECT * FROM myview1 ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
-			sql.NewRow(int64(2), "second row, 3", "2"),
-			sql.NewRow(int64(3), "third row, 3", "3"),
-		},
-	},
-	{
-		Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
-			sql.NewRow(int64(2), "second row, 3", "2"),
-			sql.NewRow(int64(3), "third row, 3", "3"),
-		},
-	},
-	{
-		Query: "SELECT t.i FROM myview1 AS t ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
-			sql.NewRow(int64(2)),
-			sql.NewRow(int64(3)),
-		},
-	},
-	{
-		Query: "SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
-			sql.NewRow(int64(2), "second row, 1"),
-			sql.NewRow(int64(3), "third row, 1"),
-		},
-	},
-
-	// Nested views
-	{
-		Query: "SELECT * FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
-		},
-	},
-	{
-		Query: "SELECT i FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
-		},
-	},
-	{
-		Query: "SELECT myview2.i FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
-		},
-	},
-	{
-		Query: "SELECT myview2.* FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
-		},
-	},
-	{
-		Query: "SELECT t.* FROM myview2 as t",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
-		},
-	},
-	{
-		Query: "SELECT t.i FROM myview2 as t",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
-		},
-	},
-	{
-		Query: "SELECT * FROM myview2 AS OF '2019-01-01'",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
-		},
-	},
-
-	// Views with unions
-	{
-		Query: "SELECT * FROM myview3 AS OF '2019-01-01'",
-		Expected: []sql.Row{
-			{"1"},
-			{"2"},
-			{"3"},
-			{"first row, 1"},
-			{"second row, 1"},
-			{"third row, 1"},
-		},
-	},
-	{
-		Query: "SELECT * FROM myview3 AS OF '2019-01-02'",
-		Expected: []sql.Row{
-			{"1"},
-			{"2"},
-			{"3"},
-			{"first row, 2"},
-			{"second row, 2"},
-			{"third row, 2"},
-		},
-	},
-	{
-		Query: "SELECT * FROM myview3 AS OF '2019-01-03'",
-		Expected: []sql.Row{
-			{"1"},
-			{"2"},
-			{"3"},
-			{"first row, 3"},
-			{"second row, 3"},
-			{"third row, 3"},
-		},
-	},
+	//{
+	//	Query: "SELECT * FROM myview1 ORDER BY i",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1), "first row, 3", "1"),
+	//		sql.NewRow(int64(2), "second row, 3", "2"),
+	//		sql.NewRow(int64(3), "third row, 3", "3"),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1), "first row, 3", "1"),
+	//		sql.NewRow(int64(2), "second row, 3", "2"),
+	//		sql.NewRow(int64(3), "third row, 3", "3"),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT t.i FROM myview1 AS t ORDER BY i",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1)),
+	//		sql.NewRow(int64(2)),
+	//		sql.NewRow(int64(3)),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1), "first row, 1"),
+	//		sql.NewRow(int64(2), "second row, 1"),
+	//		sql.NewRow(int64(3), "third row, 1"),
+	//	},
+	//},
+	//
+	//// Nested views
+	//{
+	//	Query: "SELECT * FROM myview2",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1), "first row, 3", "1"),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT i FROM myview2",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1)),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT myview2.i FROM myview2",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1)),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT myview2.* FROM myview2",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1), "first row, 3", "1"),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT t.* FROM myview2 as t",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1), "first row, 3", "1"),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT t.i FROM myview2 as t",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1)),
+	//	},
+	//},
+	//{
+	//	Query: "SELECT * FROM myview2 AS OF '2019-01-01'",
+	//	Expected: []sql.Row{
+	//		sql.NewRow(int64(1), "first row, 1"),
+	//	},
+	//},
+	//
+	//// Views with unions
+	//{
+	//	Query: "SELECT * FROM myview3 AS OF '2019-01-01'",
+	//	Expected: []sql.Row{
+	//		{"1"},
+	//		{"2"},
+	//		{"3"},
+	//		{"first row, 1"},
+	//		{"second row, 1"},
+	//		{"third row, 1"},
+	//	},
+	//},
+	//{
+	//	Query: "SELECT * FROM myview3 AS OF '2019-01-02'",
+	//	Expected: []sql.Row{
+	//		{"1"},
+	//		{"2"},
+	//		{"3"},
+	//		{"first row, 2"},
+	//		{"second row, 2"},
+	//		{"third row, 2"},
+	//	},
+	//},
+	//{
+	//	Query: "SELECT * FROM myview3 AS OF '2019-01-03'",
+	//	Expected: []sql.Row{
+	//		{"1"},
+	//		{"2"},
+	//		{"3"},
+	//		{"first row, 3"},
+	//		{"second row, 3"},
+	//		{"third row, 3"},
+	//	},
+	//},
 
 	// Views with subqueries
 	{
@@ -10643,12 +10643,12 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{

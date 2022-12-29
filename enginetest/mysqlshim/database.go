@@ -185,7 +185,7 @@ func (d Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 }
 
 // CreateView implements the interface sql.ViewDatabase.
-func (d Database) CreateView(ctx *sql.Context, name string, createViewStmt string) error {
+func (d Database) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
 	return d.shim.Exec(d.name, createViewStmt)
 }
 
@@ -194,8 +194,23 @@ func (d Database) DropView(ctx *sql.Context, name string) error {
 	return d.shim.Exec(d.name, fmt.Sprintf("DROP VIEW `%s`;", name))
 }
 
-// GetView implements the interface sql.ViewDatabase.
-func (d Database) GetView(ctx *sql.Context, viewName string) (string, bool, error) {
+// GetViewDefinition implements the interface sql.ViewDatabase.
+func (d Database) GetViewDefinition(ctx *sql.Context, viewName string) (string, bool, error) {
+	views, err := d.AllViews(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	lowerName := strings.ToLower(viewName)
+	for _, view := range views {
+		if lowerName == strings.ToLower(view.Name) {
+			return view.TextDefinition, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+// GetCreateViewStmt implements the interface sql.ViewDatabase.
+func (d Database) GetCreateViewStmt(ctx *sql.Context, viewName string) (string, bool, error) {
 	views, err := d.AllViews(ctx)
 	if err != nil {
 		return "", false, err
@@ -222,10 +237,12 @@ func (d Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 		if err != nil {
 			return nil, err
 		}
-		viewStatement := viewStatementRow[0][1].(string)
+		createViewStatement := viewStatementRow[0][1].(string)
+		viewStatement := createViewStatement[strings.Index(createViewStatement, " AS ")+4:] // not the best but works for now
 		viewDefinitions[i] = sql.ViewDefinition{
 			Name:                viewName,
-			CreateViewStatement: viewStatement,
+			TextDefinition:      viewStatement,
+			CreateViewStatement: createViewStatement,
 		}
 	}
 	return viewDefinitions, nil

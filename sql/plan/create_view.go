@@ -116,12 +116,11 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	// TODO: isUpdatable should be defined at CREATE VIEW time
 	// isUpdatable := GetIsUpdatableFromCreateView(cv)
 
-	view := cv.View()
 	creator, ok := cv.database.(sql.ViewDatabase)
 	if ok {
-		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.CreateViewString)
+		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition, cv.CreateViewString)
 	} else {
-		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), view)
+		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), cv.View())
 	}
 }
 

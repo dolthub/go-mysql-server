@@ -88,10 +88,11 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	view, ok, err := db.GetView(ctx, createView.Name)
+	expectedView := createView.Definition.TextDefinition
+	view, ok, err := db.GetViewDefinition(ctx, createView.Name)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, createView.CreateViewString, view)
+	require.Equal(t, expectedView, view)
 
 	// This is kind of nonsensical, but we just want to see if it gets stored correctly
 	subqueryAlias := NewSubqueryAlias("myview", "select i + 1 from mytable",
@@ -111,10 +112,10 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	_, err = createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	view, ok, err = db.GetView(ctx, createView.Name)
+	view, ok, err = db.GetViewDefinition(ctx, createView.Name)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, createView.CreateViewString, view)
+	require.Equal(t, subqueryAlias.TextDefinition, view)
 }
 
 // Tests that CreateView works as expected and that the view is registered in
@@ -127,7 +128,7 @@ func TestCreateViewNative(t *testing.T) {
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	actualView, ok, err := db.GetView(ctx, createView.Name)
+	actualView, ok, err := db.GetViewDefinition(ctx, createView.Name)
 
 	require.True(t, ok)
 	require.NoError(t, err)
