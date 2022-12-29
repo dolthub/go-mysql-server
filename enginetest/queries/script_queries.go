@@ -17,6 +17,7 @@ package queries
 import (
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -2648,7 +2649,7 @@ var ScriptTests = []ScriptTest{
 						float64(0),
 						float64(0),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
-						sql.Timespan(0),
+						types.Timespan(0),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						0,

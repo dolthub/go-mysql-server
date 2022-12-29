@@ -5274,7 +5274,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{sql.Timespan(44054000000)}},
+		Expected: []sql.Row{{types.Timespan(44054000000)}},
 	},
 	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
@@ -5286,7 +5286,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{sql.Timespan(43934000000)}},
+		Expected: []sql.Row{{types.Timespan(43934000000)}},
 	},
 	{
 		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",

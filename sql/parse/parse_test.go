@@ -5343,7 +5343,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"TIME",
-			sql.Time,
+			types.Time,
 		},
 		{
 			"TIMESTAMP",

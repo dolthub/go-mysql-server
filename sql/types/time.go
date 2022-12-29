@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
@@ -22,16 +22,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/shopspring/decimal"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
-	Time TimeType = TimespanType_{}
+	Time sql.TimeType = TimespanType_{}
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
@@ -44,27 +43,6 @@ var (
 
 	timeValueType = reflect.TypeOf(Timespan(0))
 )
-
-// TimeType represents the TIME type.
-// https://dev.mysql.com/doc/refman/8.0/en/time.html
-// TIME is implemented as TIME(6).
-// The type of the returned value is Timespan.
-// TODO: implement parameters on the TIME type
-type TimeType interface {
-	Type
-	// ConvertToTimespan returns a Timespan from the given interface. Follows the same conversion rules as
-	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
-	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
-	ConvertToTimespan(v interface{}) (Timespan, error)
-	// ConvertToTimeDuration returns a time.Duration from the given interface. Follows the same conversion rules as
-	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
-	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
-	ConvertToTimeDuration(v interface{}) (time.Duration, error)
-	// MicrosecondsToTimespan returns a Timespan from the given number of microseconds. This differs from Convert(), as
-	// that will process the value based on its base-10 visual representation (for example, Convert() will interpret
-	// the value `1234` as 12 minutes and 34 seconds). This clamps the given microseconds to the allowed range.
-	MicrosecondsToTimespan(v int64) Timespan
-}
 
 type TimespanType_ struct{}
 
@@ -80,7 +58,7 @@ type Timespan int64
 
 // Compare implements Type interface.
 func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := CompareNulls(a, b); hasNulls {
+	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -230,9 +208,9 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 	case time.Time:
 		h, m, s := value.Clock()
 		us := int64(value.Nanosecond())/nanosecondsPerMicrosecond +
-			microsecondsPerSecond*int64(s) +
-			microsecondsPerMinute*int64(m) +
-			microsecondsPerHour*int64(h)
+				microsecondsPerSecond*int64(s) +
+				microsecondsPerMinute*int64(m) +
+				microsecondsPerHour*int64(h)
 		return Timespan(us), nil
 	}
 
@@ -249,18 +227,18 @@ func (t TimespanType_) ConvertToTimeDuration(v interface{}) (time.Duration, erro
 }
 
 // Equals implements the Type interface.
-func (t TimespanType_) Equals(otherType Type) bool {
+func (t TimespanType_) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(TimespanType_)
 	return ok
 }
 
 // Promote implements the Type interface.
-func (t TimespanType_) Promote() Type {
+func (t TimespanType_) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t TimespanType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t TimespanType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -269,7 +247,7 @@ func (t TimespanType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.Value{}, err
 	}
 
-	val := types.AppendAndSliceString(dest, ti.String())
+	val := AppendAndSliceString(dest, ti.String())
 
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
@@ -437,10 +415,10 @@ func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, m
 		negative = -1
 	}
 	return Timespan(negative *
-		(int64(microseconds) +
-			(int64(seconds) * microsecondsPerSecond) +
-			(int64(minutes) * microsecondsPerMinute) +
-			(int64(hours) * microsecondsPerHour)))
+			(int64(microseconds) +
+					(int64(seconds) * microsecondsPerSecond) +
+					(int64(minutes) * microsecondsPerMinute) +
+					(int64(hours) * microsecondsPerHour)))
 }
 
 func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) {

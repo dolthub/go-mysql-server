@@ -27,8 +27,8 @@ import (
 )
 
 func TestTimeDiff(t *testing.T) {
-	toTimespan := func(str string) sql.Timespan {
-		res, err := sql.Time.ConvertToTimespan(str)
+	toTimespan := func(str string) types.Timespan {
+		res, err := types.Time.ConvertToTimespan(str)
 		if err != nil {
 			t.Fatal(err)
 		}

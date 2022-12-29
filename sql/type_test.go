@@ -97,14 +97,14 @@ func TestColumnTypeToType_Time(t *testing.T) {
 		expected Type
 		err      bool
 	}{
-		{"", Time, false},
+		{"", types.Time, false},
 		{"0", nil, true},
 		{"1", nil, true},
 		{"2", nil, true},
 		{"3", nil, true},
 		{"4", nil, true},
 		{"5", nil, true},
-		{"6", Time, false},
+		{"6", types.Time, false},
 		{"7", nil, true},
 	}
 

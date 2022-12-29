@@ -103,7 +103,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToSigned:
 		return sql.Int64
 	case ConvertToTime:
-		return sql.Time
+		return types.Time
 	case ConvertToUnsigned:
 		return sql.Uint64
 	default:
@@ -248,7 +248,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 
 		return num, nil
 	case ConvertToTime:
-		t, err := sql.Time.Convert(val)
+		t, err := types.Time.Convert(val)
 		if err != nil {
 			return nil, nil
 		}

@@ -271,7 +271,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Time:
-			t := sql.Time
+			t := types.Time
 			v, err := t.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err

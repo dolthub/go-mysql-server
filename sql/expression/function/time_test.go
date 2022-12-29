@@ -597,7 +597,7 @@ func TestTime(t *testing.T) {
 				require.Error(err)
 			} else {
 				require.NoError(err)
-				if v, ok := val.(sql.Timespan); ok {
+				if v, ok := val.(types.Timespan); ok {
 					require.Equal(tt.expected, v.String())
 				} else {
 					require.Equal(tt.expected, val)

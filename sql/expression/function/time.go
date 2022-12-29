@@ -1409,7 +1409,7 @@ func (t *Time) String() string {
 
 // Type implements the Expression interface.
 func (t *Time) Type() sql.Type {
-	return sql.Time
+	return types.Time
 }
 
 // Eval implements the Expression interface.
@@ -1427,11 +1427,11 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err == nil {
 		h, m, s := date.Clock()
 		us := date.Nanosecond() / 1000
-		return sql.Timespan(1000000*(3600*h+60*m+s) + us), nil
+		return types.Timespan(1000000*(3600*h+60*m+s) + us), nil
 	}
 
 	// convert to time
-	val, err := sql.Time.Convert(v)
+	val, err := types.Time.Convert(v)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil

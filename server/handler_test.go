@@ -615,7 +615,7 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "datetime", Type: types.MustCreateDatetimeType(sqltypes.Datetime)},
 		{Name: "timestamp", Type: types.MustCreateDatetimeType(sqltypes.Timestamp)},
 		{Name: "date", Type: types.MustCreateDatetimeType(sqltypes.Date)},
-		{Name: "time", Type: sql.Time},
+		{Name: "time", Type: types.Time},
 		{Name: "year", Type: sql.Year},
 
 		// Set and Enum Types

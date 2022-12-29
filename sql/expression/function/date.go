@@ -527,7 +527,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 
 	// set type flags
 	isInputDate := inputType == types.Date
-	isInputTime := inputType == sql.Time
+	isInputTime := inputType == types.Time
 	isInputDatetime := inputType == types.Datetime || inputType == types.Timestamp
 
 	// result is Datetime if expression is Datetime or Timestamp
@@ -565,7 +565,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 			return types.Datetime
 		} else {
 			// otherwise result is Time
-			return sql.Time
+			return types.Time
 		}
 	}
 

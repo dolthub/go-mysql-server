@@ -55,7 +55,7 @@ func (td *TimeDiff) Description() string {
 }
 
 // Type implements the Expression interface.
-func (td *TimeDiff) Type() sql.Type { return sql.Time }
+func (td *TimeDiff) Type() sql.Type { return types.Time }
 
 func (td *TimeDiff) String() string {
 	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.Left, td.Right)
@@ -74,7 +74,7 @@ func convToDateOrTime(val interface{}) (interface{}, error) {
 	if err == nil {
 		return date, nil
 	}
-	tim, err := sql.Time.Convert(val)
+	tim, err := types.Time.Convert(val)
 	if err == nil {
 		return tim, err
 	}
@@ -126,12 +126,12 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if leftDatetime.Location() != rightDatetime.Location() {
 			rightDatetime = rightDatetime.In(leftDatetime.Location())
 		}
-		return sql.Time.Convert(leftDatetime.Sub(rightDatetime))
+		return types.Time.Convert(leftDatetime.Sub(rightDatetime))
 	}
 
 	// handle as time
-	if leftTime, ok := left.(sql.Timespan); ok {
-		rightTime, ok := right.(sql.Timespan)
+	if leftTime, ok := left.(types.Timespan); ok {
+		rightTime, ok := right.(types.Timespan)
 		if !ok {
 			return nil, nil
 		}

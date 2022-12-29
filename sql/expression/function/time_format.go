@@ -113,7 +113,7 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	d, err := sql.Time.ConvertToTimeDuration(left)
+	d, err := types.Time.ConvertToTimeDuration(left)
 	if err != nil {
 		return nil, err
 	}
