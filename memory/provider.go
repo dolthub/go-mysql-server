@@ -112,8 +112,8 @@ func (pro *DbProvider) Database(_ *sql.Context, name string) (sql.Database, erro
 }
 
 // UseDatabase returns the Database with the given name if it exists.
-func (d memoryDBProvider) UseDatabase(ctx *sql.Context, name string) (sql.Database, error) {
-	return d.Database(ctx, name)
+func (pro *DbProvider) UseDatabase(ctx *sql.Context, name string) (sql.Database, error) {
+	return pro.Database(ctx, name)
 }
 
 // HasDatabase returns the Database with the given name if it exists.
