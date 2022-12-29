@@ -21,35 +21,6 @@ import (
 	"time"
 )
 
-// Nameable is something that has a name.
-type Nameable interface {
-	// Name returns the name.
-	Name() string
-}
-
-// Tableable is something that has a table.
-type Tableable interface {
-	// Table returns the table name.
-	Table() string
-}
-
-// Resolvable is something that can be resolved or not.
-type Resolvable interface {
-	// Resolved returns whether the node is resolved.
-	Resolved() bool
-}
-
-// BinaryNode has two children
-type BinaryNode interface {
-	Left() Node
-	Right() Node
-}
-
-// UnaryNode has one child
-type UnaryNode interface {
-	Child() Node
-}
-
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable
@@ -67,27 +38,6 @@ type Expression interface {
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
 	WithChildren(children ...Expression) (Expression, error)
-}
-
-type Expression2 interface {
-	Expression
-	// Eval2 evaluates the given row frame and returns a result.
-	Eval2(ctx *Context, row Row2) (Value, error)
-	// Type2 returns the expression type.
-	Type2() Type2
-}
-
-// UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
-type UnsupportedFunctionStub interface {
-	IsUnsupported() bool
-}
-
-// FunctionExpression is an Expression that represents a function.
-type FunctionExpression interface {
-	Expression
-	FunctionName() string
-	Description() string
-	// TODO: add Example() function
 }
 
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will
@@ -121,43 +71,40 @@ type Node interface {
 	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
 }
 
-type Node2 interface {
-	Node
-
-	// RowIter2 produces a row iterator from this node. The current row frame being
-	// evaluated is provided, as well the context of the query.
-	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
+// Nameable is something that has a name.
+type Nameable interface {
+	// Name returns the name.
+	Name() string
 }
 
-// RowIterTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
-type RowIterTypeSelector interface {
-	RowIter
-	IsNode2() bool
+// Tableable is something that has a table.
+type Tableable interface {
+	// Table returns the table name.
+	Table() string
 }
 
-// CommentedNode allows comments to be set and retrieved on it
+// Resolvable is something that can be resolved or not.
+type Resolvable interface {
+	// Resolved returns whether the node is resolved.
+	Resolved() bool
+}
+
+// BinaryNode is a Node with two children
+type BinaryNode interface {
+	Left() Node
+	Right() Node
+}
+
+// UnaryNode is a Node with one child.
+type UnaryNode interface {
+	Child() Node
+}
+
+// CommentedNode allows comments to be set and retrieved on it. Used primarily for join hint comments.
 type CommentedNode interface {
 	Node
 	WithComment(string) Node
 	Comment() string
-}
-
-// DebugStringer is shared by implementors of Node and Expression, and is used for debugging the analyzer. It allows
-// a node or expression to be printed in greater detail than its default String() representation.
-type DebugStringer interface {
-	// DebugString prints a debug string of the node in question.
-	DebugString() string
-}
-
-// DebugString returns a debug string for the Node or Expression given.
-func DebugString(nodeOrExpression interface{}) string {
-	if ds, ok := nodeOrExpression.(DebugStringer); ok {
-		return ds.DebugString()
-	}
-	if s, ok := nodeOrExpression.(fmt.Stringer); ok {
-		return s.String()
-	}
-	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
 }
 
 // OpaqueNode is a node that doesn't allow transformations to its children and
@@ -209,12 +156,7 @@ type PartitionCounter interface {
 	PartitionCount(*Context) (int64, error)
 }
 
-// ForeignKeyEditor is a TableEditor that is addressable via IndexLookup.
-type ForeignKeyEditor interface {
-	TableEditor
-	IndexAddressable
-}
-
+// Closer is a node that can be closed.
 type Closer interface {
 	Close(*Context) error
 }
@@ -234,18 +176,6 @@ type ExternalStoredProcedureProvider interface {
 	ExternalStoredProcedures(ctx *Context, name string) ([]ExternalStoredProcedureDetails, error)
 }
 
-// FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
-type FunctionProvider interface {
-	// Function returns the function with the name provided, case-insensitive
-	Function(ctx *Context, name string) (Function, error)
-}
-
-// TableFunctionProvider is an extension of DatabaseProvider that allows custom table functions to be provided
-type TableFunctionProvider interface {
-	// TableFunction returns the table function with the name provided, case-insensitive
-	TableFunction(ctx *Context, name string) (TableFunction, error)
-}
-
 type TransactionCharacteristic int
 
 const (
@@ -258,43 +188,6 @@ const (
 type Transaction interface {
 	fmt.Stringer
 	IsReadOnly() bool
-}
-
-// TriggerDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
-// but must store and return them when asked.
-type TriggerDefinition struct {
-	Name            string    // The name of this trigger. Trigger names in a database are unique.
-	CreateStatement string    // The text of the statement to create this trigger.
-	CreatedAt       time.Time // The time that the trigger was created.
-}
-
-// ViewDefinition is the named textual definition of a view
-type ViewDefinition struct {
-	Name           string
-	TextDefinition string
-}
-
-// ViewDatabase is implemented by databases that persist view definitions
-type ViewDatabase interface {
-	// CreateView persists the definition a view with the name and select statement given. If a view with that name
-	// already exists, should return ErrExistingView
-	CreateView(ctx *Context, name string, selectStatement string) error
-
-	// DropView deletes the view named from persistent storage. If the view doesn't exist, should return
-	// ErrViewDoesNotExist
-	DropView(ctx *Context, name string) error
-
-	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
-	GetView(ctx *Context, viewName string) (string, bool, error)
-
-	// AllViews returns the definitions of all views in the database
-	AllViews(ctx *Context) ([]ViewDefinition, error)
-}
-
-// ColumnOrder is used in ALTER TABLE statements to change the order of inserted / modified columns.
-type ColumnOrder struct {
-	First       bool   // True if this column should come first
-	AfterColumn string // Set to the name of the column after which this column should appear
 }
 
 // Lockable should be implemented by tables that can be locked and unlocked.
@@ -311,57 +204,6 @@ type Lockable interface {
 	// The id will always be provided, since in some cases context is not
 	// available.
 	Unlock(ctx *Context, id uint32) error
-}
-
-// StoredProcedureDetails are the details of the stored procedure. Integrators only need to store and retrieve the given
-// details for a stored procedure, as the engine handles all parsing and processing.
-type StoredProcedureDetails struct {
-	Name            string    // The name of this stored procedure. Names must be unique within a database.
-	CreateStatement string    // The CREATE statement for this stored procedure.
-	CreatedAt       time.Time // The time that the stored procedure was created.
-	ModifiedAt      time.Time // The time of the last modification to the stored procedure.
-}
-
-// ExternalStoredProcedureDetails are the details of an external stored procedure. Compared to standard stored
-// procedures, external ones are considered "built-in", in that they're not created by the user, and may not be modified
-// or deleted by a user. In addition, they're implemented as a function taking standard parameters, compared to stored
-// procedures being implemented as expressions.
-type ExternalStoredProcedureDetails struct {
-	// Name is the name of the external stored procedure. If two external stored procedures share a name, then they're
-	// considered overloaded. Standard stored procedures do not support overloading.
-	Name string
-	// Schema describes the row layout of the RowIter returned from Function.
-	Schema Schema
-	// Function is the implementation of the external stored procedure. All functions should have the following definition:
-	// `func(*Context, <PARAMETERS>) (RowIter, error)`. The <PARAMETERS> may be any of the following types: `bool`,
-	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `Decimal`
-	// (shopspring/decimal). The architecture-dependent types `int` and `uint` (without a number) are also supported.
-	// It is valid to return a nil RowIter if there are no rows to be returned.
-	//
-	// Each parameter, by default, is an IN parameter. If the parameter type is a pointer, e.g. `*int32`, then it
-	// becomes an INOUT parameter. INOUT parameters will be given their zero value if the parameter's value is nil.
-	// There is no way to set a parameter as an OUT parameter.
-	//
-	// Values are converted to their nearest type before being passed in, following the conversion rules of their
-	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with
-	// the default collation) and Decimal (treated with a larger precision and scale). Take extra care when using decimal
-	// for an INOUT parameter, to ensure that the returned value fits the original's precision and scale, else an error
-	// will occur.
-	//
-	// As functions support overloading, each variant must have a completely unique function signature to prevent
-	// ambiguity. Uniqueness is determined by the number of parameters. If two functions are returned that have the same
-	// name and same number of parameters, then an error is thrown. If the last parameter is variadic, then the stored
-	// procedure functions as though it has the integer-max number of parameters. When an exact match is not found for
-	// overloaded functions, the largest function is used (which in this case will be the variadic function). Also, due
-	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
-	// The type of the variadic parameter may not have a pointer type.
-	Function interface{}
-}
-
-// FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some
-// tools (such as Java's JDBC connector) require a valid statement in some situations.
-func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt() string {
-	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT 'External stored procedure';", espd.Name)
 }
 
 // EvaluateCondition evaluates a condition, which is an expression whose value
@@ -476,4 +318,40 @@ func TypesEqual(a, b Type) bool {
 	default:
 		return a == b
 	}
+}
+
+// DebugStringer is shared by implementors of Node and Expression, and is used for debugging the analyzer. It allows
+// a node or expression to be printed in greater detail than its default String() representation.
+type DebugStringer interface {
+	// DebugString prints a debug string of the node in question.
+	DebugString() string
+}
+
+// DebugString returns a debug string for the Node or Expression given.
+func DebugString(nodeOrExpression interface{}) string {
+	if ds, ok := nodeOrExpression.(DebugStringer); ok {
+		return ds.DebugString()
+	}
+	if s, ok := nodeOrExpression.(fmt.Stringer); ok {
+		return s.String()
+	}
+	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
+}
+
+// Expression2 is an experimental future interface alternative to Expression to provide faster access.
+type Expression2 interface {
+	Expression
+	// Eval2 evaluates the given row frame and returns a result.
+	Eval2(ctx *Context, row Row2) (Value, error)
+	// Type2 returns the expression type.
+	Type2() Type2
+}
+
+// Node2 is an experimental future interface alternative to Node to provide faster access.
+type Node2 interface {
+	Node
+
+	// RowIter2 produces a row iterator from this node. The current row frame being
+	// evaluated is provided, as well the context of the query.
+	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }

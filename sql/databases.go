@@ -14,7 +14,11 @@
 
 package sql
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // Databaser is a node that contains a reference to a database.
 type Databaser interface {
@@ -119,9 +123,9 @@ type TableCopierDatabase interface {
 	CopyTableData(ctx *Context, sourceTable string, destinationTable string) (uint64, error)
 }
 
-// GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
+// GetTableInsensitive implements a case-insensitive map lookup for tables keyed off of the table name.
 // Looks for exact matches first.  If no exact matches are found then any table matching the name case insensitively
-// should be returned.  If there is more than one table that matches a case insensitive comparison the resolution
+// should be returned.  If there is more than one table that matches a case-insensitive comparison the resolution
 // strategy is not defined.
 func GetTableInsensitive(tblName string, tables map[string]Table) (Table, bool) {
 	if tbl, ok := tables[tblName]; ok {
@@ -274,3 +278,91 @@ type CollatedDatabaseProvider interface {
 	CreateCollatedDatabase(ctx *Context, name string, collation CollationID) error
 }
 
+// ViewDefinition is the named textual definition of a view
+type ViewDefinition struct {
+	Name           string
+	TextDefinition string
+}
+
+// ViewDatabase is implemented by databases that persist view definitions
+type ViewDatabase interface {
+	// CreateView persists the definition a view with the name and select statement given. If a view with that name
+	// already exists, should return ErrExistingView
+	CreateView(ctx *Context, name string, selectStatement string) error
+
+	// DropView deletes the view named from persistent storage. If the view doesn't exist, should return
+	// ErrViewDoesNotExist
+	DropView(ctx *Context, name string) error
+
+	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
+	GetView(ctx *Context, viewName string) (string, bool, error)
+
+	// AllViews returns the definitions of all views in the database
+	AllViews(ctx *Context) ([]ViewDefinition, error)
+}
+
+// StoredProcedureDetails are the details of the stored procedure. Integrators only need to store and retrieve the given
+// details for a stored procedure, as the engine handles all parsing and processing.
+type StoredProcedureDetails struct {
+	Name            string    // The name of this stored procedure. Names must be unique within a database.
+	CreateStatement string    // The CREATE statement for this stored procedure.
+	CreatedAt       time.Time // The time that the stored procedure was created.
+	ModifiedAt      time.Time // The time of the last modification to the stored procedure.
+}
+
+// ExternalStoredProcedureDetails are the details of an external stored procedure. Compared to standard stored
+// procedures, external ones are considered "built-in", in that they're not created by the user, and may not be modified
+// or deleted by a user. In addition, they're implemented as a function taking standard parameters, compared to stored
+// procedures being implemented as expressions.
+type ExternalStoredProcedureDetails struct {
+	// Name is the name of the external stored procedure. If two external stored procedures share a name, then they're
+	// considered overloaded. Standard stored procedures do not support overloading.
+	Name string
+	// Schema describes the row layout of the RowIter returned from Function.
+	Schema Schema
+	// Function is the implementation of the external stored procedure. All functions should have the following definition:
+	// `func(*Context, <PARAMETERS>) (RowIter, error)`. The <PARAMETERS> may be any of the following types: `bool`,
+	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `Decimal`
+	// (shopspring/decimal). The architecture-dependent types `int` and `uint` (without a number) are also supported.
+	// It is valid to return a nil RowIter if there are no rows to be returned.
+	//
+	// Each parameter, by default, is an IN parameter. If the parameter type is a pointer, e.g. `*int32`, then it
+	// becomes an INOUT parameter. INOUT parameters will be given their zero value if the parameter's value is nil.
+	// There is no way to set a parameter as an OUT parameter.
+	//
+	// Values are converted to their nearest type before being passed in, following the conversion rules of their
+	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with
+	// the default collation) and Decimal (treated with a larger precision and scale). Take extra care when using decimal
+	// for an INOUT parameter, to ensure that the returned value fits the original's precision and scale, else an error
+	// will occur.
+	//
+	// As functions support overloading, each variant must have a completely unique function signature to prevent
+	// ambiguity. Uniqueness is determined by the number of parameters. If two functions are returned that have the same
+	// name and same number of parameters, then an error is thrown. If the last parameter is variadic, then the stored
+	// procedure functions as though it has the integer-max number of parameters. When an exact match is not found for
+	// overloaded functions, the largest function is used (which in this case will be the variadic function). Also, due
+	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
+	// The type of the variadic parameter may not have a pointer type.
+	Function interface{}
+}
+
+// FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some
+// tools (such as Java's JDBC connector) require a valid statement in some situations.
+func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt() string {
+	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT 'External stored procedure';", espd.Name)
+}
+
+// TriggerDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
+// but must store and return them when asked.
+type TriggerDefinition struct {
+	Name            string    // The name of this trigger. Trigger names in a database are unique.
+	CreateStatement string    // The text of the statement to create this trigger.
+	CreatedAt       time.Time // The time that the trigger was created.
+}
+
+// TableFunctionProvider is an interface that allows custom table functions to be provided. It's usually (but not
+// always) implemented by a DatabaseProvider.
+type TableFunctionProvider interface {
+	// TableFunction returns the table function with the name provided, case-insensitive
+	TableFunction(ctx *Context, name string) (TableFunction, error)
+}

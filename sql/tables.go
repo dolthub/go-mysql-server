@@ -341,3 +341,9 @@ type AlterableTable interface {
 	ModifyColumn(ctx *Context, columnName string, column *Column, order *ColumnOrder) error
 }
 
+// ForeignKeyEditor is a TableEditor that is addressable via IndexLookup.
+type ForeignKeyEditor interface {
+	TableEditor
+	IndexAddressable
+}
+

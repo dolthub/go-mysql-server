@@ -700,7 +700,11 @@ var (
 	// ErrNoTablesUsed is returned when there is no table provided or dual table is defined with column access.
 	ErrNoTablesUsed = errors.NewKind("No tables used")
 
+	// ErrInvalidJson is returned when a JSON string doesn't represent valid JSON.
 	ErrInvalidJson = errors.NewKind("Invalid JSON text: %s")
+
+	// ErrNoAutoIncrementCol is returned when there is no auto increment column defined on a table.
+	ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
