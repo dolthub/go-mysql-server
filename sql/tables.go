@@ -42,7 +42,7 @@ type TableFunction interface {
 }
 
 // TemporaryTable allows tables to declare that they are temporary (created by CREATE TEMPORARY TABLE).
-// Only used for validation of certain DDL operations -- in almost all respects TemporaryTables are indistinguishable 
+// Only used for validation of certain DDL operations -- in almost all respects TemporaryTables are indistinguishable
 // from persisted tables to the engine.
 type TemporaryTable interface {
 	// IsTemporary should return true if the table is temporary to the session
@@ -58,7 +58,7 @@ type TableWrapper interface {
 }
 
 // FilteredTable is a table that can filter its result rows from RowIter using filter expressions that would otherwise
-// be applied by a separate Filter node. 
+// be applied by a separate Filter node.
 type FilteredTable interface {
 	Table
 	// Filters returns the filter expressions that have been applied to this table.
@@ -69,8 +69,8 @@ type FilteredTable interface {
 	WithFilters(ctx *Context, filters []Expression) Table
 }
 
-// ProjectedTable is a table that can return only a subset of its columns from RowIter. This provides a very large 
-// efficiency gain during table scans. Tables that implement this interface must return the projected column in future 
+// ProjectedTable is a table that can return only a subset of its columns from RowIter. This provides a very large
+// efficiency gain during table scans. Tables that implement this interface must return the projected column in future
 // calls to Schema
 type ProjectedTable interface {
 	Table
@@ -116,7 +116,7 @@ type IndexAlterableTable interface {
 	RenameIndex(ctx *Context, fromIndexName string, toIndexName string) error
 }
 
-// ForeignKeyTable is a table that declares foreign key constraints, and can be referenced by other tables' foreign 
+// ForeignKeyTable is a table that declares foreign key constraints, and can be referenced by other tables' foreign
 // key constraints.
 type ForeignKeyTable interface {
 	IndexAddressableTable
@@ -231,7 +231,7 @@ type RowDeleter interface {
 }
 
 // TruncateableTable is a table that can process the deletion of all rows either via a TRUNCATE TABLE statement or a
-// DELETE statement without a WHERE clause. This is usually much faster that deleting rows one at a time. 
+// DELETE statement without a WHERE clause. This is usually much faster that deleting rows one at a time.
 type TruncateableTable interface {
 	Table
 	// Truncate removes all rows from the table. If the table also implements DeletableTable and it is determined that
@@ -347,8 +347,8 @@ type AlterableTable interface {
 	ModifyColumn(ctx *Context, columnName string, column *Column, order *ColumnOrder) error
 }
 
-// UnresolvedTable is a Table that is either unresolved or deferred for until an asOf resolution. 
-// Used by the analyzer during planning, and is not expected to be implemented by integrators. 
+// UnresolvedTable is a Table that is either unresolved or deferred for until an asOf resolution.
+// Used by the analyzer during planning, and is not expected to be implemented by integrators.
 type UnresolvedTable interface {
 	Nameable
 	// Database returns the database name
