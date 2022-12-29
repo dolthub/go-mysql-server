@@ -255,4 +255,3 @@ type RowIterTypeSelector interface {
 	RowIter
 	IsNode2() bool
 }
-

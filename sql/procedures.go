@@ -69,4 +69,3 @@ type ExternalStoredProcedureDetails struct {
 func (espd ExternalStoredProcedureDetails) FakeCreateProcedureStmt() string {
 	return fmt.Sprintf("CREATE PROCEDURE %s() SELECT 'External stored procedure';", espd.Name)
 }
-

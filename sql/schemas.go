@@ -173,4 +173,3 @@ type ColumnOrder struct {
 	First       bool   // True if this column should come first
 	AfterColumn string // Set to the name of the column after which this column should appear
 }
-

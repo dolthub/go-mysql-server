@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-// DatabaseProvider is the fundamental interface to integrate with the engine. It provides access to all databases in 
+// DatabaseProvider is the fundamental interface to integrate with the engine. It provides access to all databases in
 // a given backend. A DatabaseProvider is provided to the Catalog when the engine is initialized.
 type DatabaseProvider interface {
 	// Database gets a Database from the provider.
@@ -59,8 +59,8 @@ type TableFunctionProvider interface {
 // Database represents the database. Its primary job is to provide access to all tables.
 type Database interface {
 	Nameable
-	// GetTableInsensitive retrieves a table by its case-insensitive name. To be SQL compliant, databases should not 
-	// allow two tables with the same case-insensitive name. Behavior is undefined when two tables have the same 
+	// GetTableInsensitive retrieves a table by its case-insensitive name. To be SQL compliant, databases should not
+	// allow two tables with the same case-insensitive name. Behavior is undefined when two tables have the same
 	// case-insensitive name.
 	GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error)
 	// GetTableNames returns the table names of every table in the database. It does not return the names of temporary
@@ -107,11 +107,11 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
 }
 
-// IndexedTableCreator is a Database that can create new tables which have a Primary Key with columns that have 
+// IndexedTableCreator is a Database that can create new tables which have a Primary Key with columns that have
 // prefix lengths.
 type IndexedTableCreator interface {
 	Database
-	// CreateIndexedTable creates the table with the given name and schema using the index definition provided for its 
+	// CreateIndexedTable creates the table with the given name and schema using the index definition provided for its
 	// primary key index.
 	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxDef IndexDef, collation CollationID) error
 }
@@ -160,8 +160,8 @@ type CollatedDatabase interface {
 	SetCollation(ctx *Context, collation CollationID) error
 }
 
-// TriggerDatabase is a Database that supports creating and storing triggers. The engine handles all parsing and 
-// execution logic for triggers. Integrators are not expected to parse or understand the trigger definitions, but must 
+// TriggerDatabase is a Database that supports creating and storing triggers. The engine handles all parsing and
+// execution logic for triggers. Integrators are not expected to parse or understand the trigger definitions, but must
 // store and return them when asked.
 type TriggerDatabase interface {
 	Database

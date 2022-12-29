@@ -134,4 +134,3 @@ type WindowAggregation interface {
 	// WithWindow returns a version of this window aggregation with the window given
 	WithWindow(window *WindowDefinition) (WindowAggregation, error)
 }
-
